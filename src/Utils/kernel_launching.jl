@@ -306,21 +306,21 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
+@inline launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...) = _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
-    _launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args...; kwargs...) where N =
+    _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
 
-@inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
-    _launch!(arch, grid, first(workspec_tuple), args...; kwargs...)
-    launch!(arch, grid, Base.tail(workspec_tuple), args...; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, args...; kwargs...)
+    _launch!(arch, grid, first(workspec_tuple), kernel!, args; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, args; kwargs...)
     return nothing
 end
 
 @inline launch!(arch, grid, ::Tuple{}, args...; kwargs...) = nothing
 
-@inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
-@inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
+@inline launch!(arch, grid, workspec::Symbol, kernel!, args...; kw...) = _launch!(arch, grid, Val(workspec), kernel!, args; kw...)
+@inline launch!(arch, grid, workspec::Val, kernel!, args...; kw...) = _launch!(arch, grid, workspec, kernel!, args; kw...)
 
 @inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
 
@@ -332,7 +332,7 @@ end
 end
 
 # Inner interface
-@inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
+@inline function _launch!(arch, grid, workspec, kernel!, kernel_args;
                           exclude_periphery = false,
                           reduced_dimensions = (),
                           active_cells_map = nothing)
@@ -341,11 +341,11 @@ end
 
     # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
-    location = Oceananigans.instantiated_location(first_kernel_arg)
+    location = Oceananigans.instantiated_location(first(kernel_args))
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
                                        location,
@@ -353,7 +353,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(first_kernel_arg, other_kernel_args...)
+        loop!(kernel_args...)
     end
 
     return nothing
