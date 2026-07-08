@@ -42,7 +42,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
-    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, ImplicitGravityWaveRadiation,
+    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     FieldBoundaryConditions,
 
     # Fields and field manipulation

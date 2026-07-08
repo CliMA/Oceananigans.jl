@@ -407,10 +407,10 @@ function test_radiation_instant_relaxation()
 end
 
 #####
-##### Test 8: ImplicitGravityWaveRadiation + GravityWaveRadiation pairing
+##### Test 8: SurfaceWaveRadiation + GravityWaveRadiation pairing
 #####
 # The barotropic gravity wave radiation test with the free surface boundary also
-# radiating via ImplicitGravityWaveRadiation: η halos must carry radiated values (not zero-gradient mirrors)
+# radiating via SurfaceWaveRadiation: η halos must carry radiated values (not zero-gradient mirrors)
 # and the pulse must still exit (energy decay).
 
 function test_implicit_gravity_wave_radiation()
@@ -452,7 +452,7 @@ function test_implicit_gravity_wave_radiation()
 end
 
 #####
-##### GravityWaveRadiation–ImplicitGravityWaveRadiation default pairing (constructor)
+##### GravityWaveRadiation–SurfaceWaveRadiation default pairing (constructor)
 #####
 
 is_implicit_gravity_wave_bc(bc) = bc isa Oceananigans.BoundaryConditions.IGWVBC
@@ -468,7 +468,7 @@ function test_gravity_wave_pairing()
     V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
                                     north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
-    # (a) GravityWaveRadiation on U (west/east) and V (north), default η → ImplicitGravityWaveRadiation on those sides only.
+    # (a) GravityWaveRadiation on U (west/east) and V (north), default η → SurfaceWaveRadiation on those sides only.
     paired = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
         boundary_conditions = (U = U_bcs, V = V_bcs),
@@ -478,7 +478,7 @@ function test_gravity_wave_pairing()
     auto_paired = is_implicit_gravity_wave_bc(η.west) && is_implicit_gravity_wave_bc(η.east) &&
                   is_implicit_gravity_wave_bc(η.north) && !is_implicit_gravity_wave_bc(η.south)
 
-    # (b) User-specified η is respected, not overwritten by the ImplicitGravityWaveRadiation default.
+    # (b) User-specified η is respected, not overwritten by the SurfaceWaveRadiation default.
     η_user = FieldBoundaryConditions(grid, (Center(), Center(), Face());
                                      west = GradientBoundaryCondition(0))
     explicit = HydrostaticFreeSurfaceModel(grid;
@@ -487,7 +487,7 @@ function test_gravity_wave_pairing()
         buoyancy = nothing, tracers = ())
     user_respected = !is_implicit_gravity_wave_bc(explicit.free_surface.displacement.boundary_conditions.west)
 
-    # (c) No GravityWaveRadiation barotropic boundaries → η keeps its default (no ImplicitGravityWaveRadiation).
+    # (c) No GravityWaveRadiation barotropic boundaries → η keeps its default (no SurfaceWaveRadiation).
     walls = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
         buoyancy = nothing, tracers = ())
@@ -525,11 +525,11 @@ end
         @test test_radiation_instant_relaxation()
     end
 
-    @testset "ImplicitGravityWaveRadiation + GravityWaveRadiation barotropic radiation" begin
+    @testset "SurfaceWaveRadiation + GravityWaveRadiation barotropic radiation" begin
         @test test_implicit_gravity_wave_radiation()
     end
 
-    @testset "GravityWaveRadiation–ImplicitGravityWaveRadiation default pairing" begin
+    @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin
         @test test_gravity_wave_pairing()
     end
 end

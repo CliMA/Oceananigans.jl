@@ -305,7 +305,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 end
 
 #####
-##### GravityWaveRadiation–ImplicitGravityWaveRadiation pairing
+##### GravityWaveRadiation–SurfaceWaveRadiation pairing
 #####
 
 function default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
