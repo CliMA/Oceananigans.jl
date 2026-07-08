@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: GravityWaveRadiation, Radiation, GravityWaveRadiationBoundaryCondition, ImplicitGravityWaveRadiationBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, ImplicitGravityWaveRadiationBoundaryCondition, fill_halo_regions!
 using Test
 
 #####
@@ -18,9 +18,9 @@ function test_barotropic_gravity_wave_radiation()
                            z = (-H, 0),
                            topology = (Bounded, Periodic, Bounded))
 
-    # Radiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
-                                    west  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
+    # NormalRadiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
                                     east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
@@ -169,7 +169,7 @@ end
 #####
 # Compare Orlanski radiation BC against a reference solution on a larger domain.
 # A rightward-propagating Gaussian SSH pulse on a flat-bottom, f=0, 1D domain.
-# The "small" domain has Radiation BCs; the "large" domain is big enough that
+# The "small" domain has NormalRadiation BCs; the "large" domain is big enough that
 # waves never reach its boundaries. After several transit times, the solutions
 # should agree in the interior of the small domain.
 
@@ -178,7 +178,7 @@ function test_orlanski_analytical_verification()
     g  = 9.81
     c  = sqrt(g * H)  # ≈ 31.3 m/s barotropic phase speed
 
-    # Small domain with Radiation BCs
+    # Small domain with NormalRadiation BCs
     Nx_small = 100
     Lx_small = 5000.0
     Δx = Lx_small / Nx_small  # 50 m
@@ -196,14 +196,14 @@ function test_orlanski_analytical_verification()
     T_cross = (Lx_small / 2) / c  # time to cross half domain
     Nsteps = ceil(Int, 2 * T_cross / Δt)  # run for 2 crossing times
 
-    # --- Small domain with Radiation BCs ---
+    # --- Small domain with NormalRadiation BCs ---
     grid_small = RectilinearGrid(size = (Nx_small, 1, 1),
                                  x = (0, Lx_small), y = (0, 100.0), z = (-H, 0),
                                  topology = (Bounded, Periodic, Bounded))
 
-    # Radiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)),
-                                    west  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)))
+    # NormalRadiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(inflow_timescale = Δt)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(inflow_timescale = Δt)))
     U_bcs = FieldBoundaryConditions(grid_small, (Face(), Center(), nothing);
                                     east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
                                     west  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
@@ -309,7 +309,7 @@ end
 ##### Test 6: Tracer radiation with the Value classification
 #####
 # A tracer blob advected out of the domain by a prescribed uniform flow, with a
-# Radiation scheme on a ValueBoundaryCondition at the outflow boundary. The fill
+# NormalRadiation scheme on a ValueBoundaryCondition at the outflow boundary. The fill
 # must only touch the halo cells (never interior cells 1..N), the tracer must stay
 # bounded, and total tracer content must decrease as the blob exits.
 
@@ -324,7 +324,7 @@ function test_tracer_radiation_value_scheme()
                            z = (-100.0, 0),
                            topology = (Bounded, Periodic, Bounded))
 
-    radiation = Radiation(outflow_timescale = Inf, inflow_timescale = 1.0)
+    radiation = NormalRadiation(outflow_timescale = Inf, inflow_timescale = 1.0)
     c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme = radiation),
                                     west = ValueBoundaryCondition(0; scheme = radiation))
 
@@ -366,7 +366,7 @@ function test_tracer_radiation_value_scheme()
 end
 
 #####
-##### Test 7: Radiation with instant relaxation timescales
+##### Test 7: NormalRadiation with instant relaxation timescales
 #####
 # τ = 0 means instant relaxation to the exterior value. The Orlanski update must
 # branch explicitly (like PerturbationAdvection) instead of evaluating Δt/τ = Inf,
@@ -379,7 +379,7 @@ function test_radiation_instant_relaxation()
     # before set!, so a boundary value initialized from the halo (0) rather than the
     # interior would freeze a unit-amplitude error at the outflow boundary.
     c̄ = 1
-    scheme = Radiation(inflow_timescale = 0, outflow_timescale = Inf)
+    scheme = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
     c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
                                     east = ValueBoundaryCondition(c̄; scheme))
 
@@ -421,8 +421,8 @@ function test_implicit_gravity_wave_radiation()
                            x = (0, Lx), y = (0, Ly), z = (-H, 0),
                            topology = (Bounded, Periodic, Bounded))
 
-    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
-                                    west = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
                                     east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
                                     west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
@@ -521,7 +521,7 @@ end
         @test test_tracer_radiation_value_scheme()
     end
 
-    @testset "Radiation with instant relaxation" begin
+    @testset "NormalRadiation with instant relaxation" begin
         @test test_radiation_instant_relaxation()
     end
 

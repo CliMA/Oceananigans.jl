@@ -1,9 +1,9 @@
 #####
-##### Radiation (Orlanski 1976) open boundary scheme
+##### NormalRadiation (based on Orlanski 1976) open boundary scheme
 #####
 
 """
-    Radiation(; inflow_timescale = 0, outflow_timescale = Inf)
+    NormalRadiation(; inflow_timescale = 0, outflow_timescale = Inf)
 
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
 and adaptive nudging (Marchesiello et al. 2001):
@@ -15,7 +15,7 @@ Inflow vs outflow is decided from the boundary-normal velocity (the boundary val
 for `NormalFlow` fields, `model_fields` at the boundary face for `Value` fields):
 `τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_out` on outflow.
 
-`Radiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) for `Center`-located
+`NormalRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) for `Center`-located
 fields such as tracers — where it updates the halo cell adjacent to the boundary — or of a
 [`NormalFlowBoundaryCondition`](@ref) for boundary-normal velocities — where it updates the
 boundary face value. Interior cells are never written.
@@ -32,16 +32,16 @@ References
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.BoundaryConditions: Radiation
+using Oceananigans.BoundaryConditions: NormalRadiation
 
-rad = Radiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
+rad = NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
 rad.outflow_timescale
 
 # output
 3.1104e7
 ```
 """
-struct Radiation{FT, S}
+struct NormalRadiation{FT, S}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     φᵇ  :: S  # anchor boundary value (2D array or nothing)
@@ -49,33 +49,33 @@ struct Radiation{FT, S}
     φ₁ˡ :: S  # latest interior value (2D array or nothing)
 end
 
-function Radiation(FT = defaults.FloatType;
+function NormalRadiation(FT = defaults.FloatType;
                    inflow_timescale = 0,
                    outflow_timescale = Inf)
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
-    return Radiation(outflow_timescale, inflow_timescale, nothing, nothing, nothing)
+    return NormalRadiation(outflow_timescale, inflow_timescale, nothing, nothing, nothing)
 end
 
-Adapt.adapt_structure(to, r::Radiation) =
-    Radiation(adapt(to, r.outflow_timescale),
+Adapt.adapt_structure(to, r::NormalRadiation) =
+    NormalRadiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
               adapt(to, r.φᵇ),
               adapt(to, r.φ₁),
               adapt(to, r.φ₁ˡ))
 
-const RVBC  = BoundaryCondition{<:Value{<:Radiation}}
-const RNFBC = BoundaryCondition{<:NormalFlow{<:Radiation}}
+const RVBC  = BoundaryCondition{<:Value{<:NormalRadiation}}
+const RNFBC = BoundaryCondition{<:NormalFlow{<:NormalRadiation}}
 const RBC   = Union{RVBC, RNFBC}
 
 #####
-##### Radiation storage allocation during BC regularization
+##### NormalRadiation storage allocation during BC regularization
 #####
 
 # Allocate the 2D storage array holding the previous-timestep interior value φ₁ⁿ
 # needed by the Orlanski phase-speed diagnosis.
-function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
+function materialize_radiation_storage(radiation::NormalRadiation, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     arch = architecture(grid)
@@ -88,7 +88,7 @@ function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
     φ₁  = on_architecture(arch, zeros(FT, tangential_size...))
     φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
 
-    return Radiation(radiation.outflow_timescale,
+    return NormalRadiation(radiation.outflow_timescale,
                      radiation.inflow_timescale,
                      φᵇ, φ₁, φ₁ˡ)
 end
@@ -96,7 +96,7 @@ end
 rebuild_classification(::Value, scheme) = Value(scheme)
 rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
 
-# Hook into the regularization pipeline to allocate Radiation storage
+# Hook into the regularization pipeline to allocate NormalRadiation storage
 function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
     regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
     radiation = bc.classification.scheme
@@ -106,7 +106,7 @@ function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
 end
 
 #####
-##### Radiation halo filling — Orlanski (1976) with Marchesiello et al. (2001) nudging
+##### NormalRadiation halo filling — Orlanski (1976) with Marchesiello et al. (2001) nudging
 #####
 
 # True Orlanski radiation condition with locally-diagnosed phase speed:
@@ -122,7 +122,7 @@ end
 # where φ₁ is the boundary-adjacent interior value and φ₂ is one point
 # deeper into the interior.
 #
-# The previous interior value φ₁ⁿ is stored in an array inside the Radiation struct;
+# The previous interior value φ₁ⁿ is stored in an array inside the NormalRadiation struct;
 # the previous boundary value is read from the field itself, so that increments applied
 # between fills (e.g. the GravityWaveRadiation-consistent barotropic correction at NormalFlow faces)
 # are retained.
@@ -148,7 +148,7 @@ end
     # Guard against zero spatial gradient
     Cᶜ = ifelse(∂ξ_φ == 0, zero(∂t_φ), - ∂t_φ / ∂ξ_φ)
 
-    # Radiation-plus-advection
+    # NormalRadiation-plus-advection
     Cₙ = ifelse(outflow, max(zero(Cᶜ), min(one(Cᶜ), max(Cᶜ, Cᵃ))), zero(Cᶜ))
 
     τ = ifelse(outflow, radiation.outflow_timescale, radiation.inflow_timescale)

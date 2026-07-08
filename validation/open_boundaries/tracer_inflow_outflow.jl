@@ -19,7 +19,7 @@ function tracer_outflow_simulation(; arch = CPU(),
                                      blob_width = 0.5,
                                      stop_time = 16,
                                      base_simulation_name = "tracer_inflow_outflow",
-                                     scheme = Radiation(inflow_timescale = 0,
+                                     scheme = NormalRadiation(inflow_timescale = 0,
                                                         outflow_timescale = Inf))
 
     grid = RectilinearGrid(arch; topology = (Bounded, Flat, Flat), size = Nx, x = (0, Lx))
@@ -144,7 +144,7 @@ function plot_tracer_outflow_hovmollers(filepaths)
 end
 
 simPA = tracer_outflow_simulation(scheme=PerturbationAdvection(), base_simulation_name = "tracer_inflow_outflow_pa")
-simRD = tracer_outflow_simulation(scheme=Radiation(), base_simulation_name = "tracer_inflow_outflow_ra")
+simRD = tracer_outflow_simulation(scheme=NormalRadiation(), base_simulation_name = "tracer_inflow_outflow_ra")
 
 run!(simPA)
 run!(simRD)
