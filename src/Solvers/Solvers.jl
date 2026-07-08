@@ -5,7 +5,11 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
-    KrylovSolver
+    KrylovSolver,
+    FreeSurfaceLaplacian,
+    fourier_tridiagonal_free_surface_solver,
+    no_gauge_enforcement!,
+    AbstractHomogeneousNeumannFormulation
 
 using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
@@ -38,6 +42,7 @@ include("discrete_transforms.jl")
 include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
+include("fourier_tridiagonal_free_surface_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
 include("multigrid_preconditioner.jl")
 include("krylov_solver.jl")
