@@ -17,7 +17,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
 using Oceananigans.Solvers: GridWithFFTSolver, ConjugateGradientPoissonSolver,
                             FreeSurfaceLaplacian, fourier_tridiagonal_free_surface_solver,
-                            no_gauge_enforcement!
+                            no_gauge_enforcement!, MultigridPreconditioner,
+                            update_free_surface_correction!
 using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 

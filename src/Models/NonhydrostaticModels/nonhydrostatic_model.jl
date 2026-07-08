@@ -278,6 +278,23 @@ function NonhydrostaticModel(grid;
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
+    if !isnothing(free_surface) && pressure_solver isa ConjugateGradientPoissonSolver &&
+            !(pressure_solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian)
+        msg = """
+        A ConjugateGradientPoissonSolver used with a free surface must include the Robin
+        (mixed) pressure boundary condition at the top in its linear operation; the rigid-lid
+        Laplacian does not converge. Construct the solver with
+
+            using Oceananigans.Solvers: FreeSurfaceLaplacian, no_gauge_enforcement!
+            pressure_solver = ConjugateGradientPoissonSolver(grid;
+                                                             linear_operation = FreeSurfaceLaplacian(),
+                                                             enforce_gauge_condition! = no_gauge_enforcement!)
+
+        or use free_surface = nothing (a rigid lid).
+        """
+        throw(ArgumentError(msg))
+    end
+
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
     model_fields = merge(velocities, tracers, auxiliary_fields)

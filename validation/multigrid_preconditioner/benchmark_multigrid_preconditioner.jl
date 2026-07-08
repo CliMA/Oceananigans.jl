@@ -3,11 +3,12 @@ using Oceananigans.Solvers: MultigridPreconditioner, ConjugateGradientPoissonSol
                             DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner,
                             compute_symmetric_laplacian!, fft_poisson_solver, iteration, solve!
 using Oceananigans.Grids: inactive_cell
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: on_architecture, synchronize
 using Random
 using Printf
 
-arch = CPU()
+# Run on the GPU with BENCHMARK_ARCHITECTURE=GPU (also requires `using CUDA` or similar)
+arch = get(ENV, "BENCHMARK_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
 # Solve V∇²ϕ = b with b = V∇²w for random w, so the right-hand side is consistent by
 # construction, and report (iterations, wall time, true relative residual).
@@ -26,9 +27,15 @@ function benchmark_preconditioner(grid, preconditioner; reltol=1e-8, maxiter=200
     solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol=0, maxiter)
     ϕ = CenterField(grid)
     solve!(ϕ, solver.conjugate_gradient_solver, b)  # warm up
+    synchronize(architecture(grid))
 
-    wall_time = minimum((fill!(parent(ϕ), 0); @elapsed solve!(ϕ, solver.conjugate_gradient_solver, b))
-                        for _ in 1:repetitions)
+    wall_time = minimum(1:repetitions) do _
+        fill!(parent(ϕ), 0)
+        start_time = time_ns()
+        solve!(ϕ, solver.conjugate_gradient_solver, b)
+        synchronize(architecture(grid))
+        (time_ns() - start_time) / 1e9
+    end
 
     Aϕ = CenterField(grid)
     compute_symmetric_laplacian!(Aϕ, ϕ)
