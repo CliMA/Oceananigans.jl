@@ -324,10 +324,10 @@ end
 
 @inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
 
-@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery = false, reduced_dimensions = ())
+@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args; exclude_periphery = false, reduced_dimensions = ())
     cells_map = first(maps)
-    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
-    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
+    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions)
     return nothing
 end
 
@@ -341,7 +341,7 @@ end
 
     # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
