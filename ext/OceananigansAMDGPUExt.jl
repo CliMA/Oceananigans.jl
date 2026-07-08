@@ -100,8 +100,8 @@ end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        I = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
-        return I in __linear_ndrange(ctx)
+        index = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end

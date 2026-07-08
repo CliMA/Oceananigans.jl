@@ -3,14 +3,40 @@ using Aqua: Aqua
 using ExplicitImports: ExplicitImports
 using Test: @testset, @test, detect_ambiguities
 
+# Helper function to get all the submodules of a given module.
+function walk_submodules!(result, visited, mod::Module)
+    for name in sort(names(mod; all=true, imported=false))
+        isdefined(mod, name) || continue
+        value = getproperty(mod, name)
+        if value isa Module &&
+            parentmodule(value) === mod &&
+            !(value in visited) &&
+            value !== mod
+
+            push!(visited, value)
+            push!(result, value)
+            walk_submodules!(result, visited, value)
+        end
+    end
+end
+
+function get_submodules(mod::Module; self=true)
+    result = self ? Module[mod] : Module[]
+    visited = Set{Module}()
+
+    walk_submodules!(result, visited, mod)
+    return result
+end
+
 @testset "Aqua" begin
     @info "testing quality assurance via Aqua"
-    Aqua.test_all(Oceananigans; ambiguities=false)
+    Aqua.test_all(Oceananigans; ambiguities=false, piracies=false)
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 344
+    # When ambiguities are resolved, update the cap accordingly.
+    @test number_of_ambiguities == 318
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -31,8 +57,8 @@ using Test: @testset, @test, detect_ambiguities
         # Oceananigans.Models,
         # Oceananigans.MultiRegion,
         # Oceananigans.Operators,
-        # Oceananigans.OrthogonalSphericalShellGrids,
-        # Oceananigans.OutputReaders,
+        Oceananigans.OrthogonalSphericalShellGrids,
+        Oceananigans.OutputReaders,
         # Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         # Oceananigans.Solvers,
@@ -40,7 +66,7 @@ using Test: @testset, @test, detect_ambiguities
         Oceananigans.TimeSteppers,
         # Oceananigans.TurbulenceClosures,
         Oceananigans.Units,
-        # Oceananigans.Utils,
+        Oceananigans.Utils,
     )
 
     # In addition to capping the total number of ambiguities above, we make sure
@@ -49,13 +75,26 @@ using Test: @testset, @test, detect_ambiguities
         @info "Testing no ambiguities for module $(mod)"
         @test isempty(detect_ambiguities(mod; recursive=true))
     end
+
+    # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
+    @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
+        pirate_modules = (
+            Oceananigans.AbstractOperations,
+            Oceananigans.BoundaryConditions,
+            Oceananigans.BuoyancyFormulations,
+            Oceananigans.Grids,
+            Oceananigans.Models,
+        )
+        @info "Testing no type piracy for module $(mod)"
+        Aqua.test_piracies(mod; broken=mod in pirate_modules)
+    end
 end
 
 @testset "ExplicitImports" begin
 
     modules = (
         Oceananigans.AbstractOperations,
-        # Oceananigans.Advection,
+        Oceananigans.Advection,
         # Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
         # Oceananigans.BoundaryConditions,

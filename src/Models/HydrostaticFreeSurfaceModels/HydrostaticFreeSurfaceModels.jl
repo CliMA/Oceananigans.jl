@@ -5,8 +5,9 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
@@ -14,8 +15,6 @@ using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, Orthogonal
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
-
-using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
@@ -78,8 +77,8 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 # Fallback
 reconcile_free_surface!(free_surface, grid, velocities) = nothing
 
-# Transport velocity computation (only for a SplitExplicitFreeSurface)
-compute_transport_velocities!(model, free_surface) = nothing
+# Transport velocity computation
+function compute_transport_velocities! end
 
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
@@ -114,7 +113,7 @@ include("set_hydrostatic_free_surface_model.jl")
 cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
-    fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
@@ -134,7 +133,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
@@ -169,6 +168,7 @@ displacement(::Nothing) = nothing
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
+include("boundary_targeted_transport.jl")
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")

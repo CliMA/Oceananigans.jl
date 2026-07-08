@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
 
 using Random
 using NCDatasets
@@ -319,6 +319,52 @@ function test_field_time_series_in_memory_split(arch, split_filepath, unsplit_fi
     return nothing
 end
 
+function test_field_time_series_split_files(arch)
+    dir = mktempdir()
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    set_tracer_to_iteration!(sim) = fill!(parent(sim.model.tracers.c), sim.model.clock.iteration)
+    add_callback!(simulation, set_tracer_to_iteration!, IterationInterval(1))
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "split_test",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+    run!(simulation)
+
+    # Use absolute path (tests glob fix)
+    abs_path = joinpath(dir, "split_test.jld2")
+
+    # Test InMemory backend with split files
+    fts_mem = FieldTimeSeries(abs_path, "c", architecture=arch)
+    @test length(fts_mem.times) == 11
+    @test fts_mem[1] isa Field
+    @test fts_mem[11] isa Field
+    @test fts_mem.path isa SplitFilePath
+
+    # Test OnDisk backend with split files
+    fts_disk = FieldTimeSeries(abs_path, "c"; backend=OnDisk(), architecture=arch)
+    @test length(fts_disk.times) == 11
+
+    # Access from each part file
+    for n in 1:length(fts_disk.times)
+        @test fts_disk[n] isa Field
+    end
+
+    fts_partly = FieldTimeSeries(abs_path, "c"; backend=InMemory(2), architecture=arch)
+    @test fts_partly.path isa SplitFilePath
+    for n in 1:length(fts_partly.times)
+        @test Array(interior(fts_partly[n])) == Array(interior(fts_mem[n]))
+    end
+
+    rm(dir, recursive=true, force=true)
+    return nothing
+end
+
 function test_field_time_series_pickup(arch)
     Random.seed!(1234)
     for n in -4:4
@@ -380,7 +426,7 @@ function test_field_time_series_function_boundary_conditions(arch)
 
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
-    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(u_west), east = OpenBoundaryCondition(u_east, scheme=PerturbationAdvection()))
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(u_west), east = NormalFlowBoundaryCondition(u_east, scheme=PerturbationAdvection()))
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
@@ -678,6 +724,33 @@ end
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
 
+    for arch in archs
+        @testset "FieldTimeSeries rejects AbstractOperations [$(typeof(arch))]" begin
+            @info "  Testing that FieldTimeSeries operands are rejected by AbstractOperations [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            [set!(a[n], n) for n in 1:length(times)]
+            [set!(b[n], 2n) for n in 1:length(times)]
+
+            # Operations with FieldTimeSeries operands would silently drop
+            # the time dimension (issue #5758), so they throw instead.
+            @test_throws ArgumentError a * b
+            @test_throws ArgumentError a + b
+            @test_throws ArgumentError a * 2
+            @test_throws ArgumentError 2 * a
+            @test_throws ArgumentError sqrt(a)
+            @test_throws ArgumentError -a
+            @test_throws ArgumentError +(a, b, b)
+            @test_throws ArgumentError ∂x(a)
+
+            # Slicing a snapshot out of the series still supports operations
+            c = compute!(Field(a[2] * b[2]))
+            @test CUDA.@allowscalar c[1, 1, 1] == 8
+        end
+    end
+
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
@@ -704,6 +777,13 @@ end
                 @testset "FieldTimeSeries pickup" begin
                     @info "  Testing FieldTimeSeries pickup with $output_writer"
                     test_field_time_series_pickup(arch)
+                end
+            end
+
+            if output_writer == JLD2Writer
+                @testset "FieldTimeSeries with split files [$(typeof(arch))]" begin
+                    @info "  Testing FieldTimeSeries with split files [$(typeof(arch))]..."
+                    test_field_time_series_split_files(arch)
                 end
             end
 

@@ -60,7 +60,7 @@ for fold_topology in fold_topologies
         color = :red, marker = :star5, markersize = 15, label = "Pivot points"
         )
         # default grid underlay
-        offset = (fold_topology == RightFaceFolded) ? 1 : 1/2 # how much more grid north of pivots
+        offset = (fold_topology == RightFaceFolded) ? 0 : 1/2 # how much more grid north of pivots
         interior_poly_x = pivoti .+ [-Nx ÷ 2, Nx ÷ 2, Nx ÷ 2, -Nx ÷ 2]
         interior_poly_y = pivotj + offset .+ [0, 0, -Ny, -Ny]
         poly!(ax, interior_poly_x, interior_poly_y, color = (:black, 0.05), strokecolor = :black, strokewidth = 1)
@@ -74,7 +74,8 @@ for fold_topology in fold_topologies
             radius = sqrt(sum((source .- destination) .^ 2)) / 2
             start_angle = atan(destination[2] - origin[2], destination[1] - origin[1])
             stop_angle = start_angle - π
-            scsrc = scatter!(ax, source...; color = Cycled(j), label = "Interior source points")
+            jcolor = Nyfield + 1 - source[2]
+            scsrc = scatter!(ax, source...; color = Cycled(jcolor), label = "Interior source points")
             # scatter!(ax, destination...; marker = :rect, color = Cycled(j), markersize = 20)
             scdest = scatter!(ax, destination...;
                 marker = :rect, color = :white, markersize = 15,
@@ -84,7 +85,7 @@ for fold_topology in fold_topologies
             # dtriangle = Polygon([Point(0, 0), Point(1, 1), Point(-1, 1)])
             scutri = scatter!(ax, destination...; marker = :dtriangle, rotation = stop_angle, color = Cycled(j))
             translate!(scutri, 0, 0, 2) # Hack more
-            ar = arc!(ax, origin, radius, start_angle, stop_angle, color = Cycled(j))
+            ar = arc!(ax, origin, radius, start_angle, stop_angle, color = Cycled(jcolor))
             translate!(ar, 0, 0, 2) # Hack more
 
             # add legend once

@@ -1,7 +1,8 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
@@ -10,7 +11,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArra
 
 import Oceananigans.Models: validate_tracer_advection
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TurbulenceClosures: time_discretization, compute_closure_fields!
+import Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
@@ -52,8 +53,8 @@ validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
-compute_w_from_continuity!(velocities, ::SingleColumnGrid; kwargs...) = nothing
-compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid; kwargs...) = nothing
+compute_w_from_continuity!(velocities, ::SingleColumnGrid, args...; kwargs...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid, args...; kwargs...) = nothing
 
 #####
 ##### Time-step optimizations
@@ -83,6 +84,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
+    update_advection_timestep!(model.advection, model.timestepper, model.clock)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing
@@ -105,9 +107,9 @@ end
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
 
-@inline function time_discretization(closure_array::AbstractArray)
+@inline function TimeSteppers.time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
-    return time_discretization(first_closure)
+    return TimeSteppers.time_discretization(first_closure)
 end
 
 #####

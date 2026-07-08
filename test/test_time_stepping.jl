@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
@@ -350,6 +351,25 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         # Significantly different time => not approx
         clock7 = Clock(time=2.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
         @test !(clock1 ≈ clock7)
+    end
+
+    @testset "Clock(grid) accumulates in Float64 and adapts to grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
+            @test eltype(grid) == FT
+            @test clock isa Clock{Float64}
+            @test Oceananigans.TimeSteppers.kernel_time_type(clock) == FT
+
+            kernel_clock = Adapt.adapt(nothing, clock)
+            @test kernel_clock.time isa FT
+            @test propertynames(kernel_clock) == (:time, :last_Δt, :last_stage_Δt, :iteration, :stage)
+        end
+
+        explicit_clock = Clock(time=0.0f0)
+        @test explicit_clock isa Clock{Float32}
+        @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
     for arch in archs, FT in float_types

@@ -232,16 +232,42 @@ model = NonhydrostaticModel(grid; forcing=(u=damping, v=damping, w=damping))
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Center, Center, Face)
-├── func: Relaxation(rate=0.001, mask=1, target=0)
-├── parameters: nothing
-└── field dependencies: (:w,)
+Relaxation{Float64} at (Center, Center, Face)
+├──    rate: 0.001
+├── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+├──    mask: 1
+└──  target: 0
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
 which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
-distribution for the quantity in question. By default, `mask` uncovered the whole domain
-and `target` restores the field in question to 0
+distribution for the quantity in question. By default, `mask` equals 1 everywhere so the forcing applies over the full domain,
+and `target` restores the field in question to 0.
+
+### Mask types
+
+Two built-in mask types are available for the `mask` keyword:
+
+- `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as
+  `exp(-(D - center)^2 / (2 * width^2))`.
+- `PiecewiseLinearMask{D}(center, width)`: tent function, equal to 1 at `center`, decreasing linearly
+  to 0 at `|D - center| = width`, and 0 outside.
+
+Both accept `D ∈ {:x, :y, :z}`. For example:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> GaussianMask{:z}(center=-500, width=100)
+GaussianMask{:z, Int64}(-500, 100)
+
+julia> PiecewiseLinearMask{:z}(center=-500, width=100)
+PiecewiseLinearMask{:z, Int64}(-500, 100)
+```
+
+While `GaussianMask` offers a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
+boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
+a large grid.
 
 We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
 velocity fields to zero and restores temperature to a linear gradient in the bottom
@@ -265,21 +291,95 @@ model = NonhydrostaticModel(grid; forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_spo
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
-├── parameters: nothing
-└── field dependencies: (:u,)
+Relaxation{Float64} at (Face, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 0
 ```
 
 ```jldoctest sponge_layer
 model.forcing.T
 
 # output
-ContinuousForcing{Nothing} at (Center, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
-├── parameters: nothing
-└── field dependencies: (:T,)
+Relaxation{Float64} at (Center, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 20.0 + 0.001 * z
 ```
+
+### `FieldTimeSeries` target
+
+When `target` is a `FieldTimeSeries`, the relaxation interpolates the time series in space
+and time to obtain a reference value at each grid point. The source `FieldTimeSeries`
+must cover the simulation grid in `x`, `y`, and `z`; it can otherwise live on a different
+grid (interpolation handles the offset).
+
+```jldoctest fts_target
+grid = RectilinearGrid(size=(2, 2, 4), extent=(100, 100, 1000))
+
+fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 3600.0])
+c_nudge = Relaxation(rate=1/3600, target=fts)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
+
+model.forcing.c.target.field_time_series === fts
+
+# output
+true
+```
+
+### Relaxing a reduction of the field toward a target
+
+Sometimes the quantity to relax is not the forced field directly but a *reduction* of it —
+for example its horizontal average ``\overline{c}(z, t)``. The `transform` keyword applies
+a function to the forced field at materialize time, and the resulting (lazy) field is
+recomputed each step in `update_state!` via `compute_forcing!`. The forcing tendency
+becomes ``\text{rate} \cdot \text{mask}(X) \cdot \big(\text{target}(X, t) - \text{transform}(c)\big)``,
+so the user-supplied `target` is still the RHS the relaxation pulls toward.
+
+The shortcut `transform = :horizontal_average` builds the horizontal average
+`Field(Average(c, dims=(1, 2)))` automatically. Combined with a target profile, it relaxes
+``\overline{c}(z, t)`` toward the target:
+
+```jldoctest horizontal_average_target
+grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+
+c_target = LinearTarget{:z}(intercept=0, gradient=1)
+relax_horizontal_mean = Relaxation(rate=1/60, transform=:horizontal_average, target=c_target)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_horizontal_mean))
+
+summary(model.forcing.c.relaxed)
+
+# output
+"1×1×8 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on RectilinearGrid on CPU"
+```
+
+For any other reduction or custom diagnostic, pass a callable that builds a lazy `Field`
+from the forced field. For instance, an ``xz``-averaged quantity:
+
+```jldoctest xz_average_target
+using Oceananigans.AbstractOperations: Average
+
+grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+
+xz_average(c) = Field(Average(c, dims=(1, 3)))
+relax_xz_mean = Relaxation(rate=1/60, transform=xz_average)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_xz_mean))
+
+summary(model.forcing.c.relaxed)
+
+# output
+"1×8×1 Field{Nothing, Center, Nothing} reduced over dims = (1, 3) on RectilinearGrid on CPU"
+```
+
+A `mask` can be combined with `transform` exactly as with any other target — for example,
+to confine the relaxation to a sponge layer at the bottom of the domain.
+
+`transform` is not supported with a `FieldTimeSeries` target.
 
 ## `AdvectiveForcing`
 
@@ -287,7 +387,8 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 a separate or "slip" velocity relative to the prognostic model velocity field.
 `AdvectiveForcing` is implemented with native Oceananigans advection operators,
 which means that tracers advected by the "flux form" advection term
-``𝛁⋅𝐮_{\rm slip} c``. Caution is advised when ``𝐮_{\rm slip}`` is not divergence free.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u}_{\rm slip} c)``.
+Caution is advised when ``\boldsymbol{u}_{\rm slip}`` is not divergence free.
 
 As an example, consider a model for sediment settling at a constant rate:
 

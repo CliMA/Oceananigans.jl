@@ -11,25 +11,26 @@ using Oceananigans.Fields: ReducedAbstractField,
                            reduced_dimensions,
                            reduced_location
 using Oceananigans.Fields: condition_operand, conditional_length
+using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, set!
+import Oceananigans.Fields: Field, set!, conditional_length
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
 
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, old_bcs)
+    validate_boundary_conditions(loc, grid, global_bcs)
 
     arch = architecture(grid)
     rank = arch.local_rank
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, rank, arch.connectivity, topology(grid))
-    buffers = communication_buffers(grid, data, new_bcs)
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, rank, arch.connectivity, topology(grid))
+    buffers = communication_buffers(grid, data, local_bcs)
 
-    return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 
 const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
@@ -75,12 +76,19 @@ synchronize_communication!(::AbstractField) = nothing
 synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
+synchronize_communication!(::Tuple{})       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
-synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
+synchronize_communication!(nt::NamedTuple) = synchronize_communication!(values(nt))
+
+function synchronize_communication!(t::Tuple)
+    synchronize_communication!(first(t))
+    synchronize_communication!(Base.tail(t))
+    return nothing
+end
 
 """
-    synchronize_communication!(field)
+$(TYPEDSIGNATURES)
 
 complete the halo passing of `field` among processors.
 """
@@ -107,7 +115,7 @@ end
 reconstruct_global_field(field) = field
 
 """
-    reconstruct_global_field(field::DistributedField)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global field from a local field by combining the data from all processes.
 """
@@ -226,6 +234,18 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
         end
     end
 end
+
+# `conditional_length` normalizes `mean`. For a bare field the generic method returns
+# `length(c)`, which on a distributed grid is the per-rank local count, whereas the paired
+# `sum` is globally reduced. Reduce the length too so `mean = sum / conditional_length`
+# divides by the global count instead of the local one.
+@inline conditional_length(c::DistributedField) = all_reduce(+, length(c), architecture(c))
+
+# A field on a distributed immersed grid matches both `DistributedField` and the immersed
+# `AbstractField{…, <:ImmersedBoundaryGrid}` method; defer to the immersed definition, which
+# excludes inactive cells and is already globally reduced through the distributed `sum`.
+@inline conditional_length(c::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedImmersedBoundaryGrid}) =
+    conditional_length(condition_operand(identity, c, NotImmersed(), 0))
 
 # Distributed norm
 @inline function norm(u::DistributedField; condition=nothing)

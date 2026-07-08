@@ -3,7 +3,7 @@
 # https://github.com/CliMA/Oceananigans.jl/pull/997
 
 """
-    permute_index(i, N)
+$(TYPEDSIGNATURES)
 
 Permute `i` such that, for example, `i ∈ 1:N` becomes
 
@@ -20,7 +20,7 @@ See equation (20) of [Makhoul80](@citet).
                                           N - Base.unsafe_trunc(Int, (i-1)/2))
 
 """
-    unpermute_index(i, N)
+$(TYPEDSIGNATURES)
 
 Permute `i` in the opposite manner as `permute_index`, such that,
 for example, `i ∈ 1:N` becomes

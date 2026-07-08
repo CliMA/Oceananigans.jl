@@ -1,10 +1,9 @@
 using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
-
 using Oceananigans.Operators: Δx, Δy, Δz
 using Oceananigans.Utils: interpolator, _interpolate
 
@@ -12,7 +11,7 @@ using Oceananigans.Utils: interpolator, _interpolate
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    index_binary_search(val, vec, N)
+$(TYPEDSIGNATURES)
 
 Return indices `low, high` of `vec`tor for which
 
@@ -191,48 +190,95 @@ struct FractionalIndices{I, J, K}
 end
 
 """
-    FractionalIndices(x, y, z, grid, loc...)
+$(TYPEDSIGNATURES)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
-located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
+Convert the coordinate tuple `at_node` to _fractional_ indices on a regular rectilinear grid
+located at `(ℓx, ℓy, ℓz)`, a triplet of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
-@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
+@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
+@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, nothing)
 
-@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
-@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
-
-@inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
+@inline function _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((y, z), grid, ::Nothing, ℓy, ℓz)
+# All seven single/double/triple-`Nothing` combinations must be defined for 3-tuple
+# input so that pairwise dispatch resolves via a strictly more-specific method.
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ℓz) =
+    _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ℓz) =
+    _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ::Nothing) =
+    _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((z,), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((x,), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((y,), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
+# The `::NTuple{N, Any}` constraints below are load-bearing: Julia's function
+# arg destructuring is permissive, so a pattern like `(z,)` will silently
+# match a 2- or 3-tuple by taking only the first element — picking the wrong
+# coordinate. The explicit arity gives the dispatcher something to bind to.
+
+# Recursive prunes for "extra" coordinates: the kernel computes `at_node` from
+# `to_grid` (so its Flat dims are already dropped), but the source field can
+# also be reduced (with `Nothing` locations). When the source has more
+# `Nothing` locations than the destination has `Flat` dims, the caller's
+# `at_node` ends up longer than the number of axes we actually need to
+# interpolate over. Recurse, dropping the leading axis until the arity matches.
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((at[2],), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((at[2],), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((at[1],), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
+@inline function _fractional_indices((y, z)::NTuple{2, Any}, grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (nothing, ℓy, ℓz), grid)
     return FractionalIndices(nothing, jj, kk)
 end
 
-@inline function _fractional_indices((x, z), grid, ℓx, ::Nothing, ℓz)
+@inline function _fractional_indices((x, z)::NTuple{2, Any}, grid, ℓx, ::Nothing, ℓz)
     ii = fractional_x_index(x, (ℓx, nothing, ℓz), grid)
     kk = fractional_z_index(z, (ℓx, nothing, ℓz), grid)
     return FractionalIndices(ii, nothing, kk)
 end
 
-@inline function _fractional_indices((x, y), grid, ℓx, ℓy, ::Nothing)
+@inline function _fractional_indices((x, y)::NTuple{2, Any}, grid, ℓx, ℓy, ::Nothing)
     ii = fractional_x_index(x, (ℓx, ℓy, nothing), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, nothing), grid)
     return FractionalIndices(ii, jj, nothing)
 end
 
-@inline function _fractional_indices((x,), grid, ℓx, ::Nothing, ::Nothing)
+@inline function _fractional_indices((x,)::NTuple{1, Any}, grid, ℓx, ::Nothing, ::Nothing)
     loc = (ℓx, nothing, nothing)
     ii = fractional_x_index(x, loc, grid)
     jj = nothing
@@ -240,7 +286,7 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((y,), grid, ::Nothing, ℓy, ::Nothing)
+@inline function _fractional_indices((y,)::NTuple{1, Any}, grid, ::Nothing, ℓy, ::Nothing)
     loc = (nothing, ℓy, nothing)
     ii = nothing
     jj = fractional_y_index(y, loc, grid)
@@ -248,7 +294,7 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((z,), grid, ::Nothing, ::Nothing, ℓz)
+@inline function _fractional_indices((z,)::NTuple{1, Any}, grid, ::Nothing, ::Nothing, ℓz)
     loc = (nothing, nothing, ℓz)
     ii = nothing
     jj = nothing
@@ -256,32 +302,87 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
+@inline _fractional_indices((at,)::NTuple{1, Any}, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
+
 @inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 
 """
-    interpolate(at_node, from_field, from_loc, from_grid)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
 where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)`.
 
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
-@inline function interpolate(at_node, from_field, from_loc, from_grid)
-    fractional_indices = FractionalIndices(at_node, from_grid, from_loc...)
-    return interpolate(fractional_indices, from_field, from_loc, from_grid)
-end
+@inline interpolate(at_node, from_field, from_loc, from_grid) =
+    interpolate(identity, at_node, from_field, from_loc, from_grid)
 
-@inline function interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid)
-    ix = interpolator(fidx.i)
-    iy = interpolator(fidx.j)
-    iz = interpolator(fidx.k)
-    return _interpolate(from_field, ix, iy, iz)
-end
+@inline interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid) =
+    interpolate(identity, fidx, from_field, from_loc, from_grid)
 
 # interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
+#####
+##### Interpolation of a mapped field: `interpolate(func, …)`
+#####
+
+# Like `mean(func, itr)` / `sum(func, itr)`, a leading function `func` is applied to each source value
+# *before* the weighted blend; the result stays in `func`-space (no inverse is applied). With
+# `func = log` this blends log-values, so `exp(interpolate(log, …))` is a positivity-preserving,
+# geometric-mean interpolation — accurate for exponentially-varying fields (pressure, density).
+# `func = identity` reproduces the plain `interpolate` exactly. `func` is routed through the shared
+# low-level blend `_interpolate` (via a lazy mapped array) so `Field`s and `FieldTimeSeries` share
+# one code path.
+
 """
-    interpolate(to_node, from_field)
+    MappedData(func, data)
+
+Lazily apply `func` elementwise to `data`: a read returns `func(data[I...])`. This lets the existing
+`_interpolate` blend `func`-mapped values without copying. GPU-safe when `func` is (`log`/`exp` are).
+"""
+struct MappedData{T, N, F, A} <: AbstractArray{T, N}
+    func :: F
+    data :: A
+end
+
+@inline MappedData(func::F, data::A) where {F, A} =
+    MappedData{eltype(A), ndims(A), F, A}(func, data)
+
+@inline Base.size(m::MappedData) = size(m.data)
+@inline Base.axes(m::MappedData) = axes(m.data)
+@inline Base.getindex(m::MappedData, I::Vararg{Int}) = m.func(@inbounds m.data[I...])
+
+Adapt.adapt_structure(to, m::MappedData) = MappedData(m.func, adapt(to, m.data))
+
+# `func = identity` returns `data` unchanged, so the identity path is byte-identical to plain
+# `interpolate` and pays no wrapper overhead.
+@inline mapped_data(func, data) = MappedData(func, data)
+@inline mapped_data(::typeof(identity), data) = data
+
+"""
+$(TYPEDSIGNATURES)
+
+Interpolate `from_field` `at_node` after mapping each source value through `func`, in the spirit of
+`mean(func, itr)`: `func` is applied to each value before the weighted blend and the result is returned
+in `func`-space (no inverse). With `func = log`, `exp(interpolate(log, …))` is a geometric-mean
+interpolation. `func = identity` reproduces `interpolate(at_node, from_field, …)`.
+"""
+# `at_node::Tuple` (it is always a coordinate tuple here) keeps this disjoint from the
+# `FieldTimeSeries` method `interpolate(to_node, ::Time, fts, …)`, whose second argument is a `Time`.
+@inline function interpolate(func::Base.Callable, at_node::Tuple, from_field, from_loc, from_grid)
+    fidx = FractionalIndices(at_node, from_grid, from_loc...)
+    return interpolate(func, fidx, from_field, from_loc, from_grid)
+end
+
+@inline function interpolate(func::Base.Callable, fidx::FractionalIndices, from_field, from_loc, from_grid)
+    ix = interpolator(fidx.i)
+    iy = interpolator(fidx.j)
+    iz = interpolator(fidx.k)
+    return _interpolate(mapped_data(func, from_field), ix, iy, iz)
+end
+
+"""
+$(TYPEDSIGNATURES)
 
 Interpolate the `from_field` `to_node`.
 
@@ -332,7 +433,7 @@ end
 end
 
 """
-    interpolate!(to_field::Field, from_field::AbstractField)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
 """

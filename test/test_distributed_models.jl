@@ -22,8 +22,9 @@ using MPI
 MPI.Init()
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture
-using Oceananigans.Fields: AbstractField
+using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
+using Oceananigans.Fields: AbstractField, interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -530,6 +531,48 @@ end
         end
     end
 
+    @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin
+        @info "Testing reconstruct_global_grid for ImmersedBoundaryGrid…"
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+        Nx, Ny, Nz = 8, 16, 4
+        ug = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
+                                         latitude=(0, 60), longitude=(0, 60),
+                                         z=(0, 1), radius=1)
+        local_Ny = Ny ÷ 4
+        rank = arch.local_rank
+        local_bh = on_architecture(child_arch, fill(0.1 + 0.25 * rank, Nx, local_Ny))
+        local_mask = on_architecture(child_arch, falses(Nx, local_Ny, Nz))
+
+        ibg_gfb = ImmersedBoundaryGrid(ug, GridFittedBottom(local_bh))
+        ibg_pcb = ImmersedBoundaryGrid(ug,
+                                       PartialCellBottom(local_bh; minimum_fractional_cell_height=0.3))
+        ibg_gfm = ImmersedBoundaryGrid(ug, GridFittedBoundary(local_mask))
+
+        # GridFittedBottom: shape, type and rank-wise stitching.
+        gfb = reconstruct_global_grid(ibg_gfb)
+        bh = Array(bottom_height_interior(gfb.immersed_boundary.bottom_height))
+        @test gfb.immersed_boundary isa GridFittedBottom
+        @test size(bh) == (Nx, Ny, 1)
+        for r in 0:3
+            j_lo = r * local_Ny + 1
+            j_hi = (r + 1) * local_Ny
+            expected_zface = (0.0, 0.25, 0.5, 0.75)[r + 1]
+            @test all(bh[:, j_lo:j_hi, 1] .== expected_zface)
+        end
+
+        pcb = reconstruct_global_grid(ibg_pcb)
+        @test pcb.immersed_boundary isa PartialCellBottom
+        @test size(bottom_height_interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
+        @test pcb.immersed_boundary.minimum_fractional_cell_height == 0.3
+
+        # GridFittedBoundary: 3-D mask path
+        gfm = reconstruct_global_grid(ibg_gfm)
+        @test gfm.immersed_boundary isa GridFittedBoundary
+        @test size(gfm.immersed_boundary.mask) == (Nx, Ny, Nz)
+    end
+
     @testset "Distributed reductions" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
@@ -548,6 +591,16 @@ end
             sum!(c_reduced, c)
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
+            # Global reductions used by ConjugateGradientPoissonSolver: the
+            # convergence norm, the search-direction dot products, and the
+            # zero-mean gauge condition all reduce across ranks.
+            Ntot = 4N # total number of grid points across the 4 ranks
+            @test dot(c, c) == (1^2 + 2^2 + 3^2 + 4^2) * N
+            @test norm(c) == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
+            @test mean(c) == (1 + 2 + 3 + 4) * N / Ntot
+            @test minimum(c) == 1
+            @test maximum(c) == 4
+
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
             bool_val = arch.local_rank == 0 ? true : false
@@ -561,6 +614,11 @@ end
 
             all!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == false
+
+            # `mean` must divide the globally-reduced `sum` by the *global* point count.
+            # The four equal rank-blocks hold 1, 2, 3, 4, so the global mean is 2.5
+            # regardless of the local block size N.
+            @test mean(c) == (1 + 2 + 3 + 4) / 4
         end
     end
 

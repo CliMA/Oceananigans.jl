@@ -15,11 +15,11 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Checkout the JuliaLang/julia repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
           repository: 'JuliaLang/julia'
@@ -28,7 +28,7 @@ jobs:
           # Check out a fixed revision to avoid surprises in case the script is
           # changed in the future.
           ref: '3b12a882e887753e4d2e9e9db65d99d3f7d9e26b'
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12.4'
       - name: Check whitespace

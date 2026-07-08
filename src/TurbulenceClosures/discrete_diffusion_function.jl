@@ -15,7 +15,7 @@ struct DiscreteDiffusionFunction{LX, LY, LZ, P, F}
 end
 
 """
-    DiscreteDiffusionFunction(func; parameters, loc)
+$(TYPEDSIGNATURES)
 
 !!! info "Not user-facing method"
     This is not a user-facing method but instead it is used via various turbulence closures.

@@ -8,6 +8,17 @@ using Oceananigans.Fields: ConstantField, OneField, ZeroField
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+# Recurse on Tuple and NamedTuples
+mask_immersed_field!(nt::NamedTuple) = mask_immersed_field!(values(nt))
+
+function mask_immersed_field!(t::Tuple)
+    mask_immersed_field!(first(t))
+    mask_immersed_field!(Base.tail(t))
+    return nothing
+end
+
+mask_immersed_field!(::Tuple{}) = nothing
+
 # No masking for constant fields, numbers or nothing
 mask_immersed_field!(::OneField, args...; kw...) = nothing
 mask_immersed_field!(::ZeroField, args...; kw...) = nothing
@@ -47,7 +58,7 @@ end
 mask_immersed_field!(field, grid, loc, value) = nothing
 
 """
-    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+$(TYPEDSIGNATURES)
 
 masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
@@ -90,7 +101,7 @@ end
 mask_immersed_field_xy!(field, grid, loc, value, k) = nothing
 
 """
-    mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k)
+$(TYPEDSIGNATURES)
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_peripheral_node` returns `true`.
 """

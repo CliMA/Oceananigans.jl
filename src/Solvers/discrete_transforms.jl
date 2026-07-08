@@ -26,7 +26,7 @@ Architectures.architecture(transform::DiscreteTransform) = child_architecture(ar
 normalization_factor(arch, topo, direction, N) = 1
 
 """
-    normalization_factor(::CPU, ::Bounded, ::Backward, N)
+$(TYPEDSIGNATURES)
 
 `FFTW.REDFT01` needs to be normalized by 1/2N.
 See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
@@ -40,7 +40,7 @@ normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1 / 2N
 twiddle_factors(arch, grid, dim) = nothing
 
 """
-    twiddle_factors(arch::GPU, grid, dims)
+$(TYPEDSIGNATURES)
 
 Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@citet)
 for the forward and backward twiddle factors respectively.
@@ -89,6 +89,9 @@ function DiscreteTransform(plan, direction, grid, dims)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
+    # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
+    # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
+    # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]
