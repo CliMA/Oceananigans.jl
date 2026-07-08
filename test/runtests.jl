@@ -187,6 +187,7 @@ CUDA.allowscalar() do
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
             include("test_split_explicit_free_surface_boundaries.jl")
+            include("test_open_boundary_conditions_hydrostatic.jl")
             include("test_immersed_implicit_free_surface.jl")
         end
     end
