@@ -306,23 +306,25 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...) = _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
+@inline launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...) = launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args...; kwargs...) where N =
+@inline launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...) = _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
+
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args; kwargs...) where N =
     _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
 
-@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, args...; kwargs...)
-    _launch!(arch, grid, first(workspec_tuple), kernel!, args; kwargs...)
-    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, args; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, kernel_args; kwargs...)
+    _launch!(arch, grid, first(workspec_tuple), kernel!, kernel_args; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, kernel_args; kwargs...)
     return nothing
 end
 
-@inline launch!(arch, grid, ::Tuple{}, args...; kwargs...) = nothing
+@inline launch!(arch, grid, ::Tuple{}, kernel!, args; kwargs...) = nothing
 
-@inline launch!(arch, grid, workspec::Symbol, kernel!, args...; kw...) = _launch!(arch, grid, Val(workspec), kernel!, args; kw...)
-@inline launch!(arch, grid, workspec::Val, kernel!, args...; kw...) = _launch!(arch, grid, workspec, kernel!, args; kw...)
+@inline launch!(arch, grid, workspec::Symbol, kernel!, args; kw...) = _launch!(arch, grid, Val(workspec), kernel!, args; kw...)
+@inline launch!(arch, grid, workspec::Val, kernel!, args; kw...) = _launch!(arch, grid, workspec, kernel!, args; kw...)
 
-@inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
+@inline launch_split_maps!(::Tuple{}, arch, grid, workspec, kernel!, kernel_args; kw...) = nothing
 
 @inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args; exclude_periphery = false, reduced_dimensions = ())
     cells_map = first(maps)
