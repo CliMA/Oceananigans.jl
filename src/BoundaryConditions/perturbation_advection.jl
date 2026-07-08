@@ -395,7 +395,8 @@ end
     boundary_adjacent_indices = (i, j, 1)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
     U = @inbounds model_fields.w[i, j, 1]
+    # density weighting keys off the boundary cell (k = 0), matching _fill_top_halo!
     step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, c, U, clock, model_fields, Δz, 1)
+                             grid, c, U, clock, model_fields, Δz, 0)
     return nothing
 end
