@@ -3,7 +3,8 @@ using Printf
 using JLD2
 using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
-using Oceananigans.Solvers: DiagonallyDominantPreconditioner, compute_laplacian!
+using Oceananigans.Solvers: DiagonallyDominantPreconditioner
+using Oceananigans.Solvers: ColumnwiseTridiagonalPreconditioner
 using Oceananigans.Grids: with_number_type, XYZRegularRG
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
@@ -34,8 +35,8 @@ function setup_grid(Nx, Ny, Nz, arch)
                         halo = (4, 4, 4),
                         x = (0, 1),
                         y = (0, 1),
-                        z = (0, 1),
-                        # z = zs,
+                        # z = (0, 1),
+                        z = zs,
                         topology = (Bounded, Bounded, Bounded))
 
     slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 20 +
@@ -131,6 +132,10 @@ function setup_simulation(model)
         file_prefix *= "_cgfft"
     elseif preconditioner isa FourierTridiagonalPoissonSolver
         file_prefix *= "_cgftri"
+    elseif preconditioner isa DiagonallyDominantPreconditioner
+        file_prefix *= "_cgdiagdom"
+    elseif preconditioner isa ColumnwiseTridiagonalPreconditioner
+        file_prefix *= "_cgcoltrid"
     else
         file_prefix *= "_cgnoprec"
     end
@@ -141,7 +146,7 @@ function setup_simulation(model)
         file_prefix *= "_gridfittedbottom"
     end
 
-    filename = "./$(file_prefix)"
+    filename = "/tmp/$(file_prefix)"
     simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
                                                 filename = filename,
                                                 schedule = TimeInterval(0.1),
@@ -150,14 +155,17 @@ function setup_simulation(model)
     return simulation, file_prefix
 end
 
+using CUDA
 arch = GPU()
-Nx = Ny = Nz = 32
+Nx = Ny = 16
+Nz = 16 * 8
 grid = setup_grid(Nx, Ny, Nz, arch)
 
 @info "Create pressure solver"
 
-# preconditioner = nonhydrostatic_pressure_solver(grid)
-preconditioner = nonhydrostatic_pressure_solver(with_number_type(Float32, grid.underlying_grid))
+preconditioner = nonhydrostatic_pressure_solver(arch, with_number_type(Float32, grid.underlying_grid), nothing)
+# preconditioner = DiagonallyDominantPreconditioner()
+# preconditioner = ColumnwiseTridiagonalPreconditioner(grid)
 # preconditioner = nothing
 
 pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10000; preconditioner)

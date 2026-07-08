@@ -28,11 +28,12 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using Adapt: Adapt, adapt
+using Adapt: Adapt
 using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
+using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,

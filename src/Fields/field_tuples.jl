@@ -24,18 +24,27 @@ Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = Tuple(tuplify(ai) for ai in a)
-    flattened = flatten_tuple(tupled)
-
-    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
-    seen = []
-    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+    flattened = flatten_tuple(map(tuplify, values(a)))
+    return collect_unique_values(flattened, ())
 end
+
+@inline collect_unique_values(::Tuple{}, accumulated::Tuple) = accumulated
+
+@inline function collect_unique_values(remaining::Tuple, accumulated::Tuple)
+    head = first(remaining)
+    rest = Base.tail(remaining)
+    accumulated = is_contained(head, accumulated) ? accumulated : (accumulated..., head)
+    return collect_unique_values(rest, accumulated)
+end
+
+@inline is_contained(value, ::Tuple{}) = false
+# `is_contained` verifies if an object is duplicated in the tuple, thus needing the equality `===` operator.
+@inline is_contained(value, accumulated::Tuple) = value === first(accumulated) || is_contained(value, Base.tail(accumulated))
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
 
 # Utility for extracting values from nested NamedTuples
-@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a::NamedTuple) = map(tuplify, values(a))
 @inline tuplify(a) = a
 
 # Outer-inner form
@@ -64,12 +73,13 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args...; kwargs...) = fill_halo_regions!(values(fields), args...; kwargs...)
 
-    for i in eachindex(fields)
-        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
-    end
+@inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
+@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args...; kwargs...)
+    fill_halo_regions!(first(fields), args...; kwargs...)
+    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
     return nothing
 end
 

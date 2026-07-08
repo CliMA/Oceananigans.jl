@@ -46,6 +46,8 @@ CUDA.allowscalar() do
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_set_field_interpolation.jl")
+            include("test_lcc_interpolation.jl")
+            include("test_interpolate_transform.jl")
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
@@ -120,6 +122,13 @@ CUDA.allowscalar() do
     if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
+        end
+    end
+
+    # Memory allocation regression tests
+    if group == :memory_allocation || group == :all
+        @testset "Memory allocation tests" begin
+            include("test_memory_allocation.jl")
         end
     end
 
@@ -206,12 +215,21 @@ CUDA.allowscalar() do
         include("test_distributed_models.jl")
     end
 
+    if group == :distributed_memory_allocation || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_memory_allocation.jl")
+    end
+
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_conjugate_gradient_poisson_solver.jl")
     end
 
     if group == :distributed_hydrostatic_regression || group == :all
