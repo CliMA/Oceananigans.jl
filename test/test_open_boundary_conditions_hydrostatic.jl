@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, ImplicitGravityWaveRadiationBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
 using Test
 
 #####
@@ -427,8 +427,8 @@ function test_implicit_gravity_wave_radiation()
                                     east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
                                     west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
     η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
-                                    east = ImplicitGravityWaveRadiationBoundaryCondition(),
-                                    west = ImplicitGravityWaveRadiationBoundaryCondition())
+                                    east = SurfaceWaveRadiationBoundaryCondition(),
+                                    west = SurfaceWaveRadiationBoundaryCondition())
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
