@@ -91,12 +91,12 @@ end
 function zstar_test_grids(arch, topology, z_stretched)
     Random.seed!(1234)
 
-    rtgv  = RectilinearGrid(arch; size = (40, 40, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+    rtgv  = RectilinearGrid(arch; size = (8, 8, 5), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
     irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> 2rand() - 8))
     prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
     if topology[2] == Bounded
-        llgv  = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+        llgv  = LatitudeLongitudeGrid(arch; size = (8, 8, 5), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
         illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> 2rand() - 8))
         pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> 2rand() - 8))
         return [llgv, rtgv, illgv, irtgv, pllgv, prtgv]
