@@ -78,7 +78,7 @@ where `η₁` is the boundary-adjacent interior value. Letting the boundary η e
 the surface pressure gradient at the boundary, which balanced flows require to cross it.
 
 `SurfaceWaveRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) on the free
-surface displacement `η`; see [`ImplicitGravityWaveRadiationBoundaryCondition`](@ref). It is applied at every
+surface displacement `η`; see [`SurfaceWaveRadiationBoundaryCondition`](@ref). It is applied at every
 barotropic substep, like `GravityWaveRadiation`.
 
 References
@@ -154,12 +154,12 @@ end
 GravityWaveRadiationBoundaryCondition(U, η; kwargs...) = GravityWaveRadiationBoundaryCondition((U, η); kwargs...)
 
 """
-    ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
+    SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
 
 Construct a `ValueBoundaryCondition` with the [`SurfaceWaveRadiation`](@ref) scheme for the free surface displacement `η`
 at an open boundary. Pair with [`GravityWaveRadiationBoundaryCondition`](@ref) on the barotropic transport.
 """
-ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
+SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
     ValueBoundaryCondition(0; scheme = SurfaceWaveRadiation(; gravitational_acceleration))
 
 

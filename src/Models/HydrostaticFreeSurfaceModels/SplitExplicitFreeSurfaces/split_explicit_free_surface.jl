@@ -317,7 +317,7 @@ function default_free_surface_boundary_conditions(free_surface::SplitExplicitFre
 end
 
 function implicit_gravity_wave_companion_boundary_conditions(U_bcs, V_bcs, g)
-    companion = ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = g)
+    companion = SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = g)
     west  = companion_at_gravity_wave_side(U_bcs, :west,  companion)
     east  = companion_at_gravity_wave_side(U_bcs, :east,  companion)
     south = companion_at_gravity_wave_side(V_bcs, :south, companion)
