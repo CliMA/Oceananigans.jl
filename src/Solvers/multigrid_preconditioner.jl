@@ -34,17 +34,23 @@ end
 
 Base.size(level::MultigridLevel) = size(level.D)
 
-struct MultigridPreconditioner{G, L, T}
+struct MultigridPreconditioner{G, L, T, S}
     grid :: G
     levels :: Vector{L}
     presmoothing_sweeps :: Int
     postsmoothing_sweeps :: Int
     coarsest_sweeps :: Int
     regularization :: T
-    cached_free_surface_timestep :: Base.RefValue{T}
+    cached_free_surface_timestep :: Base.RefValue{S}
 end
 
-Base.summary(mg::MultigridPreconditioner) = "MultigridPreconditioner with $(length(mg.levels)) levels"
+cycle_float_type(mg::MultigridPreconditioner) = eltype(first(mg.levels).D)
+
+function Base.summary(mg::MultigridPreconditioner)
+    FT = cycle_float_type(mg)
+    levels = "MultigridPreconditioner with $(length(mg.levels)) levels"
+    return FT === eltype(mg.grid) ? levels : string(levels, " (", FT, " cycle)")
+end
 
 function Base.show(io::IO, mg::MultigridPreconditioner)
     print(io, summary(mg))
@@ -320,7 +326,8 @@ end
                             maxlevels = 99,
                             presmoothing_sweeps = 1,
                             postsmoothing_sweeps = 1,
-                            coarsest_sweeps = 4)
+                            coarsest_sweeps = 4,
+                            float_type = eltype(grid))
 
 Construct a geometric multigrid preconditioner for the [`ConjugateGradientPoissonSolver`](@ref)
 that approximates `(V∇²)⁻¹` with one V-cycle per application.
@@ -347,6 +354,12 @@ With an implicit free surface (a [`FreeSurfaceLaplacian`](@ref) linear operation
 condition's `Δt`-dependent top-row diagonal correction is carried on every level and refreshed
 automatically whenever the time step changes.
 
+The V-cycle can run in reduced precision independently of the grid: with `float_type =
+Float32` the level hierarchy is stored and smoothed in `Float32` while the conjugate gradient
+iteration stays in the grid's precision. Because the preconditioner only approximates
+`(V∇²)⁻¹`, reduced cycle precision leaves the achievable residual set by the outer iteration
+and typically costs few or no extra iterations while halving the V-cycle's memory traffic.
+
 Example
 =======
 
@@ -364,19 +377,35 @@ MultigridPreconditioner with 4 levels
 ├── level 3: 4×4×8
 └── level 4: 2×2×8
 ```
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Solvers: MultigridPreconditioner
+
+grid = RectilinearGrid(size=(16, 16, 8), extent=(1, 1, 1))
+preconditioner = MultigridPreconditioner(grid, float_type=Float32)
+
+# output
+MultigridPreconditioner with 4 levels (Float32 cycle)
+├── level 1: 16×16×8
+├── level 2: 8×8×8
+├── level 3: 4×4×8
+└── level 4: 2×2×8
+```
 """
 function MultigridPreconditioner(grid::AbstractGrid;
                                  maxlevels = 99,
                                  presmoothing_sweeps = 1,
                                  postsmoothing_sweeps = 1,
-                                 coarsest_sweeps = 4)
+                                 coarsest_sweeps = 4,
+                                 float_type = eltype(grid))
 
     TX, TY, TZ = topology(grid)
     TZ === Bounded ||
         throw(ArgumentError("MultigridPreconditioner requires a Bounded z-direction (got $TZ)"))
 
     arch = architecture(grid)
-    FT = eltype(grid)
+    FT = float_type
     Nx, Ny, Nz = size(grid)
 
     sizes = [(Nx, Ny)]
@@ -428,7 +457,7 @@ function MultigridPreconditioner(grid::AbstractGrid;
     end
 
     return MultigridPreconditioner(grid, levels, presmoothing_sweeps, postsmoothing_sweeps,
-                                   coarsest_sweeps, ε, Ref(convert(FT, NaN)))
+                                   coarsest_sweeps, ε, Ref(convert(eltype(grid), NaN)))
 end
 
 #####

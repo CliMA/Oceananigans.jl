@@ -3,16 +3,18 @@ using Oceananigans.Solvers: MultigridPreconditioner, ConjugateGradientPoissonSol
                             DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner,
                             compute_symmetric_laplacian!, fft_poisson_solver, iteration, solve!
 using Oceananigans.Grids: inactive_cell
-using Oceananigans.Architectures: on_architecture, synchronize
+using Oceananigans.Architectures: on_architecture, architecture, synchronize
 using Random
 using Printf
 
-# Run on the GPU with BENCHMARK_ARCHITECTURE=GPU (also requires `using CUDA` or similar)
+# Run on the GPU with BENCHMARK_ARCHITECTURE=GPU (also requires `using CUDA` or similar);
+# loosen or tighten the convergence target with BENCHMARK_RELTOL=1e-4 etc.
 arch = get(ENV, "BENCHMARK_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+benchmark_reltol = parse(Float64, get(ENV, "BENCHMARK_RELTOL", "1e-8"))
 
 # Solve V∇²ϕ = b with b = V∇²w for random w, so the right-hand side is consistent by
 # construction, and report (iterations, wall time, true relative residual).
-function benchmark_preconditioner(grid, preconditioner; reltol=1e-8, maxiter=2000, repetitions=3)
+function benchmark_preconditioner(grid, preconditioner; reltol=benchmark_reltol, maxiter=2000, repetitions=3)
     cpu_grid = on_architecture(CPU(), grid)
     Nx, Ny, Nz = size(grid)
     active = [!inactive_cell(i, j, k, cpu_grid) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
@@ -66,6 +68,7 @@ compare_preconditioners("z-stretched immersed bottom 64×64×32", grid,
                         [("DiagonallyDominant", DiagonallyDominantPreconditioner()),
                          ("ColumnwiseTridiagonal", ColumnwiseTridiagonalPreconditioner(grid)),
                          ("Multigrid", MultigridPreconditioner(grid)),
+                         ("Multigrid Float32", MultigridPreconditioner(grid, float_type=Float32)),
                          ("FFT", fft_poisson_solver(underlying))])
 
 # 2. stretched in all three directions: no FFT-based preconditioner exists
@@ -75,7 +78,8 @@ grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(sinusoidal_bottom))
 compare_preconditioners("xyz-stretched immersed bottom 64×64×32 (no FFT possible)", grid,
                         [("DiagonallyDominant", DiagonallyDominantPreconditioner()),
                          ("ColumnwiseTridiagonal", ColumnwiseTridiagonalPreconditioner(grid)),
-                         ("Multigrid", MultigridPreconditioner(grid))])
+                         ("Multigrid", MultigridPreconditioner(grid)),
+                         ("Multigrid Float32", MultigridPreconditioner(grid, float_type=Float32))])
 
 # 3. thin ridge nearly separating two basins: hard case for global spectral preconditioning
 underlying = RectilinearGrid(arch, size=(64, 64, 32), x=(0, 1), y=(0, 1), z=(-1, 0),
@@ -85,6 +89,7 @@ grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(ridge))
 compare_preconditioners("thin ridge to 95% depth 64×64×32", grid,
                         [("DiagonallyDominant", DiagonallyDominantPreconditioner()),
                          ("Multigrid", MultigridPreconditioner(grid)),
+                         ("Multigrid Float32", MultigridPreconditioner(grid, float_type=Float32)),
                          ("FFT", fft_poisson_solver(underlying))])
 
 # 4. isotropic aspect ratio with an immersed sphere: hard case for column preconditioning
@@ -95,6 +100,7 @@ grid = ImmersedBoundaryGrid(underlying, GridFittedBoundary(sphere))
 compare_preconditioners("isotropic immersed sphere 64³", grid,
                         [("ColumnwiseTridiagonal", ColumnwiseTridiagonalPreconditioner(grid)),
                          ("Multigrid", MultigridPreconditioner(grid)),
+                         ("Multigrid Float32", MultigridPreconditioner(grid, float_type=Float32)),
                          ("FFT", fft_poisson_solver(underlying))])
 
 # 5. realistic latitude-longitude basin: no FFT-based preconditioner exists
@@ -105,4 +111,5 @@ grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(bathymetry))
 compare_preconditioners("latitude-longitude 3km basin 64×64×32 (no FFT possible)", grid,
                         [("DiagonallyDominant", DiagonallyDominantPreconditioner()),
                          ("ColumnwiseTridiagonal", ColumnwiseTridiagonalPreconditioner(grid)),
-                         ("Multigrid", MultigridPreconditioner(grid))])
+                         ("Multigrid", MultigridPreconditioner(grid)),
+                         ("Multigrid Float32", MultigridPreconditioner(grid, float_type=Float32))])

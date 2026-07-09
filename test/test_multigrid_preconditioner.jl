@@ -60,9 +60,9 @@ function test_multigrid_operator_equivalence(grid)
     @test mismatch <= 1000 * eps(eltype(grid)) * scale
 end
 
-function test_multigrid_pressure_solution(grid; maxiter=1000)
+function test_multigrid_pressure_solution(grid; maxiter=1000, float_type=eltype(grid))
     reltol = abstol = sqrt(eps(eltype(grid)))
-    preconditioner = MultigridPreconditioner(grid)
+    preconditioner = MultigridPreconditioner(grid; float_type)
     solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol, maxiter)
     R, U = random_divergent_source_term(grid)
 
@@ -221,6 +221,26 @@ end
             a = Array(interior(∇²ϕ))
             b = Array(interior(R))
             @test sqrt(sum(abs2, a .- b) / sum(abs2, b)) < 0.1
+        end
+
+        @testset "Multigrid reduced-precision cycle [$(typeof(arch))]" begin
+            @info "  Testing multigrid reduced-precision cycle [$(typeof(arch))]..."
+            zstretched(k) = -(1 - tanh(2 * (k - 1) / 8) / tanh(2))
+            chebfaces(N) = [(1 - cos(π * (i - 1) / N)) / 2 for i in 1:N+1]
+            bottom(x, y) = -0.7 + 0.5 * sin(3x) * cos(2y)
+
+            # a Float64 grid with the V-cycle stored and smoothed in Float32: the outer
+            # conjugate gradient iteration must still reach its Float64 tolerance
+            grid = ImmersedBoundaryGrid(
+                RectilinearGrid(arch, size=(16, 16, 8), x=chebfaces(16), y=chebfaces(16),
+                                z=zstretched, topology=(Bounded, Bounded, Bounded)),
+                GridFittedBottom(bottom))
+
+            preconditioner = MultigridPreconditioner(grid, float_type=Float32)
+            @test eltype(first(preconditioner.levels).D) === Float32
+            @test occursin("Float32 cycle", summary(preconditioner))
+
+            test_multigrid_pressure_solution(grid, float_type=Float32)
         end
 
         @testset "Multigrid preconditioner with NonhydrostaticModel [$(typeof(arch))]" begin
