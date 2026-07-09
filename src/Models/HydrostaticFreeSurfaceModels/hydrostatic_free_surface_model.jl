@@ -20,6 +20,7 @@ import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
+import Oceananigans.Simulations: initialize_after_pickup!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -357,6 +358,13 @@ end
 function initialize!(model::HydrostaticFreeSurfaceModel)
     reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
+
+function initialize_after_pickup!(model::HydrostaticFreeSurfaceModel{<:SplitRungeKuttaTimeStepper, <:Any, <:Any, <:SplitExplicitFreeSurface})
+    reconcile_state!(model)
+    update_state!(model)
+    TimeSteppers.cache_current_fields!(model)
     return nothing
 end
 

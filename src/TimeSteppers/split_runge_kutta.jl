@@ -248,17 +248,8 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(ts::SplitRungeKuttaTimeStepper)
-    return (Gⁿ = prognostic_state(ts.Gⁿ),
-            Ψ⁻ = prognostic_state(ts.Ψ⁻))
-end
-
-function restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, from)
-    restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
-    restore_prognostic_state!(restored.Ψ⁻, from.Ψ⁻)
-    return restored
-end
-
+# SplitRungeKuttaTimeStepper is self-starting!
+prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
 restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
 #####

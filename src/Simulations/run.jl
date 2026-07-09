@@ -317,12 +317,10 @@ function initialize!(sim::Simulation)
     # Only initialize for fresh simulations, not after restoring from a checkpoint.
     if model.clock.iteration == 0
         initialize!(model)
+        update_state!(model)
+    else
+        initialize_after_pickup!(model)
     end
-
-    # After restoring from a checkpoint, skip tendency computation since the restored
-    # tendencies are already correct. We still need to call update_state! to fill halos,
-    # compute w from continuity, etc. though.
-    update_state!(model)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
