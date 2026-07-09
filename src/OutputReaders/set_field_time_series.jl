@@ -108,9 +108,7 @@ set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
 # Set every time slice to the same value.
 function set!(fts::InMemoryFTS, value::Number)
-    for n in time_indices(fts)
-        set!(fts[n], value)
-    end
+    fill!(parent(fts), value)
     return fts
 end
 
