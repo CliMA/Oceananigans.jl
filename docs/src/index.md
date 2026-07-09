@@ -131,6 +131,12 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Kalathoor, S. P. (2026). [Route survival and spectral modification of finite-depth salt-finger plume forests under imposed mean shear](https://doi.org/10.48550/arXiv.2607.07012), _arXiv preprint_, arXiv:2607.07012. DOI: [10.48550/arXiv.2607.07012](https://doi.org/10.48550/arXiv.2607.07012)
+
+1. Kalathoor, S. P. (2026). [Interfacial Spectral Memory as a State Variable for Finite-Depth Salt-Finger Exchange](https://doi.org/10.48550/arXiv.2606.26045), _arXiv preprint_, arXiv:2606.26045. DOI: [10.48550/arXiv.2606.26045](https://doi.org/10.48550/arXiv.2606.26045)
+
+1. Kalathoor, S. P. (2026). [Interfacial Roughness Spectra and Finite-Depth Salt-Finger Mixing at a Two-Layer Thermohaline Interface](https://doi.org/10.48550/arXiv.2606.21131), _arXiv preprint_, arXiv:2606.21131. DOI: [10.48550/arXiv.2606.21131](https://doi.org/10.48550/arXiv.2606.21131)
+
 1. Knudsen, L., Wenegrat, J., Hilditch, J., and Thomas, L. N. (2026). [Parametric subharmonic instability in the ocean bottom boundary layer](https://doi.org/10.48550/arXiv.2605.28555), _arXiv preprint_, arXiv:2605.28555. DOI: [10.48550/arXiv.2605.28555](https://doi.org/10.48550/arXiv.2605.28555)
 
 1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
