@@ -1151,6 +1151,65 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
     return nothing
 end
 
+function test_pickup_after_nan_same_simulation_split_rk(arch)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt_good = 0.01
+    Δt_bad = 1e6
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return HydrostaticFreeSurfaceModel(grid;
+                                           timestepper = :SplitRungeKutta3,
+                                           closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    reference_model = make_model()
+    set!(reference_model, T=bubble, S=bubble, u=0.1)
+    reference_simulation = Simulation(reference_model, Δt=Δt_good, stop_iteration=2)
+    @test_nowarn run!(reference_simulation)
+
+    model = make_model()
+    set!(model, T=bubble, S=bubble, u=0.1)
+    simulation = Simulation(model, Δt=Δt_good, stop_iteration=1)
+
+    prefix = "pickup_after_nan_same_simulation_split_rk_$(typeof(arch))"
+    checkpointer = Checkpointer(model,
+                                schedule = IterationInterval(1),
+                                prefix = prefix,
+                                cleanup = false)
+
+    simulation.output_writers[:checkpointer] = checkpointer
+    @test_nowarn run!(simulation)
+
+    pop!(simulation.output_writers, :checkpointer)
+    simulation.stop_iteration = 2
+    simulation.Δt = Δt_bad
+    @test_nowarn run!(simulation)
+
+    has_nonfinite(data) = any(x -> !isfinite(x), Array(data))
+    @test has_nonfinite(parent(model.velocities.u)) ||
+          has_nonfinite(parent(model.free_surface.displacement))
+
+    simulation.output_writers[:checkpointer] = checkpointer
+    simulation.stop_iteration = 2
+    simulation.Δt = Δt_good
+
+    @test_nowarn run!(simulation; pickup=true)
+
+    @test iteration(simulation) == 2
+    @test time(simulation) == time(reference_simulation)
+    test_model_equality(model, reference_model; atol=1e-20)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_stateful_schedule_checkpointing(arch, schedule_type)
     N = 8
     L = 1
@@ -2130,6 +2189,11 @@ for arch in archs
             @info "  Testing checkpoint continuation consistency [$(typeof(arch)), $timestepper]..."
             test_checkpoint_continuation_matches_direct(arch, timestepper)
         end
+    end
+
+    @testset "pickup=true after NaN on same split-RK simulation [$(typeof(arch))]" begin
+        @info "  Testing pickup=true after NaN on same split-RK simulation [$(typeof(arch))]..."
+        test_pickup_after_nan_same_simulation_split_rk(arch)
     end
 
     for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval, :WallTimeInterval)
