@@ -40,6 +40,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 [sources]
 Oceananigans = {path = ".."}
 NCCL = {url = "https://github.com/giordano/NCCL.jl.git", rev = "patch-1"}
+oneAPI = {url = "https://github.com/JuliaGPU/oneAPI.jl.git", rev = "47253030a9cc521cde190fa63565ab6ed52eb347"}
 
 [compat]
 AMDGPU = "1.3.6, 2"
