@@ -17,6 +17,14 @@ using LinearAlgebra: SymTridiagonal, eigen, mul!
 ##### whenever Δt changes.
 #####
 
+"""
+$(TYPEDSIGNATURES)
+
+Denominator `den = g Δt² + Δzᶠ / 2` of the free-surface Robin boundary condition,
+shared by the direct solvers, the CG linear operator, and the source terms.
+"""
+@inline robin_denominator(g, Δt, Δzᶠ) = g * Δt^2 + Δzᶠ / 2
+
 struct RobinEigenbasisFormulation{D, M, B, T}
     direction :: D
     eigenvectors :: M
@@ -61,7 +69,7 @@ function robin_eigendecomposition(FT, Nz, Δz, gravitational_acceleration, Δt)
     g = Float64(gravitational_acceleration)
     Δz = Float64(Δz)
     Δt = Float64(Δt)
-    den = g * Δt^2 + Δz / 2
+    den = robin_denominator(g, Δt, Δz)
 
     diagonal = [- ((k > 1) + (k < Nz)) / Δz^2 - (k == Nz) / (den * Δz) for k in 1:Nz]
     off_diagonal = fill(1 / Δz^2, Nz - 1)

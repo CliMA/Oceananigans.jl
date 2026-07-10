@@ -3,9 +3,11 @@
 #
 #   1. a regular grid, where the pressure Poisson equation with its free-surface Robin
 #      boundary condition is solved directly with `FourierTridiagonalPoissonSolver`,
-#   2. a stretched-x grid, where it is solved with `ConjugateGradientPoissonSolver`
-#      (`FreeSurfaceLaplacian` operator, deflated Fourier-tridiagonal preconditioner),
-#   3. an immersed boundary grid with a flat bottom, also solved with CG.
+#   2. a stretched-x grid, where it is solved directly with the Robin-eigenbasis
+#      `FourierTridiagonalPoissonSolver`,
+#   3. an immersed boundary grid with a flat bottom, solved with
+#      `ConjugateGradientPoissonSolver` (`compute_free_surface_laplacian!` operator,
+#      free-surface Fourier-tridiagonal preconditioner).
 #
 # All three are compared against the analytical standing-wave solution
 #

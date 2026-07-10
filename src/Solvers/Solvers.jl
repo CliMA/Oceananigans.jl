@@ -6,7 +6,7 @@ export
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
     KrylovSolver,
-    FreeSurfaceLaplacian,
+    compute_free_surface_laplacian!,
     fourier_tridiagonal_free_surface_solver,
     no_gauge_enforcement!,
     AbstractHomogeneousNeumannFormulation

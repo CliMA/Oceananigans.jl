@@ -16,8 +16,9 @@ using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
-                            ConjugateGradientPoissonSolver, FreeSurfaceLaplacian,
-                            fourier_tridiagonal_free_surface_solver, no_gauge_enforcement!
+                            ConjugateGradientPoissonSolver, compute_free_surface_laplacian!,
+                            robin_denominator, fourier_tridiagonal_free_surface_solver,
+                            no_gauge_enforcement!
 using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 
@@ -53,7 +54,7 @@ nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = naive_solver_
 function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, free_surface)
     preconditioner = fourier_tridiagonal_free_surface_solver(ibg.underlying_grid)
     return ConjugateGradientPoissonSolver(ibg;
-                                         linear_operation = FreeSurfaceLaplacian(),
+                                         linear_operation = compute_free_surface_laplacian!,
                                          preconditioner,
                                          enforce_gauge_condition! = no_gauge_enforcement!)
 end

@@ -78,9 +78,9 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, tdir, grid, Ũ, Δt) = nothin
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
 
     @inbounds begin
-        num = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        den = Δt^2 + Δzᶠ / 2g
-        rhs[i, j, Nz] -= Δt * (num / den)
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        den = robin_denominator(g, Δt, Δzᶠ)
+        rhs[i, j, Nz] -= g * Δt * η★ / den
     end
 end
 
@@ -93,7 +93,7 @@ end
 
     @inbounds begin
         η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        den = g * Δt^2 + Δzᶠ / 2
+        den = robin_denominator(g, Δt, Δzᶠ)
         rhs[i, j, Nz] -= Δxᶜᶜᶜ(i, j, Nz, grid) * g * Δt * η★ / (den * Δzᵃᵃᶜ(i, j, Nz, grid))
     end
 end
@@ -105,7 +105,7 @@ end
 
     @inbounds begin
         η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
-        den = g * Δt^2 + Δzᶠ / 2
+        den = robin_denominator(g, Δt, Δzᶠ)
         rhs[i, j, Nz] -= Δyᶜᶜᶜ(i, j, Nz, grid) * g * Δt * η★ / (den * Δzᵃᵃᶜ(i, j, Nz, grid))
     end
 end
@@ -179,19 +179,20 @@ end
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
-    den = g * Δt^2 + Δzᶠ / 2
+    den = robin_denominator(g, Δt, Δzᶠ)
     @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
 #####
-##### CG free-surface source term: subtracts the Robin BC inhomogeneous term Az*g*Δt*η★/den at k=Nz.
+##### CG free-surface source term: subtracts the Robin BC inhomogeneous term
+##### Az*g*Δt*η★/den at k=Nz, where den = g Δt² + Δzᶠ/2 and η★ = η + Δt w̃.
 #####
 
 @kernel function _add_cg_free_surface_rhs!(rhs, grid, w̃, Δt, g, η)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    den = g * Δt^2 + Δzᶠ / 2
+    den = robin_denominator(g, Δt, Δzᶠ)
     Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
     η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
     @inbounds rhs[i, j, Nz] -= Az * g * Δt * η★ / den

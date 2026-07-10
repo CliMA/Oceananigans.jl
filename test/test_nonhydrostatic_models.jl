@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FreeSurfaceLaplacian,
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, compute_free_surface_laplacian!,
                             RobinEigenbasisFormulation, DiagonallyDominantPreconditioner,
                             fourier_tridiagonal_free_surface_solver, no_gauge_enforcement!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -279,17 +279,17 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
                 @test solver.tridiagonal_formulation isa RobinEigenbasisFormulation
             end
 
-            # IBG on XYZReg + fs → CG with FreeSurfaceLaplacian (FT InhomogZDir preconditioner)
+            # IBG on XYZReg + fs → CG with compute_free_surface_laplacian! (FT InhomogZDir preconditioner)
             let solver = nonhydrostatic_pressure_solver(arch, ibg_xyz, mock_fs)
                 @test solver isa ConjugateGradientPoissonSolver
-                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.linear_operation! === compute_free_surface_laplacian!
                 @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
             end
 
-            # IBG on XZReg + fs → CG with FreeSurfaceLaplacian and Robin-eigenbasis FT preconditioner
+            # IBG on XZReg + fs → CG with compute_free_surface_laplacian! and Robin-eigenbasis FT preconditioner
             let solver = nonhydrostatic_pressure_solver(arch, ibg_xz, mock_fs)
                 @test solver isa ConjugateGradientPoissonSolver
-                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.linear_operation! === compute_free_surface_laplacian!
                 @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
                 @test solver.conjugate_gradient_solver.preconditioner.tridiagonal_formulation isa RobinEigenbasisFormulation
             end
@@ -307,11 +307,11 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             @test model.pressure_solver isa FourierTridiagonalPoissonSolver
             @test !isnothing(model.free_surface)
 
-            # IBG on XYZReg + ImplicitFreeSurface: CG with FreeSurfaceLaplacian (new)
+            # IBG on XYZReg + ImplicitFreeSurface: CG with compute_free_surface_laplacian! (new)
             ibg = ImmersedBoundaryGrid(grid, GridFittedBottom((x,y) -> 0.2))
             ibg_model = NonhydrostaticModel(ibg; free_surface=ImplicitFreeSurface())
             @test ibg_model.pressure_solver isa ConjugateGradientPoissonSolver
-            @test ibg_model.pressure_solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+            @test ibg_model.pressure_solver.conjugate_gradient_solver.linear_operation! === compute_free_surface_laplacian!
             @test !isnothing(ibg_model.free_surface)
 
             # Stretched-x grid + ImplicitFreeSurface: constructible (the free surface is materialized
@@ -347,9 +347,9 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
                                    topology=(Bounded, Flat, Bounded))
             η_ft, u_ft, w_ft = stepped_free_surface_fields(NonhydrostaticModel(grid; free_surface))
 
-            # CG + FreeSurfaceLaplacian on the same grid reproduces the direct FT solve
+            # CG + compute_free_surface_laplacian! on the same grid reproduces the direct FT solve
             pressure_solver = ConjugateGradientPoissonSolver(grid;
-                                                             linear_operation = FreeSurfaceLaplacian(),
+                                                             linear_operation = compute_free_surface_laplacian!,
                                                              preconditioner = fourier_tridiagonal_free_surface_solver(grid),
                                                              enforce_gauge_condition! = no_gauge_enforcement!)
             η_cg, u_cg, w_cg = stepped_free_surface_fields(NonhydrostaticModel(grid; free_surface, pressure_solver))
@@ -389,7 +389,7 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             seamount = ImmersedBoundaryGrid(stretched_underlying, GridFittedBottom(x -> -2 + exp(-8x^2)))
             eigenbasis_model = NonhydrostaticModel(seamount; free_surface)
             reference_solver = ConjugateGradientPoissonSolver(seamount;
-                                                              linear_operation = FreeSurfaceLaplacian(),
+                                                              linear_operation = compute_free_surface_laplacian!,
                                                               preconditioner = DiagonallyDominantPreconditioner(),
                                                               enforce_gauge_condition! = no_gauge_enforcement!)
             reference_model = NonhydrostaticModel(seamount; free_surface, pressure_solver=reference_solver)

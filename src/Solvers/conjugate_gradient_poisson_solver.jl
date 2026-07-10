@@ -85,8 +85,6 @@ end
 # The top ghost is explicitly set to Neumann (ϕ[Nz+1] = ϕ[Nz]) before computing V∇².
 # This prevents the MixedBoundaryCondition on p_Δt (set at model construction) from
 # polluting the operator during CG iterations with a stale coefficient/inhomogeneity.
-struct FreeSurfaceLaplacian end
-
 @kernel function _fill_top_neumann_halo!(ϕ, grid)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
@@ -97,12 +95,12 @@ end
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
-    den = g * Δt^2 + Δzᶠ / 2
+    den = robin_denominator(g, Δt, Δzᶠ)
     Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
     @inbounds ∇²ϕ[i, j, Nz] -= Az / den * ϕ[i, j, Nz]
 end
 
-function (::FreeSurfaceLaplacian)(∇²ϕ, ϕ, free_surface, Δt)
+function compute_free_surface_laplacian!(∇²ϕ, ϕ, free_surface, Δt)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
