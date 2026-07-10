@@ -309,7 +309,7 @@ function render_oceananigans_paper_timeline()
     println(html, "  </div>")
     println(html, "</div>")
 
-    return Markdown.parse(String(take!(html)))
+    return Markdown.MD(Documenter.RawNode(:html, String(take!(html))))
 end
 
 #####
