@@ -12,12 +12,12 @@ using Oceananigans.DistributedComputations: DistributedComputations,
                                             DistributedFFTBasedPoissonSolver,
                                             DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids
-using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
+using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, ConjugateGradientPoissonSolver,
-                            FreeSurfaceLaplacian, fourier_tridiagonal_free_surface_solver,
-                            no_gauge_enforcement!
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
+                            ConjugateGradientPoissonSolver, FreeSurfaceLaplacian,
+                            fourier_tridiagonal_free_surface_solver, no_gauge_enforcement!
 using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 
@@ -33,37 +33,23 @@ function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG,
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYRegularRG, ::Nothing)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFourierTridiagonalSolver, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 end
 
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::XZRegularRG, ::Nothing)
-    global_grid = reconstruct_global_grid(local_grid)
-    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-end
-
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::YZRegularRG, ::Nothing)
-    global_grid = reconstruct_global_grid(local_grid)
-    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-end
-
-# Per-type ::Nothing dispatches. Using union dispatches here would cause cross-dimension
-# ambiguity with the per-type free_surface dispatches below (because XYRegularRG <: XZRegularRG,
-# a union dispatch for ::Nothing and a per-type dispatch for free_surface would be ambiguous
-# for grids where both apply).
+# XYZRegularRG <: GridWithFourierTridiagonalSolver, so on fully-regular grids the FFT
+# methods shadow the Fourier-tridiagonal ones by specificity.
 nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG, ::Nothing) = FFTBasedPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XYRegularRG,  ::Nothing) = FourierTridiagonalPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XZRegularRG,  ::Nothing) = FourierTridiagonalPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::YZRegularRG,  ::Nothing) = FourierTridiagonalPoissonSolver(grid)
+nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, ::Nothing) = FourierTridiagonalPoissonSolver(grid)
 
 # Free surface: the Robin boundary condition on pressure is solved directly with a
 # Fourier-tridiagonal solver — z-tridiagonal InhomogeneousFormulation on grids with
-# uniform x and y, RobinEigenbasisFormulation on x- or y-stretched grids.
-nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG, free_surface) = fourier_tridiagonal_free_surface_solver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XYRegularRG,  free_surface) = fourier_tridiagonal_free_surface_solver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XZRegularRG,  free_surface) = fourier_tridiagonal_free_surface_solver(grid)
-nonhydrostatic_pressure_solver(arch, grid::YZRegularRG,  free_surface) = fourier_tridiagonal_free_surface_solver(grid)
+# uniform x and y, RobinEigenbasisFormulation on x- or y-stretched grids. The per-grid
+# choice lives in `fourier_tridiagonal_free_surface_solver`; this single union method is
+# ambiguity-free against the `::Nothing` tiers above because it is strictly less specific
+# than each of them.
+nonhydrostatic_pressure_solver(arch, grid::GridWithFFTSolver, free_surface) = fourier_tridiagonal_free_surface_solver(grid)
 
 # fallback
 nonhydrostatic_pressure_solver(arch, grid, ::Nothing) = ConjugateGradientPoissonSolver(grid)
