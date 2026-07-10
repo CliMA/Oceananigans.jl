@@ -5,11 +5,19 @@ function time_step_sharded_model(arch)
     model = sharding_test_model(arch)
     Δt = model.clock.last_Δt
 
+    # `xla_enable_enzyme_comms_opt` corrupts the y-partitioned halo exchange for
+    # sharded LatitudeLongitudeGrid + SplitExplicitFreeSurface (wrong past Reactant
+    # v0.2.268); disable it until fixed upstream.
+    compile_options = Reactant.CompileOptions(;
+        sync=true, raise=true,
+        xla_debug_options=(xla_enable_enzyme_comms_opt=false,),
+    )
+
     @info "Compiling first_time_step..."
-    r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+    r_first_time_step! = @compile compile_options=compile_options first_time_step!(model, Δt)
 
     @info "Compiling time_step..."
-    r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
+    r_time_step! = @compile compile_options=compile_options time_step!(model, Δt)
 
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
