@@ -313,20 +313,26 @@ function initialize!(sim::Simulation)
     end
 
     model = sim.model
+    pickup_pending = sim.pickup_pending
+    fresh_simulation = !pickup_pending && model.clock.iteration == 0
 
-    # Only initialize for fresh simulations, not after restoring from a checkpoint.
-    if model.clock.iteration == 0
+    if pickup_pending
+        initialize_after_pickup!(model)
+    elseif fresh_simulation
         initialize!(model)
         update_state!(model)
     else
-        initialize_after_pickup!(model)
+        # The simulation is continuing from its current state without pickup.
+        update_state!(model)
     end
+
+    sim.pickup_pending = false
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
     # Things to do for fresh simulations (not after checkpoint restore)
-    if model.clock.iteration == 0
+    if fresh_simulation
         scheduled_activities = Iterators.flatten((values(sim.diagnostics),
                                                   values(sim.callbacks),
                                                   values(sim.output_writers)))

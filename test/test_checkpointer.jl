@@ -134,6 +134,8 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
 
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
+    @test !new_simulation.initialized
+    @test new_simulation.pickup_pending
 
     @test new_simulation.stop_time == new_stop_time
     @test new_checkpointer.schedule.interval == new_checkpoint_interval
