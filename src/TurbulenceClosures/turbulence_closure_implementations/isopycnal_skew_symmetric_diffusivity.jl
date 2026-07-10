@@ -147,11 +147,10 @@ function Adapt.adapt_structure(to, closure::IsopycnalSkewSymmetricDiffusivity)
     TD = time_discretization(closure)
     A  = DiffusiveFormulation()
     N  = required_halo_size_x(closure)
-    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(
-                                       Adapt.adapt(to, closure.κ_skew),
-                                       Adapt.adapt(to, closure.κ_symmetric),
-                                       Adapt.adapt(to, closure.isopycnal_tensor),
-                                       Adapt.adapt(to, closure.slope_limiter))
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(Adapt.adapt(to, closure.κ_skew),
+                                                       Adapt.adapt(to, closure.κ_symmetric),
+                                                       Adapt.adapt(to, closure.isopycnal_tensor),
+                                                       Adapt.adapt(to, closure.slope_limiter))
 end
 
 #####
