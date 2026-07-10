@@ -165,7 +165,7 @@ steps:
           - "🐳 simulation"
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
-          - "🌐 multi_region_simulation_regular"
+          - "🌐 multi_region_simulation"
           - "🌍 multi_region_simulation_immersed"
           - "🦧 scripts"
 

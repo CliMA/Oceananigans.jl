@@ -199,9 +199,9 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :multi_region_simulation_regular || group == :all
-        @testset "Multi Region cubed sphere regular simulation tests" begin
-            include("test_multi_region_cubed_sphere_simulation_regular.jl")
+    if group == :multi_region_simulation || group == :all
+        @testset "Multi Region cubed sphere simulation tests" begin
+            include("test_multi_region_cubed_sphere_simulation.jl")
         end
     end
 
