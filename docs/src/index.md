@@ -183,7 +183,11 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
 
+1. Huang, J., Chamecki, M., Li, Q., and Chen, B. (2025). [The role of longitudinal alignment between surface and bottom forcing on the full-column turbulence mixing in the coastal ocean](https://doi.org/10.1016/j.ocemod.2025.102637), _Ocean Modelling_, **199**, 102637. DOI: [10.1016/j.ocemod.2025.102637](https://doi.org/10.1016/j.ocemod.2025.102637)
+
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
+
+1. Shu, R., Gou, R., Pennelly, C., Deng, Y., Wu, L., Xiao, K., Huang, Y., and Myers, P. G. (2025). [Impact of Downwelling-Favorable Winds on Eddy Formation in the West Greenland Current](https://doi.org/10.1175/JPO-D-24-0053.1), _Journal of Physical Oceanography_, **55(2)**, 191–201. DOI: [10.1175/JPO-D-24-0053.1](https://doi.org/10.1175/JPO-D-24-0053.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
 
