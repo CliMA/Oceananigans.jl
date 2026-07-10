@@ -89,6 +89,15 @@ fts[1]
     └── max=1.07545, min=-0.0808614, mean=0.489556
 ```
 
+In place of an index, an `Oceananigans.Units.Time` can be used to interpolate values at a given time.
+
+```jldoctest field_time_series
+using Oceananingans.Units: Time
+
+fts[4, 4, 4, Time(0.33)]
+fts[Time(0.33)]
+```
+
 Contained data may be manipulated with `set!`. Providing a single time index will simply pass `set!` to the corresponding `Field`:
 
 ```jldoctest field_time_series
@@ -121,3 +130,45 @@ fts
 └── data: 14×14×14×10 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:10) with eltype Float64 with indices -2:11×-2:11×-2:11×1:10
     └── max=0.0, min=0.0, mean=0.0
 ```
+
+## Extrapolated data
+`FieldTimeSeries` supports multiple methods of time indexing outside of the given times.
+
+```jldoctext field_time_series
+using Oceananigans.OutputReaders: Clamp, Linear, Cyclical
+
+grid = RectilinearGrid(; size=(), extent=(), topology=(Flat, Flat, Flat))
+
+fts_clamp = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Clamp())
+fts_linear = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Linear())
+fts_cyclical = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Cyclical())
+
+for fts in (fts_clamp, fts_linear, fts_cyclical)
+    set!(fts, 0, 1)
+    set!(fts, 1, 2)
+end
+```
+
+Each of the above `FieldTimeSeries` contain identical underlying data, however their behaviour differs when indexed using `Oceananigans.Units.Time` outside of the range of given times.
+
+```jldoctext field_time_series
+println("t | Clamp | Linear | Cyclical")
+for t in 0:0.5:3
+    clamp = fts_clamp[1, 1, 1, Time(t)]
+    linear = fts_linear[1, 1, 1, Time(t)]
+    cyclical = fts_cyclical[1, 1, 1, Time(t)]
+
+    println("$t   | $clamp   | $linear    | $cyclical")
+end
+
+# output
+t   | Clamp | Linear | Cyclical
+0.0 | 0.0   | 0.0    | 0.0
+0.5 | 0.5   | 0.5    | 0.5
+1.0 | 1.0   | 1.0    | 1.0
+1.5 | 1.0   | 1.5    | 0.5
+2.0 | 1.0   | 2.0    | 0.0
+2.5 | 1.0   | 2.5    | 0.5
+3.0 | 1.0   | 3.0    | 1.0
+```
+
