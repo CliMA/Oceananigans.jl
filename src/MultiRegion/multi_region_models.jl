@@ -165,7 +165,7 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
 
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)

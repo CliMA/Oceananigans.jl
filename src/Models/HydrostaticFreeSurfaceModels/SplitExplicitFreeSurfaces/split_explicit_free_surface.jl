@@ -296,12 +296,12 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                           bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
-                                                  barotropic_velocities,
-                                                  filtered_state,
-                                                  gravitational_acceleration,
-                                                  kernel_parameters,
-                                                  substepping,
-                                                  timestepper)
+                                                      barotropic_velocities,
+                                                      filtered_state,
+                                                      gravitational_acceleration,
+                                                      kernel_parameters,
+                                                      substepping,
+                                                      timestepper)
 end
 
 #####
