@@ -38,17 +38,8 @@ function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFouri
     return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 end
 
-# XYZRegularRG <: GridWithFourierTridiagonalSolver, so on fully-regular grids the FFT
-# methods shadow the Fourier-tridiagonal ones by specificity.
 nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG, ::Nothing) = FFTBasedPoissonSolver(grid)
 nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, ::Nothing) = FourierTridiagonalPoissonSolver(grid)
-
-# Free surface: the Robin boundary condition on pressure is solved directly with a
-# Fourier-tridiagonal solver — z-tridiagonal InhomogeneousFormulation on grids with
-# uniform x and y, RobinEigenbasisFormulation on x- or y-stretched grids. The per-grid
-# choice lives in `fourier_tridiagonal_free_surface_solver`; this single union method is
-# ambiguity-free against the `::Nothing` tiers above because it is strictly less specific
-# than each of them.
 nonhydrostatic_pressure_solver(arch, grid::GridWithFFTSolver, free_surface) = fourier_tridiagonal_free_surface_solver(grid)
 
 # fallback
