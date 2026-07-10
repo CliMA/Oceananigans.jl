@@ -78,7 +78,7 @@ Test = "<0.0.1, 1"
 TimesDates = "0.3"
 Zarr = "0.10"
 julia = "1.10"
-oneAPI = "2.0.1"
+oneAPI = "2.4.0"
 
 [preferences.Reactant]
 xla_runtime = "IFRT"
