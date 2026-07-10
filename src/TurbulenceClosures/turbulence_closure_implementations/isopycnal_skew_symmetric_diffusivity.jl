@@ -1,4 +1,6 @@
 using Oceananigans.Fields: VelocityFields, NamedFieldTuple
+using Oceananigans.Grids: required_halo_size
+using Oceananigans.TimeSteppers: time_discretization
 
 struct AdvectiveFormulation end
 struct DiffusiveFormulation end
@@ -135,6 +137,21 @@ end
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
     @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
+end
+
+#####
+##### Utilities
+#####
+
+function Adapt.adapt_structure(to, closure::IsopycnalSkewSymmetricDiffusivity)
+    TD = time_discretization(closure)
+    A  = DiffusiveFormulation()
+    N  = required_halo_size_x(closure)
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(
+                                       Adapt.adapt(to, closure.κ_skew),
+                                       Adapt.adapt(to, closure.κ_symmetric),
+                                       Adapt.adapt(to, closure.isopycnal_tensor),
+                                       Adapt.adapt(to, closure.slope_limiter))
 end
 
 #####
