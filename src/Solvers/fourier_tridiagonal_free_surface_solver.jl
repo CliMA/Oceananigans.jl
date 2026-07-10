@@ -146,8 +146,19 @@ function robin_eigenbasis_poisson_solver(grid, planner_flag=FFTW.PATIENT)
     CT = complex(FT)
     sol_storage = on_architecture(arch, zeros(CT, size(grid)...))
 
-    forward_plan = plan_forward_transform(sol_storage, T1(), [transform_dim], planner_flag)
-    backward_plan = plan_backward_transform(sol_storage, T1(), [transform_dim], planner_flag)
+    # On the GPU, dim-2 transforms run on a transposed copy (`DiscreteTransform` sets
+    # `transpose_dims`), so their plans must be built on the (Ny, Nx, Nz) layout.
+    if arch isa GPU && transform_dim == 2
+        Nx, Ny, _ = size(grid)
+        plan_storage = reshape(sol_storage, (Ny, Nx, Nz))
+        plan_dims = [1]
+    else
+        plan_storage = sol_storage
+        plan_dims = [transform_dim]
+    end
+
+    forward_plan = plan_forward_transform(plan_storage, T1(), plan_dims, planner_flag)
+    backward_plan = plan_backward_transform(plan_storage, T1(), plan_dims, planner_flag)
     forward_horizontal = DiscreteTransform(forward_plan, Forward(), grid, [transform_dim])
     backward_horizontal = DiscreteTransform(backward_plan, Backward(), grid, [transform_dim])
 
@@ -173,7 +184,9 @@ function robin_eigenbasis_poisson_solver(grid, planner_flag=FFTW.PATIENT)
                                         diagonal = main_diagonal,
                                         tridiagonal_direction = tridiagonal_dir)
 
-    buffer = arch isa GPU && T1 === Bounded ? similar(sol_storage) : nothing
+    # The buffer serves GPU index permutation (`Bounded`) and the dim-2 transpose (any topology).
+    buffer_needed = arch isa GPU && T1 !== Flat && (T1 === Bounded || transform_dim == 2)
+    buffer = buffer_needed ? similar(sol_storage) : nothing
 
     rhs = on_architecture(arch, zeros(CT, size(grid)...))
 

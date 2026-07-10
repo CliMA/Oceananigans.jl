@@ -420,6 +420,49 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             @test isapprox(η_sy[:, :, 1], η_rf[:, :, 1], atol=1e-8)
             @test isapprox(u_sy[:, :, Nz+1:2Nz], u_rf, atol=1e-8)
             @test isapprox(w_sy[:, :, Nz+1:2Nz+1], w_rf, atol=1e-8)
+
+            # 3D stretched-x-typed grids exercise the eigenbasis solver's horizontal
+            # transform along dimension 2, which on the GPU runs through a transposed
+            # buffer (regression test for the plan layout and buffer allocation). Both
+            # y topologies are covered: Periodic (FFT) and Bounded (DCT). Non-cubic
+            # sizes make layout mismatches fail loudly.
+            for (TY, displacement3) in ((Periodic, (x, y, z) -> 0.05 * cospi(x) * cos(2π * y)),
+                                        (Bounded,  (x, y, z) -> 0.05 * cospi(x) * cospi(y)))
+                N3 = (12, 10, 6)
+                array_x_grid3 = RectilinearGrid(arch, size=N3, x=collect(range(0, 1, length=N3[1]+1)),
+                                                y=(0, 1), z=(-1, 0), topology=(Bounded, TY, Bounded))
+                reference_grid3 = RectilinearGrid(arch, size=N3, x=(0, 1), y=(0, 1), z=(-1, 0),
+                                                  topology=(Bounded, TY, Bounded))
+                array_x_model3 = NonhydrostaticModel(array_x_grid3; free_surface)
+                reference_model3 = NonhydrostaticModel(reference_grid3; free_surface)
+                @test array_x_model3.pressure_solver.tridiagonal_formulation isa RobinEigenbasisFormulation
+                η_s3, u_s3, w_s3 = stepped_free_surface_fields(array_x_model3; displacement=displacement3)
+                η_r3, u_r3, w_r3 = stepped_free_surface_fields(reference_model3; displacement=displacement3)
+                @test isapprox(η_s3, η_r3, atol=1e-8)
+                @test isapprox(u_s3, u_r3, atol=1e-8)
+                @test isapprox(w_s3, w_r3, atol=1e-8)
+            end
+
+            # IBG + stretched-z: the CG preconditioner is the z-tridiagonal
+            # InhomogeneousFormulation solver, which absorbs arbitrary z spacing; a flat
+            # bottom on a face of the stretched underlying grid has an exact truncated
+            # reference.
+            stretched_upper_zfaces = [tanh(2 * (ξ - 1/2)) / 2tanh(1) - 1/2 for ξ in range(0, 1, length=Nz+1)]
+            tall_zfaces = vcat(stretched_upper_zfaces[1:end-1] .- 1, stretched_upper_zfaces)
+            underlying_sz = RectilinearGrid(arch, size=(Nx, 2Nz), x=(0, 1), z=tall_zfaces,
+                                            topology=(Bounded, Flat, Bounded))
+            ibg_sz = ImmersedBoundaryGrid(underlying_sz, GridFittedBottom(x -> -1))
+            reference_sz = RectilinearGrid(arch, size=(Nx, Nz), x=(0, 1), z=stretched_upper_zfaces,
+                                           topology=(Bounded, Flat, Bounded))
+            ibg_sz_model = NonhydrostaticModel(ibg_sz; free_surface)
+            reference_sz_model = NonhydrostaticModel(reference_sz; free_surface)
+            @test ibg_sz_model.pressure_solver isa ConjugateGradientPoissonSolver
+            η_sz, u_sz, w_sz = stepped_free_surface_fields(ibg_sz_model)
+            η_rz, u_rz, w_rz = stepped_free_surface_fields(reference_sz_model)
+            @test iteration(ibg_sz_model.pressure_solver) < 20
+            @test isapprox(η_sz[:, :, 1], η_rz[:, :, 1], atol=1e-8)
+            @test isapprox(u_sz[:, :, Nz+1:2Nz], u_rz, atol=1e-8)
+            @test isapprox(w_sz[:, :, Nz+1:2Nz+1], w_rz, atol=1e-8)
         end
     end
 end
