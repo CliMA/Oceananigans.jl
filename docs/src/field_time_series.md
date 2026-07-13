@@ -9,7 +9,7 @@ A `FieldTimeSeries` may be constructed directly on an existing grid, similarly t
 ```jldoctest field_time_series
 grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
                          size = (8, 8, 8),
-                         extent = (1, 1, 1))
+                         extent = (2π, 2π, 2π))
 times = 0:10
 fts = FieldTimeSeries{Center, Center, Center}(grid, times)
 
@@ -27,12 +27,15 @@ Additionally, a `FieldTimeSeries` may be generated from simulation output:
 
 ```jldoctest field_time_series
 model = NonhydrostaticModel(grid; advection=WENO())
-ϵ(x, y, z) = rand()
-set!(model, u=ϵ, v=ϵ, w=ϵ)
-simulation = Simulation(model; Δt=0.01, stop_iteration=100)
+
+u₀(x, y, z) = sin(x) * sin(y)
+v₀(x, y, z) = cos(x) * cos(y)
+set!(model, u=u₀, v=v₀)
+
+simulation = Simulation(model; Δt=0.1, stop_iteration=10)
 
 simulation.output_writers[:fields] = JLD2Writer(model, model.velocities;
-                                                schedule = TimeInterval(0.1),
+                                                schedule = IterationInterval(1),
                                                 filename = "test.jld2",
                                                 overwrite_existing = true)
 run!(simulation)
@@ -40,15 +43,15 @@ run!(simulation)
 fts = FieldTimeSeries("test.jld2", "u")
 
 # output
-8×8×8×10 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
+8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── indices: (:, :, :)
 ├── time_indexing: Linear()
 ├── backend: InMemory()
 ├── path: test.jld2
 ├── name: u
-└── data: 14×14×14×10 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:10) with eltype Float64 with indices -2:11×-2:11×-2:11×1:10
-    └── max=1.07545, min=-0.0808614, mean=0.345513
+└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+    └── max=0.92388, min=-0.92388, mean=-6.98855e-20
 ```
 
 In either case, it can be indexed as if it were a four-dimensional `Field`, with time as the last index:
@@ -57,22 +60,22 @@ In either case, it can be indexed as if it were a four-dimensional `Field`, with
 fts[4, 4, 4, 4]
 
 # output
-0.5358667969703674
+0.26985207200050354
 ```
 
 ```jldoctest field_time_series
 interior(fts, :, 1, 1, :) # x-t array
 
 # output
-8×10 view(::Array{Float64, 4}, 4:11, 4, 4, :) with eltype Float64:
- 0.860741  0.763312  0.61371   0.510262  0.498051  0.498372  0.494729  0.476513  0.454274  0.441559
- 0.18571   0.460542  0.527368  0.496212  0.450224  0.448384  0.457524  0.46419   0.460685  0.449141
- 0.234925  0.356419  0.455896  0.501329  0.501862  0.485451  0.47594   0.467415  0.463953  0.459797
- 0.562129  0.488347  0.461392  0.466226  0.482304  0.495795  0.502234  0.49983   0.492295  0.483445
- 0.314     0.447676  0.47347   0.47389   0.476044  0.482464  0.492456  0.50166   0.50391   0.501611
- 0.38311   0.403706  0.444067  0.465936  0.467379  0.466081  0.465873  0.474316  0.484465  0.492067
- 0.317062  0.339962  0.402139  0.438216  0.452982  0.452426  0.446957  0.443386  0.45102   0.465696
- 0.693166  0.508454  0.469629  0.491742  0.493768  0.478989  0.459651  0.441641  0.432787  0.435327
+8×11 view(::Array{Float64, 4}, 4:11, 4, 4, :) with eltype Float64:
+ -2.45381e-18   1.98439e-17   1.07381e-17  -3.79997e-18  …   5.0393e-17    8.05027e-17   9.77895e-17   9.03376e-17
+  0.270598      0.270338      0.27009       0.269852         0.268994      0.2688        0.268613      0.268432
+  0.382683      0.382608      0.382528      0.382444         0.382067      0.381964      0.381859      0.381751
+  0.270598      0.270338      0.27009       0.269852         0.268994      0.2688        0.268613      0.268432
+  1.84987e-18   3.56235e-17   1.05233e-17   5.62883e-17      4.16375e-17  -1.16443e-17  -3.00039e-17   3.23178e-17
+ -0.270598     -0.270338     -0.27009      -0.269852     …  -0.268994     -0.2688       -0.268613     -0.268432
+ -0.382683     -0.382608     -0.382528     -0.382444        -0.382067     -0.381964     -0.381859     -0.381751
+ -0.270598     -0.270338     -0.27009      -0.269852        -0.268994     -0.2688       -0.268613     -0.268432
 ```
 
 Providing just one index returns a `Field` containing a view of the data at the corresponding time step:
@@ -86,16 +89,26 @@ fts[1]
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
-    └── max=1.07545, min=-0.0808614, mean=0.489556
+    └── max=0.92388, min=-0.92388, mean=0.0
 ```
 
 In place of an index, an `Oceananigans.Units.Time` can be used to interpolate values at a given time.
 
 ```jldoctest field_time_series
-using Oceananingans.Units: Time
+using Oceananigans.Units: Time
 
-fts[4, 4, 4, Time(0.33)]
+fts[4, 4, 4, Time(0.33)] # 0.2697837561368942
 fts[Time(0.33)]
+
+# output
+8×8×8 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+├── operand: BinaryOperation at (Face, Center, Center)
+├── status: Oceananigans.Fields.FixedTime{Float64}
+└── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+    └── max=0.922644, min=-0.922644, mean=-1.0842e-18
 ```
 
 Contained data may be manipulated with [`set!`](@ref). Providing a single time index will simply pass [`set!`](@ref) to the corresponding `Field`:
@@ -109,7 +122,7 @@ set!(fts, (x, y, z)->2x, 1) # equivalent to set!(fts[1], (x, y, z)->2x)
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
-    └── max=1.75, min=0.0, mean=0.875
+    └── max=10.9956, min=0.0, mean=5.49779
 ```
 
 Providing a vector of `Field`s will copy the data in each `Field` to the `FieldTimeSeries`:
@@ -120,14 +133,14 @@ set!(fts, fields)
 fts
 
 # output
-8×8×8×10 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
+8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── indices: (:, :, :)
 ├── time_indexing: Linear()
 ├── backend: InMemory()
 ├── path: test.jld2
 ├── name: u
-└── data: 14×14×14×10 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:10) with eltype Float64 with indices -2:11×-2:11×-2:11×1:10
+└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -179,7 +192,7 @@ The default `backend` for a `FieldTimeSeries` is `InMemory`. This is sufficient 
 ondisk_fts = FieldTimeSeries("test.jld2", "u"; backend=OnDisk())
 
 # output
-8×8×8×10 FieldTimeSeries{OnDisk} located at (Face, Center, Center) of u at test.jld2
+8×8×8×11 FieldTimeSeries{OnDisk} located at (Face, Center, Center) of u at test.jld2
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── indices: (:, :, :)
 ├── time_indexing: Linear()
@@ -198,7 +211,7 @@ ondisk_fts[1]
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(::Array{Float32, 3}, -2:11, -2:11, -2:11) with eltype Float32 with indices -2:11×-2:11×-2:11
-    └── max=1.12648, min=-0.0388058, mean=0.502443
+    └── max=0.92388, min=-0.92388, mean=-1.74623e-10
 ```
 
 ```jldoctest field_time_series
@@ -212,7 +225,7 @@ ondisk_fts[Time(0.3)]
 ├── operand: BinaryOperation at (Face, Center, Center)
 ├── status: Oceananigans.Fields.FixedTime{Float64}
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
-    └── max=0.758505, min=0.18855, mean=0.502443
+    └── max=0.922754, min=-0.922754, mean=2.1684e-19
 ```
 
 An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
@@ -389,15 +402,16 @@ ke_timeseries = FieldTimeSeries("test_ke.jld2", "ke")
 ke_timeseries[1, 1, 1, :]
 
 # output
-10-element Vector{Float64}:
- 0.6612136948970146
- 0.5811033841455355
- 0.5583625429135282
- 0.549366099992767
- 0.5451507281395607
- 0.5428409611340612
- 0.5413548710057512
- 0.5403541878913529
- 0.539588899933733
- 0.5389546225778759
+11-element Vector{Float64}:
+ 62.012554977702926
+ 61.97056180705332
+ 61.92860328861815
+ 61.88667457108706
+ 61.84476710691496
+ 61.80288551639598
+ 61.761035574899566
+ 61.71920688676128
+ 61.677401993144294
+ 61.63562043201756
+ 61.59385180771814
 ```
