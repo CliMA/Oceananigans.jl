@@ -1,6 +1,6 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Utils: worksize
-using Oceananigans.Models: local_dimension
+using Oceananigans.Models: is_local_dimension
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.
