@@ -98,7 +98,7 @@ fts[4, 4, 4, Time(0.33)]
 fts[Time(0.33)]
 ```
 
-Contained data may be manipulated with `set!`. Providing a single time index will simply pass `set!` to the corresponding `Field`:
+Contained data may be manipulated with [`set!`](@ref). Providing a single time index will simply pass [`set!`](@ref) to the corresponding `Field`:
 
 ```jldoctest field_time_series
 set!(fts, (x, y, z)->2x, 1) # equivalent to set!(fts[1], (x, y, z)->2x)
@@ -215,7 +215,7 @@ ondisk_fts[Time(0.3)]
     └── max=0.758505, min=0.18855, mean=0.502443
 ```
 
-An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be `set!` with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
+An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
 
 ```jldoctest field_time_series
 new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times; 
@@ -323,7 +323,7 @@ fds.u
     └── max=1.12648, min=-0.0388058, mean=0.357269
 ```
 
-Calling `set!` on a `FieldDataset` with keyword arguments will pass `set!` to each of the contained `FieldTimeSeries`, which will behave according to their backend. The following sets data in u and v in the first time index to u_func and v_func respectively:
+Calling [`set!`](@ref) on a `FieldDataset` with keyword arguments will pass [`set!`](@ref) to each of the contained `FieldTimeSeries`, which will behave according to their backend. The following sets data in u and v in the first time index to u_func and v_func respectively:
 
 ```jldoctest field_time_series
 u_func(x, y, z) = -x
