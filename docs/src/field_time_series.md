@@ -248,5 +248,5 @@ new_fts = FieldTimeSeries("new.jld2", "c")
 ```
 
 !!! warn "Modifying simulation output files"
-    This behaviour is intended for outputting fields to new files. It is not recommended to use a `FieldTimeSeries` to modify simulation output. 
+    This behaviour is intended for outputting fields to new files. It is not recommended to use a `FieldTimeSeries` to modify simulation output. Indexing may not be compatible.
     
