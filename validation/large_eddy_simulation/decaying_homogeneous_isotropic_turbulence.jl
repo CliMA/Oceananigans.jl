@@ -1,7 +1,5 @@
 using Oceananigans, FFTW, StatsBase, CairoMakie
 
-using  Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
-
 arch = CPU()
 grid = RectilinearGrid(arch, size = (32, 32, 32), extent = (1, 1, 1))
 closure = AnisotropicMinimumDissipation(VerticallyImplicitTimeDiscretization(), C=1/3)

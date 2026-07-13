@@ -95,162 +95,41 @@ end
 ##### Spacings
 #####
 
-"""
-$(TYPEDSIGNATURES)
+# Docstrings for xspacings, yspacings, λspacings, φspacings live in
+# src/Grids/nodes_and_spacings.jl and for zspacings, rspacings in
+# src/Grids/vertical_discretization.jl so that @autodocs picks them up
+# from the Oceananigans.Grids module where these functions are exported.
 
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``x`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> xspacings(grid, Center(), Center(), Center())
-KernelFunctionOperation at (Center, Center, Center)
-├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δx (generic function with 20 methods)
-└── arguments: ("Center", "Center", "Center")
-```
-"""
 function xspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δx_op = KernelFunctionOperation{LX, LY, LZ}(Δx, grid, ℓx, ℓy, ℓz)
     return Δx_op
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``y`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> yspacings(grid, Center(), Face(), Center())
-KernelFunctionOperation at (Center, Face, Center)
-├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δy (generic function with 20 methods)
-└── arguments: ("Center", "Face", "Center")
-```
-"""
 function yspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δy_op = KernelFunctionOperation{LX, LY, LZ}(Δy, grid, ℓx, ℓy, ℓz)
     return Δy_op
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``z`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> zspacings(grid, Center(), Center(), Face())
-KernelFunctionOperation at (Center, Center, Face)
-├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δz (generic function with 19 methods)
-└── arguments: ("Center", "Center", "Face")
-```
-"""
 function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``r`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> rspacings(grid, Center(), Center(), Face())
-KernelFunctionOperation at (Center, Center, Face)
-├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δr (generic function with 19 methods)
-└── arguments: ("Center", "Center", "Face")
-```
-"""
 function rspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δr_op = KernelFunctionOperation{LX, LY, LZ}(Δr, grid, ℓx, ℓy, ℓz)
     return Δr_op
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
-                                    longitude = (-180, 180),
-                                    latitude = (-85, 85),
-                                    z = (-1000, 0));
-
-julia> λspacings(grid, Center(), Face(), Center())
-KernelFunctionOperation at (Center, Face, Center)
-├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── kernel_function: Δλ (generic function with 20 methods)
-└── arguments: ("Center", "Face", "Center")
-```
-"""
 function λspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δλ_op = KernelFunctionOperation{LX, LY, LZ}(Δλ, grid, ℓx, ℓy, ℓz)
     return Δλ_op
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``φ`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
-                                    longitude = (-180, 180),
-                                    latitude = (-85, 85),
-                                    z = (-1000, 0));
-
-julia> φspacings(grid, Center(), Face(), Center())
-KernelFunctionOperation at (Center, Face, Center)
-├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── kernel_function: Δφ (generic function with 20 methods)
-└── arguments: ("Center", "Face", "Center")
-```
-"""
 function φspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δφ_op = KernelFunctionOperation{LX, LY, LZ}(Δφ, grid, ℓx, ℓy, ℓz)

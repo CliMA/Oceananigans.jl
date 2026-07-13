@@ -59,8 +59,11 @@ function twiddle_factors(arch::GPU, grid, dims)
     inds⁺ = reshape(0:N-1, reshaped_size(N, dim)...)
     inds⁻ = reshape(0:-1:-(N-1), reshaped_size(N, dim)...)
 
-    ω_4N⁺ = ω.(4N, inds⁺)
-    ω_4N⁻ = ω.(4N, inds⁻)
+    # Match the grid's precision: not all backends can store ComplexF64 (e.g. Metal),
+    # and mixed-precision broadcasts would promote the transformed array anyway.
+    C = complex(eltype(grid))
+    ω_4N⁺ = C.(ω.(4N, inds⁺))
+    ω_4N⁻ = C.(ω.(4N, inds⁻))
 
     # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01)
     # is not multiplied by 2.
@@ -89,6 +92,9 @@ function DiscreteTransform(plan, direction, grid, dims)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
+    # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
+    # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
+    # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]

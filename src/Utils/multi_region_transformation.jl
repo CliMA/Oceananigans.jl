@@ -61,13 +61,9 @@ end
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
 
-@inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-
-@inline function isregional(t::Union{Tuple, NamedTuple})
-    idx = findfirst(isregional, t)
-    return !isnothing(idx)
-end
+@inline isregional(::Tuple{}) = false
+@inline isregional(t::Tuple) = isregional(first(t)) || isregional(Base.tail(t))
+@inline isregional(nt::NamedTuple) = isregional(values(nt))
 
 @inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)

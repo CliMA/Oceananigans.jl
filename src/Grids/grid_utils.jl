@@ -270,6 +270,121 @@ function pop_flat_elements(tup, topo)
 end
 
 #####
+##### Support for `slice`
+#####
+
+"""
+    slice(grid, i, j, k; kwargs...)
+
+Return a grid extracted from `grid` along each dimension according to its index:
+
+- a colon (`:`) retains the dimension with its size, halo, spacing, and topology unchanged;
+- an `Integer` collapses the dimension to a `Flat` dimension *located* at that cell center;
+- a range (e.g. `2:4`) extracts the `Bounded` sub-interval spanning the selected cells.
+
+A range collapses a `Periodic` dimension to `Bounded`, since a window of a periodic domain
+is no longer periodic.
+
+The constant coordinate of a collapsed dimension can be set with a keyword argument named
+after that coordinate (`x`, `y`, `z` for `RectilinearGrid`; `longitude`, `latitude`, `z` for
+`LatitudeLongitudeGrid`, with `λ` and `φ` accepted as aliases for `longitude` and `latitude`
+respectively). By default the `Flat` dimension is located at the sliced cell center;
+pass a number to place it elsewhere (e.g. `z=0` to place the surface grid exactly at
+`z = 0`, or `longitude=180` to place a meridional section exactly at 180°), or `nothing`
+to leave the `Flat` dimension without a location. A coordinate keyword may only be set
+for a collapsed (`Integer`-indexed) dimension.
+
+Currently implemented for `RectilinearGrid` and `LatitudeLongitudeGrid`. For both, the
+horizontal coordinates are independent of the vertical (and vice versa), so for an integer
+index only *which* dimension is collapsed matters, not the value — but the resulting `Flat`
+dimension is still located at the sliced cell center, so e.g. `slice(grid, :, :, 1)` and
+`slice(grid, :, :, 2)` differ in their `z` position. (The horizontal value-dependence
+matters for curved grids, where this method does not yet apply.)
+
+This is the grid-level primitive behind exchange/surface grids in coupled models: e.g. a
+2D horizontal grid for a slab-ocean sea-surface temperature or an atmosphere–ocean
+exchange grid is `slice(grid, :, :, k)`.
+
+Example
+=======
+
+```jldoctest slice
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(8, 6, 4), x=(0, 1), y=(0, 1), z=(0, 1),
+                              topology=(Periodic, Periodic, Bounded));
+
+julia> slice(grid, :, :, 1)
+8×6×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.125
+├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.166667
+└── Flat z = 0.125
+```
+
+A range retains the dimension as a `Bounded` sub-interval:
+
+```jldoctest slice
+julia> slice(grid, :, :, 2:4)
+8×6×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.125
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.166667
+└── Bounded  z ∈ [0.25, 1.0] regularly spaced with Δz=0.25
+```
+
+Pass, e.g., `z=0` to place the surface grid exactly at `z = 0`:
+
+```jldoctest slice
+julia> slice(grid, :, :, 4; z=0)
+8×6×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.125
+├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.166667
+└── Flat z = 0.0
+```
+"""
+function slice end
+
+# `cpu_face_constructor_*` returns either a 2-tuple `(left, right)` for a regularly spaced
+# dimension or a vector of `N+1` face positions for a stretched dimension. Recover the full
+# vector of `N+1` faces from either representation.
+reconstruction_faces(c::Tuple{<:Number, <:Number}, N) = collect(range(c[1], c[2], length=N+1))
+reconstruction_faces(c::AbstractVector, N) = Array(c)[1:N+1]
+reconstruction_faces(c::MutableVerticalDiscretization, N) = reconstruction_faces(c.cᵃᵃᶠ, N)
+
+# Per-dimension `(topology, coordinate, size, halo)` for `slice(grid, i, j, k)`. A colon
+# retains the dimension unchanged; an `Integer` collapses it to a `Flat` dimension; a range
+# extracts a `Bounded` sub-interval spanning the selected cells (a window of a `Periodic`
+# dimension is no longer periodic, hence `Bounded`).
+#
+# `location` sets the constant coordinate of a collapsed dimension: `:auto` (default) places
+# it at the sliced cell center, `nothing` leaves the `Flat` dimension without a location, and
+# a number places it there. A location may only be set for a collapsed (`Integer`) dimension.
+slice_dimension(::Colon, c, N, H, T; location=:auto) =
+    location === :auto ? (T, c, N, H) :
+    throw(ArgumentError("`location` can only be set for a collapsed (Integer-indexed) dimension"))
+
+slice_dimension(::Integer, ::Nothing, ::Any, ::Any, ::Any; location=:auto) =
+    (Flat, location === :auto ? nothing : location, 1, 0)
+
+function slice_dimension(index::Integer, c, N, H, T; location=:auto)
+    if location === :auto
+        faces = reconstruction_faces(c, N)
+        location = (faces[index] + faces[index+1]) / 2
+    end
+    return Flat, location, 1, 0
+end
+
+function slice_dimension(index::AbstractUnitRange, c, N, H, T; location=:auto)
+    location === :auto ||
+        throw(ArgumentError("`location` can only be set for a collapsed (Integer-indexed) dimension"))
+    faces = reconstruction_faces(c, N)
+    sub_faces = faces[first(index):last(index)+1]
+    coordinate = c isa Tuple ? (first(sub_faces), last(sub_faces)) : sub_faces
+    N′ = length(index)
+    H′ = min(H, N′)
+    return Bounded, coordinate, N′, H′
+end
+
+#####
 ##### Directions (for tilted domains)
 #####
 
@@ -289,6 +404,15 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
+
+function Utils.prettysummary(σ::BFloat16, plus=false)
+    prefix = if plus && σ >= zero(σ)
+        "+"
+    else
+        ""
+    end
+    @sprintf "%s%g" prefix σ
+end
 Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
@@ -450,10 +574,9 @@ end
 ##### Extensions for kernel launching
 #####
 
-function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
-    T = topology(grid, side)
-    N = size(grid, side)
-
+function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
+    T = @inbounds topology(grid)[side]
+    N = @inbounds size(grid)[side]
     return Utils.periphery_offset(loc, T(), N)
 end
 

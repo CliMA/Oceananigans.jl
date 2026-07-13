@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -24,20 +24,22 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
     z     :: CZ
 end
 
-function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
-                                     Lx :: FT, Ly :: FT, Lz :: FT,
-                                     Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                      xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                     Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                      yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                      z    :: CZ) where {Arch, FT, TX, TY, TZ,
-                                                         FX, VX, FY, VY, CZ}
+RectilinearGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...) where {TX, TY, TZ} =
+    RectilinearGrid{TX, TY, TZ, typeof(GridSize(Nx, Ny, Nz, Hx, Hy, Hz))}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...)
 
-    return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                     Hx, Hy, Hz, Lx, Ly, Lz,
-                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
+                                         Lx :: FT, Ly :: FT, Lz :: FT,
+                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                          z    :: CZ) where {SZ, Arch, FT, TX, TY, TZ,
+                                                             FX, VX, FY, VY, CZ}
+
+    return RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
+                                                                         Hx, Hy, Hz, Lx, Ly, Lz,
+                                                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
 const RG = RectilinearGrid
@@ -367,10 +369,12 @@ validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 function Adapt.adapt_structure(to, grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
-    return RectilinearGrid{TX, TY, TZ}(nothing,
+    return RectilinearGrid{TX, TY, TZ, Nothing}(nothing,
                                        grid.Nx, grid.Ny, grid.Nz,
                                        grid.Hx, grid.Hy, grid.Hz,
-                                       grid.Lx, grid.Ly, grid.Lz,
+                                       Adapt.adapt(to, grid.Lx),
+                                       Adapt.adapt(to, grid.Ly),
+                                       Adapt.adapt(to, grid.Lz),
                                        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
                                        Adapt.adapt(to, grid.Δxᶜᵃᵃ),
                                        Adapt.adapt(to, grid.xᶠᵃᵃ),
@@ -443,6 +447,27 @@ function with_halo(halo, grid::RectilinearGrid)
     kwargs[:halo] = halo
     arch = args[:architecture]
     FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. The `x`, `y`, `z`
+# keywords set the constant coordinate of a collapsed dimension (default `:auto` → cell center).
+function slice(grid::RectilinearGrid, i, j, k; x=:auto, y=:auto, z=:auto)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    TX′, x′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=x)
+    TY′, y′, Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=y)
+    TZ′, z′, Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
+
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :x => x′, :y => y′, :z => z′)
+
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
