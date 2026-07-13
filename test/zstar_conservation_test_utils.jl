@@ -91,14 +91,14 @@ end
 function zstar_test_grids(arch, topology, z_stretched)
     Random.seed!(1234)
 
-    rtgv  = RectilinearGrid(arch; size = (8, 8, 5), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-    irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> 2rand() - 8))
-    prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> 2rand() - 8))
+    rtgv  = RectilinearGrid(arch; size = (8, 8, 5), x = (0, 20kilometers), y = (-2kilometers, 2kilometers), topology, z = z_stretched)
+    irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 4))
+    prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 4))
 
     if topology[2] == Bounded
-        llgv  = LatitudeLongitudeGrid(arch; size = (8, 8, 5), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
-        illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> 2rand() - 8))
-        pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> 2rand() - 8))
+        llgv  = LatitudeLongitudeGrid(arch; size = (8, 8, 5), latitude = (0, 0.2), longitude = (0, 0.2), topology, z = z_stretched)
+        illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 4))
+        pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 4))
         return [llgv, rtgv, illgv, irtgv, pllgv, prtgv]
     else
         return [rtgv, irtgv, prtgv]

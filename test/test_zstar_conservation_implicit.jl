@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 include("zstar_conservation_test_utils.jl")
 
 @testset "ZStarCoordinate Implicit tracer conservation testset" begin
-    z_stretched = MutableVerticalDiscretization(collect(-10:2:0))
+    z_stretched = MutableVerticalDiscretization(collect(-5:0))
 
     for arch in zstar_test_architectures()
         for topology in zstar_test_topologies(arch)
