@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.110.7"
+version = "0.110.9"
 authors = ["Climate Modeling Alliance and contributors"]
 
 [deps]
@@ -104,4 +104,4 @@ Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
 Zarr = "0.10"
 julia = "1.10"
-oneAPI = "2.0.1"
+oneAPI = "2.4.0"

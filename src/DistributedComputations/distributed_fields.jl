@@ -11,10 +11,11 @@ using Oceananigans.Fields: ReducedAbstractField,
                            reduced_dimensions,
                            reduced_location
 using Oceananigans.Fields: condition_operand, conditional_length
+using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, set!
+import Oceananigans.Fields: Field, set!, conditional_length
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
@@ -233,6 +234,18 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
         end
     end
 end
+
+# `conditional_length` normalizes `mean`. For a bare field the generic method returns
+# `length(c)`, which on a distributed grid is the per-rank local count, whereas the paired
+# `sum` is globally reduced. Reduce the length too so `mean = sum / conditional_length`
+# divides by the global count instead of the local one.
+@inline conditional_length(c::DistributedField) = all_reduce(+, length(c), architecture(c))
+
+# A field on a distributed immersed grid matches both `DistributedField` and the immersed
+# `AbstractField{…, <:ImmersedBoundaryGrid}` method; defer to the immersed definition, which
+# excludes inactive cells and is already globally reduced through the distributed `sum`.
+@inline conditional_length(c::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedImmersedBoundaryGrid}) =
+    conditional_length(condition_operand(identity, c, NotImmersed(), 0))
 
 # Distributed norm
 @inline function norm(u::DistributedField; condition=nothing)

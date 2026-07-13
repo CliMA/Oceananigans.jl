@@ -172,6 +172,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²); f
 
 # We are ready -- let's run!
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Load output
