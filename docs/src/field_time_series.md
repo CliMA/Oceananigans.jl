@@ -250,3 +250,101 @@ new_fts = FieldTimeSeries("new.jld2", "c")
 !!! warn "Modifying simulation output files"
     This behaviour is intended for outputting fields to new files. It is not recommended to use a `FieldTimeSeries` to modify simulation output. Indexing may not be compatible.
     
+# FieldDataset
+
+A `FieldDataset` is essentially a container for a collection of `FieldTimeSeries`, together with some metadata. These may be used to read an entire simulation's worth of output:
+
+```jldoctest field_time_series
+fds = FieldDataset("test.jld2"; backend=InMemory())
+
+# output
+FieldDataset with 3 fields and 0 metadata entries:
+├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) of v at test.jld2
+├── w: 8×8×9×11 FieldTimeSeries{InMemory} located at (Center, Center, Face) of w at test.jld2
+└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
+```
+
+An empty `FieldDataset` may also be constructed by providing a grid, saved times and a tuple of field names. Optional keyword arguments specify locations, indices, boundary conditions and output path (in the case of `backend = OnDisk()`):
+
+```jldoctest field_time_series
+grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
+                         size = (8, 8, 8),
+                         extent = (1, 1, 1)
+                      )
+times = 0:10
+fields = (:u, :v)
+location = (; u = (Face(), Center(), Center()), 
+              v = (Center(), Face(), Center())
+            )
+
+new_fds = FieldDataset(grid, times, fields; location, backend=InMemory())
+
+# output
+FieldDataset with 2 fields and 0 metadata entries:
+├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
+└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+```
+
+A convenience constructor also exists to generate a `FieldDataset` according to a `NamedTuple` of preexisting fields. The following is equivalent to the above:
+
+```jldoctest field_time_series
+grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
+                         size = (8, 8, 8),
+                         extent = (1, 1, 1)
+                      )
+times = 0:10
+
+u = Field{Face, Center, Center}(grid)
+v = Field{Center, Face, Center}(grid)
+fields = (; u, v)
+
+new_fds = FieldDataset(times, fields; backend=InMemory())
+
+# output
+FieldDataset with 2 fields and 0 metadata entries:
+├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
+└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+```
+
+Note that the new `FieldDataset` is unrelated to the data contained in the input fields. The result inherits the grid, locations, indices and boundary conditions of the input fields. Individual timeseries may be retrieved by indexing
+
+```jldoctest field_time_series
+fds.u
+
+# output
+8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── indices: (:, :, :)
+├── time_indexing: Linear()
+├── backend: InMemory()
+├── path: test.jld2
+├── name: u
+└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+    └── max=1.12648, min=-0.0388058, mean=0.357269
+```
+
+Calling `set!` on a `FieldDataset` with keyword arguments will pass `set!` to each of the contained `FieldTimeSeries`, which will behave according to their backend. The following sets data in u and v in the first time index to u_func and v_func respectively:
+
+```jldoctest field_time_series
+u_func(x, y, z) = -x
+v_func(x, y, z) = y
+
+set!(new_fds, 1; u=u_func, v=v_func)
+
+println(new_fds.u[1], "\n\n", new_fds.v[1])
+
+# output 
+8×8×8 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+    └── max=-0.0, min=-0.875, mean=-0.4375
+
+8×8×8 Field{Center, Face, Center} on RectilinearGrid on CPU
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+    └── max=0.875, min=0.0, mean=0.4375
+```
