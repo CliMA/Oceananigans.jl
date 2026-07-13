@@ -31,7 +31,7 @@ model = NonhydrostaticModel(grid; advection=WENO())
 set!(model, u=ϵ, v=ϵ, w=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_iteration=100)
 
-simulation.output_writers[:fields] = JLD2Writer(model, model.velocities,
+simulation.output_writers[:fields] = JLD2Writer(model, model.velocities;
                                                 schedule = TimeInterval(0.1),
                                                 filename = "test.jld2",
                                                 overwrite_existing = true)
@@ -347,4 +347,57 @@ println(new_fds.u[1], "\n\n", new_fds.v[1])
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.875, min=0.0, mean=0.4375
+```
+
+# Post-processing
+
+When running simulations, it may be preferrable to calculate diagnostics after the simulation has completed. The input and output capabilities of `FieldTimeSeries`, together with `AbstractOperations` on fields permits a straight-forward post-processing pipeline for the offline computation of fields. The following example reads the data contained in `test.jld2` and calculates the kinetic energy for each timestep, which is then output to `test_ke.jld2`
+
+```jldoctest field_time_series
+input_fds = FieldDataset("test.jld2"; backend=OnDisk())
+times = input_fds.u.times
+
+# Initialise containers for input fields
+u = Field(input_fds.u[1])
+v = Field(input_fds.v[1])
+w = Field(input_fds.w[1])
+
+# Create output fields
+ke_density = Field((u^2 + v^2 + w^2) / 2)
+ke = Field(Integral(ke_density))
+output_fields = (; ke_density, ke)
+
+# Create output
+output_fds = FieldDataset(times, output_fields; backend=OnDisk(), path="test_ke.jld2")
+
+# Loop over outputted iterations
+for i in 1:length(times)
+    # Read current timestep
+    set!(u, input_fds.u[i])
+    set!(v, input_fds.v[i])
+    set!(w, input_fds.w[i])
+
+    # Calculate fields
+    compute!(ke)
+
+    # Output
+    set!(output_fds, i; ke_density, ke)
+end
+
+ke_timeseries = FieldTimeSeries("test_ke.jld2", "ke")
+
+ke_timeseries[1, 1, 1, :]
+
+# output
+10-element Vector{Float64}:
+ 0.6612136948970146
+ 0.5811033841455355
+ 0.5583625429135282
+ 0.549366099992767
+ 0.5451507281395607
+ 0.5428409611340612
+ 0.5413548710057512
+ 0.5403541878913529
+ 0.539588899933733
+ 0.5389546225778759
 ```
