@@ -234,7 +234,7 @@ ondisk_fts[Time(0.3)]
 An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
 
 ```jldoctest field_time_series
-new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times; 
+new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times;
                                                          path = "new.jld2",
                                                          name = "c",
                                                          backend=OnDisk()
@@ -248,7 +248,7 @@ for (n, t) in enumerate(times)
     set!(new_ondisk_fts, field, n)
 end
 
-# Read the data 
+# Read the data
 new_fts = FieldTimeSeries("new.jld2", "c")
 
 # output
@@ -265,7 +265,7 @@ new_fts = FieldTimeSeries("new.jld2", "c")
 
 !!! warn "Modifying simulation output files"
     This behaviour is intended for outputting fields to new files. It is not recommended to use a `FieldTimeSeries` to modify simulation output. Indexing may not be compatible.
-    
+
 # FieldDataset
 
 A `FieldDataset` is essentially a container for a collection of `FieldTimeSeries`, together with some metadata. These may be used to read an entire simulation's worth of output:
@@ -289,7 +289,7 @@ grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
                       )
 times = 0:10
 fields = (:u, :v)
-location = (; u = (Face(), Center(), Center()), 
+location = (; u = (Face(), Center(), Center()),
               v = (Center(), Face(), Center())
             )
 
@@ -349,7 +349,7 @@ set!(new_fds, 1; u=u_func, v=v_func)
 
 println(new_fds.u[1], "\n\n", new_fds.v[1])
 
-# output 
+# output
 8×8×8 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
