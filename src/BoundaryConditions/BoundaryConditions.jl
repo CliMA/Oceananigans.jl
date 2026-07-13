@@ -59,6 +59,9 @@ include("compute_flux_bcs.jl")
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
-include("open_boundary_schemes.jl")
+include("open_boundary_schemes/open_boundary_utils.jl")
+include("open_boundary_schemes/perturbation_advection.jl")
+include("open_boundary_schemes/gravity_wave_schemes.jl")
+include("open_boundary_schemes/normal_radiation.jl")
 
 end # module
