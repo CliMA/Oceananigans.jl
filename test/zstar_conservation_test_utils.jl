@@ -91,12 +91,20 @@ end
 function zstar_test_grids(arch, topology, z_stretched)
     Random.seed!(1234)
 
-    rtgv  = RectilinearGrid(arch; size = (8, 8, 5), x = (0, 20kilometers), y = (-2kilometers, 2kilometers), topology, z = z_stretched)
+    # Distributed runs split the grid over up to 4 ranks and the split-explicit free surface extends
+    # halos across ranks (to 7 with substeps=8), so each rank needs > 7 local cells; use a larger grid
+    # there. Serial runs don't extend halos. Domains scale with the point count to keep spacing fixed.
+    Nh = arch isa Distributed ? 32 : 8
+    Lx = Nh * 2.5kilometers
+    Ly = Nh * 0.5kilometers
+    Lφ = Nh * 0.025
+
+    rtgv  = RectilinearGrid(arch; size = (Nh, Nh, 5), x = (0, Lx), y = (-Ly/2, Ly/2), topology, z = z_stretched)
     irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 4))
     prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 4))
 
     if topology[2] == Bounded
-        llgv  = LatitudeLongitudeGrid(arch; size = (8, 8, 5), latitude = (0, 0.2), longitude = (0, 0.2), topology, z = z_stretched)
+        llgv  = LatitudeLongitudeGrid(arch; size = (Nh, Nh, 5), latitude = (0, Lφ), longitude = (0, Lφ), topology, z = z_stretched)
         illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 4))
         pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 4))
         return [llgv, rtgv, illgv, irtgv, pllgv, prtgv]

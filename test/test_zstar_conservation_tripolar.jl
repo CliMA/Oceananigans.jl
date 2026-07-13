@@ -20,8 +20,9 @@ include("zstar_conservation_test_utils.jl")
 
                 @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
 
-                # Each rank's local Ny must strictly exceed the tripolar halo (4); the distributed tests split y over 4 ranks, so Ny ≥ 20.
-                underlying_grid = TripolarGrid(arch; size = (20, 20, 5), z = z_stretched, fold_topology)
+                # With substeps=8 the split-explicit free surface extends the folded y-halo to 7; each rank's local Ny
+                # must exceed it, and the distributed tests split y over 4 ranks, so Ny ≥ 32.
+                underlying_grid = TripolarGrid(arch; size = (20, 32, 5), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
