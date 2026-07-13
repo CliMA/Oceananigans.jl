@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
-using Oceananigans.Models: local_dimension
+using Oceananigans.Models: is_local_dimension
 using Oceananigans.Grids: RightConnected, LeftConnected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 using Oceananigans.Fields: flattened_unique_values
@@ -95,12 +95,12 @@ const distributed_memory_gpu = Dict(
 archs = nonhydrostatic_regression_test_architectures()
 
 @testset "local_dimension predicate" begin
-    @test local_dimension(Periodic) === true
-    @test local_dimension(Bounded)  === true
-    @test local_dimension(Flat)     === true
-    @test local_dimension(RightConnected) === false
-    @test local_dimension(LeftConnected)  === false
-    @test @inferred(local_dimension(Periodic)) === true
+    @test is_local_dimension(Periodic) === true
+    @test is_local_dimension(Bounded)  === true
+    @test is_local_dimension(Flat)     === true
+    @test is_local_dimension(RightConnected) === false
+    @test is_local_dimension(LeftConnected)  === false
+    @test @inferred(is_local_dimension(Periodic)) === true
 end
 
 @testset "buffer_parameters is type-stable and allocation-free" begin

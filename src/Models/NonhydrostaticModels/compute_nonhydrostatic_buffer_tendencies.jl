@@ -74,10 +74,10 @@ end
 @inline function buffer_parameters(parameters, grid, arch)
     TX, TY, _ = topology(grid)
 
-    include_west  = !local_dimension(TX) && !(TX === RightConnected)
-    include_east  = !local_dimension(TX) && !(TX === LeftConnected)
-    include_south = !local_dimension(TY) && !(TY === RightConnected)
-    include_north = !local_dimension(TY) && !(TY === LeftConnected)
+    include_west  = !is_local_dimension(TX) && !(TX === RightConnected)
+    include_east  = !is_local_dimension(TX) && !(TX === LeftConnected)
+    include_south = !is_local_dimension(TY) && !(TY === RightConnected)
+    include_north = !is_local_dimension(TY) && !(TY === LeftConnected)
 
     west  = include_west  ? (KernelParameters(parameters[1]...),) : ()
     east  = include_east  ? (KernelParameters(parameters[2]...),) : ()
