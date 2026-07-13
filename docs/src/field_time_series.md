@@ -228,6 +228,9 @@ ondisk_fts[Time(0.3)]
     └── max=0.922754, min=-0.922754, mean=2.1684e-19
 ```
 
+!!! note "Lazily loading multiple time steps"
+    Using `backend = InMemory(N)` will create a `FieldTimeSeries` that lazily loads windows of length `N` time steps. When indexed outside the currently loaded window, a window containing the requested time step and the following `N-1` time steps is loaded into memory.
+
 An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
 
 ```jldoctest field_time_series
