@@ -228,7 +228,7 @@ end
 """
     set!(fds::FieldDataset, args...; fields...)
 
-Call `set!` on each `FieldTimeSeries` in contained in `fds`. This is a convenience
+Call `set!` on each `FieldTimeSeries` contained in `fds`. This is a convenience
 function that calls `set!(fds.k, fields.k, args...)` for each `k` in `keys(fields)`.
 The function of positional arguments depends on the underlying `FieldTimeSeries`.
 """
