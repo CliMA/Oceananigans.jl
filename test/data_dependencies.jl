@@ -13,7 +13,7 @@ DataDeps.register(dd)
 datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
-path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
+path = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/refs/heads/ss/new-data-for-regression-2/data_for_regression_tests"
 
 dh = DataDep("regression_truth_data",
     "Data for Regression tests",
