@@ -217,6 +217,13 @@ end
 ##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
+# Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
+# fills without threading them, which avoids a per-step allocation on distributed grids.
+@inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model) =
+    fill_halo_regions!(field; async=true)
+@inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
+    fill_halo_regions!(field, model.clock, fields(model); async=true)
+
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
@@ -261,9 +268,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
     # Fill all the barotropic state.
-    fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ), model.clock, fields(model); async=true)
-    fill_halo_regions!((U, V), model.clock, fields(model); async=true)
-    fill_halo_regions!(η, model.clock, fields(model); async=true)
+    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
+    fill_barotropic_state_halos!((U, V), free_surface, model)
+    fill_barotropic_state_halos!(η, free_surface, model)
 
     return nothing
 end
