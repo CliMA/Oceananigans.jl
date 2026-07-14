@@ -322,8 +322,14 @@ function implicit_gravity_wave_companion_boundary_conditions(U_bcs, V_bcs, g)
     east  = companion_at_gravity_wave_side(U_bcs, :east,  companion)
     south = companion_at_gravity_wave_side(V_bcs, :south, companion)
     north = companion_at_gravity_wave_side(V_bcs, :north, companion)
-    all(isnothing, (west, east, south, north)) && return nothing
-    return FieldBoundaryConditions(; west, east, south, north)
+
+    # An explicit `nothing` overrides `DefaultBoundaryCondition()` and survives regularization,
+    # leaving that side unfilled: pass only the sides that carry a companion.
+    sides = (; west, east, south, north)
+    companion_sides = NamedTuple(name => bc for (name, bc) in pairs(sides) if !isnothing(bc))
+
+    isempty(companion_sides) && return nothing
+    return FieldBoundaryConditions(; companion_sides...)
 end
 
 @inline companion_at_gravity_wave_side(::Nothing, side, companion) = nothing
