@@ -6,6 +6,11 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline build_halo_fill_args(f, grid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...)
 @inline build_halo_fill_args(f, grid::DistributedGrid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
 
+# `CompleteHaloFilling` communicates every substep and needs the field's real communication buffers,
+# which `convert_to_device` strips to `nothing` on a GPU. Leave its distributed args unconverted.
+@inline prepare_halo_fill_args(arch, args, grid, free_surface) = convert_to_device(arch, args)
+@inline prepare_halo_fill_args(arch, args, grid::DistributedGrid, ::SplitExplicitFreeSurface{CompleteHaloFilling}) = args
+
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
 #
@@ -136,9 +141,9 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         @apply_regionally converted_U_args = convert_to_device(arch, U_args)
         @apply_regionally converted_η_args = convert_to_device(arch, η_args)
-        @apply_regionally converted_U_halo_args = convert_to_device(arch, U_halo_args)
-        @apply_regionally converted_V_halo_args = convert_to_device(arch, V_halo_args)
-        @apply_regionally converted_η_halo_args = convert_to_device(arch, η_halo_args)
+        @apply_regionally converted_U_halo_args = prepare_halo_fill_args(arch, U_halo_args, grid, free_surface)
+        @apply_regionally converted_V_halo_args = prepare_halo_fill_args(arch, V_halo_args, grid, free_surface)
+        @apply_regionally converted_η_halo_args = prepare_halo_fill_args(arch, η_halo_args, grid, free_surface)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
