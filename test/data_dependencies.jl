@@ -48,4 +48,13 @@ dh = DataDep("regression_truth_data_v2",
 
 DataDeps.register(dh)
 
+# A download that fails partway leaves the cache poisoned
+reference_filenames = basename.(dh.remotepath)
+datadep_path = DataDeps.try_determine_load_path("regression_truth_data_v2", pwd())
+
+if datadep_path !== nothing && !(isdir(datadep_path) && all(f -> isfile(joinpath(datadep_path, f)), reference_filenames))
+    @info "Discarding incomplete regression truth data at $datadep_path"
+    rm(datadep_path; force=true, recursive=true)
+end
+
 datadep"regression_truth_data_v2"
