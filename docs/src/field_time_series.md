@@ -130,7 +130,6 @@ Providing a vector of `Field`s will copy the data in each `Field` to the `FieldT
 ```jldoctest field_time_series
 fields = [Field{Face, Center, Center}(grid) for n in 1:length(fts)]
 set!(fts, fields)
-fts
 
 # output
 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
@@ -145,6 +144,7 @@ fts
 ```
 
 ## Extrapolated data
+
 `FieldTimeSeries` supports multiple methods of time indexing outside of the given times.
 
 ```jldoctest field_time_series
@@ -162,7 +162,7 @@ for fts in (fts_clamp, fts_linear, fts_cyclical)
 end
 ```
 
-Each of the above `FieldTimeSeries` contain identical underlying data, however their behaviour differs when indexed using `Oceananigans.Units.Time` outside of the range of given times.
+Each of the above `FieldTimeSeries` contain identical underlying data, however their behavior differs when indexed using `Oceananigans.Units.Time` outside of the range of given times.
 
 ```jldoctest field_time_series
 println("t | Clamp | Linear | Cyclical")
@@ -186,6 +186,7 @@ t   | Clamp | Linear | Cyclical
 ```
 
 ## OnDisk FieldTimeSeries
+
 The default `backend` for a `FieldTimeSeries` is `InMemory`. This is sufficient for small timeseries, but large simulation data likely cannot all be loaded into memory. Instead, it is possible to lazily load a timeseries from storage by passing `backend = OnDisk()` to `FieldTimeSeries`:
 
 ```jldoctest field_time_series
@@ -237,8 +238,7 @@ An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and 
 new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times;
                                                          path = "new.jld2",
                                                          name = "c",
-                                                         backend=OnDisk()
-                                                        )
+                                                         backend=OnDisk())
 
 field = Field{Center, Center, Center}(grid)
 for (n, t) in enumerate(times)
@@ -285,13 +285,11 @@ An empty `FieldDataset` may also be constructed by providing a grid, saved times
 ```jldoctest field_time_series
 grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
                          size = (8, 8, 8),
-                         extent = (1, 1, 1)
-                      )
+                         extent = (1, 1, 1))
 times = 0:10
 fields = (:u, :v)
 location = (; u = (Face(), Center(), Center()),
-              v = (Center(), Face(), Center())
-            )
+              v = (Center(), Face(), Center()))
 
 new_fds = FieldDataset(grid, times, fields; location, backend=InMemory())
 
@@ -306,8 +304,7 @@ A convenience constructor also exists to generate a `FieldDataset` according to 
 ```jldoctest field_time_series
 grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
                          size = (8, 8, 8),
-                         extent = (1, 1, 1)
-                      )
+                         extent = (1, 1, 1))
 times = 0:10
 
 u = Field{Face, Center, Center}(grid)
@@ -387,17 +384,17 @@ output_fields = (; ke_density, ke)
 output_fds = FieldDataset(times, output_fields; backend=OnDisk(), path="test_ke.jld2")
 
 # Loop over outputted iterations
-for i in 1:length(times)
+for n in 1:length(times)
     # Read current timestep
-    set!(u, input_fds.u[i])
-    set!(v, input_fds.v[i])
-    set!(w, input_fds.w[i])
+    set!(u, input_fds.u[n])
+    set!(v, input_fds.v[n])
+    set!(w, input_fds.w[n])
 
     # Calculate fields
     compute!(ke)
 
     # Output
-    set!(output_fds, i; ke_density, ke)
+    set!(output_fds, n; ke_density, ke)
 end
 
 ke_timeseries = FieldTimeSeries("test_ke.jld2", "ke")
