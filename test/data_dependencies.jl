@@ -13,9 +13,11 @@ DataDeps.register(dd)
 datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
-path = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/refs/heads/ss/new-data-for-regression-2/data_for_regression_tests"
+path = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/refs/heads/ss/new-data-for-regression-2/data_for_regression_tests/"
 
-dh = DataDep("regression_truth_data",
+# DataDeps caches by name and never re-downloads while the cache directory exists. CI agents keep a
+# persistent depot, so the version suffix must be bumped whenever the reference data is regenerated.
+dh = DataDep("regression_truth_data_v2",
     "Data for Regression tests",
     [path * "hydrostatic_free_turbulence_regression_Periodic_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Periodic_ExplicitFreeSurface.jld2",
@@ -46,32 +48,4 @@ dh = DataDep("regression_truth_data",
 
 DataDeps.register(dh)
 
-# Invalidate stale DataDeps cache when any expected reference file is missing
-# or has an unexpected size. Persistent CI caches (e.g. buildkite agents)
-# may hold reference data from previous artifact uploads; expected sizes are
-# the authoritative way to detect that.
-#
-# Sizes refer to the current files in glwagner/OceananigansArtifacts.jl
-# (data_for_regression_tests/). When regenerating reference data, update
-# these alongside the new upload.
-const _expected_reference_sizes = Dict(
-    "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10000.jld2" => 713110,
-    "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10010.jld2" => 713110,
-    "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10000.jld2"  => 1244676,
-    "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10010.jld2"  => 1244676,
-)
-
-dd_path = try; datadep"regression_truth_data"; catch; nothing; end
-if dd_path !== nothing
-    cache_stale = any(_expected_reference_sizes) do (filename, expected_size)
-        path = joinpath(dd_path, filename)
-        !isfile(path) || filesize(path) != expected_size
-    end
-    if cache_stale
-        @info "Regression truth data cache is stale, re-downloading..."
-        rm(dd_path; recursive=true)
-        datadep"regression_truth_data"
-    end
-else
-    datadep"regression_truth_data"
-end
+datadep"regression_truth_data_v2"
