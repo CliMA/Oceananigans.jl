@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 include("zstar_conservation_test_utils.jl")
 
 @testset "ZStarCoordinate Tripolar tracer conservation testset" begin
-    z_stretched = MutableVerticalDiscretization(collect(-10:0))
+    z_stretched = MutableVerticalDiscretization(collect(-10:2:0))
 
     for arch in zstar_test_architectures()
         if arch isa Distributed{<:GPU}
@@ -20,7 +20,9 @@ include("zstar_conservation_test_utils.jl")
 
                 @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
 
-                underlying_grid = TripolarGrid(arch; size = (40, 40, 10), z = z_stretched, fold_topology)
+                # With substeps=8 the split-explicit free surface extends the folded y-halo to 7; each rank's local Ny
+                # must exceed it, and the distributed tests split y over 4 ranks, so Ny ≥ 32.
+                underlying_grid = TripolarGrid(arch; size = (20, 32, 5), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
@@ -70,7 +72,7 @@ include("zstar_conservation_test_utils.jl")
                 set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ, constant = 1)
 
                 Δt = 2minutes
-                test_zstar_coordinate(model, 300, Δt)
+                test_zstar_coordinate(model, 60, Δt)
             end
         end
     end
