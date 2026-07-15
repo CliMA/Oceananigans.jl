@@ -33,6 +33,21 @@ using ConservativeRegridding
     regrid!(fine_field, transpose(regridder), coarse_field)
     @test all(interior(fine_field) .≈ 1)
 
+    # A conservative regridded field remains connected to its source operation.
+    source_operation = Field(fine_field + 1)
+    regridded_operation = ConservativeRegriddedField(coarse_field, regridder, source_operation)
+    regridded_field = Field(regridded_operation)
+
+    @test location(regridded_operation) == location(coarse_field)
+
+    set!(fine_field, 1)
+    compute!(regridded_field)
+    @test all(interior(regridded_field) .≈ 2)
+
+    set!(fine_field, 2)
+    compute!(regridded_field)
+    @test all(interior(regridded_field) .≈ 3)
+
     # Test with RectilinearGrid
     @info "  Testing RectilinearGrid regridding..."
     coarse_rect_grid = RectilinearGrid(size=(50, 50),
