@@ -452,6 +452,20 @@ function Base.:(==)(a::Field, b::Field)
     end
 end
 
+function Base.isapprox(a::Field, b::Field; kw...)
+    if architecture(a) == architecture(b)
+        return isapprox(interior(a), interior(b); kw...)
+    elseif architecture(a) isa CPU && architecture(b) isa GPU
+        b_cpu = on_architecture(CPU(), b)
+        return isapprox(a, b_cpu; kw...)
+    elseif architecture(b) isa CPU && architecture(a) isa GPU
+        a_cpu = on_architecture(CPU(), a)
+        return isapprox(a_cpu, b; kw...)
+    else
+        throw(ArgumentError("Unable to assess the equality of \n $(summary(a)) \n \n versus \n \n $(summary(b))"))
+    end
+end
+
 #####
 ##### Move Fields between architectures
 #####
