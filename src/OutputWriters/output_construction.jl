@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_indices, Reduction
+using Oceananigans.Fields: validate_indices, Reduction, Accumulation
 using Oceananigans.Grids: default_indices
 using Oceananigans.Utils: @apply_regionally
 
@@ -40,8 +40,9 @@ intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, 
 
 output_indices(output::AbstractField, indices, with_halos) = output_indices(output, output.grid, indices, with_halos)
 output_indices(output::Reduction, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
+output_indices(output::Accumulation, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
 
-function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
+function output_indices(output::Union{AbstractField, Reduction, Accumulation}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
@@ -55,10 +56,10 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     return intersected
 end
 
-function construct_output(user_output::Union{AbstractField, Reduction}, user_indices, with_halos)
+function construct_output(user_output::Union{AbstractField, Reduction, Accumulation}, user_indices, with_halos)
     indices = output_indices(user_output, user_indices, with_halos)
 
-    # Don't compute AbstractOperations or Reductions
+    # Defer computing operations and scans until output is fetched.
     additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
 
     return Field(user_output; indices, additional_kw...)
