@@ -35,7 +35,7 @@ using ConservativeRegridding
 
     # A conservative regridded field remains connected to its source operation.
     source_operation = Field(fine_field + 1)
-    regridded_operation = ConservativeRegriddedField(coarse_field, regridder, source_operation)
+    regridded_operation = RegriddedField(coarse_field, regridder, source_operation)
     regridded_field = Field(regridded_operation)
 
     @test location(regridded_operation) == location(coarse_field)
@@ -50,7 +50,7 @@ using ConservativeRegridding
 
     # The high-level constructor allocates its destination and reuses a regridder
     # built from the source and destination grids.
-    high_level_operation = ConservativeRegriddedField(source_operation, coarse_grid)
+    high_level_operation = RegriddedField(source_operation, coarse_grid)
     high_level_field = Field(high_level_operation)
 
     @test location(high_level_operation) == location(source_operation)

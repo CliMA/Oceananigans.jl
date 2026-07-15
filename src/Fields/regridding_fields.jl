@@ -10,8 +10,8 @@ const f = Face()
 const c = Center()
 
 """
-    ConservativeRegriddedField(source, destination_grid)
-    ConservativeRegriddedField(destination, regridder, source)
+    RegriddedField(source, destination_grid)
+    RegriddedField(destination, regridder, source)
 
 Return a lazy field operation that conservatively regrids `source` onto a
 `destination_grid`.
@@ -31,11 +31,11 @@ This constructor is available when ConservativeRegridding.jl is loaded.
 # Example
 
 ```julia
-regridded = ConservativeRegriddedField(source, destination_grid)
+regridded = RegriddedField(source, destination_grid)
 output = Field(regridded)
 ```
 """
-function ConservativeRegriddedField end
+function RegriddedField end
 
 """
 $(TYPEDSIGNATURES)

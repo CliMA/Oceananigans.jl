@@ -4,7 +4,7 @@ export Face, Center, location
 export AbstractField, Field, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export interior, data, xnode, ynode, znode
-export set!, compute!, @compute, regrid!, ConservativeRegriddedField
+export set!, compute!, @compute, regrid!, RegriddedField
 export VelocityFields, TracerFields, tracernames
 export interpolate
 
