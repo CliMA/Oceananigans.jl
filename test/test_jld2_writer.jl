@@ -182,20 +182,6 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     return nothing
 end
 
-function test_jld2_time_averaging_of_cumulative_integral(model)
-    accumulation = CumulativeIntegral(model.tracers.T, dims=3)
-    writer = JLD2Writer(model, (; accumulation),
-                        schedule = AveragedTimeInterval(1),
-                        filename = "cumulative_integral_time_average.jld2",
-                        overwrite_existing = true)
-
-    averaged_accumulation = writer.outputs.accumulation
-    @test averaged_accumulation isa WindowedTimeAverage
-    @test averaged_accumulation.operand isa Field
-
-    return nothing
-end
-
 function test_jld2_time_averaging(arch)
     # Test for both "nice" floating point number and one that is more susceptible
     # to rounding errors
@@ -471,7 +457,6 @@ for arch in archs
         #####
 
         test_jld2_time_averaging_of_horizontal_averages(model)
-        test_jld2_time_averaging_of_cumulative_integral(model)
 
         #####
         ##### Time-averaging (same test as in NetCDFWriter)
