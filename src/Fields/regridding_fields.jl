@@ -10,10 +10,16 @@ const f = Face()
 const c = Center()
 
 """
+    ConservativeRegriddedField(source, destination_grid)
     ConservativeRegriddedField(destination, regridder, source)
 
-Return a lazy field operation that conservatively regrids `source` into
-`destination` using `regridder`.
+Return a lazy field operation that conservatively regrids `source` onto a
+`destination_grid`.
+
+The two-argument constructor allocates a destination field at the same location
+as `source` and constructs the conservative regridder. Use the three-argument
+constructor to supply and reuse an explicitly constructed `destination` and
+`regridder`.
 
 The source is recomputed before every remapping, so the returned operation
 composes with Oceananigans abstract operations and is refreshed automatically
@@ -21,6 +27,13 @@ when diagnostics and output writers call `compute_at!`. The destination,
 source, and regridder are moved together by `on_architecture`.
 
 This constructor is available when ConservativeRegridding.jl is loaded.
+
+# Example
+
+```julia
+regridded = ConservativeRegriddedField(source, destination_grid)
+output = Field(regridded)
+```
 """
 function ConservativeRegriddedField end
 

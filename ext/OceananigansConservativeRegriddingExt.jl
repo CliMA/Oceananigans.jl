@@ -1,9 +1,11 @@
 module OceananigansConservativeRegriddingExt
 
 using Adapt: Adapt
-using ConservativeRegridding: regrid!
+using ConservativeRegridding: Regridder, regrid!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Architectures: architecture, CPU
+using Oceananigans.Fields: AbstractField, Field
+using Oceananigans.ImmersedBoundaries: underlying_grid
 
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: ConservativeRegriddedField, compute_at!, indices
@@ -30,6 +32,19 @@ end
 
 ConservativeRegriddedField(destination::AbstractField, regridder, source::AbstractField) =
     ConservativeRegridOperation(destination, regridder, source)
+
+function ConservativeRegriddedField(source::AbstractField{LX, LY, LZ}, destination_grid) where {LX, LY, LZ}
+    source_architecture = architecture(source)
+    destination_grid = on_architecture(source_architecture, destination_grid)
+    destination = Field{LX, LY, LZ}(destination_grid)
+
+    source_grid = on_architecture(CPU(), underlying_grid(source))
+    regrid_grid = on_architecture(CPU(), underlying_grid(destination_grid))
+    regridder = Regridder(regrid_grid, source_grid)
+    regridder = on_architecture(source_architecture, regridder)
+
+    return ConservativeRegridOperation(destination, regridder, source)
+end
 
 const ConservativeRegridLookup = Union{ConservativeRegridOperation, ConservativeRegridKernelOperation}
 

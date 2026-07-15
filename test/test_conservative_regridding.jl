@@ -48,6 +48,17 @@ using ConservativeRegridding
     compute!(regridded_field)
     @test all(interior(regridded_field) .≈ 3)
 
+    # The high-level constructor allocates its destination and reuses a regridder
+    # built from the source and destination grids.
+    high_level_operation = ConservativeRegriddedField(source_operation, coarse_grid)
+    high_level_field = Field(high_level_operation)
+
+    @test location(high_level_operation) == location(source_operation)
+
+    set!(fine_field, 3)
+    compute!(high_level_field)
+    @test all(interior(high_level_field) .≈ 4)
+
     # Test with RectilinearGrid
     @info "  Testing RectilinearGrid regridding..."
     coarse_rect_grid = RectilinearGrid(size=(50, 50),
