@@ -3,12 +3,9 @@ module OceananigansConservativeRegriddingExt
 using Adapt: Adapt
 using ConservativeRegridding: Regridder, regrid!
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: architecture, CPU
-using Oceananigans.Fields: AbstractField, Field
+using Oceananigans.Architectures: Architectures, architecture, CPU
+using Oceananigans.Fields: Fields, AbstractField, Field
 using Oceananigans.ImmersedBoundaries: underlying_grid
-
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.Fields: ConservativeRegriddedField, compute_at!, indices
 
 struct ConservativeRegridOperation{LX, LY, LZ, G, T, S, D, R} <: AbstractOperation{LX, LY, LZ, G, T}
     grid :: G
