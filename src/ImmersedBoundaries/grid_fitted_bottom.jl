@@ -68,6 +68,14 @@ function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
 end
 
 bottom_height_field(bottom_data, grid) = Field{Center, Center, Nothing}(grid; data=bottom_data)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a `Field` at `(Center, Center, Nothing)` that wraps the bottom height of `grid`, which is
+stored on `grid.immersed_boundary` as a bare `OffsetArray`. The returned `Field` shares its data
+with `grid`, so mutating it mutates the bottom height of `grid`.
+"""
 bottom_height_field(grid::IBG) = bottom_height_field(grid.immersed_boundary.bottom_height, grid.underlying_grid)
 
 function Base.summary(ib::GridFittedBottom)
@@ -104,7 +112,7 @@ $(TYPEDSIGNATURES)
 Returns a new `ib` that holds the numerical `immersed_boundary`.
 If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is an `OffsetArray` holding the
 z-coordinate of the top-most interface of the last ``immersed`` cell in the column (wrap it as a
-`Field` with `bottom_height_field`). If `ib` is a `GridFittedBoundary`, `ib.mask` is a `Field` of
+`Field` with [`bottom_height_field`](@ref)). If `ib` is a `GridFittedBoundary`, `ib.mask` is a `Field` of
 booleans that indicates whether a cell is immersed or not.
 """
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
