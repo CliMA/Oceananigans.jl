@@ -1,7 +1,7 @@
 module OceananigansConservativeRegriddingExt
 
 using ConservativeRegridding: Regridder, regrid!
-import Oceananigans.AbstractOperations: RegriddedOperation
+using Oceananigans.AbstractOperations: RegriddedOperation
 using Oceananigans.Architectures: Architectures, architecture, CPU
 using Oceananigans.Fields: Fields, AbstractField, Field
 using Oceananigans.ImmersedBoundaries: underlying_grid
