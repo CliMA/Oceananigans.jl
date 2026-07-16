@@ -1,6 +1,6 @@
 env:
   JULIA_VERSION: "1.12.4"
-  JULIA_VERSION_ENZYME: "1.10.10"
+  JULIA_VERSION_ENZYME: "1.11.9"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -240,7 +240,8 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
