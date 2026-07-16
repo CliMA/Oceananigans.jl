@@ -384,6 +384,15 @@ time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.time
     return memory_index(backend, ti, Nt, n)
 end
 
+# A FieldTimeSeries cannot be an operand of a (three-dimensional) AbstractOperation:
+# the result would silently drop the time dimension (issue #5758).
+Oceananigans.AbstractOperations.validate_operand(fts::FieldTimeSeries) =
+    throw(ArgumentError("AbstractOperations on FieldTimeSeries are not supported yet: the" *
+                        " result would be a three-dimensional operation that silently drops" *
+                        " the time dimension. To operate on a single snapshot, slice the" *
+                        " FieldTimeSeries first with `fts[n]` or `fts[Time(t)]`, or wrap it" *
+                        " in `TimeSeriesInterpolation` to interpolate to a clock time."))
+
 #####
 ##### Constructors
 #####
@@ -927,7 +936,7 @@ end
 ext(path) = splitext(path) |> last
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
-    # JLD2 is the default; don't append .jld2 to paths that already carry a recognised extension
+    # JLD2 is the default; don't append .jld2 to paths that already carry a recognized extension
     path = (endswith(path, ".nc") || endswith(path, ".zarr") || endswith(path, ".zip")) ?
            path : auto_extension(path, ".jld2")
     typed_path = if ext(path) == ".jld2"

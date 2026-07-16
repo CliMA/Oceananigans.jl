@@ -155,6 +155,8 @@ nothing #hide
 
 # Ready to press the big red button:
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Load saved output, process, visualize

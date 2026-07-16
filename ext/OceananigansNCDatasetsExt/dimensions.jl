@@ -112,7 +112,7 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_ty
     for (var_name, entry) in dims
         var_name == "" && continue # Skip empty names
 
-        # Normalise to (array, var_dims). A bare `AbstractArray` is interpreted as a 1D
+        # Normalize to (array, var_dims). A bare `AbstractArray` is interpreted as a 1D
         # coordinate variable; explicit `NamedTuple` entries are taken as-is.
         if entry isa NamedTuple
             arr = entry.array
@@ -298,7 +298,7 @@ end
 #     CF-aware tools (xarray, ncview, Panoply, CDO) pick up the right lat/lon pair.
 #
 
-# 2D analogue of `collect_dim`: take a 2D coordinate or metric array, optionally trim halos,
+# 2D analog of `collect_dim`: take a 2D coordinate or metric array, optionally trim halos,
 # and return a plain CPU `Array{T,2}`. Indices for OSSG are 2-tuples `(i_range, j_range)`.
 function collect_2d(arr, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, indices, with_halos)
     if with_halos

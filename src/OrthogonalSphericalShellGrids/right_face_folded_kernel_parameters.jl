@@ -29,4 +29,7 @@ const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 ##### and the active cells maps which use `worksize` to find all the active indices
 #####
 
-Utils.worksize(grid::RFTRG) = grid.Nx, grid.Ny+1, grid.Nz
+@inline function Utils.worksize(grid::RFTRG)
+    Nx, Ny, Nz = size(grid)
+    return Nx, Ny+1, Nz
+end

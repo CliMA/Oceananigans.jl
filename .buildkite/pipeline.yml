@@ -1,6 +1,6 @@
 env:
   JULIA_VERSION: "1.12.4"
-  JULIA_VERSION_ENZYME: "1.10.10"
+  JULIA_VERSION_ENZYME: "1.11.9"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -84,6 +84,10 @@ steps:
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
+      tar czf docs/docs-build.tar.gz docs/build
+    artifact_paths:
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
+
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     depends_on: "init"
@@ -161,7 +165,49 @@ steps:
           - "🐳 simulation"
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
+          - "🌐 multi_region_simulation"
+          - "🌍 multi_region_simulation_immersed"
           - "🦧 scripts"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "test_memory_allocation"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Add matrix-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export CUDA_VISIBLE_DEVICES="-1"
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export CUDA_VISIBLE_DEVICES="0"
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="\${group#* }"
+      echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+
+      # CodeCov increases allocations, we run without it to test memory allocations
+      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🧠 memory_allocation"
 
     retry:
       automatic:
@@ -194,7 +240,8 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
