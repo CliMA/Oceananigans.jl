@@ -114,7 +114,7 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
