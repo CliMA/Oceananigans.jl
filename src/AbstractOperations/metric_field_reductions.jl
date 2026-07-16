@@ -74,20 +74,18 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         # Compute "size" (length, area, or volume) of averaging region
         dx = reduction_grid_metric(dims)
         metric = grid_metric_operation(location(field), dx, field.grid)
-        volume = sum(metric; condition, mask, dims)
-
-        # Construct summand of the Average
-        # V⁻¹_field_dx = field * dx / volume
-        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
-        # return Scan(Averaging(), sum!, operand, dims)
-
         field_dx = field * dx
-        operand = condition_operand(field_dx, condition, mask)
 
-        metric = grid_metric_operation(location(field), dx, field.grid)
-        volume = sum(metric; condition, mask, dims)
-        averaging = Averaging(volume)
-        return Scan(averaging, average!, operand, dims)
+        if grid.z isa MutableVerticalDiscretization
+            V⁻¹_field_dx = field * dx / volume
+            operand = condition_operand(V⁻¹_field_dx, condition, mask)
+            return Scan(Averaging(), sum!, operand, dims)
+        else
+            volume = sum(metric; condition, mask, dims)
+            operand = condition_operand(field_dx, condition, mask)
+            averaging = Averaging(volume)
+            return Scan(averaging, average!, operand, dims)
+        end
     end
 end
 
