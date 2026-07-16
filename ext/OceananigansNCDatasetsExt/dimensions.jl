@@ -434,7 +434,7 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
 end
 
 # Generic fallback for non-static vertical coordinates: `MutableVerticalDiscretization`
-# (z-star / σ) and any other `AbstractVerticalCoordinate` defined downstream. We save the
+# and any other `AbstractVerticalCoordinate` defined downstream. We save the
 # reference coordinate `r`; physical height `z = z(r, …)` is reconstructible at
 # read time from `r` and the coordinate transform (e.g. the time-varying free-surface `η`) —
 # see grid_reconstruction.jl. The `StaticVerticalDiscretization` method above handles the
