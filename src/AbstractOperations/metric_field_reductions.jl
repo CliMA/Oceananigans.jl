@@ -1,5 +1,5 @@
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions, topology, Periodic
+using Oceananigans.Grids: regular_dimensions, topology, Periodic, MutableVerticalDiscretization
 using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
 using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
