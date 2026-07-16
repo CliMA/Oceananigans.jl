@@ -28,8 +28,8 @@ const MVD  = MutableVerticalDiscretization
 
 vertical_coordinate_name(::SVD) = "z"
 vertical_coordinate_name(::MVD) = "r"
-# Generic fallback: any other non-static vertical coordinate (e.g. one defined in a
-# downstream package) saves its reference coordinate `r`.
+# Fallback: any other `AbstractVerticalCoordinate`stores a reference `r`
+# distinct from physical `z`, so we use "r".
 vertical_coordinate_name(::AbstractVerticalCoordinate) = "r"
 vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
 vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)

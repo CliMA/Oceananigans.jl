@@ -186,11 +186,11 @@ function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ
                 zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
-# Generic fallback for non-static vertical coordinates (`MutableVerticalDiscretization`
-# and any others defined downstream): the saved 1D coordinate is the *reference*
-# coordinate `r`, stored in the shared `cᵃᵃᶠ`/`cᵃᵃᶜ` fields. The physical
-# `z = z(r, …)` is reconstructible at read time from `r` and the coordinate transform
-# (e.g. the time-varying free-surface `η`), output separately.
+# Fallback for coordinates whose reference `r` differs from physical height `z`
+# (`MutableVerticalDiscretization` and any downstream `AbstractVerticalCoordinate`, which may or
+# may not be time varying): the saved 1D coordinate is the *reference* `r`, stored in the
+# shared `cᵃᵃᶠ`/`cᵃᵃᶜ` fields. Physical `z = z(r, …)` is reconstructible at read time from `r`
+# and the coordinate transform (e.g. the time-varying free-surface `η`), output separately.
 function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     rᵃᵃᶠ_name = dim_name_generator("r", coordinate, nothing, nothing, f, Val(:z))
     rᵃᵃᶜ_name = dim_name_generator("r", coordinate, nothing, nothing, c, Val(:z))
@@ -433,12 +433,9 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     return suffix_grid_keys(vertical_dimension_attributes, grid_index)
 end
 
-# Generic fallback for non-static vertical coordinates: `MutableVerticalDiscretization`
-# and any other `AbstractVerticalCoordinate` defined downstream. We save the
-# reference coordinate `r`; physical height `z = z(r, …)` is reconstructible at
-# read time from `r` and the coordinate transform (e.g. the time-varying free-surface `η`) —
-# see grid_reconstruction.jl. The `StaticVerticalDiscretization` method above handles the
-# plain-`z` case.
+# Attributes for the reference-coordinate (`r`) fallback — same coordinate set as
+# `gather_vertical_dimensions` above (`r ≠ z`). `StaticVerticalDiscretization` (`r ≡ z`) has
+# its own method above that writes physical `z`.
 function default_vertical_dimension_attributes(coordinate::AbstractVerticalCoordinate, dim_name_generator; grid_index=nothing)
     r = vertical_coordinate_name(coordinate)
     rᵃᵃᶠ_name = dim_name_generator(r, coordinate, nothing, nothing, f, Val(:z))
