@@ -4,6 +4,7 @@ export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
+export RegriddedOperation
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
@@ -63,6 +64,7 @@ include("multiary_operations.jl")
 include("derivatives.jl")
 include("constant_field_abstract_operations.jl")
 include("kernel_function_operation.jl")
+include("regridded_operation.jl")
 include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
