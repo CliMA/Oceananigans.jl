@@ -47,6 +47,23 @@ using Oceananigans.TurbulenceClosures
             end
         end
 
+        @testset "GridFittedBoundary immersing cells above wet cells [$arch_str]" begin
+            @info "Testing that GridFittedBoundary immersing cells above wet cells throws with HydrostaticFreeSurfaceModel [$arch_str]..."
+
+            underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
+
+            sloping_top(x, y, z) = z > 2 - exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(sloping_top))
+
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+
+            # Fully immersed columns (e.g. lateral walls) remain supported
+            wall(x, y, z) = x < -4
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(wall))
+            model = HydrostaticFreeSurfaceModel(grid)
+            @test model isa HydrostaticFreeSurfaceModel
+        end
+
         @testset "Surface boundary conditions with immersed boundaries [$arch_str]" begin
             @info "  Testing surface boundary conditions with ImmersedBoundaries in HydrostaticFreeSurfaceModel [$arch_str]..."
 
