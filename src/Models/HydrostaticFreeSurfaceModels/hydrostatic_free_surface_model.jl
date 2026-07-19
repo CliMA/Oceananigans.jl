@@ -7,8 +7,7 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, immersed_cell
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -31,23 +30,15 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 const GridFittedBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
-@inline wet_cell_below_immersed_cell(i, j, k, grid) =
-    (k < size(grid, 3)) & !immersed_cell(i, j, k, grid) & immersed_cell(i, j, k+1, grid)
-
 validate_immersed_boundary(grid, free_surface) = nothing
 validate_immersed_boundary(grid::GridFittedBoundaryIBG, ::Nothing) = nothing
 
 function validate_immersed_boundary(grid::GridFittedBoundaryIBG, free_surface)
-    immersed_cell_above_wet_cell = KernelFunctionOperation{Center, Center, Center}(wet_cell_below_immersed_cell, grid)
-    if sum(immersed_cell_above_wet_cell) > 0
-        msg = string("HydrostaticFreeSurfaceModel with a free surface does not support a GridFittedBoundary", '\n',
-                     "that immerses cells above wet cells, such as an immersed boundary at the top", '\n',
-                     "of the domain where the free surface must live.", '\n',
-                     "Use an immersed boundary that represents a bottom height, such as", '\n',
-                     "GridFittedBottom or PartialCellBottom.")
-        throw(ArgumentError(msg))
-    end
-    return nothing
+    msg = string("HydrostaticFreeSurfaceModel with a free surface does not support GridFittedBoundary.", '\n',
+                 "Use an immersed boundary that represents a bottom height, such as", '\n',
+                 "GridFittedBottom or PartialCellBottom. Fully immersed columns (e.g. lateral walls", '\n',
+                 "or land masks) can be built with a bottom height equal to the top of the domain.")
+    throw(ArgumentError(msg))
 end
 
 function default_vertical_coordinate(grid)

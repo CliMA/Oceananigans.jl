@@ -14,13 +14,13 @@ using Oceananigans.TurbulenceClosures
 
         arch_str = string(typeof(arch))
 
-        @testset "GridFittedBoundary [$arch_str]" begin
-            @info "Testing GridFittedBoundary with HydrostaticFreeSurfaceModel [$arch_str]..."
+        @testset "GridFittedBottom [$arch_str]" begin
+            @info "Testing GridFittedBottom with HydrostaticFreeSurfaceModel [$arch_str]..."
 
             underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
 
-            bump(x, y, z) = z < exp(-x^2 - y^2)
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+            bump(x, y) = exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
                             ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
@@ -47,20 +47,21 @@ using Oceananigans.TurbulenceClosures
             end
         end
 
-        @testset "GridFittedBoundary immersing cells above wet cells [$arch_str]" begin
-            @info "Testing that GridFittedBoundary immersing cells above wet cells throws with HydrostaticFreeSurfaceModel [$arch_str]..."
+        @testset "GridFittedBoundary is not supported [$arch_str]" begin
+            @info "Testing that GridFittedBoundary throws with HydrostaticFreeSurfaceModel [$arch_str]..."
 
             underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
 
             sloping_top(x, y, z) = z > 2 - exp(-x^2 - y^2)
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(sloping_top))
-
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
 
-            # Fully immersed columns (e.g. lateral walls) remain supported
-            wall(x, y, z) = x < -4
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(wall))
-            model = HydrostaticFreeSurfaceModel(grid)
+            bump(x, y, z) = z < exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+
+            # No free surface with PrescribedVelocityFields, so GridFittedBoundary is allowed
+            model = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(), buoyancy=nothing, tracers=())
             @test model isa HydrostaticFreeSurfaceModel
         end
 
