@@ -128,7 +128,7 @@ function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
     try
-        copyto!(interior(u), a)
+        copyto!(u, a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
@@ -219,4 +219,5 @@ end
 
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
