@@ -402,6 +402,12 @@ Dispatched on output type:
   - Anything else (functions, custom callables): requires `writer.dimensions[name]` to
     supply a tuple of dimension names.
 """
+
+# NoCompressor's multidimensional single-chunk fastpath can't write to `Vector{UInt8}`-backed stores (`DictStore`, S3); compress there.
+zarr_compressor(compressor, store) = compressor
+zarr_compressor(::Nothing, store) = Zarr.BloscCompressor()
+zarr_compressor(::Nothing, ::Zarr.DirectoryStore) = Zarr.NoCompressor()
+
 function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractField, name, model)
     arch = architecture(output.grid)
     distributed = arch isa Distributed
@@ -473,7 +479,7 @@ function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractFie
         isnothing(gi) || (attrs["grid_index"] = gi)
     end
 
-    compressor = isnothing(writer.compressor) ? Zarr.NoCompressor() : writer.compressor
+    compressor = zarr_compressor(writer.compressor, writer.store)
 
     # Only the root rank persists the array; under distributed writes the other ranks
     # have already participated in the collectives above (via global_field_size etc.)
@@ -527,7 +533,7 @@ function define_zarr_output_variable!(g, writer::ZarrWriter, output, name, model
 
     attrs = Dict{String, Any}("_ARRAY_DIMENSIONS" => array_dimensions)
 
-    compressor = isnothing(writer.compressor) ? Zarr.NoCompressor() : writer.compressor
+    compressor = zarr_compressor(writer.compressor, writer.store)
 
     if !isnothing(g)
         Zarr.zcreate(FT, g, name, shape...;
