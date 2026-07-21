@@ -308,7 +308,7 @@ keyword arguments `kw`.
 """
 @inline launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args::Vararg{Any, M}; kwargs...) where {N, M} =
+@inline launch!(arch, grid, workspec::NTuple{M, Int}, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where {M, N} =
     _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
 @inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N
@@ -353,7 +353,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-    loop!(Architectures.convert_to_device(arch, kernel_args)...)
+        loop!(Architectures.convert_to_device(arch, kernel_args)...)
     end
 
     return nothing
