@@ -22,9 +22,7 @@ they are called in the end.
 function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
-    foreach(model.tracers) do tracer
-        mask_immersed_field!(tracer)
-    end
+    mask_immersed_field!(model.tracers)
 
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
@@ -57,8 +55,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     end
 
     update_advection_timestep!(model.advection, model.timestepper, model.clock)
-    compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
+    compute_tendencies!(model, callbacks)
 
     return nothing
 end

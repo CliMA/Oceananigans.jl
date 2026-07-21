@@ -19,8 +19,9 @@ using Printf
 # ## Grid
 #
 # A 128² horizontal × 1 vertical-cell grid covering a 3200 km box on the pole,
-# with a circular wall (an [`ImmersedBoundaryGrid`](@ref) with `GridFittedBoundary`)
-# at 1500 km from the pole forming the polar disk.
+# with a circular wall (an [`ImmersedBoundaryGrid`](@ref) with `GridFittedBottom`
+# whose bottom height reaches the top of the domain) at 1500 km from the pole
+# forming the polar disk.
 
 Nx = Ny = 128
 Δ  = 25kilometers
@@ -38,8 +39,8 @@ grid = LambertConformalConicGrid(Float64;
 
 R_earth = grid.radius
 R_bowl  = 1500kilometers
-bowl_mask(λ, φ, z) = R_earth * (π/2 - deg2rad(φ)) > R_bowl
-ibg = ImmersedBoundaryGrid(grid, GridFittedBoundary(bowl_mask))
+bowl_bottom(λ, φ) = ifelse(R_earth * (π/2 - deg2rad(φ)) > R_bowl, zero(H), -H)
+ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(bowl_bottom))
 
 # ## Model
 #
@@ -134,6 +135,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; η, ζ, s);
                                                 schedule = TimeInterval(12hours),
                                                 overwrite_existing = true)
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualization

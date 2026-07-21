@@ -199,6 +199,18 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :multi_region_simulation || group == :all
+        @testset "Multi Region cubed sphere simulation tests" begin
+            include("test_multi_region_cubed_sphere_simulation.jl")
+        end
+    end
+
+    if group == :multi_region_simulation_immersed || group == :all
+        @testset "Multi Region cubed sphere immersed simulation tests" begin
+            include("test_multi_region_cubed_sphere_simulation_immersed.jl")
+        end
+    end
+
     if group == :nccl_extension || group == :all
         MPI.Initialized() || MPI.Init()
         reset_cuda_if_necessary()
@@ -229,6 +241,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_conjugate_gradient_poisson_solver.jl")
     end
 
     if group == :distributed_hydrostatic_regression || group == :all

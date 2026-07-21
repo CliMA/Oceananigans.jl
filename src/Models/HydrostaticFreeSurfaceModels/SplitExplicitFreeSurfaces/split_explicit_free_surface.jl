@@ -3,7 +3,7 @@ using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConne
     RightCenterFolded, RightFaceFolded,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, worksize, KernelParameters
 using Adapt: Adapt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -269,7 +269,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     kernel_parameters = if extend_halos
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
-        :xy
+        Wx, Wy, _ = worksize(grid)
+        KernelParameters((Wx, Wy), (0, 0)) # concretely typed parameters
     end
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
@@ -328,7 +329,6 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
@@ -338,7 +338,12 @@ end
 
     trimmed_weights = averaging_weights[1:M★]
     trimmed_weights ./= sum(trimmed_weights)
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
+
+    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
+    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
 
     return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
@@ -387,7 +392,10 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = :xy
+function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize)
+    Wx, Wy, _ = worksize(grid)
+    return KernelParameters((Wx, Wy), (0, 0))
+end
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
@@ -398,19 +406,19 @@ function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     return KernelParameters(kernel_sizes...)
 end
 
-split_explicit_kernel_size(topo, N, H)                   =    1:N
-split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
-split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
+@inline split_explicit_kernel_size(topo, N, H)                   =    1:N
+@inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
-split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
-split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
-split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =

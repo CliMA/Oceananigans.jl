@@ -2,8 +2,9 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, CumulativeIntegral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
+export RegriddedOperation
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
@@ -43,6 +44,17 @@ Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
+"""
+$(TYPEDSIGNATURES)
+
+Validate that `a` may be an operand of an `AbstractOperation`, returning `a`.
+
+The fallback validates everything. Four-dimensional fields like `FieldTimeSeries`
+extend `validate_operand` to throw an error, since `AbstractOperation`s are
+three-dimensional and would silently drop the time dimension of their operands.
+"""
+@inline validate_operand(a) = a
+
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")
@@ -52,6 +64,8 @@ include("multiary_operations.jl")
 include("derivatives.jl")
 include("constant_field_abstract_operations.jl")
 include("kernel_function_operation.jl")
+include("regridded_operation.jl")
+include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")

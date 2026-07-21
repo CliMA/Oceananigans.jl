@@ -63,6 +63,7 @@ function naive_solver_with_warning(arch, ibg, free_surface)
 
               using Oceananigans.Solvers: ConjugateGradientPoissonSolver
               pressure_solver = ConjugateGradientPoissonSolver(grid)
+              model = NonhydrostaticModel(grid; pressure_solver)
 
           Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
           """
