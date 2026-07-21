@@ -19,6 +19,18 @@ function build_and_timestep_simulation(model)
     return nothing
 end
 
+@testset "AMDGPU device selection" begin
+    arch = GPU(AMDGPU.ROCBackend())
+    original_device_id = AMDGPU.device_id()
+
+    try
+        device!(arch, 0)
+        @test AMDGPU.device_id() == 1
+    finally
+        AMDGPU.device_id!(original_device_id)
+    end
+end
+
 @testset "AMDGPU on RectilinearGrids" begin
     roc = AMDGPU.ROCBackend()
     arch = GPU(roc)
