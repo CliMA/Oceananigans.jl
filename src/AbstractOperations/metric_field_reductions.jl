@@ -1,5 +1,5 @@
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions, topology, Periodic, MutableVerticalDiscretization
+using Oceananigans.Grids: regular_dimensions, topology, Periodic, is_static_discretization
 using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
 using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
@@ -76,7 +76,7 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
         metric = grid_metric_operation(location(field), dx, field.grid)
         field_dx = field * dx
 
-        if grid.z isa MutableVerticalDiscretization
+        if is_static_discretization(grid.z)
             V⁻¹_field_dx = field * dx / volume
             operand = condition_operand(V⁻¹_field_dx, condition, mask)
             return Scan(Averaging(), sum!, operand, dims)
