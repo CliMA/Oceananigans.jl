@@ -5,7 +5,7 @@ import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 # ImmersedReducedFields
-const IRG = Union{<:ImmersedBoundaryGrid, Base.RefValue{<:ImmersedBoundaryGrid}}
+const IRG = Base.RefValue{<:ImmersedBoundaryGrid}
 const XIRF = AbstractField{Nothing, <:Any, <:Any, IRG}
 const YIRF = AbstractField{<:Any, Nothing, <:Any, IRG}
 const ZIRF = AbstractField{<:Any, <:Any, Nothing, IRG}
@@ -14,7 +14,7 @@ const YZIRF = AbstractField{<:Any, Nothing, Nothing, IRG}
 const XZIRF = AbstractField{Nothing, <:Any, Nothing, IRG}
 const XYIRF = AbstractField{Nothing, Nothing, <:Any, IRG}
 
-const XYZIRF = AbstractField{Nothing, Nothing, Nothing, IRG}
+const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:IRG}
 
 const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
