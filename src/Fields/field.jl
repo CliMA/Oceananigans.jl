@@ -18,7 +18,7 @@ using Statistics: Statistics
 #####
 
 struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
-    grid :: G
+    gridref :: G
     data :: D
     boundary_conditions :: B
     indices :: I
