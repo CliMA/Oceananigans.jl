@@ -31,6 +31,14 @@ Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 Grids.grid(f::AbstractField) = f.grid[]
 Grids.grid(::AbstractField{<:Any, <:Any, <:Any, Nothing}) = nothing
 
+function Base.getproperty(f::AbstractField, v::Symbol)
+    if v == :grid
+        return Grids.grid(f)
+    else
+        return getfield(f, v)
+    end
+end
+
 "Returns the architecture of on which `f` is defined."
 Architectures.architecture(f::AbstractField) = architecture(grid(f))
 Architectures.child_architecture(f::AbstractField) = child_architecture(architecture(f))
