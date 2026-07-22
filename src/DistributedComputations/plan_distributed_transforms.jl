@@ -1,5 +1,4 @@
 using Oceananigans.Architectures: array_type
-using Oceananigans.Grids: grid
 using Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, DiscreteTransform
 using Oceananigans.Solvers: Forward, Backward
 
@@ -9,7 +8,7 @@ function plan_distributed_transforms(global_grid, storage::TransposableField, pl
     topo = topology(global_grid)
     arch = architecture(global_grid)
 
-    grids = (grid(storage.zfield), grid(storage.yfield), grid(storage.xfield))
+    grids = (storage.zfield.grid, storage.yfield.grid, storage.xfield.grid)
 
     forward_plan_x  =  plan_forward_transform(parent(storage.xfield), topo[1](), [1], planner_flag)
     forward_plan_z  =  plan_forward_transform(parent(storage.zfield), topo[3](), [3], planner_flag)

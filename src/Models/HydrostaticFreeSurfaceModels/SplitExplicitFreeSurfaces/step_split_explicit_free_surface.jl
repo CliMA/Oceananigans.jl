@@ -97,7 +97,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     arch = architecture(grid)
 
     η           = free_surface.displacement
-    grid        = grid(free_surface.displacement)
+    grid        = free_surface.displacement.grid
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
@@ -141,7 +141,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     arch = architecture(grid)
 
     η           = free_surface.displacement
-    grid        = grid(free_surface.displacement)
+    grid        = free_surface.displacement.grid
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
@@ -192,9 +192,9 @@ end
 #####
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
-    # Note: grid(free_surface.displacement) != model.grid for DistributedSplitExplicitFreeSurface since
-    # halo_size(grid(free_surface.displacement)) != halo_size(model.grid)
-    free_surface_grid = grid(free_surface.displacement)
+    # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
+    # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
+    free_surface_grid = free_surface.displacement.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
 

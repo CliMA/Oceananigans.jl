@@ -1,5 +1,5 @@
 using GPUArraysCore
-using Oceananigans.Grids: stretched_dimensions, grid
+using Oceananigans.Grids: stretched_dimensions
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
@@ -186,26 +186,26 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     slab_x = Ry == 1 && Rx > 1  # slab decomposition in x only
 
     if tridiagonal_dim == 1
-        grid = grid(storage.xfield)
-        arch = architecture(grid)
+        arch = architecture(storage.xfield.grid)
+        grid = storage.xfield.grid
         λ1 = partition_coordinate(λy, size(grid, 2), arch, 2)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
     elseif tridiagonal_dim == 2
-        grid = grid(storage.yfield)
-        arch = architecture(grid)
+        arch = architecture(storage.yfield.grid)
+        grid = storage.yfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
     elseif tridiagonal_dim == 3 && slab_x
         # Optimization: for slab-x decomposition, solve tridiagonal in x-local space.
         # In x-local, z is fully local (all Nz points), so the tridiag solve works directly.
         # This avoids 2 MPI transposes (x→y + y→z before solve, and z→y + y→x after solve).
-        grid = grid(storage.xfield)
-        arch = architecture(grid)
+        arch = architecture(storage.xfield.grid)
+        grid = storage.xfield.grid
         λ1 = on_architecture(child_arch, λx)  # x is local: all eigenvalues available
         λ2 = partition_coordinate(λy, size(grid, 2), arch, 2)  # y is partitioned
     elseif tridiagonal_dim == 3
-        grid = grid(storage.zfield)
-        arch = architecture(grid)
+        arch = architecture(storage.zfield.grid)
+        grid = storage.zfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
         λ2 = partition_coordinate(λy, size(grid, 2), arch, 2)
     end

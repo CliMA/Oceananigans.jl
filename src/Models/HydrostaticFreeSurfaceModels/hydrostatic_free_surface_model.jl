@@ -6,7 +6,7 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center, grid
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
@@ -319,9 +319,9 @@ transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
                                          v = copy_velocity(velocities.v),
                                          w = copy_velocity(velocities.w))
 
-copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(grid(u); boundary_conditions=u.boundary_conditions)
-copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(grid(v); boundary_conditions=v.boundary_conditions)
-copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(grid(w); boundary_conditions=w.boundary_conditions)
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
 copy_velocity(c) = c
 
 # Fallback transport velocities for a generic free surface (just copy velocities over)
