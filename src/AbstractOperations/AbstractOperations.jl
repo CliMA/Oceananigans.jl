@@ -29,7 +29,7 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 
 const Location = Union{Face, Center, Nothing}
 
-Grids.grid(op::AbstractOperation) = getfield(op, grid)
+Grids.grid(op::AbstractOperation) = getfield(op, :grid)
 
 #
 # We have no halos to fill
