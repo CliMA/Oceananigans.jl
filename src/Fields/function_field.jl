@@ -20,17 +20,21 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
                                                grid::G;
                                                clock::C=nothing,
                                                parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
+        GT = G <: Nothing ? Nothing : Base.RefValue{G}
+        gridref = isnothing(grid) ? nothing : Ref(grid)
         FT = eltype(grid)
-        return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
+        return new{LX, LY, LZ, C, P, F, G, FT}(func, gridref, clock, parameters)
     end
 
     @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
                                                grid::G;
                                                clock::C=nothing) where {LX, LY, LZ, G, C}
+        GT = G <: Nothing ? Nothing : Base.RefValue{G}
+        gridref = isnothing(grid) ? nothing : Ref(grid)
         P = typeof(f.parameters)
         T = eltype(grid)
         F = typeof(f.func)
-        return new{LX, LY, LZ, C, P, F, G, T}(f.func, grid, clock, f.parameters)
+        return new{LX, LY, LZ, C, P, F, G, T}(f.func, gridref, clock, f.parameters)
     end
 end
 
