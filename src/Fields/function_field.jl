@@ -13,7 +13,7 @@ A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ
 """
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
-       gridref :: G
+          grid :: G
          clock :: C
     parameters :: P
 
@@ -21,25 +21,19 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
                                                grid::G;
                                                clock::C=nothing,
                                                parameters::P=nothing) where {LX, LY, LZ, F, G, C, P}
-        GT = G <: Nothing ? Nothing : Base.RefValue{G}
-        gridref = isnothing(grid) ? nothing : Ref(grid)
         FT = eltype(grid)
-        return new{LX, LY, LZ, C, P, F, GT, FT}(func, gridref, clock, parameters)
+        return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
     end
 
     @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
                                                grid::G;
                                                clock::C=nothing) where {LX, LY, LZ, G, C}
-        GT = G <: Nothing ? Nothing : Base.RefValue{G}
-        gridref = isnothing(grid) ? nothing : Ref(grid)
         P = typeof(f.parameters)
         T = eltype(grid)
         F = typeof(f.func)
-        return new{LX, LY, LZ, C, P, F, GT, T}(f.func, gridref, clock, f.parameters)
+        return new{LX, LY, LZ, C, P, F, G, T}(f.func, grid, clock, f.parameters)
     end
 end
-
-Grids.grid(f::FunctionField) = f.gridref[]
 
 Adapt.parent_type(T::Type{<:FunctionField}) = T
 

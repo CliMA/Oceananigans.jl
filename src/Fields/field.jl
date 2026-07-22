@@ -18,7 +18,7 @@ using Statistics: Statistics
 #####
 
 struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
-    gridref :: G
+    gridref :: Base.RefValue{G}
     data :: D
     boundary_conditions :: B
     indices :: I
@@ -29,22 +29,21 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        # No need for reference to a Nothing grid
-        if G == Nothing
-            GT = G
-            rg = grid
-        else
-            GT = Base.RefValue{G}
-            rg = Ref(grid)
-        end
 
         @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, GT, I, D, T, typeof(local_bcs), S, F}(rg, data, local_bcs, indices, op, status, buffers)
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(Ref(grid), data, local_bcs, indices, op, status, buffers)
     end
 end
 
 # Getter function for grid associated with field
-Grids.grid(f::Field) = f.gridref[]
+function Base.getproperty(f::Field, v::Symbol)
+    if v == :grid
+        return f.gridref[]
+    else
+        return getfield(f, v)
+    end
+end
+
 
 #####
 ##### Constructor utilities
