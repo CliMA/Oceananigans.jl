@@ -1,7 +1,7 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
+using Oceananigans.Grids: Grids, parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
@@ -42,6 +42,11 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
         return new{LX, LY, LZ, O, GT, I, D, T, typeof(local_bcs), S, F}(rg, data, local_bcs, indices, op, status, buffers)
     end
 end
+
+####
+#### Grid fetching
+####
+Grids.grid(f::Field) = f.gridref[]
 
 #####
 ##### Constructor utilities

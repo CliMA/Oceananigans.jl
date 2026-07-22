@@ -28,8 +28,6 @@ Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the grid on which `f` is defined."
-Grids.grid(f::AbstractField) = f.gridref[]
-Grids.grid(::AbstractField{<:Any, <:Any, <:Any, <:AbstractGrid}) = f.gridref
 Grids.grid(::AbstractField{<:Any, <:Any, <:Any, Nothing}) = nothing
 
 function Base.getproperty(f::AbstractField, v::Symbol)
