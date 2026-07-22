@@ -43,11 +43,6 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     end
 end
 
-####
-#### Grid fetching
-####
-Grids.grid(f::Field) = f.gridref[]
-
 #####
 ##### Constructor utilities
 #####

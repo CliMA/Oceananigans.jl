@@ -29,9 +29,9 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 
 const Location = Union{Face, Center, Nothing}
 
-#
-Grids.grid(f::AbstractOperation) = f.grid
+Grids.grid(op::AbstractOperation) = getfield(op, grid)
 
+#
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
