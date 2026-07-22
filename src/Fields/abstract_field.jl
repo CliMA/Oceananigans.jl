@@ -4,7 +4,7 @@ using Oceananigans.Architectures: Architectures, AbstractArchitecture, architect
 using Oceananigans.Grids: rnode, rnodes
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
-const GridOrNothing = Base.RefValue{Union{<:AbstractGrid, Nothing}}
+const GridOrNothing = Union{Base.RefValue{<:AbstractGrid}, Nothing}
 
 """
     AbstractField{LX, LY, LZ, G, T, N}
