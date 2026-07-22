@@ -5,16 +5,15 @@ import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 # ImmersedReducedFields
-const IRG = Base.RefValue{<:ImmersedBoundaryGrid}
-const XIRF = AbstractField{Nothing, <:Any, <:Any, IRG}
-const YIRF = AbstractField{<:Any, Nothing, <:Any, IRG}
-const ZIRF = AbstractField{<:Any, <:Any, Nothing, IRG}
+const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
+const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
+const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
 
-const YZIRF = AbstractField{<:Any, Nothing, Nothing, IRG}
-const XZIRF = AbstractField{Nothing, <:Any, Nothing, IRG}
-const XYIRF = AbstractField{Nothing, Nothing, <:Any, IRG}
+const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
+const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
+const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
 
-const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:IRG}
+const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
 
 const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
@@ -41,7 +40,7 @@ validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) =
 Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
 
 # ImmersedField
-const IF = AbstractField{<:Any, <:Any, <:Any, IRG}
+const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
 function ConditionalOperation(operand::IF;
                               func = nothing,

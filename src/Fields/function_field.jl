@@ -1,4 +1,3 @@
-using Oceananigans.Grids: Grids
 """
     FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
 

@@ -62,8 +62,8 @@ end
 
 ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 
-const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, Base.RefValue{<:TripolarGridOfSomeKind}},
-                 <:AbstractField{<:Any, <:Any, <:Any, Base.RefValue{<:ITG}}}
+const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
+                 <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
 
 @inline conditional_length(c::TF) = sum(conditional_one(c, 0))
 @inline conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
@@ -102,18 +102,18 @@ const TripolarConditionalOperation = ConditionalOperation{<:Any, <:Any, <:Any, <
 using Oceananigans.ImmersedBoundaries: NotImmersedColumn, immersed_column
 
 # Immersed Tripolar Fields (non-reduced)
-const ITF = AbstractField{<:Any, <:Any, <:Any, Base.RefValue{<:ITG}}
+const ITF = AbstractField{<:Any, <:Any, <:Any, <:ITG}
 
 # Immersed Tripolar Reduced Fields
-const XITRF = AbstractField{Nothing, <:Any, <:Any, Base.RefValue{<:ITG}}
-const YITRF = AbstractField{<:Any, Nothing, <:Any, Base.RefValue{<:ITG}}
-const ZITRF = AbstractField{<:Any, <:Any, Nothing, Base.RefValue{<:ITG}}
+const XITRF = AbstractField{Nothing, <:Any, <:Any, <:ITG}
+const YITRF = AbstractField{<:Any, Nothing, <:Any, <:ITG}
+const ZITRF = AbstractField{<:Any, <:Any, Nothing, <:ITG}
 
-const YZITRF = AbstractField{<:Any, Nothing, Nothing, Base.RefValue{<:ITG}}
-const XZITRF = AbstractField{Nothing, <:Any, Nothing, Base.RefValue{<:ITG}}
-const XYITRF = AbstractField{Nothing, Nothing, <:Any, Base.RefValue{<:ITG}}
+const YZITRF = AbstractField{<:Any, Nothing, Nothing, <:ITG}
+const XZITRF = AbstractField{Nothing, <:Any, Nothing, <:ITG}
+const XYITRF = AbstractField{Nothing, Nothing, <:Any, <:ITG}
 
-const XYZITRF = AbstractField{Nothing, Nothing, Nothing, Base.RefValue{<:ITG}}
+const XYZITRF = AbstractField{Nothing, Nothing, Nothing, <:ITG}
 
 const ITRF = Union{XITRF, YITRF, ZITRF, YZITRF, XZITRF, XYITRF, XYZITRF}
 

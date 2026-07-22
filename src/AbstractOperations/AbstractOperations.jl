@@ -13,7 +13,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.Fields: AbstractField, instantiated_location
-using Oceananigans.Grids: Grids, Center, Face
+using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -29,9 +29,6 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 
 const Location = Union{Face, Center, Nothing}
 
-Grids.grid(op::AbstractOperation) = getfield(op, :grid)
-
-#
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
