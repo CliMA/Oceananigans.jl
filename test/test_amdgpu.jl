@@ -24,7 +24,7 @@ end
     original_device_id = AMDGPU.device_id()
 
     try
-        device!(arch, 0)
+        Oceananigans.Architectures.device!(arch, 0)
         @test AMDGPU.device_id() == 1
     finally
         AMDGPU.device_id!(original_device_id)
