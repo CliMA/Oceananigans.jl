@@ -51,37 +51,37 @@ function initialize_targeted_boundary_transport(velocities)
 
     if _is_targeted(u, :west)
         boundary_transports = merge(boundary_transports, (; west_transport = west_transport(u),
-                                                            west_area = get_west_area(u.grid)))
+                                                            west_area = get_west_area(grid(u))))
         has_targeted = true
     end
 
     if _is_targeted(u, :east)
         boundary_transports = merge(boundary_transports, (; east_transport = east_transport(u),
-                                                            east_area = get_east_area(u.grid)))
+                                                            east_area = get_east_area(grid(u))))
         has_targeted = true
     end
 
     if _is_targeted(v, :south)
         boundary_transports = merge(boundary_transports, (; south_transport = south_transport(v),
-                                                            south_area = get_south_area(v.grid)))
+                                                            south_area = get_south_area(grid(v))))
         has_targeted = true
     end
 
     if _is_targeted(v, :north)
         boundary_transports = merge(boundary_transports, (; north_transport = north_transport(v),
-                                                            north_area = get_north_area(v.grid)))
+                                                            north_area = get_north_area(grid(v))))
         has_targeted = true
     end
 
     if _is_targeted(w, :bottom)
         boundary_transports = merge(boundary_transports, (; bottom_transport = bottom_transport(w),
-                                                            bottom_area = get_bottom_area(w.grid)))
+                                                            bottom_area = get_bottom_area(grid(w))))
         has_targeted = true
     end
 
     if _is_targeted(w, :top)
         boundary_transports = merge(boundary_transports, (; top_transport = top_transport(w),
-                                                            top_area = get_top_area(w.grid)))
+                                                            top_area = get_top_area(grid(w))))
         has_targeted = true
     end
 

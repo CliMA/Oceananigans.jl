@@ -3,6 +3,7 @@ using Oceananigans.BoundaryConditions: getbc, bc_str
 using Oceananigans.Fields: Field, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Utils: Utils
+using Oceananigans.Grids: grid
 using Adapt: Adapt
 
 struct BoundaryConditionKernelFunction{Side, BC}
@@ -96,7 +97,7 @@ c_flux_field = Field(c_flux_op)
 ```
 """
 function BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
-    grid = field.grid
+    grid = grid(field)
     args = boundary_condition_args(model)
     LX, LY, LZ = boundary_condition_location(side, location(field)...)
     bc = getproperty(field.boundary_conditions, side)

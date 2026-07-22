@@ -1,4 +1,4 @@
-using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
+using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ, grid
 using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -26,7 +26,7 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
               "├─ solver_method: ", fs.solver_method, "\n", # TODO: implement summary for solvers
               "└─ settings: ", isempty(fs.solver_settings) ? "Default" : fs.solver_settings) :
     print(io, "ImplicitFreeSurface with ", fs.solver_method, "\n",
-              "├─ grid: ", summary(fs.displacement.grid), "\n",
+              "├─ grid: ", summary(grid(fs.displacement)), "\n",
               "├─ displacement: ", summary(fs.displacement), "\n",
               "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), "\n",
               "├─ implicit_step_solver: ", nameof(typeof(fs.implicit_step_solver)), "\n", # TODO: implement summary for solvers

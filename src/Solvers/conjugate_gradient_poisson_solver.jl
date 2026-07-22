@@ -1,6 +1,7 @@
 using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
     Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Grids: grid
 using Statistics: mean
 
 #####
@@ -71,7 +72,7 @@ end
 end
 
 function compute_symmetric_laplacian!(∇²ϕ, ϕ)
-    grid = ϕ.grid
+    grid = grid(ϕ)
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
     launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
@@ -85,7 +86,7 @@ end
 end
 
 function enforce_zero_mean_gauge!(x, r)
-    grid = r.grid
+    grid = grid(r)
     arch = architecture(grid)
 
     mean_x = mean(x)
@@ -257,7 +258,7 @@ struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
 @inline function precondition!(p, ::DiagonallyDominantPreconditioner, r, args...)
-    grid = r.grid
+    grid = grid(r)
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
