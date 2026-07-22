@@ -12,7 +12,7 @@ A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ
 """
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
-          grid :: G
+       gridref :: G
          clock :: C
     parameters :: P
 
