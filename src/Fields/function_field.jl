@@ -1,3 +1,4 @@
+using Oceananigans.Grids: Grids
 """
     FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
 
@@ -37,6 +38,8 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
         return new{LX, LY, LZ, C, P, F, GT, T}(f.func, gridref, clock, f.parameters)
     end
 end
+
+Grids.grid(f::FunctionField) = f.gridref[]
 
 Adapt.parent_type(T::Type{<:FunctionField}) = T
 
