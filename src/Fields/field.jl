@@ -235,7 +235,7 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=grid(f))
+function Base.similar(f::Field, grid=f.grid)
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
@@ -320,11 +320,11 @@ true
 ```
 """
 function Base.view(f::Field, i, j, k)
-    grid = grid(f)
+    grid = f.grid
     loc = instantiated_location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    view_indices = validate_indices((i, j, k), loc, grid(f))
+    view_indices = validate_indices((i, j, k), loc, f.grid)
 
     if view_indices == f.indices # nothing to "view" here
         return f # we want the whole field after all.
@@ -420,7 +420,7 @@ $(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
-interior(f::Field) = interior(f.data, location(f), grid(f), f.indices)
+interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
@@ -441,8 +441,8 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
-Grids.total_size(f::Field) = total_size(grid(f), location(f), f.indices)
-@inline Base.size(f::Field)  = size(grid(f), location(f), f.indices)
+Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
+@inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
 Base.:(==)(f::Field, a) = interior(f) == a
 Base.:(==)(a, f::Field) = a == interior(f)
@@ -466,7 +466,7 @@ end
 #####
 
 Architectures.on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
-    Field{LX, LY, LZ}(on_architecture(arch, grid(field)),
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
                       on_architecture(arch, field.indices),
@@ -640,14 +640,14 @@ function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing
     cb = condition_operand(b, condition, 0)
 
     B = ca * cb # Binary operation
-    r = zeros(grid(a), 1)
+    r = zeros(a.grid, 1)
 
     Base.mapreducedim!(identity, +, r, B)
     return @allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
-    r = zeros(grid(a), 1)
+    r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
     return @allowscalar sqrt(r[1])
 end
@@ -774,7 +774,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(instantiated_location(c); dims)
-            r = Field(loc, grid(c), T; indices=indices(c))
+            r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
@@ -836,12 +836,12 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 
 function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
-    arch = architecture(grid(field))
+    arch = architecture(field.grid)
     args = (field.data,
             field.boundary_conditions,
             field.indices,
             instantiated_location(field),
-            grid(field),
+            field.grid,
             positional_args...)
 
     # Manually convert args... to be
@@ -858,11 +858,11 @@ end
 ##### nodes
 #####
 
-Grids.xnodes(f::Field; kwargs...) = xnodes(grid(f), instantiated_location(f)...; indices=indices(f)[1], kwargs...)
-Grids.ynodes(f::Field; kwargs...) = ynodes(grid(f), instantiated_location(f)...; indices=indices(f)[2], kwargs...)
-Grids.znodes(f::Field; kwargs...) = znodes(grid(f), instantiated_location(f)...; indices=indices(f)[3], kwargs...)
-Grids.rnodes(f::Field; kwargs...) = rnodes(grid(f), instantiated_location(f)...; indices=indices(f)[3], kwargs...)
-Grids.nodes(f::Field; kwargs...) = nodes(grid(f), instantiated_location(f)...; indices=indices(f), kwargs...)
+Grids.xnodes(f::Field; kwargs...) = xnodes(f.grid, instantiated_location(f)...; indices=indices(f)[1], kwargs...)
+Grids.ynodes(f::Field; kwargs...) = ynodes(f.grid, instantiated_location(f)...; indices=indices(f)[2], kwargs...)
+Grids.znodes(f::Field; kwargs...) = znodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.rnodes(f::Field; kwargs...) = rnodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
 
 #####
 ##### Checkpointing
