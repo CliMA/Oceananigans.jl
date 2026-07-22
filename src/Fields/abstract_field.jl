@@ -29,6 +29,7 @@ Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the grid on which `f` is defined."
 Grids.grid(f::AbstractField) = f.grid[]
+Grids.grid(::AbstractField{<:Any, <:Any, <:Any, Nothing}) = nothing
 
 "Returns the architecture of on which `f` is defined."
 Architectures.architecture(f::AbstractField) = architecture(grid(f))
