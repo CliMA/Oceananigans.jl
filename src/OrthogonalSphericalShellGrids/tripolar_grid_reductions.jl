@@ -60,7 +60,7 @@ end
 ##### conditional_operand extension
 #####
 
-ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, Base.RefValue{<:TripolarGrid}}
+ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 
 const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, Base.RefValue{<:TripolarGridOfSomeKind}},
                  <:AbstractField{<:Any, <:Any, <:Any, Base.RefValue{<:ITG}}}
