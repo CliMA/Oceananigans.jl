@@ -116,7 +116,7 @@ end
 function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
-Synchronize when using heterogeneous NCCL/MPI
+    # Synchronize when using heterogeneous NCCL/MPI
     if !isempty(arch.mpi_requests)
         DC.cooperative_waitall!(arch.mpi_requests)
         arch.mpi_tag[] = 0
