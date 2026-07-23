@@ -39,7 +39,8 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    U = model.velocities
+
+    U = model isa HydrostaticFreeSurfaceModel ? model.transport_velocities : model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
     timestepper = model.timestepper
