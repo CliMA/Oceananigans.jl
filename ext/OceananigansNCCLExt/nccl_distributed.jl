@@ -57,10 +57,6 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.devices)
 end
 
-# No sync_device! override here: mainline MPI halo fills and `maybe_all_reduce!`
-# need a real device sync before GPU-aware MPI reads GPU buffers. The NCCL fill
-# path below is stream-ordered and never calls it.
-
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
 #####
