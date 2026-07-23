@@ -7,7 +7,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   ConstantAveragingKernel,
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
-                                                                                  iterate_split_explicit!
+                                                                                  iterate_split_explicit!,
+                                                                                  weights_from_substeps,
+                                                                                  LowDissipationAveragingKernel,
+                                                                                  SymmetricTrigAveragingKernel,
+                                                                                  WideTrig74AveragingKernel,
+                                                                                  WideTrig2AveragingKernel
 
 @inline noforcing(args...) = 0
 
@@ -316,5 +321,33 @@ end # end of testset loop
 
         @test η̅_extend ≈ η̅_fill
         @test U̅_extend ≈ U̅_fill
+    end
+end
+
+@testset "Averaging kernel moments" begin
+    kernel_moment(Δτ, w, p) = sum(w[m] * (m * Δτ - 1)^p for m in eachindex(w))
+    for FT in float_types
+        # multiples of 16 land the wide-kernel window edges on the substep grid → exact μ₃ = 0
+        for substeps in (48, 64)
+            tol = sqrt(eps(FT))
+            for (kernel, third_order) in ((LowDissipationAveragingKernel(), false),
+                                          (SymmetricTrigAveragingKernel(),  true),
+                                          (WideTrig74AveragingKernel(),     true),
+                                          (WideTrig2AveragingKernel(),      true))
+                Δτ, w, transport_weights = weights_from_substeps(FT, substeps, kernel)
+                @test sum(w) ≈ 1                             atol=tol   # μ₀
+                @test kernel_moment(Δτ, w, 1) ≈ 0            atol=tol   # μ₁ = 1 (barycenter on the baroclinic step)
+                @test kernel_moment(Δτ, w, 2) ≈ 0            atol=tol   # μ₂ = 0
+                third_order && @test kernel_moment(Δτ, w, 3) ≈ 0 atol=tol  # μ₃ = 0
+                @test sum(transport_weights) ≈ 1            atol=tol   # reversed-cumsum transport ⇒ tracer constancy
+            end
+
+            # widening the window deepens μ₄ (more low-frequency dissipation): trig < trig74 < trig2 < 0
+            μ₄_trig   = kernel_moment(weights_from_substeps(FT, substeps, SymmetricTrigAveragingKernel())[1:2]...,   4)
+            μ₄_trig74 = kernel_moment(weights_from_substeps(FT, substeps, WideTrig74AveragingKernel())[1:2]...,      4)
+            μ₄_trig2  = kernel_moment(weights_from_substeps(FT, substeps, WideTrig2AveragingKernel())[1:2]...,       4)
+            @test μ₄_trig74 < μ₄_trig < 0
+            @test μ₄_trig2  < μ₄_trig74
+        end
     end
 end

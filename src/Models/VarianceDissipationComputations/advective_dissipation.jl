@@ -36,7 +36,7 @@
     end
 end
 
-@kernel function _assemble_rk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_rk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, σc, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -49,13 +49,13 @@ end
     δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
 
     @inbounds begin
-        u₁ = Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        v₁ = Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        w₁ = Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        u₁ = Uⁿ.u[i, j, k] / σc.x[i, j, 1]
+        v₁ = Uⁿ.v[i, j, k] / σc.y[i, j, 1]
+        w₁ = Uⁿ.w[i, j, k] / σc.z[i, j, 1]
 
-        fx₁ = Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        fy₁ = Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        fz₁ = Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        fx₁ = Fⁿ.x[i, j, k] / σc.x[i, j, 1]
+        fy₁ = Fⁿ.y[i, j, k] / σc.y[i, j, 1]
+        fz₁ = Fⁿ.z[i, j, k] / σc.z[i, j, 1]
 
         P.x[i, j, k] = 2 * δˣc★ * fx₁ - δˣc² * u₁
         P.y[i, j, k] = 2 * δʸc★ * fy₁ - δʸc² * v₁

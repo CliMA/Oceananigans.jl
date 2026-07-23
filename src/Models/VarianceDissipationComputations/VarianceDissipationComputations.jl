@@ -83,7 +83,13 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
 
-    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
+    # σ frozen at the flux-cache substep so the RK3 assembly divides by the same σ the flux was
+    # weighted with, rather than the live grid σ one substep later.
+    σ_cache = (x = Field{Face,   Center, Nothing}(grid),
+               y = Field{Center, Face,   Nothing}(grid),
+               z = Field{Center, Center, Nothing}(grid))
+
+    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ, σ_cache)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 

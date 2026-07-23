@@ -17,6 +17,7 @@ function cache_fluxes!(dissipation, model, tracer_name)
     stage = model.clock.stage
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
+    store_cache_σ!(dissipation.previous_state.σ_cache, grid, params, timestepper, stage)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
@@ -125,4 +126,22 @@ end
     @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
     @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
     @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+end
+
+store_cache_σ!(σ_cache, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage) = nothing
+
+function store_cache_σ!(σ_cache, grid, params, ts::SplitRungeKuttaTimeStepper, stage)
+    if stage == ts.Nstages-1
+        launch!(architecture(grid), grid, params, _store_cache_σ!, σ_cache, grid)
+    end
+    return nothing
+end
+
+@kernel function _store_cache_σ!(σ_cache, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        σ_cache.x[i, j, 1] = σⁿ(i, j, k, grid, f, c, c)
+        σ_cache.y[i, j, 1] = σⁿ(i, j, k, grid, c, f, c)
+        σ_cache.z[i, j, 1] = σⁿ(i, j, k, grid, c, c, f)
+    end
 end
