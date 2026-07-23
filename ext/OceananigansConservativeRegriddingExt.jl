@@ -44,18 +44,6 @@ end
 active_column_regridder(destination_grid, source_grid) =
     Regridder(underlying_grid(destination_grid), underlying_grid(source_grid))
 
-function active_column_regridder(destination_grid::ImmersedBoundaryGrid, source_grid)
-    regridder = active_column_regridder(destination_grid.underlying_grid, source_grid)
-    mask_inactive_destination_columns!(regridder, destination_grid)
-    return regridder
-end
-
-function active_column_regridder(destination_grid, source_grid::ImmersedBoundaryGrid)
-    regridder = active_column_regridder(destination_grid, source_grid.underlying_grid)
-    mask_inactive_source_columns!(regridder, source_grid)
-    return regridder
-end
-
 function active_column_regridder(destination_grid::ImmersedBoundaryGrid, source_grid::ImmersedBoundaryGrid)
     regridder = active_column_regridder(destination_grid.underlying_grid, source_grid.underlying_grid)
     mask_inactive_destination_columns!(regridder, destination_grid)
