@@ -46,8 +46,8 @@ active_column_regridder(destination_grid, source_grid) =
 
 function active_column_regridder(destination_grid::ImmersedBoundaryGrid, source_grid::ImmersedBoundaryGrid)
     regridder = active_column_regridder(destination_grid.underlying_grid, source_grid.underlying_grid)
-    mask_inactive_destination_columns!(regridder, destination_grid)
-    mask_inactive_source_columns!(regridder, source_grid)
+    mask_inactive_columns!(regridder, destination_grid; dims=1)
+    mask_inactive_columns!(regridder, source_grid; dims=2)
     return regridder
 end
 
@@ -65,18 +65,18 @@ function active_column_mask(grid::ImmersedBoundaryGrid)
     return mask
 end
 
-function mask_inactive_destination_columns!(regridder, grid::ImmersedBoundaryGrid)
+function mask_inactive_columns!(regridder, grid::ImmersedBoundaryGrid; dims)
     active_columns = active_column_mask(grid)
     inactive_columns = findall(!, active_columns)
-    regridder.intersections[inactive_columns, :] .= 0
-    dropzeros!(regridder.intersections)
-    return regridder
-end
 
-function mask_inactive_source_columns!(regridder, grid::ImmersedBoundaryGrid)
-    active_columns = active_column_mask(grid)
-    inactive_columns = findall(!, active_columns)
-    regridder.intersections[:, inactive_columns] .= 0
+    if dims == 1
+        regridder.intersections[inactive_columns, :] .= 0
+    elseif dims == 2
+        regridder.intersections[:, inactive_columns] .= 0
+    else
+        throw(ArgumentError("Inactive conservative regridding columns can only be masked along dims=1 or dims=2."))
+    end
+
     dropzeros!(regridder.intersections)
     return regridder
 end
