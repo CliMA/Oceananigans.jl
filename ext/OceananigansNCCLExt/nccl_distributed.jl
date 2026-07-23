@@ -120,11 +120,7 @@ end
 function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
-    # Complete requests pooled by fills that took the mainline MPI path and reset
-    # the MPI tag, as the mainline method does — otherwise the tag counter grows
-    # past MPI_TAG_UB and MPI_Irecv errors. Unlike mainline, do NOT unpack
-    # `field`'s MPI buffers: the pooled requests belong to other fields, and
-    # `field`'s halos arrived via NCCL, so its MPI buffers hold stale data.
+Synchronize when using heterogeneous NCCL/MPI
     if !isempty(arch.mpi_requests)
         DC.cooperative_waitall!(arch.mpi_requests)
         arch.mpi_tag[] = 0
