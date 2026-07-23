@@ -1,18 +1,16 @@
 using Oceananigans.BoundaryConditions: DistributedFillHalo, WestAndEast, SouthAndNorth,
                                        West, East, South, North, BottomAndTop, Bottom, Top
 
-import Oceananigans.Utils: sync_device!
 import Oceananigans.DistributedComputations: synchronize_communication!
 
 #####
 ##### NCCLCommunicator
 #####
 
-struct NCCLCommunicator{NC, MC, CS, EV}
+struct NCCLCommunicator{NC, MC, CS}
     nccl        :: NC   # NCCL.Communicator
     mpi         :: MC   # MPI.Comm
     comm_stream :: CS   # Dedicated CUDA stream for async NCCL ops
-    sync_event  :: EV   # CUDA event for cross-stream synchronization
 end
 
 # Forward MPI operations to the inner MPI comm
@@ -44,8 +42,7 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
     mpi_arch = Distributed(child_arch; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
     comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)
-    sync_event = CUDA.CuEvent()
-    nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream, sync_event)
+    nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream)
 
     S = mpi_arch isa DC.SynchronizedDistributed
     return Distributed{S}(mpi_arch.child_architecture,
@@ -60,9 +57,6 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.devices)
 end
 
-# NCCL is stream-native; sync is handled via CUDA events on comm_stream.
-sync_device!(::NCCLDistributedArchitecture) = nothing
-
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
 #####
@@ -72,7 +66,7 @@ sync_device!(::NCCLDistributedArchitecture) = nothing
 #####   synchronize_communication! later waits for comm_stream and unpacks.
 #####
 
-# Storage for pending async unpacks: (data, buffers, grid, side) tuples
+# Storage for pending async unpacks: (data, buffers, grid, side, event) tuples
 const pending_unpacks = Vector{Any}()
 const pending_unpacks_lock = ReentrantLock()
 
@@ -89,24 +83,26 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
 
     # Pack send buffers, then make comm_stream wait for the pack to complete.
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
-    CUDA.record(communicator.sync_event)
-    CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
+    pack_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
+    CUDA.record(pack_done)
+    CUDA.cuStreamWaitEvent(communicator.comm_stream, pack_done, UInt32(0))
 
     NCCL.groupStart()
     enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
     NCCL.groupEnd()
 
-    CUDA.record(communicator.sync_event, communicator.comm_stream)
+    comm_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
+    CUDA.record(comm_done, communicator.comm_stream)
 
     if async
         lock(pending_unpacks_lock) do
-            push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
+            push!(pending_unpacks, (; c, buffers, grid, side=buffer_side, event=comm_done))
         end
         return nothing
     end
 
-    # Sync: have the default stream wait for comm_stream, then unpack.
-    CUDA.cuStreamWaitEvent(CUDA.stream(), communicator.sync_event, UInt32(0))
+    # Sync: have the default stream wait for this fill's NCCL ops, then unpack.
+    CUDA.cuStreamWaitEvent(CUDA.stream(), comm_done, UInt32(0))
     DC.recv_from_buffers!(c, buffers, grid, buffer_side)
     return nothing
 end
@@ -118,11 +114,21 @@ end
 #####
 
 function synchronize_communication!(field::NCCLDistributedField)
+    arch = DC.architecture(field.grid)
+
+    # Synchronize when using heterogeneous NCCL/MPI
+    if !isempty(arch.mpi_requests)
+        DC.cooperative_waitall!(arch.mpi_requests)
+        arch.mpi_tag[] = 0
+        empty!(arch.mpi_requests)
+    end
+
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)
-            arch = DC.architecture(field.grid)
-            CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
+            # Wait on each fill's completion event before unpacking; this also
+            # fences the next iteration's packs behind the finished transfers.
             for pending in pending_unpacks
+                CUDA.cuStreamWaitEvent(CUDA.stream(), pending.event, UInt32(0))
                 DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
             end
             empty!(pending_unpacks)
@@ -161,8 +167,10 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    NCCL.Send(buffers.send, nccl_comm; dest=corner_rank)
-    NCCL.Recv!(buffers.recv, nccl_comm; source=corner_rank)
+    send_buf = eltype(buffers.send) === Bool ? reinterpret(UInt8, buffers.send) : buffers.send
+    recv_buf = eltype(buffers.recv) === Bool ? reinterpret(UInt8, buffers.recv) : buffers.recv
+    NCCL.Send(send_buf, nccl_comm; dest=corner_rank)
+    NCCL.Recv!(recv_buf, nccl_comm; source=corner_rank)
     return nothing
 end
 
@@ -172,8 +180,11 @@ end
 
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    NCCL.Send(buf.send, nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(buf.recv, nccl_comm; source=bc.condition.to, stream_kw...)
+    # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
+    send_buf = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
+    recv_buf = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
+    NCCL.Send(send_buf, nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(recv_buf, nccl_comm; source=bc.condition.to, stream_kw...)
     return nothing
 end
 
