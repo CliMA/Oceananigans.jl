@@ -29,8 +29,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 # ∂t(U) = - gH∇η + f
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
-# variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+# variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
+@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, U̅, V̅, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -41,20 +41,20 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     ∂xᵣ = x_derivative_operator(filled_halos)
     ∂yᵣ = y_derivative_operator(filled_halos)
 
-    # ∂τ(U) = - ∇η + G
-    # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
-    # since η lives on the surface and doesn't have vertical structure
+    # ∂τ(U) = - ∇η★ + G, using the free surface η★ that already includes the just-updated ηᵐ⁺¹ (the backward
+    # half of the forward-backward step). Note: use ∂xᵣT/∂yᵣT (derivatives at constant r), since η lives on the
+    # surface and has no vertical structure.
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
-        # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
+        # Time-averaging the barotropic velocity
+        U̅[i, j, 1] += averaging_weight * U[i, j, 1]
+        V̅[i, j, 1] += averaging_weight * V[i, j, 1]
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+@kernel function _split_explicit_free_surface!(averaging_weight, transport_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -64,16 +64,108 @@ end
     δy = y_difference_operator(filled_halos)
 
     δh_U = (δx(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+            δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, V★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
 
-        # Time-averaging
+        # Time-averaging the free surface, and the transport U★/V★ that advanced it (constancy); for plain
+        # forward-backward U★/V★ is simply the current velocity.
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        Ũ[i, j, 1]     += transport_weight * U★(i, j, 1, grid, timestepper, U)
+        Ṽ[i, j, 1]     += transport_weight * V★(i, j, 1, grid, timestepper, V)
     end
+end
+
+#####
+##### Multi-stage substep kernels (RungeKutta2Scheme / RungeKutta3Scheme)
+#####
+##### Each barotropic substep runs three {η-update, U-update} stage pairs from the substep-start state
+##### (η⁰, U⁰, V⁰). The averaged quantities (η̅, U̅, V̅, Ũ, Ṽ) are accumulated ONLY on the final stage, from the
+##### free surface that ends the substep and the flux U that advances η in that final stage — this is the same
+##### continuity-consistent transport as the forward-backward path, so tracer constancy is preserved.
+#####
+##### Halos are filled between every stage, so the non-topology-aware operators are used throughout.
+
+@kernel function _barotropic_velocity_stage!(averaging_weight, grid, Δτ, ηᵖ, U, V, U⁰, V⁰, Gᵁ, Gⱽ, g, U̅, V̅)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, ηᵖ)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, ηᵖ)
+
+    @inbounds begin
+        U[i, j, 1] = U⁰[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣᶠᶜᶠ(i, j, k_top, grid, ηᵖ) + Gᵁ[i, j, 1])
+        V[i, j, 1] = V⁰[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣᶜᶠᶠ(i, j, k_top, grid, ηᵖ) + Gⱽ[i, j, 1])
+
+        U̅[i, j, 1] += averaging_weight * U[i, j, 1]
+        V̅[i, j, 1] += averaging_weight * V[i, j, 1]
+    end
+end
+
+@kernel function _barotropic_free_surface_stage!(averaging_weight, transport_weight, grid, Δτ,
+                                                 η, η⁰, U, V, F, clock, η̅, Ũ, Ṽ)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    δh_U = (δxᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U) +
+            δyᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+
+    @inbounds begin
+        η[i, j, k_top] = η⁰[i, j, k_top] + Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
+        Ũ[i, j, 1]     += transport_weight * U[i, j, 1]
+        Ṽ[i, j, 1]     += transport_weight * V[i, j, 1]
+    end
+end
+
+function iterate_split_explicit_multistage!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+    arch        = architecture(grid)
+    η           = free_surface.displacement
+    grid        = free_surface.displacement.grid
+    state       = free_surface.filtered_state
+    timestepper = free_surface.timestepper
+    g           = free_surface.gravitational_acceleration
+    parameters  = free_surface.kernel_parameters
+
+    U, V    = free_surface.barotropic_velocities
+    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
+
+    η⁰, U⁰, V⁰, ηᵖ = timestepper.η⁰, timestepper.U⁰, timestepper.V⁰, timestepper.ηᵖ
+
+    velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _barotropic_velocity_stage!)
+    free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _barotropic_free_surface_stage!)
+
+    stages = stage_parameters(timestepper, Δτᴮ)
+
+    for substep in 1:Nsubsteps
+        @inbounds averaging_weight = weights[substep]
+        @inbounds transport_weight = transport_weights[substep]
+
+        # Cache the substep-start state (parent copies to keep halos consistent).
+        parent(η⁰) .= parent(η)
+        parent(U⁰) .= parent(U)
+        parent(V⁰) .= parent(V)
+
+        @unroll for stage in eachindex(stages)
+            γ = stages[stage]
+            final = stage == lastindex(stages)
+            aw = ifelse(final, averaging_weight, zero(averaging_weight))
+            tw = ifelse(final, transport_weight, zero(transport_weight))
+
+            # Save the previous-stage free surface, then advance η (from η⁰), then U (using the saved ηᵖ).
+            parent(ηᵖ) .= parent(η)
+
+            free_surface_kernel!(aw, tw, grid, γ, η, η⁰, U, V, F, clock, η̅, Ũ, Ṽ)
+            fill_halo_regions!(η)
+
+            velocity_kernel!(aw, grid, γ, ηᵖ, U, V, U⁰, V⁰, GUⁿ, GVⁿ, g, U̅, V̅)
+            fill_halo_regions!((U, V))
+        end
+    end
+
+    return nothing
 end
 
 # Change name
@@ -106,13 +198,18 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
+
+    if requires_multistage(timestepper)
+        iterate_split_explicit_multistage!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
+        return nothing
+    end
 
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, U̅, V̅, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -124,11 +221,11 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            fill_halo_regions!(η)
-            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
-
             fill_halo_regions!((U, V))
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, transport_weight, converted_η_args)
+
+            fill_halo_regions!(η)
+            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, averaging_weight, converted_U_args)
         end
     end
 
@@ -136,6 +233,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 end
 
 @inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
+@inline apply_barotropic_kernel!(kernel, w1, w2, args) = kernel(w1, w2, args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -150,13 +248,18 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
+
+    if requires_multistage(timestepper)
+        iterate_split_explicit_multistage!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
+        return nothing
+    end
 
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, U̅, V̅, timestepper)
+    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -168,8 +271,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
+            barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
         end
     end
 
@@ -235,7 +338,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
     # Fill all the barotropic state.
-    fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
+    fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
     fill_halo_regions!((U, V); async=true)
     fill_halo_regions!(η; async=true)
 

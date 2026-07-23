@@ -4,7 +4,7 @@ using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
-                                                                                  constant_averaging_kernel,
+                                                                                  ConstantAveragingKernel,
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!
@@ -30,7 +30,7 @@ clock = Clock{Float64}(time=0)
 
             velocities = VelocityFields(grid)
 
-            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
             sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.displacement .= 0
@@ -70,7 +70,7 @@ clock = Clock{Float64}(time=0)
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = ConstantAveragingKernel())
                 sefs = materialize_free_surface(sefs, velocities, grid)
 
                 # set!(η, f(x, y))
@@ -103,7 +103,7 @@ clock = Clock{Float64}(time=0)
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
-            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
             sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.displacement .= 0
@@ -169,7 +169,7 @@ clock = Clock{Float64}(time=0)
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = ConstantAveragingKernel())
                 sefs = materialize_free_surface(sefs, velocities, grid)
 
                 state = sefs.filtered_state
@@ -261,12 +261,12 @@ end # end of testset loop
 
         # Create two free surfaces: one with extended halos, one that fills halos each substep
         sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
-                                               averaging_kernel = constant_averaging_kernel,
+                                               averaging_kernel = ConstantAveragingKernel(),
                                                extend_halos = true)
         sefs_extend = materialize_free_surface(sefs_extend, velocities, grid)
 
         sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
-                                             averaging_kernel = constant_averaging_kernel,
+                                             averaging_kernel = ConstantAveragingKernel(),
                                              extend_halos = false)
         sefs_fill = materialize_free_surface(sefs_fill, velocities, grid)
 

@@ -132,7 +132,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = averaging_shape_function,
+                                  averaging_kernel = LowDissipationAveragingKernel(),
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
@@ -286,15 +286,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                   timestepper)
 end
 
-# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
-    τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-    return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
-end
-
-@inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
-@inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
-
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotropic` based on a CFL condition """
 struct FixedTimeStepSize{B, F}
@@ -326,26 +317,6 @@ function FixedTimeStepSize(grid;
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
-end
-
-@inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    τᶠ = range(FT(0), FT(2), length = substeps+1)
-    Δτ = τᶠ[2] - τᶠ[1]
-
-    averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    # Find the latest allowable weight
-    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
-
-    trimmed_weights = averaging_weights[1:M★]
-    trimmed_weights ./= sum(trimmed_weights)
-
-    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
-    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
-    Δτ = Δτ / barycenter
-
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
-
-    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
