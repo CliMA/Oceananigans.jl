@@ -85,10 +85,6 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
-    # Each stream dependency uses a fresh event: a CUDA event only remembers its
-    # latest record, so a shared event re-recorded by every fill can leave waits
-    # targeting the wrong record and let unpacks race in-flight transfers.
-
     # Pack send buffers, then make comm_stream wait for the pack to complete.
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
     pack_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
