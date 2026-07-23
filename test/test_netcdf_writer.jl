@@ -3702,10 +3702,7 @@ end
 function test_netcdf_abstract_vertical_coordinate_name(arch)
     # The NetCDF writer labels the vertical axis from the coordinate's *type*: a
     # `StaticVerticalDiscretization` writes the physical `z`, while every other
-    # `AbstractVerticalCoordinate` — `MutableVerticalDiscretization` and coordinates
-    # defined in downstream packages — writes the reference `r`. A custom
-    # subtype must route to the generic `r` fallback rather than hit a `MethodError`; the
-    # `r` write path itself is exercised end-to-end by `test_netcdf_rectilinear_mvd_output`.
+    # `AbstractVerticalCoordinate` writes the reference `r`.
     custom = ReferenceTestVerticalCoordinate(0:3, 0.5:2.5, 1, 1)
     @test vertical_coordinate_name(custom) == "r"        # generic fallback (under test)
 
