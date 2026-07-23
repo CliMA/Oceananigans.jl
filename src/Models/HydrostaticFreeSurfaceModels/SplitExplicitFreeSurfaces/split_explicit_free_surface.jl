@@ -132,7 +132,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = LowDissipationAveragingKernel(),
+                                  averaging_kernel = WideTrig74AveragingKernel(),
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)

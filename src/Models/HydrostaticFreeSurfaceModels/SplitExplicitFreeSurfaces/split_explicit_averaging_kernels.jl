@@ -30,11 +30,19 @@
 # - `CosineAveragingKernel()`:         μ₂ > 0, μ₃ = 0, lower dispersion
 # - `LowDissipationAveragingKernel()`: μ₂ = 0, μ₃ > 0, lowest diffusivity, 2nd order, best for both FB and RK2
 # - `SymmetricTrigAveragingKernel()`:  μ₂ = 0, μ₃ = 0, lowest diffusivity overall, 3rd order, best for RK3
+# - `WideTrig74AveragingKernel()`:     μ₂ = 0, μ₃ = 0, 3rd order, stratification-robust (wider window, 7/4), best for RK3
+# - `WideTrig2AveragingKernel()`:      μ₂ = 0, μ₃ = 0, 3rd order, most stratification-robust (widest window, 2), best for RK3
+#
+# `SymmetricTrigAveragingKernel` loses stability at strong stratification; the two `WideTrig` kernels keep its
+# μ₂ = μ₃ = 0 (3rd order) while widening the averaging window, which deepens μ₄ (the low-frequency dissipation)
+# enough to stay stable there — at the cost of more barotropic substeps (M★ = (Wend/2)·substeps).
 
 struct ConstantAveragingKernel <: Function end
 struct CosineAveragingKernel   <: Function end
 struct LowDissipationAveragingKernel <: Function end
 struct SymmetricTrigAveragingKernel <: Function end
+struct WideTrig74AveragingKernel <: Function end
+struct WideTrig2AveragingKernel  <: Function end
 
 # Generic weights from general `averaging_kernel`s
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
@@ -138,6 +146,59 @@ function symmetric_trig_first_amplitude(FT, substeps; a2 = FT(-27//20), a3 = FT(
     lo, hi = FT(1//5), FT(16//5)
     flo = f(lo)
     for _ in 1:70
+        mid = (lo + hi) / 2
+        fmid = f(mid)
+        if flo * fmid ≤ 0
+            hi = mid
+        else
+            lo, flo = mid, fmid
+        end
+    end
+    return (lo + hi) / 2
+end
+
+weights_from_substeps(FT, substeps, ::WideTrig74AveragingKernel) = wide_trig_weights_from_substeps(FT, substeps, 7//4, (FT(-1), FT(1//2), FT(-1), FT(1//2)))
+weights_from_substeps(FT, substeps, ::WideTrig2AveragingKernel) = wide_trig_weights_from_substeps(FT, substeps, 2, (FT(-1), FT(1//2), FT(-1), FT(4//5)))
+
+function wide_trig_weights_from_substeps(FT, substeps, Wend, higher)
+    a1 = wide_trig_first_amplitude(FT, substeps, Wend, higher)
+    Δτ, w, M★ = wide_trig_weights(FT, substeps, Wend, (a1, higher...))
+    t = [Δτ * sum(@view w[m:M★]) for m in 1:M★]
+    return FT(Δτ), map(FT, tuple(w...)), map(FT, tuple(t...))
+end
+
+@inline function wide_trig_shape(τ::FT, Wend, a) where FT
+    c = (1//2 + Wend) / 2
+    L = Wend - 1//2
+    s = one(FT)
+    for k in eachindex(a)
+        s += a[k] * cospi(2k * (τ - c) / L)
+    end
+    return ifelse((τ ≥ FT(1//2)) & (τ ≤ FT(Wend)), s, zero(FT))
+end
+
+function wide_trig_weights(FT, substeps, Wend, a)
+    τᶠ = range(FT(0), FT(2), length = substeps+1)
+    Δτ = τᶠ[2] - τᶠ[1]
+    raw = map(τ -> wide_trig_shape(τ, FT(Wend), map(FT, a)), τᶠ[2:end])
+    M★ = findlast(!=(0), raw)
+    w  = collect(raw[1:M★])
+    w ./= sum(w)
+    barycenter = sum(w .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+    return FT(Δτ), w, M★
+end
+
+function wide_trig_second_moment(FT, substeps, Wend, a)
+    Δτ, w, M★ = wide_trig_weights(FT, substeps, Wend, a)
+    return sum(w[m] * (m * Δτ - 1)^2 for m in 1:M★)
+end
+
+function wide_trig_first_amplitude(FT, substeps, Wend, higher)
+    f(a1) = wide_trig_second_moment(FT, substeps, Wend, (a1, higher...))
+    lo, hi = FT(-3), FT(4)
+    flo = f(lo)
+    for _ in 1:80
         mid = (lo + hi) / 2
         fmid = f(mid)
         if flo * fmid ≤ 0
