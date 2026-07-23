@@ -71,7 +71,8 @@ function viscosity end
     diffusivity(model, tracer_index)
 
 Return the scalar diffusivity that `closure` applies to the tracer identified by
-`tracer_index`, which is a `Val` wrapping the tracer name, for example `Val(:T)`.
+`tracer_index` (typically a `Val` wrapping the tracer name, for example `Val(:T)`).
+For closures whose diffusivity does not depend on tracer identity, `tracer_index` is ignored.
 `closure_fields` are the fields computed by `closure` and correspond to
 `model.closure_fields`.
 
