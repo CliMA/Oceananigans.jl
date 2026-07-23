@@ -531,6 +531,7 @@ model.velocities.w.boundary_conditions.immersed
 │
 │     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│     model = NonhydrostaticModel(grid; pressure_solver)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
 └ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
@@ -567,6 +568,7 @@ model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocit
 │
 │     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│     model = NonhydrostaticModel(grid; pressure_solver)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
 └ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55

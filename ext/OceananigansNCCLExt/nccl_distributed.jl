@@ -179,8 +179,10 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    NCCL.Send(buffers.send, nccl_comm; dest=corner_rank)
-    NCCL.Recv!(buffers.recv, nccl_comm; source=corner_rank)
+    send_buf = eltype(buffers.send) === Bool ? reinterpret(UInt8, buffers.send) : buffers.send
+    recv_buf = eltype(buffers.recv) === Bool ? reinterpret(UInt8, buffers.recv) : buffers.recv
+    NCCL.Send(send_buf, nccl_comm; dest=corner_rank)
+    NCCL.Recv!(recv_buf, nccl_comm; source=corner_rank)
     return nothing
 end
 
@@ -190,8 +192,11 @@ end
 
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    NCCL.Send(buf.send, nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(buf.recv, nccl_comm; source=bc.condition.to, stream_kw...)
+    # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
+    send_buf = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
+    recv_buf = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
+    NCCL.Send(send_buf, nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(recv_buf, nccl_comm; source=bc.condition.to, stream_kw...)
     return nothing
 end
 
