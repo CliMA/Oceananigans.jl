@@ -57,14 +57,9 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.devices)
 end
 
-# NOTE: do NOT override `sync_device!(::NCCLDistributedArchitecture) = nothing`.
-# The NCCL fill path below is stream-ordered and never calls `sync_device!`,
-# but other code paths still rely on it being a real device sync under this
-# architecture: mainline MPI halo fills (e.g. for fields on adapted,
-# architecture-stripped grids) call it between packing send buffers and
-# GPU-aware `MPI.Isend`, and `maybe_all_reduce!` calls it before MPI
-# reductions on GPU data. A no-op here lets those paths read GPU buffers
-# while the kernels producing them are still in flight.
+# No sync_device! override here: mainline MPI halo fills and `maybe_all_reduce!`
+# need a real device sync before GPU-aware MPI reads GPU buffers. The NCCL fill
+# path below is stream-ordered and never calls it.
 
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
@@ -90,13 +85,9 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
-    # Every stream dependency below uses a fresh event, NOT one shared event
-    # stored in the communicator: a CUDA event only remembers its most recent
-    # record, so a single event re-recorded by every fill (twice per call,
-    # several fields per timestep) can leave synchronize_communication!'s
-    # wait targeting a pack record on the default stream instead of the NCCL
-    # ops on comm_stream. The unpack then races the in-flight transfer and
-    # can read a partially received halo. Timing-disabled events are cheap.
+    # Each stream dependency uses a fresh event: a CUDA event only remembers its
+    # latest record, so a shared event re-recorded by every fill can leave waits
+    # targeting the wrong record and let unpacks race in-flight transfers.
 
     # Pack send buffers, then make comm_stream wait for the pack to complete.
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
@@ -133,19 +124,11 @@ end
 function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
-    # Fills that take the mainline MPI path under this architecture (e.g.
-    # fields living on adapted, architecture-stripped grids) pool their async
-    # requests in arch.mpi_requests and rely on synchronize_communication! to
-    # complete them and reset arch.mpi_tag (see the mainline method in
-    # distributed_fields.jl). This override replaces that method for all
-    # prognostic fields, so it must do the same bookkeeping — otherwise the
-    # tag counter grows without bound until it exceeds MPI_TAG_UB (2^23 - 1
-    # for Cray MPICH) and MPI_Irecv aborts with "Invalid tag".
-    #
-    # Unlike the mainline method, do NOT unpack `field`'s MPI receive buffers
-    # here: the pooled requests belong to *other* fields (which unpack their
-    # own buffers), while `field` received its halos via NCCL — its MPI
-    # receive buffers hold stale data, and unpacking them corrupts the halos.
+    # Complete requests pooled by fills that took the mainline MPI path and reset
+    # the MPI tag, as the mainline method does — otherwise the tag counter grows
+    # past MPI_TAG_UB and MPI_Irecv errors. Unlike mainline, do NOT unpack
+    # `field`'s MPI buffers: the pooled requests belong to other fields, and
+    # `field`'s halos arrived via NCCL, so its MPI buffers hold stale data.
     if !isempty(arch.mpi_requests)
         DC.cooperative_waitall!(arch.mpi_requests)
         arch.mpi_tag[] = 0
@@ -154,11 +137,8 @@ function synchronize_communication!(field::NCCLDistributedField)
 
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)
-            # Wait on each fill's own comm-completion event before unpacking
-            # its buffers. This also fences all subsequent default-stream work
-            # (the next iteration's packs) behind the finished transfers, so
-            # send buffers are never overwritten while NCCL is still reading
-            # them.
+            # Wait on each fill's completion event before unpacking; this also
+            # fences the next iteration's packs behind the finished transfers.
             for pending in pending_unpacks
                 CUDA.cuStreamWaitEvent(CUDA.stream(), pending.event, UInt32(0))
                 DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
