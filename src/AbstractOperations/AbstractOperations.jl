@@ -96,6 +96,8 @@ Base.:<(::AbstractField, ::Missing) = missing
 Base.:<(::Missing, ::AbstractField) = missing
 
 @multiary +
+@multiary Base.min
+@multiary Base.max
 
 # For unknown reasons, the operator definition macros @binary and @multiary fail to work
 # properly for :*. We thus manually define :* for fields.
