@@ -52,6 +52,7 @@ Distributed.addprocs(2)
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
+        "reentrant_channel.jl"
     ]
 end
 
@@ -110,6 +111,7 @@ example_pages = [
     "Horizontal convection"                 => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
+    "Differentiable reentrant channel"      => "literated/reentrant_channel.md",
     "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
 ]
 
