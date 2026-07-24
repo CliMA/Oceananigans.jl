@@ -1,7 +1,9 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta2Scheme, RungeKutta3Scheme, AdamsBashforth3Scheme
 export FixedSubstepNumber, FixedTimeStepSize
+export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel, SymmetricTrigAveragingKernel
+export WideTrig74AveragingKernel, WideTrig2AveragingKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
@@ -33,6 +35,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!
                                                          explicit_barotropic_pressure_y_gradient
 
 include("split_explicit_timesteppers.jl")
+include("split_explicit_averaging_kernels.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("initialize_split_explicit_substepping.jl")
