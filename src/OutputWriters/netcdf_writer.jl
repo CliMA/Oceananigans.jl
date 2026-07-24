@@ -22,12 +22,15 @@ const MVD  = MutableVerticalDiscretization
 #   - `StaticVerticalDiscretization`: the reference and physical vertical coordinates coincide,
 #     so we use "z".
 #   - `MutableVerticalDiscretization` (z-star, σ-coordinates): the saved 1D coordinate is the
-#     reference (Lagrangian) coordinate; the physical `z = z(r, η, …)` is reconstructible from
+#     reference coordinate; the physical `z = z(r, η, …)` is reconstructible from
 #     `r` and the time-varying free surface `η`. We use "r" for the 1D reference coordinate.
 #
 
 vertical_coordinate_name(::SVD) = "z"
 vertical_coordinate_name(::MVD) = "r"
+# Fallback: any other `AbstractVerticalCoordinate`stores a reference `r`
+# distinct from physical `z`, so we use "r".
+vertical_coordinate_name(::AbstractVerticalCoordinate) = "r"
 vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
 vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
