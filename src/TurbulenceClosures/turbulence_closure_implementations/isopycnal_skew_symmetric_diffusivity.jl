@@ -1,6 +1,4 @@
 using Oceananigans.Fields: VelocityFields, NamedFieldTuple
-using Oceananigans.Grids: required_halo_size
-using Oceananigans.TimeSteppers: time_discretization
 
 struct AdvectiveFormulation end
 struct DiffusiveFormulation end
