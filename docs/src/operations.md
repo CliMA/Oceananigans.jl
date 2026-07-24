@@ -306,3 +306,58 @@ conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0
 # output
 true
 ```
+
+## Unicode notation for integrals
+
+Integrals have Unicode shorthands that mirror the derivative operators `∂x`, `∂y`, and `∂z`.
+[`∫dx`](@ref), [`∫dy`](@ref), and [`∫dz`](@ref) integrate over one dimension, [`∫∫dxdy`](@ref), [`∫∫dxdz`](@ref), and [`∫∫dydz`](@ref) integrate over two, and [`∫∫∫dxdydz`](@ref) integrates over all three.
+[`∫dV`](@ref) is an alias for `∫∫∫dxdydz`.
+
+Each of these wraps `Integral` in a `Field` that is computed on construction, so the horizontal integral we computed above can also be written as
+
+```jldoctest operations_avg_int
+∫c = ∫∫dxdy(c)
+
+# output
+1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
+├── status: time=0.0
+└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
+    └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
+```
+
+Because they return `Field`s, the Unicode operators compose with the rest of the operations machinery, which a bare `Reduction` cannot do.
+Here, for instance, we normalize the horizontal integral at each level by the integral over the whole domain, which for `c = 1` returns the inverse of the domain depth:
+
+```jldoctest operations_avg_int
+Field(∫∫dxdy(c) / ∫dV(c))
+
+# output
+1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+├── operand: BinaryOperation at (⋅, ⋅, Center)
+├── status: time=0.0
+└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
+    └── max=0.001, min=0.001, mean=0.001
+```
+
+The one-dimensional operators take `cumulative=true`, which returns the running integral computed by [`CumulativeIntegral`](@ref), and `reverse=true`, which accumulates from the far end of the dimension.
+
+```jldoctest operations_avg_int
+∫ᶻc = ∫dz(c, cumulative=true)
+
+# output
+60×10×6 Field{Center, Center, Face} on LatitudeLongitudeGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (60, 10, 6)
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── operand: CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
+├── status: time=0.0
+└── data: 66×16×12 OffsetArray(::Array{Float64, 3}, -2:63, -2:13, -2:9) with eltype Float64 with indices -2:63×-2:13×-2:9
+    └── max=1000.0, min=0.0, mean=500.0
+```
+
+The `condition` and `mask` keyword arguments behave exactly as they do for `Integral`.

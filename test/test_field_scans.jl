@@ -262,6 +262,58 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             @test mean(results) == 1.0
         end
 
+        @testset "Unicode integral operators [$arch_str]" begin
+            @info "  Testing Unicode integral operators [$arch_str]"
+
+            grid = RectilinearGrid(arch, size = (2, 2, 2),
+                                   x = (0, 2), y = (0, 2), z = (0, 2),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            T = CenterField(grid)
+            set!(T, trilinear)
+            fill_halo_regions!(T)
+
+            unicode_integrals = (∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz)
+            integrated_dims = (tuple(1), tuple(2), tuple(3), (1, 2), (1, 3), (2, 3), (1, 2, 3))
+
+            for (∫dξ, dims) in zip(unicode_integrals, integrated_dims)
+                ∫T = ∫dξ(T)
+                @test ∫T isa Field
+                @test ∫T.operand isa Reduction
+                @test ∫T.operand.dims === dims
+                @test interior_array(∫T, :, :, :) == interior_array(Field(Integral(T; dims)), :, :, :)
+            end
+
+            @test ∫dV === ∫∫∫dxdydz
+
+            # The returned Field is computed on construction: T = x + y + z integrates to 24 over [0, 2]³
+            @test interior_array(∫dV(T), :, :, :)[1, 1, 1] ≈ 24
+
+            # ... and still composes with other abstract operations
+            @test interior_array(Field(T / ∫dV(T)), :, :, :) ≈ interior_array(T, :, :, :) ./ 24
+
+            # CumulativeIntegral is only supported over a single Bounded dimension
+            @test_throws ArgumentError ∫dx(T, cumulative=true)
+            @test_throws ArgumentError ∫dy(T, cumulative=true)
+            @test_throws ArgumentError ∫∫dxdy(T, cumulative=true)
+
+            Tcz = ∫dz(T, cumulative=true)
+            Trz = ∫dz(T, cumulative=true, reverse=true)
+
+            @test Tcz.operand isa Accumulation
+            @test Tcz.operand.scan! === cumsum!
+            @test Trz.operand.scan! === reverse_cumsum!
+
+            @test interior_array(Tcz, 1, 1, :) ≈ [0, 1.5, 4]
+            @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5, 0]
+
+            upper_half(i, j, k, grid, c) = Oceananigans.Grids.znode(k, grid, Center()) > 1
+
+            ∫TdV = ∫dV(T, condition=upper_half)
+            @test interior_array(∫TdV, :, :, :)[1, 1, 1] ≈ 14
+            @test interior_array(∫TdV, :, :, :) == interior_array(Field(Integral(T, condition=upper_half)), :, :, :)
+        end
+
         @testset "Allocating reductions [$arch_str]" begin
             @info "  Testing allocating reductions [$arch_str]"
 
