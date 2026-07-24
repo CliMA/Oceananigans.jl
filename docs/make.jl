@@ -7,6 +7,7 @@ Distributed.addprocs(2)
     using DocumenterCitations
     using Literate
     using Printf
+    using Markdown
 
     using CUDA
     using CairoMakie # to avoid capturing precompilation output by Literate
@@ -212,6 +213,104 @@ pages = [
         "Appendix" => appendix_pages
     ]
 ]
+
+function paper_counts_by_year(index_path)
+    text = read(index_path, String)
+    papers_heading = "## Papers and preprints using Oceananigans"
+    papers_start = findfirst(papers_heading, text)
+    isnothing(papers_start) && error("Could not find publications section in $(index_path).")
+
+    papers_section = text[first(papers_start):end]
+    year_counts = Dict{Int, Int}()
+
+    for line in eachline(IOBuffer(papers_section))
+        startswith(line, "1. ") || continue
+        year_match = match(r"\((\d{4})\)", line)
+        isnothing(year_match) && continue
+        year = parse(Int, year_match.captures[1])
+        year_counts[year] = get(year_counts, year, 0) + 1
+    end
+
+    return sort(collect(year_counts); by=first)
+end
+
+function render_oceananigans_paper_timeline()
+    index_path = joinpath(pkgdir(Oceananigans), "docs", "src", "index.md")
+    counts = paper_counts_by_year(index_path)
+    total_papers = sum(last, counts)
+    maximum_count = maximum(last, counts)
+
+    html = IOBuffer()
+
+    println(html, "<style>")
+    println(html, ".oceananigans-paper-timeline {")
+    println(html, "  margin: 1.5rem 0 2rem 0;")
+    println(html, "  padding: 1rem 1.25rem 0.75rem 1.25rem;")
+    println(html, "  border: 1px solid var(--vp-c-divider);")
+    println(html, "  border-radius: 14px;")
+    println(html, "  background: linear-gradient(180deg, color-mix(in srgb, var(--vp-c-brand-1) 8%, transparent), transparent 65%);")
+    println(html, "}")
+    println(html, ".oceananigans-paper-timeline-title {")
+    println(html, "  margin: 0 0 0.2rem 0;")
+    println(html, "  font-size: 0.95rem;")
+    println(html, "  font-weight: 600;")
+    println(html, "  color: var(--vp-c-text-1);")
+    println(html, "}")
+    println(html, ".oceananigans-paper-timeline-subtitle {")
+    println(html, "  margin: 0 0 0.8rem 0;")
+    println(html, "  font-size: 0.8rem;")
+    println(html, "  color: var(--vp-c-text-2);")
+    println(html, "}")
+    println(html, ".oceananigans-paper-bars {")
+    println(html, "  display: flex;")
+    println(html, "  align-items: end;")
+    println(html, "  gap: 0.7rem;")
+    println(html, "  min-height: 12rem;")
+    println(html, "}")
+    println(html, ".oceananigans-paper-bar-group {")
+    println(html, "  display: flex;")
+    println(html, "  flex: 1 1 0;")
+    println(html, "  flex-direction: column;")
+    println(html, "  align-items: center;")
+    println(html, "  gap: 0.35rem;")
+    println(html, "}")
+    println(html, ".oceananigans-paper-count {")
+    println(html, "  font-size: 0.75rem;")
+    println(html, "  color: var(--vp-c-text-2);")
+    println(html, "}")
+    println(html, ".oceananigans-paper-bar {")
+    println(html, "  width: 100%;")
+    println(html, "  max-width: 2.6rem;")
+    println(html, "  min-height: 0.35rem;")
+    println(html, "  border-radius: 6px 6px 0 0;")
+    println(html, "  background: linear-gradient(180deg, var(--vp-c-brand-1), var(--vp-c-brand-3));")
+    println(html, "  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vp-c-brand-1) 18%, transparent);")
+    println(html, "}")
+    println(html, ".oceananigans-paper-year {")
+    println(html, "  font-size: 0.75rem;")
+    println(html, "  color: var(--vp-c-text-2);")
+    println(html, "}")
+    println(html, "</style>")
+    println(html)
+    println(html, "<div class=\"oceananigans-paper-timeline\">")
+    println(html, "  <p class=\"oceananigans-paper-timeline-title\">Papers per year</p>")
+    println(html, "  <p class=\"oceananigans-paper-timeline-subtitle\">$(total_papers) verified papers and preprints currently listed</p>")
+    println(html, "  <div class=\"oceananigans-paper-bars\">")
+
+    for (year, count) in counts
+        height = round(100 * count / maximum_count; digits=3)
+        println(html, "    <div class=\"oceananigans-paper-bar-group\">")
+        println(html, "      <div class=\"oceananigans-paper-count\">$(count)</div>")
+        println(html, "      <div class=\"oceananigans-paper-bar\" style=\"height: $(height)%;\"></div>")
+        println(html, "      <div class=\"oceananigans-paper-year\">$(year)</div>")
+        println(html, "    </div>")
+    end
+
+    println(html, "  </div>")
+    println(html, "</div>")
+
+    return Markdown.MD(Documenter.RawNode(:html, String(take!(html))))
+end
 
 #####
 ##### Build and deploy docs

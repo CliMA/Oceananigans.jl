@@ -131,6 +131,16 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+```@eval
+Main.render_oceananigans_paper_timeline()
+```
+
+1. Kalathoor, S. P. (2026). [Route survival and spectral modification of finite-depth salt-finger plume forests under imposed mean shear](https://doi.org/10.48550/arXiv.2607.07012), _arXiv preprint_, arXiv:2607.07012. DOI: [10.48550/arXiv.2607.07012](https://doi.org/10.48550/arXiv.2607.07012)
+
+1. Kalathoor, S. P. (2026). [Interfacial Spectral Memory as a State Variable for Finite-Depth Salt-Finger Exchange](https://doi.org/10.48550/arXiv.2606.26045), _arXiv preprint_, arXiv:2606.26045. DOI: [10.48550/arXiv.2606.26045](https://doi.org/10.48550/arXiv.2606.26045)
+
+1. Kalathoor, S. P. (2026). [Interfacial Roughness Spectra and Finite-Depth Salt-Finger Mixing at a Two-Layer Thermohaline Interface](https://doi.org/10.48550/arXiv.2606.21131), _arXiv preprint_, arXiv:2606.21131. DOI: [10.48550/arXiv.2606.21131](https://doi.org/10.48550/arXiv.2606.21131)
+
 1. Knudsen, L., Wenegrat, J., Hilditch, J., and Thomas, L. N. (2026). [Parametric subharmonic instability in the ocean bottom boundary layer](https://doi.org/10.48550/arXiv.2605.28555), _arXiv preprint_, arXiv:2605.28555. DOI: [10.48550/arXiv.2605.28555](https://doi.org/10.48550/arXiv.2605.28555)
 
 1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
@@ -177,7 +187,11 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
 
+1. Huang, J., Chamecki, M., Li, Q., and Chen, B. (2025). [The role of longitudinal alignment between surface and bottom forcing on the full-column turbulence mixing in the coastal ocean](https://doi.org/10.1016/j.ocemod.2025.102637), _Ocean Modelling_, **199**, 102637. DOI: [10.1016/j.ocemod.2025.102637](https://doi.org/10.1016/j.ocemod.2025.102637)
+
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
+
+1. Shu, R., Gou, R., Pennelly, C., Deng, Y., Wu, L., Xiao, K., Huang, Y., and Myers, P. G. (2025). [Impact of downwelling-favorable winds on eddy formation in the West Greenland current](https://doi.org/10.1175/JPO-D-24-0053.1), _Journal of Physical Oceanography_, **55(2)**, 191–201. DOI: [10.1175/JPO-D-24-0053.1](https://doi.org/10.1175/JPO-D-24-0053.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
 
