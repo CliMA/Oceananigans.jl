@@ -58,6 +58,7 @@ end
 indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
 function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
+    any_time_series(args...) && return time_series_operation(L, op, args...)
     args = map(validate_operand, args)
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
     return MultiaryOperation{LX, LY, LZ}(op, Tuple(a for a in args), ▶, grid)
@@ -164,7 +165,6 @@ macro multiary(ops...)
         add_to_operator_lists = quote
             push!($(operators), Symbol($op))
             push!($(multiary_operators), Symbol($op))
-            $(add_time_series_methods!)($op, $(Val(3)))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))

@@ -29,6 +29,7 @@ end
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
 function _derivative(L::Tuple{LX, LY, LZ}, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
+    any_time_series(arg) && return time_series_operation(L, abstract_∂, arg)
     arg = validate_operand(arg)
     ▶ = interpolation_operator(L∂, L)
     return Derivative{LX, LY, LZ}(∂, arg, ▶, abstract_∂, grid)

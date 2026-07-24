@@ -156,11 +156,12 @@ Adapt.adapt_structure(to, t::FieldTimeSeriesTarget) =
 Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
 
 const FieldRelaxation           = Relaxation{<:Any, <:Any, <:Any, <:AbstractField}
-const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, FieldTimeSeriesTarget}}
+const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, AbstractFieldTimeSeries, FieldTimeSeriesTarget}}
 
 @inline evaluate_target(c::Number,                    i, j, k, X, t) = c
 @inline evaluate_target(f,                            i, j, k, X, t) = f(X..., t)
 @inline evaluate_target(f::AbstractArray,             i, j, k, X, t) = @inbounds f[i, j, k]
+@inline evaluate_target(fts::SomeTimeSeries,          i, j, k, X, t) = @inbounds fts[i, j, k, Time(t)]
 @inline evaluate_target(t::InterpolatedFieldTarget,   i, j, k, X, time) =
     interpolate(X, t.field, t.loc, t.grid)
 @inline evaluate_target(t::FieldTimeSeriesTarget,     i, j, k, X, time) =
@@ -181,6 +182,18 @@ function materialize_target(target::AbstractField, field)
         return target
     else
         return InterpolatedFieldTarget(target, target_loc, target.grid)
+    end
+end
+
+# A lazy operation target is evaluated pointwise (time-interpolated at each grid
+# point), which requires colocation with the forced field.
+function materialize_target(target::FieldTimeSeriesOperation, field)
+    if target.grid === field.grid && instantiated_location(target) == instantiated_location(field)
+        return target
+    else
+        throw(ArgumentError("A FieldTimeSeriesOperation relaxation target must be colocated with the" *
+                            " forced field on the same grid; materialize it with `FieldTimeSeries` to" *
+                            " interpolate from another location or grid."))
     end
 end
 

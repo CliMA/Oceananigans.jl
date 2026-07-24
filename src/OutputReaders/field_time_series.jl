@@ -17,7 +17,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid, validate_indices
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
-using Oceananigans.Fields: interior_view_indices,
+using Oceananigans.Fields: AbstractFieldTimeSeries, interior_view_indices,
                            indices_summary, instantiate
 
 using Oceananigans.Units: Time
@@ -259,12 +259,6 @@ end
 ##### FieldTimeSeries
 #####
 
-"""
-Abstract supertype for four-dimensional (space + time) fields: concrete, data-holding
-`FieldTimeSeries` as well as lazy `FieldTimeSeriesOperation`.
-"""
-abstract type AbstractFieldTimeSeries{LX, LY, LZ, TI, G, ET} <: AbstractField{LX, LY, LZ, G, ET, 4} end
-
 mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractFieldTimeSeries{LX, LY, LZ, TI, G, ET}
     data :: D
     grid :: G
@@ -363,11 +357,36 @@ function Adapt.adapt_structure(to, fts::FieldTimeSeries)
                                                  adapt(to, fts.time_indexing))
 end
 
+# The GPU-adapted mirror of FieldTimeSeriesOperation (see field_time_series_operations.jl),
+# which evaluates the operation pointwise inside kernels.
+struct GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, P, G, I, χ, T} <: AbstractField{LX, LY, LZ, Nothing, T, 4}
+    op :: O
+    args :: A
+    interpolators :: P
+    grid :: G
+    indices :: I
+    times :: χ
+    time_indexing :: TI
+end
+
+# A lazy time slice of a four-dimensional series, indexable at (i, j, k) inside kernels.
+struct TimeSlice{S, N}
+    series :: S
+    n :: N
+end
+
+@inline Base.getindex(slice::TimeSlice, i, j, k) = @inbounds slice.series[i, j, k, slice.n]
+
 const    FTS{LX, LY, LZ, TI, K} =           FieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
 const GPUFTS{LX, LY, LZ, TI, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
 
 const FlavorOfFTS{LX, LY, LZ, TI, K} = Union{GPUFTS{LX, LY, LZ, TI, K},
                                                 FTS{LX, LY, LZ, TI, K}} where {LX, LY, LZ, TI, K}
+
+# Every four-dimensional time series form: concrete or lazy, host-side or GPU-adapted.
+const SomeTimeSeries{LX, LY, LZ} = Union{AbstractFieldTimeSeries{LX, LY, LZ},
+                                         GPUAdaptedFieldTimeSeries{LX, LY, LZ},
+                                         GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ}} where {LX, LY, LZ}
 
 const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:AbstractInMemoryBackend}
 const OnDiskFTS          = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:OnDisk}
@@ -390,14 +409,16 @@ time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.time
     return memory_index(backend, ti, Nt, n)
 end
 
-# A FieldTimeSeries cannot be an operand of a (three-dimensional) AbstractOperation:
-# the result would silently drop the time dimension (issue #5758).
-Oceananigans.AbstractOperations.validate_operand(fts::FieldTimeSeries) =
-    throw(ArgumentError("AbstractOperations on FieldTimeSeries are not supported yet: the" *
-                        " result would be a three-dimensional operation that silently drops" *
-                        " the time dimension. To operate on a single snapshot, slice the" *
-                        " FieldTimeSeries first with `fts[n]` or `fts[Time(t)]`, or wrap it" *
-                        " in `TimeSeriesInterpolation` to interpolate to a clock time."))
+# A time series cannot be an operand of a (three-dimensional) AbstractOperation:
+# the result would silently drop the time dimension (issue #5758). Operators applied
+# to time series route to FieldTimeSeriesOperation before operand validation, so this
+# is reached only by operations without a four-dimensional form.
+Oceananigans.AbstractOperations.validate_operand(fts::AbstractFieldTimeSeries) =
+    throw(ArgumentError("A FieldTimeSeries cannot be an operand of this three-dimensional" *
+                        " operation: the result would silently drop the time dimension." *
+                        " Slice the series first with `fts[n]` or `fts[Time(t)]`, or, for" *
+                        " kernel functions over time series, use" *
+                        " `FieldTimeSeriesOperation{LX, LY, LZ}(func, grid, args...)`."))
 
 #####
 ##### Constructors
@@ -1064,10 +1085,10 @@ Base.parent(fts::OnDiskFTS)           = nothing
 indices(fts::FieldTimeSeries)         = fts.indices
 interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 
-# Make FieldTimeSeries behave like Vector wrt to singleton indices
-Base.length(fts::FlavorOfFTS)     = length(fts.times)
-Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
-Base.firstindex(fts::FlavorOfFTS) = 1
+# Make every time series form behave like Vector wrt to singleton indices
+Base.length(fts::SomeTimeSeries)     = length(fts.times)
+Base.lastindex(fts::SomeTimeSeries)  = length(fts.times)
+Base.firstindex(fts::SomeTimeSeries) = 1
 
 function interior(fts::FieldTimeSeries)
     Topo = topology(fts.grid)

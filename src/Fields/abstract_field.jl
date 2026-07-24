@@ -51,6 +51,13 @@ Base.parent(f::AbstractField) = f
 const Abstract3DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 3}
 const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 
+"""
+Abstract supertype for four-dimensional (space + time) fields with time indexing `TI`:
+concrete, data-holding `FieldTimeSeries` as well as lazy `FieldTimeSeriesOperation`,
+both defined in `Oceananigans.OutputReaders`.
+"""
+abstract type AbstractFieldTimeSeries{LX, LY, LZ, TI, G, ET} <: AbstractField{LX, LY, LZ, G, ET, 4} end
+
 # TODO: to omit boundaries on Face fields, we have to return 2:N
 # when topo=Bounded, and loc=Face
 @inline axis(::Colon, N) = Base.OneTo(N)

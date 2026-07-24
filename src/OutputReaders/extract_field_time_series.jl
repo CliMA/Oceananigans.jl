@@ -12,7 +12,7 @@ function type_contains_field_time_series(T, seen)
     push!(seen, T)
     T isa Union && return type_contains_field_time_series(T.a, seen) ||
                           type_contains_field_time_series(T.b, seen)
-    T <: FieldTimeSeries && return true
+    T <: AbstractFieldTimeSeries && return true
     T <: GPUAdaptedFieldTimeSeries && return true
     (T <: Number || T <: AbstractGrid) && return false
     (T <: AbstractArray && !(T <: AbstractField)) && return false
@@ -44,10 +44,17 @@ end
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
-# More specific than the AbstractField fall-through below: a FieldTimeSeriesOperation
-# carries FieldTimeSeries inside its argument tuple.
-extract_field_time_series(fts_op::FieldTimeSeriesOperation) =
-    concatenate_extracted(map(extract_field_time_series, fts_op.args))
+# An operation is extracted whole rather than as its raw arguments: updating the
+# operation updates every argument, widening the window where the operation needs
+# neighboring time nodes (as ∂t does).
+extract_field_time_series(operation::FieldTimeSeriesOperation) = (operation,)
+
+# The FieldTimeSeries leaves of a (possibly nested) operation argument tree, for
+# querying per-series properties like backends and windows.
+leaf_time_series(fts::FieldTimeSeries) = (fts,)
+leaf_time_series(interpolation::TimeSeriesInterpolation) = leaf_time_series(interpolation.time_series)
+leaf_time_series(operation::FieldTimeSeriesOperation) = concatenate_extracted(map(leaf_time_series, operation.args))
+leaf_time_series(x) = ()
 
 CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing)
 
@@ -63,7 +70,7 @@ extract_field_time_series(t::Union{Tuple, NamedTuple}) =
     has_field_time_series(typeof(t)) ?
         concatenate_extracted(map(extract_field_time_series, values(t))) : ()
 
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
+const CPUFTSBC = BoundaryCondition{<:Any, <:AbstractFieldTimeSeries}
 const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
 const DFBC     = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 const CFBC     = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction}

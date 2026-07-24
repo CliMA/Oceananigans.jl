@@ -11,7 +11,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Fields: AbstractField, AbstractFieldTimeSeries, instantiated_location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
 
@@ -46,15 +46,17 @@ at(loc, f) = f # fallback
 """
 $(TYPEDSIGNATURES)
 
-Define methods on the operator `op` of the given arity (`Val(1)`, `Val(2)`, or `Val(3)`
-for unary, binary, and multiary) so that applying it to `FieldTimeSeries` arguments
-builds a `FieldTimeSeriesOperation`.
+Return a lazy operation applying `op` at location `L` to `args` — at least one of which
+is an `AbstractFieldTimeSeries` — at every time node.
 
-The fallback does nothing; `OutputReaders` extends this function per arity. The
-`@unary`, `@binary`, and `@multiary` macros call it so that user-registered operators
-support `FieldTimeSeries` arguments just like the default operators do.
+Operation constructors route to this function whenever an argument is a time series,
+so that every operator (including user-registered ones) builds a four-dimensional
+`FieldTimeSeriesOperation` instead of a three-dimensional operation that would silently
+drop the time dimension. Implemented by `OutputReaders`.
 """
-add_time_series_methods!(op, arity) = nothing
+function time_series_operation end
+
+@inline any_time_series(args...) = any(a -> a isa AbstractFieldTimeSeries, args)
 
 """
 $(TYPEDSIGNATURES)

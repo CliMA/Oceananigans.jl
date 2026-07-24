@@ -167,16 +167,16 @@ end
 @propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
-# Reduced FTS
-const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
-const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any}
-const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any}
-const XFTS  = FlavorOfFTS{<:Any, Nothing, Nothing}
-const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
-const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
-const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
+# Reduced time series (concrete or lazy, host-side or GPU-adapted)
+const XYFTS = SomeTimeSeries{<:Any, <:Any, Nothing}
+const XZFTS = SomeTimeSeries{<:Any, Nothing, <:Any}
+const YZFTS = SomeTimeSeries{Nothing, <:Any, <:Any}
+const XFTS  = SomeTimeSeries{<:Any, Nothing, Nothing}
+const YFTS  = SomeTimeSeries{Nothing, <:Any, Nothing}
+const ZFTS  = SomeTimeSeries{Nothing, Nothing, <:Any}
+const FTS0  = SomeTimeSeries{Nothing, Nothing, Nothing}
 
-# `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
+# `getbc` for 2D time-series boundary conditions (only possible for 2D, 1D and 0D series)
 
 # Bottom and top boundary conditions
 @inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
@@ -233,8 +233,15 @@ end
 ##### Global `getindex` with `time_index :: Time`
 #####
 
-# Linear time interpolation
-function Base.getindex(fts::FieldTimeSeries, time_index::Time)
+# The slice at time index n as a computed Field.
+materialized_time_slice(fts::FieldTimeSeries, n) = fts[n]
+
+# The slice at time index n in a form that supports linear combination inside `Field`:
+# a Field for stored series, a lazy slice operation for operations.
+time_interpolable_slice(fts::FieldTimeSeries, n) = fts[n]
+
+# Linear time interpolation, shared by FieldTimeSeries and FieldTimeSeriesOperation
+function Base.getindex(fts::AbstractFieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, time_index.time)
     ñ = indices.fractional_index
@@ -242,11 +249,12 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     n₂ = indices.second_index
 
     if n₁ == n₂ # no interpolation needed
-        return fts[n₁]
+        return materialized_time_slice(fts, n₁)
     end
 
-    # Otherwise, make a Field representing a linear interpolation in time
-    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
+    # Otherwise, make a Field representing a linear interpolation in time.
+    # Ensure both bracketing time indices of partly-in-memory data are resident
+    # simultaneously before slicing.
     update_field_time_series!(fts, n₁, n₂)
 
     t₂ = @allowscalar fts.times[n₂]
@@ -254,8 +262,8 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     t = interp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
-    ψ₂ = fts[n₂]
-    ψ₁ = fts[n₁]
+    ψ₂ = time_interpolable_slice(fts, n₂)
+    ψ₁ = time_interpolable_slice(fts, n₁)
     ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ); status)
 
     # Compute the field and return it
@@ -384,9 +392,15 @@ cpu_interpolating_time_indices(arch::Distributed, args...) = cpu_interpolating_t
 update_field_time_series!(fts, time::Time) = nothing
 update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 
-# Update the `fts` to contain the time `time_index.time`.
-# Linear extrapolation, simple version
-function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
+# Whether updating to a new time can move any data: true only when partly-in-memory
+# data (possibly inside an operation) is involved.
+needs_time_update(fts::FieldTimeSeries) = fts.backend isa PartlyInMemory
+needs_time_update(x) = false
+
+# Update `fts` to contain the time `time_index.time`, shared by FieldTimeSeries
+# and FieldTimeSeriesOperation. Linear extrapolation, simple version.
+function update_field_time_series!(fts::AbstractFieldTimeSeries, time_index::Time)
+    needs_time_update(fts) || return nothing
     t = time_index.time
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
     n₁ = indices.first_index
