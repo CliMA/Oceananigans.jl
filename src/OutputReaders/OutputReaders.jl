@@ -3,7 +3,7 @@ module OutputReaders
 export FieldDataset
 export FieldTimeSeries
 export TimeSeriesInterpolation
-export InMemory, OnDisk
+export InMemory, OnDisk, DerivedInMemoryBackend
 export Cyclical, Linear, Clamp
 
 using DocStringExtensions: TYPEDSIGNATURES

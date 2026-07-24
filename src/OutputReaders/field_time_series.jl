@@ -62,6 +62,38 @@ Base.summary(backend::TotallyInMemory) = "InMemory()"
 new_backend(::InMemory, start, length) = InMemory(start, length)
 
 """
+    DerivedInMemoryBackend(length, func, sources, parameters=())
+
+Return a partly-in-memory `backend` for a `FieldTimeSeries` whose time slices are
+computed from other `FieldTimeSeries` rather than read from a file: slice `n` is
+filled by evaluating the kernel function
+
+    func(i, j, k, grid, source_slices..., parameters...)
+
+over the slices `map(s -> s[n], sources)`. The `sources` must share the derived
+series' grid and times. Indexing a source slice outside its resident window
+repositions that window, so a derived series is exactly as lazy as its sources.
+"""
+struct DerivedInMemoryBackend{F, S, P} <: AbstractInMemoryBackend{Int}
+    start :: Int
+    length :: Int
+    func :: F
+    sources :: S
+    parameters :: P
+end
+
+function DerivedInMemoryBackend(length::Int, func, sources, parameters=())
+    length < 2 && throw(ArgumentError("DerivedInMemoryBackend `length` must be 2 or greater."))
+    return DerivedInMemoryBackend(1, length, func, sources, parameters)
+end
+
+Base.summary(backend::DerivedInMemoryBackend) =
+    string("DerivedInMemoryBackend(", backend.start, ", ", length(backend), ")")
+
+new_backend(b::DerivedInMemoryBackend, start, length) =
+    DerivedInMemoryBackend(start, length, b.func, b.sources, b.parameters)
+
+"""
     OnDisk()
 
 Return a lazy `backend` for `FieldTimeSeries` that keeps data
@@ -367,6 +399,7 @@ const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:AbstractInM
 const OnDiskFTS          = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:OnDisk}
 const TotallyInMemoryFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:TotallyInMemory}
 const PartlyInMemoryFTS  = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:PartlyInMemory}
+const DerivedFTS         = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:DerivedInMemoryBackend}
 
 const CyclicalFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Cyclical, K} where K
 const   LinearFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Linear,   K} where K

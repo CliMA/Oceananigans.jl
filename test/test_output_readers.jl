@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, time_indices
 
 using Random
 using NCDatasets
@@ -718,6 +718,50 @@ end
 ##### Run tests
 #####
 
+@inline product_of_sources(i, j, k, grid, a, b) = @inbounds a[i, j, k] * b[i, j, k]
+@inline scaled_source(i, j, k, grid, a, scale) = @inbounds scale * a[i, j, k]
+
+function test_derived_in_memory_backend(arch)
+    grid = RectilinearGrid(arch, size=(4, 4), extent=(1, 1), topology=(Periodic, Bounded, Flat))
+    times = 0.0:1.0:9.0
+    Nt = length(times)
+
+    a = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+    b = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+    for n in 1:Nt
+        set!(a[n], (x, y) -> n + x)
+        set!(b[n], (x, y) -> 10n + y)
+    end
+
+    window = 3
+    backend = DerivedInMemoryBackend(window, product_of_sources, (a, b))
+    derived = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend, time_indexing=Cyclical())
+    set!(derived)
+
+    @test length(derived.backend) == window
+    @test collect(time_indices(derived)) == [1, 2, 3]
+
+    # Slide the window forward, jump backward, and wrap past the last index: every
+    # access matches direct computation and residency never exceeds the window.
+    for n in (1, 2, 3, 7, 8, 4, 1, Nt)
+        expected = Array(interior(a[n])) .* Array(interior(b[n]))
+        @test Array(interior(derived[n])) ≈ expected
+        @test length(time_indices(derived)) == window
+    end
+
+    # Parameters are appended to the kernel function call.
+    scale = 2.5
+    scaled_backend = DerivedInMemoryBackend(window, scaled_source, (a,), (scale,))
+    scaled = FieldTimeSeries{Center, Center, Nothing}(grid, times; backend=scaled_backend, time_indexing=Cyclical())
+    set!(scaled)
+
+    for n in (2, 6, Nt)
+        @test Array(interior(scaled[n])) ≈ scale .* Array(interior(a[n]))
+    end
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
@@ -877,4 +921,11 @@ end
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
+
+    @testset "FieldTimeSeries with DerivedInMemoryBackend" begin
+        for arch in archs
+            @info "  Testing FieldTimeSeries with DerivedInMemoryBackend [$(typeof(arch))]..."
+            test_derived_in_memory_backend(arch)
+        end
+    end
 end
