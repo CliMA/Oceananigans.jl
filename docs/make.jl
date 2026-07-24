@@ -194,7 +194,7 @@ pages = [
         "Simulation Tips" => "simulation_tips.md",
         # Future tutorials:
         # "Reductions & Accumulations" => "reductions_and_accumulations.md",
-        # "FieldTimeSeries & Post-Processing" => field_time_series.md
+        "FieldTimeSeries & Post-Processing" => field_time_series.md,
         "Examples" => example_pages,
         "Gallery" => "gallery.md",
     ],
