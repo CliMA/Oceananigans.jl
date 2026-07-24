@@ -34,6 +34,7 @@ indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
 function _binary_operation(Lc::Tuple{LX, LY, LZ}, op, a, b, La, Lb, grid) where {LX<:Location, LY<:Location, LZ<:Location}
+    any_time_series(a, b) && return time_series_operation(Lc, op, a, b)
     a = validate_operand(a)
     b = validate_operand(b)
     ▶a = interpolation_operator(La, Lc)

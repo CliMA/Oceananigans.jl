@@ -164,8 +164,9 @@ end
 # Support the case that forcing data is loaded in a 3D array:
 @inline array_forcing_func(i, j, k, grid, clock, fields, a) = @inbounds a[i, j, k]
 
-# Support the case that forcing data is loaded in a 4D `FieldTimeSeries`:
-@inline field_time_series_forcing_func(i, j, k, grid, clock, fields, a::FlavorOfFTS) = @inbounds a[i, j, k, Time(clock.time)]
+# Support the case that forcing data is a 4D time series: a `FieldTimeSeries` or a
+# lazy `FieldTimeSeriesOperation`, in host-side or GPU-adapted form.
+@inline field_time_series_forcing_func(i, j, k, grid, clock, fields, a::SomeTimeSeries) = @inbounds a[i, j, k, Time(clock.time)]
 
 """
 $(TYPEDSIGNATURES)
@@ -179,8 +180,9 @@ Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, 
 """
 $(TYPEDSIGNATURES)
 
-Return a `Forcing` by a `FieldTimeSeries`, which can be added to the tendency of a model field.
+Return a `Forcing` by a `FieldTimeSeries` or `FieldTimeSeriesOperation`, which can be
+added to the tendency of a model field.
 
-Forcing is computed by calling `fts[i, j, k, Time(clock.time)]`, so the `FieldTimeSeries` must have the spatial dimensions of the `grid`.
+Forcing is computed by calling `fts[i, j, k, Time(clock.time)]`, so the time series must have the spatial dimensions of the `grid`.
 """
-Forcing(fts::FlavorOfFTS) = Forcing(field_time_series_forcing_func; discrete_form=true, parameters=fts)
+Forcing(fts::SomeTimeSeries) = Forcing(field_time_series_forcing_func; discrete_form=true, parameters=fts)

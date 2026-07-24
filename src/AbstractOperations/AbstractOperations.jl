@@ -12,7 +12,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Fields: AbstractField, AbstractFieldTimeSeries, instantiated_location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
 
@@ -43,6 +43,21 @@ $(TYPEDSIGNATURES)
 Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a lazy operation applying `op` at location `L` to `args` — at least one of which
+is an `AbstractFieldTimeSeries` — at every time node.
+
+Operation constructors route to this function whenever an argument is a time series,
+so that every operator (including user-registered ones) builds a four-dimensional
+`FieldTimeSeriesOperation` instead of a three-dimensional operation that would silently
+drop the time dimension. Implemented by `OutputReaders`.
+"""
+function time_series_operation end
+
+@inline any_time_series(args...) = any(a -> a isa AbstractFieldTimeSeries, args)
 
 """
 $(TYPEDSIGNATURES)

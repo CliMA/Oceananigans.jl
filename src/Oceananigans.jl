@@ -111,7 +111,7 @@ export
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
-    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
+    FieldTimeSeries, AbstractFieldTimeSeries, FieldTimeSeriesOperation, ∂t, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
