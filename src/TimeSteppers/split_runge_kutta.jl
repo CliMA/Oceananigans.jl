@@ -163,7 +163,6 @@ fields are cached. Then, for each stage `m`:
 After all substeps, Lagrangian particles are stepped and the `model.clock`s is advanced.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
-
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)

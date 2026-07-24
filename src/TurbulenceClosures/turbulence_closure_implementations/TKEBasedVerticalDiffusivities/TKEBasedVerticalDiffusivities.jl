@@ -71,8 +71,9 @@ end
     v = velocities.v
     S² = shearᶜᶜᶠ(i, j, k, grid, u, v)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    S² = ifelse(isfinite(S²) && S² > 0, S², zero(grid))
     Ri = N² / S²
-    return ifelse(N² == 0, zero(grid), Ri)
+    return ifelse(N² == 0 || S² == 0, zero(grid), Ri)
 end
 
 # @inline ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...) = ℑzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
@@ -138,6 +139,7 @@ end
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     eᵢ = @inbounds e[i, j, k]
     eᵐⁱⁿ = closure.minimum_tke
+    eᵢ = ifelse(isfinite(eᵢ), eᵢ, eᵐⁱⁿ)
     return sqrt(max(eᵐⁱⁿ, eᵢ))
 end
 

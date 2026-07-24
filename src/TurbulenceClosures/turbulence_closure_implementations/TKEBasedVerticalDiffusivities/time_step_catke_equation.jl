@@ -114,17 +114,16 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
+    self_starting = !isfinite(model.clock.last_Δt)
 
     for m = 1:M
-        # Compute the linear implicit component of the RHS (closure_fields, L)...
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
                 model.velocities, tracers, buoyancy, closure_fields;
                 active_cells_map)
 
-        if m == 1
-            # First substep: reset from cached state σe⁻
+        if m == 1 && !self_starting
             launch!(arch, grid, :xyz,
                     _rk_substep_turbulent_kinetic_energy!,
                     Le, σe⁻, grid, closure,
@@ -133,7 +132,6 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     Δτ, Gⁿ;
                     active_cells_map)
         else
-            # Subsequent substeps: Euler increment from current state
             launch!(arch, grid, :xyz,
                     _rk_euler_substep_turbulent_kinetic_energy!,
                     Le, grid, closure,

@@ -242,10 +242,9 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
 
-    # Step TKE equation with the provided timestep
     time_step_catke_equation!(model, model.timestepper, Δt)
+    Oceananigans.BoundaryConditions.fill_halo_regions!(model.tracers.e, model.clock, fields(model))
 
-    # Update previous velocities and surface buoyancy flux
     u, v, w = model.velocities
     u⁻, v⁻ = closure_fields.previous_velocities
     parent(u⁻) .= parent(u)

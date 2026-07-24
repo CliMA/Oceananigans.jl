@@ -22,6 +22,7 @@ export
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
+    halo_size, fs_halo_size,
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
@@ -222,6 +223,15 @@ fields(::Nothing) = NamedTuple()
 prognostic_fields(::Nothing) = NamedTuple()
 function prognostic_state end
 function restore_prognostic_state! end
+
+abstract type AbstractCheckpointRestoreMode end
+struct RestoreOnCurrentGrid <: AbstractCheckpointRestoreMode end
+struct RestoreOnCompatibleGrid{G} <: AbstractCheckpointRestoreMode
+    grid :: G
+end
+
+function checkpoint_restore_mode end
+function fs_halo_size end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 

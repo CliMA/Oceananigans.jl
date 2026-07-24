@@ -4,7 +4,8 @@ using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state,
+                                  checkpoint_pickup_strategy, write_checkpoint_file
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
@@ -60,6 +61,11 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
+function pickup_compatibility_details(sim, state)
+    checkpoint_model_state = hasproperty(state, :model) ? state.model : state
+    return checkpoint_pickup_strategy(sim.model, checkpoint_model_state)
+end
+
 """
     set!(simulation; checkpoint=nothing, iteration=nothing)
 
@@ -109,7 +115,43 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
     end
 
     state = load_checkpoint_state(checkpoint_filepath)
-    restore_prognostic_state!(sim, state)
+
+    strategy = try
+        pickup_compatibility_details(sim, state)
+    catch err
+        @warn "Checkpoint pickup compatibility inspection failed; proceeding with restore." exception=(err, catch_backtrace())
+        nothing
+    end
+
+    requires_temporary_rewrite = !isnothing(strategy) && strategy.requires_temporary_rewrite
+
+    if !requires_temporary_rewrite
+        restore_prognostic_state!(sim, state)
+        return nothing
+    end
+
+    temp_dir = mktempdir()
+    temp_checkpoint_filepath = joinpath(temp_dir, basename(checkpoint_filepath))
+
+    try
+        restore_prognostic_state!(sim, state)
+        write_checkpoint_file(temp_checkpoint_filepath, sim)
+
+        state = nothing
+        for _ = 1:5
+            GC.gc(true)
+        end
+
+        temp_state = load_checkpoint_state(temp_checkpoint_filepath)
+        restore_prognostic_state!(sim, temp_state)
+    finally
+        try
+            rm(temp_dir; recursive=true, force=true)
+        catch err
+            @warn "Failed to remove temporary checkpoint directory after pickup rewrite." temp_checkpoint_path=temp_checkpoint_filepath temp_checkpoint_dir=temp_dir exception=(err, catch_backtrace())
+        end
+    end
+
     return nothing
 end
 

@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
@@ -867,7 +867,17 @@ function prognostic_state(field::Field)
     return (; data = on_architecture(CPU(), parent(field)))
 end
 
-function restore_prognostic_state!(restored::Field, from)
+restore_prognostic_state!(restored::Field, from) =
+    restore_prognostic_state!(restored.data, from.data)
+
+restore_prognostic_state!(restored::Field, from, ::RestoreOnCurrentGrid) =
+    restore_prognostic_state!(restored, from)
+
+function restore_prognostic_state!(restored::Field, from, mode::RestoreOnCompatibleGrid)
+    restored_interior = interior(restored)
+    checkpoint_data = offset_data(from.data, mode.grid, instantiated_location(restored), indices(restored))
+    checkpoint_interior = interior(checkpoint_data, instantiated_location(restored), mode.grid, indices(restored))
+    restore_prognostic_state!(restored_interior, checkpoint_interior)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
     return restored

@@ -3,8 +3,79 @@ using StructArrays: StructArray
 
 using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Grids: halo_size, with_halo, topology, total_size
+using Oceananigans.Architectures: on_architecture, architecture, CPU
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
+                     checkpoint_restore_mode, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
+
+checkpoint_pickup_strategy(restored, ::Nothing) = (;
+    available = false,
+    requires_temporary_rewrite = false,
+    rewrite_reason = :none,
+    restore_layout = :unknown,
+    checkpoint_grid_halo = nothing,
+    restored_grid_halo = nothing,
+    checkpoint_free_surface_halo = nothing,
+    restored_free_surface_halo = nothing
+)
+
+free_surface_compatibility_halo(::Nothing) = nothing
+free_surface_compatibility_halo(halo) = (halo[1], halo[2])
+
+function checkpoint_pickup_strategy(restored, state)
+    if hasproperty(restored, :ocean) && hasproperty(state, :ocean) &&
+       hasproperty(restored.ocean, :model) && hasproperty(state.ocean, :model)
+        return checkpoint_pickup_strategy(restored.ocean.model, state.ocean.model)
+    end
+
+    hasproperty(state, :checkpoint_grid) || return checkpoint_pickup_strategy(restored, nothing)
+    hasproperty(restored, :grid) || return checkpoint_pickup_strategy(restored, nothing)
+
+    checkpoint_grid = state.checkpoint_grid
+    restored_grid = restored.grid
+
+    checkpoint_grid_halo = halo_size(checkpoint_grid)
+    restored_grid_halo = halo_size(restored_grid)
+    grid_halo_mismatch = checkpoint_grid_halo != restored_grid_halo
+
+    checkpoint_free_surface_halo = nothing
+    restored_free_surface_halo = nothing
+    free_surface_halo_mismatch = false
+
+    if hasproperty(restored, :free_surface) && fs_halo_size(restored) !== nothing
+        checkpoint_free_surface = checkpoint_free_surface_grid(state, checkpoint_grid, restored)
+        checkpoint_free_surface_halo = halo_size(checkpoint_free_surface)
+        restored_free_surface_halo = fs_halo_size(restored)
+        free_surface_halo_mismatch = free_surface_compatibility_halo(checkpoint_free_surface_halo) !=
+                                     free_surface_compatibility_halo(restored_free_surface_halo)
+    end
+
+    requires_temporary_rewrite = grid_halo_mismatch || free_surface_halo_mismatch
+
+    rewrite_reason = if grid_halo_mismatch && free_surface_halo_mismatch
+        :grid_and_free_surface_halo_mismatch
+    elseif grid_halo_mismatch
+        :grid_halo_mismatch
+    elseif free_surface_halo_mismatch
+        :free_surface_halo_mismatch
+    else
+        :none
+    end
+
+    restore_layout = requires_temporary_rewrite ? :compatible : :exact
+
+    return (;
+        available = true,
+        requires_temporary_rewrite,
+        rewrite_reason,
+        restore_layout,
+        checkpoint_grid_halo,
+        restored_grid_halo,
+        checkpoint_free_surface_halo,
+        restored_free_surface_halo
+    )
+end
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -162,6 +233,81 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 ##### Writing checkpoints
 #####
 
+checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
+
+function checkpoint_restore_mode(checkpoint_grid, grid)
+    same_interior = checkpoint_grid == grid
+    same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+
+    if halo_size(checkpoint_grid) == halo_size(grid)
+        return RestoreOnCurrentGrid()
+    end
+
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward."
+    return RestoreOnCompatibleGrid(checkpoint_grid)
+end
+
+checkpoint_free_surface_grid(from, checkpoint_grid, restored) = from.checkpoint_free_surface_grid
+
+function checkpoint_free_surface_grid(from::NamedTuple, checkpoint_grid, restored)
+    hasproperty(from, :checkpoint_free_surface_grid) && return from.checkpoint_free_surface_grid
+
+    displacement = restored.free_surface.displacement
+    saved_size = size(from.free_surface.displacement.data)
+    checkpoint_halo = halo_size(checkpoint_grid)
+    loc = Oceananigans.location(displacement)
+    inds = Oceananigans.Fields.indices(displacement)
+    topo = topology(checkpoint_grid)
+    sz = size(checkpoint_grid)
+
+    inferred_halo = ntuple(3) do d
+        ind = inds[d]
+
+        if ind isa AbstractUnitRange && length(ind) < size(displacement, d)
+            checkpoint_halo[d]
+        else
+            expected = saved_size[d]
+            found = nothing
+
+            for H in 0:max(expected, checkpoint_halo[d])
+                trial_halo = ntuple(i -> i == d ? H : checkpoint_halo[i], 3)
+                trial_size = total_size(loc, topo, sz, trial_halo, inds)[d]
+                if trial_size == expected
+                    found = H
+                    break
+                end
+            end
+
+            isnothing(found) && throw(ArgumentError("Unable to infer legacy split-explicit free-surface halo from checkpoint data size $(saved_size)."))
+            found
+        end
+    end
+
+    return with_halo(inferred_halo, checkpoint_grid)
+end
+
+function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
+    same_interior = checkpoint_grid == restored.grid
+    same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+
+    checkpoint_free_surface_halo = halo_size(checkpoint_free_surface_grid)
+    restored_free_surface_halo = fs_halo_size(restored)
+
+    same_grid_halos = halo_size(checkpoint_grid) == halo_size(restored.grid)
+    same_free_surface_halos = free_surface_compatibility_halo(checkpoint_free_surface_halo) ==
+                              free_surface_compatibility_halo(restored_free_surface_halo)
+
+    if same_grid_halos && same_free_surface_halos
+        return RestoreOnCurrentGrid()
+    end
+
+    restore_halo = ntuple(d -> checkpoint_free_surface_halo[d] - halo_size(checkpoint_grid, d) + halo_size(restored.grid, d), 3)
+    restore_grid = with_halo(restore_halo, on_architecture(CPU(), restored.grid))
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward."
+    return RestoreOnCompatibleGrid(restore_grid)
+end
+
+
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
 prognostic_state(::NoFileSplitting) = nothing
@@ -262,13 +408,20 @@ restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
 restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
 
 function restore_prognostic_state!(restored::AbstractArray, from)
-    copyto!(restored, from)
+    copyto!(restored, on_architecture(architecture(restored), from))
     return restored
 end
 
 function restore_prognostic_state!(restored::AbstractDict, from)
     for (name, value) in pairs(from)
         haskey(restored, name) && restore_prognostic_state!(restored[name], value)
+    end
+    return restored
+end
+
+function restore_prognostic_state!(restored::AbstractDict, from, mode)
+    for (name, value) in pairs(from)
+        haskey(restored, name) && restore_prognostic_state!(restored[name], value, mode)
     end
     return restored
 end
@@ -280,8 +433,22 @@ function restore_prognostic_state!(restored::NamedTuple, from)
     return restored
 end
 
+function restore_prognostic_state!(restored::NamedTuple, from, mode)
+    for (name, value) in pairs(from)
+        restore_prognostic_state!(restored[name], value, mode)
+    end
+    return restored
+end
+
+restore_prognostic_state!(::NamedTuple, ::Nothing, mode) = nothing
+
 function restore_prognostic_state!(t::Tuple, from::Tuple)
     new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
+    return new_t
+end
+
+function restore_prognostic_state!(t::Tuple, from::Tuple, mode)
+    new_t = tuple(restore_prognostic_state!(t[j], from[j], mode) for j in 1:length(t))
     return new_t
 end
 
@@ -299,9 +466,13 @@ function restore_prognostic_state!(restored::StructArray, from)
     return restored
 end
 
+restore_prognostic_state!(restored::StructArray, from, mode) = restore_prognostic_state!(restored, from)
+
 # Ref handling: dereference on save, set on restore
 prognostic_state(r::Ref) = r[]
 restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
+restore_prognostic_state!(restored::Ref, from, mode) = restore_prognostic_state!(restored, from)
+restore_prognostic_state!(::Nothing, ::Nothing, mode) = nothing
 
 #####
 ##### Checkpointing the checkpointer
