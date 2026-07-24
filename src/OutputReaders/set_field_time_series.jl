@@ -45,7 +45,7 @@ function set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name)
     needed_paths = String[]
     for n in time_indices(fts)
         (n < 1 || n > Ntotal) && continue
-        part_path, _ = file_and_local_index(sfp, n)
+        part_path, _ = file_and_local_index(sfp, n, nothing, fts.reader_kw)
         part_path ∉ needed_paths && push!(needed_paths, part_path)
     end
     for part_path in needed_paths
