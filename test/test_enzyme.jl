@@ -145,20 +145,25 @@ end
     z = (-0.5, 0.5)
     topology = (Periodic, Periodic, Bounded)
 
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
-    model_tracer = model.tracers.c
+    underlying_grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 1.5 || y < 1.5)))
 
-    amplitude = 1.0
-    amplitude = Ref(amplitude)
-    cᵢ(x, y, z) = amplitude[]
-    temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
+    grids = [underlying_grid, ibg]
 
-    temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
-    grid = model_tracer.grid
-    arch = architecture(model_tracer)
+    for grid in grids
+      model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
+      model_tracer = model.tracers.c
 
-    if arch == CPU()
+      amplitude = 1.0
+      amplitude = Ref(amplitude)
+      cᵢ(x, y, z) = amplitude[]
+      temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
+
+      temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
+      grid = model_tracer.grid
+      arch = architecture(model_tracer)
+
+      if arch == CPU()
         param = Oceananigans.Utils.KernelParameters(size(model_tracer),
                                                     map(Oceananigans.Fields.offset_index, model_tracer.indices))
         dmodel_tracer = Enzyme.make_zero(model_tracer)
@@ -185,6 +190,7 @@ end
                  set_initial_condition!,
                  Duplicated(model, dmodel),
                  Active(1.0))
+      end
     end
 end
 
@@ -321,60 +327,64 @@ end
     z = (0, 1)
     ν₀ = 1e-2
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, 1); x, y, z, topology=(Periodic, Periodic, Bounded))
+    underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, 1), halo=(3, 3, 3) ; x, y, z, topology=(Periodic, Periodic, Bounded))
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 1.5 || y < 1.5)); active_cells_map=true)
+    grids = [underlying_grid, ibg]
     closure = ScalarDiffusivity(ν=ν₀)
     momentum_advection = Centered(order=2)
 
     g = 4^2
     c = sqrt(g)
     free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
+    for grid in grids
+      model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
 
-    ϵ(x, y, z) = 2randn() - 1
-    set!(model, u=ϵ, v=ϵ)
+      ϵ(x, y, z) = 2randn() - 1
+      set!(model, u=ϵ, v=ϵ)
 
-    u_init = deepcopy(model.velocities.u)
-    v_init = deepcopy(model.velocities.v)
+      u_init = deepcopy(model.velocities.u)
+      v_init = deepcopy(model.velocities.v)
 
-    Δx = minimum_xspacing(grid)
-    Δt = 0.01 * Δx / c
-    for n = 1:10
-        time_step!(model, Δt)
-    end
+      Δx = minimum_xspacing(grid)
+      Δt = 0.01 * Δx / c
+      for n = 1:10
+          time_step!(model, Δt)
+      end
 
-    u_truth = deepcopy(model.velocities.u)
-    v_truth = deepcopy(model.velocities.v)
+      u_truth = deepcopy(model.velocities.u)
+      v_truth = deepcopy(model.velocities.v)
 
-    # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
-    Δν = 1e-6
-    ν0 = ν₀
-    ν1 = ν₀ + Δν
-    ν2 = ν₀ + 2Δν
-    e0 = viscous_hydrostatic_turbulence(ν0, model, u_init, v_init, Δt, u_truth, v_truth)
-    e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
-    ΔeΔν = (e2 - e0) / 2Δν
+      # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
+      Δν = 1e-6
+      ν0 = ν₀
+      ν1 = ν₀ + Δν
+      ν2 = ν₀ + 2Δν
+      e0 = viscous_hydrostatic_turbulence(ν0, model, u_init, v_init, Δt, u_truth, v_truth)
+      e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
+      ΔeΔν = (e2 - e0) / 2Δν
 
-    @info "Finite difference computed: $ΔeΔν"
+      @info "Finite difference computed: $ΔeΔν"
 
-    @info "Now with autodiff..."
-    start_time = time_ns()
+      @info "Now with autodiff..."
+      start_time = time_ns()
 
-    # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
-    dmodel = Enzyme.make_zero(model)
-    dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
-                    viscous_hydrostatic_turbulence,
-                    Active(ν1),
-                    Duplicated(model, dmodel),
-                    Const(u_init),
-                    Const(v_init),
-                    Const(Δt),
-                    Const(u_truth),
-                    Const(v_truth))
+      # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
+      dmodel = Enzyme.make_zero(model)
+      dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
+                      viscous_hydrostatic_turbulence,
+                      Active(ν1),
+                      Duplicated(model, dmodel),
+                      Const(u_init),
+                      Const(v_init),
+                      Const(Δt),
+                      Const(u_truth),
+                      Const(v_truth))
 
-    @info "Automatically computed: $dedν."
-    @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
+      @info "Automatically computed: $dedν."
+      @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
 
-    tol = 1e-1
-    rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
-    @test rel_error < tol
+      tol = 1e-1
+      rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
+      @test rel_error < tol
+  end
 end
