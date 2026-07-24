@@ -115,6 +115,7 @@ export
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
+    ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
