@@ -243,7 +243,7 @@ const AIVA = AdaptiveImplicitVerticalAdvection
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection::AIVA, w, density=nothing)
     du_diff = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    du_adv = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    du_adv = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return du_diff + du_adv
 end
 
@@ -251,7 +251,7 @@ end
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection::AIVA, w, density=nothing)
     dl_diff = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dl_adv = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    dl_adv = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return dl_diff + dl_adv
 end
 
@@ -259,7 +259,7 @@ end
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
                                  advection::AIVA, w, density=nothing)
     d_diff = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    d_adv = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    d_adv = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return d_diff + d_adv
 end
 
