@@ -59,36 +59,36 @@ const serial_memory_cpu = Dict(
     (:hydrostatic,    :flat)            => 560,
     (:hydrostatic,    :immersed)        => 592,
     (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 8.6e5,
-    (:nonhydrostatic, :immersed)        => 8.9e5,
-    (:nonhydrostatic, :active_immersed) => 6.9e5,
+    (:nonhydrostatic, :flat)            => 5.8e5,
+    (:nonhydrostatic, :immersed)        => 6.1e5,
+    (:nonhydrostatic, :active_immersed) => 6.5e5,
 )
 
 const serial_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 2.2e6,
-    (:hydrostatic,    :immersed)        => 2.4e6,
-    (:hydrostatic,    :active_immersed) => 2.1e6,
-    (:nonhydrostatic, :flat)            => 2.0e6,
-    (:nonhydrostatic, :immersed)        => 2.2e6,
-    (:nonhydrostatic, :active_immersed) => 2.1e6,
+    (:hydrostatic,    :flat)            => 8.4e5,
+    (:hydrostatic,    :immersed)        => 9.2e5,
+    (:hydrostatic,    :active_immersed) => 9.3e5,
+    (:nonhydrostatic, :flat)            => 1.2e6,
+    (:nonhydrostatic, :immersed)        => 1.4e6,
+    (:nonhydrostatic, :active_immersed) => 1.4e6,
 )
 
 const distributed_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 7.5e5,
-    (:hydrostatic,    :immersed)        => 8.7e5,
-    (:hydrostatic,    :active_immersed) => 9.1e5,
-    (:nonhydrostatic, :flat)            => 6.6e6,
-    (:nonhydrostatic, :immersed)        => 8.0e6,
-    (:nonhydrostatic, :active_immersed) => 1.0e7,
+    (:hydrostatic,    :flat)            => 6.9e5,
+    (:hydrostatic,    :immersed)        => 8.0e5,
+    (:hydrostatic,    :active_immersed) => 8.5e5,
+    (:nonhydrostatic, :flat)            => 2.3e6,
+    (:nonhydrostatic, :immersed)        => 2.7e6,
+    (:nonhydrostatic, :active_immersed) => 3.4e6,
 )
 
 const distributed_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 8.8e6,
-    (:hydrostatic,    :immersed)        => 1.0e7,
-    (:hydrostatic,    :active_immersed) => 1.2e7,
-    (:nonhydrostatic, :flat)            => 8.4e6,
-    (:nonhydrostatic, :immersed)        => 9.5e6,
-    (:nonhydrostatic, :active_immersed) => 1.2e7,
+    (:hydrostatic,    :flat)            => 3.6e6,
+    (:hydrostatic,    :immersed)        => 4.0e6,
+    (:hydrostatic,    :active_immersed) => 4.3e7,
+    (:nonhydrostatic, :flat)            => 5.4e6,
+    (:nonhydrostatic, :immersed)        => 6.0e6,
+    (:nonhydrostatic, :active_immersed) => 6.5e6,
 )
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
