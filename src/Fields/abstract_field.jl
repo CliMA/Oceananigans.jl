@@ -4,7 +4,7 @@ using Oceananigans.Architectures: Architectures, AbstractArchitecture, architect
 using Oceananigans.Grids: rnode, rnodes
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
-const GridOrNothing = Union{AbstractGrid, Nothing}
+const GridOrNothing = Union{<:AbstractGrid, Base.RefValue{<:AbstractGrid}, Nothing}
 
 """
     AbstractField{LX, LY, LZ, G, T, N}
@@ -31,7 +31,7 @@ Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 Grids.grid(f::AbstractField) = f.grid
 
 "Returns the architecture of on which `f` is defined."
-Architectures.architecture(f::AbstractField) = architecture(grid(f))
+Architectures.architecture(f::AbstractField) = architecture(f.grid)
 Architectures.child_architecture(f::AbstractField) = child_architecture(architecture(f))
 
 "Returns the topology of a fields' `grid`."
@@ -94,7 +94,7 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds  Grids.node(i, j, k, ψ::AbstractField) =  node(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds Grids.node(i, j, k, ψ::AbstractField) =  node(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds Grids.xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds Grids.ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds Grids.znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
