@@ -1,5 +1,5 @@
 using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
-    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
+    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ, Δzᵃᵃᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
@@ -78,6 +78,39 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+# Linear operator for the free-surface pressure Poisson equation.
+# Applies V∇² with Neumann BC at the top, then adds the Robin BC diagonal correction
+# -Az(Nz+1)/den * ϕ[Nz] at k=Nz (where den = g*Δt² + Δzᶠ/2).
+#
+# The top ghost is explicitly set to Neumann (ϕ[Nz+1] = ϕ[Nz]) before computing V∇².
+# This prevents the MixedBoundaryCondition on p_Δt (set at model construction) from
+# polluting the operator during CG iterations with a stale coefficient/inhomogeneity.
+@kernel function _fill_top_neumann_halo!(ϕ, grid)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    @inbounds ϕ[i, j, Nz+1] = ϕ[i, j, Nz]
+end
+
+@kernel function _apply_free_surface_correction!(∇²ϕ, grid, ϕ, Δt, g)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    den = robin_denominator(g, Δt, Δzᶠ)
+    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    @inbounds ∇²ϕ[i, j, Nz] -= Az / den * ϕ[i, j, Nz]
+end
+
+function compute_free_surface_laplacian!(∇²ϕ, ϕ, free_surface, Δt)
+    grid = ϕ.grid
+    arch = architecture(grid)
+    fill_halo_regions!(ϕ)
+    launch!(arch, grid, :xy, _fill_top_neumann_halo!, ϕ, grid)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
+    g = free_surface.gravitational_acceleration
+    launch!(arch, grid, :xy, _apply_free_surface_correction!, ∇²ϕ, grid, ϕ, Δt, g)
+    return nothing
+end
+
 @kernel function subtract_and_mask!(a, grid, b)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
@@ -132,6 +165,7 @@ This is because the pressure field is defined only up to an arbitrary constant, 
 is a common choice to remove this degree of freedom.
 """
 function ConjugateGradientPoissonSolver(grid;
+                                        linear_operation = compute_symmetric_laplacian!,
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
@@ -150,7 +184,7 @@ function ConjugateGradientPoissonSolver(grid;
 
     volume_inverse_norm = VolumeInverseNorm(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
+    conjugate_gradient_solver = ConjugateGradientSolver(linear_operation;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
