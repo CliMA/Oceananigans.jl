@@ -6,7 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
-export interpolate
+export interpolate, nearest_index
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES

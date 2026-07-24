@@ -63,6 +63,7 @@ end
 @inline fractional_x_index(x, locs, grid::XFlatGrid) = zero(grid)
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
+    topology(grid, 1) === Flat && return zero(grid)
     x₀ = xnode(1, 1, 1, grid, locs...)
     dx = Δx(1, 1, 1, grid, locs...)
     FT = eltype(grid)
@@ -106,6 +107,7 @@ end
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
 # of the interpolating grid.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
+    topology(grid, 1) === Flat && return zero(grid)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     λ₁ = λnode(2, 1, 1, grid, locs...)
     Δλ = λ₁ - λ₀
@@ -133,6 +135,7 @@ end
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
+    topology(grid, 2) === Flat && return zero(grid)
     y₀ = ynode(1, 1, 1, grid, locs...)
     dy = Δy(1, 1, 1, grid, locs...)
     FT = eltype(grid)
@@ -140,6 +143,7 @@ end
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
+    topology(grid, 2) === Flat && return zero(grid)
     φ₀ = φnode(1, 1, 1, grid, locs...)
     φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
@@ -169,6 +173,7 @@ end
 ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
+    topology(grid, 3) === Flat && return zero(grid)
     z₀ = znode(1, 1, 1, grid, locs...)
     dz = Δz(1, 1, 1, grid, locs...)
     return convert(FT, (z - z₀) / dz) + 1 # 1 - based indexing
@@ -468,3 +473,65 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     return to_field
 end
+
+#####
+##### nearest_index
+#####
+
+@inline _dim_number(dim) =
+    dim === :x || dim == 1 ? 1 :
+    dim === :y || dim == 2 ? 2 :
+    dim === :z || dim == 3 ? 3 :
+    throw(ArgumentError("`dim` must be :x, :y, :z, or 1, 2, 3; got $(repr(dim))"))
+
+@kernel function _fractional_index!(fidx, grid, val, locs, ::Val{n}) where n
+    @inbounds fidx[1] = n === 1 ? fractional_x_index(val, locs, grid) :
+                        n === 2 ? fractional_y_index(val, locs, grid) :
+                                  fractional_z_index(val, locs, grid)
+end
+
+"""
+    nearest_index(grid, val, dim; location=Center())
+
+Return the index along dimension `dim` — `:x`, `:y`, or `:z` (equivalently `1`, `2`, or
+`3`) — whose node at `location` is nearest to `val`, clamped to the valid index range.
+Useful for turning a physical coordinate (a height, a latitude, ...) into the grid index
+closest to it, for example to slice output at a prescribed level.
+
+The index is computed on the `grid`'s architecture (through `fractional_x_index` and
+friends), so no node array is copied to the host. The comparison uses the `grid`'s native
+coordinates, so on a curvilinear grid such as `LatitudeLongitudeGrid` the `:x` and `:y`
+nodes are longitude ``λ`` and latitude ``φ``.
+
+Omitting `dim` and passing a 3-tuple `val = (x, y, z)` returns the `(i, j, k)` tuple of
+nearest indices, `nearest_index(grid, (x, y, z))`.
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 10), x=(0, 1), y=(0, 1), z=(0, 1000))
+
+nearest_index(grid, 340, :z)
+
+# output
+4
+```
+"""
+function nearest_index(grid, val, dim; location = Center())
+    n = _dim_number(dim)
+    topology(grid, n) === Flat && return 1 # a Flat dimension has a single point
+    arch = architecture(grid)
+    FT = eltype(grid)
+    locs = (location, location, location)
+
+    fidx = on_architecture(arch, zeros(FT, 1))
+    launch!(arch, grid, KernelParameters(1:1, 1:1, 1:1),
+            _fractional_index!, fidx, grid, convert(FT, val), locs, Val(n))
+
+    fractional = @inbounds Array(fidx)[1]
+    N = length(location, topology(grid, n)(), size(grid, n))
+    return clamp(round(Int, fractional), 1, N)
+end
+
+nearest_index(grid, val::Tuple; location = Center()) =
+    ntuple(n -> nearest_index(grid, val[n], n; location), Val(3))
