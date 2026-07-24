@@ -401,13 +401,9 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
                                  time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
 
-    # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "displacement" && hasfield(typeof(model), :free_surface)
-        if output == view(model.free_surface.displacement, output.indices...)
-            local default_dimension_name_generator = dimension_name_generator
-            dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
-        end
-    end
+    # Windowed fields (e.g. the free-surface displacement) are handled generically: their
+    # windowed axes get a distinct dimension in `create_field_dimensions!` (see
+    # `resolve_windowed_dim_name`), so no special-casing is needed here.
     defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, grid_index, write_data=false)
     return nothing
 end
