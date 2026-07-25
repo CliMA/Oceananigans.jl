@@ -271,6 +271,42 @@ function run_field_interpolation_tests(grid)
     interpolate!(f1, f4)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
+    # Interpolating at a cell center must return that cell's value however fine the grid is.
+    # On a grid whose coordinates are large compared with its spacing, recovering the spacing
+    # by differencing two adjacent nodes costs most of its significant digits in Float32, and
+    # the error is then multiplied by the cell index.
+    for FT in (Float32, Float64)
+        fine_λ_grid = LatitudeLongitudeGrid(arch, FT; size = (21600, 1, 1),
+                                            longitude = (-180, 180), latitude = (-1, 1), z = (0, 1))
+        fine_φ_grid = LatitudeLongitudeGrid(arch, FT; size = (1, 10800, 1),
+                                            longitude = (-1, 1), latitude = (-90, 90), z = (0, 1))
+
+        Δλ = 360 / size(fine_λ_grid, 1)
+        Δφ = 180 / size(fine_φ_grid, 2)
+
+        # Both locations: a regular grid has one spacing, so the index must be right at either.
+        for ℓ in (Center, Face)
+            λ_field = Field{ℓ, Center, Center}(fine_λ_grid)
+            φ_field = Field{Center, ℓ, Center}(fine_φ_grid)
+            set!(λ_field, (λ, φ, z) -> λ)
+            set!(φ_field, (λ, φ, z) -> φ)
+
+            @allowscalar begin
+                for i in (1, 5001, 11280, size(fine_λ_grid, 1))
+                    λi = λnodes(fine_λ_grid, ℓ())[i]
+                    ℑλ = interpolate((λi, 0, 0.5), λ_field, (ℓ(), Center(), Center()), fine_λ_grid)
+                    @test abs(ℑλ - λi) < Δλ / 10
+                end
+
+                for j in (1, 2501, 8130, size(fine_φ_grid, 2))
+                    φj = φnodes(fine_φ_grid, ℓ())[j]
+                    ℑφ = interpolate((0, φj, 0.5), φ_field, (Center(), ℓ(), Center()), fine_φ_grid)
+                    @test abs(ℑφ - φj) < Δφ / 10
+                end
+            end
+        end
+    end
+
     return nothing
 end
 
