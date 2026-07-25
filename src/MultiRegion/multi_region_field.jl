@@ -1,10 +1,9 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition,
-    default_auxiliary_bc, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition, default_auxiliary_bc, regularize_field_boundary_conditions
 using Oceananigans.Diagnostics: Diagnostics, hasnan
 using Oceananigans.DistributedComputations: DistributedComputations, reconstruct_global_field, CommunicationBuffers
-using Oceananigans.Fields: FunctionField, AbstractField, compute!, compute_at!, data_summary,
-    instantiated_location, interior, set!, validate_indices
+using Oceananigans.Fields: FunctionField, AbstractField, compute!, compute_at!, data_summary
+using Oceananigans.Fields: instantiated_location, interior, set!, validate_indices
 using Oceananigans.Grids: xnodes, ynodes
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices

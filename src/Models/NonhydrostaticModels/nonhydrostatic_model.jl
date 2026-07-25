@@ -265,7 +265,7 @@ function NonhydrostaticModel(grid;
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
-        free_surface = materialize_free_surface(free_surface, velocities, grid)
+        free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
     end
 
     # Either check grid-correctness, or construct tuples of fields
