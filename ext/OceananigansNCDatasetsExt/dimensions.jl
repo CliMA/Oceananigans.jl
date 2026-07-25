@@ -36,10 +36,13 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     # Nothing location or the grid axis is Flat. The "effective" dim names are what
     # actually go into the variable's NetCDF signature.
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
-    effective_dim_names = tuple(filter(!isempty, spatial_dim_names)...)
 
-    create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;
-                                  with_halos, dimension_type, grid_index)
+    # `create_field_coord_variables!` may rename windowed axes (see `resolve_windowed_dim_name`),
+    # so the variable's signature must use the resolved names it returns.
+    resolved_dim_names = create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;
+                                                       with_halos, dimension_type, grid_index)
+
+    effective_dim_names = tuple(filter(!isempty, resolved_dim_names)...)
 
     if time_dependent
         "time" ∉ keys(ds.dim) && create_time_dimension!(ds, dimension_type=dimension_type)
@@ -49,17 +52,55 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     end
 end
 
+# A "windowed" field (e.g. the free-surface displacement, or a user `view` that pins an axis
+# to a sub-range) shares a location with full-extent fields but covers only part of the
+# corresponding axis. Because a NetCDF coordinate variable maps a dimension name to a single
+# set of values, such a field needs its own dimension whenever its coordinate values differ
+# from the canonical full-extent dimension already in the dataset. Resolve the base name to
+# itself when it is unused or its values already match, otherwise to the first free
+# `name_2`, `name_3`, … whose values match (deduping fields that share the same window).
+#
+# This only applies to axes the field actually windows (a non-`Colon` index). Axes with the
+# default `Colon` index keep the strict create-or-validate in `create_spatial_dimensions!`,
+# so a dimension pre-created with mismatched values still errors rather than being aliased.
+function resolve_windowed_dim_name(ds, base_name, index, data, dimension_type)
+    (base_name == "" || data === nothing || index === Colon()) && return base_name
+    target = collect(dimension_type.(data))
+    candidate = base_name
+    n = 1
+    while candidate ∈ keys(ds)
+        collect(ds[candidate]) == target && return candidate
+        n += 1
+        candidate = string(base_name, "_", n)
+    end
+    return candidate
+end
+
 # Default (1D-coordinate) path — RectilinearGrid and LatitudeLongitudeGrid: zip the
-# field's NetCDF dim names with the field's `nodes(fd)` 1D arrays and pass them through
-# `create_spatial_dimensions!`, which creates missing coord vars or validates existing
-# ones against the field's nodes (catching mismatched dim sizes early as ArgumentError).
+# field's (windowing-resolved) NetCDF dim names with the field's `nodes(fd)` 1D arrays and
+# pass them through `create_spatial_dimensions!`, which creates missing coord vars or
+# validates existing ones against the field's nodes. Returns the resolved dim names.
 function create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name_generator;
                                         with_halos, dimension_type, grid_index)
     dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)
+
+    resolved_dim_names = map(spatial_dim_names, indices(fd), spatial_dim_data) do name, index, data
+        resolve_windowed_dim_name(ds, name, index, data, dimension_type)
+    end
+
+    # A renamed windowed axis inherits the attributes of the base coordinate it derives from.
+    for (base, resolved) in zip(spatial_dim_names, resolved_dim_names)
+        if resolved != base && haskey(dimension_attributes, base) && !haskey(dimension_attributes, resolved)
+            dimension_attributes[resolved] = dimension_attributes[base]
+        end
+    end
+
     spatial_dim_names_dict = OrderedDict(name => data
-                                         for (name, data) in zip(spatial_dim_names, spatial_dim_data))
+                                         for (name, data) in zip(resolved_dim_names, spatial_dim_data))
     create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; dimension_type)
+
+    return resolved_dim_names
 end
 
 # OrthogonalSphericalShellGrid path: dimensions are 1D bare `i_*`/`j_*` indices plus the
@@ -78,7 +119,7 @@ function create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGri
         dname ∈ keys(ds.dim) && continue
         defDim(ds, dname, dsize)
     end
-    return nothing
+    return spatial_dim_names
 end
 
 # Defer through ImmersedBoundaryGrid to the underlying grid's dispatch.
