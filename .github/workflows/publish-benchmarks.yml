@@ -6,7 +6,9 @@ on:
     types: [benchmarks_complete]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.client_payload.branch }}
+  # On main, share one group with the distributed publisher so they can't push data.js at once.
+  # On PRs they only comment, so keep them independent (own group per workflow).
+  group: ${{ github.event.client_payload.branch == 'main' && 'benchmarks-publish-main' || format('{0}-{1}', github.workflow, github.event.client_payload.branch) }}
   cancel-in-progress: ${{ github.event.client_payload.branch != 'main' }}
 
 jobs:
