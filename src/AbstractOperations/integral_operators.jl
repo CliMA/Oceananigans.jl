@@ -172,7 +172,7 @@ julia> ∫dV(f)[1, 1, 1]
 """
     ∫dV(field; condition=nothing, mask=0)
 
-Alias for [`∫∫∫dxdydz`](@ref): return a `Field` holding ``∭ f \\, dx \\, dy \\, dz``, the
+Alias for [`∫∫∫dxdydz`](@ref): return a `Field` holding ``∭ f \\, \\mathrm{d}x \\, \\mathrm{d}y \\, \\mathrm{d}z``, the
 integral of `field` over the three-dimensional domain.
 """
 const ∫dV = ∫∫∫dxdydz
