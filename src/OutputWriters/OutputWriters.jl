@@ -2,7 +2,7 @@ module OutputWriters
 
 export
     JLD2Writer, NetCDFWriter, ZarrWriter, written_names,
-    Checkpointer, checkpoint, WindowedTimeAverage, FileSizeLimit,
+    Checkpointer, checkpoint, WindowedTimeAverage, TimeDerivative, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
 using DocStringExtensions: TYPEDSIGNATURES
@@ -31,6 +31,7 @@ include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
+include("time_derivative.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")

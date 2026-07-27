@@ -4,7 +4,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
@@ -283,6 +283,13 @@ function add_dependency!(diags, wta::WindowedTimeAverage)
     if wta ∉ values(diags)
         num_diags_plus_1 = length(diags) + 1
         diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+    end
+end
+
+function add_dependency!(diags, derivative::TimeDerivative)
+    if derivative ∉ values(diags)
+        num_diags_plus_1 = length(diags) + 1
+        diags[Symbol("TimeDerivative$num_diags_plus_1")] = derivative
     end
 end
 

@@ -1,0 +1,269 @@
+include("dependencies_for_runtests.jl")
+
+using NCDatasets
+using Zarr
+using Oceananigans.OutputWriters: TimeDerivative, update_time_derivative!
+
+#####
+##### A tracer relaxed at rate λ obeys ∂ₜc = -λ c exactly, which lets the backward
+##### difference be checked against an analytical solution.
+#####
+
+function relaxing_tracer_model(arch, λ)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    forcing = (; c = Relaxation(rate=λ))
+    model = NonhydrostaticModel(grid; tracers=:c, forcing)
+    set!(model, c=1)
+    return model
+end
+
+time_derivative_outputs(model) = (; ∂ₜc = TimeDerivative(model.tracers.c))
+named_time_derivative_outputs(model) = Dict("dcdt" => TimeDerivative(model.tracers.c))
+
+function test_time_derivative_of_field(arch)
+    λ, Δt = 2, 1e-3
+    model = relaxing_tracer_model(arch, λ)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.diagnostics[:∂ₜc] = ∂ₜc
+    run!(simulation)
+
+    # The backward difference is centered at t - Δt/2, where c is larger by exp(λ Δt / 2)
+    c = Array(interior(model.tracers.c))
+    expected = @. -λ * c * exp(λ * Δt / 2)
+
+    @test all(isapprox.(Array(interior(∂ₜc.result)), expected, rtol=1e-4))
+
+    # The result can also be copied into a Field of the caller's choosing
+    copied = CenterField(model.grid)
+    set!(copied, ∂ₜc)
+    @test all(Array(interior(copied)) .≈ Array(interior(∂ₜc.result)))
+
+    return nothing
+end
+
+function test_time_derivative_initialization(arch)
+    λ = 2
+    model = relaxing_tracer_model(arch, λ)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    @test !∂ₜc.initialized
+
+    # Nothing to difference against until the operand has been evaluated twice
+    update_time_derivative!(∂ₜc, model)
+    @test ∂ₜc.initialized
+    @test ∂ₜc.previous_time == model.clock.time
+    @test all(Array(interior(∂ₜc.result)) .== 0)
+
+    # Repeated evaluation at the same clock time leaves the result untouched
+    update_time_derivative!(∂ₜc, model)
+    @test all(Array(interior(∂ₜc.result)) .== 0)
+
+    return nothing
+end
+
+function test_time_derivative_of_reduction(arch)
+    λ, Δt = 2, 1e-3
+    model = relaxing_tracer_model(arch, λ)
+    c = model.tracers.c
+    ∂ₜ∫c² = TimeDerivative(Integral(c^2))
+
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.diagnostics[:∂ₜ∫c²] = ∂ₜ∫c²
+    run!(simulation)
+
+    ∫c² = Field(Integral(c^2))
+    compute!(∫c²)
+
+    # ∫c² decays at twice the rate of c
+    expected = -2λ * Array(interior(∫c²))[1, 1, 1] * exp(λ * Δt)
+
+    @test Array(interior(∂ₜ∫c².result))[1, 1, 1] ≈ expected rtol=1e-4
+
+    return nothing
+end
+
+function test_time_derivative_schedule(arch)
+    λ, Δt = 2, 1e-3
+    model = relaxing_tracer_model(arch, λ)
+    ∂ₜc = TimeDerivative(model.tracers.c, schedule=IterationInterval(2))
+
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.diagnostics[:∂ₜc] = ∂ₜc
+    run!(simulation)
+
+    @test ∂ₜc.previous_time == model.clock.time
+
+    # Differencing every other step widens the interval to 2Δt
+    c = Array(interior(model.tracers.c))
+    expected = @. -λ * c * exp(λ * Δt)
+
+    @test all(isapprox.(Array(interior(∂ₜc.result)), expected, rtol=1e-4))
+
+    return nothing
+end
+
+#####
+##### Output writers evaluate the derivative without any user-supplied callback
+#####
+
+function test_time_derivative_dependency_adding(arch, writer_type, filename, outputs, key)
+    model = relaxing_tracer_model(arch, 2)
+
+    simulation = Simulation(model, Δt=1e-3, stop_iteration=3)
+    simulation.output_writers[:derivative] = writer_type(model, outputs(model);
+                                                         filename,
+                                                         schedule = IterationInterval(1),
+                                                         overwrite_existing = true)
+    run!(simulation)
+
+    written = simulation.output_writers[:derivative].outputs[key]
+
+    @test written ∈ values(simulation.diagnostics)
+    @test written.initialized
+    @test all(Array(interior(written.result)) .< 0)
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
+function test_zarr_written_time_derivative(arch)
+    model = relaxing_tracer_model(arch, 2)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    storepath = abspath(joinpath(".", "test_time_derivative.zarr"))
+    isdir(storepath) && rm(storepath; recursive=true, force=true)
+
+    simulation = Simulation(model, Δt=1e-3, stop_iteration=3)
+    simulation.output_writers[:derivative] = ZarrWriter(model, (; ∂ₜc);
+                                                        filename = "test_time_derivative",
+                                                        dir = ".",
+                                                        schedule = IterationInterval(1),
+                                                        with_halos = false,
+                                                        overwrite_existing = true)
+    run!(simulation)
+
+    store = Zarr.zopen(storepath)
+    saved = store["∂ₜc"][:, :, :, :]
+    rm(storepath; recursive=true, force=true)
+
+    Nx, Ny, Nz = size(model.grid)
+    @test size(saved) == (Nx, Ny, Nz, 4)
+    @test all(saved[:, :, :, 1] .== 0)
+    @test all(saved[:, :, :, end] .< 0)
+
+    return nothing
+end
+
+function test_written_time_derivative(arch)
+    model = relaxing_tracer_model(arch, 2)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    filename = "test_time_derivative.jld2"
+    simulation = Simulation(model, Δt=1e-3, stop_iteration=3)
+    simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc);
+                                                        filename,
+                                                        schedule = IterationInterval(1),
+                                                        overwrite_existing = true)
+    run!(simulation)
+
+    written = simulation.output_writers[:derivative].outputs.∂ₜc
+
+    file = jldopen(filename)
+    saved_location = file["timeseries/∂ₜc/serialized/location"]
+    initial = file["timeseries/∂ₜc/0"]
+    final = file["timeseries/∂ₜc/3"]
+    close(file)
+    rm(filename, force=true)
+
+    @test saved_location == (Center, Center, Center)
+
+    # There is no history to difference against at the first output
+    @test all(initial .== 0)
+    @test all(final .≈ Array(parent(written.result)))
+
+    return nothing
+end
+
+function test_time_derivative_checkpointing(arch)
+    prefix = "time_derivative_checkpointing_$(typeof(arch))"
+    λ, Δt = 2, 1e-3
+
+    model = relaxing_tracer_model(arch, λ)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(4),
+                                                            prefix = prefix)
+    simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc),
+                                                        filename = "$(prefix).jld2",
+                                                        schedule = IterationInterval(1),
+                                                        overwrite_existing = true)
+    run!(simulation)
+
+    written = simulation.output_writers[:derivative].outputs.∂ₜc
+    original_result = copy(Array(interior(written.result)))
+    original_previous = copy(Array(interior(written.previous)))
+    original_previous_time = written.previous_time
+
+    restored_model = relaxing_tracer_model(arch, λ)
+    restored_∂ₜc = TimeDerivative(restored_model.tracers.c)
+
+    restored_simulation = Simulation(restored_model; Δt, stop_iteration=8)
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_model,
+                                                                     schedule = IterationInterval(4),
+                                                                     prefix = prefix)
+    restored_simulation.output_writers[:derivative] = JLD2Writer(restored_model, (; ∂ₜc=restored_∂ₜc),
+                                                                 filename = "$(prefix)_restored.jld2",
+                                                                 schedule = IterationInterval(1),
+                                                                 overwrite_existing = true)
+
+    set!(restored_simulation; iteration=4)
+
+    restored_written = restored_simulation.output_writers[:derivative].outputs.∂ₜc
+
+    @test restored_written.initialized
+    @test restored_written.previous_time == original_previous_time
+    @test all(Array(interior(restored_written.result)) .≈ original_result)
+    @test all(Array(interior(restored_written.previous)) .≈ original_previous)
+
+    rm("$(prefix).jld2", force=true)
+    rm("$(prefix)_restored.jld2", force=true)
+    rm("$(prefix)_iteration4.jld2", force=true)
+
+    return nothing
+end
+
+#####
+##### Run
+#####
+
+@testset "TimeDerivative" begin
+    for arch in archs
+        @info "  Testing TimeDerivative [$(typeof(arch))]..."
+
+        @testset "TimeDerivative of Fields and Reductions [$(typeof(arch))]" begin
+            test_time_derivative_of_field(arch)
+            test_time_derivative_initialization(arch)
+            test_time_derivative_of_reduction(arch)
+            test_time_derivative_schedule(arch)
+        end
+
+        @testset "TimeDerivative output [$(typeof(arch))]" begin
+            test_time_derivative_dependency_adding(arch, JLD2Writer, "test_time_derivative.jld2",
+                                                   time_derivative_outputs, :∂ₜc)
+
+            test_time_derivative_dependency_adding(arch, NetCDFWriter, "test_time_derivative.nc",
+                                                   named_time_derivative_outputs, "dcdt")
+
+            test_written_time_derivative(arch)
+            test_zarr_written_time_derivative(arch)
+        end
+
+        @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin
+            test_time_derivative_checkpointing(arch)
+        end
+    end
+end
