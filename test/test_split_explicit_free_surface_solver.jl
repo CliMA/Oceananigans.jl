@@ -12,7 +12,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   LowDissipationAveragingKernel,
                                                                                   SymmetricTrigAveragingKernel,
                                                                                   WideTrig74AveragingKernel,
-                                                                                  WideTrig2AveragingKernel
+                                                                                  WideTrig2AveragingKernel,
+                                                                                  OptimizedSymmetricAveragingKernel,
+                                                                                  OptimizedAsymmetricAveragingKernel
 
 @inline noforcing(args...) = 0
 
@@ -333,7 +335,9 @@ end
             for (kernel, third_order) in ((LowDissipationAveragingKernel(), false),
                                           (SymmetricTrigAveragingKernel(),  true),
                                           (WideTrig74AveragingKernel(),     true),
-                                          (WideTrig2AveragingKernel(),      true))
+                                          (WideTrig2AveragingKernel(),      true),
+                                          (OptimizedSymmetricAveragingKernel(),  true),
+                                          (OptimizedAsymmetricAveragingKernel(), true))
                 Δτ, w, transport_weights = weights_from_substeps(FT, substeps, kernel)
                 @test sum(w) ≈ 1                             atol=tol   # μ₀
                 @test kernel_moment(Δτ, w, 1) ≈ 0            atol=tol   # μ₁ = 1 (barycenter on the baroclinic step)
@@ -348,6 +352,19 @@ end
             μ₄_trig2  = kernel_moment(weights_from_substeps(FT, substeps, WideTrig2AveragingKernel())[1:2]...,       4)
             @test μ₄_trig74 < μ₄_trig < 0
             @test μ₄_trig2  < μ₄_trig74
+        end
+
+        # The optimized asymmetric kernel imposes μ₀ = 1 and μ₁ = μ₂ = μ₃ = 0 directly on the substep grid
+        # rather than inheriting them from a continuous symmetry, so unlike the WideTrig kernels its moments
+        # are exact for EVERY substep count, not only where the window edges land on the grid.
+        for substeps in (30, 44, 50, 60)
+            tol = sqrt(eps(FT))
+            Δτ, w, transport_weights = weights_from_substeps(FT, substeps, OptimizedAsymmetricAveragingKernel())
+            @test sum(w) ≈ 1                      atol=tol
+            @test kernel_moment(Δτ, w, 1) ≈ 0     atol=tol
+            @test kernel_moment(Δτ, w, 2) ≈ 0     atol=tol
+            @test kernel_moment(Δτ, w, 3) ≈ 0     atol=tol
+            @test sum(transport_weights) ≈ 1      atol=tol
         end
     end
 end

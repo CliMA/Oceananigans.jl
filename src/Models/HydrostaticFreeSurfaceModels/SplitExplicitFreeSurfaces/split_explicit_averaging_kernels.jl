@@ -29,13 +29,31 @@
 # - `ConstantAveragingKernel()`:       μ₂ ≫ 0, very diffusive, very stable
 # - `CosineAveragingKernel()`:         μ₂ > 0, μ₃ = 0, lower dispersion
 # - `LowDissipationAveragingKernel()`: μ₂ = 0, μ₃ > 0, lowest diffusivity, 2nd order, best for both FB and RK2
-# - `SymmetricTrigAveragingKernel()`:  μ₂ = 0, μ₃ = 0, lowest diffusivity overall, 3rd order, best for RK3
-# - `WideTrig74AveragingKernel()`:     μ₂ = 0, μ₃ = 0, 3rd order, stratification-robust (wider window, 7/4), best for RK3
-# - `WideTrig2AveragingKernel()`:      μ₂ = 0, μ₃ = 0, 3rd order, most stratification-robust (widest window, 2), best for RK3
+# - `SymmetricTrigAveragingKernel()`:  μ₂ = 0, μ₃ = 0, 3rd order, cheapest μ₂ = μ₃ = 0 window
+# - `WideTrig74AveragingKernel()`:     μ₂ = 0, μ₃ = 0, 3rd order, wider window (7/4), needs substeps % 8 == 0
+# - `WideTrig2AveragingKernel()`:      μ₂ = 0, μ₃ = 0, 3rd order, widest window (2), needs substeps % 4 == 0
+# - `OptimizedSymmetricAveragingKernel()`:  μ₂ = 0, μ₃ = 0, 3rd order, stratification-robust
+# - `OptimizedAsymmetricAveragingKernel()`: μ₂ = 0, μ₃ = 0, 3rd order, stratification-robust, lowest TV — DEFAULT
 #
-# `SymmetricTrigAveragingKernel` loses stability at strong stratification; the two `WideTrig` kernels keep its
-# μ₂ = μ₃ = 0 (3rd order) while widening the averaging window, which deepens μ₄ (the low-frequency dissipation)
-# enough to stay stable there — at the cost of more barotropic substeps (M★ = (Wend/2)·substeps).
+# Stability of a μ₂ = μ₃ = 0 kernel is governed by two independent things, and it is a mistake to attribute
+# either to the other:
+#
+#   1. the STOP BAND of the kernel, which controls the barotropic-barotropic resonance at μ₀ = πα₀ ≈ 3.2;
+#   2. the DISSIPATION OF THE BAROTROPIC SUBSTEP itself, which controls a large-scale (μ₀ ≈ 0.4) residual.
+#
+# These act on disjoint parts of the spectrum, so neither a better kernel nor a better substep alone is
+# sufficient. In particular a Runge-Kutta substep does NOT rescue a kernel with a weak stop band: measured in
+# the Each-Stage coupling that `SplitRungeKuttaTimeStepper` uses, `WideTrig74`/`WideTrig2` are formally
+# unstable at the μ₀ ≈ 3.2 resonance once the stratification reaches N ≈ 2.5e-2 s⁻¹ (max|λ|-1 = +3.2e-2 and
+# +1.4e-2), and swapping a forward-backward substep for RK3 makes them *worse* (+3.5e-2, +1.7e-2), not better.
+# Below N ≈ 2.0e-2 s⁻¹ every kernel here is fine, so this only bites at very strong stratification.
+#
+# The two `Optimized*` kernels come from a minimax search over the shape parameters, minimising the worst
+# Each-Stage amplification over μ₀ and over N = 1.0…2.5e-2 s⁻¹ subject to μ₀ = 1 and μ₁ = μ₂ = μ₃ = 0. Both
+# stay stable across that whole range (+1.0e-6 with a forward-backward substep, -2.8e-12 with RK3) at the same
+# cost as `WideTrig74` (M★ = 42 at substeps = 48). `OptimizedAsymmetric` is the default: it matches
+# `OptimizedSymmetric` in stability but has a much lower total variation (0.200 against 0.471), and since
+# |Ŵ(x)| ≤ TV/|sin(x/2)| that is genuine high-wavenumber margin.
 #
 # The `WideTrig` shapes owe μ₃ = 0 to being symmetric about their own window centre, and that symmetry survives
 # the discretisation only when the window edges land on the τ grid (τₖ = 2k/substeps). The window [1/2, Wend]
@@ -45,9 +63,15 @@
 #   WideTrig2  : substeps % 4 == 0
 #
 # Off the grid the retained stencil is lopsided, μ₃ ≠ 0, and the kernel silently drops from third to second
-# order (WideTrig74 at substeps = 36 gives μ₃ = 1.1e-2 rather than 0). `SymmetricTrigAveragingKernel` needs no
-# such condition: its window [1/2, 3/2] is symmetric about τ = 1, which is a grid point whenever `substeps` is
-# even, so the trimmed stencil stays symmetric.
+# order (WideTrig74 at substeps = 36 gives μ₃ = 1.1e-2 rather than 0). `SymmetricTrigAveragingKernel` and
+# `OptimizedSymmetricAveragingKernel` need only an even `substeps`: their windows are symmetric about τ = 1,
+# which is then a grid point, so the trimmed stencil stays symmetric. `OptimizedAsymmetricAveragingKernel`
+# needs no condition at all — it solves μ₀ = 1, μ₁ = μ₂ = μ₃ = 0 directly on whatever τ grid it is given, so
+# the moments are exact for every `substeps` rather than inherited from a continuous symmetry.
+#
+# A kernel tuned at one `substeps` is not automatically valid at another: the sampling can mask a stop-band
+# leak that survives refinement. Every kernel here was checked to be flat in `substeps` over 32…96 before
+# being admitted, and any kernel added later should be checked the same way.
 
 struct ConstantAveragingKernel <: Function end
 struct CosineAveragingKernel   <: Function end
@@ -55,6 +79,8 @@ struct LowDissipationAveragingKernel <: Function end
 struct SymmetricTrigAveragingKernel <: Function end
 struct WideTrig74AveragingKernel <: Function end
 struct WideTrig2AveragingKernel  <: Function end
+struct OptimizedSymmetricAveragingKernel  <: Function end
+struct OptimizedAsymmetricAveragingKernel <: Function end
 
 # Generic weights from general `averaging_kernel`s
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
@@ -238,4 +264,107 @@ function wide_trig_first_amplitude(FT, substeps, Wend, higher)
         end
     end
     return (lo + hi) / 2
+end
+
+#####
+##### Minimax-optimized μ₂ = μ₃ = 0 kernels
+#####
+
+# shape(s) = 1 + ∑ₖ aₖ cos(πks/R) on |s| ≤ R, with s = τ - 1, so the shape is symmetric about τ = 1 and
+# μ₁ = μ₃ = 0 follow whenever τ = 1 is a grid point (any even `substeps`). a₅ is fixed by shape(±R) = 0, so
+# the shape tapers smoothly to zero instead of being truncated — that taper is what gives the stop band its
+# decay. a₁ is then bisected so that μ₂ = 0. R and a₂…a₄ come from the minimax search.
+const optimized_symmetric_radius = 0.752661
+const optimized_symmetric_higher_amplitudes = (-1.289381, -0.674748, 0.605401)
+
+@inline function optimized_symmetric_amplitudes(a1, higher)
+    a = (a1, higher...)
+    return (a..., 1 + sum(a[k] * (-1)^k for k in 1:4))
+end
+
+@inline function optimized_symmetric_shape(τ::FT, R, a) where FT
+    s = τ - 1
+    v = one(FT)
+    for k in eachindex(a)
+        v += a[k] * cospi(k * s / R)
+    end
+    return ifelse(abs(s) ≤ FT(R), v, zero(FT))
+end
+
+function optimized_symmetric_weights(FT, substeps, R, a)
+    τᶠ = range(FT(0), FT(2), length = substeps+1)
+    Δτ = τᶠ[2] - τᶠ[1]
+    raw = map(τ -> optimized_symmetric_shape(τ, FT(R), map(FT, a)), τᶠ[2:end])
+    M★ = findlast(!=(0), raw)
+    w  = collect(raw[1:M★])
+    w ./= sum(w)
+    barycenter = sum(w .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+    return FT(Δτ), w, M★
+end
+
+function optimized_symmetric_second_moment(FT, substeps, R, a)
+    Δτ, w, M★ = optimized_symmetric_weights(FT, substeps, R, a)
+    return sum(w[m] * (m * Δτ - 1)^2 for m in 1:M★)
+end
+
+function optimized_symmetric_first_amplitude(FT, substeps, R, higher)
+    f(a1) = optimized_symmetric_second_moment(FT, substeps, R, optimized_symmetric_amplitudes(a1, higher))
+    lo, hi = FT(-4), FT(4)
+    flo = f(lo)
+    for _ in 1:80
+        mid = (lo + hi) / 2
+        fmid = f(mid)
+        if flo * fmid ≤ 0
+            hi = mid
+        else
+            lo, flo = mid, fmid
+        end
+    end
+    return (lo + hi) / 2
+end
+
+function weights_from_substeps(FT, substeps, ::OptimizedSymmetricAveragingKernel)
+    R = optimized_symmetric_radius
+    a1 = optimized_symmetric_first_amplitude(FT, substeps, R, optimized_symmetric_higher_amplitudes)
+    a  = optimized_symmetric_amplitudes(a1, optimized_symmetric_higher_amplitudes)
+    Δτ, w, M★ = optimized_symmetric_weights(FT, substeps, R, a)
+    t = [Δτ * sum(@view w[m:M★]) for m in 1:M★]
+    return FT(Δτ), map(FT, tuple(w...)), map(FT, tuple(t...))
+end
+
+# v(τ) = (1 - u²)^p ∑_{k=0}^{4} bₖ uᵏ with u = (τ - c)/R. The moments are LINEAR in b, so μ₀ = 1 and
+# μ₁ = μ₂ = μ₃ = 0 are imposed directly as four equations on the five bₖ, on whatever τ grid is supplied.
+# Nothing is inherited from a continuous symmetry, so the moments are exact for every `substeps` and no
+# grid-alignment condition arises. The (1-u²)^p factor tapers the shape to zero at both ends of its support,
+# which is what keeps the total variation — and hence the stop band, via |Ŵ(x)| ≤ TV/|sin(x/2)| — so low.
+const optimized_asymmetric_radius = 0.864972
+const optimized_asymmetric_center = 0.909165
+const optimized_asymmetric_power  = 0.595115
+
+function weights_from_substeps(FT, substeps, ::OptimizedAsymmetricAveragingKernel)
+    τᶠ = range(FT(0), FT(2), length = substeps+1)
+    Δτ = τᶠ[2] - τᶠ[1]
+    τ  = collect(τᶠ[2:end])
+    s  = τ .- 1
+
+    R, c, p = FT(optimized_asymmetric_radius), FT(optimized_asymmetric_center), FT(optimized_asymmetric_power)
+    u   = (τ .- c) ./ R
+    tap = [abs(uᵐ) ≤ 1 ? (1 - uᵐ^2)^p : zero(FT) for uᵐ in u]
+    B   = [tap .* u.^k for k in 0:4]
+
+    A = zeros(FT, 4, 5)
+    for k in 1:5, (j, sʲ) in enumerate((s.^0, s, s.^2, s.^3))
+        A[j, k] = sum(B[k] .* sʲ)
+    end
+    b = A \ FT[1, 0, 0, 0]
+
+    raw = sum(b[k] .* B[k] for k in 1:5)
+    M★ = findlast(!=(0), raw)
+    w  = collect(raw[1:M★])
+    w ./= sum(w)
+    barycenter = sum(w .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+    t  = [Δτ * sum(@view w[m:M★]) for m in 1:M★]
+    return FT(Δτ), map(FT, tuple(w...)), map(FT, tuple(t...))
 end

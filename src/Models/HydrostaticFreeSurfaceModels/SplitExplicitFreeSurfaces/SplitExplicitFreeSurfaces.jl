@@ -4,8 +4,10 @@ export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta2Scheme, Runge
 export FixedSubstepNumber, FixedTimeStepSize
 export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel, SymmetricTrigAveragingKernel
 export WideTrig74AveragingKernel, WideTrig2AveragingKernel
+export OptimizedSymmetricAveragingKernel, OptimizedAsymmetricAveragingKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
+using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: convert_to_device, architecture

@@ -115,8 +115,10 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by
-                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
+                      `averaging_kernel > 0`. The default is `OptimizedAsymmetricAveragingKernel()`, which has
+                      μ₂ = μ₃ = 0 (third order) and imposes its moments directly on the substep grid, so it is
+                      exact for any `substeps` and stays stable at strong stratification. See
+                      `split_explicit_averaging_kernels.jl` for the full list and for how to choose between them.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
@@ -132,7 +134,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = WideTrig74AveragingKernel(),
+                                  averaging_kernel = OptimizedAsymmetricAveragingKernel(),
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
