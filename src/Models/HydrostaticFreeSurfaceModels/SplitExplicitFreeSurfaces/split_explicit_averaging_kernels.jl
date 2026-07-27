@@ -36,6 +36,18 @@
 # `SymmetricTrigAveragingKernel` loses stability at strong stratification; the two `WideTrig` kernels keep its
 # μ₂ = μ₃ = 0 (3rd order) while widening the averaging window, which deepens μ₄ (the low-frequency dissipation)
 # enough to stay stable there — at the cost of more barotropic substeps (M★ = (Wend/2)·substeps).
+#
+# The `WideTrig` shapes owe μ₃ = 0 to being symmetric about their own window centre, and that symmetry survives
+# the discretisation only when the window edges land on the τ grid (τₖ = 2k/substeps). The window [1/2, Wend]
+# needs both substeps/4 and Wend·substeps/2 integral, i.e.
+#
+#   WideTrig74 : substeps % 8 == 0
+#   WideTrig2  : substeps % 4 == 0
+#
+# Off the grid the retained stencil is lopsided, μ₃ ≠ 0, and the kernel silently drops from third to second
+# order (WideTrig74 at substeps = 36 gives μ₃ = 1.1e-2 rather than 0). `SymmetricTrigAveragingKernel` needs no
+# such condition: its window [1/2, 3/2] is symmetric about τ = 1, which is a grid point whenever `substeps` is
+# even, so the trimmed stencil stays symmetric.
 
 struct ConstantAveragingKernel <: Function end
 struct CosineAveragingKernel   <: Function end
@@ -157,8 +169,26 @@ function symmetric_trig_first_amplitude(FT, substeps; a2 = FT(-27//20), a3 = FT(
     return (lo + hi) / 2
 end
 
-weights_from_substeps(FT, substeps, ::WideTrig74AveragingKernel) = wide_trig_weights_from_substeps(FT, substeps, 7//4, (FT(-1), FT(1//2), FT(-1), FT(1//2)))
-weights_from_substeps(FT, substeps, ::WideTrig2AveragingKernel) = wide_trig_weights_from_substeps(FT, substeps, 2, (FT(-1), FT(1//2), FT(-1), FT(4//5)))
+# Warn (once per kernel and substep count) when the window edge misses the τ grid and μ₃ ≠ 0 silently.
+function validate_wide_trig_substeps(substeps, name, required)
+    if substeps % required != 0
+        @warn string(name, " needs `substeps` to be a multiple of ", required, " so that its averaging ",
+                     "window edge lands on the τ grid. With substeps = ", substeps, " the retained stencil ",
+                     "is asymmetric about the window centre, so μ₃ ≠ 0 and the kernel is second- rather than ",
+                     "third-order accurate. Use substeps = ", required * cld(substeps, required), ".") _id=Symbol(name, substeps) maxlog=1
+    end
+    return nothing
+end
+
+function weights_from_substeps(FT, substeps, ::WideTrig74AveragingKernel)
+    validate_wide_trig_substeps(substeps, "WideTrig74AveragingKernel", 8)
+    return wide_trig_weights_from_substeps(FT, substeps, 7//4, (FT(-1), FT(1//2), FT(-1), FT(1//2)))
+end
+
+function weights_from_substeps(FT, substeps, ::WideTrig2AveragingKernel)
+    validate_wide_trig_substeps(substeps, "WideTrig2AveragingKernel", 4)
+    return wide_trig_weights_from_substeps(FT, substeps, 2, (FT(-1), FT(1//2), FT(-1), FT(4//5)))
+end
 
 function wide_trig_weights_from_substeps(FT, substeps, Wend, higher)
     a1 = wide_trig_first_amplitude(FT, substeps, Wend, higher)
