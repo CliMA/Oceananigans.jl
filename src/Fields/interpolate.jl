@@ -105,13 +105,17 @@ end
 # When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
 # of the interpolating grid.
+#
+# The spacing is read from the grid rather than differenced from two adjacent nodes:
+# subtracting nodes of magnitude ~180 discards most of their significant digits in Float32,
+# and the resulting relative error is multiplied by the cell index. Every longitude spacing
+# on an x-regular grid is `Δλᶜᵃᵃ`.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    λ₁ = λnode(2, 1, 1, grid, locs...)
-    Δλ = λ₁ - λ₀
+    Δλ = grid.Δλᶜᵃᵃ
     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
-    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing
+    return convert(FT, (λc - λ₀) / Δλ) + 1 # 1 - based indexing
 end
 
 # When interpolating longitude values, we convert the longitude to
@@ -141,9 +145,9 @@ end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
-    φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing
+    # From the grid, not `φnode(1, 2, 1) - φ₀`; see `fractional_x_index` above.
+    return convert(FT, (φ - φ₀) / grid.Δφᵃᶜᵃ) + 1 # 1 - based indexing
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
