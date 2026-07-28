@@ -1,168 +1,317 @@
-using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
-using Oceananigans.Utils: prettysummary
-using Dates
+using Oceananigans: AbstractModel
+import Dates
 
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
+using Dates: AbstractTime
+using Oceananigans.Diagnostics: default_nan_checker
+using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
 
-struct Callback{P, F, S, CS}
-    func :: F
-    schedule :: S
-    callsite :: CS
-    parameters :: P
+import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.Diagnostics: CFL
+import Oceananigans.Utils: prettytime
+import Oceananigans.TimeSteppers: reset!
+import Oceananigans.OutputWriters: write_output!
+import Oceananigans.Solvers: iteration
+
+default_progress(simulation) = nothing
+
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
+    model :: ML
+    Δt :: DT
+    stop_iteration :: FT
+    stop_time :: ST
+    wall_time_limit :: FT
+    diagnostics :: DI
+    output_writers :: OW
+    callbacks :: CB
+    run_wall_time :: FT
+    align_time_step :: BL
+    running :: BL
+    initialized :: BL
+    verbose :: BL
+    minimum_relative_step :: FT
 end
 
-@inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
-@inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
+"""
+    Simulation(model;
+               Δt,
+               verbose = true,
+               stop_iteration = Inf,
+               stop_time = Inf,
+               wall_time_limit = Inf,
+               align_time_step = true,
+               minimum_relative_step = 0)
+
+Construct a `Simulation` for a `model` with time step `Δt`.
+
+Keyword arguments
+=================
+
+- `Δt`: Required keyword argument specifying the simulation time step. Can be either a `Number`
+        for constant time steps, a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
+        if the `model` has a DateTime clock.
+
+- `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
+
+- `stop_time`: Stop the simulation once this much model clock time has passed. Default: `Inf`.
+
+- `wall_time_limit`: Stop the simulation if it's been running for longer than this many
+                     seconds of wall clock time. Default: `Inf`.
+
+- `align_time_step`: When `true` it implies that the simulation will automatically adjust the
+                     time-step to meet a constraint imposed by various schedules like `ScheduledTimes`,
+                     `TimeInterval`, `AveragedTimeInterval`, as well as a `stop_time` criterion.
+                     If `false`, i.e., no time-step alignment, then the simulation might blithely step passed
+                     the specified time. Default: `true`.
+                     By `align_time_step = false` we ensure that the time-step does _not_ change within
+                     `time_step!(simulation)`
+
+- `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
+                           This avoids extremely high values when writing the pressure to disk.
+                           Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
+"""
+function Simulation(model;
+                    Δt,
+                    verbose = true,
+                    stop_iteration = Inf,
+                    stop_time = Inf,
+                    wall_time_limit = Inf,
+                    align_time_step = true,
+                    minimum_relative_step = 0)
+
+   if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
+       @warn "This simulation will run forever as stop iteration = stop time " *
+             "= wall time limit = Inf."
+   end
+
+   Δt = validate_Δt(Δt, architecture(model))
+
+   diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
+   output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
+   callbacks = OrderedDict{Symbol, Callback}()
+
+   callbacks[:stop_time_exceeded] = Callback(stop_time_exceeded)
+   callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
+   callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
+
+   nan_checker = default_nan_checker(model)
+   if !isnothing(nan_checker) # otherwise don't bother
+       callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   end
+
+   # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
+   #    TODO: implement TT = timetype(model) and FT = eltype(model)
+   TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = convert(TT, period_to_seconds(Δt))
+   end
+   Δt = Δt isa Number ? TT(Δt) : Δt
+   stop_time = stop_time isa Number ? TT(stop_time) : stop_time
+
+   return Simulation(model,
+                     Δt,
+                     Float64(stop_iteration),
+                     stop_time,
+                     Float64(wall_time_limit),
+                     diagnostics,
+                     output_writers,
+                     callbacks,
+                     0.0,
+                     align_time_step,
+                     false,
+                     false,
+                     verbose,
+                     Float64(minimum_relative_step))
+end
+
+function Base.show(io::IO, s::Simulation)
+    modelstr = summary(s.model)
+    print(io, "Simulation of ", modelstr, '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── run_wall_time: $(prettytime(s.run_wall_time))", '\n',
+              "├── run_wall_time / iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+              "├── stop_time: $(prettytime(s.stop_time))", '\n',
+              "├── stop_iteration: $(s.stop_iteration)", '\n',
+              "├── wall_time_limit: $(s.wall_time_limit)", '\n',
+              "├── minimum_relative_step: ", prettysummary(s.minimum_relative_step), '\n',
+              "├── callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n')
+
+    if length(s.diagnostics) == 0
+        print(io, "└── output_writers: $(ordered_dict_show(s.output_writers, "│"))")
+    else
+        print(io, "├── output_writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
+                  "└── diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    end
+end
+
+#####
+##### Utilities
+#####
 
 """
 $(TYPEDSIGNATURES)
 
-Initialize `callback` at the beginning of `run!(sim)`.
-By default, this calls `initialize!` on `callback.func`,
-which in turn does nothing by default.
-
-`initialize!` can be specialized on `callback.parameters`,
-or specialized for `callback.func`.
-`
+Make sure different workers are using the same time step
 """
-initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
+function validate_Δt(Δt, arch::Distributed)
+    Δt_min = all_reduce(min, Δt, arch)
+    if Δt != Δt_min
+        @warn "On rank $(arch.local_rank), Δt = $Δt is not the same as for the other workers. Using the minimum Δt = $Δt_min instead."
+    end
+    return Δt_min
+end
+
+# Fallback
+validate_Δt(Δt, arch) = Δt
 
 """
 $(TYPEDSIGNATURES)
 
-Finalize `callback` at the end of `run!(sim)`.
-By default, this calls `finalize!` on `callback.func`,
-which in turn does nothing by default.
-
-`finalize!` can be specialized on `callback.parameters`,
-or specialized for `callback.func`.
+Return the current simulation time.
 """
-finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
-
-initialize!(func, sim) = nothing
-finalize!(func, sim) = nothing
+Base.time(sim::Simulation) = time(sim.model)
 
 """
-    Callback(func, schedule=IterationInterval(1);
-             parameters=nothing, callsite=TimeStepCallsite())
+$(TYPEDSIGNATURES)
 
-Return `Callback` that executes `func` on `schedule`
-at the `callsite` with optional `parameters`. By default,
-`schedule = IterationInterval(1)` and `callsite = TimeStepCallsite()`.
-
-If `isnothing(parameters)`, `func(sim::Simulation)` is called.
-Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
-
-The `callsite` determines where `Callback` is executed. The possible values for
-`callsite` are:
-
-* `TimeStepCallsite()`: after a time-step.
-
-* `TendencyCallsite()`: after tendencies are calculated, but before taking
-  a time-step (useful for modifying tendency calculations).
-
-* `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
-  been computed (for multi-stage time-steppers, `update_state!` may be called multiple
-  times per time-step).
+Return the current simulation iteration.
 """
-function Callback(func, schedule=IterationInterval(1);
-                  parameters = nothing,
-                  callsite = TimeStepCallsite())
+iteration(sim::Simulation) = iteration(sim.model)
 
-    return Callback(func, schedule, callsite, parameters)
-end
+"""
+    prettytime(sim::Simulation, longform=true)
 
-Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))
-Base.summary(cb::Callback) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule),
-                                    " with parameters ", cb.parameters)
+Return `sim.model.clock.time` as a prettily formatted string."
 
-Base.show(io::IO, cb::Callback) = print(io, summary(cb))
+For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
+"""
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
-function Callback(wta::WindowedTimeAverage)
-    function func(sim)
-        model = sim.model
-        advance_time_average!(wta, model)
-        return nothing
-    end
-    return Callback(func, wta.schedule, nothing)
-end
+"""
+$(TYPEDSIGNATURES)
 
-Callback(wta::WindowedTimeAverage, schedule; kw...) =
-    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage.
-                        Use Callback(windowed_time_average)"))
+Return `sim.run_wall_time` as a prettily formatted string.
+"""
+run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
-struct GenericName end
+"""
+$(TYPEDSIGNATURES)
 
-generic_callback_name(name, existing_names) = name
+Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
+"""
+function reset!(sim::Simulation)
+    reset_clock!(sim.model)
+    sim.stop_iteration = Inf
 
-function generic_callback_name(::GenericName, existing_names)
-    prefix = :callback # yeah, that's generic
-
-    # Find a unique one
-    n = 1
-    while Symbol(prefix, n) ∈ existing_names
-        n += 1
+    if sim.stop_time isa Number
+        sim.stop_time = Inf
+    elseif sim.stop_time isa AbstractTime
+        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+        sim.stop_time = max_datetime
     end
 
-    return Symbol(prefix, n)
-end
-
-"""
-    add_callback!(simulation, callback::Callback; name = GenericName())
-    add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
-
-Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
-`GenericName()` generates a name of the form `:callbackN`, where `N`
-is big enough for the name to be unique.
-
-If `name::Symbol` is supplied, it may be modified if `simulation.callbacks[name]`
-already exists.
-
-`callback_kw` are passed to the constructor for [`Callback`](@ref).
-
-The `callback` (which contains a schedule) can also be supplied directly.
-"""
-function add_callback!(simulation, callback::Callback; name = GenericName())
-    name = generic_callback_name(name, keys(simulation.callbacks))
-    simulation.callbacks[name] = callback
+    sim.wall_time_limit = Inf
+    sim.run_wall_time = 0.0
+    sim.initialized = false
+    sim.running = true
+    reset!(timestepper(sim.model))
     return nothing
 end
 
-function add_callback!(simulation, func, schedule = IterationInterval(1);
-                       name = GenericName(), callback_kw...)
-
-    callback = Callback(func, schedule; callback_kw...)
-    return add_callback!(simulation, callback; name)
-end
-
-validate_schedule(func, schedule) = schedule
-
+# Fallback. Models without clocks should extend this function.
 """
 $(TYPEDSIGNATURES)
 
-State a callback's function carries across a restart. `nothing` by default: most callbacks are
-stateless, and the generic `prognostic_state` fallback would otherwise try to serialize an arbitrary
-closure. Callbacks that accumulate state extend this together with [`restore_callback_state!`](@ref).
+Reset `model.clock` to its initial state.
 """
-callback_state(func) = nothing
+reset_clock!(model::AbstractModel) = reset!(model.clock)
 
-"""
-$(TYPEDSIGNATURES)
+#####
+##### Default stop criteria callback functions
+#####
 
-Restore the state returned by [`callback_state`](@ref) into `func`.
-"""
-restore_callback_state!(func, ::Nothing) = func
+wall_time_msg(sim) = string("Simulation is stopping after running for ", run_wall_time(sim), ".")
 
-function prognostic_state(callback::Callback)
-    return (; schedule = prognostic_state(callback.schedule),
-              func = callback_state(callback.func))
+function stop_iteration_exceeded(sim)
+    if sim.model.clock.iteration >= sim.stop_iteration
+        if sim.verbose
+            msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
+            @info wall_time_msg(sim)
+            @info msg
+        end
+
+        sim.running = false
+    end
+
+    return nothing
 end
 
-function restore_prognostic_state!(restored::Callback, from)
-    restore_prognostic_state!(restored.schedule, from.schedule)
-    hasproperty(from, :func) && restore_callback_state!(restored.func, from.func)
+function stop_time_exceeded(sim)
+    if sim.model.clock.time >= sim.stop_time
+        if sim.verbose
+            msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
+            @info wall_time_msg(sim)
+            @info msg
+        end
+
+        sim.running = false
+    end
+
+    return nothing
+end
+
+function wall_time_limit_exceeded(sim)
+    if sim.run_wall_time >= sim.wall_time_limit
+        if sim.verbose
+            msg = string("Simulation run time ", run_wall_time(sim), " equals or exceeds wall time limit ", prettytime(sim.wall_time_limit), ".")
+            @info wall_time_msg(sim)
+            @info msg
+        end
+
+        sim.running = false
+    end
+
+    return nothing
+end
+
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
+
+function prognostic_state(sim::Simulation)
+    return (model = prognostic_state(sim.model),
+            diagnostics = prognostic_state(sim.diagnostics),
+            output_writers = prognostic_state(sim.output_writers),
+            callbacks = prognostic_state(sim.callbacks),
+            run_wall_time = sim.run_wall_time,
+            align_time_step = sim.align_time_step,
+            verbose = sim.verbose,
+            minimum_relative_step = sim.minimum_relative_step)
+end
+
+function restore_prognostic_state!(restored::Simulation, from)
+    restore_prognostic_state!(restored.model, from.model)
+    restore_prognostic_state!(restored.diagnostics, from.diagnostics)
+    restore_prognostic_state!(restored.output_writers, from.output_writers)
+    restore_prognostic_state!(restored.callbacks, from.callbacks)
+    restored.run_wall_time = from.run_wall_time
+    restored.align_time_step = from.align_time_step
+    restored.verbose = from.verbose
+    restored.minimum_relative_step = from.minimum_relative_step
     return restored
 end
 
-restore_prognostic_state!(::Callback, ::Nothing) = nothing
+# Disambiguation: handle case when no checkpoint file exists
+restore_prognostic_state!(::Simulation, ::Nothing) = nothing
+
+#####
+##### Diagnostics
+#####
+
+(c::CFL)(sim::Simulation) = c(sim.model)
