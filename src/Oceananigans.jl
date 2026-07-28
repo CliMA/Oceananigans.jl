@@ -48,7 +48,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, RegriddedOperation,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
@@ -114,7 +114,7 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
