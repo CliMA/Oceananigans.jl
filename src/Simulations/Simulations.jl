@@ -3,7 +3,7 @@ module Simulations
 export TimeStepWizard, conjure_time_step_wizard!
 export Simulation
 export run!
-export Callback, add_callback!
+export Callback, add_callback!, callback_state, restore_callback_state!
 export iteration
 
 using OrderedCollections: OrderedDict
