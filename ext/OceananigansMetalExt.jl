@@ -43,10 +43,6 @@ function on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, Float64}) wher
     return StepRangeLen{FT}(ref, step, len, offset)
 end
 
-# No `convert_to_device` methods for `MetalGPU`: `Metal.mtlconvert` requires the launch-time
-# command encoder to register buffer residency and root arrays until batched command buffers
-# execute, so arguments must reach Metal.jl unconverted (the generic fallback is the identity).
-
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid().x, thread_position_in_threadgroup().x)
