@@ -11,7 +11,7 @@ using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
-using Oceananigans.OutputWriters: trilocation_dim_name
+using Oceananigans.OutputWriters: trilocation_dim_name, vertical_coordinate_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 using Oceananigans.Fields: interpolate!
 
@@ -3689,6 +3689,33 @@ function test_netcdf_rectilinear_mvd_output(arch)
     return nothing
 end
 
+# Minimal stand-in for a non-static vertical coordinate defined outside Oceananigans
+# (e.g. in a downstream package); carries the reference-coordinate fields the NetCDF
+# writer reads, shared with `MutableVerticalDiscretization`.
+struct ReferenceTestVerticalCoordinate{C, D, E, F} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
+end
+
+function test_netcdf_abstract_vertical_coordinate_name(arch)
+    # The NetCDF writer labels the vertical axis from the coordinate's *type*: a
+    # `StaticVerticalDiscretization` writes the physical `z`, while every other
+    # `AbstractVerticalCoordinate` writes the reference `r`.
+    custom = ReferenceTestVerticalCoordinate(0:3, 0.5:2.5, 1, 1)
+    @test vertical_coordinate_name(custom) == "r"        # generic fallback (under test)
+
+    mvd = Oceananigans.Grids.MutableVerticalDiscretization(collect(0.0:3.0))
+    @test vertical_coordinate_name(mvd) == "r"           # specific MutableVerticalDiscretization method still wins
+
+    static_grid = RectilinearGrid(arch; size=(1, 1, 2), x=(0, 1), y=(0, 1), z=(0, 1),
+                                  topology=(Periodic, Periodic, Bounded))
+    @test vertical_coordinate_name(static_grid.z) == "z" # static coordinate still writes z
+
+    return nothing
+end
+
 function test_netcdf_tripolar_grid_reconstruction(arch)
     Nx, Ny, Nz = 20, 16, 3
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
@@ -3896,9 +3923,10 @@ end
             test_netcdf_cubed_sphere_panel_immersed_output(arch)
         end
 
-        @testset "MutableVerticalDiscretization output [$A]" begin
-            @info "  Testing MutableVerticalDiscretization output [$A]..."
+        @testset "Non-static vertical coordinate output [$A]" begin
+            @info "  Testing non-static vertical coordinate output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
+            test_netcdf_abstract_vertical_coordinate_name(arch)
         end
     end
 
