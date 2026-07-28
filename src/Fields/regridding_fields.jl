@@ -107,10 +107,15 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     return false
 end
 
+# The face search in the regridding kernels spans indices 1:N+1, so the face array must
+# include the closing face, which for a Periodic dimension lives in the halo.
+closed_face_nodes(grid, ℓx, ℓy, ℓz, dimension) =
+    view(nodes(grid, ℓx, ℓy, ℓz; with_halos=true)[dimension], 1:size(grid, dimension)+1)
+
 function regrid_in_z!(a, target_grid, source_grid, b)
     location(a, 3) == Center || throw(ArgumentError("Can only regrid fields in z with Center z-locations."))
     arch = architecture(a)
-    source_z_faces = znodes(source_grid, f)
+    source_z_faces = closed_face_nodes(source_grid, c, c, f, 3)
     launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
 
     return a
@@ -119,7 +124,7 @@ end
 function regrid_in_y!(a, target_grid, source_grid, b)
     location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
-    source_y_faces = nodes(source_grid, c, f, c)[2]
+    source_y_faces = closed_face_nodes(source_grid, c, f, c, 2)
     # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
     Nx_source_faces = topology(source_grid, 1) == Flat ? 1 : source_grid.Nx + 1
     launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
@@ -129,7 +134,7 @@ end
 function regrid_in_x!(a, target_grid, source_grid, b)
     location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
-    source_x_faces = nodes(source_grid, f, c, c)[1]
+    source_x_faces = closed_face_nodes(source_grid, f, c, c, 1)
     # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
     Ny_source_faces = topology(source_grid, 2) == Flat ? 1 : source_grid.Ny + 1
     launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
