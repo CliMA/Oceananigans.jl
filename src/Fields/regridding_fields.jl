@@ -215,12 +215,9 @@ function dimension_swapped_grid(source_grid, target_grid, dimension)
 end
 
 function regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    # At least two dimensions differ here: with fewer, one of the single-dimension
+    # paths in regrid! passes its size checks and is dispatched to instead.
     differing_dimensions = Tuple(n for n in 1:3 if dimension_differs(target_grid, source_grid, n))
-
-    if isempty(differing_dimensions)
-        interior(a) .= interior(b)
-        return a
-    end
 
     regrid_dimension! = (regrid_in_x!, regrid_in_y!, regrid_in_z!)
 
