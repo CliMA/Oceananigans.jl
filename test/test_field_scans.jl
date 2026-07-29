@@ -281,7 +281,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test ∫T isa Field
                 @test ∫T.operand isa Reduction
                 @test ∫T.operand.dims === dims
-                @test interior_array(∫T, :, :, :) == interior_array(Field(Integral(T; dims)), :, :, :)
+                @test ∫T == Field(Integral(T; dims))
             end
 
             @test ∫dV === ∫∫∫dxdydz
@@ -290,7 +290,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             @test interior_array(∫dV(T), :, :, :)[1, 1, 1] ≈ 24
 
             # ... and still composes with other abstract operations
-            @test interior_array(Field(T / ∫dV(T)), :, :, :) ≈ interior_array(T, :, :, :) ./ 24
+            @test Field(T / ∫dV(T)) ≈ Field(T / 24)
 
             # CumulativeIntegral is only supported over a single Bounded dimension
             @test_throws ArgumentError ∫dx(T, cumulative=true)
@@ -311,7 +311,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
             ∫TdV = ∫dV(T, condition=upper_half)
             @test interior_array(∫TdV, :, :, :)[1, 1, 1] ≈ 14
-            @test interior_array(∫TdV, :, :, :) == interior_array(Field(Integral(T, condition=upper_half)), :, :, :)
+            @test ∫TdV == Field(Integral(T, condition=upper_half))
         end
 
         @testset "Allocating reductions [$arch_str]" begin
