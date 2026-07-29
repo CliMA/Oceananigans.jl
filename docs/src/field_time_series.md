@@ -7,6 +7,8 @@ A `FieldTimeSeries` is a data structure that implements a `Field` with time depe
 A `FieldTimeSeries` may be constructed directly on an existing grid, similarly to a `Field`:
 
 ```jldoctest field_time_series
+using Oceananigans
+
 grid = RectilinearGrid(; topology = (Periodic, Periodic, Bounded),
                          size = (8, 8, 8),
                          extent = (2π, 2π, 2π))
