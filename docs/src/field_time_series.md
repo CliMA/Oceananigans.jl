@@ -230,7 +230,7 @@ ondisk_fts[Time(0.3)]
 
 An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
 
-```jldoctest field_time_series 
+```jldoctest field_time_series
 new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times;
                                                          path = "new.jld2",
                                                          name = "c",
