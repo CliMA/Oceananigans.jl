@@ -25,12 +25,12 @@ using ConservativeRegridding
 
     # Test: field of 1's regrids to 1's (fine -> coarse)
     set!(fine_field, 1)
-    regrid!(coarse_field, regridder, fine_field)
+    ConservativeRegridding.regrid!(coarse_field, regridder, fine_field)
     @test all(interior(coarse_field) .≈ 1)
 
     # Test: field of 1's regrids to 1's (coarse -> fine)
     set!(coarse_field, 1)
-    regrid!(fine_field, transpose(regridder), coarse_field)
+    ConservativeRegridding.regrid!(fine_field, transpose(regridder), coarse_field)
     @test all(interior(fine_field) .≈ 1)
 
     # A conservative regridded field remains connected to its source operation.
@@ -77,11 +77,11 @@ using ConservativeRegridding
 
     # Test: field of 1's regrids to 1's (fine -> coarse)
     set!(fine_rect, 1)
-    regrid!(coarse_rect, rect_regridder, fine_rect)
+    ConservativeRegridding.regrid!(coarse_rect, rect_regridder, fine_rect)
     @test all(interior(coarse_rect) .≈ 1)
 
     # Test: field of 1's regrids to 1's (coarse -> fine)
     set!(coarse_rect, 1)
-    regrid!(fine_rect, transpose(rect_regridder), coarse_rect)
+    ConservativeRegridding.regrid!(fine_rect, transpose(rect_regridder), coarse_rect)
     @test all(interior(fine_rect) .≈ 1)
 end
