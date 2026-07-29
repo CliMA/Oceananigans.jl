@@ -313,12 +313,12 @@ run!(simulation)
 ```
 
 Because `result` is a `Field`, `interior`, `set!`, and reductions work on it as they do on any other
-field. To copy the derivative somewhere else, `set!` accepts the `TimeDerivative` directly,
+field,
 
 ```@example time_derivative
 ∂ₜc_copy = CenterField(grid)
 
-set!(∂ₜc_copy, derivative)
+set!(∂ₜc_copy, derivative.result)
 ```
 
 Callback ordering works in your favor here: callbacks run after the time step and before output

@@ -6,7 +6,7 @@ using Oceananigans.Utils: time_difference_seconds
 
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Grids: grid
-import Oceananigans.Fields: location, indices, set!
+import Oceananigans.Fields: location, indices
 
 """
     mutable struct TimeDerivative{O, R, T}
@@ -123,7 +123,6 @@ similar_field(operand) = Field(instantiated_location(operand), operand.grid, elt
 grid(derivative::TimeDerivative) = grid(derivative.operand)
 location(derivative::TimeDerivative) = location(derivative.operand)
 indices(derivative::TimeDerivative) = indices(derivative.operand)
-set!(u::Field, derivative::TimeDerivative) = set!(u, derivative.result)
 Base.parent(derivative::TimeDerivative) = parent(derivative.result)
 
 # Dispatched rather than left to the `output(model)` fallback, because calling a

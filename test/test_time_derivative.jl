@@ -39,9 +39,9 @@ function test_time_derivative_of_field(arch)
 
     @test all(isapprox.(Array(interior(derivative.result)), expected, rtol=1e-4))
 
-    # The result can also be copied into a Field of the caller's choosing
+    # `result` is a Field, so it can be copied into a Field of the caller's choosing
     copied = CenterField(model.grid)
-    set!(copied, derivative)
+    set!(copied, derivative.result)
     @test all(Array(interior(copied)) .≈ Array(interior(derivative.result)))
 
     return nothing
