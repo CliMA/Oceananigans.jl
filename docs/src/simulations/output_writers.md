@@ -312,14 +312,7 @@ add_callback!(simulation, progress, IterationInterval(5))
 run!(simulation)
 ```
 
-Because `result` is a `Field`, reductions like `maximum` apply to it directly rather than to an
-unwrapped `interior`, and `set!` copies it into any other field,
-
-```@example time_derivative
-∂ₜc_copy = CenterField(grid)
-
-set!(∂ₜc_copy, derivative.result)
-```
+Note that `TimeDerivative.result` is a `Field`:
 
 Callback ordering works in your favor here: callbacks run after the time step and before output
 writers, so a callback that reads `result` always sees the derivative across the step that just
