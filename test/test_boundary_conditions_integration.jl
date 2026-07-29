@@ -327,13 +327,16 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     c̄ = 1   # prescribed exterior tracer value
     c₀ = 5  # uniform initial tracer value (interior and halos)
 
-    east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
-    top_halo(c)  = Array(view(parent(c), Hx + 1, 1, Nz + 1 + Hz))[]
-    low_side(c)  = Array(interior(c, 1, 1, 1))[]  # west and bottom write the first interior cell
+    east_halo(c)      = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
+    west_halo(c)      = Array(view(parent(c), Hx,          1, Hz + 1))[]  # boundary halo node (0) in x
+    top_halo(c)       = Array(view(parent(c), Hx + 1, 1, Nz + 1 + Hz))[]
+    bottom_halo(c)    = Array(view(parent(c), Hx + 1, 1, Hz))[]           # boundary halo node (0) in z
+    first_interior(c) = Array(interior(c, 1, 1, 1))[]                     # must stay prognostic
 
     # Lateral boundaries: radiation must key off the sign of the boundary-normal flow,
     # not the tracer. A uniform flow makes one x-boundary inflow and the other outflow;
-    # inflow relaxes instantly to c̄, outflow radiates and preserves the uniform c₀.
+    # inflow relaxes instantly to c̄, outflow radiates and preserves the uniform c₀. The
+    # relaxed/radiated value lands in the boundary halo, leaving the first interior cell prognostic.
     for U₀ in (-2, 2)
         scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
         u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀),
@@ -351,10 +354,10 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
         c = model.tracers.c
         if U₀ < 0  # inflow at east, outflow at west
             @test east_halo(c) ≈ c̄
-            @test low_side(c)  ≈ c₀
+            @test west_halo(c) ≈ c₀
         else       # outflow at east, inflow at west
             @test east_halo(c) ≈ c₀
-            @test low_side(c)  ≈ c̄
+            @test west_halo(c) ≈ c̄
         end
     end
 
@@ -374,8 +377,9 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     time_step!(model, 1e-2)
 
     c = model.tracers.c
-    @test top_halo(c) ≈ c₀
-    @test low_side(c) ≈ c₀
+    @test top_halo(c)       ≈ c₀
+    @test bottom_halo(c)    ≈ c₀
+    @test first_interior(c) ≈ c₀
 end
 
 function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
@@ -392,7 +396,7 @@ function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrosta
     c₀ = 5  # uniform initial tracer value (interior and halos)
 
     east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
-    low_side(c)  = Array(interior(c, 1, 1, 1))[]
+    west_halo(c) = Array(view(parent(c), Hx,          1, Hz + 1))[]  # boundary halo node (0) in x
 
     for U₀ in (-2, 2)
         scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
@@ -411,11 +415,46 @@ function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrosta
         c = model.tracers.c
         if U₀ < 0  # inflow at east, outflow at west
             @test east_halo(c) ≈ c̄
-            @test low_side(c)  ≈ c₀
+            @test west_halo(c) ≈ c₀
         else       # outflow at east, inflow at west
             @test east_halo(c) ≈ c₀
-            @test low_side(c)  ≈ c̄
+            @test west_halo(c) ≈ c̄
         end
+    end
+end
+
+function test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
+    # Center tracer open boundaries must fill the boundary *halo* node (0) and leave the first
+    # interior cell (1) prognostic. On east/north/top the Face-velocity boundary index (N+1)
+    # coincides with the Center halo index, which masked a west/south/bottom bug that wrote the
+    # first interior cell instead of the halo. Pin the three left boundaries explicitly.
+    grid = RectilinearGrid(arch, FT; size = (4, 4, 4), extent = (1, 1, 1),
+                           topology = (Bounded, Bounded, Bounded), halo = (3, 3, 3))
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    c̄ = convert(FT, -1)          # inflow relaxes the boundary halo to this
+    sentinel = convert(FT, 999)   # marks the first interior cell as prognostic
+    scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+
+    # (boundary, boundary-normal velocity, parent index of the boundary halo node)
+    cases = ((:west,   :u, (Hx,     Hy + 1, Hz + 1)),
+             (:south,  :v, (Hx + 1, Hy,     Hz + 1)),
+             (:bottom, :w, (Hx + 1, Hy + 1, Hz)))
+
+    for (side, vel, halo_index) in cases
+        c_bcs   = FieldBoundaryConditions(; NamedTuple{(side,)}((ValueBoundaryCondition(c̄; scheme),))...)
+        vel_bcs = FieldBoundaryConditions(; NamedTuple{(side,)}((NormalFlowBoundaryCondition(1),))...)
+        model = NonhydrostaticModel(grid; tracers = :c,
+                                    boundary_conditions = NamedTuple{(:c, vel)}((c_bcs, vel_bcs)))
+
+        set!(model; NamedTuple{(vel,)}((1,))..., c = 0)
+        view(interior(model.tracers.c), 1, 1, 1) .= sentinel
+        model.clock.last_stage_Δt = convert(FT, 1e-2)
+        fill_halo_regions!(model.tracers, model.clock, fields(model))
+
+        c = model.tracers.c
+        @test Array(view(parent(c), halo_index...))[] ≈ c̄       # boundary halo node filled with the inflow value
+        @test Array(interior(c, 1, 1, 1))[] == sentinel          # first interior cell left prognostic
     end
 end
 
@@ -697,6 +736,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_perturbation_advection_open_boundary_conditions(arch, FT)
             test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
             test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
+            test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
             test_perturbation_advection_tracer_radiation_formula(arch, FT)
             test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
 
