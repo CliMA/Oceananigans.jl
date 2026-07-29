@@ -277,23 +277,25 @@ end
 ##### Simulation initialization
 #####
 
-add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(sim, output) = nothing # fallback
 
-function add_dependency!(diags, wta::WindowedTimeAverage)
+function add_dependency!(sim, wta::WindowedTimeAverage)
+    diags = sim.diagnostics
     if wta ∉ values(diags)
         num_diags_plus_1 = length(diags) + 1
         diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
     end
 end
 
-function add_dependency!(diags, derivative::TimeDerivative)
-    if derivative ∉ values(diags)
-        num_diags_plus_1 = length(diags) + 1
-        diags[Symbol("TimeDerivative$num_diags_plus_1")] = derivative
+function add_dependency!(sim, derivative::TimeDerivative)
+    callbacks = sim.callbacks
+    if !any(cb -> cb.func === derivative, values(callbacks))
+        num_callbacks_plus_1 = length(callbacks) + 1
+        callbacks[Symbol("TimeDerivative$num_callbacks_plus_1")] = Callback(derivative, IterationInterval(1))
     end
 end
 
-add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+add_dependencies!(sim, writer) = [add_dependency!(sim, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
@@ -332,7 +334,7 @@ function initialize!(sim::Simulation)
     update_state!(model)
 
     # Output and diagnostics initialization
-    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
+    [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
 
     # Things to do for fresh simulations (not after checkpoint restore)
     if model.clock.iteration == 0

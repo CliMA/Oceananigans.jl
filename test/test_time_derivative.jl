@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using NCDatasets
 using Zarr
-using Oceananigans.OutputWriters: TimeDerivative, update_time_derivative!
+using Oceananigans.OutputWriters: TimeDerivative, seed_time_derivative!, update_time_derivative!
 
 #####
 ##### A tracer relaxed at rate λ obeys ∂ₜc = -λ c exactly, which lets the backward
@@ -23,40 +23,48 @@ named_time_derivative_outputs(model) = Dict("dcdt" => TimeDerivative(model.trace
 function test_time_derivative_of_field(arch)
     λ, Δt = 2, 1e-3
     model = relaxing_tracer_model(arch, λ)
-    ∂ₜc = TimeDerivative(model.tracers.c)
+    ∂ₜc = TimeDerivativeCallback(model.tracers.c)
+
+    @test ∂ₜc isa TimeDerivativeCallback
 
     simulation = Simulation(model; Δt, stop_iteration=4)
-    simulation.diagnostics[:∂ₜc] = ∂ₜc
+    simulation.callbacks[:∂ₜc] = ∂ₜc
     run!(simulation)
+
+    derivative = ∂ₜc.func
 
     # The backward difference is centered at t - Δt/2, where c is larger by exp(λ Δt / 2)
     c = Array(interior(model.tracers.c))
     expected = @. -λ * c * exp(λ * Δt / 2)
 
-    @test all(isapprox.(Array(interior(∂ₜc.result)), expected, rtol=1e-4))
+    @test all(isapprox.(Array(interior(derivative.result)), expected, rtol=1e-4))
 
     # The result can also be copied into a Field of the caller's choosing
     copied = CenterField(model.grid)
-    set!(copied, ∂ₜc)
-    @test all(Array(interior(copied)) .≈ Array(interior(∂ₜc.result)))
+    set!(copied, derivative)
+    @test all(Array(interior(copied)) .≈ Array(interior(derivative.result)))
 
     return nothing
 end
 
-function test_time_derivative_initialization(arch)
+function test_time_derivative_seeding(arch)
     λ = 2
     model = relaxing_tracer_model(arch, λ)
+
+    # Constructing with a model seeds the operand and the time immediately
+    seeded = TimeDerivative(model.tracers.c, model)
+    @test seeded.previous_time == model.clock.time
+    @test all(Array(interior(seeded.previous)) .≈ Array(interior(model.tracers.c)))
+
+    # Constructing without one defers seeding
     ∂ₜc = TimeDerivative(model.tracers.c)
+    @test all(Array(interior(∂ₜc.previous)) .== 0)
 
-    @test !∂ₜc.initialized
-
-    # Nothing to difference against until the operand has been evaluated twice
-    update_time_derivative!(∂ₜc, model)
-    @test ∂ₜc.initialized
+    seed_time_derivative!(∂ₜc, model)
     @test ∂ₜc.previous_time == model.clock.time
     @test all(Array(interior(∂ₜc.result)) .== 0)
 
-    # Repeated evaluation at the same clock time leaves the result untouched
+    # A backward difference needs two evaluations, so nothing happens at the seeded time
     update_time_derivative!(∂ₜc, model)
     @test all(Array(interior(∂ₜc.result)) .== 0)
 
@@ -67,10 +75,10 @@ function test_time_derivative_of_reduction(arch)
     λ, Δt = 2, 1e-3
     model = relaxing_tracer_model(arch, λ)
     c = model.tracers.c
-    ∂ₜ∫c² = TimeDerivative(Integral(c^2))
+    ∂ₜ∫c² = TimeDerivativeCallback(Integral(c^2))
 
     simulation = Simulation(model; Δt, stop_iteration=4)
-    simulation.diagnostics[:∂ₜ∫c²] = ∂ₜ∫c²
+    simulation.callbacks[:∂ₜ∫c²] = ∂ₜ∫c²
     run!(simulation)
 
     ∫c² = Field(Integral(c^2))
@@ -79,7 +87,7 @@ function test_time_derivative_of_reduction(arch)
     # ∫c² decays at twice the rate of c
     expected = -2λ * Array(interior(∫c²))[1, 1, 1] * exp(λ * Δt)
 
-    @test Array(interior(∂ₜ∫c².result))[1, 1, 1] ≈ expected rtol=1e-4
+    @test Array(interior(∂ₜ∫c².func.result))[1, 1, 1] ≈ expected rtol=1e-4
 
     return nothing
 end
@@ -87,25 +95,26 @@ end
 function test_time_derivative_schedule(arch)
     λ, Δt = 2, 1e-3
     model = relaxing_tracer_model(arch, λ)
-    ∂ₜc = TimeDerivative(model.tracers.c, schedule=IterationInterval(2))
+    ∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(2))
 
     simulation = Simulation(model; Δt, stop_iteration=4)
-    simulation.diagnostics[:∂ₜc] = ∂ₜc
+    simulation.callbacks[:∂ₜc] = ∂ₜc
     run!(simulation)
 
-    @test ∂ₜc.previous_time == model.clock.time
+    derivative = ∂ₜc.func
+    @test derivative.previous_time == model.clock.time
 
     # Differencing every other step widens the interval to 2Δt
     c = Array(interior(model.tracers.c))
     expected = @. -λ * c * exp(λ * Δt)
 
-    @test all(isapprox.(Array(interior(∂ₜc.result)), expected, rtol=1e-4))
+    @test all(isapprox.(Array(interior(derivative.result)), expected, rtol=1e-4))
 
     return nothing
 end
 
 #####
-##### Output writers evaluate the derivative without any user-supplied callback
+##### Output writers add the updating callback on their own
 #####
 
 function test_time_derivative_dependency_adding(arch, writer_type, filename, outputs, key)
@@ -120,8 +129,7 @@ function test_time_derivative_dependency_adding(arch, writer_type, filename, out
 
     written = simulation.output_writers[:derivative].outputs[key]
 
-    @test written ∈ values(simulation.diagnostics)
-    @test written.initialized
+    @test any(cb -> cb.func === written, values(simulation.callbacks))
     @test all(Array(interior(written.result)) .< 0)
 
     rm(filename, force=true)
@@ -187,6 +195,10 @@ function test_written_time_derivative(arch)
     return nothing
 end
 
+#####
+##### Checkpointing, through both the writer and the callback
+#####
+
 function test_time_derivative_checkpointing(arch)
     prefix = "time_derivative_checkpointing_$(typeof(arch))"
     λ, Δt = 2, 1e-3
@@ -224,13 +236,47 @@ function test_time_derivative_checkpointing(arch)
 
     restored_written = restored_simulation.output_writers[:derivative].outputs.∂ₜc
 
-    @test restored_written.initialized
     @test restored_written.previous_time == original_previous_time
     @test all(Array(interior(restored_written.result)) .≈ original_result)
     @test all(Array(interior(restored_written.previous)) .≈ original_previous)
 
     rm("$(prefix).jld2", force=true)
     rm("$(prefix)_restored.jld2", force=true)
+    rm("$(prefix)_iteration4.jld2", force=true)
+
+    return nothing
+end
+
+function test_time_derivative_callback_checkpointing(arch)
+    prefix = "time_derivative_callback_checkpointing_$(typeof(arch))"
+    λ, Δt = 2, 1e-3
+
+    model = relaxing_tracer_model(arch, λ)
+    ∂ₜc = TimeDerivativeCallback(model.tracers.c)
+
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.callbacks[:∂ₜc] = ∂ₜc
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(4),
+                                                            prefix = prefix)
+    run!(simulation)
+
+    original_result = copy(Array(interior(∂ₜc.func.result)))
+    original_previous_time = ∂ₜc.func.previous_time
+
+    restored_model = relaxing_tracer_model(arch, λ)
+    restored_∂ₜc = TimeDerivativeCallback(restored_model.tracers.c)
+
+    restored_simulation = Simulation(restored_model; Δt, stop_iteration=8)
+    restored_simulation.callbacks[:∂ₜc] = restored_∂ₜc
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_model,
+                                                                     schedule = IterationInterval(4),
+                                                                     prefix = prefix)
+
+    set!(restored_simulation; iteration=4)
+
+    @test restored_∂ₜc.func.previous_time == original_previous_time
+    @test all(Array(interior(restored_∂ₜc.func.result)) .≈ original_result)
+
     rm("$(prefix)_iteration4.jld2", force=true)
 
     return nothing
@@ -246,7 +292,7 @@ end
 
         @testset "TimeDerivative of Fields and Reductions [$(typeof(arch))]" begin
             test_time_derivative_of_field(arch)
-            test_time_derivative_initialization(arch)
+            test_time_derivative_seeding(arch)
             test_time_derivative_of_reduction(arch)
             test_time_derivative_schedule(arch)
         end
@@ -264,6 +310,7 @@ end
 
         @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin
             test_time_derivative_checkpointing(arch)
+            test_time_derivative_callback_checkpointing(arch)
         end
     end
 end

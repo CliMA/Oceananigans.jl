@@ -258,15 +258,15 @@ The derivative is a backward difference,
 \partial_t a \approx \frac{a^n - a^{n-1}}{t^n - t^{n-1}} \, ,
 ```
 
-where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times its `schedule`
-actuated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
+where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times the derivative
+was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
 A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
 start of a simulation is zero.
 
 Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` is not an operator and cannot
-be composed into further abstract operations. It is an output that a writer interprets, and it
-keeps itself up to date: adding one to the `outputs` of a writer also adds it to
-`simulation.diagnostics`, where it is evaluated whenever its `schedule` actuates.
+be composed into further abstract operations. It is an output that a writer interprets. Updating it is
+the job of a [`TimeDerivativeCallback`](@ref), which a writer adds to `simulation.callbacks` on
+`IterationInterval(1)` for each `TimeDerivative` among its outputs.
 
 ### Example
 
@@ -288,26 +288,24 @@ simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜ∫c²),
                                                 schedule = TimeInterval(1))
 ```
 
-The default `schedule`, `IterationInterval(1)`, differences consecutive time steps, which is what is
-needed when the other terms of a budget are evaluated every step. Pass a `schedule` to difference over
-a longer interval instead,
-
-```@example time_derivative
-∂ₜc = TimeDerivative(model.tracers.c, schedule=TimeInterval(10))
-```
+Output derivatives are differenced across consecutive time steps, which is what is needed when the
+other terms of a budget are evaluated every step. To difference over a longer interval, construct the
+updating callback yourself with a coarser `schedule`.
 
 ### Use without an output writer
 
-An output writer is not required. A `TimeDerivative` added to `simulation.diagnostics` is evaluated
-on its own `schedule`, and `derivative.result` is a `Field` that can be read at any point during the
-run,
+An output writer is not required. A [`TimeDerivativeCallback`](@ref) added to `simulation.callbacks`
+keeps its `TimeDerivative` up to date on its own schedule, and `result` is a `Field` that can be read
+at any point during the run,
 
 ```@example time_derivative
-∂ₜc = TimeDerivative(model.tracers.c)
+∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
 
-simulation.diagnostics[:∂ₜc] = ∂ₜc
+simulation.callbacks[:∂ₜc] = ∂ₜc
 
-progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, interior(∂ₜc.result)))"
+derivative = ∂ₜc.func
+
+progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, interior(derivative.result)))"
 
 add_callback!(simulation, progress, IterationInterval(5))
 
@@ -320,9 +318,10 @@ field. To copy the derivative somewhere else, `set!` accepts the `TimeDerivative
 ```@example time_derivative
 ∂ₜc_copy = CenterField(grid)
 
-set!(∂ₜc_copy, ∂ₜc)
+set!(∂ₜc_copy, derivative)
 ```
 
-Note that the callback ordering matters: diagnostics are evaluated before callbacks and output
-writers within a time step, so a callback that reads `result` always sees the derivative across the
-step that just finished.
+Callback ordering works in your favor here: callbacks run after the time step and before output
+writers, so a callback that reads `result` always sees the derivative across the step that just
+finished. Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before
+any callback that reads it.

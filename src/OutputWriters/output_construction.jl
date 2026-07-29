@@ -79,5 +79,5 @@ end
 
 function construct_output(derivative::TimeDerivative{<:Field}, indices, with_halos)
     output = construct_output(derivative.operand, indices, with_halos)
-    return TimeDerivative(output; schedule=derivative.schedule)
+    return TimeDerivative(output)
 end

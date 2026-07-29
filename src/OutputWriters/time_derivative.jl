@@ -1,34 +1,32 @@
 using Dates: AbstractDateTime
-using Oceananigans: AbstractDiagnostic, defaults, instantiated_location
+using Oceananigans: defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: Scan
-using Oceananigans.Utils: IterationInterval, time_difference_seconds
+using Oceananigans.Utils: time_difference_seconds
 
-import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Grids: grid
 import Oceananigans.Fields: location, indices, set!
 
 """
-    mutable struct TimeDerivative{O, R, T, S} <: AbstractDiagnostic
+    mutable struct TimeDerivative{O, R, T}
 
 Container that holds the state required to compute the time derivative of an `operand`
 as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
 recently computed `result`. Both are `Field`s at `location(operand)`.
 """
-mutable struct TimeDerivative{O, R, T, S} <: AbstractDiagnostic
+mutable struct TimeDerivative{O, R, T}
            result :: R
           operand :: O
          previous :: R
     previous_time :: T
-         schedule :: S
-      initialized :: Bool
 end
 
 materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing; schedule=IterationInterval(1))
+    TimeDerivative(operand, model=nothing)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -36,8 +34,8 @@ Return an object that computes the time derivative of `operand` while a simulati
 ∂ₜ a ≈ \\frac{aⁿ - aⁿ⁻¹}{tⁿ - tⁿ⁻¹} \\, ,
 ```
 
-where ``aⁿ`` and ``aⁿ⁻¹`` are `operand` evaluated at the two most recent times at which
-`schedule` actuated. The derivative is a backward difference and is therefore centered at
+where ``aⁿ`` and ``aⁿ⁻¹`` are `operand` evaluated at the two most recent times the derivative
+was updated. The derivative is a backward difference and is therefore centered at
 ``tⁿ - Δt / 2``, where ``Δt = tⁿ - tⁿ⁻¹``. It is zero until `operand` has been evaluated
 twice, which means that the derivative written at the start of a simulation is zero.
 
@@ -46,15 +44,10 @@ reductions are materialized into a `Field` on construction. Δt is measured in s
 including for clocks that keep calendar time.
 
 A `TimeDerivative` is not an operator: it cannot be composed into further `AbstractOperation`s.
-It is an output that is interpreted by an output writer, and it is added to
-`simulation.diagnostics` automatically when it appears in the `outputs` of a writer.
-An output writer is not required: assigning to `simulation.diagnostics` is enough to keep a
-`TimeDerivative` up to date, and `derivative.result` is a `Field` that can be read with
-`interior` at any point during a run.
-
-The `schedule` sets the interval over which the difference is taken. The default,
-`IterationInterval(1)`, differences consecutive time steps, which is what is needed to close
-a budget whose other terms are evaluated at every step.
+It is an output that is interpreted by an output writer, and appears in the `outputs` of a
+writer like any other. Updating it is the job of a [`TimeDerivativeCallback`](@ref), which a
+writer adds to `simulation.callbacks` on its own. Construct one directly to use a
+`TimeDerivative` without a writer, or to difference over an interval longer than a time step.
 
 Example
 =======
@@ -72,7 +65,6 @@ model = NonhydrostaticModel(grid, tracers=:c)
 
 # output
 TimeDerivative of 1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
-└── schedule: IterationInterval(1)
 ```
 
 The derivative is written like any other output:
@@ -95,20 +87,20 @@ JLD2Writer scheduled on TimeInterval(1 second):
 └── file size: 0 bytes (file not yet created)
 ```
 
-An output writer is not required. A `TimeDerivative` in `simulation.diagnostics` is evaluated
-on its own `schedule`, and `interior(∂ₜc.result)` reads it at any point during the run:
+An output writer is not required. A [`TimeDerivativeCallback`](@ref) in
+`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule, and
+`interior(∂ₜc.result)` reads it at any point during the run:
 
 ```jldoctest time_derivative
-∂ₜc = TimeDerivative(model.tracers.c)
+∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
 
-simulation.diagnostics[:∂ₜc] = ∂ₜc
+simulation.callbacks[:∂ₜc] = ∂ₜc
 
 # output
-TimeDerivative of 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-└── schedule: IterationInterval(1)
+Callback of TimeDerivative of 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU on IterationInterval(1)
 ```
 """
-function TimeDerivative(operand, model=nothing; schedule=IterationInterval(1))
+function TimeDerivative(operand, model=nothing)
     operand = materialize_operand(operand)
 
     result = similar_field(operand)
@@ -116,7 +108,11 @@ function TimeDerivative(operand, model=nothing; schedule=IterationInterval(1))
 
     previous_time = isnothing(model) ? zero(defaults.FloatType) : model.clock.time
 
-    return TimeDerivative(result, operand, previous, previous_time, schedule, false)
+    derivative = TimeDerivative(result, operand, previous, previous_time)
+
+    isnothing(model) || seed_time_derivative!(derivative, model)
+
+    return derivative
 end
 
 # Not `Base.similar`, which inherits `operand`'s `operand` and would recompute it
@@ -130,41 +126,50 @@ indices(derivative::TimeDerivative) = indices(derivative.operand)
 set!(u::Field, derivative::TimeDerivative) = set!(u, derivative.result)
 Base.parent(derivative::TimeDerivative) = parent(derivative.result)
 
-# This is called when output is requested.
-(derivative::TimeDerivative)(model) = parent(derivative.result)
+# Dispatched rather than left to the `output(model)` fallback, because calling a
+# `TimeDerivative` updates it: that is what its `Callback` invokes every actuation.
+fetch_output(derivative::TimeDerivative, model) = parent(derivative.result)
+
+(derivative::TimeDerivative)(sim) = update_time_derivative!(derivative, sim.model)
+
+"""
+$(TYPEDSIGNATURES)
+
+Record `derivative.operand` and the current time so that the next update has something to
+difference against. A backward difference needs two evaluations, so the derivative remains
+zero until the update after this one.
+"""
+function seed_time_derivative!(derivative::TimeDerivative, model)
+    if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
+        T = typeof(model.clock.time)
+        msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
+                     "with the model, as in TimeDerivative(operand, model).")
+        throw(ArgumentError(msg))
+    end
+
+    parent(derivative.previous) .= fetch_output(derivative.operand, model)
+    derivative.previous_time = model.clock.time
+
+    return nothing
+end
+
+initialize!(derivative::TimeDerivative, sim) = seed_time_derivative!(derivative, sim.model)
 
 """
 $(TYPEDSIGNATURES)
 
 Difference `derivative.operand` against its value at `derivative.previous_time` and store
-the result in `derivative.result`. The first call only records the operand, because a
-backward difference needs two evaluations.
+the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
-    # Broadcast over parents so that halo regions are differenced along with the interior,
-    # matching what an output writer with `with_halos = true` saves for a plain `Field`
-    current = fetch_output(derivative.operand, model)
-    previous = parent(derivative.previous)
-
-    if !derivative.initialized
-        if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
-            T = typeof(model.clock.time)
-            msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
-                         "with the model, as in TimeDerivative(operand, model).")
-            throw(ArgumentError(msg))
-        end
-
-        previous .= current
-        derivative.previous_time = model.clock.time
-        derivative.initialized = true
-
-        return nothing
-    end
-
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
+    # Broadcast over parents so that halo regions are differenced along with the interior,
+    # matching what an output writer with `with_halos = true` saves for a plain `Field`
+    current = fetch_output(derivative.operand, model)
     result = parent(derivative.result)
+    previous = parent(derivative.previous)
 
     @. result = (current - previous) / Δt
     @. previous = current
@@ -173,8 +178,6 @@ function update_time_derivative!(derivative::TimeDerivative, model)
     return nothing
 end
 
-run_diagnostic!(derivative::TimeDerivative, model) = update_time_derivative!(derivative, model)
-
 #####
 ##### Checkpointing
 #####
@@ -182,15 +185,13 @@ run_diagnostic!(derivative::TimeDerivative, model) = update_time_derivative!(der
 function prognostic_state(derivative::TimeDerivative)
     return (result = prognostic_state(derivative.result),
             previous = prognostic_state(derivative.previous),
-            previous_time = derivative.previous_time,
-            initialized = derivative.initialized)
+            previous_time = derivative.previous_time)
 end
 
 function restore_prognostic_state!(restored::TimeDerivative, from)
     restore_prognostic_state!(restored.result, from.result)
     restore_prognostic_state!(restored.previous, from.previous)
     restored.previous_time = from.previous_time
-    restored.initialized = from.initialized
     return restored
 end
 
@@ -202,6 +203,4 @@ restore_prognostic_state!(::TimeDerivative, ::Nothing) = nothing
 
 Base.summary(derivative::TimeDerivative) = string("TimeDerivative of ", summary(derivative.operand))
 
-Base.show(io::IO, derivative::TimeDerivative) =
-    print(io, summary(derivative), '\n',
-              "└── schedule: ", summary(derivative.schedule))
+Base.show(io::IO, derivative::TimeDerivative) = print(io, summary(derivative))
