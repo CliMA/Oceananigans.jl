@@ -27,7 +27,7 @@ fts = FieldTimeSeries{Center, Center, Center}(grid, times)
 
 Additionally, a `FieldTimeSeries` may be generated from simulation output:
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = [r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+", r"\[ Info: .*\n"]
 model = NonhydrostaticModel(grid; advection=WENO())
 
 u₀(x, y, z) = sin(x) * sin(y)
@@ -45,6 +45,12 @@ run!(simulation)
 fts = FieldTimeSeries("test.jld2", "u")
 
 # output
+[ Info: Initializing simulation...
+[ Info:     ... simulation initialization complete (2.943 seconds)
+[ Info: Executing initial time step...
+[ Info:     ... initial time step complete (77.722 ms).
+[ Info: Simulation is stopping after running for 3.131 seconds.
+[ Info: Model iteration 10 equals or exceeds stop iteration 10.
 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── indices: (:, :, :)
@@ -58,31 +64,17 @@ fts = FieldTimeSeries("test.jld2", "u")
 
 In either case, it can be indexed as if it were a four-dimensional `Field`, with time as the last index:
 
-```jldoctest field_time_series
+```@example
 fts[4, 4, 4, 4]
-
-# output
-0.26985207200050354
 ```
 
-```jldoctest field_time_series
+```@example
 interior(fts, :, 1, 1, :) # x-t array
-
-# output
-8×11 view(::Array{Float64, 4}, 4:11, 4, 4, :) with eltype Float64:
- -2.45381e-18   1.98439e-17   1.07381e-17  -3.79997e-18  …   5.0393e-17    8.05027e-17   9.77895e-17   9.03376e-17
-  0.270598      0.270338      0.27009       0.269852         0.268994      0.2688        0.268613      0.268432
-  0.382683      0.382608      0.382528      0.382444         0.382067      0.381964      0.381859      0.381751
-  0.270598      0.270338      0.27009       0.269852         0.268994      0.2688        0.268613      0.268432
-  1.84987e-18   3.56235e-17   1.05233e-17   5.62883e-17      4.16375e-17  -1.16443e-17  -3.00039e-17   3.23178e-17
- -0.270598     -0.270338     -0.27009      -0.269852     …  -0.268994     -0.2688       -0.268613     -0.268432
- -0.382683     -0.382608     -0.382528     -0.382444        -0.382067     -0.381964     -0.381859     -0.381751
- -0.270598     -0.270338     -0.27009      -0.269852        -0.268994     -0.2688       -0.268613     -0.268432
 ```
 
 Providing just one index returns a `Field` containing a view of the data at the corresponding time step:
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 fts[1]
 
 # output
@@ -96,10 +88,10 @@ fts[1]
 
 In place of an index, an `Oceananigans.Units.Time` can be used to interpolate values at a given time.
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 using Oceananigans.Units: Time
 
-fts[4, 4, 4, Time(0.33)] # 0.2697837561368942
+fts[4, 4, 4, Time(0.33)] # 0.269...
 fts[Time(0.33)]
 
 # output
@@ -132,6 +124,7 @@ Providing a vector of `Field`s will copy the data in each `Field` to the `FieldT
 ```jldoctest field_time_series
 fields = [Field{Face, Center, Center}(grid) for n in 1:length(fts)]
 set!(fts, fields)
+fts
 
 # output
 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
@@ -152,28 +145,29 @@ set!(fts, fields)
 ```jldoctest field_time_series
 using Oceananigans.OutputReaders: Clamp, Linear, Cyclical
 
-grid = RectilinearGrid(; size=(), extent=(), topology=(Flat, Flat, Flat))
+flat_grid = RectilinearGrid(; size=(), extent=(), topology=(Flat, Flat, Flat))
 
-fts_clamp = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Clamp())
-fts_linear = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Linear())
-fts_cyclical = FieldTimeSeries{Center, Center, Center}(grid, [0, 1]; time_indexing=Cyclical())
+fts_clamp = FieldTimeSeries{Center, Center, Center}(flat_grid, [0, 1]; time_indexing=Clamp())
+fts_linear = FieldTimeSeries{Center, Center, Center}(flat_grid, [0, 1]; time_indexing=Linear())
+fts_cyclical = FieldTimeSeries{Center, Center, Center}(flat_grid, [0, 1]; time_indexing=Cyclical())
 
 for fts in (fts_clamp, fts_linear, fts_cyclical)
     set!(fts, 0, 1)
     set!(fts, 1, 2)
 end
+# output
 ```
 
 Each of the above `FieldTimeSeries` contain identical underlying data, however their behavior differs when indexed using `Oceananigans.Units.Time` outside of the range of given times.
 
 ```jldoctest field_time_series
-println("t | Clamp | Linear | Cyclical")
+println("t   | Clamp | Linear | Cyclical")
 for t in 0:0.5:3
     clamp = fts_clamp[1, 1, 1, Time(t)]
     linear = fts_linear[1, 1, 1, Time(t)]
     cyclical = fts_cyclical[1, 1, 1, Time(t)]
 
-    println("$t   | $clamp   | $linear    | $cyclical")
+    println("$t | $clamp   | $linear    | $cyclical")
 end
 
 # output
@@ -205,7 +199,7 @@ ondisk_fts = FieldTimeSeries("test.jld2", "u"; backend=OnDisk())
 ```
 
 Data is only loaded when indexed with an integer or time:
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 ondisk_fts[1]
 
 # output
@@ -217,7 +211,7 @@ ondisk_fts[1]
     └── max=0.92388, min=-0.92388, mean=-1.74623e-10
 ```
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 ondisk_fts[Time(0.3)]
 
 # output
@@ -236,7 +230,7 @@ ondisk_fts[Time(0.3)]
 
 An empty `OnDisk` `FieldTimeSeries` can be created by also including `path` and `name` keywords. These can only be [`set!`](@ref) with a single `Field` and integer index. Doing so will write the data to storage if that index doesn't exist, creating a file if necessary.
 
-```jldoctest field_time_series
+```jldoctest field_time_series 
 new_ondisk_fts = FieldTimeSeries{Center, Center, Center}(grid, times;
                                                          path = "new.jld2",
                                                          name = "c",
@@ -262,7 +256,7 @@ new_fts = FieldTimeSeries("new.jld2", "c")
 ├── path: new.jld2
 ├── name: c
 └── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
-    └── max=0.0, min=-8.23975, mean=-0.118738
+    └── max=0.0, min=-2043.87, mean=-28.9271
 ```
 
 !!! warn "Modifying simulation output files"
@@ -323,7 +317,7 @@ FieldDataset with 2 fields and 0 metadata entries:
 
 Note that the new `FieldDataset` is unrelated to the data contained in the input fields. The result inherits the grid, locations, indices and boundary conditions of the input fields. Individual timeseries may be retrieved by indexing
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 fds.u
 
 # output
@@ -368,7 +362,7 @@ println(new_fds.u[1], "\n\n", new_fds.v[1])
 
 When running simulations, it may be preferrable to calculate diagnostics after the simulation has completed. The input and output capabilities of `FieldTimeSeries`, together with `AbstractOperations` on fields permits a straight-forward post-processing pipeline for the offline computation of fields. The following example reads the data contained in `test.jld2` and calculates the kinetic energy for each timestep, which is then output to `test_ke.jld2`
 
-```jldoctest field_time_series
+```jldoctest field_time_series; filter = r"[0-9\.e-]+"
 input_fds = FieldDataset("test.jld2"; backend=OnDisk())
 times = input_fds.u.times
 
