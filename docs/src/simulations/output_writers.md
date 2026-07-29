@@ -305,15 +305,15 @@ simulation.callbacks[:∂ₜc] = ∂ₜc
 
 derivative = ∂ₜc.func
 
-progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, interior(derivative.result)))"
+progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, derivative.result))"
 
 add_callback!(simulation, progress, IterationInterval(5))
 
 run!(simulation)
 ```
 
-Because `result` is a `Field`, `interior`, `set!`, and reductions work on it as they do on any other
-field,
+Because `result` is a `Field`, reductions like `maximum` apply to it directly rather than to an
+unwrapped `interior`, and `set!` copies it into any other field,
 
 ```@example time_derivative
 ∂ₜc_copy = CenterField(grid)

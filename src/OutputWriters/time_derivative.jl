@@ -88,8 +88,8 @@ JLD2Writer scheduled on TimeInterval(1 second):
 ```
 
 An output writer is not required. A [`TimeDerivativeCallback`](@ref) in
-`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule, and
-`interior(∂ₜc.result)` reads it at any point during the run:
+`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule, and its
+`result` is a `Field` that can be read at any point during the run:
 
 ```jldoctest time_derivative
 ∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
