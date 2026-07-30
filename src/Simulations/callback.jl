@@ -138,30 +138,14 @@ end
 
 validate_schedule(func, schedule) = schedule
 
-"""
-$(TYPEDSIGNATURES)
-
-State a callback's function carries across a restart. `nothing` by default: most callbacks are
-stateless, and the generic `prognostic_state` fallback would otherwise try to serialize an arbitrary
-closure. Callbacks that accumulate state extend this together with [`restore_callback_state!`](@ref).
-"""
-callback_state(func) = nothing
-
-"""
-$(TYPEDSIGNATURES)
-
-Restore the state returned by [`callback_state`](@ref) into `func`.
-"""
-restore_callback_state!(func, ::Nothing) = func
-
 function prognostic_state(callback::Callback)
     return (; schedule = prognostic_state(callback.schedule),
-              func = callback_state(callback.func))
+              func = prognostic_state(callback.func))
 end
 
 function restore_prognostic_state!(restored::Callback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
-    hasproperty(from, :func) && restore_callback_state!(restored.func, from.func)
+    hasproperty(from, :func) && restore_prognostic_state!(restored.func, from.func)
     return restored
 end
 
