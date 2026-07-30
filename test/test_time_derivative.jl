@@ -54,31 +54,48 @@ function test_time_derivative_operators(arch)
     set!(u, 7)
 
     ∂ₜc = TimeDerivative(c)
-    parent(∂ₜc.result) .= 5
+    parent(∂ₜc.result) .= 1//2
 
-    # Every operator form must build the same operation as the one written on `result`
-    @test (2 * ∂ₜc)[1, 1, 1]      == (2 * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc * 2)[1, 1, 1]      == (∂ₜc.result * 2)[1, 1, 1]
-    @test (∂ₜc / 2)[1, 1, 1]      == (∂ₜc.result / 2)[1, 1, 1]
-    @test (2 - ∂ₜc)[1, 1, 1]      == (2 - ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc^2)[1, 1, 1]        == (∂ₜc.result^2)[1, 1, 1]
-    @test (∂ₜc > 0)[1, 1, 1]      == (∂ₜc.result > 0)[1, 1, 1]
-    @test abs(∂ₜc)[1, 1, 1]       == abs(∂ₜc.result)[1, 1, 1]
-    @test (-∂ₜc)[1, 1, 1]         == (-∂ₜc.result)[1, 1, 1]
-    @test sqrt(abs(∂ₜc))[1, 1, 1] == sqrt(abs(∂ₜc.result))[1, 1, 1]
-    @test (∂ₜc * u)[1, 1, 1]      == (∂ₜc.result * u)[1, 1, 1]
-    @test (u * ∂ₜc)[1, 1, 1]      == (u * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc + ∂ₜc)[1, 1, 1]    == (∂ₜc.result + ∂ₜc.result)[1, 1, 1]
-    @test (2 * ∂ₜc * u)[1, 1, 1]  == (2 * ∂ₜc.result * u)[1, 1, 1]
+    # Every forwarded operator must build the same operation as the one written on `result`.
+    # The loops cover the generated methods individually, which a coverage report cannot see.
+    for op in (sqrt, sin, cos, exp, tanh, abs, log10, log, tan, sinh, cosh, -, +)
+        @test op(∂ₜc)[1, 1, 1] == op(∂ₜc.result)[1, 1, 1]
+    end
 
-    # And must compute through a Field like any other operation
+    for op in (+, -, *, /, ^, >, <, >=, <=, atan, atand, mod)
+        @test op(∂ₜc, 2)[1, 1, 1]    == op(∂ₜc.result, 2)[1, 1, 1]
+        @test op(2, ∂ₜc)[1, 1, 1]    == op(2, ∂ₜc.result)[1, 1, 1]
+        @test op(∂ₜc, ∂ₜc)[1, 1, 1]  == op(∂ₜc.result, ∂ₜc.result)[1, 1, 1]
+        @test op(∂ₜc, u)[1, 1, 1]    == op(∂ₜc.result, u)[1, 1, 1]
+        @test op(u, ∂ₜc)[1, 1, 1]    == op(u, ∂ₜc.result)[1, 1, 1]
+    end
+
+    # Chained calls fold pairwise, and the result computes through a Field
+    @test (2 * ∂ₜc * u)[1, 1, 1] == (2 * ∂ₜc.result * u)[1, 1, 1]
+
     product = Field(2 * ∂ₜc * u)
     compute!(product)
-    @test Array(interior(product))[1, 1, 1] == 70
+    @test Array(interior(product))[1, 1, 1] == 7
 
     # Reductions read the derivative directly
-    @test maximum(abs, ∂ₜc) == 5
+    @test maximum(abs, ∂ₜc) == 1//2
     @test size(∂ₜc) == size(∂ₜc.result)
+
+    return nothing
+end
+
+function test_time_derivative_datetime_clock(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=DateTime(2020, 1, 1))
+    model = NonhydrostaticModel(grid; clock, tracers=:c)
+
+    # Constructed with the model, the derivative adopts the clock's time type
+    seeded = TimeDerivative(model.tracers.c, model)
+    @test seeded.previous_time == model.clock.time
+
+    # Constructed without one it defaults to a number, which cannot hold a DateTime
+    ∂ₜc = TimeDerivative(model.tracers.c)
+    @test_throws ArgumentError seed_time_derivative!(∂ₜc, model)
 
     return nothing
 end
@@ -330,6 +347,7 @@ end
             test_time_derivative_of_field(arch)
             test_time_derivative_operators(arch)
             test_time_derivative_seeding(arch)
+            test_time_derivative_datetime_clock(arch)
             test_time_derivative_of_reduction(arch)
             test_time_derivative_schedule(arch)
         end
