@@ -263,10 +263,10 @@ was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where `
 A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
 start of a simulation is zero.
 
-Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` is not an operator and cannot
-be composed into further abstract operations. It is an output that a writer interprets. Updating it is
-the job of a [`TimeDerivativeCallback`](@ref), which a writer adds to `simulation.callbacks` on
-`IterationInterval(1)` for each `TimeDerivative` among its outputs.
+Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not apply `∂ₜ` lazily: the
+difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
+updating it is the job of a [`TimeDerivativeCallback`](@ref), which a writer adds to
+`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs.
 
 ### Example
 
@@ -295,8 +295,8 @@ updating callback yourself with a coarser `schedule`.
 ### Use without an output writer
 
 An output writer is not required. A [`TimeDerivativeCallback`](@ref) added to `simulation.callbacks`
-keeps its `TimeDerivative` up to date on its own schedule, and `result` is a `Field` that can be read
-at any point during the run,
+keeps its `TimeDerivative` up to date on its own schedule, and the derivative can be read at any
+point during the run,
 
 ```@example time_derivative
 ∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
@@ -305,16 +305,24 @@ simulation.callbacks[:∂ₜc] = ∂ₜc
 
 derivative = ∂ₜc.func
 
-progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, derivative.result))"
+progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, derivative))"
 
 add_callback!(simulation, progress, IterationInterval(5))
 
 run!(simulation)
 ```
 
-Note that `TimeDerivative.result` is a `Field`:
+Field operations are forwarded to the `Field` that the derivative computes, so `interior`, `maximum`,
+`mean` and indexing apply to the derivative itself. That field is `derivative.result`, which `set!`
+copies into any other field,
+
+```@example time_derivative
+∂ₜc_copy = CenterField(grid)
+
+set!(∂ₜc_copy, derivative.result)
+```
 
 Callback ordering works in your favor here: callbacks run after the time step and before output
-writers, so a callback that reads `result` always sees the derivative across the step that just
-finished. Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before
-any callback that reads it.
+writers, so a callback that reads the derivative always sees it across the step that just finished.
+Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before any
+callback that reads it.
