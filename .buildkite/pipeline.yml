@@ -167,6 +167,7 @@ steps:
           - "🧅 multi_region"
           - "🌐 multi_region_simulation"
           - "🌍 multi_region_simulation_immersed"
+          - "🧵 conservative_regridding"
           - "🦧 scripts"
 
     retry:
