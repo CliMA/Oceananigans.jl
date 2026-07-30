@@ -251,7 +251,7 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
 ## Time-derivative output
 
 [`TimeDerivative`](@ref) computes the time derivative of an output while a simulation runs, which
-makes it possible to close a budget online instead of differencing two saved snapshots afterwards.
+makes it possible to, for example, close a budget online instead of differencing two saved snapshots afterwards.
 The derivative is a backward difference,
 
 ```math
@@ -263,10 +263,10 @@ was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where `
 A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
 start of a simulation is zero.
 
-Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not apply `∂ₜ` lazily: the
+Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily: the
 difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
-updating it is the job of a [`TimeDerivativeCallback`](@ref), which a writer adds to
-`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs.
+updating it is the job of a [`TimeDerivativeCallback`](@ref) (which a writer can add to
+`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs).
 
 ### Example
 
@@ -312,15 +312,8 @@ add_callback!(simulation, progress, IterationInterval(5))
 run!(simulation)
 ```
 
-Field operations are forwarded to the `Field` that the derivative computes, so `interior`, `maximum`,
-`mean` and indexing apply to the derivative itself. That field is `derivative.result`, which `set!`
-copies into any other field,
-
-```@example time_derivative
-∂ₜc_copy = CenterField(grid)
-
-set!(∂ₜc_copy, derivative.result)
-```
+Field operations are forwarded to the `Field` that the derivative computes (`derivative.result`), so `interior`, `maximum`,
+indexing and other operations apply to the derivative itself.
 
 Callback ordering works in your favor here: callbacks run after the time step and before output
 writers, so a callback that reads the derivative always sees it across the step that just finished.

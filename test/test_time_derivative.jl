@@ -57,19 +57,19 @@ function test_time_derivative_operators(arch)
     parent(∂ₜc.result) .= 5
 
     # Every operator form must build the same operation as the one written on `result`
-    @test (2 * ∂ₜc)[1, 1, 1]     == (2 * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc * 2)[1, 1, 1]     == (∂ₜc.result * 2)[1, 1, 1]
-    @test (∂ₜc / 2)[1, 1, 1]     == (∂ₜc.result / 2)[1, 1, 1]
-    @test (2 - ∂ₜc)[1, 1, 1]     == (2 - ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc^2)[1, 1, 1]       == (∂ₜc.result^2)[1, 1, 1]
-    @test (∂ₜc > 0)[1, 1, 1]     == (∂ₜc.result > 0)[1, 1, 1]
-    @test abs(∂ₜc)[1, 1, 1]      == abs(∂ₜc.result)[1, 1, 1]
-    @test (-∂ₜc)[1, 1, 1]        == (-∂ₜc.result)[1, 1, 1]
+    @test (2 * ∂ₜc)[1, 1, 1]      == (2 * ∂ₜc.result)[1, 1, 1]
+    @test (∂ₜc * 2)[1, 1, 1]      == (∂ₜc.result * 2)[1, 1, 1]
+    @test (∂ₜc / 2)[1, 1, 1]      == (∂ₜc.result / 2)[1, 1, 1]
+    @test (2 - ∂ₜc)[1, 1, 1]      == (2 - ∂ₜc.result)[1, 1, 1]
+    @test (∂ₜc^2)[1, 1, 1]        == (∂ₜc.result^2)[1, 1, 1]
+    @test (∂ₜc > 0)[1, 1, 1]      == (∂ₜc.result > 0)[1, 1, 1]
+    @test abs(∂ₜc)[1, 1, 1]       == abs(∂ₜc.result)[1, 1, 1]
+    @test (-∂ₜc)[1, 1, 1]         == (-∂ₜc.result)[1, 1, 1]
     @test sqrt(abs(∂ₜc))[1, 1, 1] == sqrt(abs(∂ₜc.result))[1, 1, 1]
-    @test (∂ₜc * u)[1, 1, 1]     == (∂ₜc.result * u)[1, 1, 1]
-    @test (u * ∂ₜc)[1, 1, 1]     == (u * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc + ∂ₜc)[1, 1, 1]   == (∂ₜc.result + ∂ₜc.result)[1, 1, 1]
-    @test (2 * ∂ₜc * u)[1, 1, 1] == (2 * ∂ₜc.result * u)[1, 1, 1]
+    @test (∂ₜc * u)[1, 1, 1]      == (∂ₜc.result * u)[1, 1, 1]
+    @test (u * ∂ₜc)[1, 1, 1]      == (u * ∂ₜc.result)[1, 1, 1]
+    @test (∂ₜc + ∂ₜc)[1, 1, 1]    == (∂ₜc.result + ∂ₜc.result)[1, 1, 1]
+    @test (2 * ∂ₜc * u)[1, 1, 1]  == (2 * ∂ₜc.result * u)[1, 1, 1]
 
     # And must compute through a Field like any other operation
     product = Field(2 * ∂ₜc * u)
