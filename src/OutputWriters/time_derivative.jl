@@ -1,7 +1,7 @@
 using Dates: AbstractDateTime
 using Oceananigans: defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: Scan
+using Oceananigans.Fields: AbstractField, Scan
 using Oceananigans.Utils: time_difference_seconds
 
 using Statistics: Statistics
@@ -45,11 +45,16 @@ twice, which means that the derivative written at the start of a simulation is z
 reductions are materialized into a `Field` on construction. Δt is measured in seconds,
 including for clocks that keep calendar time.
 
-A `TimeDerivative` is not an operator: it cannot be composed into further `AbstractOperation`s.
-It is an output that is interpreted by an output writer, and appears in the `outputs` of a
-writer like any other. Updating it is the job of a [`TimeDerivativeCallback`](@ref), which a
-writer adds to `simulation.callbacks` on its own. Construct one directly to use a
-`TimeDerivative` without a writer, or to difference over an interval longer than a time step.
+A `TimeDerivative` is an output that is interpreted by an output writer, and appears in the
+`outputs` of a writer like any other. Updating it is the job of a
+[`TimeDerivativeCallback`](@ref), which a writer adds to `simulation.callbacks` on its own.
+Construct one directly to use a `TimeDerivative` without a writer, or to difference over an
+interval longer than a time step.
+
+It is not an operator, in that `∂ₜ` is not applied lazily: the difference is evaluated when
+the schedule actuates. Field operations are nonetheless forwarded to `result`, so a
+`TimeDerivative` composes into `AbstractOperation`s exactly as the `Field` it computes does,
+and `2 * ∂ₜc` builds the same operation as `2 * ∂ₜc.result`.
 
 Example
 =======
@@ -148,6 +153,29 @@ end
 
 Statistics.mean(derivative::TimeDerivative; kw...) = Statistics.mean(derivative.result; kw...)
 Statistics.mean(f::Function, derivative::TimeDerivative; kw...) = Statistics.mean(f, derivative.result; kw...)
+
+#####
+##### Substitute `result` into the operators registered by `AbstractOperations`, so that
+##### `2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`
+#####
+
+# The binary operator methods in `AbstractOperations` are `op(::AbstractField, ::Any)` and
+# `op(::Any, ::AbstractField)`, which already accept a `TimeDerivative` opposite a field.
+# Only the pairings with no field at all are missing, so widening past this union would be
+# ambiguous with them rather than more general.
+const ScalarOperand = Union{Function, Number}
+
+for op in (:sqrt, :sin, :cos, :exp, :tanh, :abs, :log10, :log, :tan, :sinh, :cosh, :-, :+)
+    @eval Base.$op(derivative::TimeDerivative) = Base.$op(derivative.result)
+end
+
+for op in (:+, :-, :*, :/, :^, :>, :<, :>=, :<=, :atan, :atand, :mod)
+    @eval begin
+        Base.$op(a::TimeDerivative, b::ScalarOperand) = Base.$op(a.result, b)
+        Base.$op(a::ScalarOperand, b::TimeDerivative) = Base.$op(a, b.result)
+        Base.$op(a::TimeDerivative, b::TimeDerivative) = Base.$op(a.result, b.result)
+    end
+end
 
 # Dispatched rather than left to the `output(model)` fallback, because calling a
 # `TimeDerivative` updates it: that is what its `Callback` invokes every actuation.
