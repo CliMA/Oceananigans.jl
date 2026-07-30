@@ -4,9 +4,11 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: Scan
 using Oceananigans.Utils: time_difference_seconds
 
+using Statistics: Statistics
+
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Grids: grid
-import Oceananigans.Fields: location, indices
+import Oceananigans.Fields: location, indices, interior
 
 """
     mutable struct TimeDerivative{O, R, T}
@@ -88,8 +90,9 @@ JLD2Writer scheduled on TimeInterval(1 second):
 ```
 
 An output writer is not required. A [`TimeDerivativeCallback`](@ref) in
-`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule, and its
-`result` is a `Field` that can be read at any point during the run:
+`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule. Field
+operations are forwarded to `result`, so `interior(∂ₜc)`, `maximum(abs, ∂ₜc)` and
+`∂ₜc[i, j, k]` read the derivative at any point during the run:
 
 ```jldoctest time_derivative
 ∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
@@ -123,7 +126,28 @@ similar_field(operand) = Field(instantiated_location(operand), operand.grid, elt
 grid(derivative::TimeDerivative) = grid(derivative.operand)
 location(derivative::TimeDerivative) = location(derivative.operand)
 indices(derivative::TimeDerivative) = indices(derivative.operand)
+
+#####
+##### Read a `TimeDerivative` like the `Field` it computes, so that `result` need not be
+##### named to inspect it: `interior(∂ₜc)`, `maximum(abs, ∂ₜc)`, `∂ₜc[i, j, k]`
+#####
+
 Base.parent(derivative::TimeDerivative) = parent(derivative.result)
+Base.size(derivative::TimeDerivative, args...) = size(derivative.result, args...)
+Base.eltype(derivative::TimeDerivative) = eltype(derivative.result)
+Base.getindex(derivative::TimeDerivative, args...) = getindex(derivative.result, args...)
+
+interior(derivative::TimeDerivative, args...) = interior(derivative.result, args...)
+
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod, :extrema)
+    @eval begin
+        Base.$reduction(derivative::TimeDerivative; kw...) = Base.$reduction(derivative.result; kw...)
+        Base.$reduction(f::Function, derivative::TimeDerivative; kw...) = Base.$reduction(f, derivative.result; kw...)
+    end
+end
+
+Statistics.mean(derivative::TimeDerivative; kw...) = Statistics.mean(derivative.result; kw...)
+Statistics.mean(f::Function, derivative::TimeDerivative; kw...) = Statistics.mean(f, derivative.result; kw...)
 
 # Dispatched rather than left to the `output(model)` fallback, because calling a
 # `TimeDerivative` updates it: that is what its `Callback` invokes every actuation.
