@@ -64,12 +64,25 @@ fts = FieldTimeSeries("test.jld2", "u")
 
 In either case, it can be indexed as if it were a four-dimensional `Field`, with time as the last index:
 
-```@example
+```jldoctest field_time_series; filter = r"[0-9\.e-]+"
 fts[4, 4, 4, 4]
+# output
+0.269
 ```
 
-```@example
+```jldoctest field_time_series; filter = r"[0-9\.e-…\s]+"
 interior(fts, :, 1, 1, :) # x-t array
+
+# output
+8×11 view(::Array{Float64, 4}, 4:11, 4, 4, :) with eltype Float64:
+ -2.45381e-18   1.98439e-17   1.07381e-17  …   9.77895e-17   9.03376e-17
+  0.270598      0.270338      0.27009          0.268613      0.268432
+  0.382683      0.382608      0.382528         0.381859      0.381751
+  0.270598      0.270338      0.27009          0.268613      0.268432
+  1.84987e-18   3.56235e-17   1.05233e-17     -3.00039e-17   3.23178e-17
+ -0.270598     -0.270338     -0.27009      …  -0.268613     -0.268432
+ -0.382683     -0.382608     -0.382528        -0.381859     -0.381751
+ -0.270598     -0.270338     -0.27009         -0.268613     -0.268432
 ```
 
 Providing just one index returns a `Field` containing a view of the data at the corresponding time step:
