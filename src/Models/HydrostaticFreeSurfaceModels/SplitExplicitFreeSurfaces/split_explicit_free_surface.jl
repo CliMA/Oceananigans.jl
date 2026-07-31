@@ -9,7 +9,7 @@ using Adapt: Adapt
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -17,9 +17,10 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
+    slow_forcing :: W # How the slow forcing is represented across the barotropic sub-cycle
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
-        return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, w::W) where {E, H, U, M, FT, K, S, T, W}
+        return new{E, H, U, M, FT, K, S, T, W}(η, u, m, g, k, s, t, w)
     end
 end
 
@@ -135,7 +136,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   fixed_Δt = nothing,
                                   extend_halos = true,
                                   averaging_kernel = OptimizedAsymmetricAveragingKernel(),
-                                  timestepper = ForwardBackwardScheme())
+                                  timestepper = ForwardBackwardScheme(),
+                                  slow_forcing = FrozenSlowForcing())
 
     if !isnothing(grid)
         FT = eltype(grid)
@@ -159,7 +161,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   gravitational_acceleration,
                                                   nothing,
                                                   substepping,
-                                                  timestepper)
+                                                  timestepper,
+                                                  slow_forcing)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -279,13 +282,16 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
                                           u_bcs, v_bcs)
 
+    slow_forcing = materialize_slow_forcing(free_surface.slow_forcing, maybe_extended_grid, u_bcs, v_bcs)
+
     return SplitExplicitFreeSurface{extend_halos}(η,
                                                   barotropic_velocities,
                                                   filtered_state,
                                                   gravitational_acceleration,
                                                   kernel_parameters,
                                                   substepping,
-                                                  timestepper)
+                                                  timestepper,
+                                                  slow_forcing)
 end
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
@@ -401,7 +407,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            free_surface.gravitational_acceleration,
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
-                                           Adapt.adapt(to, free_surface.timestepper))
+                                           Adapt.adapt(to, free_surface.timestepper),
+                                           Adapt.adapt(to, free_surface.slow_forcing))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,
@@ -422,7 +429,8 @@ end
 function prognostic_state(fs::SplitExplicitFreeSurface)
     return (displacement = prognostic_state(fs.displacement),
             barotropic_velocities = prognostic_state(fs.barotropic_velocities),
-            timestepper = prognostic_state(fs.timestepper))
+            timestepper = prognostic_state(fs.timestepper),
+            slow_forcing = prognostic_state(fs.slow_forcing))
 end
 
 function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)

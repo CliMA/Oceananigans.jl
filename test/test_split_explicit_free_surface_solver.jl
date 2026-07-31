@@ -368,3 +368,70 @@ end
         end
     end
 end
+
+@testset "Stage-value quadratic slow-forcing reconstruction" begin
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
+        stage_quadratic_coefficients, FrozenSlowForcing, StageQuadraticSlowForcing, RungeKutta3Scheme
+
+    @testset "Interpolation through the stage values" begin
+        Δt = 600.0
+        F¹, F², F³ = 1.5, 2.25, 2.5
+        F₀, F₁, F₂ = stage_quadratic_coefficients(F¹, F², F³, Δt)
+
+        # the quadratic passes through the three stage samples, at s = 0, Δt/3, Δt/2
+        @test F₀                             ≈ F¹ atol=1e-14
+        @test F₀ + F₁*(Δt/3) + F₂*(Δt/3)^2   ≈ F² rtol=1e-12
+        @test F₀ + F₁*(Δt/2) + F₂*(Δt/2)^2   ≈ F³ rtol=1e-12
+
+        # a forcing that is exactly quadratic in time is reproduced away from the nodes too
+        q(s) = 3.0 - 0.5s + 2e-4 * s^2
+        G₀, G₁, G₂ = stage_quadratic_coefficients(q(0), q(Δt/3), q(Δt/2), Δt)
+        for s in (0.0, 100.0, Δt/2, Δt, 2Δt)
+            @test G₀ + G₁*s + G₂*s^2 ≈ q(s) rtol=1e-10
+        end
+
+        # a constant forcing must reduce to the frozen value
+        H₀, H₁, H₂ = stage_quadratic_coefficients(7.0, 7.0, 7.0, Δt)
+        @test H₀ ≈ 7.0
+        @test abs(H₁) < 1e-15
+        @test abs(H₂) < 1e-15
+    end
+
+    @testset "Model integration and tracer constancy" begin
+        underlying = RectilinearGrid(size=(16, 8, 8), x=(0, 2e5), y=(0, 1e5),
+                                     topology=(Periodic, Periodic, Bounded),
+                                     z=MutableVerticalDiscretization((-2000, 0)), halo=(4, 4, 4))
+        seamount(x, y) = -2000 + 1200 * exp(-((x - 1e5)^2 + (y - 5e4)^2) / (2.5e4)^2)
+        grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(seamount))
+
+        function run(slow_forcing)
+            fs = SplitExplicitFreeSurface(grid; substeps=24, timestepper=RungeKutta3Scheme(), slow_forcing)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, buoyancy=BuoyancyTracer(),
+                                                tracers=(:b, :c), timestepper=:SplitRungeKutta3,
+                                                vertical_coordinate=ZStarCoordinate())
+            bᵢ(x, y, z) = 1e-5 * z + 1e-3 * exp(-((x - 6e4)^2 + (y - 5e4)^2) / (2e4)^2)
+            set!(model, b=bᵢ, c=1.0, u=0.1)
+            for _ in 1:20
+                time_step!(model, 120.0)
+            end
+            return model
+        end
+
+        frozen = run(FrozenSlowForcing())
+        quad   = run(StageQuadraticSlowForcing())
+
+        # The reconstruction touches the momentum forcing only, never the transport that advects tracers,
+        # so constancy on the z★ grid must survive untouched.
+        for model in (frozen, quad)
+            c = interior(model.tracers.c)
+            wet = c .!= 0
+            @test maximum(abs, c[wet] .- 1) < 1e-12
+        end
+
+        # It must change the answer, but only at the level of a second-order scheme difference.
+        ηf = interior(frozen.free_surface.displacement)
+        ηq = interior(quad.free_surface.displacement)
+        @test ηf != ηq
+        @test maximum(abs, ηq .- ηf) < 0.05 * maximum(abs, ηf)
+    end
+end
