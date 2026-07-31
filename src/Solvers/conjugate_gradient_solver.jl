@@ -189,8 +189,12 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     @debug "ConjugateGradientSolver, |b|: $(norm(b))"
     @debug "ConjugateGradientSolver, |A * x|: $(norm(q))"
 
+    ρ = initialize_search_direction!(solver, args...)
+
     while iterating(solver, tolerance)
-        iterate!(x, solver, b, args...)
+        ρ = iterate!(x, solver, ρ, args...)
+        solver.iteration += 1
+        solver.ρⁱ⁻¹ = ρ
     end
 
     return x
@@ -200,36 +204,53 @@ end
     @apply_regionally linear_operation!(q, p, args...)
 end
 
-function iterate!(x, solver, b, args...)
+""" Set the initial search direction `p = P r` and return `ρ = ⟨z, r⟩`. """
+function initialize_search_direction!(solver, args...)
     r = solver.residual
-    p = solver.search_direction
-    q = solver.linear_operator_product
-
-    @debug "ConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
-    ρ = dot(z, r)
+    parent(solver.search_direction) .= parent(z)
 
-    @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
-    @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
+    return dot(z, r)
+end
 
-    @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
+"""
+One conjugate gradient iteration. Takes the current `ρ = ⟨z, r⟩` and returns the next one.
 
+The loop-carried scalar is passed in and returned rather than stashed on the solver, and the
+first-iteration case is hoisted into `initialize_search_direction!` so there is no branch on the
+iteration count in here. Together those let a caller drive this body from a loop whose scalars are
+not plain `Float64`s: the arithmetic never has to round-trip through the solver's `::T` fields.
+"""
+function iterate!(x, solver, ρ, args...)
+    r = solver.residual
+    p = solver.search_direction
+    q = solver.linear_operator_product
+
+    # q = A * p
     perform_linear_operation!(solver.linear_operation!, q, p, args...)
 
     α = ρ / dot(p, q)
 
-    @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
-    @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
-
     @apply_regionally update_solution_and_residuals!(x, r, q, p, α, solver.enforce_gauge_condition!)
 
-    solver.iteration += 1
-    solver.ρⁱ⁻¹ = ρ
+    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
+    ρ⁺ = dot(z, r)
+    β = ρ⁺ / ρ
+
+    @apply_regionally update_search_direction!(p, z, β)
+
+    return ρ⁺
+end
+
+function update_search_direction!(p, z, β)
+    pp = parent(p)
+    zp = parent(z)
+    pp .= zp .+ β .* pp
     return nothing
 end
 
@@ -242,25 +263,6 @@ function initialize_solution!(q, x, b, solver, args...)
     return nothing
 end
 
-""" one conjugate gradient iteration """
-function perform_iteration!(q, p, ρ, z, solver, args...)
-    pp = parent(p)
-    zp = parent(z)
-
-    if solver.iteration == 0
-        pp .= zp
-    else
-        β = ρ / solver.ρⁱ⁻¹
-        pp .= zp .+ β .* pp
-
-        @debug "ConjugateGradientSolver $(solver.iteration), β: $β"
-    end
-
-    # q = A * p
-    solver.linear_operation!(q, p, args...)
-
-    return nothing
-end
 
 function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition!)
     xp = parent(x)
