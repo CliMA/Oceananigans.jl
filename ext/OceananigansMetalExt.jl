@@ -10,7 +10,6 @@ using AbstractFFTs: plan_fft!, plan_ifft!
 import KernelAbstractions: __validindex
 import Oceananigans.Architectures:
     architecture,
-    convert_to_device,
     on_architecture
 
 import Oceananigans.Fields as FD
@@ -43,9 +42,6 @@ function on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, Float64}) wher
     offset = s.offset
     return StepRangeLen{FT}(ref, step, len, offset)
 end
-
-@inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
-@inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
