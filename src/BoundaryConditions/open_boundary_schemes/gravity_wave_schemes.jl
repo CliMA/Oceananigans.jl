@@ -1,5 +1,5 @@
 #####
-##### GravityWaveRadiation (Flather 1976) and its companion ImplicitGravityWaveRadiation (Chapman 1985)
+##### GravityWaveRadiation (Flather 1976) and its companion SurfaceWaveRadiation (Chapman 1985)
 #####
 
 """
@@ -34,11 +34,11 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation
 
-gravity_wave = GravityWaveRadiation()
-typeof(gravity_wave)
+GravityWaveRadiation()
 
 # output
 GravityWaveRadiation{Float64}
+└── gravitational_acceleration: 9.80665
 ```
 """
 struct GravityWaveRadiation{FT}
@@ -54,8 +54,15 @@ Adapt.adapt_structure(to, f::GravityWaveRadiation) =
 
 const GWNFBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
 
+Base.summary(::GravityWaveRadiation{FT}) where FT = "GravityWaveRadiation{$FT}"
+
+function Base.show(io::IO, f::GravityWaveRadiation)
+    print(io, summary(f), '\n')
+    print(io, "└── gravitational_acceleration: ", prettysummary(f.gravitational_acceleration))
+end
+
 """
-    ImplicitGravityWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
+    SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
 
 Chapman (1985) radiation condition for the free surface displacement at an open boundary,
 the standard companion of [`GravityWaveRadiation`](@ref): the boundary η radiates at the known
@@ -70,27 +77,45 @@ discretized implicitly (the form used by ROMS):
 where `η₁` is the boundary-adjacent interior value. Letting the boundary η evolve frees
 the surface pressure gradient at the boundary, which balanced flows require to cross it.
 
-`ImplicitGravityWaveRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) on the free
-surface displacement `η`; see [`ImplicitGravityWaveRadiationBoundaryCondition`](@ref). It is applied at every
+`SurfaceWaveRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) on the free
+surface displacement `η`; see [`SurfaceWaveRadiationBoundaryCondition`](@ref). It is applied at every
 barotropic substep, like `GravityWaveRadiation`.
 
 References
 ==========
 * Chapman, D. C. (1985). "Numerical treatment of cross-shelf open boundaries in a
   barotropic coastal ocean model." Journal of Physical Oceanography, 15(8), 1060-1075.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.BoundaryConditions: SurfaceWaveRadiation
+
+SurfaceWaveRadiation()
+
+# output
+SurfaceWaveRadiation{Float64}
+└── gravitational_acceleration: 9.80665
+```
 """
-struct ImplicitGravityWaveRadiation{FT}
+struct SurfaceWaveRadiation{FT}
     gravitational_acceleration :: FT
 end
 
-function ImplicitGravityWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
-    return ImplicitGravityWaveRadiation(gravitational_acceleration)
+function SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
+    return SurfaceWaveRadiation(gravitational_acceleration)
 end
 
-Adapt.adapt_structure(to, c::ImplicitGravityWaveRadiation) =
-    ImplicitGravityWaveRadiation(adapt(to, c.gravitational_acceleration))
+Adapt.adapt_structure(to, c::SurfaceWaveRadiation) =
+    SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration))
 
-const IGWVBC = BoundaryCondition{<:Value{<:ImplicitGravityWaveRadiation}}
+const IGWVBC = BoundaryCondition{<:Value{<:SurfaceWaveRadiation}}
+
+Base.summary(::SurfaceWaveRadiation{FT}) where FT = "SurfaceWaveRadiation{$FT}"
+
+function Base.show(io::IO, c::SurfaceWaveRadiation)
+    print(io, summary(c), '\n')
+    print(io, "└── gravitational_acceleration: ", prettysummary(c.gravitational_acceleration))
+end
 
 @inline gravity_wave_boundary_condition(bc::GWNFBC) = true
 @inline gravity_wave_boundary_condition(bc)         = false
@@ -129,13 +154,13 @@ end
 GravityWaveRadiationBoundaryCondition(U, η; kwargs...) = GravityWaveRadiationBoundaryCondition((U, η); kwargs...)
 
 """
-    ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
+    SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
 
-Construct a `ValueBoundaryCondition` with the [`ImplicitGravityWaveRadiation`](@ref) scheme for the free surface displacement `η`
+Construct a `ValueBoundaryCondition` with the [`SurfaceWaveRadiation`](@ref) scheme for the free surface displacement `η`
 at an open boundary. Pair with [`GravityWaveRadiationBoundaryCondition`](@ref) on the barotropic transport.
 """
-ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
-    ValueBoundaryCondition(0; scheme = ImplicitGravityWaveRadiation(; gravitational_acceleration))
+SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
+    ValueBoundaryCondition(0; scheme = SurfaceWaveRadiation(; gravitational_acceleration))
 
 
 function validate_gravity_wave_condition(val)
@@ -175,7 +200,7 @@ end
 # and free surface values.
 #
 # ηᵇ is the face average of the two adjacent cells (ROMS form): under η's default mirror fill this equals the
-# interior sample, while an ImplicitGravityWaveRadiation condition on the boundary row couples into the transport through the average.
+# interior sample, while an SurfaceWaveRadiation condition on the boundary row couples into the transport through the average.
 #
 # Requires `model_fields` to contain:
 #   - η :: free surface displacement field
@@ -247,7 +272,7 @@ end
 end
 
 #####
-##### ImplicitGravityWaveRadiation halo filling — implicit gravity-wave radiation of the free surface
+##### SurfaceWaveRadiation halo filling — implicit gravity-wave radiation of the free surface
 #####
 
 @inline function _fill_west_halo!(j, k, grid, η, bc::IGWVBC, ::CAA, clock, model_fields)

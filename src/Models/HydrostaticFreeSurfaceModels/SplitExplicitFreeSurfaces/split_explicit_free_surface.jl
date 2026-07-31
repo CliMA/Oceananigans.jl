@@ -296,16 +296,16 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                           bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
-                                                  barotropic_velocities,
-                                                  filtered_state,
-                                                  gravitational_acceleration,
-                                                  kernel_parameters,
-                                                  substepping,
-                                                  timestepper)
+                                                      barotropic_velocities,
+                                                      filtered_state,
+                                                      gravitational_acceleration,
+                                                      kernel_parameters,
+                                                      substepping,
+                                                      timestepper)
 end
 
 #####
-##### GravityWaveRadiation–ImplicitGravityWaveRadiation pairing
+##### GravityWaveRadiation–SurfaceWaveRadiation pairing
 #####
 
 function default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
@@ -317,13 +317,19 @@ function default_free_surface_boundary_conditions(free_surface::SplitExplicitFre
 end
 
 function implicit_gravity_wave_companion_boundary_conditions(U_bcs, V_bcs, g)
-    companion = ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = g)
+    companion = SurfaceWaveRadiationBoundaryCondition(; gravitational_acceleration = g)
     west  = companion_at_gravity_wave_side(U_bcs, :west,  companion)
     east  = companion_at_gravity_wave_side(U_bcs, :east,  companion)
     south = companion_at_gravity_wave_side(V_bcs, :south, companion)
     north = companion_at_gravity_wave_side(V_bcs, :north, companion)
-    all(isnothing, (west, east, south, north)) && return nothing
-    return FieldBoundaryConditions(; west, east, south, north)
+
+    # An explicit `nothing` overrides `DefaultBoundaryCondition()` and survives regularization,
+    # leaving that side unfilled: pass only the sides that carry a companion.
+    sides = (; west, east, south, north)
+    companion_sides = NamedTuple(name => bc for (name, bc) in pairs(sides) if !isnothing(bc))
+
+    isempty(companion_sides) && return nothing
+    return FieldBoundaryConditions(; companion_sides...)
 end
 
 @inline companion_at_gravity_wave_side(::Nothing, side, companion) = nothing
@@ -372,7 +378,6 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
@@ -382,7 +387,12 @@ end
 
     trimmed_weights = averaging_weights[1:M★]
     trimmed_weights ./= sum(trimmed_weights)
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
+
+    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
+    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
 
     return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end

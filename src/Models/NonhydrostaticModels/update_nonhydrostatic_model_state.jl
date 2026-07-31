@@ -55,8 +55,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     end
 
     update_advection_timestep!(model.advection, model.timestepper, model.clock)
-    compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
+    compute_tendencies!(model, callbacks)
 
     return nothing
 end

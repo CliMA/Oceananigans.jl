@@ -42,13 +42,13 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
-    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, ImplicitGravityWaveRadiation,
+    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, RegriddedOperation,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
@@ -114,7 +114,8 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
+    ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,

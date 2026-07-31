@@ -7,7 +7,7 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -27,6 +27,19 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+
+const GridFittedBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+
+validate_immersed_boundary(grid, free_surface) = nothing
+validate_immersed_boundary(grid::GridFittedBoundaryIBG, ::Nothing) = nothing
+
+function validate_immersed_boundary(grid::GridFittedBoundaryIBG, free_surface)
+    msg = string("HydrostaticFreeSurfaceModel with a free surface does not support GridFittedBoundary.", '\n',
+                 "Use an immersed boundary that represents a bottom height, such as", '\n',
+                 "GridFittedBottom or PartialCellBottom. Fully immersed columns (e.g. lateral walls", '\n',
+                 "or land masks) can be built with a bottom height equal to the top of the domain.")
+    throw(ArgumentError(msg))
+end
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
@@ -263,6 +276,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     free_surface = validate_free_surface(arch, free_surface)
     free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
+    validate_immersed_boundary(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)

@@ -3,7 +3,7 @@
 #####
 
 """
-    NormalRadiation(; inflow_timescale = 0, outflow_timescale = Inf)
+    NormalRadiation(; inflow_timescale = 0, outflow_timescale = Inf, use_boundary_velocity = false)
 
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
 and adaptive nudging (Marchesiello et al. 2001):
@@ -11,9 +11,14 @@ and adaptive nudging (Marchesiello et al. 2001):
     ∂φ/∂t + cₙ ⋅ ∂φ/∂n = - (φ - φᵉˣᵗ) / τ
 
 where `cₙ = −(∂φ/∂t) / (∂φ/∂n)` is diagnosed from interior values, clamped to `[0, Δx/Δt]`.
-Inflow vs outflow is decided from the boundary-normal velocity (the boundary value itself
-for `NormalFlow` fields, `model_fields` at the boundary face for `Value` fields):
-`τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_out` on outflow.
+Inflow vs outflow is decided from the boundary-normal velocity: for `NormalFlow` fields the boundary
+value itself, for `Value` fields (tracers, tangential velocities) a `model_fields` velocity taken one
+cell into the interior, or at the boundary face when `use_boundary_velocity = true` (the interior value
+is a prognostic velocity, the boundary value is itself radiation-extrapolated; see Orlanski 1976 and the
+MITgcm `obcs` implementation). `τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_out` on outflow.
+
+`use_boundary_velocity` only affects `Value` boundary conditions (tracers, tangential velocities). It is
+ignored for a `NormalFlowBoundaryCondition`, which radiates the normal velocity using its own boundary value.
 
 `NormalRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) for `Center`-located
 fields such as tracers — where it updates the halo cell adjacent to the boundary — or of a
@@ -34,16 +39,19 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: NormalRadiation
 
-rad = NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
-rad.outflow_timescale
+NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
 
 # output
-3.1104e7
+NormalRadiation{Float64}
+├── inflow_timescale: 86400.0
+├── outflow_timescale: 3.1104e7
+└── use_boundary_velocity: false
 ```
 """
 struct NormalRadiation{FT, S}
     outflow_timescale :: FT
     inflow_timescale  :: FT
+    use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
     φᵇ  :: S  # anchor boundary value (2D array or nothing)
     φ₁  :: S  # anchor interior value (2D array or nothing)
     φ₁ˡ :: S  # latest interior value (2D array or nothing)
@@ -51,19 +59,30 @@ end
 
 function NormalRadiation(FT = defaults.FloatType;
                    inflow_timescale = 0,
-                   outflow_timescale = Inf)
+                   outflow_timescale = Inf,
+                   use_boundary_velocity = false)
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
-    return NormalRadiation(outflow_timescale, inflow_timescale, nothing, nothing, nothing)
+    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing)
 end
 
 Adapt.adapt_structure(to, r::NormalRadiation) =
     NormalRadiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
+              r.use_boundary_velocity,
               adapt(to, r.φᵇ),
               adapt(to, r.φ₁),
               adapt(to, r.φ₁ˡ))
+
+Base.summary(::NormalRadiation{FT}) where FT = "NormalRadiation{$FT}"
+
+function Base.show(io::IO, r::NormalRadiation)
+    print(io, summary(r), '\n')
+    print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
+    print(io, "├── outflow_timescale: ", prettysummary(r.outflow_timescale), '\n')
+    print(io, "└── use_boundary_velocity: ", r.use_boundary_velocity)
+end
 
 const RVBC  = BoundaryCondition{<:Value{<:NormalRadiation}}
 const RNFBC = BoundaryCondition{<:NormalFlow{<:NormalRadiation}}
@@ -90,6 +109,7 @@ function materialize_radiation_storage(radiation::NormalRadiation, grid, loc, di
 
     return NormalRadiation(radiation.outflow_timescale,
                      radiation.inflow_timescale,
+                     radiation.use_boundary_velocity,
                      φᵇ, φ₁, φ₁ˡ)
 end
 
@@ -365,9 +385,20 @@ end
 @inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, loc, clock, model_fields)
 @inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, loc, clock, model_fields)
 
-@inline   _fill_east_halo!(j, k, grid, c, bc::RVBC,  loc::CAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[grid.Nx, j, k]), loc, clock, model_fields)
-@inline   _fill_west_halo!(j, k, grid, c, bc::RVBC,  loc::CAA, clock, model_fields) =   radiate_west_halo!(0,         j, k, grid, c, bc, @inbounds(model_fields.u[2, j, k]),       loc, clock, model_fields)
-@inline  _fill_north_halo!(i, k, grid, c, bc::RVBC,  loc::ACA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, grid.Ny, k]), loc, clock, model_fields)
-@inline  _fill_south_halo!(i, k, grid, c, bc::RVBC,  loc::ACA, clock, model_fields) =  radiate_south_halo!(0,         i, k, grid, c, bc, @inbounds(model_fields.v[i, 2, k]),       loc, clock, model_fields)
-@inline    _fill_top_halo!(i, j, grid, c, bc::RVBC,  loc::AAC, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, grid.Nz]), loc, clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC,  loc::AAC, clock, model_fields) = radiate_bottom_halo!(0,         i, j, grid, c, bc, @inbounds(model_fields.w[i, j, 2]),       loc, clock, model_fields)
+# Advect Value fields with the boundary-face velocity (`use_boundary_velocity`) or the one-cell-interior
+# velocity (default): the interior value is prognostic, the boundary value is radiation-extrapolated.
+@inline radiation_velocity_index(bc, boundary_index, interior_index) =
+    ifelse(bc.classification.scheme.use_boundary_velocity, boundary_index, interior_index)
+
+@inline _fill_east_halo!(j, k, grid, c, bc::RVBC, loc::CAA, clock, model_fields) =
+    radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[radiation_velocity_index(bc, grid.Nx+1, grid.Nx), j, k]), loc, clock, model_fields)
+@inline _fill_west_halo!(j, k, grid, c, bc::RVBC, loc::CAA, clock, model_fields) =
+    radiate_west_halo!(0, j, k, grid, c, bc, @inbounds(model_fields.u[radiation_velocity_index(bc, 1, 2), j, k]), loc, clock, model_fields)
+@inline _fill_north_halo!(i, k, grid, c, bc::RVBC, loc::ACA, clock, model_fields) =
+    radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, radiation_velocity_index(bc, grid.Ny+1, grid.Ny), k]), loc, clock, model_fields)
+@inline _fill_south_halo!(i, k, grid, c, bc::RVBC, loc::ACA, clock, model_fields) =
+    radiate_south_halo!(0, i, k, grid, c, bc, @inbounds(model_fields.v[i, radiation_velocity_index(bc, 1, 2), k]), loc, clock, model_fields)
+@inline _fill_top_halo!(i, j, grid, c, bc::RVBC, loc::AAC, clock, model_fields) =
+    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, radiation_velocity_index(bc, grid.Nz+1, grid.Nz)]), loc, clock, model_fields)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC, loc::AAC, clock, model_fields) =
+    radiate_bottom_halo!(0, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, radiation_velocity_index(bc, 1, 2)]), loc, clock, model_fields)

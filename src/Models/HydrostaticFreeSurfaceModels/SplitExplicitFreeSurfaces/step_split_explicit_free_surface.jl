@@ -6,6 +6,11 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline build_halo_fill_args(f, grid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...)
 @inline build_halo_fill_args(f, grid::DistributedGrid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
 
+# `CompleteHaloFilling` communicates every substep and needs the field's real communication buffers,
+# which `convert_to_device` strips to `nothing` on a GPU. Leave its distributed args unconverted.
+@inline prepare_halo_fill_args(arch, args, grid, free_surface) = convert_to_device(arch, args)
+@inline prepare_halo_fill_args(arch, args, grid::DistributedGrid, ::SplitExplicitFreeSurface{CompleteHaloFilling}) = args
+
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
 #
@@ -55,8 +60,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
         # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
+        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
+        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end
 
@@ -113,7 +118,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
 
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
@@ -136,9 +141,9 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         @apply_regionally converted_U_args = convert_to_device(arch, U_args)
         @apply_regionally converted_η_args = convert_to_device(arch, η_args)
-        @apply_regionally converted_U_halo_args = convert_to_device(arch, U_halo_args)
-        @apply_regionally converted_V_halo_args = convert_to_device(arch, V_halo_args)
-        @apply_regionally converted_η_halo_args = convert_to_device(arch, η_halo_args)
+        @apply_regionally converted_U_halo_args = prepare_halo_fill_args(arch, U_halo_args, grid, free_surface)
+        @apply_regionally converted_V_halo_args = prepare_halo_fill_args(arch, V_halo_args, grid, free_surface)
+        @apply_regionally converted_η_halo_args = prepare_halo_fill_args(arch, η_halo_args, grid, free_surface)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
@@ -171,7 +176,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
+    Ũ, Ṽ    = state.Ũ, state.Ṽ
 
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
@@ -212,9 +217,8 @@ end
 ##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
-# Open-boundary schemes read model fields while filling the barotropic halos (e.g. GravityWaveRadiation
-# needs η). `ExtendedHalos` never carries open boundaries, so it skips the clock/model-field threading,
-# which otherwise allocates per fill on distributed grids.
+# Open boundaries read model fields while filling the barotropic halos; `ExtendedHalos` has none, so it
+# fills without threading them, which avoids a per-step allocation on distributed grids.
 @inline fill_barotropic_state_halos!(field, ::SplitExplicitFreeSurface{ExtendedHalos}, model) =
     fill_halo_regions!(field; async=true)
 @inline fill_barotropic_state_halos!(field, ::FillHaloSplitExplicit, model) =
@@ -263,9 +267,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
-    # Fill all the barotropic state. Open-boundary schemes need the model fields; for `ExtendedHalos`
-    # (no open boundaries) the plain fill is used to avoid the extra per-fill allocation on distributed grids.
-    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
+    # Fill all the barotropic state.
+    fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
     fill_barotropic_state_halos!((U, V), free_surface, model)
     fill_barotropic_state_halos!(η, free_surface, model)
 

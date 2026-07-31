@@ -21,22 +21,12 @@ const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:B
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
 const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY}, UnderlyingMutableGrid{FT, TX, TY}}
 
-@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶜᶜᵃ(i, j, grid) +  @inbounds η[i, j, k]
+@inline mutable_column_depth(h, η) = ifelse(h == 0, zero(h), h + η)
 
-@inline function column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
-    H = static_column_depthᶠᶜᵃ(i, j, grid)
-    return ifelse(H == zero(H), H, H + ℑxᶠᵃᵃ(i, j, k, grid, η))
-end
-
-@inline function column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
-    H = static_column_depthᶜᶠᵃ(i, j, grid)
-    return ifelse(H == zero(H), H, H + ℑyᵃᶠᵃ(i, j, k, grid, η))
-end
-
-@inline function column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
-    H = static_column_depthᶠᶠᵃ(i, j, grid)
-    return ifelse(H == zero(H), H, H + ℑxyᶠᶠᵃ(i, j, k, grid, η))
-end
+@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶜᵃ(i, j, grid), @inbounds η[i, j, k])
+@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid),  ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid),  ℑyᵃᶠᵃ(i, j, k, grid, η))
+@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶠᵃ(i, j, grid), ℑxyᶠᶠᵃ(i, j, k, grid, η))
 
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -80,14 +70,14 @@ const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     ηᶠᶜᵃ = @inbounds (η[grid.Nx, j, k] + η[1, j, k]) / 2
-    return ifelse(i == 1, hᶠᶜᵃ + ηᶠᶜᵃ, Hᶠᶜᵃ)
+    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, ηᶠᶜᵃ), Hᶠᶜᵃ)
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     ηᶜᶠᵃ = @inbounds (η[i, grid.Ny, k] + η[i, 1, k]) / 2
-    return ifelse(j == 1, hᶜᶠᵃ + ηᶜᶠᵃ, Hᶜᶠᵃ)
+    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, ηᶜᶠᵃ), Hᶜᶠᵃ)
 end
 
 # Enforce boundary conditions for Bounded topologies
@@ -95,14 +85,14 @@ end
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
-    return ifelse(i == 1, hᶠᶜᵃ + η₁, Hᶠᶜᵃ)
+    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
-    return ifelse(j == 1, hᶜᶠᵃ + η₁, Hᶜᶠᵃ)
+    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, η₁), Hᶜᶠᵃ)
 end
 
 # Enforce boundary conditions for RightConnected/RightFolded topologies
@@ -110,14 +100,14 @@ end
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     η₁ = @inbounds η[1, j, k]
-    return ifelse(i == 1, hᶠᶜᵃ + η₁,  Hᶠᶜᵃ)
+    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYR, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
-    return ifelse(j == 1, hᶜᶠᵃ + η₁, Hᶜᶠᵃ)
+    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, η₁), Hᶜᶠᵃ)
 end
 
 # Enforce boundary conditions for LeftConnected topologies
@@ -125,14 +115,14 @@ end
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     ηₑ = @inbounds η[grid.Nx, j, k]
-    return ifelse(i == grid.Nx + 1, hᶠᶜᵃ + ηₑ, Hᶠᶜᵃ)
+    return ifelse(i == grid.Nx + 1, mutable_column_depth(hᶠᶜᵃ, ηₑ), Hᶠᶜᵃ)
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     ηₑ = @inbounds η[i, grid.Ny, k]
-    return ifelse(j == grid.Ny + 1, hᶜᶠᵃ + ηₑ, Hᶜᶠᵃ)
+    return ifelse(j == grid.Ny + 1, mutable_column_depth(hᶜᶠᵃ, ηₑ), Hᶜᶠᵃ)
 end
 
 # Fallbacks
