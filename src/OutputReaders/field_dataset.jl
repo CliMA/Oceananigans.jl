@@ -225,7 +225,13 @@ function FieldDataset(times, fields; fds_kw...)
                         fds_kw...)
 end
 
-# Setting a FieldDataset iterates over contained FieldTimeSeries
+"""
+    set!(fds::FieldDataset, args...; fields...)
+
+Call `set!` on each `FieldTimeSeries` contained in `fds`. This is a convenience
+function that calls `set!(fds.k, fields.k, args...)` for each `k` in `keys(fields)`.
+The function of positional arguments depends on the underlying `FieldTimeSeries`.
+"""
 function Oceananigans.Fields.set!(fds::FieldDataset, args...; fields...)
     for (k, v) in pairs(fields)
         set!(fds[k], v, args...)
