@@ -361,6 +361,7 @@ CUDA.allowscalar() do
     if group == :reactant_correctness || group == :all
         @testset "Reactant correctness tests" begin
             include("test_reactant_correctness.jl")
+            include("test_reactant_conjugate_gradient_solver.jl")
         end
     end
 

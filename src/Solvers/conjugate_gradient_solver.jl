@@ -220,10 +220,9 @@ end
 """
 One conjugate gradient iteration. Takes the current `ρ = ⟨z, r⟩` and returns the next one.
 
-The loop-carried scalar is passed in and returned rather than stashed on the solver, and the
-first-iteration case is hoisted into `initialize_search_direction!` so there is no branch on the
-iteration count in here. Together those let a caller drive this body from a loop whose scalars are
-not plain `Float64`s: the arithmetic never has to round-trip through the solver's `::T` fields.
+Passing `ρ` in and out rather than stashing it on the solver, and hoisting the first iteration into
+`initialize_search_direction!` so there is no branch on the iteration count, together let a caller
+drive this body from a loop whose scalars are not plain `Float64`s.
 """
 function iterate!(x, solver, ρ, args...)
     r = solver.residual
@@ -254,7 +253,7 @@ function update_search_direction!(p, z, β)
     return nothing
 end
 
-""" first iteration of the PCG """
+""" Set the initial residual `r = b - A x`. """
 function initialize_solution!(q, x, b, solver, args...)
     solver.linear_operation!(q, x, args...)
     # r = b - A * x
@@ -262,7 +261,6 @@ function initialize_solution!(q, x, b, solver, args...)
 
     return nothing
 end
-
 
 function update_solution_and_residuals!(x, r, q, p, α, enforce_gauge_condition!)
     xp = parent(x)
