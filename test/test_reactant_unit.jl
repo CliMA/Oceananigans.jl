@@ -271,6 +271,21 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test all(≈(value_c * value_d), Array(interior(cd)))
     end
 
+    @testset "AbstractOperation on a Field allocated under trace" begin
+        grid = RectilinearGrid(arch; size = (4, 4, 4), halo = (3, 3, 3), extent = (1, 1, 1),
+                               topology = (Periodic, Periodic, Bounded))
+        c = CenterField(grid)
+
+        # A field allocated inside the trace is backed by a `TracedRArray`, whose eltype is
+        # `TracedRNumber{Float64}` rather than `Float64`. If that reaches the `Field` type
+        # parameter then every AbstractOperation built on the field inherits it, and the
+        # compute kernel cannot be built for a traced element type. A field traced in from
+        # outside is already labelled `Float64`, so the two must agree.
+        add_allocated(f) = compute!(Field(f + CenterField(f.grid)))
+        compiled_add = @compile raise=true add_allocated(c)
+        @test compiled_add(c) isa Field
+    end
+
     @testset "Field reductions on RectilinearGrid" begin
         grid = RectilinearGrid(arch;
                                size = (10, 10, 10),
