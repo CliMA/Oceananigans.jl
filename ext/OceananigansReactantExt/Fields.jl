@@ -39,12 +39,27 @@ function set_to_function!(u::ReactantField, f)
     return nothing
 end
 
-# When sizes and locations match we can just copy interiors. Otherwise we fall
+# A dimension can be copied by broadcasting when both fields share its location and size,
+# or when v is reduced there (Nothing location, singleton size): broadcasting expands the
+# singleton across u's dimension, as when a 1D reference column is set into a 3D field.
+@inline broadcastable_dimension(ℓu, ℓv, Nu, Nv) = (ℓu == ℓv && Nu == Nv) || (ℓv === Nothing && Nv == 1)
+
+function broadcast_compatible(u, v)
+    ℓu = Oceananigans.location(u)
+    ℓv = Oceananigans.location(v)
+    Nu = size(u)
+    Nv = size(v)
+    return all(broadcastable_dimension(ℓu[d], ℓv[d], Nu[d], Nv[d]) for d in 1:3)
+end
+
+# When v broadcasts against u we can just copy interiors. Otherwise we fall
 # back to interpolation on the CPU, since interpolate!'s KA kernel does not
 # currently trace under Reactant (see Reactant.jl#2364). This mirrors how
-# set_to_function! hops to the CPU.
+# set_to_function! hops to the CPU. Note that the CPU fallback only works
+# outside of tracing: traced data cannot be materialized on the CPU mid-trace,
+# so under `@compile`/`@jit` only the broadcast path is available.
 function set_to_field!(u::ReactantField, v::ReactantField)
-    if size(u) == size(v) && Oceananigans.location(u) == Oceananigans.location(v)
+    if broadcast_compatible(u, v)
         interior(u) .= interior(v)
     else
         cpu_grid_u = on_architecture(CPU(), u.grid)
