@@ -131,10 +131,6 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-```@eval
-Main.render_oceananigans_paper_timeline()
-```
-
 1. Kalathoor, S. P. (2026). [Route survival and spectral modification of finite-depth salt-finger plume forests under imposed mean shear](https://doi.org/10.48550/arXiv.2607.07012), _arXiv preprint_, arXiv:2607.07012. DOI: [10.48550/arXiv.2607.07012](https://doi.org/10.48550/arXiv.2607.07012)
 
 1. Kalathoor, S. P. (2026). [Interfacial Spectral Memory as a State Variable for Finite-Depth Salt-Finger Exchange](https://doi.org/10.48550/arXiv.2606.26045), _arXiv preprint_, arXiv:2606.26045. DOI: [10.48550/arXiv.2606.26045](https://doi.org/10.48550/arXiv.2606.26045)
