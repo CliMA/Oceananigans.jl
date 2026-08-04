@@ -329,7 +329,6 @@ function FixedTimeStepSize(grid;
 end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
@@ -339,7 +338,12 @@ end
 
     trimmed_weights = averaging_weights[1:M★]
     trimmed_weights ./= sum(trimmed_weights)
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
+
+    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
+    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
+    Δτ = Δτ / barycenter
+
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
 
     return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
