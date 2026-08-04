@@ -81,6 +81,9 @@ const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, Reg
 const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
+is_static_discretization(::AbstractVerticalCoordinate) = true
+is_static_discretization(::StaticVerticalDiscretization) = true
+is_static_discretization(::MutableVerticalDiscretization) = false
 
 """
 $(TYPEDSIGNATURES)
