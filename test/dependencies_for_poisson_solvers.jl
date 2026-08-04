@@ -23,10 +23,11 @@ function random_divergent_source_term(grid)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
+    FT = eltype(grid)
 
-    set!(Ru, rand(size(Ru)...))
-    set!(Rv, rand(size(Rv)...))
-    set!(Rw, rand(size(Rw)...))
+    set!(Ru, rand(FT, size(Ru)...))
+    set!(Rv, rand(FT, size(Rv)...))
+    set!(Rw, rand(FT, size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
@@ -34,7 +35,7 @@ function random_divergent_source_term(grid)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
-    R = zeros(Nx, Ny, Nz) |> ArrayType
+    R = zeros(FT, Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
 
     return R, U
@@ -51,9 +52,11 @@ function random_divergent_source_term(grid::ImmersedBoundaryGrid)
 
     U = (u=Ru, v=Rv, w=Rw)
 
-    set!(Ru, rand(size(Ru)...))
-    set!(Rv, rand(size(Rv)...))
-    set!(Rw, rand(size(Rw)...))
+    FT = eltype(grid)
+
+    set!(Ru, rand(FT, size(Ru)...))
+    set!(Rv, rand(FT, size(Rv)...))
+    set!(Rw, rand(FT, size(Rw)...))
 
     mask_immersed_field!(Ru)
     mask_immersed_field!(Rv)
@@ -83,10 +86,11 @@ function random_divergence_free_source_term(grid)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
+    FT = eltype(grid)
 
-    set!(Ru, rand(size(Ru)...))
-    set!(Rv, rand(size(Rv)...))
-    set!(Rw, rand(size(Rw)...))
+    set!(Ru, rand(FT, size(Ru)...))
+    set!(Rv, rand(FT, size(Rv)...))
+    set!(Rw, rand(FT, size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
@@ -98,7 +102,7 @@ function random_divergence_free_source_term(grid)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
-    R = zeros(Nx, Ny, Nz) |> ArrayType
+    R = zeros(FT, Nx, Ny, Nz) |> ArrayType
     launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R)
 
     return R

@@ -304,13 +304,13 @@ kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
 nothing #hide
 
 # Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
-# and plot. We make use of `Integral` to compute the volume integral of fields over our domain.
+# and plot. We make use of `∫dV` to compute the volume integral of fields over our domain.
 
 for n = 1:length(t)
-    ke = Field(Integral(1/2 * s_timeseries[n]^2 / (Lx * H)))
+    ke = ∫dV(1/2 * s_timeseries[n]^2 / (Lx * H))
     kinetic_energy[n] = ke[1, 1, 1]
 
-    χ = Field(Integral(χ_timeseries[n] / (Lx * H)))
+    χ = ∫dV(χ_timeseries[n] / (Lx * H))
     Nu[n] = χ[1, 1, 1] / χ_diff
 end
 
