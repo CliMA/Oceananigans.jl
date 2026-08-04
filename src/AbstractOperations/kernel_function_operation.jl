@@ -89,6 +89,8 @@ end
 
 # Convenience outer constructor: splat arguments into a tuple.
 # T defaults to eltype(grid) via the inner constructor.
+# Four-dimensional time-series arguments are permitted (unlike for other operations):
+# the kernel function owns its arguments' indexing and may sample them in time itself.
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
 end

@@ -160,7 +160,8 @@ function possible_field_time_series(model::OceananigansModels)
 end
 
 # Update _all_ `FieldTimeSeries`es in an `OceananigansModel` to the correct time range.
-# `extract_field_time_series` already returns a flat, type-stable tuple of every FieldTimeSeries;
+# `extract_field_time_series` already returns a flat, type-stable tuple of every FieldTimeSeries
+# and FieldTimeSeriesOperation (whose update positions its arguments' windows);
 # a series reachable through more than one path is updated more than once, which is a harmless no-op.
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
     time = Time(clock.time)

@@ -7,7 +7,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
+using Oceananigans.OutputReaders: AbstractFieldTimeSeries, TimeSeriesInterpolation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -57,7 +57,7 @@ end
 
 materialize_prescribed_velocity(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 
-function materialize_prescribed_velocity(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...)
+function materialize_prescribed_velocity(X, Y, Z, fts::AbstractFieldTimeSeries, grid; clock, kwargs...)
     fts_location = location(fts)
     requested_location = (X, Y, Z)
     if fts_location != requested_location

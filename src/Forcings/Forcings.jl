@@ -5,8 +5,8 @@ export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, Pi
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans.Fields: field, location
-using Oceananigans.OutputReaders: FlavorOfFTS
+using Oceananigans.Fields: AbstractFieldTimeSeries, field, location
+using Oceananigans.OutputReaders: FlavorOfFTS, SomeTimeSeries, FieldTimeSeriesOperation
 using Oceananigans.Units: Time
 using Oceananigans.Architectures: Architectures, on_architecture
 
