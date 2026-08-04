@@ -185,6 +185,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
 
+1. Zhang, Y., Kang, W., and Marshall, J. (2026). [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.1029/2025JE009528), _Journal of Geophysical Research: Planets_, **131(7)**, e2025JE009528. DOI: [10.1029/2025JE009528](https://doi.org/10.1029/2025JE009528)
+
 1. Huang, J., Chamecki, M., Li, Q., and Chen, B. (2025). [The role of longitudinal alignment between surface and bottom forcing on the full-column turbulence mixing in the coastal ocean](https://doi.org/10.1016/j.ocemod.2025.102637), _Ocean Modelling_, **199**, 102637. DOI: [10.1016/j.ocemod.2025.102637](https://doi.org/10.1016/j.ocemod.2025.102637)
 
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
@@ -206,8 +208,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
 
 1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI: [10.31223/X51N08](https://doi.org/10.31223/X51N08).
-
-1. Zhang, Y., Kang, W., and Marshall, J. (2026). [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.1029/2025JE009528), _Journal of Geophysical Research: Planets_, **131(7)**, e2025JE009528. DOI: [10.1029/2025JE009528](https://doi.org/10.1029/2025JE009528)
 
 1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
 
