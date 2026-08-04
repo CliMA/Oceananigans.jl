@@ -15,8 +15,10 @@ using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
-                            InhomogeneousFormulation, ZDirection
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
+                            ConjugateGradientPoissonSolver, compute_free_surface_laplacian!,
+                            robin_denominator, fourier_tridiagonal_free_surface_solver,
+                            no_gauge_enforcement!
 using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 
@@ -38,22 +40,24 @@ function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFouri
 end
 
 nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG, ::Nothing) = FFTBasedPoissonSolver(grid)
-
-function nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, ::Nothing)
-    return FourierTridiagonalPoissonSolver(grid)
-end
-
-function nonhydrostatic_pressure_solver(arch, grid::Union{GridWithFourierTridiagonalSolver, XYZRegularRG}, free_surface)
-    tridiagonal_formulation = InhomogeneousFormulation(ZDirection())
-    return FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation)
-end
+nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver, ::Nothing) = FourierTridiagonalPoissonSolver(grid)
+nonhydrostatic_pressure_solver(arch, grid::GridWithFFTSolver, free_surface) = fourier_tridiagonal_free_surface_solver(grid)
 
 # fallback
 nonhydrostatic_pressure_solver(arch, grid, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 
 const IBGWithFFT = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = naive_solver_with_warning(arch, ibg, nothing)
-nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, fs) = naive_solver_with_warning(arch, ibg, fs)
+
+# IBGWithFFT + free_surface: the free-surface FT solver on the underlying grid handles the
+# Robin boundary condition exactly, so CG only corrects for the immersed boundary.
+function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, free_surface)
+    preconditioner = fourier_tridiagonal_free_surface_solver(ibg.underlying_grid)
+    return ConjugateGradientPoissonSolver(ibg;
+                                         linear_operation = compute_free_surface_laplacian!,
+                                         preconditioner,
+                                         enforce_gauge_condition! = no_gauge_enforcement!)
+end
 
 function naive_solver_with_warning(arch, ibg, free_surface)
     msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid

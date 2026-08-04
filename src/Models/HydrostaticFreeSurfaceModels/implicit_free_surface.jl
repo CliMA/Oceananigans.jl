@@ -111,6 +111,15 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
                                free_surface.solver_settings)
 end
 
+# For NonhydrostaticModel, which steps η inside its pressure solve and so
+# does not need the hydrostatic implicit step solver (whose construction is
+# restricted to horizontally-regular grids).
+function materialize_nonhydrostatic_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+    gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
+    return ImplicitFreeSurface(η, gravitational_acceleration, nothing, free_surface.solver_method, free_surface.solver_settings)
+end
+
 build_implicit_step_solver(::Val{:Default}, grid::XYRegularStaticRG, settings, gravitational_acceleration) =
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
