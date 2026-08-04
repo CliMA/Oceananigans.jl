@@ -1,4 +1,5 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant,
+                              adapt_advection_order, materialize_advection, weno_order, needs_implicit_solver
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
@@ -13,7 +14,6 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -384,7 +384,7 @@ buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 ##### Checkpointing
 #####
 
-function prognostic_state(model::HydrostaticFreeSurfaceModel)
+function default_prognostic_state(model::HydrostaticFreeSurfaceModel)
     return (clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -395,6 +395,13 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
             vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
+
+prognostic_state(model::HydrostaticFreeSurfaceModel) =
+    default_prognostic_state(model)
+prognostic_state(model::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:SplitExplicitFreeSurface{false}}) =
+    default_prognostic_state(model)
+prognostic_state(model::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:SplitExplicitFreeSurface{true}}) =
+    merge(default_prognostic_state(model), (free_surface_grid = model.free_surface.displacement.grid,))
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.clock, from.clock)

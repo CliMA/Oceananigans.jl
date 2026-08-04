@@ -11,12 +11,12 @@ import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
     displacement :: H
-    barotropic_velocities :: U # A namedtuple with U, V
-    filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
+    barotropic_velocities :: U        # A namedtuple with U, V
+    filtered_state :: M               # A namedtuple with η, U, V averaged throughout the substepping
     gravitational_acceleration :: FT
     kernel_parameters :: K
-    substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
-    timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
+    substepping :: S                  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
+    timestepper :: T                  # Contains all auxiliary field and settings necessary to the particular timestepping
 
     function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
         return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
