@@ -1,5 +1,5 @@
 using Dates: AbstractDateTime
-using Oceananigans: defaults, instantiated_location
+using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: AbstractField, Scan
 using Oceananigans.Utils: time_difference_seconds
@@ -118,7 +118,7 @@ function TimeDerivative(operand, model=nothing)
 
     derivative = TimeDerivative(result, operand, previous, previous_time)
 
-    isnothing(model) || seed_time_derivative!(derivative, model)
+    isnothing(model) || initialize!(derivative, model)
 
     return derivative
 end
@@ -190,7 +190,7 @@ Record `derivative.operand` and the current time so that the next update has som
 difference against. A backward difference needs two evaluations, so the derivative remains
 zero until the update after this one.
 """
-function seed_time_derivative!(derivative::TimeDerivative, model)
+function initialize!(derivative::TimeDerivative, model::AbstractModel)
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
@@ -204,7 +204,7 @@ function seed_time_derivative!(derivative::TimeDerivative, model)
     return nothing
 end
 
-initialize!(derivative::TimeDerivative, sim) = seed_time_derivative!(derivative, sim.model)
+initialize!(derivative::TimeDerivative, sim) = initialize!(derivative, sim.model)
 
 """
 $(TYPEDSIGNATURES)

@@ -2,7 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using NCDatasets
 using Zarr
-using Oceananigans.OutputWriters: TimeDerivative, seed_time_derivative!, update_time_derivative!
+using Oceananigans: initialize!
+using Oceananigans.OutputWriters: TimeDerivative, update_time_derivative!
 
 #####
 ##### A tracer relaxed at rate λ obeys ∂ₜc = -λ c exactly, which lets the backward
@@ -95,7 +96,7 @@ function test_time_derivative_datetime_clock(arch)
 
     # Constructed without one it defaults to a number, which cannot hold a DateTime
     ∂ₜc = TimeDerivative(model.tracers.c)
-    @test_throws ArgumentError seed_time_derivative!(∂ₜc, model)
+    @test_throws ArgumentError initialize!(∂ₜc, model)
 
     return nothing
 end
@@ -113,7 +114,7 @@ function test_time_derivative_seeding(arch)
     ∂ₜc = TimeDerivative(model.tracers.c)
     @test all(Array(interior(∂ₜc.previous)) .== 0)
 
-    seed_time_derivative!(∂ₜc, model)
+    initialize!(∂ₜc, model)
     @test ∂ₜc.previous_time == model.clock.time
     @test all(Array(interior(∂ₜc)) .== 0)
 
