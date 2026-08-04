@@ -34,7 +34,7 @@ Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-<!-- -->
+<br>
 
 1. [Download Julia](https://julialang.org/downloads/).
 
@@ -134,7 +134,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-<!-- -->
+<br>
 
 1. Lefauve, A., Bassett, C., Plotnick, D. S., Lavery, A. C., and Geyer, W. R. (2026). [The structure and lifecycle of stratified mixing by shear instabilities in continuously forced flows](https://doi.org/10.1029/2025JC023905), _Journal of Geophysical Research: Oceans_, **131(7)**, e2025JC023905. DOI: [10.1029/2025JC023905](https://doi.org/10.1029/2025JC023905)
 
