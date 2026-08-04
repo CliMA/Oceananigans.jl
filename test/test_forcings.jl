@@ -164,6 +164,22 @@ function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
     return true
 end
 
+""" Take one time step with a `Relaxation` whose mask is a `MaximumMask`
+combining two `GaussianMask`s near opposite `x`-boundaries (Davies-style). """
+function relaxed_time_stepping_max_mask(arch)
+    mask = MaximumMask(GaussianMask{:x}(center=0.2, width=0.05),
+                       GaussianMask{:x}(center=0.8, width=0.05))
+
+    forcing = Relaxation(rate = 1/60, mask = mask,
+                         target = LinearTarget{:x}(intercept=π, gradient=ℯ))
+
+    grid = RectilinearGrid(arch, size=(4, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; forcing=(; u=forcing))
+    time_step!(model, 1)
+
+    return true
+end
+
 function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, immersed=false)
 
     if immersed
@@ -524,6 +540,47 @@ end
         @test_throws ArgumentError CosineRampMask{:z}(start=1500, stop=1500)
     end
 
+    @testset "MaximumMask construction and pointwise max" begin
+        @info "  Testing MaximumMask construction and pointwise max..."
+
+        gx = GaussianMask{:x}(center=0, width=1)
+        gz = GaussianMask{:z}(center=0, width=1)
+
+        # Single-mask passthrough
+        M1 = MaximumMask(gx)
+        @test M1(0.5, 0.0, 0.0) == gx(0.5, 0.0, 0.0)
+
+        # Pointwise max correctness across a 3D sweep
+        M2 = MaximumMask(gx, gz)
+        for x in -2:0.5:2, y in -1:1:1, z in -2:0.5:2
+            @test M2(x, y, z) == max(gx(x, y, z), gz(x, y, z))
+        end
+
+        # Composition with different mask types
+        plx = PiecewiseLinearMask{:x}(center=0, width=1)
+        M3 = MaximumMask(gx, plx)
+        @test M3(0.0, 0.0, 0.0) == 1                  # both peak at origin
+        @test M3(0.5, 0.0, 0.0) == max(gx(0.5, 0.0, 0.0), plx(0.5, 0.0, 0.0))
+
+        # Overlapping ramps saturate (never exceed 1)
+        east = GaussianMask{:x}(center=1, width=0.1)
+        west = GaussianMask{:x}(center=0, width=0.1)
+        davies = MaximumMask(east, west)
+        for x in 0:0.05:1
+            @test davies(x, 0.0, 0.0) ≤ 1
+        end
+        @test davies(0.0, 0.0, 0.0) == 1
+        @test davies(1.0, 0.0, 0.0) == 1
+
+        # No-arg constructor errors
+        @test_throws ArgumentError MaximumMask()
+
+        # Summary
+        Ms = MaximumMask(GaussianMask{:x}(center=0, width=1),
+                         GaussianMask{:y}(center=0, width=1))
+        @test summary(Ms) == "max(exp(-x^2 / (2 * 1^2)), exp(-y^2 / (2 * 1^2)))"
+    end
+
     for arch in archs
         A = typeof(arch)
         @testset "Forcing function time stepping [$A]" begin
@@ -563,6 +620,7 @@ end
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+                @test relaxed_time_stepping_max_mask(arch)
             end
 
             @testset "Relaxation with FieldTimeSeries target [$A]" begin
