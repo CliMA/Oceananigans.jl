@@ -139,11 +139,13 @@ end
 validate_schedule(func, schedule) = schedule
 
 function prognostic_state(callback::Callback)
-    return (; schedule = prognostic_state(callback.schedule))
+    return (; schedule = prognostic_state(callback.schedule),
+              func = prognostic_state(callback.func))
 end
 
 function restore_prognostic_state!(restored::Callback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
+    hasproperty(from, :func) && restore_prognostic_state!(restored.func, from.func)
     return restored
 end
 
