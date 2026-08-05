@@ -85,8 +85,11 @@ end
 $(TYPEDSIGNATURES)
 
 Return `(filepath, local_index)` for global time index `n`.
+Time `time` and reader keyword arguments `reader_kw` are passed
+to allow for case where field time series times and times in file(s)
+are non-aligned.
 """
-function file_and_local_index(sfp::SplitFilePath, n)
+function file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
     if n < 1 || n > last(sfp.cumulative_length)
         throw(BoundsError(sfp, n))
     end
@@ -96,7 +99,22 @@ function file_and_local_index(sfp::SplitFilePath, n)
     return sfp.paths[i], n - prev
 end
 
-file_and_local_index(path::AbstractString, n) = (path, n)
+function file_and_local_index(path::AbstractString, n, time, reader_kw)
+    if !isnothing(time)
+        n = jldopen(path; reader_kw...) do file
+            file_times = file["timeseries/t"]
+            iter = keys(file_times)[n]
+            if file_times[iter] != time
+                # times in fts not aligned with those in file so search for match
+                file_n = findfirst(k -> file_times[k] == time, keys(file_times))
+                isnothing(file_n) && error("No data for time $time (local time index $n) found at $(path).")
+                n = file_n
+            end
+            n
+        end
+    end
+    return path, n
+end
 
 #####
 ##### Time indexing modes for FieldTimeSeries
