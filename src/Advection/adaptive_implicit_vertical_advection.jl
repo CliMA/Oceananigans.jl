@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
@@ -40,6 +40,16 @@ end
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
+# Advecting velocity for the vertical advection of `w` itself, which lives at cell centers.
+# The CFL uses Δzᶜᶜᶜ — the hop between the faces where `w` lives.
+@inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    Δt = _unwrap_for_gpu(td.Δt)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    α  = abs(w) * Δt / Δz
+    return ifelse(α > td.cfl, td.cfl / α, one(α))
+end
+
 #####
 ##### Flux dispatch, use scaled w velocities for explicit fluxes
 #####
@@ -53,16 +63,17 @@ end
     return s * advective_tracer_flux_z(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, c)
 end
 
-# Horizontal momentum fluxes (and Ww) are fully explicit with AVID
+# Horizontal momentum fluxes are fully explicit with AVID
 @inline advective_momentum_flux_Uu(i, j, k, grid, scheme, ::AVID, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, u)
 @inline advective_momentum_flux_Vu(i, j, k, grid, scheme, ::AVID, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, u)
 @inline advective_momentum_flux_Uv(i, j, k, grid, scheme, ::AVID, U, v) = advective_momentum_flux_Uv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, v)
 @inline advective_momentum_flux_Vv(i, j, k, grid, scheme, ::AVID, V, v) = advective_momentum_flux_Vv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, v)
 @inline advective_momentum_flux_Uw(i, j, k, grid, scheme, ::AVID, U, w) = advective_momentum_flux_Uw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, w)
 @inline advective_momentum_flux_Vw(i, j, k, grid, scheme, ::AVID, V, w) = advective_momentum_flux_Vw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, w)
-@inline advective_momentum_flux_Ww(i, j, k, grid, scheme, ::AVID, W, w) = advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 
-# Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
+# Vertical advection of momentum: scale by explicit_velocity_scale. The implicit remainder
+# is applied by the tridiagonal solve (see implicit_vertical_advection.jl); `Ww` uses the
+# z-Face system whose fluxes live at cell centers.
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, td::AVID, W, u)
     s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_momentum_flux_Wu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, u)
@@ -71,6 +82,11 @@ end
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme, td::AVID, W, v)
     s  = explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_momentum_flux_Wv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, v)
+end
+
+@inline function advective_momentum_flux_Ww(i, j, k, grid, scheme, td::AVID, W, w)
+    s  = explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    return s * advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 end
 
 #####
