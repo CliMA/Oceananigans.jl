@@ -86,5 +86,8 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 
+    # Stash the first two stage values for the quadratic reconstruction formed on the final stage.
+    @apply_regionally cache_stage_slow_forcing!(model.free_surface.slow_forcing, GUⁿ, GVⁿ, model.clock.stage)
+
     return nothing
 end

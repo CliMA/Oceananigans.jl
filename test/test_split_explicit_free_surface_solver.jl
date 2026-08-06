@@ -4,10 +4,17 @@ using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
-                                                                                  constant_averaging_kernel,
+                                                                                  ConstantAveragingKernel,
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
-                                                                                  iterate_split_explicit!
+                                                                                  iterate_split_explicit!,
+                                                                                  weights_from_substeps,
+                                                                                  LowDissipationAveragingKernel,
+                                                                                  SymmetricTrigAveragingKernel,
+                                                                                  WideTrig74AveragingKernel,
+                                                                                  WideTrig2AveragingKernel,
+                                                                                  OptimizedSymmetricAveragingKernel,
+                                                                                  OptimizedAsymmetricAveragingKernel
 
 @inline noforcing(args...) = 0
 
@@ -30,7 +37,7 @@ clock = Clock{Float64}(time=0)
 
             velocities = VelocityFields(grid)
 
-            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
             sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.displacement .= 0
@@ -70,7 +77,7 @@ clock = Clock{Float64}(time=0)
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
+                sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = ConstantAveragingKernel())
                 sefs = materialize_free_surface(sefs, velocities, grid)
 
                 # set!(η, f(x, y))
@@ -103,7 +110,7 @@ clock = Clock{Float64}(time=0)
                 @test maximum(abs.(η_computed - η_exact)) < max(100eps(FT), 1e-6)
             end
 
-            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
+            sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
             sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.displacement .= 0
@@ -169,7 +176,7 @@ clock = Clock{Float64}(time=0)
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = ConstantAveragingKernel())
                 sefs = materialize_free_surface(sefs, velocities, grid)
 
                 state = sefs.filtered_state
@@ -261,12 +268,12 @@ end # end of testset loop
 
         # Create two free surfaces: one with extended halos, one that fills halos each substep
         sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
-                                               averaging_kernel = constant_averaging_kernel,
+                                               averaging_kernel = ConstantAveragingKernel(),
                                                extend_halos = true)
         sefs_extend = materialize_free_surface(sefs_extend, velocities, grid)
 
         sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
-                                             averaging_kernel = constant_averaging_kernel,
+                                             averaging_kernel = ConstantAveragingKernel(),
                                              extend_halos = false)
         sefs_fill = materialize_free_surface(sefs_fill, velocities, grid)
 
@@ -316,5 +323,115 @@ end # end of testset loop
 
         @test η̅_extend ≈ η̅_fill
         @test U̅_extend ≈ U̅_fill
+    end
+end
+
+@testset "Averaging kernel moments" begin
+    kernel_moment(Δτ, w, p) = sum(w[m] * (m * Δτ - 1)^p for m in eachindex(w))
+    for FT in float_types
+        # multiples of 16 land the wide-kernel window edges on the substep grid → exact μ₃ = 0
+        for substeps in (48, 64)
+            tol = sqrt(eps(FT))
+            for (kernel, third_order) in ((LowDissipationAveragingKernel(), false),
+                                          (SymmetricTrigAveragingKernel(),  true),
+                                          (WideTrig74AveragingKernel(),     true),
+                                          (WideTrig2AveragingKernel(),      true),
+                                          (OptimizedSymmetricAveragingKernel(),  true),
+                                          (OptimizedAsymmetricAveragingKernel(), true))
+                Δτ, w, transport_weights = weights_from_substeps(FT, substeps, kernel)
+                @test sum(w) ≈ 1                             atol=tol   # μ₀
+                @test kernel_moment(Δτ, w, 1) ≈ 0            atol=tol   # μ₁ = 1 (barycenter on the baroclinic step)
+                @test kernel_moment(Δτ, w, 2) ≈ 0            atol=tol   # μ₂ = 0
+                third_order && @test kernel_moment(Δτ, w, 3) ≈ 0 atol=tol  # μ₃ = 0
+                @test sum(transport_weights) ≈ 1            atol=tol   # reversed-cumsum transport ⇒ tracer constancy
+            end
+
+            # widening the window deepens μ₄ (more low-frequency dissipation): trig < trig74 < trig2 < 0
+            μ₄_trig   = kernel_moment(weights_from_substeps(FT, substeps, SymmetricTrigAveragingKernel())[1:2]...,   4)
+            μ₄_trig74 = kernel_moment(weights_from_substeps(FT, substeps, WideTrig74AveragingKernel())[1:2]...,      4)
+            μ₄_trig2  = kernel_moment(weights_from_substeps(FT, substeps, WideTrig2AveragingKernel())[1:2]...,       4)
+            @test μ₄_trig74 < μ₄_trig < 0
+            @test μ₄_trig2  < μ₄_trig74
+        end
+
+        # The optimized asymmetric kernel imposes μ₀ = 1 and μ₁ = μ₂ = μ₃ = 0 directly on the substep grid
+        # rather than inheriting them from a continuous symmetry, so unlike the WideTrig kernels its moments
+        # are exact for EVERY substep count, not only where the window edges land on the grid.
+        for substeps in (30, 44, 50, 60)
+            tol = sqrt(eps(FT))
+            Δτ, w, transport_weights = weights_from_substeps(FT, substeps, OptimizedAsymmetricAveragingKernel())
+            @test sum(w) ≈ 1                      atol=tol
+            @test kernel_moment(Δτ, w, 1) ≈ 0     atol=tol
+            @test kernel_moment(Δτ, w, 2) ≈ 0     atol=tol
+            @test kernel_moment(Δτ, w, 3) ≈ 0     atol=tol
+            @test sum(transport_weights) ≈ 1      atol=tol
+        end
+    end
+end
+
+@testset "Stage-value quadratic slow-forcing reconstruction" begin
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
+        stage_quadratic_coefficients, FrozenSlowForcing, StageQuadraticSlowForcing, RungeKutta3Scheme
+
+    @testset "Interpolation through the stage values" begin
+        Δt = 600.0
+        F¹, F², F³ = 1.5, 2.25, 2.5
+        F₀, F₁, F₂ = stage_quadratic_coefficients(F¹, F², F³, Δt)
+
+        # the quadratic passes through the three stage samples, at s = 0, Δt/3, Δt/2
+        @test F₀                             ≈ F¹ atol=1e-14
+        @test F₀ + F₁*(Δt/3) + F₂*(Δt/3)^2   ≈ F² rtol=1e-12
+        @test F₀ + F₁*(Δt/2) + F₂*(Δt/2)^2   ≈ F³ rtol=1e-12
+
+        # a forcing that is exactly quadratic in time is reproduced away from the nodes too
+        q(s) = 3.0 - 0.5s + 2e-4 * s^2
+        G₀, G₁, G₂ = stage_quadratic_coefficients(q(0), q(Δt/3), q(Δt/2), Δt)
+        for s in (0.0, 100.0, Δt/2, Δt, 2Δt)
+            @test G₀ + G₁*s + G₂*s^2 ≈ q(s) rtol=1e-10
+        end
+
+        # a constant forcing must reduce to the frozen value
+        H₀, H₁, H₂ = stage_quadratic_coefficients(7.0, 7.0, 7.0, Δt)
+        @test H₀ ≈ 7.0
+        @test abs(H₁) < 1e-15
+        @test abs(H₂) < 1e-15
+    end
+
+    @testset "Model integration and tracer constancy" begin
+        underlying = RectilinearGrid(size=(16, 8, 8), x=(0, 2e5), y=(0, 1e5),
+                                     topology=(Periodic, Periodic, Bounded),
+                                     z=MutableVerticalDiscretization((-2000, 0)), halo=(4, 4, 4))
+        seamount(x, y) = -2000 + 1200 * exp(-((x - 1e5)^2 + (y - 5e4)^2) / (2.5e4)^2)
+        grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(seamount))
+
+        function run(slow_forcing)
+            fs = SplitExplicitFreeSurface(grid; substeps=24, timestepper=RungeKutta3Scheme(), slow_forcing)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, buoyancy=BuoyancyTracer(),
+                                                tracers=(:b, :c), timestepper=:SplitRungeKutta3,
+                                                vertical_coordinate=ZStarCoordinate())
+            bᵢ(x, y, z) = 1e-5 * z + 1e-3 * exp(-((x - 6e4)^2 + (y - 5e4)^2) / (2e4)^2)
+            set!(model, b=bᵢ, c=1.0, u=0.1)
+            for _ in 1:20
+                time_step!(model, 120.0)
+            end
+            return model
+        end
+
+        frozen = run(FrozenSlowForcing())
+        quad   = run(StageQuadraticSlowForcing())
+
+        # The reconstruction touches the momentum forcing only, never the transport that advects tracers,
+        # so constancy on the z★ grid must survive untouched.
+        for model in (frozen, quad)
+            c = interior(model.tracers.c)
+            wet = c .!= 0
+            @test maximum(abs, c[wet] .- 1) < 1e-12
+        end
+
+        # It must change the answer, but only at the level of a second-order scheme difference.
+        ηf = interior(frozen.free_surface.displacement)
+        ηq = interior(quad.free_surface.displacement)
+        @test ηf != ηq
+        @test maximum(abs, ηq .- ηf) < 0.05 * maximum(abs, ηf)
     end
 end

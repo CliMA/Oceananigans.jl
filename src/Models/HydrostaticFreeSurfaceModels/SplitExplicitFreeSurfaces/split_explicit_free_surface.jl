@@ -9,7 +9,7 @@ using Adapt: Adapt
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -17,9 +17,10 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
+    slow_forcing :: W # How the slow forcing is represented across the barotropic sub-cycle
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
-        return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, w::W) where {E, H, U, M, FT, K, S, T, W}
+        return new{E, H, U, M, FT, K, S, T, W}(η, u, m, g, k, s, t, w)
     end
 end
 
@@ -115,8 +116,10 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by
-                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
+                      `averaging_kernel > 0`. The default is `OptimizedAsymmetricAveragingKernel()`, which has
+                      μ₂ = μ₃ = 0 (third order) and imposes its moments directly on the substep grid, so it is
+                      exact for any `substeps` and stays stable at strong stratification. See
+                      `split_explicit_averaging_kernels.jl` for the full list and for how to choose between them.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
@@ -132,8 +135,9 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = averaging_shape_function,
-                                  timestepper = ForwardBackwardScheme())
+                                  averaging_kernel = OptimizedAsymmetricAveragingKernel(),
+                                  timestepper = ForwardBackwardScheme(),
+                                  slow_forcing = FrozenSlowForcing())
 
     if !isnothing(grid)
         FT = eltype(grid)
@@ -157,7 +161,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   gravitational_acceleration,
                                                   nothing,
                                                   substepping,
-                                                  timestepper)
+                                                  timestepper,
+                                                  slow_forcing)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -277,23 +282,17 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
                                           u_bcs, v_bcs)
 
+    slow_forcing = materialize_slow_forcing(free_surface.slow_forcing, maybe_extended_grid, u_bcs, v_bcs)
+
     return SplitExplicitFreeSurface{extend_halos}(η,
                                                   barotropic_velocities,
                                                   filtered_state,
                                                   gravitational_acceleration,
                                                   kernel_parameters,
                                                   substepping,
-                                                  timestepper)
+                                                  timestepper,
+                                                  slow_forcing)
 end
-
-# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
-    τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-    return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
-end
-
-@inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
-@inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotropic` based on a CFL condition """
@@ -326,26 +325,6 @@ function FixedTimeStepSize(grid;
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
-end
-
-@inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    τᶠ = range(FT(0), FT(2), length = substeps+1)
-    Δτ = τᶠ[2] - τᶠ[1]
-
-    averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    # Find the latest allowable weight
-    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
-
-    trimmed_weights = averaging_weights[1:M★]
-    trimmed_weights ./= sum(trimmed_weights)
-
-    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
-    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
-    Δτ = Δτ / barycenter
-
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
-
-    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -428,7 +407,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            free_surface.gravitational_acceleration,
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
-                                           Adapt.adapt(to, free_surface.timestepper))
+                                           Adapt.adapt(to, free_surface.timestepper),
+                                           Adapt.adapt(to, free_surface.slow_forcing))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,
@@ -449,7 +429,8 @@ end
 function prognostic_state(fs::SplitExplicitFreeSurface)
     return (displacement = prognostic_state(fs.displacement),
             barotropic_velocities = prognostic_state(fs.barotropic_velocities),
-            timestepper = prognostic_state(fs.timestepper))
+            timestepper = prognostic_state(fs.timestepper),
+            slow_forcing = prognostic_state(fs.slow_forcing))
 end
 
 function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
