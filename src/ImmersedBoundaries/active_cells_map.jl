@@ -208,3 +208,24 @@ function build_active_z_columns(grid, ib)
 
     return columns_map
 end
+
+function active_cells_per_column(grid, ib)
+
+  active_cells_count = Field{Center, Center, Nothing}(grid, Int64)
+
+  launch!(architecture(grid), grid, :xy, _count_active_cells_in_column!, active_cells_count, grid, ib)
+
+  return active_cells_count.data
+end
+
+@kernel function _count_active_cells_in_column!(active_cells_count, grid, ib)
+  i,j = @index(Global, NTuple)
+
+  count = 0
+  for k in 1:size(grid, 3)
+    count += active_cell(i,j,k,grid,ib) ? 1 : 0
+  end
+
+  @inbounds active_cells_count[i,j] = count
+
+end

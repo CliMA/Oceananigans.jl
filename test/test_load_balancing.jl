@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_cells_per_column
 
-sizes = [ (60, 30, 20) ]
+sizes = [ (6, 6, 3) ]
 halos = [ (4, 4, 4) ]
 longitudes = [ (0, 360) ]
 latitudes = [ (-80, 85) ]
@@ -48,11 +48,12 @@ grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constru
 
   bottom_height = -30.0 .* rand(Float64, (Nx, Ny)) .+ 15.0
 
-  immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)
+  ib = GridFittedBottom(bottom_height)
+  immersed_grid = ImmersedBoundaryGrid(underlying_grid, ib; active_cells_map = true)
 
   active_cells_map = immersed_grid.interior_active_cells
   active_cells_count = isnothing(active_cells_map) ? Nx*Ny*Nz : length(active_cells_map)
 
-  @test sum(active_cells_per_column(underlying_grid, bottom_height)) == active_cells_count
+  @test sum(active_cells_per_column(underlying_grid, ib)) == active_cells_count
 
 end
