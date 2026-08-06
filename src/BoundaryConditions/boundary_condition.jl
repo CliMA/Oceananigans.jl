@@ -179,7 +179,7 @@ end
 const NumberRef = Base.RefValue{<:Number}
 @inline getbc(condition::NumberRef, args...) = condition[]
 @inline getbc(condition::Number, args...) = condition
-@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
 #####
 ##### Validation with topology
