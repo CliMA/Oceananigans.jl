@@ -1,5 +1,15 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using LinearAlgebra: LinearAlgebra
+
+const FieldTuple = Tuple{Field, Vararg{Field}}
+const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
+
+Base.similar(ft::NamedFieldTuple) = map(similar, ft)
+
+LinearAlgebra.norm(ft::NamedFieldTuple) = sqrt(sum(LinearAlgebra.norm(field)^2 for field in ft))
+
+LinearAlgebra.dot(ft1::NamedFieldTuple, ft2::NamedFieldTuple) =
+    sum(LinearAlgebra.dot(a, b) for (a, b) in zip(values(ft1), values(ft2)))
 
 #####
 ##### `fill_halo_regions!` for tuples of `Field`
@@ -8,24 +18,33 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 @inline flattened_unique_values(::Tuple{}) = tuple()
 
 """
-    flattened_unique_values(a::NamedTuple)
+$(TYPEDSIGNATURES)
 
 Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = Tuple(tuplify(ai) for ai in a)
-    flattened = flatten_tuple(tupled)
-
-    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
-    seen = []
-    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+    flattened = flatten_tuple(map(tuplify, values(a)))
+    return collect_unique_values(flattened, ())
 end
+
+@inline collect_unique_values(::Tuple{}, accumulated::Tuple) = accumulated
+
+@inline function collect_unique_values(remaining::Tuple, accumulated::Tuple)
+    head = first(remaining)
+    rest = Base.tail(remaining)
+    accumulated = is_contained(head, accumulated) ? accumulated : (accumulated..., head)
+    return collect_unique_values(rest, accumulated)
+end
+
+@inline is_contained(value, ::Tuple{}) = false
+# `is_contained` verifies if an object is duplicated in the tuple, thus needing the equality `===` operator.
+@inline is_contained(value, accumulated::Tuple) = value === first(accumulated) || is_contained(value, Base.tail(accumulated))
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
 
 # Utility for extracting values from nested NamedTuples
-@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a::NamedTuple) = map(tuplify, values(a))
 @inline tuplify(a) = a
 
 # Outer-inner form
@@ -37,7 +56,7 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
 """
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Fill halo regions for all `fields`. The algorithm:
 
@@ -54,18 +73,15 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args...; kwargs...) = fill_halo_regions!(values(fields), args...; kwargs...)
 
-    for field in fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
+@inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
+@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args...; kwargs...)
+    fill_halo_regions!(first(fields), args...; kwargs...)
+    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
     return nothing
 end
-
-# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
-fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
-fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names
@@ -96,7 +112,7 @@ validate_field_grid(grid, field_tuple::NamedTuple) =
     all(validate_field_grid(grid, field) for field in field_tuple)
 
 """
-    validate_field_tuple_grid(tuple_name, field_tuple, grid)
+$(TYPEDSIGNATURES)
 
 Validates the grids associated with grids in the (possibly nested) `field_tuple`,
 and returns `field_tuple` if validation succeeds.
@@ -145,7 +161,7 @@ end
 #####
 
 """
-    TracerFields(tracer_names, grid, user_bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CenterField`s on `grid`. Boundary conditions `user_bcs`
@@ -158,7 +174,7 @@ function TracerFields(tracer_names, grid, user_bcs)
 end
 
 """
-    TracerFields(tracer_names, grid; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
@@ -180,7 +196,7 @@ TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
 VelocityFields(::Nothing, grid, bcs) = VelocityFields(grid, bcs)
 
 """
-    VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` of velocity fields, overwriting boundary conditions
 in `proposed_velocities` with corresponding fields in the `NamedTuple` `bcs`.
@@ -197,7 +213,7 @@ function VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs
 end
 
 """
-    TracerFields(proposed_tracers::NamedTuple, grid, bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` of tracers, overwriting boundary conditions
 in `proposed_tracers` with corresponding fields in the `NamedTuple` `bcs`.

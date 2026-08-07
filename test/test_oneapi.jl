@@ -15,7 +15,7 @@ using oneAPI
     @test eltype(grid) == FT
     @test architecture(grid) isa GPU
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         coriolis = FPlane(latitude=45),
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b,

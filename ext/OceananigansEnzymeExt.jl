@@ -19,7 +19,8 @@ EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.m
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.prettytime), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
-EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size_and_offset), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_offset), x...) = nothing
 @inline EnzymeCore.EnzymeRules.inactive_type(v::Type{Oceananigans.Utils.KernelParameters}) = true
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
@@ -133,8 +134,8 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #
 #         FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
 #     else
-#   	    ntuple(Val(config_width)) do i
-#   		    Base.@_inline_meta
+#           ntuple(Val(config_width)) do i
+#                   Base.@_inline_meta
 #
 #             dfunction_field_func = if function_field_is_active
 #                 dactives[i][]
@@ -143,7 +144,7 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #             end
 #
 #             FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
-#   	    end
+#           end
 #     end
 #
 #     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing
@@ -342,17 +343,15 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
                                                  model,
                                                  clock)
 
-    time = (typeof(clock) <: Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
     time_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
 
     fulltape = if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
         dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
         tapes = []
         for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
@@ -367,7 +366,6 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
             Base.@_inline_meta
             dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
             dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
             tapes = []
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
@@ -390,17 +388,15 @@ function EnzymeCore.EnzymeRules.reverse(config,
                                         model,
                                         clock)
 
-    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Utils.Time(clock.val.time)) : Duplicated(Oceananigans.Utils.Time(clock.val.time), Oceananigans.Utils.Time(clock.dval.time))
+    time = (typeof(clock) <: EnzymeCore.Const) ? Const(Oceananigans.Units.Time(clock.val.time)) : Duplicated(Oceananigans.Units.Time(clock.val.time), Oceananigans.Units.Time(clock.dval.time))
 
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
     time_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
 
     if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
         dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
-        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
         tapes = fulltape
         i = 1
@@ -417,7 +413,6 @@ function EnzymeCore.EnzymeRules.reverse(config,
             tapes = fulltape[i]
             dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
             dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
-            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
             i += 1
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)

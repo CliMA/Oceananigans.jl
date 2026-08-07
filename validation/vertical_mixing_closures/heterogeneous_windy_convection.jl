@@ -62,11 +62,12 @@ closure = (vertical_mixing, hyperviscosity)
 filename = "heterogeneous_cooling_with_hyperviscosity.jld2"
 #filename = "heterogeneous_cooling.jld2"
 
-model = HydrostaticFreeSurfaceModel(; grid, closure,
+model = HydrostaticFreeSurfaceModel(grid;
+                                    closure,
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     coriolis = FPlane(f=1e-4),
-                                    tracers = (:b, :e),
+                                    tracers = (:b,),
                                     boundary_conditions = (; b=b_bcs, u=u_bcs),
                                     buoyancy = BuoyancyTracer())
 
@@ -77,9 +78,9 @@ set!(model, b=bᵢ, e=1e-9)
 simulation = Simulation(model, Δt=5minute, stop_time=10days)
 
 κᶜ = if model.closure isa Tuple
-    model.diffusivity_fields[1].κᶜ
+    model.closure_fields[1].κᶜ
 else
-    model.diffusivity_fields.κᶜ
+    model.closure_fields.κᶜ
 end
 
 b = model.tracers.b
@@ -249,4 +250,3 @@ record(fig, filename[1:end-5] * ".mp4", 1:Nt, framerate=24) do nn
     n[] = nn
 end
 =#
-

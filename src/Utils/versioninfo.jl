@@ -1,6 +1,5 @@
-using Pkg
-using InteractiveUtils
-using Oceananigans.Architectures
+using Pkg: Pkg
+using Oceananigans.Architectures: CPU, GPU
 
 # This should be deprectated. Calls GPU() which is only
 # defined when CUDA is loaded and maps to CUDAGPU()

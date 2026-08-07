@@ -79,7 +79,7 @@ split_halo_filling(::DCBC, ::MCBC) = throw("Cannot split MultiRegion and Distrib
 const PBCT  = Union{PBC,  Tuple{Vararg{PBC}}}
 const MCBCT = Union{MCBC, Tuple{Vararg{MCBC}}}
 const DCBCT = Union{DCBC, Tuple{Vararg{DCBC}}}
-const OBCTC = Union{OBC,  Tuple{Vararg{OBC}}}
+const OBCTC = Union{NFBC, Tuple{Vararg{NFBC}}}
 
 # Distributed halos have to be filled last to allow the
 # possibility of asynchronous communication:
@@ -93,6 +93,7 @@ const OBCTC = Union{OBC,  Tuple{Vararg{OBC}}}
 # TODO: remove this ordering requirement (see issue https://github.com/CliMA/Oceananigans.jl/issues/3342)
 
 # Order of halo filling
+# 0) Nothing / no-op (Face on Bounded axis — no halo needed)
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
 # 2) Periodic (PBCT)
 # 3) Shared Communication (MCBCT)
@@ -109,6 +110,19 @@ const OBCTC = Union{OBC,  Tuple{Vararg{OBC}}}
 @inline Base.isless(::Nothing, ::BoundaryCondition) = true
 @inline Base.isless(::BoundaryCondition, ::Missing) = false
 @inline Base.isless(::Missing, ::BoundaryCondition) = true
+
+# Nothing BCs are no-ops; fill them first to get them out of the way.
+# These must be defined to maintain strict-weak-ordering for sortperm.
+fill_first(::Nothing, ::Nothing)  = true
+fill_first(::Nothing, bc2)        = true
+fill_first(bc1, ::Nothing)        = false
+# Resolve method ambiguities with specific BC types
+fill_first(::Nothing, ::PBCT)     = true
+fill_first(::Nothing, ::DCBCT)    = true
+fill_first(::Nothing, ::MCBCT)    = true
+fill_first(::PBCT,    ::Nothing)  = false
+fill_first(::DCBCT,   ::Nothing)  = false
+fill_first(::MCBCT,   ::Nothing)  = false
 
 fill_first(bc1::DCBCT, bc2)        = false
 fill_first(bc1::PBCT,  bc2::DCBCT) = true

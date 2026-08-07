@@ -1,8 +1,9 @@
-using Oceananigans.Utils: prettysummary, ConsecutiveIterations
-using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
 using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
+using Oceananigans.Utils: prettysummary
+using Dates
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 struct Callback{P, F, S, CS}
     func :: F
@@ -15,7 +16,7 @@ end
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
 """
-    initialize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Initialize `callback` at the beginning of `run!(sim)`.
 By default, this calls `initialize!` on `callback.func`,
@@ -28,7 +29,7 @@ or specialized for `callback.func`.
 initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
 
 """
-    finalize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Finalize `callback` at the end of `run!(sim)`.
 By default, this calls `finalize!` on `callback.func`,
@@ -93,15 +94,9 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 
 struct GenericName end
 
-function unique_callback_name(name, existing_names)
-    if name ∈ existing_names
-        return Symbol(:another_, name)
-    else
-        return name
-    end
-end
+generic_callback_name(name, existing_names) = name
 
-function unique_callback_name(::GenericName, existing_names)
+function generic_callback_name(::GenericName, existing_names)
     prefix = :callback # yeah, that's generic
 
     # Find a unique one
@@ -114,8 +109,7 @@ function unique_callback_name(::GenericName, existing_names)
 end
 
 """
-    add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
-
+    add_callback!(simulation, callback::Callback; name = GenericName())
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
@@ -130,7 +124,7 @@ already exists.
 The `callback` (which contains a schedule) can also be supplied directly.
 """
 function add_callback!(simulation, callback::Callback; name = GenericName())
-    name = unique_callback_name(name, keys(simulation.callbacks))
+    name = generic_callback_name(name, keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
 end
@@ -143,3 +137,14 @@ function add_callback!(simulation, func, schedule = IterationInterval(1);
 end
 
 validate_schedule(func, schedule) = schedule
+
+function prognostic_state(callback::Callback)
+    return (; schedule = prognostic_state(callback.schedule))
+end
+
+function restore_prognostic_state!(restored::Callback, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    return restored
+end
+
+restore_prognostic_state!(::Callback, ::Nothing) = nothing

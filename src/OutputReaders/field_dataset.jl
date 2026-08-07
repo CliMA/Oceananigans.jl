@@ -1,5 +1,8 @@
-struct FieldDataset{F, M, P, KW}
+using Oceananigans.Fields: instantiated_location, indices, set!
+
+struct FieldDataset{F, B, M, P, KW}
         fields :: F
+       backend :: B
       metadata :: M
       filepath :: P
     reader_kw :: KW
@@ -7,10 +10,17 @@ end
 
 """
     FieldDataset(filepath;
-                 architecture=CPU(), grid=nothing, backend=InMemory(), metadata_paths=["metadata"])
+                 architecture = CPU(),
+                 grid = nothing,
+                 backend = InMemory(),
+                 metadata_paths = ["metadata"],
+                 reader_kw = NamedTuple())
 
-Returns a `Dict` containing a `FieldTimeSeries` for each field in the JLD2 file located
-at `filepath`. Note that model output **must** have been saved with halos.
+Return a `Dict`ionary containing a `FieldTimeSeries` for each field in the JLD2 file located
+at `filepath`.
+
+!!! note "Saved halo requirement"
+    The model output in `filepath` **must** have been saved with halos.
 
 Keyword arguments
 =================
@@ -52,11 +62,13 @@ function FieldDataset(filepath;
 
   close(file)
 
-  return FieldDataset(ds, metadata, abspath(filepath), reader_kw)
+  return FieldDataset(ds, backend, metadata, abspath(filepath), reader_kw)
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
 Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
+
+Base.keys(fds::FieldDataset) = Base.keys(fds.fields)
 
 function Base.getproperty(fds::FieldDataset, name::Symbol)
     if name in propertynames(fds)
@@ -77,4 +89,165 @@ function Base.show(io::IO, fds::FieldDataset)
     end
 
     return print(io, s)
+end
+
+"""
+    FieldDataset(grid, times, fields;
+                 backend = OnDisk(),
+                 path = nothing,
+                 location = NamedTuple(),
+                 indices = NamedTuple(),
+                 boundary_conditions = NamedTuple(),
+                 metadata = Dict(),
+                 reader_kw = NamedTuple())
+
+Return a `FieldDataset` containing a new `FieldTimeSeries` for each key in `fields`
+on `grid` at `times`.
+
+Arguments
+=========
+
+- `grid`: the grid on which the fields are defined
+
+- `times`: the time points at which the fields are defined
+
+- `fields`: a tuple of field names as `Symbol`s
+
+Keyword arguments
+=================
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
+- `path`: path to data for `backend = OnDisk()`
+
+- `location`: `NamedTuple` of location specifications, defaults to
+              `(Center, Center, Center)` for each field
+
+- `indices`: `NamedTuple` of spatial indices, defaults to `(:, :, :)` for each field
+
+- `boundary_conditions`: `NamedTuple` of boundary conditions for each field
+
+- `metadata`: `Dict` containing metadata entries
+
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
+"""
+function FieldDataset(grid, times, fields::NTuple{N, Symbol};
+                      backend=OnDisk(),
+                      path=nothing,
+                      location=NamedTuple(),
+                      indices=NamedTuple(),
+                      boundary_conditions=NamedTuple(),
+                      metadata=Dict(),
+                      reader_kw=NamedTuple()) where {N}
+
+    field_names = map(String, fields)
+
+    # Default behavior
+    indices = merge(
+        NamedTuple(field=>(:, :, :) for field in fields),
+        indices
+    )
+    location = merge(
+        NamedTuple(field=>(Center(), Center(), Center()) for field in fields),
+        location
+    )
+    boundary_conditions = merge(
+        NamedTuple(field=>UnspecifiedBoundaryConditions() for field in fields),
+        boundary_conditions
+    )
+
+    # Create the FieldTimeSeries
+    ftss = map(fields, field_names) do field, name
+        inds = indices[field]
+        loc = location[field]
+        bcs = boundary_conditions[field]
+
+        FieldTimeSeries(loc, grid, times;
+                        indices=inds,
+                        backend,
+                        path,
+                        name,
+                        reader_kw,
+                        boundary_conditions=bcs)
+    end
+
+    ds = Dict{String, FieldTimeSeries}(
+        name => fts
+        for (name, fts) in zip(field_names, ftss)
+    )
+
+    return FieldDataset(ds, backend, metadata, path, reader_kw)
+end
+
+
+"""
+    FieldDataset(times, fields;
+                 backend = OnDisk(),
+                 path = nothing,
+                 metadata = Dict(),
+                 reader_kw = NamedTuple())
+
+Return a `FieldDataset` containing a new `FieldTimeSeries` for each field
+in the `NamedTuple``fields` at `times`. Locations, indices and boundary
+conditions are extracted from `fields``
+
+Arguments
+=========
+
+- `times`: the time points at which the fields are defined
+
+- `fields`: a `NamedTuple` of fields, where each field is a `Field`
+
+Keyword arguments
+=================
+- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
+
+- `path`: path to data for `backend = OnDisk()`
+
+- `metadata`: `Dict` containing metadata entries
+
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
+"""
+function FieldDataset(times, fields; fds_kw...)
+
+    grid = fields[1].grid
+    any([field.grid != grid for field in fields]) && throw(ArgumentError("All fields must be defined on the same grid"))
+
+    loc = map(instantiated_location, fields)
+    inds = map(Fields.indices, fields)
+    bcs = map(boundary_conditions, fields)
+
+    return FieldDataset(grid, times, keys(fields);
+                        location=loc,
+                        indices=inds,
+                        boundary_conditions=bcs,
+                        fds_kw...)
+end
+
+"""
+    set!(fds::FieldDataset, args...; fields...)
+
+Call `set!` on each `FieldTimeSeries` contained in `fds`. This is a convenience
+function that calls `set!(fds.k, fields.k, args...)` for each `k` in `keys(fields)`.
+The function of positional arguments depends on the underlying `FieldTimeSeries`.
+"""
+function Oceananigans.Fields.set!(fds::FieldDataset, args...; fields...)
+    for (k, v) in pairs(fields)
+        set!(fds[k], v, args...)
+    end
+    return nothing
+end
+
+# Write metadata if possible for OnDisk FieldDataset
+function Oceananigans.Fields.set!(fds::FieldDataset{F, B, M, P, KW}, args...; fields...) where {F, B<:OnDisk, M, P, KW}
+    jldopen(fds.filepath, "a+") do file
+        for (k, v) in pairs(fds.metadata)
+            maybe_write_property!(file, "metadata/$k", v)
+        end
+    end
+    for (k, v) in pairs(fields)
+        set!(fds[k], v, args...)
+    end
+    return nothing
 end

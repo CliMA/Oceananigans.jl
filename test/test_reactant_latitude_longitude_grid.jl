@@ -13,14 +13,21 @@ include("reactant_test_utils.jl")
 
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
         hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
+        rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
         name = string(typeof(momentum_advection).name.wrapper)
-    
+
         @info "  Testing hydrostatic LatitudeLongitudeGrid + ExplicitFreeSurface Reactant correctness with momentum_advection: $name"
         @info "    Not immersed:"
         test_reactant_model_correctness(LatitudeLongitudeGrid,
                                         HydrostaticFreeSurfaceModel,
                                         lat_lon_kw,
                                         hydrostatic_model_kw)
+
+        @info "    Not immersed, SplitRungeKutta3 timestepper:"
+        test_reactant_model_correctness(LatitudeLongitudeGrid,
+                                        HydrostaticFreeSurfaceModel,
+                                        lat_lon_kw,
+                                        rungekutta3_kw)
 
         @info "    ImmersedBoundaryGrid:"
         simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
@@ -29,7 +36,14 @@ include("reactant_test_utils.jl")
                                                      hydrostatic_model_kw,
                                                      immersed_boundary_grid=true)
 
-        η = simulation.model.free_surface.η
+        @info "    ImmersedBoundaryGrid, SplitRungeKutta3 timestepper:"
+        simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
+                                                     HydrostaticFreeSurfaceModel,
+                                                     lat_lon_kw,
+                                                     rungekutta3_kw,
+                                                     immersed_boundary_grid=true)
+
+        η = simulation.model.free_surface.displacement
         η_grid = η.grid
         @test isnothing(η_grid.interior_active_cells)
         @test isnothing(η_grid.active_z_columns)
@@ -61,7 +75,7 @@ include("reactant_test_utils.jl")
                                                  lat_lon_kw,
                                                  hydrostatic_model_kw,
                                                  immersed_boundary_grid=true)
-    η = simulation.model.free_surface.η
+    η = simulation.model.free_surface.displacement
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
@@ -70,11 +84,10 @@ include("reactant_test_utils.jl")
     equation_of_state = TEOS10EquationOfState()
     hydrostatic_model_kw = (momentum_advection = WENOVectorInvariant(),
                             tracer_advection = WENO(),
-                            tracers = (:T, :S, :e),
+                            tracers = (:T, :S),
                             buoyancy = SeawaterBuoyancy(; equation_of_state),
                             closure = CATKEVerticalDiffusivity())
 
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     =#
 end
-

@@ -15,7 +15,7 @@ grid = RectilinearGrid(size = (128, 128),
                        y = (0, 2π),
                        topology = (Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid, advection=WENO())
+model = NonhydrostaticModel(grid; advection=WENO())
 
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
@@ -26,7 +26,7 @@ run!(simulation)
 
 runs 100 time steps of a two-dimensional turbulence simulation with `128²` [finite volume](https://en.wikipedia.org/wiki/Finite_volume_method) cells
 and a fifth-order upwinded [WENO advection scheme](https://en.wikipedia.org/wiki/WENO_methods).
-It's quite similar to the [two-dimensional turbulence example](https://clima.github.io/OceananigansDocumentation/stable/generated/two_dimensional_turbulence/).
+It's quite similar to the [two-dimensional turbulence example](@ref two_dimensional_turbulence).
 
 ## Visualization
 
@@ -73,7 +73,7 @@ grid = RectilinearGrid(GPU(),
                        y = (-π, π),
                        topology = (Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid, advection=WENO(), tracers=:c)
+model = NonhydrostaticModel(grid; advection=WENO(), tracers=:c)
 
 δ = 0.5
 cᵢ(x, y) = exp(-(x^2 + y^2) / 2δ^2)

@@ -15,14 +15,14 @@ function run_thermal_bubble_regression_test(arch, grid_type)
 
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 
-    model = NonhydrostaticModel(; grid, closure,
+    model = NonhydrostaticModel(grid; closure,
                                 timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=6, stop_iteration=10)
+    simulation = Simulation(model, Δt=6, stop_iteration=10, verbose=false)
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0
@@ -34,7 +34,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
-    datadep_path = "regression_test_data/thermal_bubble_regression.nc"
+    datadep_path = "regression_truth_data_v2/thermal_bubble_regression.nc"
     regression_data_filepath = @datadep_str datadep_path
 
     ####
@@ -51,7 +51,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                    "S" => model.tracers.S)
 
     nc_writer = NetCDFWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
-    push!(simulation.output_writers, nc_writer)
+    simulation.output_writers[:nc_writer] = nc_writer
     =#
 
     ####

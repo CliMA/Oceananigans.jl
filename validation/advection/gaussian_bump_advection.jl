@@ -86,7 +86,7 @@ vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscret
 horizontal_diffusivity = HorizontalDivergenceScalarDiffusivity(ν = 1e6)
 closure = (vertical_diffusivity, horizontal_diffusivity)
 
-model = HydrostaticFreeSurfaceModel(; grid = ibg,
+model = HydrostaticFreeSurfaceModel(ibg;
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
                                     tracers = :b,

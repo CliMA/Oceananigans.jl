@@ -2,14 +2,18 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: ReducedField, has_velocities
+using Oceananigans.Fields: CenterField, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
+using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
+using Oceananigans.Grids: RectilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -113,9 +117,6 @@ function run_field_reduction_tests(grid)
     return nothing
 end
 
-@inline interpolate_xyz(x, y, z, from_field, from_loc, from_grid) =
-    interpolate((x, y, z), from_field, from_loc, from_grid)
-
 # Choose a trilinear function so trilinear interpolation can return values that
 # are exactly correct.
 @inline func(x, y, z) = convert(typeof(x), exp(-1) + 3x - y/7 + z + 2x*y - 3x*z + 4y*z - 5x*y*z)
@@ -143,18 +144,24 @@ function run_field_interpolation_tests(grid)
 
     # Check that interpolating to the field's own grid points returns
     # the same value as the field itself.
-
     for f in (u, v, w, c)
-        x, y, z = nodes(f, reshape=true)
         loc = Tuple(L() for L in location(f))
 
+        result = true
         @allowscalar begin
-            ℑf = interpolate_xyz.(x, y, z, Ref(f.data), Ref(loc), Ref(f.grid))
-        end
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                x, y, z = Oceananigans.node(i, j, k, f)
+                ℑf = interpolate((x, y, z), f, loc, f.grid)
+                true_value = interior(f, i, j, k)[]
 
-        ℑf_cpu = Array(ℑf)
-        f_interior_cpu = Array(interior(f))
-        @test all(isapprox.(ℑf_cpu, f_interior_cpu, atol=tolerance))
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+        end
+        @test result
     end
 
     # Check that interpolating between grid points works as expected.
@@ -173,11 +180,19 @@ function run_field_interpolation_tests(grid)
     @allowscalar begin
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
-            ℑf = interpolate_xyz.(xs, ys, zs, Ref(f.data), Ref(loc), Ref(f.grid))
-            F = func.(xs, ys, zs)
-            F = Array(F)
-            ℑf = Array(ℑf)
-            @test all(isapprox.(ℑf, F, atol=tolerance))
+            result = true
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                xi, yi, zi = Oceananigans.node(i, j, k, f)
+                ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
+                true_value = func(xi, yi, zi)
+
+                # If at last one of the points is not approximately equal to the true value, set result to false and break
+                if !isapprox(ℑf, true_value, atol=tolerance)
+                    result = false
+                    break
+                end
+            end
+            @test result
 
             # for the next test we first call fill_halo_regions! on the
             # original field `f`
@@ -256,8 +271,92 @@ function run_field_interpolation_tests(grid)
     interpolate!(f1, f4)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
+    # Interpolating at a cell center must return that cell's value however fine the grid is.
+    # On a grid whose coordinates are large compared with its spacing, recovering the spacing
+    # by differencing two adjacent nodes costs most of its significant digits in Float32, and
+    # the error is then multiplied by the cell index.
+    for FT in (Float32, Float64)
+        fine_λ_grid = LatitudeLongitudeGrid(arch, FT; size = (21600, 1, 1),
+                                            longitude = (-180, 180), latitude = (-1, 1), z = (0, 1))
+        fine_φ_grid = LatitudeLongitudeGrid(arch, FT; size = (1, 10800, 1),
+                                            longitude = (-1, 1), latitude = (-90, 90), z = (0, 1))
+
+        Δλ = 360 / size(fine_λ_grid, 1)
+        Δφ = 180 / size(fine_φ_grid, 2)
+
+        # Both locations: a regular grid has one spacing, so the index must be right at either.
+        for ℓ in (Center, Face)
+            λ_field = Field{ℓ, Center, Center}(fine_λ_grid)
+            φ_field = Field{Center, ℓ, Center}(fine_φ_grid)
+            set!(λ_field, (λ, φ, z) -> λ)
+            set!(φ_field, (λ, φ, z) -> φ)
+
+            @allowscalar begin
+                for i in (1, 5001, 11280, size(fine_λ_grid, 1))
+                    λi = λnodes(fine_λ_grid, ℓ())[i]
+                    ℑλ = interpolate((λi, 0, 0.5), λ_field, (ℓ(), Center(), Center()), fine_λ_grid)
+                    @test abs(ℑλ - λi) < Δλ / 10
+                end
+
+                for j in (1, 2501, 8130, size(fine_φ_grid, 2))
+                    φj = φnodes(fine_φ_grid, ℓ())[j]
+                    ℑφ = interpolate((0, φj, 0.5), φ_field, (Center(), ℓ(), Center()), fine_φ_grid)
+                    @test abs(ℑφ - φj) < Δφ / 10
+                end
+            end
+        end
+    end
+
     return nothing
 end
+
+function nodes_of_field_views_are_consistent(grid)
+    # Test with different field types
+    test_fields = [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
+
+    for field in test_fields
+        loc = instantiated_location(field)
+
+        # Test various view patterns
+        test_indices = [
+            (2:6, :, :),           # x slice
+            (:, 2:4, :),           # y slice
+            (:, :, 2:3),           # z slice
+            (3:5, 2:4, :),         # xy slice
+            (2:6, :, 2:3),         # xz slice
+            (:, 2:4, 2:3),         # yz slice
+            (3:5, 2:4, 2:3),       # xyz slice
+        ]
+
+        for test_idx in test_indices
+            # Create field view with these indices
+            field_view = view(field, test_idx...)
+
+            # Get nodes from the view
+            view_nodes = nodes(field_view)
+
+            # Get nodes from the original field with the same indices
+            # This is what should be equivalent to the view_nodes
+            full_nodes = nodes(field.grid, loc...; indices=test_idx)
+
+            # Test that they are equal
+            @test view_nodes == full_nodes
+
+            # Also test that the view's indices match what we expect
+            @test indices(field_view) == test_idx
+
+            # Test that view nodes have sizes consistent with the view indices
+            for (i, coord_nodes) in enumerate(view_nodes)
+                if coord_nodes !== nothing && full_nodes[i] !== nothing
+                    @test coord_nodes == full_nodes[i]
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
 
 #####
 #####
@@ -417,6 +516,35 @@ end
             topo = (Bounded, Bounded, Bounded)
             grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
+            @info "  Testing field construction with `field` function..."
+
+            array_data = ones(FT, Nx, Nx, Nx)
+            f = field((Center, Center, Center), array_data, grid)
+            @test @allowscalar all(isone, interior(f))
+
+            # With an OffsetArray or a Field, we point to the same data
+            offset_data = Oceananigans.Grids.new_data(FT, grid, (Center(), Center(), Center()))
+            fill!(offset_data, 1)
+            f = field((Center, Center, Center), offset_data, grid)
+            @test @allowscalar all(isone, f.data)
+            @test f.data === offset_data
+
+            field_data = CenterField(grid)
+            set!(field_data, 1)
+            f = field((Center, Center, Center), field_data, grid)
+            @test @allowscalar all(isone, interior(f))
+            @test f === field_data
+
+            number_data = FT(1)
+            f = field((Center, Center, Center), number_data, grid)
+            @test f.constant == 1
+
+            function_data = (x, y, z) -> 1
+            f = field((Center, Center, Center), function_data, grid)
+            @test @allowscalar all(isone, interior(f))
+
+            @info "  Testing Field constructors..."
+
             u = XFaceField(grid)
             v = YFaceField(grid)
             w = ZFaceField(grid)
@@ -473,6 +601,169 @@ end
                 @test e == a
                 @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
+            end
+
+            # set!(::Field, ::Field) should auto-interpolate when sizes or locations differ.
+            @info "  Testing field-to-field set! with differing sizes/locations..."
+
+            interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
+            f_linear = (x, y, z) -> x + 2y + 3z
+
+            # Different sizes, same location, same arch
+            coarse_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            fine_grid   = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+
+            coarse = CenterField(coarse_grid)
+            set!(coarse, f_linear)
+            fill_halo_regions!(coarse)
+
+            fine = CenterField(fine_grid)
+            set!(fine, coarse) # auto-interpolate
+
+            expected_fine = CenterField(fine_grid)
+            interpolate!(expected_fine, coarse)
+            @test Array(interior(fine)) == Array(interior(expected_fine))
+
+            # Same size, different location: route through interpolation rather than copying values
+            # across staggered locations.
+            same_size_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                             topology=(Periodic, Periodic, Bounded),
+                                             interp_domain...)
+            cf = CenterField(same_size_grid)
+            set!(cf, f_linear)
+            fill_halo_regions!(cf)
+
+            xf = XFaceField(same_size_grid)
+            set!(xf, cf)
+
+            expected_xf = XFaceField(same_size_grid)
+            interpolate!(expected_xf, cf)
+            @test Array(interior(xf)) == Array(interior(expected_xf))
+
+            # Cross-architecture interpolation: set! should migrate v to u's arch
+            if arch isa GPU
+                cpu_coarse_grid = RectilinearGrid(CPU(), FT; size=(4, 4, 4), interp_domain...)
+                cpu_coarse = CenterField(cpu_coarse_grid)
+                set!(cpu_coarse, f_linear)
+                fill_halo_regions!(cpu_coarse)
+
+                gpu_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+                gpu_fine = CenterField(gpu_fine_grid)
+                set!(gpu_fine, cpu_coarse) # CPU source, GPU target, differing sizes
+
+                gpu_coarse = CenterField(coarse_grid)
+                set!(gpu_coarse, cpu_coarse)
+                expected_gpu_fine = CenterField(gpu_fine_grid)
+                interpolate!(expected_gpu_fine, gpu_coarse)
+                @test Array(interior(gpu_fine)) == Array(interior(expected_gpu_fine))
+            end
+
+            # set!(::Field, ::ReducedField): the reduced direction should be
+            # broadcast across the destination's full extent.
+            reduced_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            f_xy = (x, y) -> x + 2y
+
+            reduced_xy = Field{Center, Center, Nothing}(reduced_grid)
+            set!(reduced_xy, f_xy)
+            fill_halo_regions!(reduced_xy)
+
+            full = CenterField(reduced_grid)
+            set!(full, reduced_xy)
+
+            # Every z-plane in `full` should match the reduced xy data.
+            full_cpu = Array(interior(full))
+            for k in 1:size(full, 3)
+                @test full_cpu[:, :, k] == full_cpu[:, :, 1]
+            end
+            # And that plane should match `reduced_xy` itself.
+            @test full_cpu[:, :, 1] == Array(interior(reduced_xy))[:, :, 1]
+
+            # Same idea for a z-column reduced field on the other axis.
+            reduced_z = Field{Nothing, Nothing, Center}(reduced_grid)
+            set!(reduced_z, z -> 3z)
+            fill_halo_regions!(reduced_z)
+
+            full_from_z = CenterField(reduced_grid)
+            set!(full_from_z, reduced_z)
+            full_from_z_cpu = Array(interior(full_from_z))
+            for i in 1:size(full_from_z, 1), j in 1:size(full_from_z, 2)
+                @test full_from_z_cpu[i, j, :] == full_from_z_cpu[1, 1, :]
+            end
+            @test full_from_z_cpu[1, 1, :] == Array(interior(reduced_z))[1, 1, :]
+
+            # set!(::Field, ::Field) when the source grid covers a strict
+            # subset of the destination's domain. Inside the overlap the
+            # destination should match interpolate!; outside, interpolate!
+            # currently writes whatever is in the source's halo memory
+            # (see https://github.com/CliMA/Oceananigans.jl/pull/5586 discussion).
+            # Once that is fixed to leave outside-source-domain values
+            # untouched, the @test_broken below should pass and we will
+            # promote it to @test.
+            big_grid = RectilinearGrid(arch, FT; size=(8, 8, 8),
+                                       x=(0, 1), y=(0, 1), z=(0, 1))
+            sub_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                       x=(FT(0.25), FT(0.75)),
+                                       y=(FT(0.25), FT(0.75)),
+                                       z=(FT(0.25), FT(0.75)))
+
+            sub_field = CenterField(sub_grid)
+            set!(sub_field, f_linear)
+            fill_halo_regions!(sub_field)
+
+            big_field = CenterField(big_grid)
+            sentinel = FT(-9999)
+            fill!(parent(big_field), sentinel)
+            set!(big_field, sub_field)
+
+            # Inside the overlap (z in (0.25, 0.75) i.e. k in 3:6 and similarly
+            # for x and y): destination values should reflect the source.
+            big_cpu = Array(interior(big_field))
+
+            # Sanity check: the value at the center of the overlap should match
+            # the linear function within interpolation tolerance.
+            xs, ys, zs = nodes(big_field)
+            mid_i, mid_j, mid_k = 5, 5, 5  # near domain center
+            expected_mid = f_linear(xs[mid_i], ys[mid_j], zs[mid_k])
+            @test isapprox(big_cpu[mid_i, mid_j, mid_k], expected_mid; atol=sqrt(eps(FT)))
+
+            # Outside the overlap, the user-visible expectation (from the PR
+            # discussion) is that values stay untouched. interpolate! does
+            # not currently honor this, so we mark it broken.
+            @test_broken big_cpu[1, 1, 1] == sentinel
+        end
+    end
+
+    @testset "isapprox on Fields" begin
+        for arch in archs, FT in float_types
+            # Make sure this doesn't require scalar indexing
+            GPUArraysCore.allowscalar(false)
+
+            rect_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), x=(0, 1_000), y=(0, 1_000), z=(0, 1_000))
+
+            H = 100.0
+            W = 1000.0
+            mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
+            imm_grid = ImmersedBoundaryGrid(rect_grid, GridFittedBottom(mountain))
+
+            for grid in (rect_grid, imm_grid)
+                @info "  Testing isapprox on fields [$(typeof(arch)), $FT, $(nameof(typeof(grid)))]..."
+                u = CenterField(grid)
+                v = CenterField(grid)
+                set!(u, 1)
+                set!(v, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(u, 1)
+                Oceananigans.ImmersedBoundaries.mask_immersed_field!(v, 2)
+                # Make sure the two fields are the same
+                @test isapprox(u, v)
+                @test isapprox(u, v; rtol=0, atol=0)
+
+                set!(v, FT(1.1))
+                @test !isapprox(u, v)
+                @test isapprox(u, v; rtol=0.1)
+                @test !isapprox(u, v; atol=2.0)
+                # norm(u) = √512, norm(v) = 1.1 * √512, difference is 0.1 * √512 ∼ 2.26274,
+                # we use a slightly larger tolerance to make the check successful.
+                @test isapprox(u, v; atol=2.26275)
             end
         end
     end
@@ -577,6 +868,98 @@ end
             for grid in grids
                 run_field_interpolation_tests(grid)
             end
+
+            x = y = z = (0, 1)
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), x, y, z)
+
+            # Test 2D interpolation on xy-field
+            # Note: Cell centers are at 0.25 and 0.75, so test points must be
+            # within the interpolation domain [0.25, 0.75] in each direction
+            xy_field = Field{Center, Center, Nothing}(grid)
+            set!(xy_field, (x, y) -> x + y)
+
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on xz-field
+            xz_field = Field{Center, Nothing, Center}(grid)
+            set!(xz_field, (x, z) -> x + z)
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on yz-field
+            yz_field = Field{Nothing, Center, Center}(grid)
+            set!(yz_field, (y, z) -> y + z)
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+
+            # Test 1D interpolation on z-field
+            z_field = Field{Nothing, Nothing, Center}(grid)
+            set!(z_field, z -> z)
+            @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
+
+            flat_test_cases = (
+                (topology = (Flat, Periodic, Bounded),
+                 size = (2, 4),
+                 source = (; y = (0, 1), z = (-1, 0)),
+                 target = (; x = FT(3), y = (0, 1), z = (-1, 0)),
+                 values = (y, z) -> y + z),
+                (topology = (Flat, Flat, Bounded),
+                 size = 4,
+                 source = (; z = (-1, 0)),
+                 target = (; x = FT(-144.9), y = FT(50.1), z = (-1, 0)),
+                 values = z -> z)
+            )
+
+            for case in flat_test_cases
+                source_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.source...)
+                target_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.target...)
+
+                source_field = CenterField(source_grid)
+                set!(source_field, case.values)
+
+                interpolated_field = CenterField(target_grid)
+                reference_field = CenterField(target_grid)
+
+                interpolate!(interpolated_field, source_field)
+
+                @allowscalar for k in axes(reference_field, 3), j in axes(reference_field, 2), i in axes(reference_field, 1)
+                    target_node = Oceananigans.node(i, j, k, reference_field)
+                    flattened_node = Oceananigans.Fields.flatten_node(target_node...)
+                    reference_field[i, j, k] = interpolate(flattened_node, source_field)
+                end
+
+                @test all(interior(interpolated_field) .≈ interior(reference_field))
+            end
+
+            # 3D source → 1D column target: the column's specified (x, y) must drive
+            # horizontal sampling of the source.
+            source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
+            source_3d = CenterField(source_3d_grid)
+            set!(source_3d, (x, y, z) -> x + 2y + 3z)
+
+            x_col, y_col = FT(0.3), FT(0.7)
+            column_grid = RectilinearGrid(arch, FT; size=4,
+                                          topology=(Flat, Flat, Bounded),
+                                          x=x_col, y=y_col, z=(0,1))
+            column = CenterField(column_grid)
+            interpolate!(column, source_3d)
+            expected = [x_col + 2y_col + 3z for z in znodes(column)]
+            @test all(Array(interior(column))[1, 1, :] .≈ expected)
+
+            grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
+            for ℓ in (nothing, Center(), Face())
+                fi = FractionalIndices((), grid, ℓ, ℓ, ℓ)
+                @test fi.i === nothing
+                @test fi.j === nothing
+                @test fi.k === nothing
+            end
         end
     end
 
@@ -653,6 +1036,153 @@ end
             @test_throws BoundsError cvv[:, :, k_top-1:k_top]
             @test_throws BoundsError cvvv[:, :, 1:1+2]
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
+        end
+    end
+
+    @testset "Field nodes and view consistency" begin
+        @info "  Testing that nodes() returns indices consistent with view()..."
+
+        for arch in archs, FT in float_types
+            # Test RectilinearGrid
+            rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
+            nodes_of_field_views_are_consistent(rectilinear_grid)
+
+            # Test LatitudeLongitudeGrid
+            latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
+            nodes_of_field_views_are_consistent(latlon_grid)
+
+            # Test Flat topology behavior for RectilinearGrid
+            flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_rlgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test Flat topology behavior for LatitudeLongitudeGrid
+            flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
+            c_flat = CenterField(flat_llgrid)
+            @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test that xnodes/ynodes/znodes respect windowed indices
+            @info "    Testing xnodes/ynodes/znodes on windowed fields [$(typeof(arch)), $FT]..."
+            Nx, Ny, Nz = 8, 6, 4
+            wgrid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(2, 3, 1))
+
+            # Single-index windows should return a single node
+            f_zwindow = Field{Center, Center, Center}(wgrid, indices=(:, :, Nz))
+            @test length(znodes(f_zwindow)) == 1
+            @test znodes(f_zwindow)[1] == znodes(wgrid, Center())[Nz]
+
+            f_face_top = Field{Center, Center, Face}(wgrid, indices=(:, :, Nz + 1))
+            @test length(znodes(f_face_top)) == 1
+            @test znodes(f_face_top)[1] == znodes(wgrid, Face())[Nz + 1]
+
+            # Range windows should return the corresponding subset
+            f_xwindow = Field{Center, Center, Center}(wgrid, indices=(2:5, :, :))
+            @test length(xnodes(f_xwindow)) == 4
+            @test xnodes(f_xwindow) == xnodes(wgrid, Center())[2:5]
+
+            f_ywindow = Field{Center, Center, Center}(wgrid, indices=(:, 1:3, :))
+            @test length(ynodes(f_ywindow)) == 3
+            @test ynodes(f_ywindow) == ynodes(wgrid, Center())[1:3]
+
+            f_zrange = Field{Center, Center, Center}(wgrid, indices=(:, :, 2:3))
+            @test length(znodes(f_zrange)) == 2
+            @test znodes(f_zrange) == znodes(wgrid, Center())[2:3]
+
+            # Non-windowed field should still return all nodes
+            f_full = CenterField(wgrid)
+            @test length(xnodes(f_full)) == Nx
+            @test length(ynodes(f_full)) == Ny
+            @test length(znodes(f_full)) == Nz
+        end
+
+
+        # Test OrthogonalSphericalShellGrid (TripolarGrid)
+        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        for arch in archs, FT in float_types
+            @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
+                grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
+                nodes_of_field_views_are_consistent(grid)
+            end
+        end
+    end
+
+    @testset "mask_immersed_field! on windowed fields" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field! on windowed fields [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 8
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 2))
+            bottom(x, y) = -1.0  # bottom half (k=1:4) is immersed
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+            # Windowed field at top layer (active, should not be masked)
+            f_top = CenterField(grid, indices=(:, :, Nz))
+            set!(f_top, 1.0)
+            mask_immersed_field!(f_top, 0.0)
+            @test all(interior(f_top) .== 1.0)
+
+            # Windowed field at bottom layer (immersed, should all be masked)
+            f_bot = CenterField(grid, indices=(:, :, 1))
+            set!(f_bot, 1.0)
+            mask_immersed_field!(f_bot, 0.0)
+            @test all(interior(f_bot) .== 0.0)
+
+            # Surface face field at Nz+1 (active, should not be masked)
+            f_face = Field{Center, Center, Face}(grid, indices=(:, :, Nz + 1))
+            set!(f_face, 1.0)
+            mask_immersed_field!(f_face, 0.0)
+            @test all(interior(f_face) .== 1.0)
+
+            # Full (non-windowed) field regression test
+            f_full = CenterField(grid)
+            set!(f_full, 1.0)
+            mask_immersed_field!(f_full, 0.0)
+            @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
+            @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "Constant field prognostic state" begin
+        @info "  Testing prognostic_state for constant fields..."
+        zf = ZeroField()
+        of = OneField()
+        cf = ConstantField(42)
+
+        @test prognostic_state(zf) === nothing
+        @test prognostic_state(of) === nothing
+        @test prognostic_state(cf) === nothing
+
+        @test restore_prognostic_state!(zf, nothing) === zf
+        @test restore_prognostic_state!(of, :some_state) === of
+        @test restore_prognostic_state!(cf, nothing) === cf
+    end
+
+    @testset "NamedFieldTuple operations" begin
+        @info "  Testing similar/set!/norm/dot on NamedFieldTuples..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            Φ = (u=CenterField(grid), v=CenterField(grid))
+
+            Ψ = similar(Φ)
+            @test Ψ isa NamedTuple{(:u, :v)}
+            @test Ψ.u isa Field && Ψ.v isa Field
+            @test Ψ.u.grid === grid
+            @test !(Ψ.u.data === Φ.u.data)
+
+            set!(Φ, 3)
+            @test all(@allowscalar(interior(Φ.u)) .== 3)
+            @test all(@allowscalar(interior(Φ.v)) .== 3)
+
+            set!(Ψ, 0)
+            set!(Ψ, Φ)
+            @test all(@allowscalar(interior(Ψ.u)) .== 3)
+            @test all(@allowscalar(interior(Ψ.v)) .== 3)
+
+            # block 2-norm: sqrt(2 · 3² · 4³) = sqrt(1152)
+            @test norm(Φ) ≈ sqrt(2 * 9 * 64)
+            # dot: 2 · 3 · 3 · 4³ = 1152
+            @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
         end
     end
 end

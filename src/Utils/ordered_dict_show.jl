@@ -13,11 +13,11 @@ function ordered_dict_show(dict::OrderedDict, padchar)
     end
 
     keys_list = dict |> keys |> collect
-    summary_vals_list = dict |> values |> collect |> v -> summary(v)
+    summary_vals_list = [summary(v) for v in values(dict)]
     lines = ["$name with $N entries:"]
 
     for i in 1:N-1
-        k, sum_v  = keys_list[i], summary_vals_list[i]
+        k, sum_v = keys_list[i], summary_vals_list[i]
         push!(lines, "$padchar   ├── $k => $sum_v")
     end
 
@@ -26,5 +26,3 @@ function ordered_dict_show(dict::OrderedDict, padchar)
 
     return join(lines, "\n")
 end
-
-

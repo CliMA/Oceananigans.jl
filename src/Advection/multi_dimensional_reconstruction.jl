@@ -53,9 +53,9 @@ const a₂³ = (62 - 9*sqrt(15), -4 + 12*sqrt(15),  2 - 3 * sqrt(15)) ./ 60
 
 @inline function centered_reconstruction_weights(FT, β₀, β₁, β₂, γ₀, γ₁, γ₂)
 
-    α₀ = FT(γ₀) / (β₀ + FT(ε))^two_32
-    α₁ = FT(γ₁) / (β₁ + FT(ε))^two_32
-    α₂ = FT(γ₂) / (β₂ + FT(ε))^two_32
+    α₀ = FT(γ₀) / (β₀ + FT(ϵ))^two_32
+    α₁ = FT(γ₁) / (β₁ + FT(ϵ))^two_32
+    α₂ = FT(γ₂) / (β₂ + FT(ϵ))^two_32
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -99,6 +99,7 @@ function fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
 
     return q¹ / 6 + 2 * q² / 3 + q³ / 6
 end
+
 @inline function multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _interpolate_y, args...)
 
     FT = eltype(grid)

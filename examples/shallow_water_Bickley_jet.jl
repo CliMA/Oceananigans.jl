@@ -25,6 +25,9 @@
 
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
+using Random
+
+Random.seed!(90210) # for reproducible results
 
 # ## Two-dimensional domain
 #
@@ -46,7 +49,7 @@ grid = RectilinearGrid(size = (48, 128),
 gravitational_acceleration = 1
 coriolis = FPlane(f=1)
 
-model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
+model = ShallowWaterModel(grid; coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO())
 
@@ -151,6 +154,8 @@ simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
 
 # And finally run the simulation.
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results

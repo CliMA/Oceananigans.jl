@@ -1,8 +1,13 @@
-# Surface gravity waves and the Craik-Leibovich approximation
+# [Surface gravity waves and the Craik-Leibovich approximation](@id surface_gravity_waves)
 
 Users can model the effects of surface waves by specifying spatial and temporal gradients of the
-Stokes drift velocity field. At the moment, only uniform unidirectional Stokes drift fields are
-supported, in which case
+Stokes drift velocity field. When using [`StokesDrift`](@ref), the Stokes drift may correspond to a
+two-dimensional and time-varying surface wave field, in which case
+```math
+    \boldsymbol{u}^S = u^S(x, y, z, t) \hat{\boldsymbol{x}} + v^S(x, y, z, t) \hat{\boldsymbol{y}} + w^S(x, y, z, t) \hat{\boldsymbol{z}} \, ,
+```
+The simpler [`UniformStokesDrift`](@ref) provides an interface for specifying Stokes drift fields that
+vary only in depth and time, such that
 ```math
     \boldsymbol{u}^S = u^S(z, t) \hat{\boldsymbol{x}} + v^S(z, t) \hat{\boldsymbol{y}} \, .
 ```

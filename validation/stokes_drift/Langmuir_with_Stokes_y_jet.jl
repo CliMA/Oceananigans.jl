@@ -19,12 +19,11 @@ grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 #
 # We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
-using Oceananigans.BuoyancyFormulations: g_Earth
-
- amplitude = 0.8 # m
+g = Oceananigans.defaults.gravitational_acceleration
+amplitude = 0.8 # m
 wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
- frequency = sqrt(g_Earth * wavenumber) # s⁻¹
+frequency = sqrt(g * wavenumber) # s⁻¹
 
 ## The vertical scale over which the Stokes drift of a monochromatic surface wave
 ## decays away from the surface is `1/2wavenumber`, or
@@ -131,7 +130,7 @@ wˢ(x, y, z, t) = 2π / grid.Ly *vertical_scale * Uˢ * ( exp(z / vertical_scale
 #     as a prognostic variable, but has the advantage that ``u`` accounts for the total advection
 #     of tracers and momentum, and that ``u = v = w = 0`` is a steady solution even when Coriolis
 #     forces are present. See the
-#     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
+#     [physics documentation](@ref surface_gravity_waves)
 #     for more information.
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
@@ -177,14 +176,15 @@ coriolis = FPlane(f=0) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(),
-                            timestepper = :RungeKutta3,
-                            tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = StokesDrift(∂x_wˢ=∂x_wˢ,∂x_vˢ=∂x_vˢ,∂y_wˢ=∂y_wˢ,∂z_vˢ=∂z_vˢ),
-                            boundary_conditions = (v=v_boundary_conditions, b=b_boundary_conditions))
+model = NonhydrostaticModel(grid;
+                             coriolis,
+                             advection = WENO(),
+                             timestepper = :RungeKutta3,
+                             tracers = :b,
+                             buoyancy = BuoyancyTracer(),
+                             closure = AnisotropicMinimumDissipation(),
+                             stokes_drift = StokesDrift(∂x_wˢ=∂x_wˢ,∂x_vˢ=∂x_vˢ,∂y_wˢ=∂y_wˢ,∂z_vˢ=∂z_vˢ),
+                             boundary_conditions = (v=v_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
 #
@@ -257,7 +257,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
+fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.closure_fields.νₑ))
 
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                 schedule = TimeInterval(output_interval),

@@ -1,25 +1,22 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FFTImplicitFreeSurfaceSolver,
     PCGImplicitFreeSurfaceSolver,
-    compute_vertically_integrated_lateral_areas!,
     step_free_surface!,
     implicit_free_surface_linear_operation!
 
-using Oceananigans.Grids: with_halo
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
     grid = model.grid
 
     u, v, w = model.velocities
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     u .= 0
     v .= 0
@@ -46,14 +43,12 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     Δt = 900
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = nothing,
-                                        free_surface)
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection = nothing, free_surface)
 
     set_simple_divergent_velocity!(model)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
     @info "PCG implicit free surface solver test, norm(η_pcg): $(norm(η)), maximum(abs, η_pcg): $(maximum(abs, η))"
 
     # Extract right hand side "truth"
@@ -65,16 +60,11 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
     end
 
     # Compute left hand side "solution"
-    g = g_Earth
-    η = model.free_surface.η
+    g = Oceananigans.defaults.gravitational_acceleration
+    η = model.free_surface.displacement
 
-    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
-    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
-
-    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
-    fill_halo_regions!(vertically_integrated_lateral_areas)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(Oceananigans.Models.HydrostaticFreeSurfaceModels.integrated_y_area, grid)
 
     left_hand_side = ZFaceField(grid, indices = (:, :, grid.Nz + 1))
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
@@ -140,11 +130,11 @@ end
 
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
-        pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+        pcg_model = HydrostaticFreeSurfaceModel(rectilinear_grid;
                                                 momentum_advection = nothing,
                                                 free_surface = pcg_free_surface)
 
-        fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+        fft_model = HydrostaticFreeSurfaceModel(rectilinear_grid;
                                                 momentum_advection = nothing,
                                                 free_surface = fft_free_surface)
 
@@ -153,7 +143,7 @@ end
 
         Δt₁ = 900
         Δt₂ = 920.0
-        
+
         for m in (pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
@@ -161,9 +151,9 @@ end
             step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
-        pcg_η = pcg_model.free_surface.η
-        fft_η = fft_model.free_surface.η
-     
+        pcg_η = pcg_model.free_surface.displacement
+        fft_η = fft_model.free_surface.displacement
+
         pcg_η_cpu = Array(interior(pcg_η))
         fft_η_cpu = Array(interior(fft_η))
 

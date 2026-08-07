@@ -41,6 +41,16 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                     @test poisson_solver_instantiates(grid, FFTW.MEASURE)
                 end
 
+                # Test that the Poisson eigenvalue float type matches the grid float type
+                grid = RectilinearGrid(arch, FT, size=(2, 2), extent=(1, 1), topology=(Periodic, Flat, Bounded))
+                topo = (TX, TY, TZ) =  topology(grid)
+                λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
+                λy = poisson_eigenvalues(grid, grid.Ny, grid.Ly, 1, TY())
+                λz = poisson_eigenvalues(grid, grid.Nz, grid.Lz, 1, TZ())
+                @test eltype(λx) == eltype(grid)
+                @test eltype(λy) == eltype(grid)
+                @test eltype(λz) == eltype(grid)
+
                 # Test the generic fft_poisson_solver constructor
                 x = y = (0, 1)
                 z = (0, 1)

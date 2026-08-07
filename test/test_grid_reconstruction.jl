@@ -1,8 +1,12 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: constructor_arguments, halo_size
+using Oceananigans.Grids: Face, architecture, constructor_arguments, halo_size, topology, znodes
 using NCDatasets
 using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
+using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConicGrid
+using Oceananigans.Architectures: on_architecture
+
+cpu_parent_array(array) = Array(parent(on_architecture(CPU(), array)))
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -226,23 +230,86 @@ function test_latitude_longitude_grid_reconstruction(original_grid)
     return nothing
 end
 
-function test_immersed_grid_reconstruction(original_grid)
+function test_lambert_conformal_conic_grid_reconstruction(original_grid)
     args, kwargs = constructor_arguments(original_grid)
 
-    @test :immersed_boundary_type in keys(args)
-    @test :architecture in keys(args)
-    @test :number_type in keys(args)
+    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+
+    @test reconstructed_grid isa LambertConformalConicGrid
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+    @test reconstructed_grid.conformal_mapping == original_grid.conformal_mapping
+    @test topology(reconstructed_grid) == topology(original_grid)
+    @test znodes(reconstructed_grid, Face()) == znodes(original_grid, Face())
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
+    @test reconstructed_grid.z.Δᵃᵃᶜ == original_grid.z.Δᵃᵃᶜ
+
+    coordinate_names = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ,
+                        :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ)
+
+    metric_names = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+                    :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                    :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+    for name in (coordinate_names..., metric_names...)
+        @test cpu_parent_array(getproperty(reconstructed_grid, name)) ==
+              cpu_parent_array(getproperty(original_grid, name))
+    end
+
+    return nothing
+end
+
+function test_flat_lambert_conformal_conic_grid_reconstruction(original_grid)
+    args, kwargs = constructor_arguments(original_grid)
+
+    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+
+    @test reconstructed_grid isa LambertConformalConicGrid
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+    @test reconstructed_grid.conformal_mapping == original_grid.conformal_mapping
+    @test topology(reconstructed_grid) == topology(original_grid)
+
+    coordinate_names = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ,
+                        :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ)
+
+    metric_names = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+                    :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                    :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+    for name in (coordinate_names..., metric_names...)
+        @test cpu_parent_array(getproperty(reconstructed_grid, name)) ==
+              cpu_parent_array(getproperty(original_grid, name))
+    end
+
+    return nothing
+end
+
+function test_immersed_grid_reconstruction(original_grid)
+    underlying_grid_args, underlying_grid_kwargs, immersed_boundary_args = constructor_arguments(original_grid)
+
+    @test :architecture in keys(underlying_grid_args)
+    @test :number_type in keys(underlying_grid_args)
 
     # Reconstruct the immersed boundary and then the grid
     original_ib = original_grid.immersed_boundary
     if original_ib isa GridFittedBottom
-        reconstructed_ib = GridFittedBottom(args[:bottom_height], args[:immersed_condition])
+        @test :bottom_height in keys(immersed_boundary_args)
+        @test :immersed_condition in keys(immersed_boundary_args)
+        reconstructed_ib = GridFittedBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:immersed_condition])
+
     elseif original_ib isa PartialCellBottom
-        reconstructed_ib = PartialCellBottom(args[:bottom_height], args[:minimum_fractional_cell_height])
+        @test :bottom_height in keys(immersed_boundary_args)
+        @test :minimum_fractional_cell_height in keys(immersed_boundary_args)
+        reconstructed_ib = PartialCellBottom(immersed_boundary_args[:bottom_height], immersed_boundary_args[:minimum_fractional_cell_height])
+
     elseif original_ib isa GridFittedBoundary
-        reconstructed_ib = GridFittedBoundary(args[:mask])
+        @test :mask in keys(immersed_boundary_args)
+        reconstructed_ib = GridFittedBoundary(immersed_boundary_args[:mask])
     end
-    reconstructed_underlying_grid = RectilinearGrid(args[:architecture], args[:number_type]; kwargs...)
+    reconstructed_underlying_grid = RectilinearGrid(values(underlying_grid_args)...; underlying_grid_kwargs...)
     reconstructed_grid = ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib)
 
     # Test that key properties match
@@ -259,7 +326,7 @@ function test_netcdf_grid_reconstruction(original_grid)
     # Create NetCDF dataset and write grid reconstruction data
     filename = "test_netcdf_grid_reconstruction.nc"
     ds = NCDataset(filename, "c")
-    write_grid_reconstruction_data!(ds, original_grid)
+    write_grid_reconstruction_data!(ds, original_grid, 1)
     close(ds)
 
     # Read back the grid reconstruction metadata
@@ -302,11 +369,11 @@ N = 6
                                                    halo=(2, 2, 2))
 
         regular_latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(N, N, N),
-                                                   longitude = (0, 1),
-                                                   latitude = (0, 1),
-                                                   z = (-1, 0),
-                                                   topology = (Periodic, Bounded, Bounded),
-                                                   halo = (2, 2, 2))
+                                                    longitude = (0, 1),
+                                                    latitude = (0, 1),
+                                                    z = (-1, 0),
+                                                    topology = (Periodic, Bounded, Bounded),
+                                                    halo = (2, 2, 2))
 
         stretched_rectilinear_grid = RectilinearGrid(arch, FT, size=(N, N, N),
                                                      x = collect(range(0, 1, length=N+1)),
@@ -347,6 +414,35 @@ N = 6
             test_latitude_longitude_grid_reconstruction(stretched_latlon_grid)
         end
 
+        lcc_grid = LambertConformalConicGrid(arch, FT;
+                                             size = (N, N, N),
+                                             center = (-105, 40),
+                                             spacing = 20e3,
+                                             standard_parallels = (30, 60),
+                                             false_easting = 500e3,
+                                             false_northing = -200e3,
+                                             radius = 6.3e6,
+                                             z = (-1, 0),
+                                             halo = (2, 2, 2))
+
+        flat_lcc_grid = LambertConformalConicGrid(arch, FT;
+                                                  size = (N, N),
+                                                  center = (-105, 40),
+                                                  spacing = 20e3,
+                                                  standard_parallels = (30, 60),
+                                                  false_easting = 500e3,
+                                                  false_northing = -200e3,
+                                                  radius = 6.3e6,
+                                                  z = nothing,
+                                                  topology = (Bounded, Bounded, Flat),
+                                                  halo = (2, 2))
+
+        @testset "LambertConformalConicGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing LambertConformalConicGrid reconstruction [$FT, $(typeof(arch))]..."
+            test_lambert_conformal_conic_grid_reconstruction(lcc_grid)
+            test_flat_lambert_conformal_conic_grid_reconstruction(flat_lcc_grid)
+        end
+
         @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing NetCDF grid reconstruction [$FT, $(typeof(arch))]..."
             test_netcdf_grid_reconstruction(regular_rectilinear_grid)
@@ -354,15 +450,14 @@ N = 6
             test_netcdf_grid_reconstruction(stretched_rectilinear_grid)
             test_netcdf_grid_reconstruction(stretched_latlon_grid)
 
-            # TODO: Make the functionality below work
-            # test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
+            test_netcdf_grid_reconstruction(gfboundary_rectilinear_grid)
+            test_netcdf_grid_reconstruction(gfboundary_latlon_grid)
 
-            # test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(gfbottom_latlon_grid)
+            test_netcdf_grid_reconstruction(gfbottom_rectilinear_grid)
+            test_netcdf_grid_reconstruction(gfbottom_latlon_grid)
 
-            # test_netcdf_grid_reconstruction(pcbottom_rectilinear_grid)
-            # test_netcdf_grid_reconstruction(pcbottom_latlon_grid)
+            test_netcdf_grid_reconstruction(pcbottom_rectilinear_grid)
+            test_netcdf_grid_reconstruction(pcbottom_latlon_grid)
         end
     end
 end

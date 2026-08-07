@@ -1,7 +1,6 @@
 module TurbulenceClosures
 
 export
-    AbstractEddyViscosityClosure,
     VerticalScalarDiffusivity,
     HorizontalScalarDiffusivity,
     HorizontalDivergenceScalarDiffusivity,
@@ -12,9 +11,10 @@ export
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
-    Smagorinsky,
+    DynamicSmagorinsky,
     LillyCoefficient,
     DynamicCoefficient,
+    LagrangianAveraging,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
@@ -26,8 +26,10 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    build_diffusivity_fields,
-    compute_diffusivities!,
+    build_closure_fields,
+    compute_closure_fields!,
+    step_closure_prognostics!,
+    initialize_closure_fields!,
 
     viscosity, diffusivity,
 
@@ -36,29 +38,37 @@ export
     ∂ⱼ_τ₂ⱼ,
     ∂ⱼ_τ₃ⱼ,
 
-    cell_diffusion_timescale
+    cell_diffusion_timescale,
+    closure_required_tracers
 
-using KernelAbstractions
-using Adapt
+using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
-import Oceananigans.Utils: with_tracers, prettysummary
-
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.BuoyancyFormulations
-using Oceananigans.Utils
-
-using Oceananigans.Architectures: AbstractArchitecture, device
-using Oceananigans.Fields: FunctionField
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+using Oceananigans: Oceananigans, fields
+using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.TimeSteppers: TimeSteppers,
+                                 AbstractTimeDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 VerticallyImplicitTimeDiscretization
+using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, znode
+using Oceananigans.Operators: Operators,
+    Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
+    V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
+    Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+    δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ,
+    ζ₃ᶠᶠᶜ,
+    ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
+    ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ, ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
+    ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶜᶜᶠ,
+    ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶜᶜᶠ,
+    ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers
+using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-import Oceananigans.Architectures: on_architecture
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -76,8 +86,42 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 # Fallbacks
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
-with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
+compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+import Oceananigans.TimeSteppers: step_closure_prognostics!
+step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+
+# Initialize closure fields when simulation starts (after velocities are properly set)
+initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+initialize_closure_fields!(K, ::Nothing, args...) = nothing
+
+# Handle tuple of closures (iterate through each closure and its fields)
+function initialize_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple, args...)
+    for (fields, closure) in zip(closure_fields_tuple, closures)
+        initialize_closure_fields!(fields, closure, args...)
+    end
+    return nothing
+end
+
+# Tracer names that a closure requires (eg TKE-based closures)
+# Fallbacks: by default closures do not require extra tracers.
+closure_required_tracers(::Nothing) = ()
+closure_required_tracers(::AbstractTurbulenceClosure) = ()
+closure_required_tracers(::AbstractArray{<:AbstractTurbulenceClosure}) = ()
+closure_required_tracers(closures::Tuple) = begin
+    names = Symbol[]
+    for c in closures
+        for n in closure_required_tracers(c)
+            if !(n in names)
+                push!(names, n)
+            end
+        end
+    end
+    return Tuple(names)
+end
 
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional
@@ -96,6 +140,8 @@ function shear_production end
 function buoyancy_flux end
 function dissipation end
 function hydrostatic_turbulent_kinetic_energy_tendency end
+function buoyancy_force end # to be defined by models that want to use TurbulenceClosures
+function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
 ##### Fallback: flux = 0
@@ -183,6 +229,10 @@ include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
 # Only numbers, arrays, and functions supported now.
 @inline closure_coefficient(i, j, k, grid, C::Number) = C
 @inline closure_coefficient(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
+@inline function closure_coefficient(i, j, k, grid, C)
+    x, y, z = node(i, j, k, grid, c, c, c)
+    return C(x, y, z)
+end
 
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
@@ -202,7 +252,7 @@ using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
 using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 
 # Miscellaneous utilities
-include("diffusivity_fields.jl")
+include("closure_fields.jl")
 include("turbulence_closure_diagnostics.jl")
 
 #####
@@ -210,4 +260,3 @@ include("turbulence_closure_diagnostics.jl")
 #####
 
 end # module
-

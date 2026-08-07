@@ -1,7 +1,8 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: Δz⁻¹ᶜᶜᶠ
 
 """
-    cell_advection_timescale(grid, velocities)
+$(TYPEDSIGNATURES)
 
 Return the advection timescale for `grid` with `velocities`. The advection timescale
 is the minimum over all `i, j, k` in the `grid` of

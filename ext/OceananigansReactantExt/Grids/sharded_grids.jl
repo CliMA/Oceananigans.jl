@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
-using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
+using Oceananigans.Grids: validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
 using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
 
 import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
@@ -12,7 +12,7 @@ import Oceananigans.DistributedComputations:
     assemble_coordinate,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
-    barrier!,
+    barrier,
     all_reduce,
     all_reduce!,
     reconstruct_global_topology
@@ -28,13 +28,13 @@ assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
 assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Boundary conditions should not need to change
-inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
 
 # Local sizes are equal to global sizes for a sharded architecture
 concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 
 # We assume everything is already synchronized for a sharded architecture
-barrier!(::ShardedDistributed) = nothing
+barrier(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
 all_reduce(op,  val, ::ShardedDistributed) = val
@@ -73,7 +73,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                             longitude = nothing,
                                             latitude = nothing,
                                             z = nothing,
-                                            radius = Oceananigans.Grids.R_Earth,
+                                            radius = Oceananigans.defaults.planet_radius,
                                             topology = nothing,
                                             precompute_metrics = true,
                                             halo = nothing)
@@ -263,4 +263,3 @@ function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, global_sz...)
         sharding=Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
     )
 end
-

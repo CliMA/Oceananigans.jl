@@ -64,13 +64,12 @@ v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 variable_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh)
 constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν = νh₀)
 
-model = HydrostaticFreeSurfaceModel(; grid, free_surface, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis,
                                     momentum_advection = VectorInvariant(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
                                     closure = constant_horizontal_diffusivity,
-                                    #closure = variable_horizontal_diffusivity,
-                                    tracers = nothing,
-                                    buoyancy = nothing)
+                                    # closure = variable_horizontal_diffusivity
+                                    )
 
 g = model.free_surface.gravitational_acceleration
 
@@ -104,7 +103,7 @@ simulation = Simulation(model,
 
 simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(24*50))
 
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
+output_fields = merge(model.velocities, (η=model.free_surface.displacement,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 

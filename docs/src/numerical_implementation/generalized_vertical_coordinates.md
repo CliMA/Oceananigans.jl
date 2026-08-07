@@ -49,7 +49,7 @@ Similarly, we get equivalent expressions for ``y`` derivatives as in \eqref{drdx
 
 With the [Boussinesq approximation](@ref boussinesq_approximation), the mass conservation reduces to the flow  being divergence-less, i.e., ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \boldsymbol{\nabla}_h \boldsymbol{\cdot} \boldsymbol{u} + \partial_z w = 0``.
 
-Using the chair rules above, the divergence of the flow in ``r``-coordinates becomes:
+Using the chain rules above, the divergence of the flow in ``r``-coordinates becomes:
 ```math
 \begin{align}
     \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} & = \frac{\partial u}{\partial x} \bigg\rvert_{z} + \frac{\partial v}{\partial y} \bigg\rvert_{z} + \frac{\partial w}{\partial z} \nonumber \\
@@ -60,7 +60,7 @@ Using the chair rules above, the divergence of the flow in ``r``-coordinates bec
 We can rewrite ``\partial_x \sigma \rvert_r = \partial_r(\partial_x z)`` and similarly for the ``y`` direction. After a bit of reordering the above yields
 ```math
 \begin{equation}
-    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r} \left( u \frac{\partial z}{\partial x} + v \frac{\partial z}{\partial y} + w \right) \label{div1}
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \frac{1}{\sigma} \left( \frac{\partial \sigma u}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v}{\partial y}\bigg\rvert_{r} \right) - \frac{1}{\sigma} \frac{\partial}{\partial r} \left(u \frac{\partial z}{\partial x} + v \frac{\partial z}{\partial y} - w \right) \label{div1}
 \end{equation}
 ```
 Note that ``w`` above is the vertical velocity referenced to the ``z`` coordinate.
@@ -101,7 +101,7 @@ Using the same procedure we followed for the continuity equation, the left-hand-
 ```math
 \begin{align}
     \frac{\partial c}{\partial t}\bigg\rvert_{z} & + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} c) = \nonumber \\
-    & = \frac{\partial c}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u c}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v T}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left(c \omega + c \frac{\partial z}{\partial t}\bigg\rvert_r \right) \nonumber \\
+    & = \frac{\partial c}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u c}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v c}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial}{\partial r}\left(c \omega + c \frac{\partial z}{\partial t}\bigg\rvert_r \right) \nonumber \\
     & = \frac{\partial c}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u c}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v c}{\partial y}\bigg\rvert_{r} \right) + \frac{c}{\sigma} \left( \frac{\partial \omega}{\partial r} + \frac{\partial \sigma}{\partial t}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \left( \omega + \frac{\partial z}{\partial t}\bigg\rvert_r \right)\frac{\partial c}{\partial r} \nonumber\\
     & = \frac{\partial c}{\partial t}\bigg\rvert_{z} + \frac{1}{\sigma} \left( \frac{\partial \sigma u c}{\partial x} \bigg\rvert_{r} + \frac{\partial \sigma v c}{\partial y}\bigg\rvert_{r} \right) + \frac{1}{\sigma} \frac{\partial \omega c}{\partial r} + \frac{c}{\sigma} \frac{\partial \sigma}{\partial t}\bigg\rvert_{r} + \frac{1}{\sigma} \frac{\partial z}{\partial t}\bigg\rvert_r \frac{\partial c}{\partial r}
 \end{align}

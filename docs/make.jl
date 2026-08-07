@@ -2,25 +2,27 @@ using Distributed
 Distributed.addprocs(2)
 
 @everywhere begin
+    using DocumenterVitepress
     using Documenter
     using DocumenterCitations
     using Literate
     using Printf
 
+    using CUDA
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
 
     using Oceananigans
-    using NCDatasets
+    using Oceananigans.AbstractOperations
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
     using Oceananigans.OutputWriters
-    using Oceananigans.TurbulenceClosures
     using Oceananigans.TimeSteppers
-    using Oceananigans.AbstractOperations
+    using Oceananigans.TurbulenceClosures
+    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
-    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+    using NCDatasets
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -33,12 +35,15 @@ Distributed.addprocs(2)
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
     # The examples that take longer to run should be first. This ensures that the
-    # docs built which extra workers is as efficient as possible.
+    # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "ocean_wind_mixing_and_convection.jl",
+        "shallow_water_Bickley_jet.jl",
+        "spherical_baroclinic_instability.jl",
+        "polar_vortex_crystal.jl",
+        "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
-        "shallow_water_Bickley_jet.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "kelvin_helmholtz_instability.jl",
         "horizontal_convection.jl",
         "baroclinic_adjustment.jl",
@@ -50,6 +55,53 @@ Distributed.addprocs(2)
     ]
 end
 
+# DocumenterVitepress 0.3.4 emits an ordered list directly after the preceding
+# paragraph, without the blank line that VitePress requires to begin a list.
+# This more-specific rendering method preserves native Markdown ordered lists.
+function DocumenterVitepress.render(io::IO,
+                                    mime::MIME"text/plain",
+                                    node::DocumenterVitepress.MarkdownAST.Node,
+                                    list::DocumenterVitepress.MarkdownAST.List,
+                                    page::Documenter.Page,
+                                    doc::Documenter.Document;
+                                    kwargs...)
+    println(io)
+
+    item_number = 0
+    bullet() = list.type === :ordered ? "$(item_number += 1). " : "- "
+    item_buffer = IOBuffer()
+
+    for item in node.children
+        DocumenterVitepress.render(item_buffer, mime, item, item.children, page, doc;
+                                   prenewline=false, kwargs...)
+        lines = split(String(take!(item_buffer)), '\n')
+        lines[2:end] .= "  " .* lines[2:end]
+        print(io, bullet())
+        println.((io,), lines)
+    end
+
+    return nothing
+end
+
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
+
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
@@ -58,6 +110,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
@@ -71,36 +124,45 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "literated/internal_wave.md",
-    "Internal tide by a seamount"      => "literated/internal_tide.md",
-    "Convecting plankton"              => "literated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
+    "Internal wave"                         => "literated/internal_wave.md",
+    "Internal tide by a seamount"           => "literated/internal_tide.md",
+    "Convecting plankton"                   => "literated/convecting_plankton.md",
+    "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
+    "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
+    "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
+    "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"                 => "literated/horizontal_convection.md",
+    "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
+    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
+    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
 ]
 
-model_setup_pages = [
-    "Overview" => "model_setup/overview.md",
-    "Coriolis (rotation)" => "model_setup/coriolis.md",
-    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
-    "Boundary conditions" => "model_setup/boundary_conditions.md",
-    "Forcing functions" => "model_setup/forcing_functions.md",
-    "Background fields" => "model_setup/background_fields.md",
-    "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
-    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
-    "Callbacks" => "model_setup/callbacks.md",
-    "Output writers" => "model_setup/output_writers.md",
-    "Checkpointing" => "model_setup/checkpointing.md",
+model_pages = [
+    "Overview" => "models/models_overview.md",
+    "Coriolis forces" => "models/coriolis.md",
+    "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Stokes drift" => "models/stokes_drift.md",
+    "Turbulence closures" => "models/turbulence_closures.md",
+    "Boundary conditions" => "models/boundary_conditions.md",
+    "Forcings" => "models/forcing_functions.md",
+    "Lagrangian particles" => "models/lagrangian_particles.md",
+    "Background fields" => "models/background_fields.md",
+]
+
+simulation_pages = [
+    "Overview" => "simulations/simulations_overview.md",
+    "Callbacks" => "simulations/callbacks.md",
+    "Schedules" => "simulations/schedules.md",
+    "Output writers" => "simulations/output_writers.md",
+    "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [
-    "Coordinate system and notation" => "physics/notation.md",
+    "Coordinate systems" => "physics/coordinate_systems.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
@@ -138,62 +200,97 @@ appendix_pages = [
     "Function index" => "appendix/function_index.md"
 ]
 
+root = pkgdir(Oceananigans)
+agents_src = joinpath(root, "AGENTS.md")
+agents_dst = joinpath(root, "docs", "src", "developer_docs", "AGENTS.md")
+cp(agents_src, agents_dst; force=true)
+
+developer_pages = [
+    "Contributor's guide" => "developer_docs/contributing.md",
+    "Model interface" => "developer_docs/model_interface.md",
+    "Implementing turbulence closures" => "developer_docs/turbulence_closures.md",
+    "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
+]
+
 pages = [
-    "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
-    # TODO:
-    #   - Develop the following three tutorials on reductions, simulations, and post-processing
-    #   - Refactor the model setup pages and make them more tutorial-like.
-    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "Simulations" => simulations.md,
-    # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_setup_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    "Manual" => [
+        "Quick Start" => "quick_start.md",
+        "Units" => "units.md",
+        "Grids" => "grids.md",
+        "Fields" => "fields.md",
+        "Operations" => "operations.md",
+        "Simulation Tips" => "simulation_tips.md",
+        # Future tutorials:
+        # "Reductions & Accumulations" => "reductions_and_accumulations.md",
+        "FieldTimeSeries & Post-Processing" => "field_time_series.md",
+        "Examples" => example_pages,
+        "Gallery" => "gallery.md",
+    ],
+    "Workflows" => [
+        "Models" => model_pages,
+        "Simulations" => simulation_pages
+    ],
+    "Concepts" => [
+        "Physics" => physics_pages,
+        "Numerical Implementation" => numerical_pages
+    ],
+    "Developer" => developer_pages,
+    "Resources" => [
+        "References" => "references.md",
+        "Appendix" => appendix_pages
+    ]
 ]
 
 #####
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(collapselevel = 1,
-                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-                         mathengine = MathJax3(),
-                         size_threshold = 2^20,
-                         assets = String["assets/citations.css"])
+deploy_config = Documenter.auto_detect_deploy_system()
+deploy_decision = Documenter.deploy_folder(
+    deploy_config; repo="github.com/CliMA/OceananigansDocumentation.git",
+    devbranch="main", devurl="dev", push_preview=true
+)
+
+format = DocumenterVitepress.MarkdownVitepress(;
+        repo = "github.com/CliMA/Oceananigans.jl.git",
+        devbranch = "main",
+        devurl = "dev",
+        deploy_url = "./OceananigansDocumentation/",
+        deploy_decision,
+        keep = :patch, # keep all versions of docs
+    )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
-OceananigansNCDatasetsExt = if isdefined(Base, :get_extension)
-    Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt)
-else
-    Oceananigans.OceananigansNCDatasetsExt
+modules = Module[]
+OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+
+for m in [Oceananigans, OceananigansNCDatasetsExt]
+    if !isnothing(m)
+        push!(modules, m)
+    end
 end
 
-makedocs(sitename = "Oceananigans.jl",
+makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = format,
-         pages = pages,
+         format, pages, modules,
          plugins = [bib],
-         modules = [Oceananigans, OceananigansNCDatasetsExt],
          warnonly = [:cross_references],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         checkdocs = :exports) # set to :none to speed things up
+         linkcheck = true,
+         linkcheck_ignore = [
+             r"jstor\.org",
+             r"^https://github\.com/.*?/blob/",
+             r"https://clima\.caltech\.edu/?",
+         ],
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
+         )
 
 """
     recursive_find(directory, pattern)
@@ -217,8 +314,10 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-           forcepush = true,
-           push_preview = true,
-           devbranch = "main")
+DocumenterVitepress.deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git",
+                               deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
+                               target = "build",
+                               branch = "gh-pages",
+                               forcepush = true,
+                               push_preview = true,
+                               devbranch = "main")

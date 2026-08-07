@@ -67,12 +67,11 @@ for region in 1:number_of_regions(grid)
     v[region] .= + ∂x(ψ[region])
 end
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     velocities = PrescribedVelocityFields(; u, v),
                                     momentum_advection = nothing,
                                     tracer_advection = WENO(order=9),
-                                    tracers = :θ,
-                                    buoyancy = nothing)
+                                    tracers = :θ)
 
 # Initial condition for tracer
 

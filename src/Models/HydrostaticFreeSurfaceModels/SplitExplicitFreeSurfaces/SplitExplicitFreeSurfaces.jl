@@ -1,36 +1,34 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme, AdamsBashforth3Scheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Architectures: convert_to_device
-using Oceananigans.Fields
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: AbstractGrid, topology
-using Oceananigans.ImmersedBoundaries: linear_index_to_tuple, mask_immersed_field!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
-
-using Adapt
-using Base
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Grids: column_depthᶜᶜᵃ,
-                          column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ,
-                          column_depthᶠᶠᵃ
+using Oceananigans.Architectures: convert_to_device, architecture
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.Fields: Field
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
+                          LeftConnected, RightConnected, FullyConnected,
+                          RightCenterFolded, RightFaceFolded,
+                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
+                                       column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
+                                       column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
+                                                        free_surface_displacement_field,
+                                                        update_vertical_velocities!
+using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ,
+                              Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, get_active_cells_map
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
+                                                         compute_transport_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 

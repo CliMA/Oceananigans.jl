@@ -2,7 +2,7 @@ using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
+using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
@@ -53,20 +53,38 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
 end
 
 """
-    ext(ow)
+$(TYPEDSIGNATURES)
 
 Return the file extension for the output writer or output
 writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
-ext(ow::AbstractOutputWriter) = ext(typeof(fw))
+ext(ow::AbstractOutputWriter) = ext(typeof(ow))
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the filepath for the given `part` number. Handles both base paths
+(without `_partN` suffix) and paths that already contain a `_partN` suffix.
+"""
+function filepath_for_part(filepath, part)
+    extension = splitext(filepath)[2] # e.g., ".jld2" or ".nc"
+    esc_ext = replace(extension, "." => "\\.")
+    # Strip any existing _partN suffix to get the base path
+    base = replace(filepath, Regex("_part\\d+" * esc_ext * "\$") => extension)
+    if part > 1
+        return replace(base, Regex(esc_ext * "\$") => "_part$(part)" * extension)
+    else
+        return base
+    end
+end
 
 # TODO: add example to docstring below
 
 """
-    saveproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
-Save data in `obj` to `file[address]` in a "languate-agnostic" way,
+Save data in `obj` to `file[address]` in a "language-agnostic" way,
 thus primarily consisting of arrays and numbers, absent Julia-specific types
 or other data that can _only_ be interpreted by Julia.
 """
@@ -109,7 +127,7 @@ function saveproperty!(file, address, bcs::FieldBoundaryConditions)
 end
 
 """
-    serializeproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
 Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
 `CuArray` to `Array` so data can be loaded on any architecture,
@@ -200,7 +218,7 @@ has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
     has_reference(T, bcs.immersed)
 
 """
-    has_reference(has_type, obj)
+$(TYPEDSIGNATURES)
 
 Check (or attempt to check) if `obj` contains, somewhere among its
 subfields and subfields of fields, a reference to an object of type
@@ -241,4 +259,3 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
-

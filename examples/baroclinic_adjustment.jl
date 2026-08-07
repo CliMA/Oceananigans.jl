@@ -14,6 +14,9 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Random
+
+Random.seed!(8675309) # for reproducible results
 
 # ## Grid
 
@@ -34,7 +37,7 @@ grid = RectilinearGrid(size = (48, 48, 8),
 # We built a `HydrostaticFreeSurfaceModel` with an `ImplicitFreeSurface` solver.
 # Regarding Coriolis, we use a beta-plane centered at 45° South.
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = BetaPlane(latitude = -45),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
@@ -163,6 +166,8 @@ simulation.output_writers[:zonal] = JLD2Writer(model, (; b=B, u=U, v=V);
 
 @info "Running the simulation..."
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)

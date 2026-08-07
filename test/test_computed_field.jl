@@ -24,6 +24,14 @@ function compute_plus(model)
     return all(result .≈ eltype(model.grid)(π + 42))
 end
 
+function compute_comparison(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+    @compute cmp = Field(S > T)  # S=π ≈ 3.14 < T=42, so should be all false
+    result = Array(interior(cmp))
+    return eltype(cmp) == Bool && all(result .== false)
+end
+
 function compute_many_plus(model)
     set!(model; u=2, S=π, T=42)
     T, S = model.tracers
@@ -196,7 +204,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
 
     u, v, w = model.velocities
     parent(u) .= 1 + rand()
@@ -227,10 +235,10 @@ end
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(grid;
                                 tracers=tracers, buoyancy=buoyancy)
 
-    b = BuoyancyField(model)
+    b = buoyancy_field(model)
     u, v, w = model.velocities
 
     compute!(b)
@@ -338,7 +346,7 @@ for arch in archs
 
         for grid in (underlying_grid, immersed_grid, immersed_active_grid)
             G = typeof(grid).name.wrapper
-            model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
+            model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
             @testset "Instantiating and computing computed fields [$A, $G]" begin
                 @info "  Testing computed Field instantiation and computation [$A, $G]..."
@@ -381,6 +389,9 @@ for arch in archs
                 # Basic compilation test for nested BinaryOperations...
                 u, v, w = model.velocities
                 @test try compute!(Field(u + v - w)); true; catch; false; end
+
+                # Bool-valued computed fields from comparison operations
+                @test compute_comparison(model)
             end
 
             @testset "Multiary computations [$A, $G]" begin
@@ -513,8 +524,8 @@ for arch in archs
                           (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
 
             for buoyancy in buoyancies
-                @testset "Computations with BuoyancyFields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
-                    @info "      Testing computations with BuoyancyField " *
+                @testset "Computations with buoyancy_fields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
+                    @info "      Testing computations with buoyancy_field " *
                           "[$A, $G, $(typeof(buoyancy).name.wrapper)]..."
 
                     @test computations_with_buoyancy_field(arch, buoyancy)
@@ -592,8 +603,8 @@ for arch in archs
                 @test compute_tuples_and_namedtuples(model)
             end
 
-            @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin
-                @info "      Testing conditional computation of Field and BuoyancyField " *
+            @testset "Conditional computation of Field and buoyancy_field [$A, $G]" begin
+                @info "      Testing conditional computation of Field and buoyancy_field " *
                       "[$A, $G]..."
 
                 set!(model, u=2, v=0, w=0, T=3, S=0)
@@ -603,7 +614,7 @@ for arch in archs
 
                 α = model.buoyancy.formulation.equation_of_state.thermal_expansion
                 g = model.buoyancy.formulation.gravitational_acceleration
-                b = BuoyancyField(model)
+                b = buoyancy_field(model)
 
                 compute_at!(uT, 1.0)
                 compute_at!(b, 1.0)
@@ -624,4 +635,3 @@ for arch in archs
         end
     end
 end
-

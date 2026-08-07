@@ -55,6 +55,8 @@ struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctio
     𝕊u₀ :: FT
 end
 
+VariableStabilityFunctions{FT}(; kw...) where FT = VariableStabilityFunctions(FT; kw...)
+
 function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType;
                                     Cσe = 1.0,
                                     Cσϵ = 1.2,
@@ -75,7 +77,7 @@ function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType;
     if isnothing(𝕊u₀)
         # Compute 𝕊u₀ for the logarithmic boundary layer where production
         # balances dissipation. For more information see the discussion
-        # surrounding equation (13) in Umlauf and Burchard (2003).
+        # surrounding equation (13) by Umlauf and Burchard (2003).
         a = Cd₅ - Cu₂
         b = Cd₂ - Cu₀
         c = Cd₀
@@ -289,4 +291,3 @@ end
 
     return num / den
 end
-

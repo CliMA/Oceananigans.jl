@@ -96,8 +96,7 @@ closure = (convective_adjustment, vertical_diffusivity, horizontal_diffusivity)
 ##### Create the model and initial conditions
 #####
 
-model = HydrostaticFreeSurfaceModel(;
-                                     grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                      momentum_advection,
                                      tracer_advection,
                                      tracers = :T,

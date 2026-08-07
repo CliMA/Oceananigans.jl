@@ -1,116 +1,37 @@
-using JLD2
-using Oceananigans
-using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
-using Oceananigans.Units
-using Reactant
-using Random
-using Test
+include("sharding_test_utils.jl")
+include("dependencies_for_runtests.jl")
 
-include("distributed_tests_utils.jl")
+@testset "Test sharded LatitudeLongitudeGrid simulations..." begin
+    model = sharding_test_model(CPU())
+    Δt = model.clock.last_Δt
 
-run_xslab_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(4, 1))
-    run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
-"""
+    @info "Running serial first time step..."
+    first_time_step!(model, Δt)
+    @info "Running serial time steps..."
+    for N in 2:100
+        time_step!(model, Δt)
+    end
 
-run_yslab_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(1, 4))
-    run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
-"""
+    # Retrieve serial quantities
+    us = interior(model.velocities.u, :, :, 10)
+    vs = interior(model.velocities.v, :, :, 10)
+    cs = interior(model.tracers.c, :, :, 10)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
 
-run_pencil_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(3, 2))
-    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(1, 2))
-    arch = Distributed(ReactantState(), partition = Partition(2, 2))
-    run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
-"""
+    # Run the sharded Reactant simulation in a subprocess
+    run(`$(Base.julia_cmd()) --project=$(Base.active_project()) --check-bounds=auto -O0 run_sharding_tests.jl`)
 
-@testset "Test distributed LatitudeLongitudeGrid simulations..." begin
-    # Run the serial computation
-    Random.seed!(1234)
-    bottom_height = - rand(40, 40, 1) .* 500 .- 500
-
-    grid  = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))
-    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
-    model = run_distributed_simulation(grid)
-
-    # Retrieve Serial quantities
-    us, vs, ws = model.velocities
-    cs = model.tracers.c
-    ηs = model.free_surface.η
-
-    us = interior(us, :, :, 10)
-    vs = interior(vs, :, :, 10)
-    cs = interior(cs, :, :, 10)
-    ηs = interior(ηs, :, :, 1)
-
-    # Run the distributed grid simulation with a pencil configuration
-    write("distributed_xslab_llg_tests.jl", run_xslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_xslab_llg_tests.jl`)
-    rm("distributed_xslab_llg_tests.jl")
-
-    # Retrieve Parallel quantities
-    up = jldopen("distributed_xslab_llg.jld2")["u"]
-    vp = jldopen("distributed_xslab_llg.jld2")["v"]
-    ηp = jldopen("distributed_xslab_llg.jld2")["η"]
-    cp = jldopen("distributed_xslab_llg.jld2")["c"]
-
-    # rm("distributed_xslab_llg.jld2")
-
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
-
-    # Run the distributed grid simulation with a slab configuration
-    write("distributed_yslab_llg_tests.jl", run_yslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_yslab_llg_tests.jl`)
-    rm("distributed_yslab_llg_tests.jl")
-
-    # Retrieve Parallel quantities
-    up = jldopen("distributed_yslab_llg.jld2")["u"]
-    vp = jldopen("distributed_yslab_llg.jld2")["v"]
-    cp = jldopen("distributed_yslab_llg.jld2")["c"]
-    ηp = jldopen("distributed_yslab_llg.jld2")["η"]
-
-    # rm("distributed_yslab_llg.jld2")
-
-    # Test slab partitioning
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
-
-    # We try now with more ranks in the x-direction. This is not a trivial
-    # test as we are now splitting, not only where the singularities are, but
-    # also in the middle of the north fold. This is a more challenging test
-    write("distributed_pencil_llg_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_pencil_llg_tests.jl`)
-    rm("distributed_pencil_llg_tests.jl")
-
-    # Retrieve Parallel quantities
+    # Retrieve sharded quantities
     up = jldopen("distributed_pencil_llg.jld2")["u"]
     vp = jldopen("distributed_pencil_llg.jld2")["v"]
-    ηp = jldopen("distributed_pencil_llg.jld2")["η"]
     cp = jldopen("distributed_pencil_llg.jld2")["c"]
+    ηp = jldopen("distributed_pencil_llg.jld2")["η"]
 
-    # rm("distributed_pencil_llg.jld2")
+    ϵ = sqrt(eps(Float64))
 
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+    @info "Testing pencil partitioning..."
+    @test all(isapprox.(us, up; atol=ϵ))
+    @test all(isapprox.(vs, vp; atol=ϵ))
+    @test all(isapprox.(cs, cp; atol=ϵ))
+    @test all(isapprox.(ηs, ηp; atol=ϵ))
 end
-

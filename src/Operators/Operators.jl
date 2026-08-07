@@ -48,6 +48,7 @@ export active_weighted_ℑxyᶜᶜᶜ, active_weighted_ℑxzᶜᶜᶜ, active_we
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
 export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
+export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
@@ -55,8 +56,11 @@ export intrinsic_vector, extrinsic_vector
 # Variable grid operators
 export σⁿ, σ⁻, ∂t_σ
 
-using Oceananigans.Grids
-using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
+using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
+    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+    Center, Face
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Convenient aliases
@@ -98,6 +102,7 @@ include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
+include("constant_r_derivative_operators.jl")
 include("divergence_operators.jl")
 include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
@@ -115,5 +120,20 @@ include("vector_rotation_operators.jl")
 @inline xarea(args...)    = Ax(args...)
 @inline yarea(args...)    = Ay(args...)
 @inline zarea(args...)    = Az(args...)
+
+# To be used as GridMetrics
+struct XNode end
+struct YNode end
+struct ZNode end
+struct ΛNode end
+struct ΦNode end
+struct RNode end
+
+const x = XNode()
+const y = YNode()
+const z = ZNode()
+const λ = ΛNode()
+const φ = ΦNode()
+const r = RNode()
 
 end # module

@@ -14,21 +14,18 @@ using Oceananigans.TurbulenceClosures
 
         arch_str = string(typeof(arch))
 
-        @testset "GridFittedBoundary [$arch_str]" begin
-            @info "Testing GridFittedBoundary with HydrostaticFreeSurfaceModel [$arch_str]..."
+        @testset "GridFittedBottom [$arch_str]" begin
+            @info "Testing GridFittedBottom with HydrostaticFreeSurfaceModel [$arch_str]..."
 
             underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
 
-            bump(x, y, z) = z < exp(-x^2 - y^2)
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+            bump(x, y) = exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
                             ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
 
-                model = HydrostaticFreeSurfaceModel(; grid,
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer(),
-                                                    closure = closure)
+                model = HydrostaticFreeSurfaceModel(grid; closure, tracers = :b, buoyancy = BuoyancyTracer())
 
                 u = model.velocities.u
                 b = model.tracers.b
@@ -48,6 +45,24 @@ using Oceananigans.TurbulenceClosures
                 @test b[4, 4, 2] == 0
                 @test u[4, 4, 2] == 0
             end
+        end
+
+        @testset "GridFittedBoundary is not supported [$arch_str]" begin
+            @info "Testing that GridFittedBoundary throws with HydrostaticFreeSurfaceModel [$arch_str]..."
+
+            underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
+
+            sloping_top(x, y, z) = z > 2 - exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(sloping_top))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+
+            bump(x, y, z) = z < exp(-x^2 - y^2)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+
+            # No free surface with PrescribedVelocityFields, so GridFittedBoundary is allowed
+            model = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(), buoyancy=nothing, tracers=())
+            @test model isa HydrostaticFreeSurfaceModel
         end
 
         @testset "Surface boundary conditions with immersed boundaries [$arch_str]" begin
@@ -95,14 +110,10 @@ using Oceananigans.TurbulenceClosures
             νh₀ = 5e3 * (60 / grid.Nx)^2
             constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh₀)
 
-            model = HydrostaticFreeSurfaceModel(; grid,
+            model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis,
                                                 momentum_advection = VectorInvariant(),
-                                                free_surface = free_surface,
-                                                coriolis = coriolis,
                                                 boundary_conditions = (u=u_bcs, v=v_bcs),
-                                                closure = constant_horizontal_diffusivity,
-                                                tracers = nothing,
-                                                buoyancy = nothing)
+                                                closure = constant_horizontal_diffusivity)
 
             simulation = Simulation(model, Δt=3600, stop_iteration=1)
 
@@ -129,12 +140,8 @@ using Oceananigans.TurbulenceClosures
             bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
-
-            model = HydrostaticFreeSurfaceModel(; grid,
-                                                free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
-                                                buoyancy = nothing,
-                                                tracers = nothing,
-                                                closure = nothing)
+            free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             x_ref = [3.0  3.0  3.0  3.0  3.0
                      3.0  2.0  2.0  2.0  2.0

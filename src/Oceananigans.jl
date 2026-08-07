@@ -11,7 +11,13 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    RightConnected, LeftConnected, FullyConnected,
+    RightFaceFolded, RightCenterFolded,
+    slice,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
+    LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
+    MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
@@ -23,7 +29,7 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
-    ImmersedBoundaryCondition,
+    ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
     Distributed, Partition,
@@ -31,28 +37,28 @@ export
     # Advection schemes
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
+    AdaptiveImplicitVerticalAdvection,
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, RegriddedOperation,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
-    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, TEOS10,
-    BuoyancyField,
+    LinearEquationOfState,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift, StokesDrift,
@@ -65,15 +71,15 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
-    Smagorinsky,
-    LillyCoefficient,
-    DynamicCoefficient,
+    DynamicSmagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
+    ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
@@ -83,31 +89,33 @@ export
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
+    BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, PrescribedVelocityFields,
+    SphericalCoriolis, PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
     Simulation, run!, Callback, add_callback!, iteration,
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFWriter, JLD2Writer, Checkpointer,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
+    ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
@@ -115,33 +123,31 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+
+    # Plotting (methods provided by OceananigansMakieExt)
+    quadmesh, quadmesh!
 
 using DocStringExtensions
-using FFTW
 
 function __init__()
-    if VERSION >= v"1.11.0"
-        @warn """You are using Julia v1.11 or later!"
-                 Oceananigans is currently tested on Julia v1.10."
-                 If you find issues with Julia v1.11 or later,"
+    if VERSION >= v"1.13.0"
+        @warn """You are using Julia v1.13 or later!"
+                 Oceananigans is currently tested on Julia v1.12."
+                 If you find issues with Julia v1.13 or later,"
                  please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
 
     end
 
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
+    Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
+
+using BFloat16s: BFloat16
 
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64, BigFloat, BFloat16)
 
 #####
 ##### Default settings for constructors
@@ -149,9 +155,27 @@ const fully_supported_float_types = (Float32, Float64)
 
 mutable struct Defaults
     FloatType :: DataType
+    gravitational_acceleration :: Float64
+    planet_radius :: Float64
+    planet_rotation_rate :: Float64
 end
 
-Defaults(; FloatType=Float64) = Defaults(FloatType)
+function Defaults(;
+    # Floating-point precision type (usually Float64 or Float32).
+    FloatType = Float64,
+    # [m s⁻²] conventional standard value for Earth's gravity; see https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
+    gravitational_acceleration = 9.80665,
+    # [m] Earth's radius; see https://en.wikipedia.org/wiki/Earth%27s_radius
+    planet_radius = 6.371e6,
+    # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
+    planet_rotation_rate = 7.292115e-5)
+
+    return Defaults(FloatType,
+                    gravitational_acceleration,
+                    planet_radius,
+                    planet_rotation_rate)
+end
+
 const defaults = Defaults()
 
 #####
@@ -195,10 +219,16 @@ function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end
-function fields end
-function prognostic_fields end
+fields(::Nothing) = NamedTuple()
+prognostic_fields(::Nothing) = NamedTuple()
+function prognostic_state end
+function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
+
+# Plotting placeholders; methods added by OceananigansMakieExt when Makie is loaded.
+function quadmesh end
+function quadmesh! end
 
 #####
 ##### Include all the submodules
@@ -207,8 +237,8 @@ function boundary_conditions end
 # Basics
 include("Architectures.jl")
 include("Units.jl")
-include("Grids/Grids.jl")
 include("Utils/Utils.jl")
+include("Grids/Grids.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
@@ -281,5 +311,6 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
+using .Operators
 
 end # module

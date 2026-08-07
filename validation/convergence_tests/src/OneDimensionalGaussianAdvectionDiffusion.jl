@@ -26,13 +26,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
     grid = RectilinearGrid(architecture, topology=topo, size=(Nx, 1, 1), halo=(6, 6, 6); domain...)
 
-    model = NonhydrostaticModel( timestepper = :RungeKutta3,
-                                        grid = grid,
-                                   advection = advection,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = :c,
-                                     closure = ScalarDiffusivity(ν=κ, κ=κ))
+    model = NonhydrostaticModel(gridl; timestepper = :RungeKutta3, advection,
+                                       tracers = :c, closure = ScalarDiffusivity(ν=κ, κ=κ))
 
     set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
@@ -64,13 +59,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
     ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(6, 6, 6); ydomain...)
 
-    model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                                       grid = ygrid,
-                                  advection = advection,
-                                   coriolis = nothing,
-                                   buoyancy = nothing,
-                                    tracers = :c,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ))
+    model = NonhydrostaticModel(ygrid; timestepper = :RungeKutta3, advection,
+                                       tracers = :c, closure = ScalarDiffusivity(ν=κ, κ=κ))
 
     set!(model, v = U,
                 u = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
@@ -99,13 +89,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     zdomain = (x=(0, 1), y=(0, 1), z=(-1, 1.5))
     zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(6, 6, 6); zdomain...)
 
-    model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                                       grid = zgrid,
-                                  advection = advection,
-                                   coriolis = nothing,
-                                  buoyancy = nothing,
-                                    tracers = :c,
-                                    closure = ScalarDiffusivity(ν=κ, κ=κ))
+    model = NonhydrostaticModel(zgrid; timestepper = :RungeKutta3, advection,
+                                       tracers = :c, closure = ScalarDiffusivity(ν=κ, κ=κ))
 
     set!(model, w = U,
                 u = (x, y, z) -> c(z, x, y, 0, U, κ, t₀),

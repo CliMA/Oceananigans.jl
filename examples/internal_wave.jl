@@ -52,7 +52,7 @@ B = BackgroundField(B_func, parameters=N)
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             advection = Centered(order=4),
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition that excites an internal wave that propates
+# Next, we set up an initial condition that excites an internal wave that propagates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math
@@ -69,7 +69,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 # ```
 #
 # where ``m`` is the vertical wavenumber, ``k`` is the horizontal wavenumber,
-# ``ω`` is the wave frequncy, and ``a(x, z)`` is a Gaussian envelope.
+# ``ω`` is the wave frequency, and ``a(x, z)`` is a Gaussian envelope.
 # The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
 # the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
 
@@ -127,6 +127,8 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; fil
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Animating a propagating packet

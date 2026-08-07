@@ -11,9 +11,7 @@ coarse_grid = RectilinearGrid(arch, size=(N÷4, N÷4, N÷4), extent=(2π, 2π, 2
 
 
 function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
-    model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3,
-                                advection = WENO(order=5),
-                                closure = closure)
+    model = NonhydrostaticModel(grid; closure, timestepper = :RungeKutta3, advection = WENO(order=5),)
 
     random_c = CenterField(coarse_grid) # Technically this shouldn't be a CenterField, but oh well
     noise(x, y, z) = rand()
@@ -41,7 +39,7 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
-        c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+        c²ₛ = model.closure_fields.LM_avg / model.closure_fields.MM_avg
         outputs = (; S², c²ₛ)
     else
         outputs = (; S²)

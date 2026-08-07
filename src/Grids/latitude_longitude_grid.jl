@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
     Nx :: I
     Ny :: I
@@ -39,38 +39,40 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     radius :: FT
 end
 
-function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
-                                           Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
-                                           Lλ :: FT, Lφ :: FT, Lz :: FT,
-                                           Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
-                                            λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
-                                           Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
-                                            φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
-                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
-                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
-                                           Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
-                                           Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
-                                           Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
-                                           radius :: FT) where {Arch, FT, TX, TY, TZ, Z,
-                                                                DXF, DXC, XF, XC,
-                                                                DYF, DYC, YF, YC,
-                                                                DXFC, DXCF,
-                                                                DXFF, DXCC,
-                                                                DYFC, DYCF, I}
+LatitudeLongitudeGrid{TX, TY, TZ}(arch, Nλ, Nφ, Nz, Hλ, Hφ, Hz, args...) where {TX, TY, TZ} =
+    LatitudeLongitudeGrid{TX, TY, TZ, typeof(GridSize(Nλ, Nφ, Nz, Hλ, Hφ, Hz))}(arch, Nλ, Nφ, Nz, Hλ, Hφ, Hz, args...)
 
+function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
+                                               Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
+                                               Lλ :: FT, Lφ :: FT, Lz :: FT,
+                                               Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
+                                                λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
+                                               Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
+                                                φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
+                                               Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
+                                               Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
+                                               Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
+                                               Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
+                                               Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
+                                               radius :: FT) where {SZ, Arch, FT, TX, TY, TZ, Z,
+                                                                    DXF, DXC, XF, XC,
+                                                                    DYF, DYC, YF, YC,
+                                                                    DXFC, DXCF,
+                                                                    DXFF, DXCC,
+                                                                    DYFC, DYCF, I}
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
                                  DXCC, DXFC, DXCF, DXFF,
-                                 DYFC, DYCF, Arch, I}(architecture,
-                                                      Nλ, Nφ, Nz,
-                                                      Hλ, Hφ, Hz,
-                                                      Lλ, Lφ, Lz,
-                                                      Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                      Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
-                                                      Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                      Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                 DYFC, DYCF, Arch, I, SZ}(architecture,
+                                                          Nλ, Nφ, Nz,
+                                                          Hλ, Hφ, Hz,
+                                                          Lλ, Lφ, Lz,
+                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                          Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                                          Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                          Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 const LLG = LatitudeLongitudeGrid
@@ -108,7 +110,7 @@ regular_dimensions(::ZRegularLLG) = tuple(3)
                           longitude,
                           latitude,
                           z = nothing,
-                          radius = R_Earth,
+                          radius = Oceananigans.defaults.planet_radius,
                           topology = nothing,
                           precompute_metrics = true,
                           halo = nothing)
@@ -142,7 +144,7 @@ Keyword arguments
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
               `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
-              topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
+              topology is (`Periodic`, `Bounded`, `Bounded`) if the longitudinal extent is 360 degrees
               or (`Bounded`, `Bounded`, `Bounded`) otherwise.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
@@ -164,7 +166,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
                                     longitude = (-180, 180),
                                     latitude = (-85, 85),
                                     z = (-1000, 0))
-36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -188,7 +190,7 @@ grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 
 # output
 
-36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Bounded  λ ∈ [-180.0, 180.0] regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-20.0, 20.0]   regularly spaced with Δφ=1.17647
 └── z:         Bounded  z ∈ [-1000.0, -0.0] variably spaced with min(Δz)=21.3342, max(Δz)=57.2159
@@ -200,7 +202,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                longitude = nothing,
                                latitude = nothing,
                                z = nothing,
-                               radius = R_Earth,
+                               radius = Oceananigans.defaults.planet_radius,
                                topology = nothing,
                                precompute_metrics = true,
                                halo = nothing)
@@ -292,7 +294,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     # Validate longitude and latitude
     λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₂ - λ₁ ≤ 360 + 10 * eps(FT(360)) || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
@@ -316,13 +318,11 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology_strs(grid)
-    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+    TX, TY, TZ = topology(grid)
 
-    return string(size_summary(size(grid)),
+    return string(size_summary(grid),
                   " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo",
-                  " and ", metric_computation)
+                  " with ", size_summary(halo_size(grid)), " halo")
 end
 
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
@@ -359,7 +359,6 @@ end
 
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
-    FT = eltype(grid)
     args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
@@ -403,7 +402,36 @@ function with_halo(halo, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
-function on_architecture(arch::AbstractSerialArchitecture, grid::LatitudeLongitudeGrid)
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. `radius` and
+# precomputed-metrics settings are retained. The most common use is a surface/exchange grid,
+# `slice(grid, :, :, k)`, which keeps both horizontal directions (and thus the
+# latitude-dependent metrics) intact.
+function slice(grid::LatitudeLongitudeGrid, i, j, k;
+               longitude=:auto, latitude=:auto, z=:auto,
+               λ=:auto, φ=:auto)
+    longitude = λ === :auto ? longitude : λ
+    latitude  = φ === :auto ? latitude  : φ
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    TX′, longitude′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=longitude)
+    TY′, latitude′,  Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=latitude)
+    TZ′, z′,         Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
+
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :radius => grid.radius,
+                               :precompute_metrics => metrics_precomputed(grid),
+                               :longitude => longitude′, :latitude => latitude′, :z => z′)
+
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
+end
+
+function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::LatitudeLongitudeGrid)
     if arch == architecture(grid)
         return grid
     end
@@ -415,32 +443,32 @@ end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
-    return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
-                                             grid.Nx, grid.Ny, grid.Nz,
-                                             grid.Hx, grid.Hy, grid.Hz,
-					     Adapt.adapt(to, grid.Lx),
-					     Adapt.adapt(to, grid.Ly),
-					     Adapt.adapt(to, grid.Lz),
-                                             Adapt.adapt(to, grid.Δλᶠᵃᵃ),
-                                             Adapt.adapt(to, grid.Δλᶜᵃᵃ),
-                                             Adapt.adapt(to, grid.λᶠᵃᵃ),
-                                             Adapt.adapt(to, grid.λᶜᵃᵃ),
-                                             Adapt.adapt(to, grid.Δφᵃᶠᵃ),
-                                             Adapt.adapt(to, grid.Δφᵃᶜᵃ),
-                                             Adapt.adapt(to, grid.φᵃᶠᵃ),
-                                             Adapt.adapt(to, grid.φᵃᶜᵃ),
-                                             Adapt.adapt(to, grid.z),
-                                             Adapt.adapt(to, grid.Δxᶜᶜᵃ),
-                                             Adapt.adapt(to, grid.Δxᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Δxᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Δxᶠᶠᵃ),
-                                             Adapt.adapt(to, grid.Δyᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Δyᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Azᶜᶜᵃ),
-                                             Adapt.adapt(to, grid.Azᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Azᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Azᶠᶠᵃ),
-					     Adapt.adapt(to, grid.radius))
+    return LatitudeLongitudeGrid{TX, TY, TZ, Nothing}(nothing,
+                                                      grid.Nx, grid.Ny, grid.Nz,
+                                                      grid.Hx, grid.Hy, grid.Hz,
+                                                      Adapt.adapt(to, grid.Lx),
+                                                      Adapt.adapt(to, grid.Ly),
+                                                      Adapt.adapt(to, grid.Lz),
+                                                      Adapt.adapt(to, grid.Δλᶠᵃᵃ),
+                                                      Adapt.adapt(to, grid.Δλᶜᵃᵃ),
+                                                      Adapt.adapt(to, grid.λᶠᵃᵃ),
+                                                      Adapt.adapt(to, grid.λᶜᵃᵃ),
+                                                      Adapt.adapt(to, grid.Δφᵃᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δφᵃᶜᵃ),
+                                                      Adapt.adapt(to, grid.φᵃᶠᵃ),
+                                                      Adapt.adapt(to, grid.φᵃᶜᵃ),
+                                                      Adapt.adapt(to, grid.z),
+                                                      Adapt.adapt(to, grid.Δxᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δyᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δyᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Azᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Azᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Azᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Azᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.radius))
 end
 
 #####
@@ -602,10 +630,10 @@ rname(::LLG) = :z
 @inline xnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
 @inline ynode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
 
-function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+    λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1])
+    φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[2])
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -632,6 +660,7 @@ end
 
 const F = Face
 const C = Center
+const N = Nothing
 
 @inline function xnodes(grid::LLG, ℓx, ℓy; with_halos=false)
     λ = λnodes(grid, ℓx; with_halos=with_halos)'
@@ -647,15 +676,25 @@ end
 end
 
 # Convenience
-@inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
-@inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓy; with_halos)
+@inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = λnodes(grid, ℓx; with_halos, indices)
+@inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = φnodes(grid, ℓy; with_halos, indices)
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline λnodes(grid::LLG, ℓx::C; with_halos=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
-@inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
-@inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
+@inline λnodes(grid::LLG, ℓx::N; with_halos=false, indices=Colon()) = nothing
+@inline φnodes(grid::LLG, ℓy::F; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::C; with_halos=false, indices=Colon()) = view(_property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos), indices)
+@inline φnodes(grid::LLG, ℓy::N; with_halos=false, indices=Colon()) = nothing
+
+# Flat topologies
+XFlatLLG = LatitudeLongitudeGrid{<:Any, Flat}
+YFlatLLG = LatitudeLongitudeGrid{<:Any, <:Any, Flat}
+@inline λnodes(grid::XFlatLLG, ℓx::F; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline λnodes(grid::XFlatLLG, ℓx::C; with_halos=false, indices=Colon()) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::F; with_halos=false, indices=Colon()) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
+@inline φnodes(grid::YFlatLLG, ℓy::C; with_halos=false, indices=Colon()) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), grid.Ny, grid.Hy, with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
@@ -675,7 +714,9 @@ end
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
 
 """
-    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+    LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                          radius = Oceananigans.defaults.planet_radius,
+                          origin = (0, 0))
 
 Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coordinates of the
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
@@ -688,7 +729,10 @@ Keyword Arguments
 - `radius`: The radius of the sphere, defaults to Earth's mean radius (≈ 6371 km)
 - `origin`: Tuple of (longitude, latitude) in degrees specifying the origin of the rectilinear grid
 """
-function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid; radius=R_Earth, origin=(0, 0))
+function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
+                               radius = Oceananigans.defaults.planet_radius,
+                               origin = (0, 0))
+
     arch = architecture(rectilinear_grid)
     Hx, Hy, Hz = halo_size(rectilinear_grid)
     Nx, Ny, Nz = size(rectilinear_grid)

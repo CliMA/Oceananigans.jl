@@ -1,8 +1,14 @@
-using Oceananigans: prognostic_fields, AbstractModel
+using Oceananigans: AbstractModel
+import Dates
+
+using Dates: AbstractTime
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
+using Oceananigans.Utils: period_to_seconds
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.Diagnostics: CFL
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.OutputWriters: write_output!
@@ -34,6 +40,7 @@ end
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf,
+               align_time_step = true,
                minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
@@ -41,8 +48,9 @@ Construct a `Simulation` for a `model` with time step `Δt`.
 Keyword arguments
 =================
 
-- `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
-        for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
+- `Δt`: Required keyword argument specifying the simulation time step. Can be either a `Number`
+        for constant time steps, a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
+        if the `model` has a DateTime clock.
 
 - `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
 
@@ -61,9 +69,10 @@ Keyword arguments
 
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
-                           Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
+                           Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
 """
-function Simulation(model; Δt,
+function Simulation(model;
+                    Δt,
                     verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
@@ -94,6 +103,9 @@ function Simulation(model; Δt,
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
    TT = eltype(model)
+   if Δt isa Dates.Period
+       Δt = convert(TT, period_to_seconds(Δt))
+   end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
@@ -115,17 +127,22 @@ end
 
 function Base.show(io::IO, s::Simulation)
     modelstr = summary(s.model)
-    return print(io, "Simulation of ", modelstr, "\n",
-                     "├── Next time step: $(prettytime(s.Δt))", "\n",
-                     "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
-                     "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
-                     "├── Stop time: $(prettytime(s.stop_time))", "\n",
-                     "├── Stop iteration: $(s.stop_iteration)", "\n",
-                     "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
-                     "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
-                     "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
-                     "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    print(io, "Simulation of ", modelstr, '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── run_wall_time: $(prettytime(s.run_wall_time))", '\n',
+              "├── run_wall_time / iteration: $(prettytime(s.run_wall_time / iteration(s)))", '\n',
+              "├── stop_time: $(prettytime(s.stop_time))", '\n',
+              "├── stop_iteration: $(s.stop_iteration)", '\n',
+              "├── wall_time_limit: $(s.wall_time_limit)", '\n',
+              "├── minimum_relative_step: ", prettysummary(s.minimum_relative_step), '\n',
+              "├── callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n')
+
+    if length(s.diagnostics) == 0
+        print(io, "└── output_writers: $(ordered_dict_show(s.output_writers, "│"))")
+    else
+        print(io, "├── output_writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
+                  "└── diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
+    end
 end
 
 #####
@@ -133,7 +150,7 @@ end
 #####
 
 """
-    validate_Δt(Δt, arch)
+$(TYPEDSIGNATURES)
 
 Make sure different workers are using the same time step
 """
@@ -149,42 +166,51 @@ end
 validate_Δt(Δt, arch) = Δt
 
 """
-    time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation time.
 """
 Base.time(sim::Simulation) = time(sim.model)
 
 """
-    iteration(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation iteration.
 """
 iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation)
+    prettytime(sim::Simulation, longform=true)
 
 Return `sim.model.clock.time` as a prettily formatted string."
+
+For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim))
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
-    run_wall_time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
-Return `sim.run_wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string.
 """
 run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
 """
-    reset!(sim)
+$(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
 function reset!(sim::Simulation)
     reset_clock!(sim.model)
     sim.stop_iteration = Inf
-    sim.stop_time = Inf
+
+    if sim.stop_time isa Number
+        sim.stop_time = Inf
+    elseif sim.stop_time isa AbstractTime
+        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+        sim.stop_time = max_datetime
+    end
+
     sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
@@ -195,7 +221,7 @@ end
 
 # Fallback. Models without clocks should extend this function.
 """
-    reset_clock!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Reset `model.clock` to its initial state.
 """
@@ -256,4 +282,36 @@ end
 # Fallback, to be elaborated on
 write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
-write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
+
+function prognostic_state(sim::Simulation)
+    return (model = prognostic_state(sim.model),
+            diagnostics = prognostic_state(sim.diagnostics),
+            output_writers = prognostic_state(sim.output_writers),
+            callbacks = prognostic_state(sim.callbacks),
+            run_wall_time = sim.run_wall_time,
+            align_time_step = sim.align_time_step,
+            verbose = sim.verbose,
+            minimum_relative_step = sim.minimum_relative_step)
+end
+
+function restore_prognostic_state!(restored::Simulation, from)
+    restore_prognostic_state!(restored.model, from.model)
+    restore_prognostic_state!(restored.diagnostics, from.diagnostics)
+    restore_prognostic_state!(restored.output_writers, from.output_writers)
+    restore_prognostic_state!(restored.callbacks, from.callbacks)
+    restored.run_wall_time = from.run_wall_time
+    restored.align_time_step = from.align_time_step
+    restored.verbose = from.verbose
+    restored.minimum_relative_step = from.minimum_relative_step
+    return restored
+end
+
+# Disambiguation: handle case when no checkpoint file exists
+restore_prognostic_state!(::Simulation, ::Nothing) = nothing
+
+#####
+##### Diagnostics
+#####
+
+(c::CFL)(sim::Simulation) = c(sim.model)

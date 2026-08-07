@@ -1,6 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper
+using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -46,8 +49,8 @@ end
         @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
         @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
 
-        @test default_bcs_F.north isa OBC
-        @test default_bcs_F.south isa OBC
+        @test default_bcs_F.north isa NFBC
+        @test default_bcs_F.south isa NFBC
 
         @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
         @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
@@ -58,13 +61,13 @@ end
         grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
         default_bcs = FieldBoundaryConditions(grid, loc)
         @test default_bcs.north.classification isa Zipper
-        @test default_bcs.south isa ZFBC        
+        @test default_bcs.south isa ZFBC
     end
 
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux, Value(), Gradient(), Flux())
+        for C in (Value, Gradient, Flux, Mixed, Value(), Gradient(), Flux(), Mixed())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
@@ -161,8 +164,8 @@ end
         @test w_bcs.east isa PBC
         @test w_bcs.south  isa PBC
         @test w_bcs.north isa PBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa PBC
@@ -192,8 +195,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.west  isa PBC
         @test v_bcs.east isa PBC
-        @test v_bcs.south  isa OBC
-        @test v_bcs.north isa OBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
         @test v_bcs.bottom  isa ZFBC
         @test v_bcs.top isa ZFBC
 
@@ -202,8 +205,8 @@ end
         @test w_bcs.east isa PBC
         @test w_bcs.south  isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa PBC
@@ -223,8 +226,8 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa OBC
-        @test u_bcs.east isa OBC
+        @test u_bcs.west  isa NFBC
+        @test u_bcs.east isa NFBC
         @test u_bcs.south  isa ZFBC
         @test u_bcs.north isa ZFBC
         @test u_bcs.bottom  isa ZFBC
@@ -233,8 +236,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.west  isa ZFBC
         @test v_bcs.east isa ZFBC
-        @test v_bcs.south  isa OBC
-        @test v_bcs.north isa OBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
         @test v_bcs.bottom  isa ZFBC
         @test v_bcs.top isa ZFBC
 
@@ -243,8 +246,8 @@ end
         @test w_bcs.east isa ZFBC
         @test w_bcs.south  isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa ZFBC
@@ -296,6 +299,40 @@ end
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
 
+        # Mixed boundary conditions
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=bbb_topology)
+        ϕ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+                                        east = MixedBoundaryCondition(simple_bc, simple_bc),
+                                        west = MixedBoundaryCondition(1),
+                                        bottom = MixedBoundaryCondition(2, π),
+                                        top = MixedBoundaryCondition(3, 2π),
+                                        north = MixedBoundaryCondition(simple_bc, simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
+
+        @test ϕ_bcs.east.condition.coefficient isa ContinuousBoundaryFunction
+        @test ϕ_bcs.east.condition.inhomogeneity isa ContinuousBoundaryFunction
+        @test ϕ_bcs.west.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.west.condition.inhomogeneity isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.inhomogeneity isa eltype(grid)
+        @test ϕ_bcs.top.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.top.condition.inhomogeneity isa eltype(grid)
+
+        ϕ = CenterField(grid, boundary_conditions=ϕ_bcs)
+        set!(ϕ, 1)
+
+        dummy_clock = (; time=0)
+        fields = tuple()
+        fill_halo_regions!(ϕ, dummy_clock, fields)
+
+        west_bc_field = Field(∂x(ϕ) + ϕ)
+        bottom_bc_field = Field(∂z(ϕ) + 2 * ϕ)
+        top_bc_field = Field(∂z(ϕ) + 3 * ϕ)
+
+        @test all(interior(west_bc_field, 1, :, :) .≈ 0)
+        @test all(interior(bottom_bc_field, :, :, 1) .≈ π)
+        @test all(interior(top_bc_field, :, :, 3) .≈ 2π)
+
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)
 
@@ -307,6 +344,62 @@ end
 
         @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
         @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+
+        # ContinuousBoundaryFunction on Flat topologies (dispatch disambiguation)
+        @info "  Testing ContinuousBoundaryFunction on Flat topologies..."
+        for topo in ((Flat, Flat, Bounded), (Flat, Bounded, Flat), (Bounded, Flat, Flat))
+            bounded_dim = findfirst(t -> t === Bounded, topo)
+
+            grid_kw = Dict{Symbol,Any}(:topology => topo)
+            if topo[1] !== Flat; grid_kw[:x] = (0, 1); end
+            if topo[2] !== Flat; grid_kw[:y] = (0, 1); end
+            if topo[3] !== Flat; grid_kw[:z] = (0, 1); end
+            grid_kw[:size] = Tuple(4 for i in 1:3 if topo[i] !== Flat)
+
+            grid = RectilinearGrid(; grid_kw...)
+            loc = (Center(), Center(), Center())
+
+            bc_func(t) = 1.0
+            left_bc  = FluxBoundaryCondition(bc_func)
+            right_bc = FluxBoundaryCondition(bc_func)
+
+            if bounded_dim == 1
+                bcs = FieldBoundaryConditions(west=left_bc, east=right_bc)
+            elseif bounded_dim == 2
+                bcs = FieldBoundaryConditions(south=left_bc, north=right_bc)
+            else
+                bcs = FieldBoundaryConditions(bottom=left_bc, top=right_bc)
+            end
+
+            # Regularize like model constructors do
+            bcs = regularize_field_boundary_conditions(bcs, grid, loc)
+            c = CenterField(grid; boundary_conditions=bcs)
+            Gc = CenterField(grid)
+            clock = (; time = 0.0)
+
+            if bounded_dim == 1
+                compute_x_bcs!(Gc, c, CPU(), clock, tuple())
+            elseif bounded_dim == 2
+                compute_y_bcs!(Gc, c, CPU(), clock, tuple())
+            else
+                compute_z_bcs!(Gc, c, CPU(), clock, tuple())
+            end
+
+            @test !all(Array(interior(Gc)) .== 0)
+        end
+
+        # ContinuousBoundaryFunction with field_dependencies on a Flat topology
+        # Building and time-stepping a model exercises the full regularization
+        # path including interpolation_code for BoundaryAdjacent.
+        @info "  Testing ContinuousBoundaryFunction with field_dependencies on Flat topology..."
+        grid = RectilinearGrid(size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+        dep_bc(t, T) = T  # no spatial args on (Flat, Flat, Bounded)
+        bottom_bc = FluxBoundaryCondition(dep_bc, field_dependencies=:T)
+        model = NonhydrostaticModel(grid; tracers=:T,
+                                    boundary_conditions=(T=FieldBoundaryConditions(bottom=bottom_bc),))
+        set!(model, T=1)
+        time_step!(model, 1e-3)
+        @test model.clock.iteration == 1
 
         # Minimal test for PolarValueBoundaryCondition
         polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))

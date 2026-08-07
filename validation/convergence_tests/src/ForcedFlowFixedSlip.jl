@@ -48,14 +48,9 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
                                     south = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(
-                                grid = grid,
-                                coriolis = nothing,
-                                buoyancy = nothing,
-                                tracers = nothing,
-                                closure = ScalarDiffusivity(ν=1),
-                                boundary_conditions = (u=u_bcs,),
-                                forcing = (u=u_forcing, v=v_forcing))
+    model = NonhydrostaticModel(grid; closure = ScalarDiffusivity(ν=1),
+                                      boundary_conditions = (u=u_bcs,),
+                                      forcing = (u=u_forcing, v=v_forcing))
 
     set!(model, u = (x, y, z) -> u(x, y, 0),
                 v = (x, y, z) -> v(x, y, 0))
@@ -94,14 +89,9 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition((x, z, t) -> f(x, t)),
                                     bottom = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(architecture = CPU(),
-                                grid = grid,
-                                coriolis = nothing,
-                                buoyancy = nothing,
-                                tracers = nothing,
-                                closure = ScalarDiffusivity(ν=1),
-                                boundary_conditions = (u=u_bcs,),
-                                forcing = (u=u_forcing, w=w_forcing))
+    model = NonhydrostaticModel(grid; closure = ScalarDiffusivity(ν=1),
+                                      boundary_conditions = (u=u_bcs,),
+                                      forcing = (u=u_forcing, w=w_forcing))
 
     set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))

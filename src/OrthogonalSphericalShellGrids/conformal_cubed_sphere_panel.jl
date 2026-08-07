@@ -1,5 +1,11 @@
-using CubedSphere
-using JLD2
+using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
+using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
+using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
+using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
+using JLD2: jldopen
+using OffsetArrays: OffsetArray
 
 struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
     rotation :: Rotation
@@ -41,6 +47,12 @@ const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
 const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     Union{ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch},
           ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}}}
+const AGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
+const XFlatAGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
+const YFlatAGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
 
 # architecture = CPU() by default, assuming that a DataType positional arg is specifying the floating point type.
 ConformalCubedSpherePanelGrid(FT::DataType; kwargs...) = ConformalCubedSpherePanelGrid(CPU(), FT; kwargs...)
@@ -55,8 +67,8 @@ end
 function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                        panel, Nz, z,
                                        topology = (FullyConnected, FullyConnected, Bounded),
-                                         radius = R_Earth,
-                                           halo = (4, 4, 4),
+                                       radius = Oceananigans.defaults.planet_radius,
+                                       halo = (4, 4, 4),
                                        rotation = nothing)
 
     TX, TY, TZ = topology
@@ -144,7 +156,7 @@ function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = 
                                                     conformal_mapping)
 end
 
-function with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
+function Grids.with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch=architecture(old_grid), rotation=nothing)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
@@ -171,11 +183,11 @@ end
                                   topology = (Bounded, Bounded, Bounded),
                                   ξ = (-1, 1),
                                   η = (-1, 1),
-                                  radius = R_Earth,
+                                  radius = Oceananigans.defaults.planet_radius,
                                   halo = (1, 1, 1),
                                   rotation = nothing,
                                   non_uniform_conformal_mapping = false,
-                                  spacing_type = "geometric",
+                                  spacing = GeometricSpacing(),
                                   provided_conformal_mapping = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
@@ -223,8 +235,8 @@ Keyword arguments
 - `non_uniform_conformal_mapping`: If `true`, the cubed sphere panel grid will be generated using a non-uniform
                                    conformal mapping. The default is `false`.
 
-- `spacing_type`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `"geometric"`
-                  (default) or `"exponential"`.
+- `spacing`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `GeometricSpacing()`
+             (default) or `ExponentialSpacing()`.
 
 - `provided_conformal_mapping`: The conformal mapping supplied by the user. Defaults to nothing.
 
@@ -237,8 +249,8 @@ Examples
 julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids
 
 julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
-36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
-├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
+36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
+├── centered at: North Pole, (λ, φ) = (0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -250,8 +262,8 @@ julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids, Rotations
 
 julia> grid = ConformalCubedSpherePanelGrid(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
-36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo and with precomputed metrics
-├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
+36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
+├── centered at: South Pole, (λ, φ) = (0, -90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664956, max(Δφ)=2.7412
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -264,13 +276,12 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        topology = (Bounded, Bounded, Bounded),
                                        ξ = (-1, 1),
                                        η = (-1, 1),
-                                       radius = R_Earth,
+                                       radius = Oceananigans.defaults.planet_radius,
                                        halo = (1, 1, 1),
                                        rotation = nothing,
                                        non_uniform_conformal_mapping = false,
-                                       spacing_type = "geometric",
+                                       spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
-
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
@@ -285,24 +296,24 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    if !isnothing(provided_conformal_mapping)
-        ξᶠᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ)
-        ηᵃᶠᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ)
-        ξᶜᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ)
-        ηᵃᶜᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ)
+    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = if !isnothing(provided_conformal_mapping)
+        (on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ))
     else
         if non_uniform_conformal_mapping
-            ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
-            optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
-            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
-            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
-            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
-            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
+            _ξᶠᵃᵃ, _ηᵃᶠᵃ, _, _, _ =
+                optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing)
+            (map(FT, _ξᶠᵃᵃ),
+             map(FT, _ηᵃᶠᵃ),
+             [FT(0.5 * (_ξᶠᵃᵃ[i] + _ξᶠᵃᵃ[i+1])) for i in 1:Nξ],
+             [FT(0.5 * (_ηᵃᶠᵃ[j] + _ηᵃᶠᵃ[j+1])) for j in 1:Nη])
         else
-            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+            (xnodes(ξη_grid, Face()),
+             ynodes(ξη_grid, Face()),
+             xnodes(ξη_grid, Center()),
+             ynodes(ξη_grid, Center()))
         end
     end
 
@@ -496,10 +507,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         # Azᶜᶜᵃ
 
         for j in 1:Nη, i in 1:Nξ
-            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
-            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
-            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ])
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1])
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1])
 
             Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
@@ -507,30 +518,30 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         # Azᶠᶜᵃ
 
         for j in 1:Nη, i in 2:Nξ
-            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
-            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ])
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1])
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1])
 
             Azᶠᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for j in 1:Nη
             i = 1
-            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1], 1)
-            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j+1], λᶜᶠᵃ[ i , j+1])
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1])
 
             Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for j in 1:Nη
             i = Nξ+1
-            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
-            b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-            c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
-            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1], 1)
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ])
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1])
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j+1], λᶜᶠᵃ[i-1, j+1])
 
             Azᶠᶜᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
@@ -538,30 +549,30 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         # Azᶜᶠᵃ
 
         for j in 2:Nη, i in 1:Nξ
-            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
-            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ], 1)
-            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1])
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1,  j ], λᶠᶜᵃ[i+1,  j ])
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])
 
             Azᶜᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for i in 1:Nξ
             j = 1
-            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j ], 1)
-            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j ], λᶠᶠᵃ[i+1, j ], 1)
-            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j ], λᶠᶜᵃ[i+1, j ], 1)
-            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
+            a = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j])
+            b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j ], λᶠᶠᵃ[i+1, j])
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j ], λᶠᶜᵃ[i+1, j])
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j])
 
             Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for i in 1:Nξ
             j = Nη+1
-            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1], 1)
-            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
-            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[i+1, j-1], λᶠᶜᵃ[i+1, j-1])
+            c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ])
+            d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
 
             Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
@@ -569,87 +580,87 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
         # Azᶠᶠᵃ
 
         for j in 2:Nη, i in 2:Nξ
-            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
-            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1])
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ])
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])
 
             Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for i in 2:Nξ
             j = 1
-            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j ], 1)
-            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j ], λᶜᶠᵃ[ i , j ], 1)
-            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j ], λᶜᶜᵃ[ i , j ], 1)
-            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j ], 1)
+            a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j])
+            b = lat_lon_to_cartesian(φᶜᶠᵃ[ i , j ], λᶜᶠᵃ[ i , j])
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j ], λᶜᶜᵃ[ i , j])
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j])
 
             Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for i in 2:Nξ
             j = Nη+1
-            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1])
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])
+            c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])
+            d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ])
 
             Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for j in 2:Nη
             i = 1
-            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
-            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
+            a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+            b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])
+            c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ])
+            d = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])
 
             Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         for j in 2:Nη
             i = Nξ+1
-            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-            b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-            c = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ], 1)
-            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
+            a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1])
+            b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+            c = lat_lon_to_cartesian(φᶠᶜᵃ[ i ,  j ], λᶠᶜᵃ[ i ,  j ])
+            d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ])
 
             Azᶠᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
         i = 1
         j = 1
-        a = lat_lon_to_cartesian(φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j], 1)
-        b = lat_lon_to_cartesian(φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j], 1)
-        c = lat_lon_to_cartesian(φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j], 1)
-        d = lat_lon_to_cartesian(φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j], 1)
+        a = lat_lon_to_cartesian(φᶠᶠᵃ[i, j], λᶠᶠᵃ[i, j])
+        b = lat_lon_to_cartesian(φᶜᶠᵃ[i, j], λᶜᶠᵃ[i, j])
+        c = lat_lon_to_cartesian(φᶜᶜᵃ[i, j], λᶜᶜᵃ[i, j])
+        d = lat_lon_to_cartesian(φᶠᶜᵃ[i, j], λᶠᶜᵃ[i, j])
 
         Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
         i = Nξ+1
         j = Nη+1
-        a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
-        b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ], 1)
+        a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1])
+        b = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+        c = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
+        d = lat_lon_to_cartesian(φᶜᶠᵃ[i-1,  j ], λᶜᶠᵃ[i-1,  j ])
 
         Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
         i = Nξ+1
         j = 1
-        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j], 1)
-        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j], 1)
-        c = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j ], 1)
-        d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j ], 1)
+        a = lat_lon_to_cartesian(φᶜᶠᵃ[i-1, j ], λᶜᶠᵃ[i-1, j])
+        b = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j ], λᶠᶠᵃ[ i , j])
+        c = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j ], λᶠᶜᵃ[ i , j])
+        d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j ], λᶜᶜᵃ[i-1, j])
 
         Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
 
         i = 1
         j = Nη+1
-        a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1], 1)
-        b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1], 1)
-        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ], 1)
-        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
+        a = lat_lon_to_cartesian(φᶠᶜᵃ[ i , j-1], λᶠᶜᵃ[ i , j-1])
+        b = lat_lon_to_cartesian(φᶜᶜᵃ[ i , j-1], λᶜᶜᵃ[ i , j-1])
+        c = lat_lon_to_cartesian(φᶜᶠᵃ[ i ,  j ], λᶜᶠᵃ[ i ,  j ])
+        d = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ])
 
         Azᶠᶠᵃ[i, j] = 4 * spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
@@ -739,45 +750,103 @@ end
 ##### Support for simulations on conformal cubed sphere panel grids
 #####
 
-import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ
+import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
-    @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
-              ifelse((i == grid.Nx+1) & (j < 1),       c[grid.Nx-j+1, 1, k] - c[grid.Nx, j, k],
-              ifelse((i == grid.Nx+1) & (j > grid.Ny), c[j, grid.Ny, k]     - c[grid.Nx, j, k],
-              ifelse((i == 1) & (j > grid.Ny),         c[1, j, k]           - c[grid.Ny-j+1, grid.Ny, k],
-                                                       c[i, j, k]           - c[i-1, j, k]))))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i == 1) & (j < 1),               (c[1, j, k] + c[j, 1, k])/2,
+              ifelse((i == grid.Nx+1) & (j < 1),       (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k])/2,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), (c[j, grid.Ny, k] + c[grid.Nx, j, k])/2,
+              ifelse((i == 1) & (j > grid.Ny),         (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k])/2,
+                                                       (c[i, j, k] + c[i-1, j, k])/2))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δxᶠᶜᶜ(i, j, k, grid, c)
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i < 1) & (j == 1),               (c[i, 1, k] + c[1, i, k])/2,
+              ifelse((i > grid.Nx) & (j == 1),         (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k])/2,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), (c[grid.Nx, i, k] + c[i, grid.Ny, k])/2,
+              ifelse((i < 1) & (j == grid.Ny+1),       (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k])/2,
+                                                       (c[i, j, k] + c[i, j-1, k])/2))))
 
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
-    @inbounds ifelse((i < 1) & (j == 1),               c[i, 1, k]           - c[1, i, k],
-              ifelse((i > grid.Nx) & (j == 1),         c[i, 1, k]           - c[grid.Nx, grid.Ny+1-i, k],
-              ifelse((i > grid.Nx) & (j == grid.Ny+1), c[grid.Nx, i, k]     - c[i, grid.Ny, k],
-              ifelse((i < 1) & (j == grid.Ny+1),       c[1, grid.Ny-i+1, k] - c[i, grid.Ny, k],
-                                                       c[i, j, k]           - c[i, j-1, k]))))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) = δyᶜᶠᶜ(i, j, k, grid, c)
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
+    @inbounds ifelse((i == 1) & (j < 1),               (f(1, j, k, grid, args...) + f(j, 1, k, grid, args...))/2,
+              ifelse((i == grid.Nx+1) & (j < 1),       (f(grid.Nx-j+1, 1, k, grid, args...) + f(grid.Nx, j, k, grid, args...))/2,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), (f(j, grid.Ny, k, grid, args...) + f(grid.Nx, j, k, grid, args...))/2,
+              ifelse((i == 1) & (j > grid.Ny),         (f(1, j, k, grid, args...) + f(grid.Nx-j+1, grid.Ny, k, grid, args...))/2,
+                                                       (f(i, j, k, grid, args...) + f(i-1, j, k, grid, args...))/2))))
 
-@inline δxᶠᶜᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
+    @inbounds ifelse((i < 1) & (j == 1),               (f(i, 1, k, grid, args...) + f(1, i, k, grid, args...))/2,
+              ifelse((i > grid.Nx) & (j == 1),         (f(i, 1, k, grid, args...) + f(grid.Nx, grid.Ny+1-i, k, grid, args...))/2,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), (f(grid.Nx, i, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
+              ifelse((i < 1) & (j == grid.Ny+1),       (f(1, grid.Ny-i+1, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
+                                                       (f(i, j, k, grid, args...) + f(i, j-1, k, grid, args...))/2))))
+
+@inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j < 1),       f(grid.Nx-j+1, 1, k, grid, args...) - f(grid.Nx, j, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j > grid.Ny), f(j, grid.Ny, k, grid, args...)     - f(grid.Nx, j, k, grid, args...),
               ifelse((i == 1) & (j > grid.Ny),         f(1, j, k, grid, args...)           - f(grid.Nx-j+1, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i-1, j, k, grid, args...)))))
 
-@inline δxᶠᶜᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
-    δxᶠᶜᶜ(i, j, k, grid, f, args...)
-
-@inline δyᶜᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
+@inline δyTᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i < 1) & (j == 1),               f(i, 1, k, grid, args...)           - f(1, i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == 1),         f(i, 1, k, grid, args...)           - f(grid.Nx, grid.Ny+1-i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == grid.Ny+1), f(grid.Nx, i, k, grid, args...)     - f(i, grid.Ny, k, grid, args...),
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
 
-@inline δyᶜᶠᶠ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
-    δyᶜᶠᶜ(i, j, k, grid, f, args...)
+import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
+
+@inline static_column_depthᶠᶜᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
+    @inbounds ifelse((i == 1) & (j < 1),               min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(j, 1, grid)),
+              ifelse((i == grid.Nx+1) & (j < 1),       min(static_column_depthᶜᶜᵃ(grid.Nx-j+1, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), min(static_column_depthᶜᶜᵃ(j, grid.Ny, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
+
+@inline static_column_depthᶠᶜᵃ(i, j, grid::AGFIBConformalCubedSpherePanelGrid) =
+    @inbounds ifelse((i == 1) & (j < 1),               min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(j, 1, grid)),
+              ifelse((i == grid.Nx+1) & (j < 1),       min(static_column_depthᶜᶜᵃ(grid.Nx-j+1, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), min(static_column_depthᶜᶜᵃ(j, grid.Ny, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
+              ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
+
+@inline static_column_depthᶠᶜᵃ(i, j, grid::XFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
+
+@inline static_column_depthᶜᶠᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
+    @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
+              ifelse((i > grid.Nx) & (j == 1),         min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, grid.Ny+1-i, grid)),
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), min(static_column_depthᶜᶜᵃ(grid.Nx, i, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+              ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
+
+@inline static_column_depthᶜᶠᵃ(i, j, grid::AGFIBConformalCubedSpherePanelGrid) =
+    @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
+              ifelse((i > grid.Nx) & (j == 1),         min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, grid.Ny+1-i, grid)),
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), min(static_column_depthᶜᶜᵃ(grid.Nx, i, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+              ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
+                                                       min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
+
+@inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
+
+import Oceananigans.BoundaryConditions: fill_halo_kernels
+
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
+    reduced_dimensions = findall(x -> x isa Nothing, loc)
+    reduced_dimensions = tuple(reduced_dimensions...)
+    Nx, Ny  = grid.Nx, grid.Ny
+    Hx, Hy  = grid.Hx, grid.Hy
+    size    = (Nx+2Hx, Ny+2Hy)
+    offset  = (-Hx, -Hy)
+    side    = Oceananigans.BoundaryConditions.BottomAndTop()
+    bcs     = (bcs.bottom, bcs.top)
+    bc      = select_bc(bcs)
+    kernel! = fill_halo_kernel(side, bc, grid, size, offset, data, reduced_dimensions)
+
+    return (; bottom_and_top = kernel!), (; bottom_and_top = bcs)
+end
 
 #####
 ##### Vertical circulation at the corners of the cubed sphere needs to treated in a special manner.
@@ -793,17 +862,17 @@ import Oceananigans.Operators: δxᶠᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶜ, δyᶜ�
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid, u, v)
+$(TYPEDSIGNATURES)
 
-The vertical circulation associated with horizontal velocities ``u`` and ``v``.
+The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """
-@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, u, v) where FT
     ip = max(2 - grid.Hx, i)
     jp = max(2 - grid.Hy, j)
     Γ = ifelse(on_south_west_corner(i, j, grid) | on_north_west_corner(i, j, grid),
-               Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u),
+               convert(FT, 4/3) * (Δy_qᶜᶠᶜ(ip, jp, k, grid, v) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u)),
                ifelse(on_south_east_corner(i, j, grid) | on_north_east_corner(i, j, grid),
-                      - Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u),
+                      convert(FT, 4/3) * (- Δy_qᶜᶠᶜ(ip-1, jp, k, grid, v) + Δx_qᶠᶜᶜ(ip, jp-1, k, grid, u) - Δx_qᶠᶜᶜ(ip, jp, k, grid, u)),
                       δxᶠᶠᶜ(ip, jp, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(ip, jp, k, grid, Δx_qᶠᶜᶜ, u)
                      )
               )

@@ -71,12 +71,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        tracers = (:c, :d, :e),
-                                        velocities = PrescribedVelocityFields(u=uᵢ),
-                                        coriolis = nothing,
-                                        buoyancy = nothing,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = (:c, :d, :e), velocities = PrescribedVelocityFields(u=uᵢ))
 
     # Tracer patch for visualization
     Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)

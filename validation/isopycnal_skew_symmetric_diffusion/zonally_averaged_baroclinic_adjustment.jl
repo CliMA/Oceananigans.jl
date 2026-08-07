@@ -50,7 +50,9 @@ v_bcs = FieldBoundaryConditions(bottom=v_drag_bc)
 
 boundary_conditions=(u=u_bcs, v=v_bcs)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis, boundary_conditions,
+model = HydrostaticFreeSurfaceModel(grid;
+                                    coriolis,
+                                    boundary_conditions,
                                     buoyancy = BuoyancyTracer(),
                                     closure = mesoscale_closure,
                                     tracers = (:b, :K),
@@ -73,9 +75,9 @@ set!(model, b=bᵢ, u=uᵢ, K=Kᵢ)
 
 simulation = Simulation(model; Δt=20minutes, stop_time)
 
-νₑ = model.diffusivity_fields.νₑ
-κₖz = model.diffusivity_fields.κₖz
-κₖh = model.diffusivity_fields.κₖh
+νₑ = model.closure_fields.νₑ
+κₖz = model.closure_fields.κₖz
+κₖh = model.closure_fields.κₖh
 
 # add progress callback
 wall_clock = Ref(time_ns())
@@ -216,4 +218,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

@@ -1,3 +1,5 @@
+using Adapt: Adapt, adapt
+using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
 
 """
@@ -17,16 +19,23 @@ struct AnisotropicMinimumDissipation{TD, PK, PN, PB} <: AbstractScalarDiffusivit
     end
 end
 
+Adapt.adapt_structure(to, closure::AnisotropicMinimumDissipation{TD}) where TD =
+    AnisotropicMinimumDissipation{TD}(adapt(to, closure.Cν),
+                                      adapt(to, closure.Cκ),
+                                      adapt(to, closure.Cb))
+
 const AMD = AnisotropicMinimumDissipation
 
 @inline viscosity(::AMD, K) = K.νₑ
 @inline diffusivity(::AMD, K, ::Val{id}) where id = K.κₑ[id]
 
-Base.show(io::IO, closure::AMD{TD}) where TD =
-    print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
+function Base.show(io::IO, closure::AMD{TD}) where TD
+    td_str = summary(TD())
+    print(io, "AnisotropicMinimumDissipation{$td_str} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, "\n",
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, "\n",
               "                        Buoyancy modification multiplier Cb: ", closure.Cb)
+end
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
@@ -69,7 +78,7 @@ second-order advection scheme. [Verstappen et al. (2014)](@cite Verstappen14) sh
 should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
 discrete production-dissipation balance. Further demonstration of this can be found at
-[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
+<https://github.com/CliMA/Oceananigans.jl/issues/4367>.
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 
@@ -139,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -194,17 +203,17 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
+    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
@@ -309,10 +318,10 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᵣᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵣᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
              * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
@@ -349,10 +358,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### build_diffusivity_fields
+##### build_closure_fields
 #####
 
-function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

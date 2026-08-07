@@ -1,4 +1,6 @@
-import Oceananigans: initialize!
+using Dates: AbstractTime
+
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 """
     AbstractSchedule
@@ -27,46 +29,73 @@ end
 ##### TimeInterval
 #####
 
-mutable struct TimeInterval{FT} <: AbstractSchedule
-    interval :: FT
-    first_actuation_time :: FT
+mutable struct TimeInterval{IT, TT} <: AbstractSchedule
+    interval :: IT
+    first_actuation_time :: TT
     actuations :: Int
 end
 
 """
-    TimeInterval(interval)
+$(TYPEDSIGNATURES)
 
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
 """
 function TimeInterval(interval)
-    FT = Oceananigans.defaults.FloatType
-    interval = convert(FT, interval)
-    return TimeInterval(interval, zero(FT), 0)
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return TimeInterval{IT, TT}(interval, first_actuation_time, 0)
 end
 
-function initialize!(schedule::TimeInterval, first_actuation_time::Number)
+initialize!(schedule::TimeInterval, model) = initialize_actuations!(schedule, model.clock.time)
+
+function initialize_actuations!(schedule::TimeInterval, first_actuation_time)
+
+    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T TimeInterval times with DateTime clock. Use a Dates.Period instead."
+        throw(ArgumentError(msg))
+    end
+
     schedule.first_actuation_time = first_actuation_time
     schedule.actuations = 0
+
     return true
 end
-
-initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.time)
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
     N = schedule.actuations
     T = schedule.interval
-    return t₀ + (N + 1) * T
+    return add_time_interval(t₀, T, N + 1)
+end
+
+#  Return `Inf` if we exhausted the actuations in a TimeInterval(::SpecifiedTimes)
+function next_actuation_time(schedule::TimeInterval{<:AbstractArray})
+    schedule.actuations ≥ length(schedule.interval) && return Inf
+    return add_time_interval(schedule.first_actuation_time, schedule.interval, schedule.actuations + 1)
 end
 
 function (schedule::TimeInterval)(model)
     t = model.clock.time
     t★ = next_actuation_time(schedule)
 
-    if t >= t★
+    # Array-interval schedules return `Inf` once exhausted; never fire again.
+    t★ === Inf && return false
+
+    if t ≥ t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
+            # Advance actuations so the next actuation is strictly in the future.
+            while schedule.actuations < typemax(Int)
+                tN = next_actuation_time(schedule)
+                if tN === Inf || tN > t
+                    break
+                end
+                schedule.actuations += 1
+            end
         else # re-initialize the schedule to t★
             initialize!(schedule, t★)
         end
@@ -78,9 +107,27 @@ end
 
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
+    t★ === Inf && return Δt
     t = clock.time
-    return min(Δt, t★ - t)
+    δt = time_difference_seconds(t★, t)
+    return min(Δt, δt)
 end
+
+function prognostic_state(schedule::TimeInterval)
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations,
+            interval = schedule.interval)
+end
+
+function restore_prognostic_state!(restored::TimeInterval, from)
+    if hasproperty(from, :interval) && from.interval == restored.interval
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
+    return restored
+end
+
+restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
 
 #####
 ##### IterationInterval
@@ -107,6 +154,11 @@ IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
 
 next_actuation_time(schedule::IterationInterval) = Inf
 
+# IterationInterval has no state
+prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(restored::IterationInterval, from) = restored
+restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
+
 #####
 ##### WallTimeInterval
 #####
@@ -130,7 +182,7 @@ other than the moment `WallTimeInterval` is constructed.
 """
 function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
     FT = Oceananigans.defaults.FloatType
-    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+    return WallTimeInterval(convert(FT, interval), convert(FT, start_time))
 end
 
 function (schedule::WallTimeInterval)(model)
@@ -145,6 +197,11 @@ function (schedule::WallTimeInterval)(model)
     end
 end
 
+# WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
+# On restore, the schedule starts fresh from the current wall time.
+prognostic_state(::WallTimeInterval) = nothing
+restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) = restored
+
 #####
 ##### SpecifiedTimes
 #####
@@ -155,7 +212,7 @@ mutable struct SpecifiedTimes{FT} <: AbstractSchedule
 end
 
 """
-    SpecifiedTimes(times)
+$(TYPEDSIGNATURES)
 
 Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
@@ -166,12 +223,25 @@ whenever the model's clock equals the specified values in `times`. For example,
     The specified `times` need not be ordered as the `SpecifiedTimes` constructor
     will check and order them in ascending order if needed.
 """
-function SpecifiedTimes(times::Vararg{T}) where T<:Number
-    FT = Oceananigans.defaults.FloatType
-    return SpecifiedTimes(sort([convert(FT, t) for t in times]), 0)
+function SpecifiedTimes(times...)
+    length(times) == 0 && return SpecifiedTimes(Float64[], 0)
+
+    first_time = times[1]
+
+    if all(t -> t isa Number, times)
+        FT = Oceananigans.defaults.FloatType
+        return SpecifiedTimes{FT}(sort([convert(FT, t) for t in times]), 0)
+    elseif all(t -> t isa AbstractTime, times)
+        TT = typeof(first_time)
+        return SpecifiedTimes{TT}(sort(collect(times)), 0)
+    else
+        throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
+    end
 end
 
-SpecifiedTimes(times) = SpecifiedTimes(times...)
+function SpecifiedTimes(times::AbstractVector)
+    return SpecifiedTimes(Tuple(times)...)
+end
 
 function next_actuation_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
@@ -183,8 +253,13 @@ end
 
 function (st::SpecifiedTimes)(model)
     current_time = model.clock.time
+    next_time = next_actuation_time(st)
 
-    if current_time >= next_actuation_time(st)
+    if next_time === Inf
+        return false
+    end
+
+    if current_time >= next_time
         st.previous_actuation += 1
         return true
     end
@@ -195,7 +270,8 @@ end
 initialize!(st::SpecifiedTimes, model) = st(model)
 
 function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
-    δt = next_actuation_time(schedule) - clock.time
+    t★ = next_actuation_time(schedule)
+    δt = t★ == Inf ? Δt : time_difference_seconds(t★, clock.time)
     return min(Δt, δt)
 end
 
@@ -210,6 +286,19 @@ function specified_times_str(st)
     return string(str, "]")
 end
 
+Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
+
+function prognostic_state(schedule::SpecifiedTimes)
+    return (; previous_actuation = schedule.previous_actuation)
+end
+
+function restore_prognostic_state!(restored::SpecifiedTimes, from)
+    restored.previous_actuation = from.previous_actuation
+    return restored
+end
+
+restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
+
 #####
 ##### ConsecutiveIterations
 #####
@@ -221,7 +310,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    ConsecutiveIterations(parent_schedule)
+    ConsecutiveIterations(parent_schedule, N=1)
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -244,6 +333,19 @@ end
 schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
 
+function prognostic_state(schedule::ConsecutiveIterations)
+    return (parent = prognostic_state(schedule.parent),
+            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
+end
+
+function restore_prognostic_state!(restored::ConsecutiveIterations, from)
+    restore_prognostic_state!(restored.parent, from.parent)
+    restored.previous_parent_actuation_iteration = from.previous_parent_actuation_iteration
+    return restored
+end
+
+restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
+
 #####
 ##### Any and AndSchedule
 #####
@@ -254,7 +356,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -270,7 +372,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """
@@ -290,9 +392,16 @@ schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, 
 ##### Show methods
 #####
 
-Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+function Base.summary(schedule::IterationInterval)
+    summary = string("IterationInterval(", schedule.interval, ")")
+    if schedule.offset != 0
+        summary *= " with offset $(schedule.offset)"
+    end
+    return summary
+end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.show(io::IO, schedule::SpecifiedTimes) = print(io, summary(schedule))
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
