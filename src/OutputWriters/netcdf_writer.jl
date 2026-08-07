@@ -152,6 +152,7 @@ The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a symbol or 
 
 - An `AbstractField` (e.g., `model.velocities.u`, `model.tracers.T`)
 - An `AbstractOperation` or `Reduction` (e.g., `Average(model.tracers.T, dims=(1, 2))`)
+- A `WindowedTimeAverage` or `TimeDerivative` of any of the above
 - `LagrangianParticles` for particle tracking data
 - A function `f(model)` that returns data to be written to disk
 

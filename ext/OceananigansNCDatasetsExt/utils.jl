@@ -55,8 +55,10 @@ end
 
 squeeze_nothing_dimensions(func, func_data; kwargs...) = func_data
 squeeze_nothing_dimensions(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_nothing_dimensions(wta.operand, data; kwargs...)
+squeeze_nothing_dimensions(derivative::TimeDerivative{<:AbstractField}, data; kwargs...) = squeeze_nothing_dimensions(derivative.operand, data; kwargs...)
 squeeze_nothing_dimensions(fd::AbstractField; kwargs...) = squeeze_nothing_dimensions(fd, parent(fd); kwargs...)
 squeeze_nothing_dimensions(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_nothing_dimensions(fd.operand; kwargs...)
+squeeze_nothing_dimensions(fd::TimeDerivative{<:AbstractField}; kwargs...) = squeeze_nothing_dimensions(fd.operand; kwargs...)
 
 """
     effective_reduced_dimensions(field)

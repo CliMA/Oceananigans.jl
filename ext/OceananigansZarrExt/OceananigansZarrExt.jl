@@ -38,7 +38,8 @@ using Oceananigans.OutputWriters:
     show_array_type,
     trilocation_dim_name,
     fetch_and_convert_output,
-    WindowedTimeAverage
+    WindowedTimeAverage,
+    TimeDerivative
 using Oceananigans.Utils:
     TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
     prettykeys, pretty_filesize

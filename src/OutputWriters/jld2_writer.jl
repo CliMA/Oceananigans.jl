@@ -44,8 +44,8 @@ in `outputs` to a JLD2 file.
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
 strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects that
-are called with the signature `output(model)`, or `WindowedTimeAverage`s of `AbstractFields`s,
-functions, or callable objects.
+are called with the signature `output(model)`, or `WindowedTimeAverage`s or `TimeDerivative`s of
+`AbstractFields`s, functions, or callable objects.
 
 Keyword arguments
 =================

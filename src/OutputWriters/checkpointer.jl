@@ -331,10 +331,15 @@ function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
 
+    derivative_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
+                                    for (name, output) in pairs(writer.outputs)
+                                    if output isa TimeDerivative)
+
     return (schedule = prognostic_state(writer.schedule),
             part = writer.part,
             file_splitting = prognostic_state(writer.file_splitting),
-            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
+            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
+            time_derivatives = isempty(derivative_outputs) ? nothing : derivative_outputs)
 end
 
 function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
@@ -357,6 +362,15 @@ function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, fr
             key = output_lookup_key(restored, name)
             if haskey(restored.outputs, key) && restored.outputs[key] isa WindowedTimeAverage
                 restore_prognostic_state!(restored.outputs[key], wta_state)
+            end
+        end
+    end
+
+    if hasproperty(from, :time_derivatives) && !isnothing(from.time_derivatives)
+        for (name, derivative_state) in pairs(from.time_derivatives)
+            key = output_lookup_key(restored, name)
+            if haskey(restored.outputs, key) && restored.outputs[key] isa TimeDerivative
+                restore_prognostic_state!(restored.outputs[key], derivative_state)
             end
         end
     end

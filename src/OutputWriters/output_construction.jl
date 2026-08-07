@@ -72,3 +72,12 @@ function construct_output(averaged_output::WindowedTimeAverage{<:Field}, indices
     output = construct_output(averaged_output.operand, indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
 end
+
+#####
+##### Time differentiation
+#####
+
+function construct_output(derivative::TimeDerivative{<:Field}, indices, with_halos)
+    output = construct_output(derivative.operand, indices, with_halos)
+    return TimeDerivative(output)
+end
