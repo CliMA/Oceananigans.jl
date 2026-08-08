@@ -136,34 +136,32 @@ function test_jld2_compression(arch)
 
     file_sizes = Dict{Bool, Int}()
 
-    for compress in (false, true)
-        model.clock.iteration = 0
-        model.clock.time = 0.0
-        set!(model, c=(x, y, z) -> exp(z))
+    mktempdir() do dir
+        for compress in (false, true)
+            model.clock.iteration = 0
+            model.clock.time = 0.0
+            set!(model, c=(x, y, z) -> exp(z))
 
-        simulation = Simulation(model, Δt=1, stop_iteration=1)
+            simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-        filename = "compression_test_$compress.jld2"
-        simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
-                                                         filename,
-                                                         schedule = IterationInterval(1),
-                                                         compress,
-                                                         overwrite_existing = true)
+            filename = joinpath(dir, "compression_test_$compress.jld2")
+            simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
+                                                             filename,
+                                                             schedule = IterationInterval(1),
+                                                             compress,
+                                                             overwrite_existing = true)
 
-        run!(simulation)
+            run!(simulation)
 
-        file_sizes[compress] = filesize(filename)
+            file_sizes[compress] = filesize(filename)
+        end
+
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
+        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+
+        @test parent(c_compressed) == parent(c_uncompressed)
+        @test file_sizes[true] < file_sizes[false]
     end
-
-    c_uncompressed = FieldTimeSeries("compression_test_false.jld2", "c")
-    c_compressed = FieldTimeSeries("compression_test_true.jld2", "c")
-
-    @test parent(c_compressed) == parent(c_uncompressed)
-    @test file_sizes[true] < file_sizes[false]
-
-    rm("compression_test_false.jld2")
-    rm("compression_test_true.jld2")
-
     return nothing
 end
 
