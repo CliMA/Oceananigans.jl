@@ -18,6 +18,7 @@ using Oceananigans.Utils
 
 # To be extended in the `Models` module
 timestepper(model) = nothing
+initialize_after_pickup!(model) = update_state!(model)
 
 include("callback.jl")
 include("simulation.jl")
