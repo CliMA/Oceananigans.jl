@@ -165,6 +165,32 @@ function test_jld2_compression(arch)
     return nothing
 end
 
+function test_jld2_compress_keyword_precedence(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    writer(; kwargs...) = JLD2Writer(model, model.velocities;
+                                     filename = "compress_keyword_test.jld2",
+                                     schedule = IterationInterval(1),
+                                     kwargs...)
+
+    @test writer().jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
+    @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
+
+    # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
+    @test writer(compress=true, jld2_kw=Dict{Symbol, Any}(:compress => false)).jld2_kw[:compress] == false
+
+    # Other jld2_kw entries are preserved alongside compress
+    jld2_kw = Dict{Symbol, Any}(:iotype => IOStream)
+    @test writer(compress=true, jld2_kw=jld2_kw).jld2_kw == Dict{Symbol, Any}(:iotype => IOStream, :compress => true)
+
+    # The user-provided jld2_kw is not mutated
+    @test jld2_kw == Dict{Symbol, Any}(:iotype => IOStream)
+
+    return nothing
+end
+
 function test_jld2_time_averaging_of_horizontal_averages(model)
 
     model.clock.iteration = 0
@@ -492,6 +518,7 @@ for arch in archs
         #####
 
         test_jld2_compression(arch)
+        test_jld2_compress_keyword_precedence(arch)
 
         #####
         ##### Time-averaging
