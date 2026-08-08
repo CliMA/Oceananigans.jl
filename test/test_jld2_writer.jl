@@ -130,6 +130,43 @@ function test_jld2_time_file_splitting(arch)
     return nothing
 end
 
+function test_jld2_compression(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    file_sizes = Dict{Bool, Int}()
+
+    for compress in (false, true)
+        model.clock.iteration = 0
+        model.clock.time = 0.0
+        set!(model, c=(x, y, z) -> exp(z))
+
+        simulation = Simulation(model, Δt=1, stop_iteration=1)
+
+        filename = "compression_test_$compress.jld2"
+        simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
+                                                         filename,
+                                                         schedule = IterationInterval(1),
+                                                         compress,
+                                                         overwrite_existing = true)
+
+        run!(simulation)
+
+        file_sizes[compress] = filesize(filename)
+    end
+
+    c_uncompressed = FieldTimeSeries("compression_test_false.jld2", "c")
+    c_compressed = FieldTimeSeries("compression_test_true.jld2", "c")
+
+    @test parent(c_compressed) == parent(c_uncompressed)
+    @test file_sizes[true] < file_sizes[false]
+
+    rm("compression_test_false.jld2")
+    rm("compression_test_true.jld2")
+
+    return nothing
+end
+
 function test_jld2_time_averaging_of_horizontal_averages(model)
 
     model.clock.iteration = 0
@@ -451,6 +488,12 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
+
+        #####
+        ##### Compression
+        #####
+
+        test_jld2_compression(arch)
 
         #####
         ##### Time-averaging

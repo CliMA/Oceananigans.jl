@@ -199,6 +199,21 @@ simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                schedule = AveragedTimeInterval(20minute, window=5minute))
 ```
 
+To reduce the size of output files, data can be compressed when written to disk via the
+`compress` keyword argument, at the cost of some extra time spent compressing while writing
+and decompressing while reading:
+
+```@example jld2_output_writer
+simulation.output_writers[:compressed] = JLD2Writer(model, model.velocities,
+                                                    filename = "some_compressed_data.jld2",
+                                                    schedule = TimeInterval(20minute),
+                                                    compress = true)
+```
+
+With `compress = true` a default compression algorithm is used; see the
+[JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/) for
+the other supported compressors.
+
 See [`JLD2Writer`](@ref) for more information.
 
 ## Time-averaged output
