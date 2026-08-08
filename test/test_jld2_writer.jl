@@ -130,6 +130,67 @@ function test_jld2_time_file_splitting(arch)
     return nothing
 end
 
+function test_jld2_compression(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    file_sizes = Dict{Bool, Int}()
+
+    mktempdir() do dir
+        for compress in (false, true)
+            model.clock.iteration = 0
+            model.clock.time = 0.0
+            set!(model, c=(x, y, z) -> exp(z))
+
+            simulation = Simulation(model, Δt=1, stop_iteration=1)
+
+            filename = joinpath(dir, "compression_test_$compress.jld2")
+            simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
+                                                             filename,
+                                                             schedule = IterationInterval(1),
+                                                             compress,
+                                                             overwrite_existing = true)
+
+            run!(simulation)
+
+            file_sizes[compress] = filesize(filename)
+        end
+
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
+        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+
+        @test parent(c_compressed) == parent(c_uncompressed)
+        @test file_sizes[true] < file_sizes[false]
+    end
+    return nothing
+end
+
+function test_jld2_compress_keyword_precedence(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    writer(; kwargs...) = JLD2Writer(model, model.velocities;
+                                     filename = "compress_keyword_test.jld2",
+                                     schedule = IterationInterval(1),
+                                     kwargs...)
+
+    @test writer().jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
+    @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
+
+    # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
+    @test writer(compress=true, jld2_kw=Dict{Symbol, Any}(:compress => false)).jld2_kw[:compress] == false
+
+    # Other jld2_kw entries are preserved alongside compress
+    jld2_kw = Dict{Symbol, Any}(:iotype => IOStream)
+    @test writer(compress=true, jld2_kw=jld2_kw).jld2_kw == Dict{Symbol, Any}(:iotype => IOStream, :compress => true)
+
+    # The user-provided jld2_kw is not mutated
+    @test jld2_kw == Dict{Symbol, Any}(:iotype => IOStream)
+
+    return nothing
+end
+
 function test_jld2_time_averaging_of_horizontal_averages(model)
 
     model.clock.iteration = 0
@@ -451,6 +512,13 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
+
+        #####
+        ##### Compression
+        #####
+
+        test_jld2_compression(arch)
+        test_jld2_compress_keyword_precedence(arch)
 
         #####
         ##### Time-averaging
