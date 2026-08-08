@@ -59,6 +59,36 @@ using ConservativeRegridding
     compute!(high_level_field)
     @test all(interior(high_level_field) .≈ 4)
 
+    # Immersed source grids carry inactive cells, so the destination must
+    # also be immersed. Otherwise later operations would not know which
+    # destination cells should be ignored.
+    coarse_immersed_grid = RectilinearGrid(size=(2, 2, 1),
+                                           x=(0, 2), y=(0, 2), z=(0, 1),
+                                           topology=(Bounded, Bounded, Bounded))
+
+    fine_immersed_grid = RectilinearGrid(size=(4, 4, 1),
+                                         x=(0, 2), y=(0, 2), z=(0, 1),
+                                         topology=(Bounded, Bounded, Bounded))
+
+    immersed_boundary = GridFittedBoundary((x, y, z) -> x < 1)
+
+    source_immersed_grid = ImmersedBoundaryGrid(fine_immersed_grid, immersed_boundary; active_z_columns=true)
+    destination_immersed_grid = ImmersedBoundaryGrid(coarse_immersed_grid, immersed_boundary; active_z_columns=true)
+
+    source_immersed_field = CenterField(source_immersed_grid)
+    set!(source_immersed_field, (x, y, z) -> x + 2y)
+
+    @test_throws ArgumentError RegriddedOperation(source_immersed_field, coarse_immersed_grid)
+
+    immersed_regridded_operation = RegriddedOperation(source_immersed_field, destination_immersed_grid)
+    destination_immersed_field = Field(immersed_regridded_operation)
+    compute!(destination_immersed_field)
+
+    source_integral = Field(Integral(source_immersed_field)) |> interior |> collect |> only
+    destination_integral = Field(Integral(destination_immersed_field)) |> interior |> collect |> only
+
+    @test destination_integral ≈ source_integral
+
     # Test with RectilinearGrid
     @info "  Testing RectilinearGrid regridding..."
     coarse_rect_grid = RectilinearGrid(size=(50, 50),
