@@ -132,6 +132,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Wu, W. (2026). [Ageostrophic velocities of curved ocean fronts](https://doi.org/10.1029/2025JC023961?urlappend=%3Futm_source%3Dresearchgate.net%26utm_medium%3Darticle), _Journal of Geophysical Research: Oceans_, **131(8)**, e2025JC023961. DOI: [10.1029/2025JC023961](https://doi.org/10.1029/2025JC023961?urlappend=%3Futm_source%3Dresearchgate.net%26utm_medium%3Darticle)
+
 1. Bisits, J. I., McDougall, T. J., and Zika, J. D. (2026). [Determining how nonlinearities in the equation of state affect diffusive interfaces in the ocean](https://doi.org/10.1017/jfm.2026.11889), _Journal of Fluid Mechanics_, **1040**, A33. DOI: [10.1017/jfm.2026.11889](https://doi.org/10.1017/jfm.2026.11889)
 
 1. Lefauve, A., Bassett, C., Plotnick, D. S., Lavery, A. C., and Geyer, W. R. (2026). [The structure and lifecycle of stratified mixing by shear instabilities in continuously forced flows](https://doi.org/10.1029/2025JC023905), _Journal of Geophysical Research: Oceans_, **131(7)**, e2025JC023905. DOI: [10.1029/2025JC023905](https://doi.org/10.1029/2025JC023905)
