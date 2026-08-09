@@ -2,7 +2,7 @@ module OceananigansMetalExt
 
 using AbstractFFTs: plan_fft!, plan_ifft!
 using KernelAbstractions: __dynamic_checkbounds, __iterspace
-using Metal: Metal, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d, threadgroup_position_in_grid, thread_position_in_threadgroup
+using Metal: Metal, MtlArray, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d, threadgroup_position_in_grid, thread_position_in_threadgroup
 using Oceananigans: Oceananigans, CPU, GPU
 using Oceananigans.Architectures: Architectures
 using Oceananigans.Grids: Bounded, Periodic
