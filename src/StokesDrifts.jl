@@ -227,7 +227,7 @@ corresponding to a surface gravity wave field with an envelope that (potentially
 in the horizontal directions.
 
 To resolve the evolution of the Lagrangian-mean momentum, we require all the components
-of the "psuedovorticity",
+of the "pseudovorticity",
 
 ```math
 𝛁 × 𝐯ˢ = \\hat{\\boldsymbol{x}} (∂_y wˢ - ∂_z vˢ) + \\hat{\\boldsymbol{y}} (∂_z uˢ - ∂_x wˢ) + \\hat{\\boldsymbol{z}} (∂_x vˢ - ∂_y uˢ)
@@ -235,12 +235,12 @@ of the "psuedovorticity",
 
 as well as the time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
-Note that each function (e.g., `∂z_uˢ`) is generally a function of depth, horizontal coordinates,
-and time.Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
+Note that each function (e.g., `∂z_uˢ`) generally depends on depth, horizontal coordinates,
+and time. Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
 are omitted.
 
-For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`),
-then, e.g., `∂z_uˢ` is callable via `∂z_uˢ(x, z, t)`. When `!isnothing(parameters)`, then
+For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`)
+`∂z_uˢ` is callable via `∂z_uˢ(x, z, t)`. When `!isnothing(parameters)`, then
 `∂z_uˢ` is callable via `∂z_uˢ(x, z, t, parameters)`. Similarly, on a grid with
 `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`, `∂z_uˢ` is called
 via `∂z_uˢ(x, y, z, t)`.
