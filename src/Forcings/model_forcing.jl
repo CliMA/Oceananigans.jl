@@ -29,7 +29,7 @@ materialize_forcing(::Nothing, field::AbstractField, field_name, model_field_nam
 
 # TODO: some checking that `array` is validly-sized could be done here
 materialize_forcing(array::AbstractArray, field::AbstractField, field_name, model_field_names) = Forcing(array)
-materialize_forcing(fts::FlavorOfFTS, field::AbstractField, field_name, model_field_names) = Forcing(fts)
+materialize_forcing(fts::Union{FlavorOfFTS, AbstractFieldTimeSeries}, field::AbstractField, field_name, model_field_names) = Forcing(fts)
 
 
 """
