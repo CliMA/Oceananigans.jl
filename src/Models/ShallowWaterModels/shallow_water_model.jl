@@ -15,7 +15,9 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!,
+                     checkpoint_restore_mode,
+                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -260,7 +262,8 @@ shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation
 #####
 
 function prognostic_state(model::ShallowWaterModel)
-    return (clock = prognostic_state(model.clock),
+    return (checkpoint_grid = model.grid,
+            clock = prognostic_state(model.clock),
             solution = prognostic_state(model.solution),
             velocities = prognostic_state(model.velocities),
             tracers = prognostic_state(model.tracers),
@@ -269,12 +272,40 @@ function prognostic_state(model::ShallowWaterModel)
 end
 
 function restore_prognostic_state!(restored::ShallowWaterModel, from)
+    checkpoint_grid = from.checkpoint_grid
+    mode = checkpoint_restore_mode(checkpoint_grid, restored.grid)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
+end
+
+function restore_prognostic_state!(restored::ShallowWaterModel, from, checkpoint_grid, ::RestoreOnCurrentGrid)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.solution, from.solution)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+
+    return restored
+end
+
+function restore_prognostic_state!(restored::ShallowWaterModel, from, checkpoint_grid, mode::RestoreOnCompatibleGrid)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.solution, from.solution, mode)
+    restore_prognostic_state!(restored.velocities, from.velocities, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
+
+
+    model_fields = Oceananigans.fields(restored)
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.solution, restored.tracers),
+                                                       restored.clock,
+                                                       model_fields)
+
+    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields)
+
+    foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.solution, restored.tracers))
+    compute_velocities!(restored.velocities, formulation(restored))
     return restored
 end
 

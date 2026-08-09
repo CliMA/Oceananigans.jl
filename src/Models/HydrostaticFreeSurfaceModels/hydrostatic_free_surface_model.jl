@@ -17,7 +17,9 @@ using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
+                     checkpoint_restore_mode,
+                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -73,6 +75,9 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
     boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
+
+fs_halo_size(model::HydrostaticFreeSurfaceModel) = fs_halo_size(model.free_surface)
+fs_halo_size(model::HydrostaticFreeSurfaceModel, d) = fs_halo_size(model)[d]
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
 
@@ -385,7 +390,9 @@ buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 #####
 
 function prognostic_state(model::HydrostaticFreeSurfaceModel)
-    return (clock = prognostic_state(model.clock),
+    return (checkpoint_grid = model.grid,
+            checkpoint_free_surface_grid = fs_halo_size(model) === nothing ? nothing : model.free_surface.displacement.grid,
+            clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
             tracers = prognostic_state(model.tracers),
@@ -396,16 +403,66 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
 
-function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from::NamedTuple{names}) where names
+    return restore_prognostic_state!(restored, from, Val(:checkpoint_grid in names))
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, ::Val{true})
+    checkpoint_grid = from.checkpoint_grid
+
+    checkpoint_free_surface_grid = Oceananigans.OutputWriters.checkpoint_free_surface_grid(from, checkpoint_grid, restored)
+    mode = Oceananigans.OutputWriters.checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, ::Val{false})
+    return restore_prognostic_state!(restored, from, nothing, RestoreOnCurrentGrid())
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                   from,
+                                   checkpoint_grid,
+                                   ::RestoreOnCurrentGrid)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
-    restore_prognostic_state!(restored.timestepper, from.timestepper)
+
+    model_fields = Oceananigans.fields(restored)
+    restore_prognostic_state!(restored.timestepper, from.timestepper, RestoreOnCurrentGrid(), restored.clock, model_fields)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+
+    return restored
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                   from,
+                                   checkpoint_grid,
+                                   mode::RestoreOnCompatibleGrid)
+    model_mode = Oceananigans.OutputWriters.checkpoint_restore_mode(checkpoint_grid, restored.grid)
+
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities, model_mode)
+    restore_prognostic_state!(restored.free_surface, from.free_surface, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, model_mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, model_mode)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, model_mode)
+    restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+
+    model_fields = Oceananigans.fields(restored)
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.velocities, restored.tracers),
+                                                       restored.clock,
+                                                       model_fields)
+
+    restore_prognostic_state!(restored.timestepper, from.timestepper, model_mode, restored.clock, model_fields)
+
+    foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
+    reconcile_free_surface!(restored.free_surface, restored.grid, restored.velocities)
     return restored
 end
 

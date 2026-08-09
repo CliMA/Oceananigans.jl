@@ -459,4 +459,11 @@ function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
     return restored
 end
 
+function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from, mode)
+    restore_prognostic_state!(restored.displacement, from.displacement, mode)
+    restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities, mode)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    return restored
+end
+
 restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
