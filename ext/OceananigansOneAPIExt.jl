@@ -1,6 +1,6 @@
 module OceananigansOneAPIExt
 
-using Oceananigans: Oceananigans
+using Oceananigans: Oceananigans, CPU, GPU
 using oneAPI: oneAPI, oneArray
 
 const ONEGPU = GPU{<:oneAPI.oneAPIBackend}
