@@ -210,7 +210,7 @@ simulation.output_writers[:compressed] = JLD2Writer(model, model.velocities,
                                                     compress = true)
 ```
 
-With `compress = true` a default compression algorithm is used; see the
+With `compress = true` (which is the default), a the `Deflate` compression filter is used; see the
 [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/) for
 the other supported compressors.
 
