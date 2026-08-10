@@ -2,7 +2,7 @@ using Dates: Dates, AbstractTime
 using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
-using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter, write_output!
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter, ZarrWriter, write_output!
 using Oceananigans.Solvers: iteration
 using Oceananigans.TimeSteppers: reset!
 using Oceananigans.Utils: period_to_seconds, prettytime
