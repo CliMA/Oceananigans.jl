@@ -9,14 +9,14 @@ export
     add_callback!,
     iteration
 
-using OrderedCollections: OrderedDict
 using DocStringExtensions: TYPEDSIGNATURES
+using OrderedCollections: OrderedDict
 
-using Oceananigans: Oceananigans, AbstractDiagnostic, AbstractOutputWriter
-using Oceananigans.Advection: Advection
-using Oceananigans.OutputWriters: OutputWriters, Checkpointer, ZarrWriter, checkpoint
-using Oceananigans.TimeSteppers: TimeSteppers
-using Oceananigans.Utils: Utils, IterationInterval, ordered_dict_show
+using ..Oceananigans: Oceananigans, AbstractDiagnostic, AbstractOutputWriter
+using ..Advection: Advection
+using ..OutputWriters: OutputWriters, Checkpointer, ZarrWriter, checkpoint
+using ..TimeSteppers: TimeSteppers
+using ..Utils: Utils, IterationInterval, ordered_dict_show
 
 # To be extended in the `Models` module
 timestepper(model) = nothing
