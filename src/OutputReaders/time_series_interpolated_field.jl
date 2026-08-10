@@ -1,12 +1,11 @@
-using Adapt
+using Adapt: Adapt, adapt
+
 using Oceananigans: location
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: indices, show_location
 using Oceananigans.Grids: size as grid_size
 using Oceananigans.Units: Time
-
-import Oceananigans.Fields: indices
 
 #####
 ##### TimeSeriesInterpolation
@@ -41,7 +40,7 @@ function TimeSeriesInterpolation(time_series::FTS, grid::G; clock::C) where {FTS
 end
 
 # Use indices from the underlying FieldTimeSeries
-@inline indices(f::TimeSeriesInterpolation) = indices(f.time_series)
+@inline Oceananigans.Fields.indices(f::TimeSeriesInterpolation) = indices(f.time_series)
 
 # Override size to account for reduced indices
 @inline Base.size(f::TimeSeriesInterpolation) = grid_size(f.grid, location(f), indices(f))
@@ -67,7 +66,7 @@ struct GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, FTS, TT, I, T} <: AbstractO
     indices :: I        # Spatial indices from the original FieldTimeSeries
 end
 
-@inline indices(f::GPUAdaptedTimeSeriesInterpolation) = f.indices
+@inline Oceananigans.Fields.indices(f::GPUAdaptedTimeSeriesInterpolation) = f.indices
 
 @inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.time)]

@@ -1,17 +1,13 @@
-import Dates
+using Dates: Dates, AbstractTime
 
-using Dates: AbstractTime
+using Adapt: Adapt, adapt
+using GPUArraysCore: @allowscalar
 
-using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime,
-                           mapped_data
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
-using GPUArraysCore: @allowscalar
-using Adapt
-
-import Oceananigans.Fields: interpolate
-
+using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, FixedTime,
+                           FractionalIndices, instantiated_location, flatten_node, mapped_data
+using Oceananigans.Grids: _node
 using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
 
 @inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
@@ -266,14 +262,14 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
+@inline Fields.interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
     interpolate(identity, to_node, to_time_index, from_fts, from_loc, from_grid)
 
 # Space+time interpolation of a `FieldTimeSeries` with each source value mapped through `func`
 # (in the spirit of `mean(func, itr)`). `func = identity` reproduces the unmapped interpolation
 # exactly, since `mapped_data(identity, data)` is `data`. See `Oceananigans.Fields.interpolate(func, …)`.
-@inline function interpolate(func::Base.Callable, to_node, to_time_index::Time,
-                             from_fts::FlavorOfFTS, from_loc, from_grid)
+@inline function Fields.interpolate(func::Base.Callable, to_node, to_time_index::Time,
+                                    from_fts::FlavorOfFTS, from_loc, from_grid)
     data          = mapped_data(func, from_fts.data)
     times         = from_fts.times
     backend       = from_fts.backend
@@ -281,16 +277,16 @@ end
     return interpolate(to_node, to_time_index, data, from_loc, from_grid, times, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, to_time_index::Time, data::AbstractArray,
-                             from_loc, from_grid, times, backend, time_indexing)
+@inline function Fields.interpolate(to_node, to_time_index::Time, data::AbstractArray,
+                                    from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
     interp = TimeInterpolator(time_indexing, times, to_time)
     return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
-                             from_loc, from_grid, backend, time_indexing)
+@inline function Fields.interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
+                                    from_loc, from_grid, backend, time_indexing)
 
     # Build space interpolators
     to_node = flatten_node(to_node...)
@@ -304,8 +300,8 @@ end
     return interpolate(fi, time_indices, data, backend, time_indexing)
 end
 
-@inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
-                             data::AbstractArray, backend, time_indexing)
+@inline function Fields.interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
+                                    data::AbstractArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
     n₁ = convert(Int, time_indices.first_index)
@@ -327,7 +323,7 @@ end
     return ifelse(n₁ == n₂, ψ₁, ψ̃)
 end
 
-function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
+function Fields.interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
 
     target_grid = target_fts.grid
     source_grid = source_fts.grid

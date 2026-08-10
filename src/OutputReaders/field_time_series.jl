@@ -1,31 +1,24 @@
 using Base: @propagate_inbounds
 
-using OffsetArrays
-using Statistics
-using JLD2
-using Adapt
-using Glob
-using GPUArraysCore
-
+using Adapt: Adapt, adapt
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
+using JLD2: JLD2, jldopen
+using Glob: Glob, glob
+using GPUArraysCore: GPUArraysCore, @allowscalar
+using OffsetArrays: OffsetArrays, OffsetArray
+using Statistics: Statistics, mean
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Fields
-
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid, validate_indices
+using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, FieldBoundaryConditions
+using Oceananigans.Fields: Fields, AbstractField, compute!, data, field, interior,
+                           interior_view_indices, indices_summary, instantiate
+using Oceananigans.Grids: Grids, Center, Flat, grid, offset_data,
+                          topology, total_size, interior_parent_indices,
+                          AbstractGrid, validate_indices
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-
-using Oceananigans.Fields: interior_view_indices,
-                           indices_summary, instantiate
-
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
-
-import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
-import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
 ##### Data backends for FieldTimeSeries
@@ -313,7 +306,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
     end
 end
 
-on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
@@ -374,7 +367,7 @@ const    ClampFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp,    K} where K
 
 const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
 
-architecture(fts::FieldTimeSeries) = architecture(fts.grid)
+Architectures.architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.times))
 
 @inline function memory_index(fts, n)
@@ -1021,12 +1014,12 @@ end
 Load a field called `name` saved in a JLD2 file at `file` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, file::JLD2.JLDFile, name::String, iter;
-               grid = nothing,
-               architecture = nothing,
-               indices = (:, :, :),
-               boundary_conditions = nothing,
-               reader_kw = NamedTuple())
+function Fields.Field(location, file::JLD2.JLDFile, name::String, iter;
+                      grid = nothing,
+                      architecture = nothing,
+                      indices = (:, :, :),
+                      boundary_conditions = nothing,
+                      reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)
@@ -1055,8 +1048,8 @@ end
 Base.lastindex(fts::FlavorOfFTS, dim) = lastindex(fts.data, dim)
 Base.parent(fts::InMemoryFTS)         = parent(fts.data)
 Base.parent(fts::OnDiskFTS)           = nothing
-indices(fts::FieldTimeSeries)         = fts.indices
-interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
+Fields.indices(fts::FieldTimeSeries)         = fts.indices
+Fields.interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 
 # Make FieldTimeSeries behave like Vector wrt to singleton indices
 Base.length(fts::FlavorOfFTS)     = length(fts.times)
@@ -1089,9 +1082,9 @@ end
 
 const MAX_FTS_TUPLE_SIZE = 10
 
-fill_halo_regions!(fts::OnDiskFTS) = nothing
+BoundaryConditions.fill_halo_regions!(fts::OnDiskFTS) = nothing
 
-function fill_halo_regions!(fts::InMemoryFTS)
+function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
     partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 

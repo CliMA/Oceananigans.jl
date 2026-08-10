@@ -112,7 +112,7 @@ end
         Oceananigans.MultiRegion,
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
-        # Oceananigans.OutputReaders,
+        Oceananigans.OutputReaders,
         # Oceananigans.OutputWriters,
         # Oceananigans.Simulations,
         Oceananigans.Solvers,

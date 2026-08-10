@@ -1,18 +1,16 @@
-using JLD2
-using Glob
-using Statistics: mean
+using JLD2: JLD2, jldopen
+using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
-
 using OffsetArrays: OffsetArray
+using Statistics: mean
 
+using Oceananigans.DistributedComputations: reconstruct_global_topology
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
-
-using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.DistributedComputations: reconstruct_global_topology
 
 #####
 ##### DistributedPaths - wrapper for path that includes rank file info
