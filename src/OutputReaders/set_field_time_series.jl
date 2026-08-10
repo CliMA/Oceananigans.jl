@@ -1,7 +1,7 @@
 using Printf: Printf, @sprintf
 
 using Oceananigans.Architectures: cpu_architecture
-using Oceananigans.Fields: set_to_function!
+using Oceananigans.Fields: set_to_function!, Field
 using Oceananigans.TimeSteppers: Clock
 
 #####

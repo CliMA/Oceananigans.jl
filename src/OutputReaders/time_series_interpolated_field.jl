@@ -1,7 +1,7 @@
 using Adapt: Adapt, adapt
 
 using Oceananigans: location
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: Fields, indices, show_location
 using Oceananigans.Grids: size as grid_size
@@ -82,7 +82,7 @@ end
 ##### on_architecture
 #####
 
-function on_architecture(to, f::TimeSeriesInterpolation)
+function Architectures.on_architecture(to, f::TimeSeriesInterpolation)
     return TimeSeriesInterpolation(on_architecture(to, f.time_series),
                                    on_architecture(to, f.grid);
                                    clock = on_architecture(to, f.clock))

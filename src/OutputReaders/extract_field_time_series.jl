@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: BoundaryCondition, DiscreteBoundaryFunction, ContinuousBoundaryFunction
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid
 

@@ -1056,7 +1056,7 @@ Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
-function interior(fts::FieldTimeSeries)
+function Fields.interior(fts::FieldTimeSeries)
     Topo = topology(fts.grid)
     ℓx, ℓy, ℓz = instantiated_location(fts)
     𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
