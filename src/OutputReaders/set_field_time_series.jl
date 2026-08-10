@@ -1,7 +1,7 @@
 using Printf: Printf, @sprintf
 
 using Oceananigans.Architectures: cpu_architecture
-using Oceananigans.Fields: set_to_function!, Field
+using Oceananigans.Fields: Fields, Field, set_to_function!
 using Oceananigans.TimeSteppers: Clock
 
 #####
@@ -27,7 +27,7 @@ set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTi
 # Extended in OceananigansZarrExt
 set_from_zarr!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from Zarr files requires Zarr")
 
-function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
+function Fields.set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     if endswith(path, ".jld2")
         file = jldopen(path; fts.reader_kw...)
         set!(fts, file, args...; kwargs...)
@@ -41,7 +41,7 @@ function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     end
 end
 
-function set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name)
+function Fields.set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name)
     Ntotal = last(sfp.cumulative_length)
     needed_paths = String[]
     for n in time_indices(fts)
@@ -60,7 +60,7 @@ function set!(fts::InMemoryFTS; kwargs...)
     return set!(fts, fts.path; kwargs...)
 end
 
-function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
+function Fields.set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
 
@@ -105,15 +105,15 @@ function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_
     return nothing
 end
 
-set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
+Fields.set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
 # Set every time slice to the same value.
-function set!(fts::InMemoryFTS, value::Number)
+function Fields.set!(fts::InMemoryFTS, value::Number)
     fill!(parent(fts), value)
     return fts
 end
 
-function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
+function Fields.set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
 
     for (n, field) in enumerate(fields_vector)
@@ -141,7 +141,7 @@ Write the data in `parent(field)` to the file at `fts.path`,
 under `fts.name` and at `time_index`. The save field is assigned `time`,
 which is extracted from `fts.times[time_index]` if not provided.
 """
-function set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
+function Fields.set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
     fts.grid == field.grid || error("The grids attached to the Field and \
                                     FieldTimeSeries appear to be different.")
     path = fts.path
@@ -161,10 +161,10 @@ function initialize_file!(file, name, fts)
     return nothing
 end
 
-set!(fts::OnDiskFTS, path::String, name::String; kwargs...) = nothing
-set!(fts::OnDiskFTS, ::SplitFilePath, name::String=fts.name) = nothing
+Fields.set!(fts::OnDiskFTS, path::String, name::String; kwargs...) = nothing
+Fields.set!(fts::OnDiskFTS, ::SplitFilePath, name::String=fts.name) = nothing
 
-function set!(fts::InMemoryFTS, f::Function)
+function Fields.set!(fts::InMemoryFTS, f::Function)
     cpu_times = on_architecture(CPU(), fts.times)
     n1 = first(time_indices(fts))
     clock = Clock(time=cpu_times[n1])

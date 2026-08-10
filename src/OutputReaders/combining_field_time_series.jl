@@ -6,7 +6,7 @@ using Statistics: mean
 
 using Oceananigans.DistributedComputations: reconstruct_global_topology
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
+using Oceananigans.Fields: Fields, interior, Field, instantiated_location, FixedTime
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
@@ -525,7 +525,7 @@ const InMemoryCombinedFieldTimeSeries = FieldTimeSeries{<:Any, <:Any, <:Any, <:A
                                                         <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:DistributedPaths}
 
 """Set FieldTimeSeries data by loading and combining from distributed rank files."""
-function set!(fts::InMemoryCombinedFieldTimeSeries)
+function Fields.set!(fts::InMemoryCombinedFieldTimeSeries)
     all_ranks = fts.path.ranks
     metadata_path = first_path(fts.path)
 
