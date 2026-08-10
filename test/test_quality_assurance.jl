@@ -114,7 +114,7 @@ end
         Oceananigans.OrthogonalSphericalShellGrids,
         # Oceananigans.OutputReaders,
         # Oceananigans.OutputWriters,
-        # Oceananigans.Simulations,
+        Oceananigans.Simulations,
         Oceananigans.Solvers,
         Oceananigans.StokesDrifts,
         Oceananigans.TimeSteppers,
