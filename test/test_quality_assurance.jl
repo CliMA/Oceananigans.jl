@@ -97,7 +97,7 @@ end
         Oceananigans.Advection,
         Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
-        # Oceananigans.BoundaryConditions,
+        Oceananigans.BoundaryConditions,
         Oceananigans.BuoyancyFormulations,
         Oceananigans.Coriolis,
         Oceananigans.Diagnostics,
