@@ -9,7 +9,7 @@ using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, Cen
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_nonhydrostatic_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
@@ -265,7 +265,7 @@ function NonhydrostaticModel(grid;
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
-        free_surface = materialize_free_surface(free_surface, velocities, grid)
+        free_surface = materialize_nonhydrostatic_free_surface(free_surface, velocities, grid)
     end
 
     # Either check grid-correctness, or construct tuples of fields
@@ -276,6 +276,23 @@ function NonhydrostaticModel(grid;
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
+    end
+
+    if !isnothing(free_surface) && pressure_solver isa ConjugateGradientPoissonSolver &&
+            !(pressure_solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian)
+        msg = """
+        A ConjugateGradientPoissonSolver used with a free surface must include the Robin
+        (mixed) pressure boundary condition at the top in its linear operation; the rigid-lid
+        Laplacian does not converge. Construct the solver with
+
+            using Oceananigans.Solvers: FreeSurfaceLaplacian, no_gauge_enforcement!
+            pressure_solver = ConjugateGradientPoissonSolver(grid;
+                                                             linear_operation = FreeSurfaceLaplacian(),
+                                                             enforce_gauge_condition! = no_gauge_enforcement!)
+
+        or use free_surface = nothing (a rigid lid).
+        """
+        throw(ArgumentError(msg))
     end
 
     # Materialize background fields
