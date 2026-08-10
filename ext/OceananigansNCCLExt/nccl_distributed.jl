@@ -178,25 +178,38 @@ end
 ##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
 #####
 
+# NCCL has no Bool dtype; reinterpret as UInt8 (same size)
+_nccl_send_buf(buf) = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
+_nccl_recv_buf(buf) = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
+
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
-    send_buf = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
-    recv_buf = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
-    NCCL.Send(send_buf, nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(recv_buf, nccl_comm; source=bc.condition.to, stream_kw...)
+    NCCL.Send(_nccl_send_buf(buf), nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(_nccl_recv_buf(buf), nccl_comm; source=bc.condition.to, stream_kw...)
+    return nothing
+end
+
+# NCCL matches Send/Recv by post order per peer, not by tag. When west and
+# east share one peer (2-rank periodic axis), reversing recv order relative
+# to send order pairs each side with the opposite-side recv on the peer, as
+# MPI's send_tag/recv_tag scheme does; no-op when the peers differ.
+function _nccl_send_recv_dual!(buf1, bc1, buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf1) && return _nccl_send_recv_pair!(buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf2) && return _nccl_send_recv_pair!(buf1, bc1, nccl_comm; stream_kw...)
+    NCCL.Send(_nccl_send_buf(buf1), nccl_comm; dest=bc1.condition.to, stream_kw...)
+    NCCL.Send(_nccl_send_buf(buf2), nccl_comm; dest=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(_nccl_recv_buf(buf2), nccl_comm; source=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(_nccl_recv_buf(buf1), nccl_comm; source=bc1.condition.to, stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.west, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.east, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.west, bcs[1], bufs.east, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.south, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.north, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.south, bcs[1], bufs.north, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
