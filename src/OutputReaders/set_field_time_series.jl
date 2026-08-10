@@ -56,9 +56,7 @@ function Fields.set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name
 end
 
 # Convenience method with default path
-function set!(fts::InMemoryFTS; kwargs...)
-    return set!(fts, fts.path; kwargs...)
-end
+Fields.set!(fts::InMemoryFTS; kwargs...) = set!(fts, fts.path; kwargs...)
 
 function Fields.set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
     file_iterations = iterations_from_file(file)
