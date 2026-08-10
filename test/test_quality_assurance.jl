@@ -95,7 +95,7 @@ end
     modules = (
         Oceananigans.AbstractOperations,
         Oceananigans.Advection,
-        # Oceananigans.Architectures,
+        Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
         # Oceananigans.BoundaryConditions,
         Oceananigans.BuoyancyFormulations,
@@ -106,7 +106,7 @@ end
         Oceananigans.Forcings,
         Oceananigans.Grids,
         Oceananigans.ImmersedBoundaries,
-        # Oceananigans.Logger,
+        Oceananigans.Logger,
         # Oceananigans.Models,
         Oceananigans.Models.HydrostaticFreeSurfaceModels,
         Oceananigans.MultiRegion,
