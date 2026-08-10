@@ -14,7 +14,7 @@ using OrderedCollections: OrderedDict
 
 using ..Oceananigans: Oceananigans, AbstractDiagnostic, AbstractOutputWriter
 using ..Advection: Advection
-using ..OutputWriters: OutputWriters, Checkpointer, ZarrWriter, checkpoint
+using ..OutputWriters: OutputWriters, Checkpointer, checkpoint
 using ..TimeSteppers: TimeSteppers
 using ..Utils: Utils, IterationInterval, ordered_dict_show
 
