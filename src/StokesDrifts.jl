@@ -13,7 +13,7 @@ export
 using Adapt: Adapt, adapt
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
-using Oceananigans.Operators: ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ, ℑzᵃᵃᶜ
+using Oceananigans.Operators: ℑxzᶠᵃᶜ, ℑxyᶠᶜᵃ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ, ℑzᵃᵃᶜ
 using Oceananigans.Utils: prettysummary
 
 #####
