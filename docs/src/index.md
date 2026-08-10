@@ -36,7 +36,8 @@ Oceananigans is a [registered Julia package](https://julialang.org/packages/). S
 
 1. [Download Julia](https://julialang.org/downloads/).
 
-2. Launch Julia and type
+1. Launch Julia and type
+
 
 ```julia
 julia> using Pkg
@@ -131,6 +132,18 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Wu, W. (2026). [Ageostrophic velocities of curved ocean fronts](https://doi.org/10.1029/2025JC023961), _Journal of Geophysical Research: Oceans_, **131(8)**, e2025JC023961. DOI: [10.1029/2025JC023961](https://doi.org/10.1029/2025JC023961)
+
+1. Bisits, J. I., McDougall, T. J., and Zika, J. D. (2026). [Determining how nonlinearities in the equation of state affect diffusive interfaces in the ocean](https://doi.org/10.1017/jfm.2026.11889), _Journal of Fluid Mechanics_, **1040**, A33. DOI: [10.1017/jfm.2026.11889](https://doi.org/10.1017/jfm.2026.11889)
+
+1. Lefauve, A., Bassett, C., Plotnick, D. S., Lavery, A. C., and Geyer, W. R. (2026). [The structure and lifecycle of stratified mixing by shear instabilities in continuously forced flows](https://doi.org/10.1029/2025JC023905), _Journal of Geophysical Research: Oceans_, **131(7)**, e2025JC023905. DOI: [10.1029/2025JC023905](https://doi.org/10.1029/2025JC023905)
+
+1. Kalathoor, S. P. (2026). [Route survival and spectral modification of finite-depth salt-finger plume forests under imposed mean shear](https://doi.org/10.48550/arXiv.2607.07012), _arXiv preprint_, arXiv:2607.07012. DOI: [10.48550/arXiv.2607.07012](https://doi.org/10.48550/arXiv.2607.07012)
+
+1. Kalathoor, S. P. (2026). [Interfacial spectral memory as a state variable for finite-depth salt-finger exchange](https://doi.org/10.48550/arXiv.2606.26045), _arXiv preprint_, arXiv:2606.26045. DOI: [10.48550/arXiv.2606.26045](https://doi.org/10.48550/arXiv.2606.26045)
+
+1. Kalathoor, S. P. (2026). [Interfacial roughness spectra and finite-depth salt-finger mixing at a two-layer thermohaline interface](https://doi.org/10.48550/arXiv.2606.21131), _arXiv preprint_, arXiv:2606.21131. DOI: [10.48550/arXiv.2606.21131](https://doi.org/10.48550/arXiv.2606.21131)
+
 1. Knudsen, L., Wenegrat, J., Hilditch, J., and Thomas, L. N. (2026). [Parametric subharmonic instability in the ocean bottom boundary layer](https://doi.org/10.48550/arXiv.2605.28555), _arXiv preprint_, arXiv:2605.28555. DOI: [10.48550/arXiv.2605.28555](https://doi.org/10.48550/arXiv.2605.28555)
 
 1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
@@ -169,7 +182,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Peng. S., Silvestri, S., and Bodner, A. (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
 
-1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176824050.01249257/v1)
+1. Wang, S., Kang, W., Zhang, Y., and Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.1029/2026JE009649), _Journal of Geophysical Research: Planets_, **131(7)**, e2026JE009649. DOI: [10.1029/2026JE009649](https://doi.org/10.1029/2026JE009649)
 
 1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
 
@@ -177,7 +190,13 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
 
+1. Zhang, Y., Kang, W., and Marshall, J. (2026). [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.1029/2025JE009528), _Journal of Geophysical Research: Planets_, **131(7)**, e2025JE009528. DOI: [10.1029/2025JE009528](https://doi.org/10.1029/2025JE009528)
+
+1. Huang, J., Chamecki, M., Li, Q., and Chen, B. (2025). [The role of longitudinal alignment between surface and bottom forcing on the full-column turbulence mixing in the coastal ocean](https://doi.org/10.1016/j.ocemod.2025.102637), _Ocean Modelling_, **199**, 102637. DOI: [10.1016/j.ocemod.2025.102637](https://doi.org/10.1016/j.ocemod.2025.102637)
+
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
+
+1. Shu, R., Gou, R., Pennelly, C., Deng, Y., Wu, L., Xiao, K., Huang, Y., and Myers, P. G. (2025). [Impact of downwelling-favorable winds on eddy formation in the West Greenland current](https://doi.org/10.1175/JPO-D-24-0053.1), _Journal of Physical Oceanography_, **55(2)**, 191–201. DOI: [10.1175/JPO-D-24-0053.1](https://doi.org/10.1175/JPO-D-24-0053.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
 
@@ -194,8 +213,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
 
 1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI: [10.31223/X51N08](https://doi.org/10.31223/X51N08).
-
-1. Zhang, Y., Kang, W., and Marshall, J. (2025) [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.48550/arXiv.2510.25988), _arXiv preprint_, arXiv:2510.25988. DOI: [10.48550/arXiv.2510.25988](https://doi.org/10.48550/arXiv.2510.25988)
 
 1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
 

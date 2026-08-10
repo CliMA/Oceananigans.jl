@@ -271,6 +271,31 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test all(≈(value_c * value_d), Array(interior(cd)))
     end
 
+    @testset "set! from a reduced field under trace" begin
+        grid = LatitudeLongitudeGrid(arch;
+                                     size = (4, 4, 4),
+                                     longitude = (0, 360),
+                                     latitude = (-60, 60),
+                                     z = (0, 1))
+
+        # A reduced column field (as used for reference states) must broadcast into
+        # a full 3D field inside a compiled function: the interpolation fallback in
+        # `set_to_field!` hops the grid to the CPU with `on_architecture(CPU(), grid)`,
+        # which cannot work on a traced grid (its validating reconstruction drives
+        # `||` with a `TracedRNumber{Bool}`, and traced data cannot be materialized
+        # on the CPU mid-trace).
+        u = CenterField(grid)
+        v = Field{Nothing, Nothing, Center}(grid)
+        column = reshape([1.0, 2.0, 3.0, 4.0], 1, 1, 4)
+        set!(v, column)
+
+        set_column!(u, v) = (set!(u, v); nothing)
+        compiled_set_column! = @compile sync=true set_column!(u, v)
+        compiled_set_column!(u, v)
+
+        @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
+    end
+
     @testset "Field reductions on RectilinearGrid" begin
         grid = RectilinearGrid(arch;
                                size = (10, 10, 10),

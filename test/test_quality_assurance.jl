@@ -116,7 +116,7 @@ end
         # Oceananigans.OutputWriters,
         # Oceananigans.Simulations,
         Oceananigans.Solvers,
-        # Oceananigans.StokesDrifts,
+        Oceananigans.StokesDrifts,
         Oceananigans.TimeSteppers,
         Oceananigans.TurbulenceClosures,
         Oceananigans.Units,
