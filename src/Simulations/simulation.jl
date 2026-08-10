@@ -1,11 +1,11 @@
 using Dates: Dates, AbstractTime
-using ..Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
-using ..Diagnostics: default_nan_checker
-using ..DistributedComputations: Distributed, all_reduce
-using ..OutputWriters: JLD2Writer, NetCDFWriter, write_output!
-using ..Solvers: iteration
-using ..TimeSteppers: reset!
-using ..Utils: period_to_seconds, prettytime
+using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
+using Oceananigans.Diagnostics: default_nan_checker
+using Oceananigans.DistributedComputations: Distributed, all_reduce
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter, write_output!
+using Oceananigans.Solvers: iteration
+using Oceananigans.TimeSteppers: reset!
+using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 

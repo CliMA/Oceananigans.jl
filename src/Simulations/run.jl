@@ -1,12 +1,12 @@
 using Dates: unix2datetime
-using ..Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, initialize!
-using ..Architectures: architecture
-using ..Diagnostics: nan_detected, reset_nan_checker!
-using ..DistributedComputations: all_reduce
-using ..Fields: set!
-using ..OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
-using ..TimeSteppers: time_step!, update_state!, unit_time
-using ..Utils: schedule_aligned_time_step
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, initialize!
+using Oceananigans.Architectures: architecture
+using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
+using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.Fields: set!
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
+using Oceananigans.Utils: schedule_aligned_time_step
 
 # Simulations are for running
 

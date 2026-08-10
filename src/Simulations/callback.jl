@@ -1,8 +1,8 @@
 using Dates: Dates
-using ..Oceananigans: Oceananigans, initialize!, prognostic_state, restore_prognostic_state!,
-                       TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using ..OutputWriters: WindowedTimeAverage, advance_time_average!
-using ..Utils: prettysummary
+using Oceananigans: Oceananigans, initialize!, prognostic_state, restore_prognostic_state!,
+                    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
+using Oceananigans.Utils: prettysummary
 
 struct Callback{P, F, S, CS}
     func :: F

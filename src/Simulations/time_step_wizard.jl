@@ -1,6 +1,6 @@
-using ..Architectures: architecture
-using ..DistributedComputations: all_reduce
-using ..Utils: prettysummary
+using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.Utils: prettysummary
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
