@@ -1,6 +1,5 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 
 #####
