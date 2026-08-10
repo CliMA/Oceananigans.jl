@@ -16,15 +16,17 @@ export
     PeriodicFillHalo,
     DistributedFillHalo
 
-using Adapt
+using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: CPU, GPU
-using Oceananigans.Utils: launch!
+using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFoldedTopology, Face,
+                          Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
+                          RightCenterFolded, RightConnected, RightFaceFolded, node, φnode, topology
 using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
-using Oceananigans.Grids
-using DocStringExtensions: TYPEDSIGNATURES
+using Oceananigans.Utils: launch!
 
 # All possible fill_halo! kernels
 struct WestAndEast end
