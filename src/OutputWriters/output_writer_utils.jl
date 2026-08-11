@@ -1,7 +1,6 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid, Partition
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
@@ -16,7 +15,7 @@ struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-initialize!(::NoFileSplitting, model) = nothing
+Oceananigans.initialize!(::NoFileSplitting, model) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64

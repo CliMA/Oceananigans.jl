@@ -59,7 +59,7 @@ end
         # Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         Oceananigans.OutputReaders,
-        # Oceananigans.OutputWriters,
+        Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         # Oceananigans.Solvers,
         Oceananigans.StokesDrifts,

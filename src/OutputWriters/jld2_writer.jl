@@ -1,9 +1,10 @@
 using Printf: @sprintf
-using JLD2
-using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
+using JLD2: JLD2, jldopen
+
+using Oceananigans: initialize!
 using Oceananigans.Fields: indices
 using Oceananigans.Grids: grid
+using Oceananigans.Utils: Utils, TimeInterval, prettykeys, materialize_schedule
 
 default_included_properties(model) = []
 
@@ -275,7 +276,7 @@ has already been initialized, preventing files from being overwritten when `run!
 multiple times.
 
 """
-function initialize!(writer::JLD2Writer, model)
+function Oceananigans.initialize!(writer::JLD2Writer, model)
     # Skip if already initialized (e.g., when run! is called multiple times)
     writer.initialized && return nothing
 
@@ -308,7 +309,7 @@ function iteration_exists(filepath, iter=0)
     return iter_exists
 end
 
-function write_output!(writer::JLD2Writer, model)
+function Oceananigans.write_output!(writer::JLD2Writer, model)
     # Ensure the writer is initialized before writing
     if !writer.initialized
         initialize!(writer, model)
