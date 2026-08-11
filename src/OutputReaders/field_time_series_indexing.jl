@@ -91,9 +91,13 @@ end
 #####
 
 @inline function find_time_index(times::StepRangeLen, t)
-    n₂ = searchsortedfirst(times, t)
-
     Nt = length(times)
+    tₛ = @inbounds times[1]
+    Δt = step(times)
+    c  = (t - tₛ) / Δt
+    fc = unsafe_trunc(Int, c)
+    n₂ = ifelse(c ≤ zero(c), 1, ifelse(oftype(c, fc) == c, fc + 1, fc + 2))
+
     n₂ = min(Nt, n₂) # cap
     n₁ = max(1, n₂ - 1)
 
