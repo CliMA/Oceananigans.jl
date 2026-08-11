@@ -58,6 +58,7 @@ function test_jld2_size_file_splitting(arch)
                                                  array_type = Array{Float64},
                                                  with_halos = true,
                                                  file_splitting = FileSizeLimit(200KiB),
+                                                 compress = false,
                                                  overwrite_existing = true)
 
     # 531 KiB of output will be written which should get split into 3 files.
