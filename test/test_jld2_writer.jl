@@ -203,8 +203,8 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == false
-    @test writer(compress=true).jld2_kw[:compress] == true
+    @test writer().jld2_kw[:compress] == true
+    @test writer(compress=false).jld2_kw[:compress] == false
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
 
     # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
