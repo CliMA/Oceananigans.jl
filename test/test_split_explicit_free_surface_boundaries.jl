@@ -195,4 +195,42 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         @test all(η[i, j, 1] == 0 for i in 1:Nx, j in 1:Ny if solid(i, j))
         @test maximum(abs(η[i, j, 1]) for i in 1:Nx, j in 1:Ny if !solid(i, j); init=0.0) > 0
     end
+
+    @testset "BarotropicBaroclinicBoundaryConditions reproduces manual BCs" begin
+        grid = RectilinearGrid(arch, size=(12, 6, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
+        ηᵢ(x, y, z) = 0.01 * exp(-(x - 0.5)^2 / 0.08)
+
+        function run_open(boundary_conditions)
+            free_surface = SplitExplicitFreeSurface(grid; substeps=8)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface, boundary_conditions,
+                                                momentum_advection=nothing, buoyancy=nothing, tracers=())
+            set!(model, η=ηᵢ)
+            for _ in 1:10
+                time_step!(model, 5e-3)
+            end
+            return model
+        end
+
+        momentum = BarotropicBaroclinicBoundaryConditions(west=true, east=true, outflow_timescale=100)
+        @test keys(momentum) == (:u, :U)
+
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale=100)),
+                                        east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale=100)))
+        U_bcs = FieldBoundaryConditions(west = GravityWaveRadiationBoundaryCondition((0, 0)),
+                                        east = GravityWaveRadiationBoundaryCondition((0, 0)))
+
+        convenience = run_open(momentum)
+        manual = run_open((u=u_bcs, U=U_bcs))
+
+        # the model adds the SurfaceWaveRadiation companion on η from the barotropic BCs
+        @test convenience.free_surface.displacement.boundary_conditions.west.classification.scheme isa SurfaceWaveRadiation
+
+        for name in (:u, :v)
+            @test Array(interior(getproperty(convenience.velocities, name))) ≈ Array(interior(getproperty(manual.velocities, name)))
+        end
+        ηc = Array(interior(convenience.free_surface.displacement))
+        @test ηc ≈ Array(interior(manual.free_surface.displacement))
+        @test maximum(abs, ηc) > 0
+    end
 end
