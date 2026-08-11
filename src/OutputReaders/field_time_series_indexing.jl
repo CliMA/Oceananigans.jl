@@ -160,8 +160,8 @@ function Base.getindex(fts::OnDiskFTS, n::Int)
     return field
 end
 
-@propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
-@propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
@@ -208,7 +208,7 @@ end
 #####
 
 # Valid for all flavors of FTS
-@inline getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_index::Time) =
+@inline Base.getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts, i, j, k, time_index)
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
@@ -420,7 +420,7 @@ end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
 # so that `n` is the first index available.
-function getindex(fts::InMemoryFTS, n::Int)
+function Base.getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 
     m = memory_index(fts, n)
