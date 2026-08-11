@@ -166,10 +166,8 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    send_buf = eltype(buffers.send) === Bool ? reinterpret(UInt8, buffers.send) : buffers.send
-    recv_buf = eltype(buffers.recv) === Bool ? reinterpret(UInt8, buffers.recv) : buffers.recv
-    NCCL.Send(send_buf, nccl_comm; dest=corner_rank)
-    NCCL.Recv!(recv_buf, nccl_comm; source=corner_rank)
+    NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
+    NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
     return nothing
 end
 
@@ -177,25 +175,38 @@ end
 ##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
 #####
 
+# NCCL has no Bool dtype; reinterpret as UInt8 (same size)
+nccl_buffer(a::AbstractArray{Bool}) = reinterpret(UInt8, a)
+nccl_buffer(a) = a
+
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
-    send_buf = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
-    recv_buf = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
-    NCCL.Send(send_buf, nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(recv_buf, nccl_comm; source=bc.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf.send), nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf.recv), nccl_comm; source=bc.condition.to, stream_kw...)
+    return nothing
+end
+
+# NCCL matches Send/Recv by post order per peer, not by tag. When west and
+# east share one peer (2-rank periodic axis), reversing recv order relative
+# to send order pairs each side with the opposite-side recv on the peer, as
+# MPI's send_tag/recv_tag scheme does; no-op when the peers differ.
+function _nccl_send_recv_dual!(buf1, bc1, buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf1) && return _nccl_send_recv_pair!(buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf2) && return _nccl_send_recv_pair!(buf1, bc1, nccl_comm; stream_kw...)
+    NCCL.Send(nccl_buffer(buf1.send), nccl_comm; dest=bc1.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf2.send), nccl_comm; dest=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf2.recv), nccl_comm; source=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf1.recv), nccl_comm; source=bc1.condition.to, stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.west, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.east, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.west, bcs[1], bufs.east, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.south, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.north, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.south, bcs[1], bufs.north, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
