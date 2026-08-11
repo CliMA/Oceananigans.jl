@@ -40,8 +40,9 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
-function test_jld2_size_file_splitting(arch)
-    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+function test_jld2_size_file_splitting(arch, compress)
+    Nx = 128
+    grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
@@ -49,42 +50,44 @@ function test_jld2_size_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
-                                                 dir = ".",
-                                                 filename = "test.jld2",
-                                                 schedule = IterationInterval(1),
-                                                 init = fake_bc_init,
-                                                 including = [:grid],
-                                                 array_type = Array{Float64},
-                                                 with_halos = true,
-                                                 file_splitting = FileSizeLimit(200KiB),
-                                                 compress = false,
-                                                 overwrite_existing = true)
+    # Set thresold so that output file is always split into 3 files
+    threshold = compress ? 100KiB : 75MiB
 
-    # 531 KiB of output will be written which should get split into 3 files.
-    run!(simulation)
+    mktempdir() do dir
 
-    # Test that files has been split according to size as expected.
-    @test filesize("test_part1.jld2") > 200KiB
-    @test filesize("test_part2.jld2") > 200KiB
-    @test filesize("test_part3.jld2") < 200KiB
-    @test !isfile("test_part4.jld2")
+        simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
+                                                     dir,
+                                                     filename = "test.jld2",
+                                                     schedule = IterationInterval(1),
+                                                     init = fake_bc_init,
+                                                     including = [:grid],
+                                                     array_type = Array{Float64},
+                                                     with_halos = true,
+                                                     file_splitting = FileSizeLimit(threshold),
+                                                     compress,
+                                                     overwrite_existing = true)
 
-    for n in string.(1:3)
-        filename = "test_part$n.jld2"
-        jldopen(filename, "r") do file
-            # Test to make sure all files contain structs from `including`.
-            @test file["grid/Nx"] == 16
+        run!(simulation)
 
-            # Test to make sure all files contain info from `init` function.
-            @test file["boundary_conditions/fake"] == π
+        # Test that files has been split according to size as expected.
+        @test filesize(joinpath(dir, "test_part1.jld2")) > threshold
+        @test filesize(joinpath(dir, "test_part2.jld2")) > threshold
+        @test filesize(joinpath(dir, "test_part3.jld2")) < threshold
+        @test !isfile(joinpath(dir, "test_part4.jld2"))
+
+        for n in string.(1:3)
+            filename = joinpath(dir, "test_part$n.jld2")
+            jldopen(filename, "r") do file
+                # Test to make sure all files contain structs from `including`.
+                @test file["grid/Nx"] == Nx
+
+                # Test to make sure all files contain info from `init` function.
+                @test file["boundary_conditions/fake"] == π
+            end
         end
 
-        # Leave test directory clean.
-        rm(filename)
+        return nothing
     end
-
-    return nothing
 end
 
 function test_jld2_time_file_splitting(arch)
@@ -536,7 +539,7 @@ for arch in archs
         #### File splitting
         ####
 
-        test_jld2_size_file_splitting(arch)
+        test_jld2_size_file_splitting(arch, false)
         test_jld2_time_file_splitting(arch)
         test_jld2_file_splitting_overhead_warning(arch)
 
@@ -546,6 +549,7 @@ for arch in archs
 
         test_jld2_compression(arch)
         test_jld2_compress_keyword_precedence(arch)
+        test_jld2_size_file_splitting(arch, true)
 
         #####
         ##### Time-averaging
