@@ -136,6 +136,9 @@ region of the grid.
 
 @inline inactive_node(i, j, k, grid, ::Face, ::Face, ::Face) = inactive_node(i, j, k, grid, c, f, f) & inactive_node(i-1, j, k, grid, c, f, f)
 
+# Fallback for non-immersed grids, ImmersedBoundaries extends this for `ImmersedBoundaryGrid`.
+@inline immersed_inactive_node(i, j, k, grid, LX, LY, LZ) = false
+
 """
 $(TYPEDSIGNATURES)
 
@@ -160,6 +163,9 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 @inline peripheral_node(i, j, k, grid, LX, ::Face, ::Face) = peripheral_node(i, j, k, grid, c, f, c) | peripheral_node(i, j, k-1, grid, c, f, c)
 
 @inline peripheral_node(i, j, k, grid, ::Face, ::Face, ::Face) = peripheral_node(i, j, k, grid, c, f, f) | peripheral_node(i-1, j, k, grid, c, f, f)
+
+# Fallback for non-immersed grids, ImmersedBoundaries extends this for `ImmersedBoundaryGrid`.
+@inline immersed_peripheral_node(i, j, k, grid, LX, LY, LZ) = false
 
 """
 $(TYPEDSIGNATURES)
