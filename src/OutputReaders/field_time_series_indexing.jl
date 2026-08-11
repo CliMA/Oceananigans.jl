@@ -131,9 +131,7 @@ end
 ##### `getindex` and `setindex` with integers `(i, j, n)`
 #####
 
-import Base: getindex
-
-function getindex(fts::OnDiskFTS, n::Int)
+function Base.getindex(fts::OnDiskFTS, n::Int)
     # Bounds check before resolving the file/local index
     1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
 
