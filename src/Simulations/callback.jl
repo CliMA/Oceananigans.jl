@@ -1,9 +1,8 @@
-using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Dates: Dates
+using Oceananigans: Oceananigans, initialize!, prognostic_state, restore_prognostic_state!,
+                    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!, TimeDerivative
 using Oceananigans.Utils: prettysummary
-using Dates
-
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 struct Callback{P, F, S, CS}
     func :: F
@@ -26,7 +25,7 @@ which in turn does nothing by default.
 or specialized for `callback.func`.
 `
 """
-initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
+Oceananigans.initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
 
 """
 $(TYPEDSIGNATURES)
@@ -40,7 +39,7 @@ or specialized for `callback.func`.
 """
 finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
 
-initialize!(func, sim) = nothing
+Oceananigans.initialize!(func, sim) = nothing
 finalize!(func, sim) = nothing
 
 """
@@ -126,18 +125,18 @@ Callback of TimeDerivative of 4×4×4 Field{Face, Center, Center} on Rectilinear
 TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1)) =
     Callback(TimeDerivative(operand, model), schedule)
 
-function prognostic_state(callback::TimeDerivativeCallback)
+function Oceananigans.prognostic_state(callback::TimeDerivativeCallback)
     return (schedule = prognostic_state(callback.schedule),
             time_derivative = prognostic_state(callback.func))
 end
 
-function restore_prognostic_state!(restored::TimeDerivativeCallback, from)
+function Oceananigans.restore_prognostic_state!(restored::TimeDerivativeCallback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restore_prognostic_state!(restored.func, from.time_derivative)
     return restored
 end
 
-restore_prognostic_state!(::TimeDerivativeCallback, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::TimeDerivativeCallback, ::Nothing) = nothing
 
 struct GenericName end
 
@@ -185,13 +184,13 @@ end
 
 validate_schedule(func, schedule) = schedule
 
-function prognostic_state(callback::Callback)
+function Oceananigans.prognostic_state(callback::Callback)
     return (; schedule = prognostic_state(callback.schedule))
 end
 
-function restore_prognostic_state!(restored::Callback, from)
+function Oceananigans.restore_prognostic_state!(restored::Callback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     return restored
 end
 
-restore_prognostic_state!(::Callback, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Callback, ::Nothing) = nothing
