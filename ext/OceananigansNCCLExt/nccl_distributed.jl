@@ -26,6 +26,33 @@ MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs.
 MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
 MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
 
+# The host MPI library need not be CUDA-aware: device buffers reaching these forwarded
+# collectives (e.g. the tiny result arrays of distributed field reductions) must be
+# staged through the host, or MPI's host memcpy segfaults on the device pointer.
+function MPI.Allreduce!(sendbuf::CUDA.AnyCuArray, recvbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator)
+    host_sendbuf = Array(sendbuf)
+    host_recvbuf = similar(host_sendbuf)
+    MPI.Allreduce!(host_sendbuf, host_recvbuf, op, c.mpi)
+    copyto!(recvbuf, host_recvbuf)
+    return recvbuf
+end
+
+function MPI.Allreduce!(sendrecvbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator)
+    host_buffer = Array(sendrecvbuf)
+    MPI.Allreduce!(host_buffer, op, c.mpi)
+    copyto!(sendrecvbuf, host_buffer)
+    return sendrecvbuf
+end
+
+MPI.Allreduce(sendbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator) = MPI.Allreduce(Array(sendbuf), op, c.mpi)
+
+function MPI.Bcast!(buf::CUDA.AnyCuArray, c::NCCLCommunicator; kwargs...)
+    host_buffer = Array(buf)
+    MPI.Bcast!(host_buffer, c.mpi; kwargs...)
+    copyto!(buf, host_buffer)
+    return buf
+end
+
 #####
 ##### Type aliases for dispatch
 #####
