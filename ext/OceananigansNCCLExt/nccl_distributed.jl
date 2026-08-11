@@ -167,10 +167,8 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    send_buf = eltype(buffers.send) === Bool ? reinterpret(UInt8, buffers.send) : buffers.send
-    recv_buf = eltype(buffers.recv) === Bool ? reinterpret(UInt8, buffers.recv) : buffers.recv
-    NCCL.Send(send_buf, nccl_comm; dest=corner_rank)
-    NCCL.Recv!(recv_buf, nccl_comm; source=corner_rank)
+    NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
+    NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
     return nothing
 end
 
@@ -179,13 +177,13 @@ end
 #####
 
 # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
-_nccl_send_buf(buf) = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
-_nccl_recv_buf(buf) = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
+nccl_buffer(a::AbstractArray{Bool}) = reinterpret(UInt8, a)
+nccl_buffer(a) = a
 
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    NCCL.Send(_nccl_send_buf(buf), nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(_nccl_recv_buf(buf), nccl_comm; source=bc.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf.send), nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf.recv), nccl_comm; source=bc.condition.to, stream_kw...)
     return nothing
 end
 
@@ -196,10 +194,10 @@ end
 function _nccl_send_recv_dual!(buf1, bc1, buf2, bc2, nccl_comm; stream_kw...)
     isnothing(buf1) && return _nccl_send_recv_pair!(buf2, bc2, nccl_comm; stream_kw...)
     isnothing(buf2) && return _nccl_send_recv_pair!(buf1, bc1, nccl_comm; stream_kw...)
-    NCCL.Send(_nccl_send_buf(buf1), nccl_comm; dest=bc1.condition.to, stream_kw...)
-    NCCL.Send(_nccl_send_buf(buf2), nccl_comm; dest=bc2.condition.to, stream_kw...)
-    NCCL.Recv!(_nccl_recv_buf(buf2), nccl_comm; source=bc2.condition.to, stream_kw...)
-    NCCL.Recv!(_nccl_recv_buf(buf1), nccl_comm; source=bc1.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf1.send), nccl_comm; dest=bc1.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf2.send), nccl_comm; dest=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf2.recv), nccl_comm; source=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf1.recv), nccl_comm; source=bc1.condition.to, stream_kw...)
     return nothing
 end
 
