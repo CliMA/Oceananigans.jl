@@ -7,6 +7,7 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection, has_target_transport, get_target_transport,
     GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
+    BarotropicBaroclinicBoundaryConditions,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -65,5 +66,6 @@ include("open_boundary_schemes/open_boundary_utils.jl")
 include("open_boundary_schemes/perturbation_advection.jl")
 include("open_boundary_schemes/gravity_wave_schemes.jl")
 include("open_boundary_schemes/normal_radiation.jl")
+include("open_boundary_schemes/barotropic_baroclinic_boundary_conditions.jl")
 
 end # module
