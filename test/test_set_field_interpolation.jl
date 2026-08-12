@@ -1,3 +1,5 @@
+using Oceananigans.Fields: interpolate!
+
 @testset "set! field interpolation" begin
     for arch in archs, FT in float_types
         interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
@@ -23,9 +25,7 @@
         interpolate!(expected_fine, coarse_with_filled_halos)
         @test Array(interior(fine)) == Array(interior(expected_fine))
 
-        # When `u` and `v` differ in halo size but otherwise share the same
-        # discretization, `set!` should copy (not interpolate). This matches
-        # how with_halo-extended grids feed into materialize_immersed_boundary.
+        # Different halo size on same grid → copy path, not interpolation.
         big_halo_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
                                         halo=(3, 3, 3),
                                         interp_domain...)
@@ -33,6 +33,12 @@
         big_halo_c = CenterField(big_halo_grid)
         set!(big_halo_c, coarse)
         @test Array(interior(big_halo_c)) == Array(interior(coarse))
+
+        # `set!` must not crash when `to_field` carries a `ContinuousBoundaryFunction` BC.
+        cbf_bc = FluxBoundaryCondition((x, y, t) -> zero(FT))
+        cbf_field = CenterField(fine_grid, boundary_conditions=FieldBoundaryConditions(top=cbf_bc))
+        set!(cbf_field, coarse)
+        @test Array(interior(cbf_field)) == Array(interior(fine))
     end
 end
 

@@ -61,6 +61,8 @@ struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
     end
 end
 
+@inline needs_simulation_context(::ContinuousBoundaryFunction) = true
+
 Oceananigans.location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 destantiate(t::T) where T = T

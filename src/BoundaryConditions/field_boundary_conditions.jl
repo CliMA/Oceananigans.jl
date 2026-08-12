@@ -114,6 +114,12 @@ Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             fbcs.kernels,
                             on_architecture(arch, fbcs.ordered_bcs))
 
+@inline needs_simulation_context(fbcs::FieldBoundaryConditions) =
+    needs_simulation_context(fbcs.west)    | needs_simulation_context(fbcs.east)  |
+    needs_simulation_context(fbcs.south)   | needs_simulation_context(fbcs.north) |
+    needs_simulation_context(fbcs.bottom)  | needs_simulation_context(fbcs.top)   |
+    needs_simulation_context(fbcs.immersed)
+
 """
     FieldBoundaryConditions(default_bounded_bc=NoFluxBoundaryCondition();
                             west     = DefaultBoundaryCondition(default_bounded_bc),

@@ -150,10 +150,7 @@ function set_to_field!(u, v)
     if matching_field_discretization(u, v)
         copy_to_field!(u, v)
     else
-        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
-        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
-        # boundary conditions, mismatching fill_halo_regions! dispatch.
-        fill_halo_regions!(v)
+        needs_simulation_context(v.boundary_conditions) || fill_halo_regions!(v)
         v_on_u = on_architecture(child_architecture(u), v)
         interpolate!(u, v_on_u)
     end

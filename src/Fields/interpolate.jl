@@ -468,7 +468,8 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    fill_halo_regions!(to_field)
+    # Skip fill when BCs need clock/model_fields — model's update_state! fills on the first step.
+    needs_simulation_context(to_field.boundary_conditions) || fill_halo_regions!(to_field)
 
     return to_field
 end
