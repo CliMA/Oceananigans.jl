@@ -130,7 +130,7 @@ function test_jld2_time_file_splitting(arch)
     return nothing
 end
 
-function test_jld2_file_splitting_overhead_warning(arch)
+function test_jld2_file_splitting_overhead_error(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid)
 
@@ -142,14 +142,13 @@ function test_jld2_file_splitting_overhead_warning(arch)
                                              overwrite_existing = true)
 
     mktempdir() do dir
-        # The metadata written at initialization alone exceeds this limit
-        @test_logs (:warn, r"exceeds the file size limit") match_mode=:any begin
-            Oceananigans.initialize!(writer(dir, FileSizeLimit(1KiB)), model)
-        end
+        # The metadata written at initialization alone exceeds this limit,
+        # and the error is thrown at construction, before any time step.
+        @test_throws ArgumentError writer(dir, FileSizeLimit(1KiB))
     end
 
     mktempdir() do dir
-        @test_logs Oceananigans.initialize!(writer(dir, FileSizeLimit(10MiB)), model)
+        @test writer(dir, FileSizeLimit(10MiB)) isa JLD2Writer
     end
 
     return nothing
@@ -476,7 +475,7 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
-        test_jld2_file_splitting_overhead_warning(arch)
+        test_jld2_file_splitting_overhead_error(arch)
 
         #####
         ##### Time-averaging

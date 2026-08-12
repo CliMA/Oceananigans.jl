@@ -83,7 +83,8 @@ Keyword arguments
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
                     A `FileSizeLimit` must exceed the size of the metadata written to every part
-                    file, which compression barely shrinks; see [`FileSizeLimit`](@ref).
+                    file, which compression barely shrinks; otherwise an `ArgumentError` is thrown
+                    at construction. See [`FileSizeLimit`](@ref).
 
 - `overwrite_existing`: Remove an existing file with the same filename when the writer is initialized.
                         Default: `false`.
@@ -191,6 +192,8 @@ function JLD2Writer(model, outputs; filename, schedule,
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
+    check_file_splitting_overhead(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
+
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
     return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
@@ -266,6 +269,28 @@ end
 initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
+# Measure the per-part metadata overhead by initializing a probe file in a scratch
+# directory, so the error can be thrown at construction time, before the actual
+# output file exists.
+function check_file_splitting_overhead(file_splitting::FileSizeLimit, filepath, init, jld2_kw, including, outputs, model)
+    metadata_size = mktempdir() do dir
+        probe_filepath = joinpath(dir, basename(filepath))
+        initialize_jld2_file!(probe_filepath, init, jld2_kw, including, outputs, model)
+        filesize(probe_filepath)
+    end
+
+    if metadata_size ≥ file_splitting.size_limit
+        throw(ArgumentError(string("The metadata written when initializing ", filepath,
+                                   " (", pretty_filesize(metadata_size), ")",
+                                   " already exceeds the file size limit (", pretty_filesize(file_splitting.size_limit), ").",
+                                   " Every part file would exceed the limit and contain a single output,",
+                                   " and the total output size could be much larger than without file splitting.",
+                                   " Increase the size limit to account for the metadata written to every part file.")))
+    end
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -288,8 +313,6 @@ function initialize!(writer::JLD2Writer, model)
 
     # Initialize the JLD2 file with metadata
     initialize_jld2_file!(writer, model)
-
-    check_file_splitting_overhead(writer.file_splitting, writer.filepath)
 
     writer.initialized = true
 

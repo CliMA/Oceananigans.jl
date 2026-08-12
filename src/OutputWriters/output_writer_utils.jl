@@ -59,20 +59,7 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     return nothing
 end
 
-check_file_splitting_overhead(schedule, filepath) = nothing
-
-function check_file_splitting_overhead(schedule::FileSizeLimit, filepath)
-    metadata_size = filesize(filepath)
-    if metadata_size ≥ schedule.size_limit
-        @warn string("The metadata written when initializing ", filepath,
-                     " (", pretty_filesize(metadata_size), ")",
-                     " already exceeds the file size limit (", pretty_filesize(schedule.size_limit), ").",
-                     " Every part file will exceed the limit and contain a single output,",
-                     " and the total output size may be much larger than without file splitting.",
-                     " Increase the size limit to account for the metadata written to every part file.")
-    end
-    return nothing
-end
+check_file_splitting_overhead(schedule, args...) = nothing
 
 """
 $(TYPEDSIGNATURES)
