@@ -1,17 +1,15 @@
-import Dates
+using Dates: Dates, AbstractTime
 
-using Dates: AbstractTime
-
-using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime,
-                           mapped_data
-using Oceananigans.Architectures: architecture
-using Oceananigans.DistributedComputations: child_architecture, Distributed
+using Adapt: Adapt, adapt
 using GPUArraysCore: @allowscalar
-using Adapt
 
-import Oceananigans.Fields: interpolate
-
+using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.DistributedComputations: child_architecture, Distributed
+using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, FixedTime,
+                           FractionalIndices, instantiated_location, flatten_node, mapped_data
+using Oceananigans.Grids: _node
+using Oceananigans.Units: Time
 using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
 
 @inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
@@ -137,9 +135,7 @@ end
 ##### `getindex` and `setindex` with integers `(i, j, n)`
 #####
 
-import Base: getindex
-
-function getindex(fts::OnDiskFTS, n::Int)
+function Base.getindex(fts::OnDiskFTS, n::Int)
     # Bounds check before resolving the file/local index
     1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
 
@@ -168,8 +164,9 @@ function getindex(fts::OnDiskFTS, n::Int)
     return field
 end
 
-@propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
-@propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::FieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::GPUAdaptedFieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
@@ -183,32 +180,32 @@ const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 # `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
 
 # Bottom and top boundary conditions
-@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
 
 # South and north boundary conditions
-@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
 
 # West and east boundary conditions
-@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
 
 # Disambiguation for 1D and 0D FTS
 
 # South - north and top - bottom, only the first index is valid (the second one is either j or k)
-@inline getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
 
 # West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
 # so we check which dimension of the grid is 1 and pick the corresponding index
-@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
+@inline function BoundaryConditions.getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
     Nx, _, Nz = size(grid)
     j = ifelse(Nz == 1, i1, i2)
     return @inbounds f[1, j, 1, Time(clock.time)]
 end
 
 # West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
-@inline getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
 
 # 0D -> index do not matter!
-@inline getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
+@inline BoundaryConditions.getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
@@ -216,7 +213,7 @@ end
 #####
 
 # Valid for all flavors of FTS
-@inline getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_index::Time) =
+@inline Base.getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts, i, j, k, time_index)
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
@@ -270,14 +267,14 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
+@inline Fields.interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
     interpolate(identity, to_node, to_time_index, from_fts, from_loc, from_grid)
 
 # Space+time interpolation of a `FieldTimeSeries` with each source value mapped through `func`
 # (in the spirit of `mean(func, itr)`). `func = identity` reproduces the unmapped interpolation
 # exactly, since `mapped_data(identity, data)` is `data`. See `Oceananigans.Fields.interpolate(func, …)`.
-@inline function interpolate(func::Base.Callable, to_node, to_time_index::Time,
-                             from_fts::FlavorOfFTS, from_loc, from_grid)
+@inline function Fields.interpolate(func::Base.Callable, to_node, to_time_index::Time,
+                                    from_fts::FlavorOfFTS, from_loc, from_grid)
     data          = mapped_data(func, from_fts.data)
     times         = from_fts.times
     backend       = from_fts.backend
@@ -285,16 +282,16 @@ end
     return interpolate(to_node, to_time_index, data, from_loc, from_grid, times, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, to_time_index::Time, data::AbstractArray,
-                             from_loc, from_grid, times, backend, time_indexing)
+@inline function Fields.interpolate(to_node, to_time_index::Time, data::AbstractArray,
+                                    from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
     interp = TimeInterpolator(time_indexing, times, to_time)
     return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
-                             from_loc, from_grid, backend, time_indexing)
+@inline function Fields.interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
+                                    from_loc, from_grid, backend, time_indexing)
 
     # Build space interpolators
     to_node = flatten_node(to_node...)
@@ -308,8 +305,8 @@ end
     return interpolate(fi, time_indices, data, backend, time_indexing)
 end
 
-@inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
-                             data::AbstractArray, backend, time_indexing)
+@inline function Fields.interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
+                                    data::AbstractArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
     n₁ = convert(Int, time_indices.first_index)
@@ -331,7 +328,7 @@ end
     return ifelse(n₁ == n₂, ψ₁, ψ̃)
 end
 
-function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
+function Fields.interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
 
     target_grid = target_fts.grid
     source_grid = source_fts.grid
@@ -428,7 +425,7 @@ end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
 # so that `n` is the first index available.
-function getindex(fts::InMemoryFTS, n::Int)
+function Base.getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 
     m = memory_index(fts, n)
