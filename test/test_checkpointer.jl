@@ -1931,6 +1931,10 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
     @test 0 ∈ unique_times
     @test 20 ∈ unique_times
 
+    # The writers create their files when the run starts, by which point pickup has
+    # re-pointed them at the latest part, so no empty base file is left behind.
+    @test !isfile(joinpath(dir, "split_ckpt$ext"))
+
     if WriterType == JLD2Writer
         # Test reading back with FieldTimeSeries (InMemory)
         fts = FieldTimeSeries(joinpath(dir, "split_ckpt.jld2"), "c", architecture=arch)
