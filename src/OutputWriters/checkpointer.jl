@@ -165,6 +165,8 @@ Oceananigans.prognostic_state(::NoFileSplitting) = nothing
 Oceananigans.prognostic_state(::FileSizeLimit) = nothing
 Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
 Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
 Oceananigans.prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
