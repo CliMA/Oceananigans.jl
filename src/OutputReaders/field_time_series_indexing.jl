@@ -165,7 +165,8 @@ function Base.getindex(fts::OnDiskFTS, n::Int)
 end
 
 @propagate_inbounds Base.getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
-@propagate_inbounds Base.setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::FieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::GPUAdaptedFieldTimeSeries, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
