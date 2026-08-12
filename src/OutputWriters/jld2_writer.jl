@@ -83,8 +83,6 @@ Keyword arguments
                     split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
-                    A `FileSizeLimit` must exceed the size of the metadata written to every part
-                    file, which compression barely shrinks; see [`FileSizeLimit`](@ref).
 
 - `overwrite_existing`: Remove an existing file with the same filename when the writer is initialized.
                         Default: `false`.
@@ -299,8 +297,6 @@ function initialize!(writer::JLD2Writer, model)
 
     # Initialize the JLD2 file with metadata
     initialize_jld2_file!(writer, model)
-
-    check_file_splitting_overhead(writer.file_splitting, writer.filepath)
 
     writer.initialized = true
 
