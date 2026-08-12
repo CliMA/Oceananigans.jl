@@ -36,7 +36,7 @@ end
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
     # When ambiguities are resolved, update the cap accordingly.
-    @test number_of_ambiguities == 318
+    @test number_of_ambiguities == 314
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -59,7 +59,7 @@ end
         # Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         Oceananigans.OutputReaders,
-        # Oceananigans.OutputWriters,
+        Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         # Oceananigans.Solvers,
         Oceananigans.StokesDrifts,
@@ -113,7 +113,7 @@ end
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         Oceananigans.OutputReaders,
-        # Oceananigans.OutputWriters,
+        Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         Oceananigans.Solvers,
         Oceananigans.StokesDrifts,
