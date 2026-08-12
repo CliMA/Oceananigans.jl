@@ -70,6 +70,7 @@ BoundaryCondition(::Type{Value}, args...; kwargs...)            = BoundaryCondit
 @inline needs_simulation_context(condition) = false # fallback: Number, AbstractArray, NumberRef, Tuple, NamedTuple, ...
 @inline needs_simulation_context(bc::BoundaryCondition) =
     needs_simulation_context(bc.classification) | needs_simulation_context(bc.condition)
+@inline needs_simulation_context(::OBC) = false # Open fills use fill_open_bcs=false; condition DBF/CBF irrelevant here
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =

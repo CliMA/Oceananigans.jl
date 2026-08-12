@@ -151,7 +151,8 @@ function set_to_field!(u, v)
         copy_to_field!(u, v)
     else
         needs_simulation_context(v.boundary_conditions) || fill_halo_regions!(v; fill_open_bcs=false)
-        v_on_u = on_architecture(child_architecture(u), v)
+        # Avoid reconstructing immersed grids when architectures already match.
+        v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
         interpolate!(u, v_on_u)
     end
 
