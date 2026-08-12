@@ -31,6 +31,13 @@ the `size_limit`.
 
 The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
+
+The `size_limit` applies to the on-disk size of the file, which includes
+the metadata the output writer stores in every part file upon initialization.
+Compression typically shrinks the output data much more than the metadata,
+so choose a `size_limit` comfortably larger than the metadata overhead:
+otherwise every part file exceeds the limit and contains a single output,
+and the total output size can end up much larger than without splitting.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
@@ -51,6 +58,8 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
 end
+
+validate_file_splitting(schedule, args...) = nothing
 
 """
 $(TYPEDSIGNATURES)
