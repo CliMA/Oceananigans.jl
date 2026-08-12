@@ -1849,19 +1849,33 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     return nothing
 end
 
-function test_checkpointing_with_file_splitting(arch)
+function part_file_times(filepath)
+    if endswith(filepath, ".jld2")
+        return jldopen(filepath, "r") do file
+            iterations = sort(parse.(Int, keys(file["timeseries/t"])))
+            [file["timeseries/t/$iteration"] for iteration in iterations]
+        end
+    else
+        return NCDataset(filepath, "r") do ds
+            collect(ds["time"])
+        end
+    end
+end
+
+function test_checkpointing_with_file_splitting(arch, WriterType)
     dir = mktempdir()
+    ext = WriterType == JLD2Writer ? ".jld2" : ".nc"
 
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
     simulation = Simulation(model, Δt=1, stop_time=10)
 
-    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
-                                                     filename = "split_ckpt",
-                                                     dir = dir,
-                                                     schedule = IterationInterval(1),
-                                                     file_splitting = TimeInterval(3),
-                                                     overwrite_existing = true)
+    simulation.output_writers[:fields] = WriterType(model, model.tracers;
+                                                    filename = "split_ckpt",
+                                                    dir = dir,
+                                                    schedule = IterationInterval(1),
+                                                    file_splitting = TimeInterval(3),
+                                                    overwrite_existing = true)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                               schedule = IterationInterval(5),
@@ -1873,19 +1887,19 @@ function test_checkpointing_with_file_splitting(arch)
 
     w = simulation.output_writers[:fields]
     @test w.part == 4
-    @test occursin("_part4.jld2", w.filepath)
+    @test occursin("_part4$ext", w.filepath)
 
     # Pickup from checkpoint and continue
     grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model2 = NonhydrostaticModel(grid2, tracers=:c)
     sim2 = Simulation(model2, Δt=1, stop_time=20)
 
-    sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
-                                               filename = "split_ckpt",
-                                               dir = dir,
-                                               schedule = IterationInterval(1),
-                                               file_splitting = TimeInterval(3),
-                                               overwrite_existing = false)
+    sim2.output_writers[:fields] = WriterType(model2, model2.tracers;
+                                              filename = "split_ckpt",
+                                              dir = dir,
+                                              schedule = IterationInterval(1),
+                                              file_splitting = TimeInterval(3),
+                                              overwrite_existing = false)
 
     sim2.output_writers[:checkpointer] = Checkpointer(model2;
                                                         schedule = IterationInterval(5),
@@ -1903,24 +1917,25 @@ function test_checkpointing_with_file_splitting(arch)
     @test w2.part > 4
 
     # Verify all output files have contiguous data
-    output_files = sort(filter(f -> startswith(f, "split_ckpt_part"), readdir(dir)))
+    output_files = filter(f -> startswith(f, "split_ckpt_part") && endswith(f, ext), readdir(dir))
+    sort!(output_files, by = f -> parse(Int, match(r"_part(\d+)\.", f)[1]))
     @test length(output_files) > 4
 
-    all_iterations = Int[]
+    all_times = Float64[]
     for f in output_files
-        jldopen(joinpath(dir, f), "r") do file
-            append!(all_iterations, parse.(Int, keys(file["timeseries/t"])))
-        end
+        append!(all_times, part_file_times(joinpath(dir, f)))
     end
 
-    # Should have iterations 0 through 20 without gaps (some overlap at 10 is ok)
-    unique_iters = sort(unique(all_iterations))
-    @test 0 ∈ unique_iters
-    @test 20 ∈ unique_iters
+    # Should have times 0 through 20 without gaps (some overlap at 10 is ok)
+    unique_times = sort(unique(all_times))
+    @test 0 ∈ unique_times
+    @test 20 ∈ unique_times
 
-    # Test reading back with FieldTimeSeries (InMemory)
-    fts = FieldTimeSeries(joinpath(dir, "split_ckpt.jld2"), "c", architecture=arch)
-    @test length(fts.times) >= 21
+    if WriterType == JLD2Writer
+        # Test reading back with FieldTimeSeries (InMemory)
+        fts = FieldTimeSeries(joinpath(dir, "split_ckpt.jld2"), "c", architecture=arch)
+        @test length(fts.times) >= 21
+    end
 
     rm(dir, recursive=true, force=true)
     return nothing
@@ -2180,9 +2195,11 @@ for arch in archs
         test_checkpoint_at_end(arch)
     end
 
-    @testset "Checkpointing with file splitting [$(typeof(arch))]" begin
-        @info "  Testing checkpointing with file splitting [$(typeof(arch))]..."
-        test_checkpointing_with_file_splitting(arch)
+    for WriterType in (JLD2Writer, NetCDFWriter)
+        @testset "Checkpointing with file splitting [$WriterType, $(typeof(arch))]" begin
+            @info "  Testing checkpointing with file splitting [$WriterType, $(typeof(arch))]..."
+            test_checkpointing_with_file_splitting(arch, WriterType)
+        end
     end
 
     @testset "Checkpointing with moved-away part files [$(typeof(arch))]" begin

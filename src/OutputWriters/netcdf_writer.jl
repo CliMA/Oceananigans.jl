@@ -213,7 +213,8 @@ Optional keyword arguments
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
 - `overwrite_existing`: If `false`, `NetCDFWriter` will append to existing files. If `true`,
-                        it will overwrite existing files or create new ones. Default: `true` if the
+                        it will overwrite existing files or create new ones. Files that do not
+                        exist yet are created in either case. Default: `true` if the
                         file does not exist, `false` if it does.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.

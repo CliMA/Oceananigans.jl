@@ -221,7 +221,7 @@ function initialize_nc_file(model,
                             dimension_name_generator,
                             dimension_type)
 
-    mode = overwrite_existing ? "c" : "a"
+    mode = (overwrite_existing || !isfile(filepath)) ? "c" : "a"
 
     # Add useful metadata
     useful_attributes = Dict("date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
