@@ -100,7 +100,6 @@ NormalFlow() = NormalFlow(nothing)
 
 Adapt.adapt_structure(to, normal_flow::NormalFlow) = NormalFlow(adapt(to, normal_flow.scheme))
 
-@inline needs_simulation_context(::Open) = false # Open fills use fill_open_bcs=false, not this guard
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification

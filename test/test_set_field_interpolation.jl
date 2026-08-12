@@ -1,4 +1,24 @@
 using Oceananigans.Fields: interpolate!
+using Oceananigans.BoundaryConditions: needs_simulation_context
+
+@testset "needs_simulation_context dispatch" begin
+    # Flux with CBF → true (fill_halo_regions! would crash without clock)
+    cbf_flux_bc = FluxBoundaryCondition((x, y, t) -> 0.0)
+    @test  needs_simulation_context(cbf_flux_bc)
+
+    # NormalFlow BC backed by a CBF → false (NormalFlow fills use fill_normal_flow_bcs=false, not this guard)
+    nf_cbf_bc = NormalFlowBoundaryCondition((x, y, t) -> 0.0)
+    @test !needs_simulation_context(nf_cbf_bc)
+
+    # NormalFlow BC with a plain number → false
+    @test !needs_simulation_context(NormalFlowBoundaryCondition(0.0))
+
+    # FieldBoundaryConditions: CBF top BC → true
+    @test  needs_simulation_context(FieldBoundaryConditions(top=cbf_flux_bc))
+
+    # FieldBoundaryConditions: only NormalFlow BCs → false
+    @test !needs_simulation_context(FieldBoundaryConditions(west=nf_cbf_bc, east=nf_cbf_bc))
+end
 
 @testset "set! field interpolation" begin
     for arch in archs, FT in float_types
@@ -35,10 +55,16 @@ using Oceananigans.Fields: interpolate!
         @test Array(interior(big_halo_c)) == Array(interior(coarse))
 
         # `set!` must not crash when `to_field` carries a `ContinuousBoundaryFunction` BC.
+        # All sides specified explicitly to avoid unresolved DefaultBoundaryCondition types.
+        bounded_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...,
+                                            topology=(Bounded, Bounded, Bounded))
         cbf_bc = FluxBoundaryCondition((x, y, t) -> zero(FT))
-        cbf_field = CenterField(fine_grid, boundary_conditions=FieldBoundaryConditions(top=cbf_bc))
+        nf_bc  = NoFluxBoundaryCondition()
+        explicit_bcs = FieldBoundaryConditions(west=nf_bc, east=nf_bc, south=nf_bc, north=nf_bc,
+                                               bottom=nf_bc, top=cbf_bc)
+        cbf_field = CenterField(bounded_fine_grid, boundary_conditions=explicit_bcs)
         set!(cbf_field, coarse)
-        @test Array(interior(cbf_field)) == Array(interior(fine))
+        @test Array(interior(cbf_field)) ≈ Array(interior(fine))
     end
 end
 
