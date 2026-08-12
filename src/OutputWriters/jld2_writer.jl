@@ -192,7 +192,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
-    check_file_splitting_overhead(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
+    validate_file_splitting(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
 
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
@@ -272,7 +272,7 @@ initialize_jld2_file!(writer::JLD2Writer, model) =
 # Measure the per-part metadata overhead by initializing a probe file in a scratch
 # directory, so the error can be thrown at construction time, before the actual
 # output file exists.
-function check_file_splitting_overhead(file_splitting::FileSizeLimit, filepath, init, jld2_kw, including, outputs, model)
+function validate_file_splitting(file_splitting::FileSizeLimit, filepath, init, jld2_kw, including, outputs, model)
     metadata_size = mktempdir() do dir
         probe_filepath = joinpath(dir, basename(filepath))
         initialize_jld2_file!(probe_filepath, init, jld2_kw, including, outputs, model)

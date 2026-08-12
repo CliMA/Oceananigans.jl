@@ -59,7 +59,7 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     return nothing
 end
 
-check_file_splitting_overhead(schedule, args...) = nothing
+validate_file_splitting(schedule, args...) = nothing
 
 """
 $(TYPEDSIGNATURES)
