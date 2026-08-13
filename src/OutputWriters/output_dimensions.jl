@@ -42,12 +42,10 @@ function inflate_reduced_dimensions(data, location, grid)
     any(reduced_dimensions) || return data
 
     data_shape = size(data)
-    data_dimension = 1
     inflated_shape = ntuple(3) do dimension
         reduced_dimensions[dimension] && return 1
-        size = data_shape[data_dimension]
-        data_dimension += 1
-        return size
+        data_dimension = count(d -> !reduced_dimensions[d], 1:dimension)
+        return data_shape[data_dimension]
     end
 
     data = data isa AbstractArray ? data : fill(data)

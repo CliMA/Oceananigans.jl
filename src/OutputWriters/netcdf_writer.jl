@@ -169,7 +169,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.8 KiB
+└── file size: 44.2 KiB
 ```
 
 ```jldoctest netcdf1
@@ -185,7 +185,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.8 KiB
+└── file size: 44.2 KiB
 ```
 
 ```jldoctest netcdf1
@@ -202,7 +202,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.4 KiB
+└── file size: 47.2 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -253,7 +253,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.7 KiB
+└── file size: 47.6 KiB
 ```
 
 `NetCDFWriter` supports outputs that live on different grids within a single writer.
@@ -283,7 +283,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.7 KiB
+└── file size: 43.2 KiB
 ```
 
 OrthogonalSphericalShellGrid (TripolarGrid, RotatedLatitudeLongitudeGrid, …)

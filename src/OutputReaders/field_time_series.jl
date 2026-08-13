@@ -539,7 +539,7 @@ fts[5]
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=4.0, min=4.0, mean=4.0
+    └── max=5.0, min=5.0, mean=5.0
 ```
 """
 function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
