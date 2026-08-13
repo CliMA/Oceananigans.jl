@@ -1,5 +1,5 @@
 """
-    materialize_advection(advection, grid)
+$(TYPEDSIGNATURES)
 
 Return a fully materialized advection scheme appropriate for `grid`.
 It exists to allow advection schemes to defer specialising settings until

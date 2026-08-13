@@ -377,7 +377,7 @@ end
 const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
 
 """
-    NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast)
+$(TYPEDSIGNATURES)
 
 Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring processors.
 """

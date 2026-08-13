@@ -1,9 +1,10 @@
 #####
-##### ZarrWriter struct definition
-#####
 ##### ZarrWriter functionality is implemented in ext/OceananigansZarrExt
 #####
 
+#####
+##### ZarrWriter struct definition
+#####
 mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN} <: AbstractOutputWriter
     filepath :: String
     store :: S

@@ -38,14 +38,14 @@ function flow_over_hill_simulation(; arch = CPU(),
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
-    # Both boundaries are targeted PerturbationAdvection with a fixed transport
-    # Q = U * area, so the net transport is pinned directly rather than leaving the
-    # inflow as a fixed-velocity boundary whose transport drifts with the free surface.
-    Q_west = U * boundary_total_area(:west, grid)
-    Q_east = U * boundary_total_area(:east, grid)
+    # Both boundaries are targeted PerturbationAdvection sharing one transport Q, so inflow
+    # (west) balances outflow (east) exactly — the net-zero solvability condition for the
+    # pressure Poisson problem. Separate Q_west/Q_east would differ because the hill makes the
+    # two boundary areas unequal, leaving a residual with no pool boundary to absorb it.
+    Q = U * boundary_total_area(:west, grid)
     u_boundaries = FieldBoundaryConditions(
-        west = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_west)),
-        east = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_east)))
+        west = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q)),
+        east = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q)))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5)
 

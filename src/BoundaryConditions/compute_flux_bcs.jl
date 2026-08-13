@@ -1,6 +1,5 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 
 #####
@@ -50,7 +49,7 @@ compute_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchi
     launch!(arch, grid, :xy, _compute_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, Tuple(args))
 
 """
-    _compute_x_bcs!(Gc, grid, west_bc, east_bc, args...)
+$(TYPEDSIGNATURES)
 
 Apply a west and/or east boundary condition to variable `c`.
 """
@@ -61,7 +60,7 @@ Apply a west and/or east boundary condition to variable `c`.
 end
 
 """
-    _compute_y_bcs!(Gc, grid, south_bc, north_bc, args...)
+$(TYPEDSIGNATURES)
 
 Apply a south and/or north boundary condition to variable `c`.
 """
@@ -72,7 +71,7 @@ Apply a south and/or north boundary condition to variable `c`.
 end
 
 """
-    _compute_z_bcs!(Gc, grid, bottom_bc, top_bc, args...)
+$(TYPEDSIGNATURES)
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
@@ -97,7 +96,7 @@ end
 @inline flip(::Face) = Center()
 
 """
-    compute_x_west_bc!(Gc, loc, west_flux::BC{<:Flux}, j, k, grid, args...)
+$(TYPEDSIGNATURES)
 
 Add the flux divergence associated with a west flux boundary condition on `c`.
 Note that because
@@ -130,7 +129,7 @@ end
 end
 
 """
-    compute_x_east_bc!(Gc, loc, east_flux::BC{<:Flux}, j, k, grid, args...)
+$(TYPEDSIGNATURES)
 
 Add the part of flux divergence associated with a east boundary condition on `c`.
 Note that because

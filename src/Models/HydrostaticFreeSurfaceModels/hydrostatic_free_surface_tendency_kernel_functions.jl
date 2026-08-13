@@ -52,7 +52,7 @@ implicitly during time-stepping.
 end
 
 """
-Return the tendency for the horizontal velocity in the ``y``-direction, or the east-west
+Return the tendency for the horizontal velocity in the ``y``-direction, or the north-south
 direction, ``v``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
 The tendency for ``v`` is called ``G_v`` and defined via

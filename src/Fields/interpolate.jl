@@ -4,7 +4,6 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
-
 using Oceananigans.Operators: Δx, Δy, Δz
 using Oceananigans.Utils: interpolator, _interpolate
 
@@ -12,7 +11,7 @@ using Oceananigans.Utils: interpolator, _interpolate
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    index_binary_search(val, vec, N)
+$(TYPEDSIGNATURES)
 
 Return indices `low, high` of `vec`tor for which
 
@@ -106,13 +105,17 @@ end
 # When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
 # of the interpolating grid.
+#
+# The spacing is read from the grid rather than differenced from two adjacent nodes:
+# subtracting nodes of magnitude ~180 discards most of their significant digits in Float32,
+# and the resulting relative error is multiplied by the cell index. Every longitude spacing
+# on an x-regular grid is `Δλᶜᵃᵃ`.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    λ₁ = λnode(2, 1, 1, grid, locs...)
-    Δλ = λ₁ - λ₀
+    Δλ = grid.Δλᶜᵃᵃ
     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
-    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing
+    return convert(FT, (λc - λ₀) / Δλ) + 1 # 1 - based indexing
 end
 
 # When interpolating longitude values, we convert the longitude to
@@ -142,9 +145,9 @@ end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
-    φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing
+    # From the grid, not `φnode(1, 2, 1) - φ₀`; see `fractional_x_index` above.
+    return convert(FT, (φ - φ₀) / grid.Δφᵃᶜᵃ) + 1 # 1 - based indexing
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -191,10 +194,10 @@ struct FractionalIndices{I, J, K}
 end
 
 """
-    FractionalIndices(x, y, z, grid, loc...)
+$(TYPEDSIGNATURES)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
-located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
+Convert the coordinate tuple `at_node` to _fractional_ indices on a regular rectilinear grid
+located at `(ℓx, ℓy, ℓz)`, a triplet of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
@@ -308,29 +311,82 @@ end
 @inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 
 """
-    interpolate(at_node, from_field, from_loc, from_grid)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
 where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)`.
 
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
-@inline function interpolate(at_node, from_field, from_loc, from_grid)
-    fractional_indices = FractionalIndices(at_node, from_grid, from_loc...)
-    return interpolate(fractional_indices, from_field, from_loc, from_grid)
-end
+@inline interpolate(at_node, from_field, from_loc, from_grid) =
+    interpolate(identity, at_node, from_field, from_loc, from_grid)
 
-@inline function interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid)
-    ix = interpolator(fidx.i)
-    iy = interpolator(fidx.j)
-    iz = interpolator(fidx.k)
-    return _interpolate(from_field, ix, iy, iz)
-end
+@inline interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid) =
+    interpolate(identity, fidx, from_field, from_loc, from_grid)
 
 # interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
+#####
+##### Interpolation of a mapped field: `interpolate(func, …)`
+#####
+
+# Like `mean(func, itr)` / `sum(func, itr)`, a leading function `func` is applied to each source value
+# *before* the weighted blend; the result stays in `func`-space (no inverse is applied). With
+# `func = log` this blends log-values, so `exp(interpolate(log, …))` is a positivity-preserving,
+# geometric-mean interpolation — accurate for exponentially-varying fields (pressure, density).
+# `func = identity` reproduces the plain `interpolate` exactly. `func` is routed through the shared
+# low-level blend `_interpolate` (via a lazy mapped array) so `Field`s and `FieldTimeSeries` share
+# one code path.
+
 """
-    interpolate(to_node, from_field)
+    MappedData(func, data)
+
+Lazily apply `func` elementwise to `data`: a read returns `func(data[I...])`. This lets the existing
+`_interpolate` blend `func`-mapped values without copying. GPU-safe when `func` is (`log`/`exp` are).
+"""
+struct MappedData{T, N, F, A} <: AbstractArray{T, N}
+    func :: F
+    data :: A
+end
+
+@inline MappedData(func::F, data::A) where {F, A} =
+    MappedData{eltype(A), ndims(A), F, A}(func, data)
+
+@inline Base.size(m::MappedData) = size(m.data)
+@inline Base.axes(m::MappedData) = axes(m.data)
+@inline Base.getindex(m::MappedData, I::Vararg{Int}) = m.func(@inbounds m.data[I...])
+
+Adapt.adapt_structure(to, m::MappedData) = MappedData(m.func, adapt(to, m.data))
+
+# `func = identity` returns `data` unchanged, so the identity path is byte-identical to plain
+# `interpolate` and pays no wrapper overhead.
+@inline mapped_data(func, data) = MappedData(func, data)
+@inline mapped_data(::typeof(identity), data) = data
+
+"""
+$(TYPEDSIGNATURES)
+
+Interpolate `from_field` `at_node` after mapping each source value through `func`, in the spirit of
+`mean(func, itr)`: `func` is applied to each value before the weighted blend and the result is returned
+in `func`-space (no inverse). With `func = log`, `exp(interpolate(log, …))` is a geometric-mean
+interpolation. `func = identity` reproduces `interpolate(at_node, from_field, …)`.
+"""
+# `at_node::Tuple` (it is always a coordinate tuple here) keeps this disjoint from the
+# `FieldTimeSeries` method `interpolate(to_node, ::Time, fts, …)`, whose second argument is a `Time`.
+@inline function interpolate(func::Base.Callable, at_node::Tuple, from_field, from_loc, from_grid)
+    fidx = FractionalIndices(at_node, from_grid, from_loc...)
+    return interpolate(func, fidx, from_field, from_loc, from_grid)
+end
+
+@inline function interpolate(func::Base.Callable, fidx::FractionalIndices, from_field, from_loc, from_grid)
+    ix = interpolator(fidx.i)
+    iy = interpolator(fidx.j)
+    iz = interpolator(fidx.k)
+    return _interpolate(mapped_data(func, from_field), ix, iy, iz)
+end
+
+"""
+$(TYPEDSIGNATURES)
 
 Interpolate the `from_field` `to_node`.
 
@@ -381,7 +437,7 @@ end
 end
 
 """
-    interpolate!(to_field::Field, from_field::AbstractField)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
 """

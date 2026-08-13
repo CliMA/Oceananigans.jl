@@ -1,18 +1,16 @@
-using JLD2
-using Glob
-using Statistics: mean
+using JLD2: JLD2, jldopen
+using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
-
 using OffsetArrays: OffsetArray
+using Statistics: mean
 
+using Oceananigans.DistributedComputations: reconstruct_global_topology
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: Fields, interior, Field, instantiated_location, FixedTime
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
-
-using Oceananigans.Fields: interior, Field, instantiated_location, FixedTime
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.DistributedComputations: reconstruct_global_topology
 
 #####
 ##### DistributedPaths - wrapper for path that includes rank file info
@@ -42,7 +40,7 @@ first_path(path::String) = path
 #####
 
 """
-    find_rank_files(path)
+$(TYPEDSIGNATURES)
 
 Given a file path, check if distributed rank files exist (e.g., `output_rank0.jld2`, `output_rank1.jld2`).
 Returns a sorted vector of rank file paths if they exist, or `nothing` if not.
@@ -107,7 +105,7 @@ function get_rank(all_ranks, i, j, k=1)
 end
 
 """
-    compute_global_size(all_ranks)
+$(TYPEDSIGNATURES)
 
 Compute the global grid size by summing local sizes along each partitioned dimension.
 """
@@ -127,7 +125,7 @@ function compute_global_size(all_ranks)
 end
 
 """
-    compute_partition_offsets(all_ranks)
+$(TYPEDSIGNATURES)
 
 Compute cumulative offsets for placing each rank's data in the global array.
 Returns (x_offsets, y_offsets) where offset[i] gives the starting index for rank i.
@@ -150,7 +148,7 @@ end
 # which uses MPI for live distributed coordination. This function works offline with
 # pre-loaded file data and does not require MPI.
 """
-    collect_global_coordinates_from_files(all_ranks, dim, coord_func)
+$(TYPEDSIGNATURES)
 
 Concatenate coordinate data from all ranks along dimension `dim`.
 `coord_func` extracts coordinates from a grid (e.g., `cpu_face_constructor_x`).
@@ -176,7 +174,7 @@ function collect_global_coordinates_from_files(all_ranks, dim, coord_func)
 end
 
 """
-    reconstruct_global_grid_from_files(all_ranks, arch)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global grid from distributed rank output data.
 This is the offline (file-based) equivalent of `DistributedComputations.reconstruct_global_grid`.
@@ -307,7 +305,7 @@ function reconstruct_global_grid_from_files(grid0::OrthogonalSphericalShellGrid,
 end
 
 """
-    assemble_global_2d_array(all_ranks, field_accessor)
+$(TYPEDSIGNATURES)
 
 Assemble a global 2D array from local rank data. `field_accessor` is a function
 that extracts the desired 2D array from a grid (e.g., `grid -> grid.λᶜᶜᵃ`).
@@ -527,7 +525,7 @@ const InMemoryCombinedFieldTimeSeries = FieldTimeSeries{<:Any, <:Any, <:Any, <:A
                                                         <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:DistributedPaths}
 
 """Set FieldTimeSeries data by loading and combining from distributed rank files."""
-function set!(fts::InMemoryCombinedFieldTimeSeries)
+function Fields.set!(fts::InMemoryCombinedFieldTimeSeries)
     all_ranks = fts.path.ranks
     metadata_path = first_path(fts.path)
 
@@ -560,7 +558,7 @@ const OnDiskCombinedFieldTimeSeries = FieldTimeSeries{<:Any, <:Any, <:Any, <:Any
                                                       <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:DistributedPaths}
 
 """
-    getindex(fts, n::Int)
+$(TYPEDSIGNATURES)
 
 Load and combine field data from distributed rank files at time index `n`.
 This method dispatches when `fts.path isa DistributedPaths` and `fts.backend isa OnDisk`.

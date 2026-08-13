@@ -24,7 +24,7 @@ const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionPa
     condition.func(i, j, k, grid, clock, fields, condition.parameters, clo, buoyancy)
 
 """
-    top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+$(TYPEDSIGNATURES)
 
 Compute the flux of TKE through the surface / top boundary.
 Designed to be used with TKETopBoundaryConditionParameters in a FluxBoundaryCondition, eg:

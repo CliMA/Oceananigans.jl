@@ -204,7 +204,7 @@ end
 end
 
 """
-    rk3_substep!(model::AbstractModel, Δt, γⁿ, ζⁿ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single substep of the 3rd-order Runge-Kutta scheme.
 

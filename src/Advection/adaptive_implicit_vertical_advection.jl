@@ -79,10 +79,12 @@ end
 
 needs_implicit_solver(advection) = false
 needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
-needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
+# `any` follows the three-valued logic and _may_ return `missing` in some cases.  Let's
+# inform the compiler with the `::Bool` annotation that we know we only deal with booleans.
+needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))::Bool
 
 """
-    update_advection_timestep!(advection, timestepper, clock)
+$(TYPEDSIGNATURES)
 
 Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the next wⁱ.
 """

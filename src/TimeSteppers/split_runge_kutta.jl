@@ -117,7 +117,7 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
 end
 
 """
-    spectral_coefficients(c::AbstractVector)
+$(TYPEDSIGNATURES)
 
 Convert spectral Runge-Kutta coefficients `c` to low-storage coefficients `β` for use
 with `SplitRungeKuttaTimeStepper`.
@@ -208,7 +208,7 @@ end
 #####
 
 """
-    rk_substep!(model::AbstractModel, Δτ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single Runge-Kutta substep, advancing the model state by `Δτ`.
 
@@ -223,7 +223,7 @@ The implementation should:
 rk_substep!(model::AbstractModel, Δτ, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
 
 """
-    cache_current_fields!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Cache the current prognostic fields at the beginning of a split Runge-Kutta time step.
 

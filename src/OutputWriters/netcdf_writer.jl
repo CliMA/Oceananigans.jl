@@ -1,6 +1,4 @@
 #####
-##### NetCDFWriter struct definition
-#####
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 

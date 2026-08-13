@@ -22,6 +22,7 @@ const MVD  = MutableVerticalDiscretization
 
 vertical_coordinate_name(::SVD) = "z"
 vertical_coordinate_name(::MVD) = "r"
+vertical_coordinate_name(::AbstractVerticalCoordinate) = "r"
 vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
 vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
