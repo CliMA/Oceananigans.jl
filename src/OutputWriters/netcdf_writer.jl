@@ -114,6 +114,7 @@ mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     with_halos :: Bool
     include_grid_metrics :: Bool
     overwrite_existing :: Union{Nothing, Bool}
+    duplicate_times :: Symbol
     verbose :: Bool
     deflatelevel :: Int
     part :: Int
@@ -137,6 +138,7 @@ end
                  with_halos = false,
                  include_grid_metrics = true,
                  overwrite_existing = nothing,
+                 duplicate_times = :overwrite,
                  verbose = false,
                  deflatelevel = 0,
                  part = 1,
@@ -218,6 +220,18 @@ Optional keyword arguments
                         file is created, at the start of the run: a file that exists by then is
                         appended to rather than overwritten, so output from an earlier run is
                         never destroyed unless `overwrite_existing = true` is passed.
+
+- `duplicate_times`: What to do when output is written for a time the file already covers, which
+                     happens after picking up from a checkpoint written before the last output.
+                     `:overwrite` rewrites those records with the output of the continued run,
+                     keeping the file consistent with the records that follow. `:skip` keeps the
+                     records already in the file and warns. Either way the time axis stays sorted.
+                     Default: `:overwrite`.
+
+                     A run that picks up with a different time step writes times that do not line
+                     up with the records already in the file. Because NetCDF cannot shorten the
+                     time dimension, `:overwrite` then rewrites the first record at or after each
+                     new time and leaves any records beyond the end of the continued run in place.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 

@@ -1880,6 +1880,72 @@ function test_netcdf_deferred_file_creation(arch)
     return nothing
 end
 
+function test_netcdf_duplicate_times(arch, duplicate_times)
+    dir = mktempdir()
+    filename = "test_duplicate_times_$(typeof(arch)).nc"
+    filepath = joinpath(dir, filename)
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+
+    function simulation_to(stop_iteration)
+        simulation = Simulation(model, Δt=1, stop_iteration=stop_iteration)
+
+        simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
+            dir = dir,
+            filename = filename,
+            schedule = IterationInterval(1),
+            duplicate_times = duplicate_times)
+
+        simulation.output_writers[:checkpointer] = Checkpointer(model;
+            dir = dir,
+            schedule = IterationInterval(5),
+            prefix = "checkpoint",
+            overwrite_existing = true,
+            cleanup = true)
+
+        return simulation
+    end
+
+    run!(simulation_to(12))
+
+    # The latest checkpoint (iteration 10) predates the last output (iteration 12), so picking
+    # up rewinds the clock behind output the file already holds. The tracer marks which run
+    # wrote a record: it is 0 everywhere in the first run and -1 after the pickup.
+    simulation = simulation_to(16)
+    set!(simulation; checkpoint=:latest)
+    set!(model, c=-1)
+    run!(simulation)
+
+    ds = NCDataset(filepath, "r")
+
+    # The time axis stays sorted whichever way duplicates are handled.
+    @test collect(ds["time"]) == collect(0.0:16.0)
+
+    rewritten_index = findfirst(==(11.0), collect(ds["time"]))
+
+    if duplicate_times == :overwrite
+        @test ds["c"][1, 1, 1, rewritten_index] == -1
+    else
+        @test ds["c"][1, 1, 1, rewritten_index] == 0
+    end
+
+    # Output past the pickup comes from the continued run either way.
+    @test ds["c"][1, 1, 1, end] == -1
+
+    close(ds)
+
+    @test_throws ArgumentError NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = "invalid_duplicate_times",
+        schedule = IterationInterval(1),
+        duplicate_times = :append)
+
+    rm(dir, recursive=true, force=true)
+
+    return nothing
+end
+
 function test_netcdf_file_splitting_while_appending(arch)
     dir = mktempdir()
     base_filename = "test_file_splitting_while_appending_$(typeof(arch))"
@@ -3937,6 +4003,12 @@ end
         @testset "Deferred file creation [$A]" begin
             @info "  Testing deferred file creation [$A]..."
             test_netcdf_deferred_file_creation(arch)
+        end
+
+        @testset "Duplicate times [$A]" begin
+            @info "  Testing duplicate times [$A]..."
+            test_netcdf_duplicate_times(arch, :overwrite)
+            test_netcdf_duplicate_times(arch, :skip)
         end
 
         @testset "File splitting [$A]" begin
