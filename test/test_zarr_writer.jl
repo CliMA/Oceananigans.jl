@@ -1,12 +1,13 @@
 include("dependencies_for_runtests.jl")
 
 using Zarr
+using Dates: value
 
 #####
-##### ZarrWriter smoke tests (Phase 1: construction + show, no I/O)
+##### ZarrWriter construction and display
 #####
 
-@testset "ZarrWriter [skeleton]" begin
+@testset "ZarrWriter [construction]" begin
     @info "  Testing ZarrWriter construction and kwarg surface..."
 
     for arch in archs
@@ -78,10 +79,15 @@ using Zarr
         # summary should not error
         @test occursin("ZarrWriter", summary(writer_nt))
     end
+
+    materialize = Oceananigans.OutputWriters.materialize_serialized_output
+    @test materialize("Oceananigans.Grids.Periodic") === Periodic
+    @test materialize("(Colon(), 1:4, 3)") == (:, 1:4, 3)
+    @test_throws ArgumentError materialize("run(\`touch unsafe_output_metadata\`)")
 end
 
 #####
-##### Phase 2 — Time-axis writing + raw round-trip
+##### Time-axis writing and raw round-trip
 #####
 
 @testset "ZarrWriter [round-trip]" begin
@@ -108,7 +114,9 @@ end
                                                        dir = ".",
                                                        schedule = IterationInterval(1),
                                                        overwrite_existing = true,
-                                                       with_halos = false)
+                                                       with_halos = false,
+                                                       global_attributes = Dict("title" => "CF interoperability test"),
+                                                       output_attributes = Dict("c" => Dict("standard_name" => "test_tracer")))
         run!(simulation)
 
         @test isdir(zarrpath)
@@ -121,6 +129,17 @@ end
         times = g["time"][:]
         @test length(times) == 3                       # initial + 2 iterations
         @test times ≈ [0.0, 1.0, 2.0]
+        @test g.attrs["Conventions"] == "CF-1.10"
+        @test g.attrs["title"] == "CF interoperability test"
+        @test isfile(joinpath(zarrpath, ".zmetadata"))
+
+        # Scientific coordinates are root-level coordinate arrays, where CF-aware
+        # analysis tools can discover them. Grid reconstruction metadata remains private.
+        for coordinate_name in ("x_caa", "y_aca", "z_aac")
+            @test coordinate_name in keys(g.arrays)
+            coordinate = g[coordinate_name]
+            @test coordinate.attrs["_ARRAY_DIMENSIONS"] == [coordinate_name]
+        end
 
         # Each velocity component is a 4D Zarr array (Nx, Ny, Nz, Nt)
         for (name, expected_val) in (("u", 1.0), ("v", 2.0), ("w", 3.0), ("c", 4.0))
@@ -137,13 +156,47 @@ end
             @test dims_attr[1] == "time"    # first (slowest-varying) dim in C order
             @test length(dims_attr) == 4
         end
+        @test g["c"].attrs["standard_name"] == "test_tracer"
 
         rm(zarrpath; recursive=true, force=true)
     end
 end
 
 #####
-##### Phase 3 — Operations, reductions, functions, WindowedTimeAverage
+##### DateTime coordinate
+#####
+
+@testset "ZarrWriter [DateTime coordinate]" begin
+    for arch in archs
+        grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
+        clock = Clock(time=DateTime(2021, 1, 1))
+        model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2, tracers=:c)
+
+        filepath = abspath("test_zarr_datetime.zarr")
+        isdir(filepath) && rm(filepath; recursive=true, force=true)
+
+        stop_time = DateTime(2021, 1, 1, 0, 0, 1)
+        simulation = Simulation(model; Δt=1second, stop_time)
+        simulation.output_writers[:zarr] =
+            ZarrWriter(model, (; c=model.tracers.c);
+                       filename=filepath,
+                       schedule=IterationInterval(1),
+                       overwrite_existing=true,
+                       include_grid_metrics=false)
+        run!(simulation)
+
+        group = Zarr.zopen(filepath)
+        epoch = DateTime(2000, 1, 1)
+        expected_initial_time = value(DateTime(2021, 1, 1) - epoch) / 1000
+        @test group["time"].attrs["units"] == "seconds since 2000-01-01 00:00:00"
+        @test group["time"][1] == expected_initial_time
+
+        rm(filepath; recursive=true, force=true)
+    end
+end
+
+#####
+##### Operations, reductions, functions, and WindowedTimeAverage
 #####
 
 @testset "ZarrWriter [operations, reductions, functions, WindowedTimeAverage]" begin
@@ -209,12 +262,14 @@ end
         # --- Verify ops store ---
         g = Zarr.zopen(zarrpath)
 
-        # Reduction (Average over (1, 2)) → shape (1, 1, Nz, Nt)
+        # Reduction (Average over (1, 2)) omits both reduced axes.
         @test "c_avg" in keys(g.arrays)
         c_avg_arr = g["c_avg"]
-        @test size(c_avg_arr) == (1, 1, 4, 3)
+        @test size(c_avg_arr) == (4, 3)
+        @test c_avg_arr.attrs["_ARRAY_DIMENSIONS"] == ["time", "z_aac"]
+        @test !any(isempty, c_avg_arr.attrs["_ARRAY_DIMENSIONS"])
         # c was set to 4.0 everywhere, so the column-average is 4.0
-        @test all(c_avg_arr[:, :, :, 1] .≈ Float32(4.0))
+        @test all(c_avg_arr[:, 1] .≈ Float32(4.0))
 
         # AbstractOperation u+v → shape matches the operand grid
         @test "u_plus_v" in keys(g.arrays)
@@ -267,7 +322,7 @@ end
 end
 
 #####
-##### Phase 4 — Grid reconstruction + multi-grid
+##### Grid reconstruction and multiple grids
 #####
 
 using Oceananigans.OutputWriters: ZarrWriter
@@ -360,7 +415,7 @@ using Oceananigans.Fields: Field
 end
 
 #####
-##### Phase 5 — FieldTimeSeries Zarr reader
+##### FieldTimeSeries Zarr reader
 #####
 
 @testset "ZarrWriter [FieldTimeSeries reader]" begin
@@ -421,7 +476,7 @@ end
 end
 
 #####
-##### Phase 6 — File splitting, append, checkpoint+restart
+##### File splitting, append, and checkpoint/restart
 #####
 
 @testset "ZarrWriter [append + restart]" begin
@@ -487,7 +542,7 @@ end
 end
 
 #####
-##### Phase 7 — Alternative stores: DictStore (in-memory) + ZipStore (read)
+##### Alternative stores: DictStore and ZipStore
 #####
 
 @testset "ZarrWriter [alternative stores]" begin
@@ -550,44 +605,56 @@ end
 end
 
 #####
-##### Phase 8 — Grid-type sweep: LatLon, OSSG (Tripolar, RotatedLatLon), ImmersedBoundaryGrid
+##### Grid-type sweep
 #####
 ##### Single-rank round-trip per grid type. Asserts both data write and grid
 ##### serialization round-trip via `FieldTimeSeries(path, name)`.
 #####
-##### Known gaps (see PR #5605 follow-ups, intentionally not fixed in this PR):
-#####   * OSSG / TripolarGrid / RotatedLatitudeLongitudeGrid have no
-#####     `constructor_arguments` method → grid serialization throws at write time.
-#####   * ImmersedBoundaryGrid reconstruction explicitly throws at read time
-#####     (`Immersed-boundary reconstruction not yet implemented for Zarr.`).
-##### Every grid is asserted with a plain `@test`; the failing rows are expected
-##### to stay red until the upstream OSSG / NetCDF support PR lands.
-#####
+matching_grid_structure(original, reconstructed) =
+    matching_grid_structure_base(original, reconstructed)
+
+function matching_grid_structure(original::OrthogonalSphericalShellGrid,
+                                 reconstructed::OrthogonalSphericalShellGrid)
+    return matching_grid_structure_base(original, reconstructed) &&
+           typeof(original.conformal_mapping).name.wrapper ===
+           typeof(reconstructed.conformal_mapping).name.wrapper
+end
+
+matching_grid_structure_base(original, reconstructed) =
+    typeof(original).name.wrapper === typeof(reconstructed).name.wrapper &&
+    typeof(architecture(original)) === typeof(architecture(reconstructed)) &&
+    size(original) == size(reconstructed) &&
+    halo_size(original) == halo_size(reconstructed) &&
+    topology(original) == topology(reconstructed) &&
+    eltype(original) == eltype(reconstructed)
+
+function matching_grid_structure(original::ImmersedBoundaryGrid,
+                                 reconstructed::ImmersedBoundaryGrid)
+    return matching_grid_structure(original.underlying_grid, reconstructed.underlying_grid) &&
+           typeof(original.immersed_boundary).name.wrapper ===
+           typeof(reconstructed.immersed_boundary).name.wrapper
+end
 
 function zarr_round_trip(grid; tag::String)
     return mktempdir() do tmp
         filename = "grid_sweep_$(tag)"
         path = abspath(joinpath(tmp, filename * ".zarr"))
-        try
-            model = HydrostaticFreeSurfaceModel(grid; tracers = (:T,))
-            sim = Simulation(model, Δt = 1.0, stop_iteration = 1)
-            sim.output_writers[:zarr] =
-                ZarrWriter(model, (; T = model.tracers.T);
-                           filename,
-                           dir = tmp,
-                           schedule = IterationInterval(1),
-                           overwrite_existing = true,
-                           with_halos = false)
-            run!(sim)
-            field_time_series = FieldTimeSeries(path, "T")
-            size_ok = size(field_time_series)[1:3] == size(grid)
-            time_ok = length(field_time_series.times) == 2
-            grid_ok = field_time_series.grid == grid
-            return size_ok && time_ok && grid_ok
-        catch err
-            @info "  zarr_round_trip[$tag] caught $(typeof(err)): $(sprint(showerror, err))"
-            return false
-        end
+        free_surface = SplitExplicitFreeSurface(grid; substeps=5)
+        model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,), free_surface)
+        simulation = Simulation(model, Δt=1, stop_iteration=1)
+        simulation.output_writers[:zarr] =
+            ZarrWriter(model, (; T=model.tracers.T);
+                       filename,
+                       dir=tmp,
+                       schedule=IterationInterval(1),
+                       overwrite_existing=true,
+                       with_halos=false)
+        run!(simulation)
+        field_time_series = FieldTimeSeries(path, "T"; architecture=architecture(grid))
+        size_ok = size(field_time_series)[1:3] == size(grid)
+        time_ok = length(field_time_series.times) == 2
+        grid_ok = matching_grid_structure(grid, field_time_series.grid)
+        return size_ok && time_ok && grid_ok
     end
 end
 
@@ -668,7 +735,7 @@ end
 end
 
 #####
-##### Phase 9 — TripolarGrid (OrthogonalSphericalShellGrid) round-trip
+##### TripolarGrid round-trip
 #####
 
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
@@ -717,11 +784,19 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
         @test "time" in T_dims
         @test length(T_dims) == 4
 
-        # dim names use the λ/φ/z naming scheme from OrthogonalSphericalShellGrid
+        # Data dimensions use logical i/j axes. Physical longitude and latitude are
+        # two-dimensional CF auxiliary coordinates referenced by `coordinates`.
         u_dims = u_arr.attrs["_ARRAY_DIMENSIONS"]
-        @test any(startswith(d, "λ") for d in u_dims)
-        @test any(startswith(d, "φ") for d in u_dims)
+        @test any(startswith(d, "i_") for d in u_dims)
+        @test any(startswith(d, "j_") for d in u_dims)
         @test any(startswith(d, "z") for d in u_dims)
+
+        coordinates = split(u_arr.attrs["coordinates"])
+        @test any(startswith(coordinate, "λ_") for coordinate in coordinates)
+        @test any(startswith(coordinate, "φ_") for coordinate in coordinates)
+        for coordinate in coordinates
+            @test coordinate in keys(g.arrays)
+        end
 
         rm(zarrpath; recursive=true, force=true)
     end

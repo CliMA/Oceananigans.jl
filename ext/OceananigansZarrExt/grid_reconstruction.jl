@@ -1,283 +1,6 @@
 #####
-##### Grid Reconstruction for Zarr Files
+##### Zarr grid serialization and reconstruction
 #####
-#
-# This file handles serialization (saving) and deserialization (loading) of Oceananigans
-# grids to/from Zarr files.
-#
-# Why is Grid Reconstruction Necessary?
-#
-# Zarr files are just arrays and metadata - they don't inherently store Julia object
-# structure. To properly reconstruct an Oceananigans simulation from a Zarr file, we
-# need to rebuild the exact grid that was used, including:
-#
-# 1. GRID CONSTRUCTION PARAMETERS
-#    - Size (Nx, Ny, Nz)
-#    - Extent or coordinate arrays
-#    - Topology (Periodic, Bounded, Flat)
-#    - Halo size
-#    - Architecture (CPU/GPU)
-#
-# 2. IMMERSED BOUNDARIES CONSTRUCTION PARAMETERS
-#    For grids with immersed boundaries (e.g., GridFittedBottom for bathymetry):
-#    - Bottom height field
-#    - Immersed boundary type
-#    - Immersed condition parameters
-#
-# Reconstruction Process:
-#
-# WRITING (write_grid_reconstruction_data!):
-# 1. Extract grid constructor arguments
-# 2. Serialize to Zarr-compatible format (strings, numbers, arrays) and save them as in Zarr groups dedicated to that
-# 3. Do the same for the immersed boundary construction parameters.
-# 4. If immersed boundary, save boundary field (mask or bottom height) as variable in the same Zarr group as above
-#
-# READING (reconstruct_grid):
-# 1. Read "underlying_grid_type" attribute to determine grid type
-# 2. Read "underlying_grid_reconstruction_args" and "underlying_grid_reconstruction_kwargs" and deserialize
-# 3. Call appropriate grid constructor with saved arguments
-# 4. For immersed boundaries, reconstruct boundary object
-# 5. Return the grid
-#####
-
-#####
-##### Gathering of grid metrics
-#####
-
-import Oceananigans.Architectures
-
-"""
-    gather_grid_metrics(grid, indices, dim_name_generator)
-
-Gather the grid metrics for the grid. Not strictly necessary for grid reconstruction, but it is
-implemented and used as a quality of life improvement since it gives users easy access to relevant grid
-metrics when opening the Zarr file.
-"""
-function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator; grid_index=nothing)
-    TX, TY, TZ = topology(grid)
-
-    metrics = Dict()
-
-    if TX != Flat
-        Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
-        Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
-
-        Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
-        Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
-
-        metrics[Δxᶠᵃᵃ_name] = Δxᶠᵃᵃ_field
-        metrics[Δxᶜᵃᵃ_name] = Δxᶜᵃᵃ_field
-    end
-
-    if TY != Flat
-        Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
-        Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
-
-        Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
-        Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
-
-        metrics[Δyᵃᶠᵃ_name] = Δyᵃᶠᵃ_field
-        metrics[Δyᵃᶜᵃ_name] = Δyᵃᶜᵃ_field
-    end
-
-    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
-
-    return suffix_grid_keys(metrics, grid_index)
-end
-
-function add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
-    TZ = topology(grid, 3)
-    TZ == Flat && return metrics
-
-    Δprefix = "Δ" * vertical_coordinate_name(grid)
-    Δᵃᵃᶠ_name = dim_name_generator(Δprefix, grid, nothing, nothing, f, Val(:z))
-    Δᵃᵃᶜ_name = dim_name_generator(Δprefix, grid, nothing, nothing, c, Val(:z))
-
-    metrics[Δᵃᵃᶠ_name] = vertical_spacing_field(grid, f, indices)
-    metrics[Δᵃᵃᶜ_name] = vertical_spacing_field(grid, c, indices)
-
-    return metrics
-end
-
-function vertical_spacing_field(grid, lz, indices)
-    field = Field{Nothing, Nothing, typeof(lz)}(grid; indices)
-    Δ_raw = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
-    Δ = Δ_raw isa Number ? Δ_raw : on_architecture(CPU(), Δ_raw)
-    Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
-    full = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
-                          eltype(grid).(collect(Δ[1:Nz_int]))
-    z_slice = indices[3] isa Colon ? (1:Nz_int) : indices[3]
-    # Must be a plain 3D `Array` so `set!` hits `set_to_array!` (which handles arch
-    # transfer); a `ReshapedArray{Vector}` falls through to broadcast and breaks on GPU.
-    interior_arr = collect(reshape(view(full, z_slice), (1, 1, length(z_slice))))
-    set!(field, interior_arr)
-    return field
-end
-
-function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
-    TΛ, TΦ, TZ = topology(grid)
-
-    metrics = Dict()
-
-    if TΛ != Flat
-        Δλᶠᵃᵃ_name = dim_name_generator("Δλ", grid, f, nothing, nothing, Val(:x))
-        Δλᶜᵃᵃ_name = dim_name_generator("Δλ", grid, c, nothing, nothing, Val(:x))
-
-        Δλᶠᵃᵃ_field = Field(λspacings(grid, f); indices)
-        Δλᶜᵃᵃ_field = Field(λspacings(grid, c); indices)
-
-        metrics[Δλᶠᵃᵃ_name] = Δλᶠᵃᵃ_field
-        metrics[Δλᶜᵃᵃ_name] = Δλᶜᵃᵃ_field
-
-        Δxᶠᶠᵃ_name = dim_name_generator("Δx", grid, f, f, nothing, Val(:x))
-        Δxᶠᶜᵃ_name = dim_name_generator("Δx", grid, f, c, nothing, Val(:x))
-        Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
-        Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
-
-        Δxᶠᶠᵃ_field = Field(xspacings(grid, f, f); indices)
-        Δxᶠᶜᵃ_field = Field(xspacings(grid, f, c); indices)
-        Δxᶜᶠᵃ_field = Field(xspacings(grid, c, f); indices)
-        Δxᶜᶜᵃ_field = Field(xspacings(grid, c, c); indices)
-
-        metrics[Δxᶠᶠᵃ_name] = Δxᶠᶠᵃ_field
-        metrics[Δxᶠᶜᵃ_name] = Δxᶠᶜᵃ_field
-        metrics[Δxᶜᶠᵃ_name] = Δxᶜᶠᵃ_field
-        metrics[Δxᶜᶜᵃ_name] = Δxᶜᶜᵃ_field
-    end
-
-    if TΦ != Flat
-        Δφᵃᶠᵃ_name = dim_name_generator("Δλ", grid, nothing, f, nothing, Val(:y))
-        Δφᵃᶜᵃ_name = dim_name_generator("Δλ", grid, nothing, c, nothing, Val(:y))
-
-        Δφᵃᶠᵃ_field = Field(φspacings(grid, f); indices)
-        Δφᵃᶜᵃ_field = Field(φspacings(grid, c); indices)
-
-        metrics[Δφᵃᶠᵃ_name] = Δφᵃᶠᵃ_field
-        metrics[Δφᵃᶜᵃ_name] = Δφᵃᶜᵃ_field
-
-        Δyᶠᶠᵃ_name = dim_name_generator("Δy", grid, f, f, nothing, Val(:y))
-        Δyᶠᶜᵃ_name = dim_name_generator("Δy", grid, f, c, nothing, Val(:y))
-        Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
-        Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
-
-        Δyᶠᶠᵃ_field = Field(yspacings(grid, f, f); indices)
-        Δyᶠᶜᵃ_field = Field(yspacings(grid, f, c); indices)
-        Δyᶜᶠᵃ_field = Field(yspacings(grid, c, f); indices)
-        Δyᶜᶜᵃ_field = Field(yspacings(grid, c, c); indices)
-
-        metrics[Δyᶠᶠᵃ_name] = Δyᶠᶠᵃ_field
-        metrics[Δyᶠᶜᵃ_name] = Δyᶠᶜᵃ_field
-        metrics[Δyᶜᶠᵃ_name] = Δyᶜᶠᵃ_field
-        metrics[Δyᶜᶜᵃ_name] = Δyᶜᶜᵃ_field
-    end
-
-    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
-
-    return suffix_grid_keys(metrics, grid_index)
-end
-
-# OSSG horizontal metrics: 4 × Δx, 4 × Δy, 4 × Az at the four Arakawa-C stagger
-# locations. Vertical Δz/Δr is added via the shared `add_vertical_metrics!`. The 2D horizontal metrics are wrapped in Fields so they
-# go through the standard output path and pick up the (i_*, j_*) bare dim names
-# from `field_dimensions(::AbstractField, ::OSSG, …)` and the `coordinates`
-# attribute from `add_aux_coordinates_attribute!`.
-function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_name_generator; grid_index=nothing)
-    metrics = Dict()
-
-    for (lx, ly) in ((c, c), (f, c), (c, f), (f, f))
-        Δx_name = dim_name_generator("Δx", grid, lx, ly, nothing, Val(:x))
-        Δy_name = dim_name_generator("Δy", grid, lx, ly, nothing, Val(:y))
-        Az_name = dim_name_generator("Az", grid, lx, ly, nothing, Val(:x))
-
-        metrics[Δx_name] = Field(xspacings(grid, lx, ly); indices)
-        metrics[Δy_name] = Field(yspacings(grid, lx, ly); indices)
-        # Az is on the same horizontal stagger as Δx/Δy at (lx, ly). The `Az_at_node`
-        # accessor returns `grid.Azᶜᶜᵃ[i, j]` (etc.) at the requested location; wrapping it
-        # in a `KernelFunctionOperation` gives a 2D `Field` we can write through the normal
-        # output path.
-        Az_op = KernelFunctionOperation{typeof(lx), typeof(ly), Nothing}(Az_at_node, grid, lx, ly)
-        metrics[Az_name] = Field(Az_op; indices)
-    end
-
-    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
-
-    return suffix_grid_keys(metrics, grid_index)
-end
-
-# Az is unstaggered in z; access the appropriate 2D area array at the given horizontal stagger.
-@inline Az_at_node(i, j, k, grid, ::Center, ::Center) = @inbounds grid.Azᶜᶜᵃ[i, j]
-@inline Az_at_node(i, j, k, grid, ::Face,   ::Center) = @inbounds grid.Azᶠᶜᵃ[i, j]
-@inline Az_at_node(i, j, k, grid, ::Center, ::Face)   = @inbounds grid.Azᶜᶠᵃ[i, j]
-@inline Az_at_node(i, j, k, grid, ::Face,   ::Face)   = @inbounds grid.Azᶠᶠᵃ[i, j]
-
-#####
-##### Gathering of immersed boundary fields
-#####
-
-gather_grid_metrics(grid::ImmersedBoundaryGrid, args...; kw...) = gather_grid_metrics(grid.underlying_grid, args...; kw...)
-
-# TODO: Proper masks for 2D models?
-flat_loc(T, L) = T == Flat ? nothing : L
-
-const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
-
-"""
-    gather_immersed_boundary(grid, indices, dim_name_generator)
-
-Gather the construction parameters for the immersed boundary of the grid. This isn't
-strictly necessary for grid reconstruction, but it is implemented and used a quality of life improvement
-since it gives users easy access to relevant immersed boundary parameters when opening the Zarr file.
-"""
-function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator; grid_index=nothing)
-    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
-
-    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
-    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
-    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
-    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
-
-    ib_vars = Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
-                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
-                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
-                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
-                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
-
-    return suffix_grid_keys(ib_vars, grid_index)
-end
-
-const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
-
-function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator; grid_index=nothing)
-    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
-
-    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
-    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
-    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
-    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
-
-    ib_vars = Dict("mask" => Field(grid.immersed_boundary.mask; indices),
-                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
-                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
-                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
-                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
-                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
-
-    return suffix_grid_keys(ib_vars, grid_index)
-end
-
 
 #####
 ##### Grid reconstruction
@@ -310,8 +33,6 @@ function zarr_grid_constructor_info(grid::ImmersedBoundaryGrid)
     metadata = Dict(:underlying_grid_type   => zarr_grid_type_string(grid.underlying_grid),
                     :immersed_boundary_type => zarr_grid_type_string(grid.immersed_boundary))
     add_conformal_mapping_info_to_kwargs!(underlying_kwargs, grid.underlying_grid)
-    # Immersed boundary fields (mask, bottom_height) need data write; deferred to a
-    # follow-on phase. For now the grid still serializes the underlying portion.
     return underlying_args, underlying_kwargs, immersed_grid_args, metadata
 end
 
@@ -343,7 +64,26 @@ function write_one_grid_reconstruction!(root_group, grid, subgroup_name)
     return grid_group
 end
 
-function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, with_halos, dimension_name_generator)
+function write_zarr_array!(group, name, data, dimensions, attributes=Dict())
+    data = collect(data)
+    attributes = zarr_attribute_dict(attributes)
+    attributes["_ARRAY_DIMENSIONS"] = reverse(collect(string.(dimensions)))
+
+    if !haskey(group, name)
+        variable = Zarr.zcreate(eltype(data), group, name, size(data)...;
+                                chunks=size(data), attrs=attributes)
+        variable .= data
+    else
+        existing = collect(group[name])
+        existing == data || throw(ArgumentError("Variable '$name' already exists but values differ."))
+    end
+
+    return nothing
+end
+
+function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices,
+                                 with_halos, dimension_name_generator,
+                                 attributes, dimension_type)
     dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index=grid_suffix)
 
     for (var_name, entry) in dims
@@ -359,54 +99,27 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, wit
 
         arr isa Nothing && continue
 
-        arr = collect(arr)
-
-        if !haskey(group, var_name)
-
-            coord = Zarr.zcreate(
-                eltype(arr),
-                group,
-                var_name,
-                size(arr)...;
-                chunks = size(arr),#TODO: Do we want grid chunking?
-                attrs = Dict("_ARRAY_DIMENSIONS" => collect(var_dims))
-            )
-
-            coord .= arr
-
-        else
-            existing = collect(group[var_name])
-
-            existing == arr || throw(ArgumentError("Variable '$var_name' already exists but values differ."))
-        end
+        arr = collect(dimension_type.(arr))
+        variable_attributes = get(attributes, var_name, Dict())
+        write_zarr_array!(group, var_name, arr, var_dims, variable_attributes)
     end
 
     return nothing
 end
 
-function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator, grid_suffix)
+function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator,
+                                  grid_suffix, attributes)
     metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=grid_suffix)
 
     for (name, field) in pairs(metrics)
-        if !haskey(group, name)
-            dim_name = field_dimensions(field, grid, dimension_name_generator; grid_index=grid_suffix)
-            dim_attrs = Dict("_ARRAY_DIMENSIONS" => [d for d in dim_name if !isempty(d)])
-            metric = Zarr.zcreate(
-                eltype(field),
-                group,
-                name,
-                size(field)...;
-                chunks = size(field),
-                attrs = dim_attrs
-            )
-
-            metric .= field
-
-        else
-            existing = collect(group[name])
-
-            existing == field || throw(ArgumentError("Variable '$name' already exists but values differ."))
-        end
+        dimensions = filter(!isempty, field_dimensions(field, grid, dimension_name_generator;
+                                                       grid_index=grid_suffix))
+        data = squeeze_reduced_dimensions(field, collect(field))
+        variable_attributes = zarr_attribute_dict(get(attributes, name, Dict()))
+        coordinates = field_auxiliary_coordinates(field, grid, dimension_name_generator;
+                                                  grid_index=grid_suffix)
+        isempty(coordinates) || (variable_attributes["coordinates"] = join(coordinates, " "))
+        write_zarr_array!(group, name, data, dimensions, variable_attributes)
     end
     return nothing
 end
@@ -414,20 +127,9 @@ end
 function write_zarr_grid_immersed_boundary!(group, grid::ImmersedBoundaryGrid, indices, dimension_name_generator, grid_suffix)
 
     _, _, ibg_args, _ = zarr_grid_constructor_info(grid)
-    ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator; grid_index=grid_suffix)
-
-    mask = pop!(ibg_args, :mask, nothing)
-    bottom_height = pop!(ibg_args, :bottom_height, nothing)
-
-    # Here the mask and bottom_height are overwritten with reconstruction fields.
-    # Follows the NetCDF implentation, so mask, bottom_height are written beyond `indices`.
-    if !isnothing(mask)
-        ib_vars["mask"] = mask
-    end
-
-    if !isnothing(bottom_height)
-        ib_vars["bottom_height"] = bottom_height
-    end
+    ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator)
+    pop!(ibg_args, :mask, nothing)
+    pop!(ibg_args, :bottom_height, nothing)
 
     ibg_group = Zarr.zgroup(
         group,
@@ -436,24 +138,10 @@ function write_zarr_grid_immersed_boundary!(group, grid::ImmersedBoundaryGrid, i
     )
 
     for (name, field) in pairs(ib_vars)
-        if !haskey(ibg_group, name)
-            dim_names = field_dimensions(field, grid, dimension_name_generator; grid_index=grid_suffix)
-            dim_attrs = Dict("_ARRAY_DIMENSIONS" => [d for d in dim_names if !isempty(d)])
-            ib_var = Zarr.zcreate(
-                eltype(field),
-                ibg_group,
-                name,
-                size(field)...;
-                chunks = size(field),
-                attrs = dim_attrs
-            )
-            ib_var .= field
-
-        else
-            existing = collect(ibg_group[name])
-
-            existing == field || throw(ArgumentError("Variable '$name' already exists but values differ."))
-        end
+        dimensions = filter(!isempty, field_dimensions(field, grid, dimension_name_generator;
+                                                       grid_index=grid_suffix))
+        data = squeeze_reduced_dimensions(field, collect(field))
+        write_zarr_array!(ibg_group, name, data, dimensions)
     end
     return nothing
 end
@@ -523,7 +211,8 @@ function reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
     underlying_grid_type = metadata[:underlying_grid_type]
 
     if underlying_grid_type <: OrthogonalSphericalShellGrid
-        underlying_grid = reconstruct_zarr_ossg_grid(group, grid_group, args_dict, kwargs_dict)
+        grid_suffix = subgroup_name == "grid" ? nothing : grid_index
+        underlying_grid = reconstruct_zarr_ossg_grid(group, args_dict, kwargs_dict, grid_suffix)
     else
         underlying_grid = underlying_grid_type(args_values...; kwargs_dict...)
     end
@@ -567,7 +256,7 @@ Rebuild an `OrthogonalSphericalShellGrid` from the metric arrays stored in `ds`.
 internally by `reconstruct_grid` for any underlying grid type that is a subtype of
 `OrthogonalSphericalShellGrid` (TripolarGrid, RotatedLatitudeLongitudeGrid, etc.).
 """
-function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
+function reconstruct_zarr_ossg_grid(root_group, args, kwargs, grid_suffix)
     arch = args[:architecture]
     FT   = args[:number_type]
 
@@ -583,22 +272,23 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
 
     # Vertical: detect whether the file used "z" (Static) or "r" (Mutable) for the
     # reference 1D coordinate. Read the Face nodes and let `generate_coordinate`
-    # rebuild the full halo-padded `StaticVerticalDiscretization` (:z is hardcoded!).TODO
-    z_face_var = "z_aaf"
-    r_face_var = "r_aaf"
-    if haskey(grid_group, r_face_var)
+    # rebuild the full halo-padded vertical discretization.
+    z_face_var = add_grid_suffix("z_aaf", grid_suffix)
+    r_face_var = add_grid_suffix("r_aaf", grid_suffix)
+    if haskey(root_group, r_face_var)
         face_var = r_face_var
-    elseif haskey(grid_group, z_face_var)
+    elseif haskey(root_group, z_face_var)
         face_var = z_face_var
     else
         throw(ArgumentError("No vertical coordinate variable (z_aaf or r_aaf) found in dataset for OSSG reconstruction."))
     end
-    z_face_data = collect(grid_group[face_var])
+    z_face_data = collect(root_group[face_var])
     interior_z_faces = file_has_halos ? z_face_data[Hz+1:Hz+Nz+1] : z_face_data
     Lz, z_disc = generate_coordinate(FT, TZ(), Nz, Hz, collect(interior_z_faces), :z, arch)
 
     # Read 2D aux coords + metrics and pad with halos as needed.
-    read_2d(name, lx, ly) = read_ossg_halo_padded_array(grid_group, name,
+    read_2d(name, lx, ly) = read_ossg_halo_padded_array(root_group,
+                                                        add_grid_suffix(name, grid_suffix),
                                                         FT, arch, lx, ly,
                                                         topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
                                                         file_has_halos)
@@ -614,7 +304,7 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
     φff = read_2d("φ_ffa", Face(),   Face())
 
     # Metrics may not be present if the writer ran with `include_grid_metrics=false`.
-    if !haskey(grid_group, "Δx_cca")
+    if !haskey(root_group, add_grid_suffix("Δx_cca", grid_suffix))
         throw(ArgumentError("OrthogonalSphericalShellGrid reconstruction requires grid metrics " *
                             "(Δx_**, Δy_**, Az_**). Re-run the writer with `include_grid_metrics=true`."))
     end
@@ -771,7 +461,8 @@ function read_ossg_halo_padded_array(grid_group, name, FT, arch, lx, ly, topo_in
 
     raw = collect(grid_group[name])
 
-    if ndims(raw) == 3 && size(raw, 3) == 1#TODO: do we want nothing dim in Zarr?
+    # Older stores retained a singleton reduced dimension.
+    if ndims(raw) == 3 && size(raw, 3) == 1
         raw = dropdims(raw; dims=3)
     end
 

@@ -64,7 +64,7 @@ iterations_from_file(file::NCDataset) = 1:length(keys(file["time"][:]))
     inflate_nothing_dimensions(data, location, grid)
 
 Add singleton dimensions to `data` where `location` is `nothing` or topology is `Flat`.
-This is the inverse operation of `squeeze_nothing_dimensions` and it is done for compatibility
+This is the inverse operation of `squeeze_reduced_dimensions` and it is done for compatibility
 with Oceananigans' internal representation of fields.
 
 For example, if `location = (Center(), Center(), nothing)`, the data will have a singleton

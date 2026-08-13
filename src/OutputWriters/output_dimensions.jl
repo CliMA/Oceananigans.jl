@@ -1,10 +1,43 @@
 #####
-##### Zarr Dimension Management
+##### Output dimensions and coordinates
 #####
 
-# This file contains utilities for managing dimensions in Zarr files,
-# including default conventions and quality of life functions for Oceananigans outputs.
-#
+function effective_reduced_dimensions(field)
+    location_reduced_dimensions = reduced_dimensions(field)
+    topology_reduced_dimensions = findall(==(Flat), topology(field))
+    return Tuple(unique((location_reduced_dimensions..., topology_reduced_dimensions...)))
+end
+
+function drop_reduced_dimensions(field::AbstractField, values)
+    reduced_dimensions = effective_reduced_dimensions(field)
+    return Tuple(value for (dimension, value) in enumerate(values) if dimension ∉ reduced_dimensions)
+end
+
+drop_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}, values) =
+    drop_reduced_dimensions(output.operand, values)
+
+function squeeze_reduced_dimensions(field::AbstractField, data; array_type=identity)
+    data = array_type(data)
+    reduced_dimensions = effective_reduced_dimensions(field)
+    selectors = ntuple(dimension -> dimension in reduced_dimensions ? 1 : Colon(), 3)
+    return getindex(data, selectors...)
+end
+
+squeeze_reduced_dimensions(output, data; kw...) = data
+squeeze_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}, data; kw...) =
+    squeeze_reduced_dimensions(output.operand, data; kw...)
+squeeze_reduced_dimensions(field::AbstractField; array_type=Array{eltype(field)}) =
+    squeeze_reduced_dimensions(field, parent(field); array_type)
+squeeze_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}; kw...) =
+    squeeze_reduced_dimensions(output.operand; kw...)
+
+function collect_dim(coordinate, location, topology, size, halo, indices, with_halos)
+    with_halos && return collect(coordinate)
+    indices = validate_index(indices, location, topology, size, halo)
+    indices = restrict_to_interior(indices, location, topology, size)
+    return collect(coordinate[indices])
+end
+
 #####
 ##### Dimension attributes
 #####
@@ -12,7 +45,13 @@
 const base_dimension_attributes = Dict("time"        => Dict("long_name" => "Time", "units" => "s"),
                                        "particle_id" => Dict("long_name" => "Particle ID"))
 
-suffix_grid_keys(dims, grid_index) = Dict(add_grid_suffix(key, grid_index) => value for (key, value) in dims)
+suffix_grid_entry(entry, grid_index) = entry
+suffix_grid_entry(entry::NamedTuple, grid_index) =
+    (array=entry.array, dims=Tuple(add_grid_suffix(name, grid_index) for name in entry.dims))
+
+suffix_grid_keys(dims, grid_index) =
+    Dict(add_grid_suffix(key, grid_index) => suffix_grid_entry(value, grid_index)
+         for (key, value) in dims)
 
 function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator; grid_index=nothing)
     z = vertical_coordinate_name(coordinate)
@@ -22,8 +61,12 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     Δzᵃᵃᶠ_name = dim_name_generator("Δz", coordinate, nothing, nothing, f, Val(:z))
     Δzᵃᵃᶜ_name = dim_name_generator("Δz", coordinate, nothing, nothing, c, Val(:z))
 
-    zᵃᵃᶠ_attrs = Dict("long_name" => "Cell face locations in the z-direction.",   "units" => "m")
-    zᵃᵃᶜ_attrs = Dict("long_name" => "Cell center locations in the z-direction.", "units" => "m")
+    zᵃᵃᶠ_attrs = Dict("long_name" => "Cell face locations in the z-direction.",
+                         "standard_name" => "height", "units" => "m",
+                         "axis" => "Z", "positive" => "up")
+    zᵃᵃᶜ_attrs = Dict("long_name" => "Cell center locations in the z-direction.",
+                         "standard_name" => "height", "units" => "m",
+                         "axis" => "Z", "positive" => "up")
 
     Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between cell centers (located at cell faces) in the z-direction.", "units" => "m")
     Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between cell faces (located at cell centers) in the z-direction.", "units" => "m")
@@ -36,7 +79,7 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     return suffix_grid_keys(vertical_dimension_attributes, grid_index)
 end
 
-function default_vertical_dimension_attributes(coordinate::MutableVerticalDiscretization, dim_name_generator; grid_index=nothing)
+function default_vertical_dimension_attributes(coordinate::AbstractVerticalCoordinate, dim_name_generator; grid_index=nothing)
     # `r` is the reference (Lagrangian) coordinate. Physical depth `z = z(r, η, …)` is
     # reconstructible at read time from `r` and the time-varying free-surface `η`
     # written separately (see grid_reconstruction.jl).
@@ -63,6 +106,7 @@ function default_vertical_dimension_attributes(coordinate::MutableVerticalDiscre
 
     return suffix_grid_keys(vertical_dimension_attributes, grid_index)
 end
+
 function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator; grid_index=nothing)
     xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
     xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
@@ -74,10 +118,18 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator;
     Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
     Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
 
-    xᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the x-direction.",   "units" => "m", "location" => "Face")
-    xᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the x-direction.", "units" => "m", "location" => "Center")
-    yᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the y-direction.",   "units" => "m", "location" => "Face")
-    yᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the y-direction.", "units" => "m", "location" => "Center")
+    xᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the x-direction.",
+                         "standard_name" => "projection_x_coordinate", "units" => "m",
+                         "axis" => "X", "location" => "Face")
+    xᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the x-direction.",
+                         "standard_name" => "projection_x_coordinate", "units" => "m",
+                         "axis" => "X", "location" => "Center")
+    yᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the y-direction.",
+                         "standard_name" => "projection_y_coordinate", "units" => "m",
+                         "axis" => "Y", "location" => "Face")
+    yᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the y-direction.",
+                         "standard_name" => "projection_y_coordinate", "units" => "m",
+                         "axis" => "Y", "location" => "Center")
 
     Δxᶠᵃᵃ_attrs = Dict("long_name" => "Spacings between cell centers (located at the cell faces) in the x-direction.", "units" => "m", "location" => "Face")
     Δxᶜᵃᵃ_attrs = Dict("long_name" => "Spacings between cell faces (located at the cell centers) in the x-direction.", "units" => "m", "location" => "Center")
@@ -105,14 +157,22 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     λᶠᵃᵃ_name = dim_name_generator("λ", grid, f, nothing, nothing, Val(:x))
     λᶜᵃᵃ_name = dim_name_generator("λ", grid, c, nothing, nothing, Val(:x))
 
-    λᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the zonal direction.",   "units" => "degrees east")
-    λᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the zonal direction.", "units" => "degrees east")
+    λᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the zonal direction.",
+                         "standard_name" => "longitude", "units" => "degrees_east",
+                         "axis" => "X")
+    λᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the zonal direction.",
+                         "standard_name" => "longitude", "units" => "degrees_east",
+                         "axis" => "X")
 
     φᵃᶠᵃ_name = dim_name_generator("φ", grid, nothing, f, nothing, Val(:y))
     φᵃᶜᵃ_name = dim_name_generator("φ", grid, nothing, c, nothing, Val(:y))
 
-    φᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the meridional direction.",   "units" => "degrees north")
-    φᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the meridional direction.", "units" => "degrees north")
+    φᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the meridional direction.",
+                         "standard_name" => "latitude", "units" => "degrees_north",
+                         "axis" => "Y")
+    φᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the meridional direction.",
+                         "standard_name" => "latitude", "units" => "degrees_north",
+                         "axis" => "Y")
 
     Δλᶠᵃᵃ_name = dim_name_generator("Δλ", grid, f, nothing, nothing, Val(:x))
     Δλᶜᵃᵃ_name = dim_name_generator("Δλ", grid, c, nothing, nothing, Val(:x))
@@ -120,8 +180,8 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     Δλᶠᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the zonal direction.",   "units" => "degrees")
     Δλᶜᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the zonal direction.", "units" => "degrees")
 
-    Δφᵃᶠᵃ_name = dim_name_generator("Δλ", grid, nothing, f, nothing, Val(:y))
-    Δφᵃᶜᵃ_name = dim_name_generator("Δλ", grid, nothing, c, nothing, Val(:y))
+    Δφᵃᶠᵃ_name = dim_name_generator("Δφ", grid, nothing, f, nothing, Val(:y))
+    Δφᵃᶜᵃ_name = dim_name_generator("Δφ", grid, nothing, c, nothing, Val(:y))
 
     Δφᵃᶠᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the meridional direction.",   "units" => "degrees")
     Δφᵃᶜᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the meridional direction.", "units" => "degrees")
@@ -188,8 +248,7 @@ end
 function default_dimension_attributes(grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
     horizontal_dimension_attributes = Dict{String, Any}()
 
-    # Bare logical-index dim attributes. These dims carry no coordinate variable, but
-    # in case future code attaches one we record sensible defaults.
+    # Bare logical-index dimension attributes.
     for (loc, label) in ((c, "Center"), (f, "Face"))
         xi_name = ossg_xi_name(grid, loc, dim_name_generator)
         eta_name = ossg_eta_name(grid, loc, dim_name_generator)
@@ -236,13 +295,11 @@ default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator; kw.
 #####
 
 function maybe_add_particle_dims!(dims, outputs)
-    if "particles" in keys(outputs)  # TODO: Change this to look for ::LagrangianParticles in outputs?
+    if "particles" in keys(outputs)
         dims["particle_id"] = collect(1:length(outputs["particles"]))
     end
     return dims
 end
-
-
 
 #####
 ##### Vertical dimensions
@@ -262,7 +319,7 @@ end
 # For MutableVerticalDiscretization, the saved 1D coordinate is the *reference* (Lagrangian)
 # coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
 # the time-varying `η` (output separately).
-function gather_vertical_dimensions(coordinate::MutableVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
+function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     rᵃᵃᶠ_name = dim_name_generator("r", coordinate, nothing, nothing, f, Val(:z))
     rᵃᵃᶜ_name = dim_name_generator("r", coordinate, nothing, nothing, c, Val(:z))
 
@@ -361,8 +418,8 @@ end
 #
 # OSSG (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid) stores
 # 2D arrays for `λ` and `φ` at each Arakawa-C stagger location. We follow CF §5.2:
-#   - Logical-index dimensions `i_caa`/`i_faa`/`j_aca`/`j_afa` are *bare* NetCDF dimensions
-#     (created by `defDim` only; no coordinate variable).
+#   - Logical-index dimensions `i_caa`/`i_faa`/`j_aca`/`j_afa` are bare dimensions
+#     with no coordinate variable.
 #   - The eight 2D `λ_**` and `φ_**` arrays are written as auxiliary coordinate variables
 #     dimensioned `(i_*, j_*)`.
 #   - Each data field carries a `coordinates = "λ_** φ_** z_aac"` attribute so that
@@ -394,7 +451,7 @@ function gather_dimensions(outputs, grid::OrthogonalSphericalShellGrid, indices,
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
-    # OSSG horizontal axes are never `Flat`; assume Bounded/Periodic. Defensive guard:
+    # OSSG horizontal axes cannot be flat.
     (TX == Flat || TY == Flat) && error("Flat horizontal topology is not supported on OrthogonalSphericalShellGrid output.")
 
     dims = Dict()
@@ -434,7 +491,6 @@ gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
 
 function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
-    TX, TY, TZ = topology(grid)
 
     z = vertical_coordinate_name(grid)
     x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
@@ -446,7 +502,6 @@ end
 
 function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator; grid_index=nothing)
     LΛ, LΦ, LZ = location(fd)
-    TΛ, TΦ, TZ = topology(grid)
 
     z = vertical_coordinate_name(grid)
     λ_dim_name = LΛ == Nothing ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
@@ -459,7 +514,7 @@ end
 function field_dimensions(fd::AbstractField, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
-    # On OSSG, the field's NetCDF dimensions are the bare horizontal index dims (i_*, j_*)
+    # On OSSG, field dimensions are the bare horizontal index dimensions (i_*, j_*)
     # — *not* the 2D λ/φ aux coords. Physical position comes from `coordinates` attribute
     # added per-field elsewhere.
     z = vertical_coordinate_name(grid)
@@ -476,75 +531,29 @@ field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generat
 field_dimensions(fd::AbstractField, dim_name_generator; kw...) =
     field_dimensions(fd, grid(fd), dim_name_generator; kw...)
 
-"""
-    create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
+field_auxiliary_coordinates(fd::AbstractField, dim_name_generator; kw...) =
+    field_auxiliary_coordinates(fd, grid(fd), dim_name_generator; kw...)
 
-Create spatial dimensions in the NetCDF dataset and define corresponding variables to store
-their coordinate values. Each dimension variable has itself as its sole dimension (e.g., the
-`x` variable has dimension `x`). The dimensions are created if they don't exist, and validated
-against provided arrays if they do exist. An error is thrown if the dimension already exists
-but is different from the provided array.
-"""
-#
-# Entries in the `dims` dict passed to `create_spatial_dimensions!` are either:
-#   - a `NamedTuple` `(array, dims)` where `dims` is a tuple of the NetCDF dimension names
-#     the variable spans. For 2D auxiliary coordinates (e.g. λ/φ on an
-#     `OrthogonalSphericalShellGrid`) `dims` is a pair of *other* dimension names like
-#     `("i_caa", "j_aca")`; those underlying dimensions are created with `defDim` here.
-#   - a plain `AbstractArray`, which is treated as a 1D coordinate variable whose
-#     dimension is itself (the variable's name `var_name` doubles as the dim name).
-#
-# A `nothing` array (or a `(array = nothing, dims = …)` entry) skips creation
-# (used when a topology is `Flat`).
-#
+field_auxiliary_coordinates(fd, grid, dim_name_generator; grid_index=nothing) = String[]
 
-function create_spatial_dimensions!(dims, attributes_dict; dimension_type=Float64, kwargs...)
-    effective_dim_names = String[]
-    for (var_name, entry) in dims
-        var_name == "" && continue # Skip empty names
+function field_auxiliary_coordinates(fd, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
+    LX, LY, LZ = location(fd)
+    coordinates = String[]
 
-        # Normalise to (array, var_dims). A bare `AbstractArray` is interpreted as a 1D
-        # coordinate variable; explicit `NamedTuple` entries are taken as-is.
-        if entry isa NamedTuple
-            arr = entry.array
-            var_dims = entry.dims
-        else
-            arr = entry
-            var_dims = (var_name,)
-        end
-        arr isa Nothing && continue
-
-        # Convert to the requested float type and collect to a plain CPU array
-        arr = collect(dimension_type.(arr))
-
-        # Ensure each NetCDF dimension referenced by this variable exists.
-        for (axis, dname) in enumerate(var_dims)
-            if dname ∉ keys(dataset.dim)
-                defDim(dataset, dname, size(arr, axis))
-            end
-        end
-
-        if var_name ∉ keys(dataset)
-            defVar(dataset, var_name, arr, var_dims,
-                   attrib=get(attributes_dict, var_name, Dict{String, Any}()); kwargs...)
-        else
-            # The variable already exists in the dataset. Validate that the existing values
-            # match what we'd write — applies equally to 1D coordinate variables (a NetCDF
-            # "coordinate variable", same name as its dimension) and to 2D auxiliary
-            # coordinates such as λ_cca/φ_cca on an OrthogonalSphericalShellGrid. Without
-            # this, an inconsistent reused dataset could pass silently.
-            existing_array = collect(dataset[var_name])
-            if existing_array != collect(arr)
-                throw(ArgumentError("Variable '$var_name' already exists in dataset but its values differ from expected.\n" *
-                                    "  Actual:   $(existing_array) (size=$(size(existing_array)))\n" *
-                                    "  Expected: $(arr) (size=$(size(arr)))"))
-            end
-        end
-
-        # Effective dim names list: track NetCDF dimensions consumed (deduped)
-        for dname in var_dims
-            dname ∈ effective_dim_names || push!(effective_dim_names, dname)
-        end
+    if LX !== Nothing && LY !== Nothing
+        λ_name = dim_name_generator("λ", grid, LX(), LY(), nothing, Val(:x))
+        φ_name = dim_name_generator("φ", grid, LX(), LY(), nothing, Val(:y))
+        push!(coordinates, add_grid_suffix(λ_name, grid_index), add_grid_suffix(φ_name, grid_index))
     end
-    return tuple(effective_dim_names...)
+
+    if LZ !== Nothing
+        vertical_name = vertical_coordinate_name(grid)
+        coordinate_name = dim_name_generator(vertical_name, grid, nothing, nothing, LZ(), Val(:z))
+        push!(coordinates, add_grid_suffix(coordinate_name, grid_index))
+    end
+
+    return coordinates
 end
+
+field_auxiliary_coordinates(fd, grid::ImmersedBoundaryGrid, dim_name_generator; kw...) =
+    field_auxiliary_coordinates(fd, grid.underlying_grid, dim_name_generator; kw...)

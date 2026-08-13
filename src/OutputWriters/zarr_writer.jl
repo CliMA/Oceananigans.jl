@@ -5,25 +5,28 @@
 #####
 ##### ZarrWriter struct definition
 #####
-mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN} <: AbstractOutputWriter
+mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWriter
     filepath :: String
     store :: S
-    grids :: G                  # Tuple of unique grids across all outputs
-    output_grid_map :: Dict     # name (String) -> grid index in `grids` (Int) or Nothing
+    grids :: G
+    output_grid_map :: Dict{String, Union{Int, Nothing}}
     outputs :: O
     schedule :: T
     array_type :: A
     indices :: Tuple
+    global_attributes :: Dict{String, Any}
+    output_attributes :: Dict{String, Any}
+    dimensions :: Dict{String, Any}
     with_halos :: Bool
-    # include_grid_metrics :: Bool
+    include_grid_metrics :: Bool
     overwrite_existing :: Bool
     verbose :: Bool
     part :: Int
     file_splitting :: FS
     compressor :: C
     chunks :: CH
-    dimensions :: Dict
     dimension_name_generator :: DN
+    dimension_type :: DT
     initialized :: Bool
 end
 
@@ -32,13 +35,15 @@ end
     ZarrWriter(model, outputs; filename, schedule,
                dir = ".",
                indices = (:, :, :),
-               with_halos = true,
+               global_attributes = Dict(),
+               output_attributes = Dict(),
+               dimensions = Dict(),
+               with_halos = false,
+               include_grid_metrics = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
-               dimensions = Dict(),
                dimension_name_generator = trilocation_dim_name,
-               with_halos = false,
-            #    include_grid_metrics = true,
+               dimension_type = Float64,
                overwrite_existing = false,
                verbose = false,
                part = 1,
@@ -87,7 +92,13 @@ Keyword arguments
 - `indices`: Tuple of `Colon`, `UnitRange`, or `Int` specifying the slice of each field to
              write. Default: `(:, :, :)`.
 
-- `with_halos`: Whether to include halo regions. Default: `true`.
+- `with_halos`: Whether to include halo regions. Default: `false`.
+
+- `global_attributes`: Metadata to store on the root Zarr group.
+
+- `output_attributes`: Attributes to add to individual output arrays.
+
+- `dimensions`: Dimension names for non-field outputs.
 
 - `array_type`: The array type. Only `eltype(array_type)` is used — it sets the Zarr
                 array's on-disk `dtype`, which is fixed for the array's lifetime. Default:
@@ -124,6 +135,8 @@ Keyword arguments
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
+- `dimension_type`: Element type for coordinate and time arrays. Default: `Float64`.
+
 - `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
                               to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
@@ -136,19 +149,12 @@ Reading output back
 A serial reader works on any `ZarrWriter` output, including output produced by a
 distributed-MPI run:
 
-```julia
-using Oceananigans, Zarr
-
-fts = FieldTimeSeries("output.zarr", "u")
-```
+Load `Oceananigans` and `Zarr`, then construct a `FieldTimeSeries` from the store path
+and output name.
 
 Convert a `DirectoryStore` to a single zip file at the end of a run:
 
-```julia
-open("output.zip", "w") do io
-    Zarr.writezip(io, writer.store)
-end
-```
+Use `Zarr.writezip` to convert a completed `DirectoryStore` to a zip archive.
 """
 function ZarrWriter(model, outputs; kw...)
     error("""
@@ -164,8 +170,7 @@ function ZarrWriter(model, outputs; kw...)
     """)
 end
 
-# Hooks for the extension to fill in.
-#TODO: probably need more hooks for the extension to fill in, e.g. for writing grid coordinate data, grid metrics, etc.
+# Hooks implemented by OceananigansZarrExt.
 function initialize_zarr_store! end
 function write_zarr_grid_reconstruction! end
 function reconstruct_zarr_grid end

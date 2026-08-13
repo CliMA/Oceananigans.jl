@@ -9,26 +9,19 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 """
 module OceananigansZarrExt
 
-using Zarr
+import Zarr
 using OrderedCollections: OrderedDict
 
+import Dates
 using Dates: AbstractTime, UTC, now, DateTime
 using Oceananigans: AbstractModel
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: AbstractField, location, indices
 import Oceananigans.Grids: grid
 using Oceananigans.Grids:
-    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    Center, Face, Flat, Periodic, Bounded,
-    RightCenterFolded, RightFaceFolded,
-    StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
-    grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-    λnodes, φnodes,
-    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node, inactive_node,
-    topology, constructor_arguments, architecture,
-    generate_coordinate, total_length, interior_indices
+    OrthogonalSphericalShellGrid, Center, Face, grid, topology,
+    constructor_arguments, architecture, generate_coordinate, interior_indices
 
 # Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
 # different function (5-arg, for FieldTimeSeries data allocation).
@@ -38,13 +31,10 @@ using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
     GridFittedBottom,
-    PartialCellBottom,
-    GFBIBG, PCBIBG
+    PartialCellBottom
 using Oceananigans.OrthogonalSphericalShellGrids:
-    TripolarGrid, RotatedLatitudeLongitudeGrid,
-    ConformalCubedSpherePanelGrid, Tripolar, LatitudeLongitudeRotation,
+    Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
-using Oceananigans.Architectures: CPU, GPU, architecture
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.DistributedComputations:
     Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
@@ -63,14 +53,21 @@ using Oceananigans.OutputWriters:
     fetch_and_convert_output,
     WindowedTimeAverage,
     add_grid_suffix,
-    dimension_name_generator_free_surface,
-    vertical_coordinate_name,
     add_schedule_metadata!,
-    restrict_to_interior
+    default_output_attributes,
+    default_dimension_attributes,
+    gather_dimensions,
+    gather_grid_metrics,
+    gather_immersed_boundary,
+    field_dimensions,
+    field_auxiliary_coordinates,
+    drop_reduced_dimensions,
+    squeeze_reduced_dimensions,
+    materialize_serialized_output
 using Oceananigans.Utils:
-    TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
+    materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo,
-    prettykeys, pretty_filesize
+    prettykeys
 
 import Oceananigans: initialize!, write_output!
 import Oceananigans.OutputWriters: ZarrWriter
@@ -79,7 +76,6 @@ const c = Center()
 const f = Face()
 
 include("utils.jl")
-include("dimensions.jl")
 include("grid_reconstruction.jl")
 include("zarr_writer.jl")
 include("output_readers.jl")
