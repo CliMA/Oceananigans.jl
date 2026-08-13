@@ -35,3 +35,55 @@
         @test Array(interior(big_halo_c)) == Array(interior(coarse))
     end
 end
+
+@testset "set! between reduced and windowed single-layer fields" begin
+    for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+        Nz = size(grid, 3)
+
+        # A windowed single-layer field at the surface, as produced by output with
+        # `indices = (:, :, Nz)` and reloaded as a `FieldTimeSeries` slice. Its z-location
+        # is `Center`, but it spans a single vertical level.
+        surface_u = Field{Face, Center, Center}(grid, indices=(:, :, Nz:Nz))
+        set!(surface_u, (x, y, z) -> x + 2y)
+
+        # Setting a reduced (`Nothing`-z) field from the single-layer 3D field must copy
+        # the single slab directly, not attempt to interpolate across the `Nothing`/`Center`
+        # location and `:`/`Nz:Nz` index mismatch in the degenerate vertical dimension.
+        reduced_u = Field{Face, Center, Nothing}(grid)
+        set!(reduced_u, surface_u)
+        @test Array(interior(reduced_u)) == Array(interior(surface_u))
+
+        # The reverse direction (located single-layer field from a reduced field) too.
+        surface_back = Field{Face, Center, Center}(grid, indices=(:, :, Nz:Nz))
+        set!(surface_back, reduced_u)
+        @test Array(interior(surface_back)) == Array(interior(reduced_u))
+
+        # Two *located* single-layer fields windowed at different levels do NOT share a
+        # discretization (the index is meaningful), so this still routes to interpolation.
+        if Nz > 1
+            bottom_u = Field{Face, Center, Center}(grid, indices=(:, :, 1:1))
+            top_u    = Field{Face, Center, Center}(grid, indices=(:, :, Nz:Nz))
+            @test !Oceananigans.Fields.matching_field_discretization(bottom_u, top_u)
+        end
+    end
+end
+
+@testset "node returns the physical (deformed) znode on mutable grids" begin
+    # On a mutable vertical grid the physical height is znode = rnode·σ + η, which differs
+    # from the reference rnode once η ≠ 0. `node` (and hence interpolation targets and every
+    # node-evaluated forcing / closure / boundary function) must report the physical znode.
+    z = Oceananigans.Grids.MutableVerticalDiscretization(collect(0:0.25:1))   # 5 faces ⇒ Nz = 4
+    grid = RectilinearGrid(CPU(); size=(2, 2, 4), x=(0, 1), y=(0, 1), z=z,
+                           topology=(Periodic, Periodic, Bounded))
+
+    Δη = 0.3
+    fill!(grid.z.ηⁿ, Δη)                                       # σ stays 1, η = Δη ⇒ znode = rnode + Δη
+    c = Center()
+    for k in 1:4
+        zr = Oceananigans.Grids.rnode(1, 1, k, grid, c, c, c)
+        zz = Oceananigans.Grids.znode(1, 1, k, grid, c, c, c)
+        @test zz ≈ zr + Δη                                     # deformation is actually present
+        @test Oceananigans.Grids.node(1, 1, k, grid, c, c, c)[end] == zz   # node reports znode, not rnode
+    end
+end

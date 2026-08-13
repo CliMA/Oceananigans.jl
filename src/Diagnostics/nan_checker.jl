@@ -68,7 +68,7 @@ function (nc::NaNChecker)(simulation)
 end
 
 """
-    erroring_NaNChecker!(simulation)
+$(TYPEDSIGNATURES)
 
 Toggle `simulation`'s `NaNChecker` to throw an error when a `NaN` is detected.
 """

@@ -14,26 +14,32 @@ export
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
+    AdaptiveImplicitVerticalAdvection,
+    needs_implicit_solver,
+    update_advection_timestep!,
     EnergyConserving,
     EnstrophyConserving
 
 using Adapt: Adapt
-using OffsetArrays: OffsetArray
+using Base: Callable
+using DocStringExtensions: TYPEDSIGNATURES
 using MuladdMacro: @muladd
+using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, XFlatGrid, YFlatGrid, ZFlatGrid, with_halo,
-    required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo,
+                          required_halo_size_x, required_halo_size_y, required_halo_size_z,
+                          XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
-    Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ,
-    Δy⁻¹ᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
-using Base: Callable
+                              Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
+                              Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
+                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 
-abstract type AbstractAdvectionScheme{B, FT} end
-abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
 
 # `advection_buffers` specifies the list of buffers for which advection schemes
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
@@ -53,6 +59,7 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 struct DecreasingOrderAdvectionScheme end
 
+include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 
@@ -68,6 +75,8 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("adaptive_implicit_vertical_advection.jl")
+include("implicit_vertical_advection.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")

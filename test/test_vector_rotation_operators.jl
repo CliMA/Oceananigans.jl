@@ -92,7 +92,7 @@ end
                 # that geometric factors related with spherical geometry don't come into play.
                 Δ = 1e-3
 
-                angles_degrees = [-22.5, 30, 45, 60]
+                angles_degrees = [-150, -135, -22.5, 30, 45, 60, 120, 135, 160]
                 angles = angles_degrees .* (π / 180) # Convert to Radians
 
                 for θᵢ in angles

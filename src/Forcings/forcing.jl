@@ -168,7 +168,7 @@ end
 @inline field_time_series_forcing_func(i, j, k, grid, clock, fields, a::FlavorOfFTS) = @inbounds a[i, j, k, Time(clock.time)]
 
 """
-    Forcing(array::AbstractArray)
+$(TYPEDSIGNATURES)
 
 Return a `Forcing` by `array`, which can be added to the tendency of a model field.
 
@@ -177,7 +177,7 @@ Forcing is computed by calling `array[i, j, k]`, so `array` must be 3D with `siz
 Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, parameters=array)
 
 """
-    Forcing(array::FlavorOfFTS)
+$(TYPEDSIGNATURES)
 
 Return a `Forcing` by a `FieldTimeSeries`, which can be added to the tendency of a model field.
 

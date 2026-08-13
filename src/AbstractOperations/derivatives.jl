@@ -29,6 +29,7 @@ end
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
 function _derivative(L::Tuple{LX, LY, LZ}, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
+    arg = validate_operand(arg)
     ▶ = interpolation_operator(L∂, L)
     return Derivative{LX, LY, LZ}(∂, arg, ▶, abstract_∂, grid)
 end
@@ -57,7 +58,7 @@ const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)
 
 """
-    ∂x(L::Tuple, arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of an ``x``-derivative acting on field `arg` followed
 by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
@@ -66,7 +67,7 @@ by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Cen
     _derivative(L, ∂x(LX(), LY(), LZ()), arg, (flip(LX()), LY(), LZ()), ∂x, arg.grid)
 
 """
-    ∂y(L::Tuple, arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of a ``y``-derivative acting on field `arg` followed
 by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
@@ -75,7 +76,7 @@ by interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Cen
     _derivative(L, ∂y(LX(), LY(), LZ()), arg, (LX(), flip(LY()), LZ()), ∂y, arg.grid)
 
 """
-    ∂z(L::Tuple, arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of a ``z``-derivative acting on field `arg` followed
 by  interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Center`s.
@@ -91,21 +92,21 @@ by  interpolation to `L`, where `L` is a 3-tuple of instantiated `Face`s and `Ce
 # Defaults
 
 """
-    ∂x(arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of a ``x``-derivative acting on field `arg`.
 """
 ∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX()), LY(), LZ()), arg)
 
 """
-    ∂y(arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of a ``y``-derivative acting on field `arg`.
 """
 ∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX(), flip(LY()), LZ()), arg)
 
 """
-    ∂z(arg::AbstractField)
+$(TYPEDSIGNATURES)
 
 Return an abstract representation of a ``z``-derivative acting on field `arg`.
 """

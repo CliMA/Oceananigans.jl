@@ -1,12 +1,15 @@
 module OutputReaders
 
-export FieldDataset
-export FieldTimeSeries
-export TimeSeriesInterpolation
-export InMemory, OnDisk
-export Cyclical, Linear, Clamp
+export
+    FieldDataset,
+    FieldTimeSeries,
+    TimeSeriesInterpolation,
+    InMemory, OnDisk,
+    Cyclical, Linear, Clamp
 
-using Oceananigans: boundary_conditions
+using DocStringExtensions: TYPEDSIGNATURES
+
+using Oceananigans: Oceananigans, boundary_conditions
 using Oceananigans.Utils: @apply_regionally
 
 struct JLD2Path
@@ -22,13 +25,12 @@ struct ZarrPath
 end
 
 """
-    auto_extension(filename, ext)
+$(TYPEDSIGNATURES)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext)
-    if endswith(filename, ext) || endswith(filename, ".nc") || endswith(filename, ".jld2") ||
-       endswith(filename, ".zarr") || endswith(filename, ".zip")
+    if endswith(filename, ext)
         return filename
     else
         return filename * ext

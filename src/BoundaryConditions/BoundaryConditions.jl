@@ -1,11 +1,12 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, Open,
+    Flux, Gradient, Value, NormalFlow,
     BoundaryCondition, getbc,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
+    PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    PerturbationAdvection,
+    PerturbationAdvection, has_target_transport, get_target_transport,
+    GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -15,13 +16,17 @@ export
     PeriodicFillHalo,
     DistributedFillHalo
 
-using Adapt
+using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: CPU, GPU
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFoldedTopology, Face,
+                          Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
+                          RightCenterFolded, RightConnected, RightFaceFolded, node, φnode, topology
+using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: launch!
-using Oceananigans.Operators: Ax, Ay, Az, volume
-using Oceananigans.Grids
 
 # All possible fill_halo! kernels
 struct WestAndEast end
@@ -44,7 +49,7 @@ include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
 include("fill_halo_regions_value_gradient.jl")
-include("fill_halo_regions_open.jl")
+include("fill_halo_regions_normal_flow.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
@@ -56,5 +61,9 @@ include("compute_flux_bcs.jl")
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
-include("perturbation_advection.jl")
+include("open_boundary_schemes/open_boundary_utils.jl")
+include("open_boundary_schemes/perturbation_advection.jl")
+include("open_boundary_schemes/gravity_wave_schemes.jl")
+include("open_boundary_schemes/normal_radiation.jl")
+
 end # module

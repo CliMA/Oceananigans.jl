@@ -59,7 +59,7 @@ using Oceananigans.Grids: AbstractGrid
 #####
 
 """
-    div_Uh(i, j, k, grid, advection, solution, formulation)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence of the mass flux into a cell,
 
@@ -88,7 +88,7 @@ end
     @inbounds _advective_tracer_flux_y(i, j, k, grid, advection, vh, c) / ℑyᵃᶠᵃ(i, j, k, grid, h)
 
 """
-    div_Uc(i, j, k, grid, advection, solution, c, formulation)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
 a velocity field ``𝐔 = (u, v)``, ``𝛁·(𝐔c)``,
@@ -122,7 +122,7 @@ end
 @inline v(i, j, k, grid, solution) = @inbounds solution.vh[i, j, k] / ℑyᵃᶠᵃ(i, j, k, grid, solution.h)
 
 """
-    c_div_U(i, j, k, grid, solution, c, formulation)
+$(TYPEDSIGNATURES)
 
 Calculate the product of the tracer concentration ``c`` with
 the horizontal divergence of the velocity field ``𝐔 = (u, v)``, ``c ∇·𝐔``,
