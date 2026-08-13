@@ -63,6 +63,7 @@ using Oceananigans.OutputWriters:
     field_auxiliary_coordinates,
     drop_reduced_dimensions,
     squeeze_reduced_dimensions,
+    inflate_reduced_dimensions,
     materialize_serialized_output
 using Oceananigans.Utils:
     materialize_schedule,

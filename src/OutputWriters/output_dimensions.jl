@@ -31,6 +31,29 @@ squeeze_reduced_dimensions(field::AbstractField; array_type=Array{eltype(field)}
 squeeze_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}; kw...) =
     squeeze_reduced_dimensions(output.operand; kw...)
 
+function inflate_reduced_dimensions(data, location, grid)
+    ndims(data) == 3 && return data
+
+    reduced_dimensions = ntuple(3) do dimension
+        loc = location[dimension]
+        return loc === Nothing || loc === nothing || topology(grid, dimension) === Flat
+    end
+
+    any(reduced_dimensions) || return data
+
+    data_shape = size(data)
+    data_dimension = 1
+    inflated_shape = ntuple(3) do dimension
+        reduced_dimensions[dimension] && return 1
+        size = data_shape[data_dimension]
+        data_dimension += 1
+        return size
+    end
+
+    data = data isa AbstractArray ? data : fill(data)
+    return reshape(data, inflated_shape)
+end
+
 function collect_dim(coordinate, location, topology, size, halo, indices, with_halos)
     with_halos && return collect(coordinate)
     indices = validate_index(indices, location, topology, size, halo)

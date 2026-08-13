@@ -271,6 +271,10 @@ end
         # c was set to 4.0 everywhere, so the column-average is 4.0
         @test all(c_avg_arr[:, 1] .≈ Float32(4.0))
 
+        c_avg_fts = FieldTimeSeries(zarrpath, "c_avg")
+        @test size(c_avg_fts[1]) == (1, 1, 4)
+        @test all(interior(c_avg_fts[1]) .≈ 4)
+
         # AbstractOperation u+v → shape matches the operand grid
         @test "u_plus_v" in keys(g.arrays)
         upv_arr = g["u_plus_v"]

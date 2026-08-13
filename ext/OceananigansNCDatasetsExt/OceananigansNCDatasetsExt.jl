@@ -28,7 +28,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Center, Face, Flat, grid, topology, nodes, constructor_arguments,
+    Center, Face, grid, topology, nodes, constructor_arguments,
     architecture, generate_coordinate, interior_indices
 
 # Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
@@ -74,6 +74,7 @@ using Oceananigans.OutputWriters:
     field_dimensions,
     field_auxiliary_coordinates,
     squeeze_reduced_dimensions,
+    inflate_reduced_dimensions,
     materialize_serialized_output
 using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys

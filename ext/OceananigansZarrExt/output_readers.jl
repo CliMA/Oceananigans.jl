@@ -144,16 +144,20 @@ function Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
     nd = ndims(arr)
     time_slice = (ntuple(_ -> :, nd - 1)..., time_index)
     raw = arr[time_slice...]
+    raw = inflate_reduced_dimensions(raw, loc, grid)
 
     grid_arch = on_architecture(architecture, grid)
     raw_arch  = on_architecture(architecture, raw)
 
     fld = Oceananigans.Fields.Field(loc, grid_arch; boundary_conditions, indices)
-    parent_size = size(parent(fld))
-    if size(raw_arch) == parent_size[1:length(size(raw_arch))]
+    if length(raw_arch) == length(parent(fld))
         copyto!(parent(fld), raw_arch)
+    elseif length(raw_arch) == length(interior(fld))
+        interior(fld) .= reshape(raw_arch, size(interior(fld)))
     else
-        interior(fld) .= raw_arch
+        msg = "Zarr slice for $name has length $(length(raw_arch)); expected " *
+              "interior length $(length(interior(fld))) or parent length $(length(parent(fld)))."
+        throw(DimensionMismatch(msg))
     end
     return fld
 end
