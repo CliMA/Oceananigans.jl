@@ -351,10 +351,8 @@ function Oceananigans.restore_prognostic_state!(restored::WindowedTimeAverage, f
     restore_prognostic_state!(restored.schedule, from.schedule)
 
     if !same_cadence
-        window_start_time = from.schedule.collecting ?
-                            from.window_start_time : from.previous_collection_time
-        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window -
-                                                 restored.schedule.interval
+        window_start_time = from.schedule.collecting ? from.window_start_time : from.previous_collection_time
+        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window - restored.schedule.interval
         restored.schedule.actuations = 0
     end
 
