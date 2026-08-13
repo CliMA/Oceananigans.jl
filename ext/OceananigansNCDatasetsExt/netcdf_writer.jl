@@ -552,20 +552,21 @@ function planned_dimensions(ow::NetCDFWriter)
     return planned
 end
 
+""" Formats `name => length` pairs as, e.g., "time(0), x_caa(16), z_aac(16)". """
+show_dimensions(dimensions) = join(("$dim_name($dim_length)" for (dim_name, dim_length) in dimensions), ", ")
+
 function Base.show(io::IO, ow::NetCDFWriter)
     file_exists = isfile(ow.filepath)
 
     dims = if file_exists
         NCDataset(ow.filepath, "r") do ds
-            join([dim * "(" * string(length(ds[dim])) * "), "
-                  for dim in keys(ds.dim)])[1:end-2]
+            show_dimensions(dim_name => length(ds[dim_name]) for dim_name in keys(ds.dim))
         end
     else
-        join([dim_name * "(" * string(dim_length) * "), "
-              for (dim_name, dim_length) in planned_dimensions(ow)])[1:end-2]
+        show_dimensions(planned_dimensions(ow))
     end
 
-    file_size_str = file_exists ? pretty_filesize(filesize(ow.filepath)) : "0 bytes (file not yet created)"
+    file_size_str = file_exists ? pretty_filesize(filesize(ow.filepath)) : "(file not yet created)"
 
     averaging_schedule = output_averaging_schedule(ow)
     num_outputs = length(ow.outputs)
