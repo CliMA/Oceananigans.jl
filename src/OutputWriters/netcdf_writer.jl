@@ -1,12 +1,10 @@
 #####
-##### NetCDFWriter struct definition
-#####
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
 using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
-using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 # Short aliases for compact dispatch in name-generator method tables.
 const OSSG = OrthogonalSphericalShellGrid
@@ -99,6 +97,9 @@ dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, 
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
 add_grid_suffix(name, ::Nothing) = name
 
+#####
+##### NetCDFWriter struct definition
+#####
 mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grids :: G
     output_grid_map :: GM
