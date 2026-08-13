@@ -83,6 +83,8 @@ using Dates: value
     materialize = Oceananigans.OutputWriters.materialize_serialized_output
     @test materialize("Oceananigans.Grids.Periodic") === Periodic
     @test materialize("(Colon(), 1:4, 3)") == (:, 1:4, 3)
+    @test materialize("-Inf") === -Inf
+    @test materialize("+Inf") === Inf
     @test_throws ArgumentError materialize("run(\`touch unsafe_output_metadata\`)")
 end
 

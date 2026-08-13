@@ -152,6 +152,13 @@ function materialize_serialized_output_call(expression)
 
     if callable_expression === :(:)
         return materialize_serialized_output_range(arguments)
+    elseif callable_expression === :- || callable_expression === :+
+        length(arguments) == 1 ||
+            throw(ArgumentError("A serialized numeric sign must have one argument"))
+        value = only(arguments)
+        value isa Number ||
+            throw(ArgumentError("A serialized numeric sign must apply to a number"))
+        return callable_expression === :- ? -value : +value
     end
 
     callable = materialize_serialized_output(callable_expression)
