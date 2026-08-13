@@ -109,6 +109,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       with_halos = false,
                       include_grid_metrics = true,
                       overwrite_existing = nothing,
+                      duplicate_times = :overwrite,
                       verbose = false,
                       deflatelevel = 0,
                       part = 1,
@@ -118,6 +119,10 @@ function NetCDFWriter(model::AbstractModel, outputs;
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
+    end
+
+    if duplicate_times ∉ (:overwrite, :skip)
+        throw(ArgumentError("duplicate_times must be :overwrite or :skip, got :$duplicate_times"))
     end
 
     mkpath(dir)
@@ -162,6 +167,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         with_halos,
                         include_grid_metrics,
                         overwrite_existing,
+                        duplicate_times,
                         verbose,
                         deflatelevel,
                         part,
@@ -461,6 +467,35 @@ float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 
 """
+    time_index_for_writing(ds, model, ow, filepath)
+
+Return the index along the time dimension of `ds` at which output for the current model time
+should be written, or `nothing` if it should not be written at all.
+
+Output normally lands at the end of the time dimension. Picking up from a checkpoint written
+before the last output rewinds the clock behind times the file already covers, though, and
+appending then would leave the time axis unsorted. `ow.duplicate_times` decides what happens
+instead: `:overwrite` returns the index of the record the current time belongs at, and `:skip`
+returns `nothing`, keeping what the file already holds.
+"""
+function time_index_for_writing(ds, model, ow, filepath)
+    time_index = length(ds["time"]) + 1
+    t = float_or_date_time(model.clock.time)
+
+    # The common case: the clock is ahead of every time in the file, so output is appended.
+    if time_index == 1 || ds["time"][time_index - 1] < t
+        return time_index
+    end
+
+    if ow.duplicate_times === :skip
+        @warn "Time $t is already covered by $filepath. Skipping output writing."
+        return nothing
+    end
+
+    return something(findfirst(≥(t), collect(ds["time"])), time_index)
+end
+
+"""
     write_output!(ow::NetCDFWriter, model)
 
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
@@ -477,7 +512,13 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     ds = open(ow)
     verbose, filepath = ow.verbose, ow.filepath
 
-    time_index = length(ds["time"]) + 1
+    time_index = time_index_for_writing(ds, model, ow, filepath)
+
+    if isnothing(time_index)
+        close(ds)
+        return nothing
+    end
+
     ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
