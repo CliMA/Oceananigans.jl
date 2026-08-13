@@ -1432,6 +1432,68 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     return nothing
 end
 
+function test_changed_averaged_time_interval(arch)
+    prefix = "changed_averaged_time_interval_$(typeof(arch))"
+    partial_file = "$(prefix)_partial.jld2"
+    restored_file = "$(prefix)_restored.jld2"
+    clock_time(model) = [model.clock.time]
+    expected_average = 1.05days
+
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    partial_model = NonhydrostaticModel(grid)
+    partial_simulation = Simulation(partial_model, Δt=0.1days, stop_time=0.5days)
+    partial_simulation.output_writers[:checkpointer] =
+        Checkpointer(partial_model, schedule=IterationInterval(5), prefix=prefix)
+    partial_simulation.output_writers[:averaged] =
+        JLD2Writer(partial_model, (; clock_time),
+                   schedule = AveragedTimeInterval(1day),
+                   filename = partial_file,
+                   overwrite_existing = true)
+
+    @test_nowarn run!(partial_simulation)
+
+    partial_average = only(values(partial_simulation.output_writers[:averaged].outputs))
+    @test partial_average.schedule.collecting
+    @test partial_average.previous_collection_time - partial_average.window_start_time == 0.5days
+    @test only(Array(partial_average.result)) ≈ 0.3days
+
+    restored_model = NonhydrostaticModel(grid)
+    restored_simulation = Simulation(restored_model, Δt=0.1days, stop_time=2days)
+    restored_simulation.output_writers[:checkpointer] =
+        Checkpointer(restored_model, schedule=IterationInterval(5), prefix=prefix)
+    restored_simulation.output_writers[:averaged] =
+        JLD2Writer(restored_model, (; clock_time),
+                   schedule = AveragedTimeInterval(2days),
+                   filename = restored_file,
+                   overwrite_existing = true)
+
+    @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
+    restored_cache = only(values(restored_simulation.output_writers[:averaged].outputs))
+    @test restored_cache.previous_collection_time - restored_cache.window_start_time == 0.5days
+    @test only(Array(restored_cache.result)) ≈ 0.3days
+
+    @test_nowarn run!(restored_simulation)
+
+    restored_average = only(values(restored_simulation.output_writers[:averaged].outputs))
+    @test restored_average.window_start_time == 0
+    @test restored_average.previous_collection_time == 2days
+    @test only(Array(restored_average.result)) ≈ expected_average
+
+    jldopen(restored_file, "r") do file
+        iterations = sort(parse.(Int, keys(file["timeseries/t"])))
+        final_iteration = last(iterations)
+        final_time = file["timeseries/t/$final_iteration"]
+        final_average = only(file["timeseries/clock_time/$final_iteration"])
+
+        @test final_time == 2days
+        @test final_average ≈ expected_average
+    end
+
+    rm.(glob("$(prefix)*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpoint_empty_tracers(arch)
     N = 8
     L = 1
@@ -2151,6 +2213,11 @@ for arch in archs
             @info "  Testing WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]..."
             test_windowed_time_average_continuation_correctness(arch, WriterType)
         end
+    end
+
+    @testset "Changed AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
+        @info "  Testing changed AveragedTimeInterval checkpointing [$(typeof(arch))]..."
+        test_changed_averaged_time_interval(arch)
     end
 
     schemes = [
