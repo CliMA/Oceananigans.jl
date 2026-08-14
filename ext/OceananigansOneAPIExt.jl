@@ -62,6 +62,14 @@ AC.on_architecture(::ONEGPU, a::Array) = oneArray(a)
 AC.on_architecture(::ONEGPU, a::oneArray) = a
 AC.on_architecture(::ONEGPU, a::BitArray) = oneArray(a)
 AC.on_architecture(::ONEGPU, a::StepRangeLen) = a
+
+# Narrowing Float64 ref/step of Float32 ranges shrinks kernel arguments (Intel caps
+# them at 2 KiB) and avoids emulated Float64 arithmetic on Arc GPUs
+function AC.on_architecture(::ONEGPU, s::StepRangeLen{Float32, Float64, Float64})
+    ref = convert(Float32, s.ref)
+    step = convert(Float32, s.step)
+    return StepRangeLen{Float32}(ref, step, s.len, s.offset)
+end
 AC.on_architecture(arch::Distributed, a::oneArray) = AC.on_architecture(AC.child_architecture(arch), a)
 
 @inline AC.sparse_matrix_constructors(::AC.GPU{oneAPI.oneAPIBackend}, A::SparseMatrixCSC) = (oneArray(A.colptr), oneArray(A.rowval), oneArray(A.nzval),  (A.m, A.n))
