@@ -120,6 +120,11 @@ Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
     needs_simulation_context(fbcs.bottom)  | needs_simulation_context(fbcs.top)   |
     needs_simulation_context(fbcs.immersed)
 
+@inline normal_flow_needs_simulation_context(fbcs::FieldBoundaryConditions) =
+    normal_flow_needs_simulation_context(fbcs.west)   | normal_flow_needs_simulation_context(fbcs.east)  |
+    normal_flow_needs_simulation_context(fbcs.south)  | normal_flow_needs_simulation_context(fbcs.north) |
+    normal_flow_needs_simulation_context(fbcs.bottom) | normal_flow_needs_simulation_context(fbcs.top)
+
 """
     FieldBoundaryConditions(default_bounded_bc=NoFluxBoundaryCondition();
                             west     = DefaultBoundaryCondition(default_bounded_bc),

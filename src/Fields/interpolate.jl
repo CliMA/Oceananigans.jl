@@ -469,7 +469,11 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             from_field, from_grid, from_location)
 
     # Skip fill when BCs need clock/model_fields — model's update_state! fills on the first step.
-    needs_simulation_context(to_field.boundary_conditions) || fill_halo_regions!(to_field; fill_normal_flow_bcs=false)
+    # Normal-flow BCs are filled unless their own condition needs simulation context (e.g. Open OBCs).
+    if !needs_simulation_context(to_field.boundary_conditions)
+        fill_normal_flow_bcs = !normal_flow_needs_simulation_context(to_field.boundary_conditions)
+        fill_halo_regions!(to_field; fill_normal_flow_bcs)
+    end
 
     return to_field
 end

@@ -14,7 +14,7 @@ using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, needs_simulation_context
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, needs_simulation_context, normal_flow_needs_simulation_context
 using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
