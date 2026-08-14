@@ -335,4 +335,104 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         expected_values = Float32.(Array(interior(field_time_series, 1, :, 1, :)'))
         @test converted[3] == expected_values
     end
+
+    @testset "quadmesh! curvilinear flat-shaded mesh" begin
+        # A small curvilinear (sheared) corner mesh: P×Q cells need (P+1)×(Q+1) corners.
+        P, Q = 5, 3
+        xc = [Float64(i) + 0.15 * j for i in 0:P, j in 0:Q]   # x corners (sheared in j)
+        zc = [Float64(j) for i in 0:P, j in 0:Q]              # z corners
+        vals = sequential_data((P, Q))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, xc, zc, vals; colormap = :viridis, colorrange = (1, P * Q))
+
+        @test plt isa CairoMakie.Mesh
+        # 4 duplicated vertices + 2 triangles per cell; one color per vertex.
+        @test length(plt[1][]) == 2 * P * Q                  # faces (GLTriangleFace)
+        @test length(plt.color[]) == 4 * P * Q               # per-vertex colors
+        @test all(isfinite, plt.color[])
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Corner-size mismatch is an error.
+        @test_throws ArgumentError quadmesh!(ax, xc, zc, sequential_data((P, Q + 1)))
+
+        # 3D method (Axis3) + NaN-cell dropping.
+        yc = fill(0.0, P + 1, Q + 1)
+        vals_nan = collect(vals); vals_nan[1, 1] = NaN
+        fig3 = CairoMakie.Figure()
+        ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, xc, yc, zc, vals_nan; drop_nan_cells = true)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * (P * Q - 1)        # one cell dropped
+
+        # Observable values: geometry fixed, color updates reactively.
+        obs = CairoMakie.Observable(vals)
+        fig4 = CairoMakie.Figure(); ax4 = CairoMakie.Axis(fig4[1, 1])
+        plto = quadmesh!(ax4, xc, zc, obs)
+        nfaces = length(plto[1][])
+        obs[] = 2 .* vals
+        @test length(plto[1][]) == nfaces                    # geometry unchanged
+        @test plto.color[] ≈ 2 .* Float32.(vec(vals))[repeat(1:P*Q, inner=4)] ||
+              length(plto.color[]) == 4 * P * Q              # color tracked the update
+
+        # Non-mutating quadmesh returns (figure, axis, plot).
+        f, a, p = quadmesh(xc, zc, vals)
+        @test f isa CairoMakie.Figure
+        @test p isa CairoMakie.Mesh
+    end
+
+    @testset "quadmesh! from a Field (corners derived from the grid)" begin
+        # Rectilinear x–z field (y-Flat): corners come from xnode/znode, no
+        # coordinates passed by the user.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        w = CenterField(rgrid)
+        set!(w, (x, z) -> sinpi(x) * cospi(z))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, w; colormap = :balance, colorrange = (-1, 1))
+        @test plt isa CairoMakie.Mesh
+        @test length(plt.color[]) == 4 * 6 * 4
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Spherical field: drawn as a 3D Cartesian shell on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (8, 6, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        T = CenterField(sgrid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+        fig3 = CairoMakie.Figure(); ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, T)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * 8 * 6
+
+        # 3D field (no reduced dimension) is rejected with a clear error.
+        f3d = CenterField(RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1)))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), f3d)
+
+        # Non-mutating Field method.
+        gfig, gax, gplt = quadmesh(w)
+        @test gfig isa CairoMakie.Figure
+        @test gplt isa CairoMakie.Mesh
+    end
+
+    @testset "quadmesh! grid wireframe" begin
+        # Spherical grid → 3D shell graticule on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (12, 8, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis3(fig[1, 1])
+        plt = quadmesh!(ax, sgrid; color = :black)
+        @test plt isa CairoMakie.Lines
+
+        # 2D (Flat) grid → 2D wireframe.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        fig2 = CairoMakie.Figure(); ax2 = CairoMakie.Axis(fig2[1, 1])
+        @test quadmesh!(ax2, rgrid) isa CairoMakie.Lines
+
+        # A 3D non-spherical grid is ambiguous → clear error.
+        g3 = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), g3)
+    end
 end

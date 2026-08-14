@@ -182,6 +182,109 @@ for arch in archs
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
             op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
+
+            two_index_kernel_function(i, j, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(two_index_kernel_function, grid)
+            @test op isa KernelFunctionOperation
+            @test Array(interior(Field(op), :, :, 1)) == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            one_index_kernel_function(k, grid) = 2k
+            op = KernelFunctionOperation{Nothing, Nothing, Center}(one_index_kernel_function, grid)
+            @test Array(interior(Field(op), 1, 1, :)) == [2k for k in 1:size(grid, 3)]
+
+            q = CenterField(grid)
+            set!(q, 2)
+            interior_pattern_kernel_function(i, k, grid, q) = @inbounds q[i, 1, k] * i * k
+            op = KernelFunctionOperation{Center, Nothing, Center}(interior_pattern_kernel_function, grid, q)
+            @test  Array(interior(Field(op), :, 1, :)) == [2 * i * k for i in 1:size(grid, 1), k in 1:size(grid, 3)]
+
+            # Varargs kernel functions keep the full three-index convention...
+            varargs_kernel_function(arguments...) = arguments[1] + arguments[2] + arguments[3]
+            op = KernelFunctionOperation{Center, Center, Nothing}(varargs_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == [i + j + 1 for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # ... unless only the reduced call is applicable (here the typed grid argument rejects `grid ← k`)
+            reduced_varargs_kernel_function(i, j, grid::Oceananigans.Grids.AbstractGrid, arguments...) = i * j + length(arguments)
+            op = KernelFunctionOperation{Center, Center, Nothing}(reduced_varargs_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == [i * j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # When the full three-index call is applicable it is preferred, even if a
+            # reduced-arity method also exists (heavily overloaded operators rely on this)
+            dual_kernel_function(i, j, grid) = i + j
+            dual_kernel_function(i, j, k, grid) = -7
+            op = KernelFunctionOperation{Center, Center, Nothing}(dual_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == fill(-7, size(grid, 1), size(grid, 2))
+
+            # Spacing operators (e.g. Δx) have reduced-arity helper methods that must not be
+            # mistaken for the reduced form at reduced locations
+            @test Array(interior(Field(xspacings(grid, Center(), Center(), Center())), :, 1, 1)) ==
+                  [Oceananigans.Operators.Δx(i, 1, 1, grid, Center(), Center(), Center()) for i in 1:size(grid, 1)]
+
+            # Three-index kernel functions at reduced locations still work
+            three_index_kernel_function(i, j, k, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
+            @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+        end
+
+        @testset "InterpolatedOperations [$A]" begin
+            xc = xnodes(grid, Center()); yc = ynodes(grid, Center()); zc = znodes(grid, Center())
+
+            ϕ = CenterField(grid)
+            set!(ϕ, (x, y, z) -> 2x + 3y + 4z) # linear ⇒ trilinear interpolation is exact
+
+            # At least one coordinate is required
+            @test_throws ArgumentError InterpolatedOperation(ϕ)
+
+            # z-interpolation reduces the vertical: (Center, Center, Nothing)
+            z★ = zc[2]
+            ϕz = InterpolatedOperation(ϕ; z=z★)
+            @test ϕz isa InterpolatedOperation
+            @test location(ϕz) == (Center, Center, Nothing)
+            Φz = Field{Center, Center, Nothing}(grid)
+            set!(Φz, (x, y) -> 2x + 3y + 4z★)
+            @test Field(ϕz) ≈ Φz
+
+            # x, y interpolation reduces to a vertical column: (Nothing, Nothing, Center)
+            x★, y★ = xc[2], yc[2]
+            ϕxy = InterpolatedOperation(ϕ; x=x★, y=y★)
+            @test location(ϕxy) == (Nothing, Nothing, Center)
+            Φxy = Field{Nothing, Nothing, Center}(grid)
+            set!(Φxy, z -> 2x★ + 3y★ + 4z)
+            @test Field(ϕxy) ≈ Φxy
+
+            # all three coordinates reduce to a single point: (Nothing, Nothing, Nothing)
+            ϕp = InterpolatedOperation(ϕ; x=x★, y=y★, z=z★)
+            @test location(ϕp) == (Nothing, Nothing, Nothing)
+            Φp = Field{Nothing, Nothing, Nothing}(grid)
+            set!(Φp, 2x★ + 3y★ + 4z★)
+            @test Field(ϕp) ≈ Φp
+
+            # a staggered operand keeps its own horizontal location
+            ψ = XFaceField(grid)
+            set!(ψ, (x, y, z) -> x + z)
+            ψz = InterpolatedOperation(ψ; z=z★)
+            @test location(ψz) == (Face, Center, Nothing)
+            Ψz = Field{Face, Center, Nothing}(grid)
+            set!(Ψz, (x, y) -> x + z★)
+            @test Field(ψz) ≈ Ψz
+
+            # the operand may itself be an AbstractOperation (linear ⇒ interpolation is exact)
+            ϕopz = InterpolatedOperation(ϕ + 1; z=z★)
+            @test location(ϕopz) == (Center, Center, Nothing)
+            @test Field(ϕopz) ≈ Field(Φz + 1)
+
+            # On curvilinear grids the interpolation coordinates are native (λ, φ), not the Cartesian
+            # arc length returned by xnode/ynode — an xnode-based kernel would index out of bounds here.
+            llg = LatitudeLongitudeGrid(arch, size=(4, 4, 4), longitude=(100, 110), latitude=(20, 30),
+                                        z=(0, 1), topology=(Bounded, Bounded, Bounded))
+            θ = CenterField(llg)
+            set!(θ, (λ, φ, z) -> 2λ + 3φ + 4z)
+            ζ★ = znodes(llg, Center())[2]
+            θz = InterpolatedOperation(θ; z=ζ★)
+            @test location(θz) == (Center, Center, Nothing)
+            Θz = Field{Center, Center, Nothing}(llg)
+            set!(Θz, (λ, φ) -> 2λ + 3φ + 4ζ★)
+            @test Field(θz) ≈ Θz
         end
 
         @testset "Fidelity of simple binary operations" begin

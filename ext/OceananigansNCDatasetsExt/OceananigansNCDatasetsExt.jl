@@ -19,6 +19,8 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
 
+import Oceananigans
+
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.Architectures: CPU, GPU, on_architecture
@@ -32,7 +34,7 @@ using Oceananigans.Grids:
     StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
     λnodes, φnodes,
-    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node, inactive_node,
     constructor_arguments, architecture,
     generate_coordinate, total_length, interior_indices
 
@@ -48,7 +50,7 @@ using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
-    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid
+    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
     InMemoryFTS,

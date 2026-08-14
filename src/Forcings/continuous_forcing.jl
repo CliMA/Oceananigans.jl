@@ -108,7 +108,7 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing(func, parameters, field_dependencies)
 
 """
-    materialize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
+$(TYPEDSIGNATURES)
 
 Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
 in `model_field_names`, and associated interpolation functions so `forcing` can be used during

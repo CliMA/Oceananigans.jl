@@ -22,7 +22,7 @@ function update_vertical_velocities!(velocities, grid, model; parameters = surfa
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid, vertical_coordinate; kw...)
+$(TYPEDSIGNATURES)
 
 Update the time derivative of the grid stretching factor `∂t_σ` for mutable vertical coordinates.
 

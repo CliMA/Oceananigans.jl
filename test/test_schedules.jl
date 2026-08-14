@@ -94,6 +94,12 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     @test ii(fake_model_at_iter_3)
     @test initialize!(ii, fake_model_at_iter_0)
 
+    old_time_interval_state = (first_actuation_time = 0.0, actuations = 7, interval = 2.0)
+    restore_prognostic_state!(ii, old_time_interval_state)
+    @test ii.interval == 3
+    @test ii.offset == 0
+    @test ii(fake_model_at_iter_3)
+
     # OrSchedule
     ti_and_ii = AndSchedule(TimeInterval(2), IterationInterval(3))
     @test ti_and_ii(fake_model_at_time_2)

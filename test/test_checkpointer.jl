@@ -1432,6 +1432,68 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     return nothing
 end
 
+function test_changed_averaged_time_interval(arch)
+    prefix = "changed_averaged_time_interval_$(typeof(arch))"
+    partial_file = "$(prefix)_partial.jld2"
+    restored_file = "$(prefix)_restored.jld2"
+    clock_time(model) = [model.clock.time]
+    expected_average = 1.05days
+
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    partial_model = NonhydrostaticModel(grid)
+    partial_simulation = Simulation(partial_model, Δt=0.1days, stop_time=0.5days)
+    partial_simulation.output_writers[:checkpointer] =
+        Checkpointer(partial_model, schedule=IterationInterval(5), prefix=prefix)
+    partial_simulation.output_writers[:averaged] =
+        JLD2Writer(partial_model, (; clock_time),
+                   schedule = AveragedTimeInterval(1day),
+                   filename = partial_file,
+                   overwrite_existing = true)
+
+    @test_nowarn run!(partial_simulation)
+
+    partial_average = only(values(partial_simulation.output_writers[:averaged].outputs))
+    @test partial_average.schedule.collecting
+    @test partial_average.previous_collection_time - partial_average.window_start_time == 0.5days
+    @test only(Array(partial_average.result)) ≈ 0.3days
+
+    restored_model = NonhydrostaticModel(grid)
+    restored_simulation = Simulation(restored_model, Δt=0.1days, stop_time=2days)
+    restored_simulation.output_writers[:checkpointer] =
+        Checkpointer(restored_model, schedule=IterationInterval(5), prefix=prefix)
+    restored_simulation.output_writers[:averaged] =
+        JLD2Writer(restored_model, (; clock_time),
+                   schedule = AveragedTimeInterval(2days),
+                   filename = restored_file,
+                   overwrite_existing = true)
+
+    @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
+    restored_cache = only(values(restored_simulation.output_writers[:averaged].outputs))
+    @test restored_cache.previous_collection_time - restored_cache.window_start_time == 0.5days
+    @test only(Array(restored_cache.result)) ≈ 0.3days
+
+    @test_nowarn run!(restored_simulation)
+
+    restored_average = only(values(restored_simulation.output_writers[:averaged].outputs))
+    @test restored_average.window_start_time == 0
+    @test restored_average.previous_collection_time == 2days
+    @test only(Array(restored_average.result)) ≈ expected_average
+
+    jldopen(restored_file, "r") do file
+        iterations = sort(parse.(Int, keys(file["timeseries/t"])))
+        final_iteration = last(iterations)
+        final_time = file["timeseries/t/$final_iteration"]
+        final_average = only(file["timeseries/clock_time/$final_iteration"])
+
+        @test final_time == 2days
+        @test final_average ≈ expected_average
+    end
+
+    rm.(glob("$(prefix)*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpoint_empty_tracers(arch)
     N = 8
     L = 1
@@ -1782,7 +1844,7 @@ function test_checkpoint_at_end(arch)
 end
 
 """
-Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
+Test checkpointing for simulations with NormalFlowBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
 1. Every element of model.boundary_transport is correctly saved and restored
@@ -1792,7 +1854,7 @@ Verifies that:
 # Arguments
 - `arch`: Architecture (CPU, GPU, etc.)
 - `timestepper`: Time stepping scheme (:QuasiAdamsBashforth2, :RungeKutta3, etc.)
-- `scheme`: OpenBoundaryCondition scheme (e.g., PerturbationAdvection(...))
+- `scheme`: NormalFlowBoundaryCondition scheme (e.g., PerturbationAdvection(...))
 """
 function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
     Nx, Ny, Nz = 4, 4, 4
@@ -1800,7 +1862,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
 
     function make_simulation(stop_iteration)
         grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
-        obc = OpenBoundaryCondition(0.1, scheme=scheme)
+        obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
         set!(model, c=1)
@@ -2153,14 +2215,19 @@ for arch in archs
         end
     end
 
+    @testset "Changed AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
+        @info "  Testing changed AveragedTimeInterval checkpointing [$(typeof(arch))]..."
+        test_changed_averaged_time_interval(arch)
+    end
+
     schemes = [
         PerturbationAdvection(inflow_timescale=2, outflow_timescale=1),
     ]
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
         scheme_name = replace(string(typeof(scheme)), "." => "_")
-        @testset "OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
+        @testset "NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
             test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
         end
     end

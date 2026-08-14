@@ -1,12 +1,10 @@
 #####
-##### NetCDFWriter struct definition
-#####
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
 using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
-using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 
 # Short aliases for compact dispatch in name-generator method tables.
 const OSSG = OrthogonalSphericalShellGrid
@@ -22,12 +20,15 @@ const MVD  = MutableVerticalDiscretization
 #   - `StaticVerticalDiscretization`: the reference and physical vertical coordinates coincide,
 #     so we use "z".
 #   - `MutableVerticalDiscretization` (z-star, σ-coordinates): the saved 1D coordinate is the
-#     reference (Lagrangian) coordinate; the physical `z = z(r, η, …)` is reconstructible from
+#     reference coordinate; the physical `z = z(r, η, …)` is reconstructible from
 #     `r` and the time-varying free surface `η`. We use "r" for the 1D reference coordinate.
 #
 
 vertical_coordinate_name(::SVD) = "z"
 vertical_coordinate_name(::MVD) = "r"
+# Fallback: any other `AbstractVerticalCoordinate`stores a reference `r`
+# distinct from physical `z`, so we use "r".
+vertical_coordinate_name(::AbstractVerticalCoordinate) = "r"
 vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
 vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
@@ -96,6 +97,9 @@ dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, 
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
 add_grid_suffix(name, ::Nothing) = name
 
+#####
+##### NetCDFWriter struct definition
+#####
 mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grids :: G
     output_grid_map :: GM

@@ -17,7 +17,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: AbstractField, location, indices
 import Oceananigans.Grids: grid
 using Oceananigans.Grids:
-    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid,
+    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     Center, Face, Flat, Periodic, Bounded,
     topology, constructor_arguments
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid

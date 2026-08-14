@@ -548,3 +548,63 @@ end
         rm(zippath; force=true)
     end
 end
+
+#####
+##### Phase 8 — TripolarGrid (OrthogonalSphericalShellGrid) round-trip
+#####
+
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+
+@testset "ZarrWriter [TripolarGrid round-trip]" begin
+    @info "  Testing ZarrWriter with TripolarGrid..."
+
+    for arch in archs
+        grid = TripolarGrid(arch; size=(20, 16, 4), z=(-100, 0))
+        fs   = SplitExplicitFreeSurface(grid; substeps=5)
+        model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+
+        zarrpath = abspath(joinpath(".", "test_zarr_tripolar.zarr"))
+        isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
+
+        simulation = Simulation(model; Δt=1, stop_iteration=2)
+        simulation.output_writers[:fields] = ZarrWriter(model,
+                                                        (; T=model.tracers.T, u=model.velocities.u);
+                                                        filename = "test_zarr_tripolar",
+                                                        dir = ".",
+                                                        schedule = IterationInterval(1),
+                                                        overwrite_existing = true,
+                                                        with_halos = false)
+        run!(simulation)
+
+        @test isdir(zarrpath)
+        g = Zarr.zopen(zarrpath)
+
+        # time axis
+        @test "time" in keys(g.arrays)
+        @test length(g["time"][:]) == 3   # initial + 2 iterations
+
+        # both fields were written
+        @test "T" in keys(g.arrays)
+        @test "u" in keys(g.arrays)
+
+        # spatial shape matches grid interior (no halos)
+        Nx, Ny, Nz = size(grid)
+        T_arr = g["T"]
+        u_arr = g["u"]
+        @test size(T_arr)[1:3] == (Nx, Ny, Nz)
+        @test size(u_arr)[1:3] == (Nx, Ny, Nz)
+
+        # _ARRAY_DIMENSIONS is set and includes "time"
+        T_dims = T_arr.attrs["_ARRAY_DIMENSIONS"]
+        @test "time" in T_dims
+        @test length(T_dims) == 4
+
+        # dim names use the λ/φ/z naming scheme from OrthogonalSphericalShellGrid
+        u_dims = u_arr.attrs["_ARRAY_DIMENSIONS"]
+        @test any(startswith(d, "λ") for d in u_dims)
+        @test any(startswith(d, "φ") for d in u_dims)
+        @test any(startswith(d, "z") for d in u_dims)
+
+        rm(zarrpath; recursive=true, force=true)
+    end
+end

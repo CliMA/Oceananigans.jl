@@ -262,6 +262,7 @@ end
                      warmup_steps = 10,
                      output_iteration_interval = 1,
                      output_format = "jld2",
+                     zarr_chunks = nothing,
                      output_dir = ".",
                      name = "io_benchmark",
                      verbose = true)
@@ -269,7 +270,7 @@ end
 Run a benchmark that measures the performance impact of writing heavy 3D output.
 Outputs 5 full 3D fields (u, v, w, T, S) at the specified `output_iteration_interval`.
 
-The `output_format` can be `"jld2"` or `"netcdf"`.
+The `output_format` can be `"jld2"`, `"netcdf"`, or `"zarr"`.
 
 Returns an `IOBenchmarkResult` containing timing information, output file path, and total output size.
 """
@@ -279,13 +280,14 @@ function run_io_benchmark(model;
                           warmup_steps = 10,
                           output_iteration_interval = 1,
                           output_format = "jld2",
+                          zarr_chunks = nothing,
                           output_dir = ".",
                           name = "io_benchmark",
                           group = "",
                           verbose = true)
 
-    output_format in ("jld2", "netcdf") ||
-        error("Unknown output_format: $output_format. Use \"jld2\" or \"netcdf\".")
+    output_format in ("jld2", "netcdf", "zarr") ||
+        error("Unknown output_format: $output_format. Use \"jld2\", \"netcdf\", or \"zarr\".")
 
     grid = model.grid
     arch = architecture(grid)
@@ -293,7 +295,7 @@ function run_io_benchmark(model;
     Nx, Ny, Nz = size(grid)
     total_points = Nx * Ny * Nz
 
-    ext = output_format == "jld2" ? "jld2" : "nc"
+    ext = output_format == "jld2" ? "jld2" : output_format == "netcdf" ? "nc" : "zarr"
     timestamp = Dates.format(now(UTC), "yyyy-mm-dd_HHMMSS")
     output_filename = joinpath(output_dir, "$(name)_$(timestamp).$ext")
 
@@ -307,6 +309,7 @@ function run_io_benchmark(model;
         @info "  Warmup steps: $warmup_steps"
         @info "  Output format: $output_format"
         @info "  Output iteration interval: $output_iteration_interval"
+        output_format == "zarr" && @info "  Zarr chunks: $(isnothing(zarr_chunks) ? "default" : (zarr_chunks..., 1))"
         @info "  Output fields: u, v, w, T, S (full 3D)"
         @info "  Output file: $output_filename"
     end
@@ -336,13 +339,21 @@ function run_io_benchmark(model;
         end
     end
 
-    Writer = output_format == "jld2" ? JLD2Writer : NetCDFWriter
-
-    simulation.output_writers[:fields_3d] = Writer(model, outputs;
-        filename = output_filename,
-        schedule = IterationInterval(output_iteration_interval),
-        overwrite_existing = true
-    )
+    if output_format == "zarr"
+        simulation.output_writers[:fields_3d] = ZarrWriter(model, outputs;
+            filename = output_filename,
+            schedule = IterationInterval(output_iteration_interval),
+            overwrite_existing = true,
+            chunks = zarr_chunks
+        )
+    else
+        Writer = output_format == "jld2" ? JLD2Writer : NetCDFWriter
+        simulation.output_writers[:fields_3d] = Writer(model, outputs;
+            filename = output_filename,
+            schedule = IterationInterval(output_iteration_interval),
+            overwrite_existing = true
+        )
+    end
 
     if verbose
         wall_time_ref = Ref(time_ns())
@@ -372,7 +383,19 @@ function run_io_benchmark(model;
     grid_points_per_second = total_points / time_per_step_seconds
 
     # Compute total output file size
-    total_output_size_bytes = isfile(output_filename) ? filesize(output_filename) : 0
+    if isdir(output_filename)
+        # For Zarr, we need to sum the sizes of all chunk files and metadata
+        total_output_size_bytes = 0
+        for (root, _, files) in walkdir(output_filename)
+            for file in files
+                total_output_size_bytes += filesize(joinpath(root, file))
+            end
+        end
+    elseif isfile(output_filename)
+        total_output_size_bytes = filesize(output_filename)
+    else
+        total_output_size_bytes = 0
+    end
 
     gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
     metadata = BenchmarkMetadata(arch)

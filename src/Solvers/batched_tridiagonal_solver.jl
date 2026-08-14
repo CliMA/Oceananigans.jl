@@ -87,7 +87,7 @@ function BatchedTridiagonalSolver(grid;
 end
 
 """
-    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
+$(TYPEDSIGNATURES)
 
 Solve the batched tridiagonal system of linear equations with right hand side
 `rhs` and lower diagonal, diagonal, and upper diagonal coefficients described by the

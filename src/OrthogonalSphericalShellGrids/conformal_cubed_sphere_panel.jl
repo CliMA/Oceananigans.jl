@@ -250,7 +250,7 @@ julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids
 
 julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
-├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
+├── centered at: North Pole, (λ, φ) = (0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -263,7 +263,7 @@ julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids, Rotations
 
 julia> grid = ConformalCubedSpherePanelGrid(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
 36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
-├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
+├── centered at: South Pole, (λ, φ) = (0, -90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664956, max(Δφ)=2.7412
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -862,7 +862,7 @@ end
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+$(TYPEDSIGNATURES)
 
 The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """

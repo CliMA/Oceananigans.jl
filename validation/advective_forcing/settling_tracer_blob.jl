@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputWriters: NetCDFWriter
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.BoundaryConditions: NormalFlowBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using NCDatasets
@@ -37,7 +37,7 @@ function build_simulation(grid;
     )
 
     # Create settling velocity as a field with appropriate boundary conditions
-    bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w₀) : OpenBoundaryCondition(nothing)
+    bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w₀) : NormalFlowBoundaryCondition(nothing)
     boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
     w_settle_field = ZFaceField(grid; boundary_conditions)
 

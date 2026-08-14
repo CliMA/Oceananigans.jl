@@ -11,7 +11,7 @@ import Oceananigans.TimeSteppers: cache_previous_tendencies!
 end
 
 """
-    cache_previous_tendencies!(model::NonhydrostaticModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields (velocities and tracers).
 

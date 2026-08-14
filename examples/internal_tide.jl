@@ -48,7 +48,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 # Let's see how the domain with the bathymetry is.
 
 x = xnodes(grid, Center())
-bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
+bottom_boundary = interior(bottom_height_field(grid), :, 1, 1)
 top_boundary = 0 * x
 
 using CairoMakie
@@ -78,7 +78,7 @@ fig
 # ```
 #
 # We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
-# which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
+# which then allows us to determine the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
 # flow response for a given tidal forcing. Doing so we get that for the sinusoidal forcing above,
 # the tidal velocity and tidal forcing amplitudes are related via:
@@ -172,6 +172,8 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²); f
 
 # We are ready -- let's run!
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Load output
