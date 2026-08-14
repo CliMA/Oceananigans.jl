@@ -53,7 +53,7 @@ export
     interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
+    Forcing, Relaxation, FlowDependentRate, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
