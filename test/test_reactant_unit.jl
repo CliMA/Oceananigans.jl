@@ -296,6 +296,27 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
+        Nz = 4
+        z = collect(range(-1, 0, length = Nz + 1))
+        grid = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z)
+
+        # An array-valued coordinate traces to a `TracedRArray`, which used to promote the grid's
+        # float type parameter and hence the operation's eltype to a `TracedRNumber`. That made the
+        # operation an `AnyTracedRArray`, whose `getindex` is ambiguous with the operation's own, so
+        # the `_compute!` kernel failed to compile.
+        value_c = 2
+        c = CenterField(grid); set!(c, value_c)
+        value_d = 3
+        d = CenterField(grid); set!(d, value_d)
+
+        cd = Field(c * d)
+        @test all(≈(value_c * value_d), Array(interior(cd)))
+
+        Δz = Field(zspacings(grid, Center(), Center(), Center()))
+        @test all(≈(1 / Nz), Array(interior(Δz)))
+    end
+
     @testset "Field reductions on RectilinearGrid" begin
         grid = RectilinearGrid(arch;
                                size = (10, 10, 10),
