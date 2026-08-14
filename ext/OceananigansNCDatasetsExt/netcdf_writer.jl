@@ -129,22 +129,6 @@ function NetCDFWriter(model::AbstractModel, outputs;
     schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    if isnothing(overwrite_existing)
-        if isfile(filepath)
-            overwrite_existing = false
-        else
-            overwrite_existing = true
-        end
-    else
-        if isfile(filepath) && !overwrite_existing
-            @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
-                  "You might experience errors when writing output if the existing file belonged to a different simulation!"
-
-        elseif isfile(filepath) && overwrite_existing
-            @warn "Overwriting existing $filepath."
-        end
-    end
-
     outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
@@ -159,28 +143,15 @@ function NetCDFWriter(model::AbstractModel, outputs;
     # Ensure we can add any kind of metadata to the attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
-    dataset, outputs, schedule = initialize_nc_file(model,
-                                                    unique_grids,
-                                                    output_grid_map,
-                                                    filepath,
-                                                    outputs,
-                                                    schedule,
-                                                    array_type,
-                                                    indices,
-                                                    global_attributes,
-                                                    output_attributes,
-                                                    dimensions,
-                                                    with_halos,
-                                                    include_grid_metrics,
-                                                    overwrite_existing,
-                                                    deflatelevel,
-                                                    dimension_name_generator,
-                                                    dimension_type)
+    add_schedule_metadata!(global_attributes, schedule)
+
+    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
+    # schedule::AveragedTimeInterval
+    schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     return NetCDFWriter(unique_grids,
                         output_grid_map,
                         filepath,
-                        dataset,
                         outputs,
                         schedule,
                         array_type,
@@ -196,7 +167,36 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         part,
                         file_splitting,
                         dimension_name_generator,
-                        dimension_type)
+                        dimension_type,
+                        false)
+end
+
+"""
+    initialize!(writer::NetCDFWriter, model)
+
+Initialize a `NetCDFWriter` by creating its file and writing the dimensions, grid
+reconstruction data, and variable definitions to it.
+"""
+function initialize!(writer::NetCDFWriter, model)
+    writer.initialized && return nothing
+
+    filepath = writer.filepath
+
+    if isnothing(writer.overwrite_existing)
+        writer.overwrite_existing = !isfile(filepath)
+    elseif isfile(filepath) && !writer.overwrite_existing
+        @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
+              "You might experience errors when writing output if the existing file belonged to a different simulation!"
+
+    elseif isfile(filepath) && writer.overwrite_existing
+        @warn "Overwriting existing $filepath."
+    end
+
+    initialize_nc_file(writer, model)
+
+    writer.initialized = true
+
+    return nothing
 end
 
 #####
@@ -208,7 +208,6 @@ function initialize_nc_file(model,
                             output_grid_map,
                             filepath,
                             outputs,
-                            schedule,
                             array_type,
                             indices,
                             global_attributes,
@@ -234,12 +233,6 @@ function initialize_nc_file(model,
     end
 
     global_attributes = merge(useful_attributes, global_attributes)
-
-    add_schedule_metadata!(global_attributes, schedule)
-
-    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
-    # schedule::AveragedTimeInterval
-    schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=sort(collect(pairs(global_attributes)), by=first))
@@ -345,7 +338,7 @@ function initialize_nc_file(model,
 
     close(dataset)
 
-    return dataset, outputs, schedule
+    return nothing
 end
 
 initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
@@ -353,7 +346,6 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
                                                                  ow.output_grid_map,
                                                                  ow.filepath,
                                                                  ow.outputs,
-                                                                 ow.schedule,
                                                                  ow.array_type,
                                                                  ow.indices,
                                                                  ow.global_attributes,
@@ -435,7 +427,6 @@ end
 #####
 
 Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
-Base.close(nc::NetCDFWriter) = close(nc.dataset)
 
 # Saving outputs with no time dependence (e.g. grid metrics)
 function save_output!(ds, output, model, output_name, array_type)
@@ -476,12 +467,15 @@ Write output to netcdf file `output_writer.filepath` at specified intervals. Inc
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
+    # Ensure the writer is initialized before writing
+    initialize!(ow, model)
+
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
-    ow.dataset = open(ow)
-    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
+    ds = open(ow)
+    verbose, filepath = ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
     ds["time"][time_index] = float_or_date_time(model.clock.time)
@@ -508,7 +502,7 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     end
 
     sync(ds)
-    close(ow)
+    close(ds)
 
     if verbose
         # Time and file size after computing and writing all outputs to disk.
@@ -529,11 +523,50 @@ end
 Base.summary(ow::NetCDFWriter) =
     string("NetCDFWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
-function Base.show(io::IO, ow::NetCDFWriter)
-    dims = NCDataset(ow.filepath, "r") do ds
-        join([dim * "(" * string(length(ds[dim])) * "), "
-              for dim in keys(ds.dim)])[1:end-2]
+"""
+    planned_dimensions(ow::NetCDFWriter)
+
+Return the NetCDF dimensions `ow` will declare when it creates its file, mapping each
+dimension name to its length, in the order `create_spatial_dimensions!` declares them.
+Used to show a writer whose file does not exist yet.
+"""
+function planned_dimensions(ow::NetCDFWriter)
+    planned = OrderedDict{String, Int}("time" => 0)
+
+    for (grid_index, grid) in enumerate(ow.grids)
+        suffix = length(ow.grids) == 1 ? nothing : grid_index
+        dims = gather_dimensions(ow.outputs, grid, ow.indices, ow.with_halos,
+                                 ow.dimension_name_generator; grid_index=suffix)
+
+        for (var_name, entry) in dims
+            var_name == "" && continue
+            arr, var_dims = entry isa NamedTuple ? (entry.array, entry.dims) : (entry, (var_name,))
+            isnothing(arr) && continue
+
+            for (axis, dim_name) in enumerate(var_dims)
+                get!(planned, dim_name, size(arr, axis))
+            end
+        end
     end
+
+    return planned
+end
+
+""" Formats `name => length` pairs as, e.g., "time(0), x_caa(16), z_aac(16)". """
+show_dimensions(dimensions) = join(("$dim_name($dim_length)" for (dim_name, dim_length) in dimensions), ", ")
+
+function Base.show(io::IO, ow::NetCDFWriter)
+    file_exists = isfile(ow.filepath)
+
+    dims = if file_exists
+        NCDataset(ow.filepath, "r") do ds
+            show_dimensions(dim_name => length(ds[dim_name]) for dim_name in keys(ds.dim))
+        end
+    else
+        show_dimensions(planned_dimensions(ow))
+    end
+
+    file_size_str = file_exists ? pretty_filesize(filesize(ow.filepath)) : "(file not yet created)"
 
     averaging_schedule = output_averaging_schedule(ow)
     num_outputs = length(ow.outputs)
@@ -544,7 +577,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
-              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+              "└── file size: ", file_size_str)
 end
 
 #####

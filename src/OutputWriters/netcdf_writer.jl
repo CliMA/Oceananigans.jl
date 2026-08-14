@@ -100,11 +100,10 @@ add_grid_suffix(name, ::Nothing) = name
 #####
 ##### NetCDFWriter struct definition
 #####
-mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
+mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grids :: G
     output_grid_map :: GM
     filepath :: String
-    dataset :: D
     outputs :: O
     schedule :: T
     array_type :: A
@@ -114,13 +113,14 @@ mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWrit
     dimensions :: Dict
     with_halos :: Bool
     include_grid_metrics :: Bool
-    overwrite_existing :: Bool
+    overwrite_existing :: Union{Nothing, Bool}
     verbose :: Bool
     deflatelevel :: Int
     part :: Int
     file_splitting :: FS
     dimension_name_generator :: DN
     dimension_type :: DT
+    initialized :: Bool
 end
 
 # method in OceananigansNCDatasetsExt
@@ -212,10 +212,12 @@ Optional keyword arguments
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
-- `overwrite_existing`: If `false`, `NetCDFWriter` will append to existing files. If `true`,
-                        it will overwrite existing files or create new ones. Files that do not
-                        exist yet are created in either case. Default: `true` if the
-                        file does not exist, `false` if it does.
+- `overwrite_existing`: If `false`, `NetCDFWriter` appends to an existing file. If `true`, it
+                        overwrites an existing file. Files that do not exist yet are created in
+                        either case. Default: `nothing`, which chooses between the two when the
+                        file is created, at the start of the run: a file that exists by then is
+                        appended to rather than overwritten, so output from an earlier run is
+                        never destroyed unless `overwrite_existing = true` is passed.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
@@ -268,7 +270,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.8 KiB
+└── file size: (file not yet created)
 ```
 
 ```jldoctest netcdf1
@@ -284,7 +286,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.8 KiB
+└── file size: (file not yet created)
 ```
 
 ```jldoctest netcdf1
@@ -301,7 +303,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.4 KiB
+└── file size: (file not yet created)
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -352,7 +354,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.7 KiB
+└── file size: (file not yet created)
 ```
 
 `NetCDFWriter` supports outputs that live on different grids within a single writer.
@@ -382,7 +384,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.7 KiB
+└── file size: (file not yet created)
 ```
 
 OrthogonalSphericalShellGrid (TripolarGrid, RotatedLatitudeLongitudeGrid, …)
