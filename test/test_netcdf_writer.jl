@@ -1842,6 +1842,62 @@ function test_netcdf_time_file_splitting(arch)
     return nothing
 end
 
+function test_netcdf_file_splitting_while_appending(arch)
+    dir = mktempdir()
+    base_filename = "test_file_splitting_while_appending_$(typeof(arch))"
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+
+    simulation = Simulation(model, Δt=1, stop_time=2seconds)
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = base_filename,
+        schedule = IterationInterval(1),
+        overwrite_existing = true)
+
+    run!(simulation)
+
+    # Splitting has to create every new part file, including when the writer appends
+    # to an existing file rather than overwriting it.
+    simulation = Simulation(model, Δt=1, stop_time=8seconds)
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = base_filename,
+        schedule = IterationInterval(1),
+        file_splitting = TimeInterval(3seconds),
+        overwrite_existing = false)
+
+    run!(simulation)
+
+    part_filenames = filter(f -> occursin(Regex("^$(base_filename)_part\\d+\\.nc\$"), f), readdir(dir))
+    sort!(part_filenames, by = f -> parse(Int, match(r"_part(\d+)\.nc$", f)[1]))
+
+    @test length(part_filenames) > 1
+
+    all_times = Float64[]
+
+    for part_filename in part_filenames
+        ds = NCDataset(joinpath(dir, part_filename), "r")
+
+        # Every part gets the full metadata, not just the part written in creation mode.
+        @test haskey(ds, "time")
+        @test haskey(ds, "c")
+        @test length(ds["time"]) > 0
+
+        append!(all_times, collect(ds["time"]))
+        close(ds)
+    end
+
+    @test all_times == collect(0.0:8.0)
+
+    rm(dir, recursive=true, force=true)
+
+    return nothing
+end
+
 function test_netcdf_function_output(arch)
     Nx = Ny = Nz = N = 16
     L = 1
@@ -3836,6 +3892,7 @@ end
             @info "  Testing file splitting [$A]..."
             test_netcdf_size_file_splitting(arch)
             test_netcdf_time_file_splitting(arch)
+            test_netcdf_file_splitting_while_appending(arch)
         end
 
         @testset "Function and alignment output [$A]" begin
