@@ -1,7 +1,7 @@
-using Oceananigans.Grids: node, xnodes, ynodes, znodes
+using Oceananigans.Grids: node, xnodes, ynodes, znodes, ξnodes, ηnodes, Face, Center
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans: instantiated_location
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -220,6 +220,186 @@ Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
 
 Base.summary(relaxation::Relaxation) =
     "Relaxation(rate=$(relaxation.rate), mask=$(summary(relaxation.mask)), target=$(summary(relaxation.target)))"
+
+#####
+##### Flow-dependent rate
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Rate for `Relaxation` that nudges toward `target` at `rate_in` where the local horizontal
+normal velocity indicates inflow through a lateral boundary, and at `rate_out` where it
+indicates outflow, following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention.
+
+Each of the four domain edges (`west_edge`, `east_edge`, `south_edge`, `north_edge`) gets
+a Gaussian rim of the given `width` (same units as the grid's horizontal coordinates); the
+four rims are combined with `max`, not summed, so that overlapping corners are not
+double-relaxed. Whether a point is on the inflow or outflow side of a given edge is
+determined by the true horizontal normal velocity there (`u` at west/east, `v` at
+south/north) — so `u`, `v`, and every tracer relaxed near a given edge share the same
+in/out gating.
+
+Use `FlowDependentRate(grid; width, rate_in, rate_out)` to build one directly from a
+grid's horizontal extent.
+"""
+struct FlowDependentRate{FT}
+     west_edge :: FT
+     east_edge :: FT
+    south_edge :: FT
+    north_edge :: FT
+         width :: FT
+       rate_in :: FT
+      rate_out :: FT
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Build a [`FlowDependentRate`](@ref) spanning the horizontal extent of `grid`, with lateral
+nudging layers of `width` (same units as the grid's horizontal coordinates) at each of the
+four edges, restoring at `rate_in` on inflow and `rate_out` on outflow.
+
+Example
+=======
+
+```jldoctest flowdependentrate
+using Oceananigans
+
+grid = LatitudeLongitudeGrid(size=(10, 10, 1), longitude=(-5, 20), latitude=(-57, -50), z=(-100, 0))
+
+rate = FlowDependentRate(grid; width=0.1, rate_in=1/15minutes, rate_out=1/12hours)
+
+# output
+FlowDependentRate{Float64}
+├──  west_edge: -3.75
+├──  east_edge: 18.75
+├── south_edge: -56.65
+├── north_edge: -50.35
+├──      width: 0.1
+├──    rate_in: 0.0011111111111111111
+└──   rate_out: 2.3148148148148147e-5
+```
+"""
+function FlowDependentRate(grid; width, rate_in, rate_out)
+    west_edge,  east_edge  = extrema(ξnodes(grid, Center(), Center(), Center()))
+    south_edge, north_edge = extrema(ηnodes(grid, Center(), Center(), Center()))
+    FT = promote_type(typeof(width), typeof(rate_in), typeof(rate_out))
+    return FlowDependentRate(convert(FT, west_edge),  convert(FT, east_edge),
+                              convert(FT, south_edge), convert(FT, north_edge),
+                              convert(FT, width), convert(FT, rate_in), convert(FT, rate_out))
+end
+
+@inline rim(ξ, edge, width) = exp(-(ξ - edge)^2 / (2 * width^2))
+
+# u, v interpolated to grid location `loc`, dispatched so u-points, v-points, and
+# cell centers (tracers) each get the correctly-located stencil.
+@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Face, Center, Center})
+    u = @inbounds model_fields.u[i, j, k]
+    v = @inbounds 0.25 * (model_fields.v[i-1, j,   k] + model_fields.v[i, j,   k] +
+                           model_fields.v[i-1, j+1, k] + model_fields.v[i, j+1, k])
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Face, Center})
+    u = @inbounds 0.25 * (model_fields.u[i,   j-1, k] + model_fields.u[i,   j, k] +
+                           model_fields.u[i+1, j-1, k] + model_fields.u[i+1, j, k])
+    v = @inbounds model_fields.v[i, j, k]
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Center, Center})
+    u = @inbounds 0.5 * (model_fields.u[i, j, k] + model_fields.u[i+1, j, k])
+    v = @inbounds 0.5 * (model_fields.v[i, j, k] + model_fields.v[i, j+1, k])
+    return u, v
+end
+
+@inline function evaluate_rate(r::FlowDependentRate, i, j, k, X, model_fields, loc)
+    λ, φ = X[1], X[2]
+    u_n, v_n = normal_velocities(i, j, k, model_fields, loc)
+
+    west  = rim(λ, r.west_edge,  r.width) * ifelse(u_n > 0, r.rate_in, r.rate_out)
+    east  = rim(λ, r.east_edge,  r.width) * ifelse(u_n < 0, r.rate_in, r.rate_out)
+    south = rim(φ, r.south_edge, r.width) * ifelse(v_n > 0, r.rate_in, r.rate_out)
+    north = rim(φ, r.north_edge, r.width) * ifelse(v_n < 0, r.rate_in, r.rate_out)
+
+    # max, not sum: two rims can overlap at a corner and shouldn't double the rate
+    return max(west, east, south, north)
+end
+
+@inline evaluate_target(target::Number, X, t) = target
+@inline evaluate_target(target,         X, t) = target(X..., t)
+
+"""
+$(TYPEDEF)
+
+Materialized target carrying the simulation-side location at which a `Relaxation` with a
+[`FlowDependentRate`](@ref) is evaluated, together with the integer index of the forced
+field in `model_fields`. Mirrors [`FieldTimeSeriesTarget`](@ref)'s use of a type parameter
+`I::Int` for the index, so `model_fields[I]` is a compile-time access on GPU. Wraps the
+user-supplied `target` (a `Number` or callable) unchanged; constructed by
+`materialize_forcing` and not intended for direct user construction.
+
+$(TYPEDFIELDS)
+"""
+struct MaterializedRelaxationTarget{L, T, I}
+    "simulation-side instantiated location tuple"
+    location :: L
+    "user-supplied target, wrapped unchanged"
+    target   :: T
+end
+
+MaterializedRelaxationTarget(location, target, index::Int) =
+    MaterializedRelaxationTarget{typeof(location), typeof(target), index}(location, target)
+
+@inline _field_index(::MaterializedRelaxationTarget{<:Any, <:Any, I}) where I = I
+
+Adapt.adapt_structure(to, t::MaterializedRelaxationTarget{<:Any, <:Any, I}) where I =
+    MaterializedRelaxationTarget(Adapt.adapt(to, t.location), Adapt.adapt(to, t.target), I)
+
+Base.summary(t::MaterializedRelaxationTarget) =
+    "MaterializedRelaxationTarget(location=$(t.location), index=$(_field_index(t)))"
+
+const FlowDependentRelaxation{M, T<:MaterializedRelaxationTarget} = Relaxation{<:FlowDependentRate, M, T}
+
+@inline function (f::FlowDependentRelaxation)(i, j, k, grid, clock, model_fields)
+    mt = f.target
+    X = node(i, j, k, grid, mt.location...)
+    @inbounds ϕ = model_fields[_field_index(mt)][i, j, k]
+    ϕᵣ = evaluate_target(mt.target, X, clock.time)
+    rate = evaluate_rate(f.rate, i, j, k, X, model_fields, mt.location)
+    return rate * f.mask(X...) * (ϕᵣ - ϕ)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Wrap a `Relaxation` with a [`FlowDependentRate`](@ref) into a materialized form carrying
+simulation-side location and an integer field index, so the kernel can evaluate the
+inflow/outflow-dependent rate and read `ϕ` from `model_fields` directly (bypassing
+`ContinuousForcing`, which has no hook for a rate that needs `model_fields`).
+"""
+function materialize_forcing(forcing::Relaxation{<:FlowDependentRate}, field, field_name, model_field_names)
+    index = findfirst(==(field_name), model_field_names)
+    target = MaterializedRelaxationTarget(instantiated_location(field), forcing.target, index)
+    return Relaxation(forcing.rate, forcing.mask, target)
+end
+
+function Base.show(io::IO, rate::FlowDependentRate)
+    FT = typeof(rate.west_edge)
+    print(io, "FlowDependentRate{$FT}")
+    rows = ["west_edge" => string(rate.west_edge), "east_edge" => string(rate.east_edge),
+            "south_edge" => string(rate.south_edge), "north_edge" => string(rate.north_edge),
+            "width" => string(rate.width), "rate_in" => string(rate.rate_in), "rate_out" => string(rate.rate_out)]
+    width = maximum(length(first(r)) for r in rows)
+    for (i, (key, value)) in enumerate(rows)
+        prefix = i == length(rows) ? "└── " : "├── "
+        print(io, "\n", prefix, lpad(key, width), ": ", value)
+    end
+end
+
+Base.summary(rate::FlowDependentRate) =
+    "FlowDependentRate(rate_in=$(rate.rate_in), rate_out=$(rate.rate_out), width=$(rate.width))"
 
 #####
 ##### Sponge layer functions

@@ -2,7 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation
+using Oceananigans.Forcings: MultipleForcings, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation,
+                              FlowDependentRelaxation, MaterializedRelaxationTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -563,6 +564,38 @@ end
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+            end
+
+            @testset "Relaxation with FlowDependentRate [$A]" begin
+                @info "      Testing Relaxation with FlowDependentRate [$A]..."
+
+                grid = RectilinearGrid(arch, size=(4, 4), extent=(4, 4), topology=(Bounded, Bounded, Flat))
+                c_ref = 5
+                rate  = FlowDependentRate(grid; width=0.3, rate_in=1/60, rate_out=1/6000)
+                r     = Relaxation(rate=rate, target=c_ref)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                # Materialization bypasses ContinuousForcing (which has no `model_fields` hook)
+                # and wires in the field index + location directly.
+                rm = model.forcing.c
+                @test rm isa FlowDependentRelaxation
+                @test rm.target isa MaterializedRelaxationTarget
+
+                # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ rate_in),
+                # east edge sees outflow (u_n < 0 is false ⇒ rate_out).
+                # enforce_incompressibility=false: the pressure correction otherwise
+                # drives this uniform flow back to zero against the default open
+                # boundary condition on u.
+                set!(model, u=1, c=0; enforce_incompressibility=false)
+                Δt = 1
+                time_step!(model, Δt)
+
+                c_after = Array(interior(model.tracers.c))
+                c_west  = c_after[1, 2, 1] # near the west (inflow) edge
+                c_east  = c_after[4, 2, 1] # near the east (outflow) edge
+
+                @test all(isfinite, c_after)
+                @test c_west > c_east # inflow relaxes toward target faster than outflow
             end
 
             @testset "Relaxation with FieldTimeSeries target [$A]" begin

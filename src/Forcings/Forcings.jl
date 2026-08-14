@@ -1,6 +1,6 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, FlowDependentRate, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing
 
 using Oceananigans.Fields: field, location
 using Oceananigans.OutputReaders: FlavorOfFTS
