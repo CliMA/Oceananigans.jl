@@ -1,5 +1,5 @@
-using Oceananigans.Fields: interpolate!
-using Oceananigans.BoundaryConditions: needs_simulation_context
+using Oceananigans.Fields: interpolate!, fill_halo_regions!
+using Oceananigans.BoundaryConditions: needs_simulation_context, normal_flow_needs_simulation_context, NormalRadiation
 
 @testset "needs_simulation_context dispatch" begin
     # Flux with CBF → true (fill_halo_regions! would crash without clock)
@@ -18,6 +18,30 @@ using Oceananigans.BoundaryConditions: needs_simulation_context
 
     # FieldBoundaryConditions: only NormalFlow BCs → false
     @test !needs_simulation_context(FieldBoundaryConditions(west=nf_cbf_bc, east=nf_cbf_bc))
+end
+
+@testset "RNFBC: normal_flow_needs_simulation_context and clockless fill" begin
+    # NormalFlowBoundaryCondition with NormalRadiation scheme wraps a DiscreteBoundaryFunction.
+    # needs_simulation_context must return false (NFBC catch-all) but
+    # normal_flow_needs_simulation_context must return true (condition is a DBF).
+    rnfbc = NormalFlowBoundaryCondition((i, k, grid, clock, fields) -> zero(grid);
+                                        discrete_form = true,
+                                        scheme = NormalRadiation())
+    @test !needs_simulation_context(rnfbc)
+    @test  normal_flow_needs_simulation_context(rnfbc)
+
+    # fill_halo_regions!(v) without clock must not crash for a field carrying RNFBC
+    # (previously triggered InvalidIRError on GPU at first kernel compilation).
+    # Periodic in x/z so only the y (normal) boundaries need explicit BCs.
+    grid = RectilinearGrid(CPU(); size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1),
+                           topology=(Periodic, Bounded, Periodic))
+    south_bc = NormalFlowBoundaryCondition(0.0)
+    v_bcs = FieldBoundaryConditions(grid, (Center(), Face(), Center()); south=south_bc, north=rnfbc)
+    v = YFaceField(grid; boundary_conditions=v_bcs)
+    @test_nowarn fill_halo_regions!(v)
+
+    # set! on a field with RNFBC must also not crash (uses fill_normal_flow_bcs=false path).
+    @test_nowarn set!(v, 0)
 end
 
 @testset "set! field interpolation" begin
