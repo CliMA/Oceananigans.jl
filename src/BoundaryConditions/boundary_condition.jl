@@ -89,14 +89,10 @@ const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
 const NFBC = BoundaryCondition{<:NormalFlow}
 
-# NormalFlow fills can be selectively skipped via fill_normal_flow_bcs=false (see
-# normal_flow_needs_simulation_context below), so a context-needing NFBC condition
-# must not suppress the *entire* fill_halo_regions! call.
+# NormalFlow fills use fill_normal_flow_bcs=false, not needs_simulation_context, to skip context-needing conditions.
 @inline needs_simulation_context(::NFBC) = false
 
-# Whether an NFBC's own condition needs clock/model_fields — used to set
-# fill_normal_flow_bcs at the interpolate!/set! call sites, independently of
-# needs_simulation_context(::NFBC) above.
+# True when the NFBC's condition (e.g. a DiscreteBoundaryFunction) requires clock/model_fields.
 @inline normal_flow_needs_simulation_context(bc::NFBC) = needs_simulation_context(bc.condition)
 @inline normal_flow_needs_simulation_context(bc) = false
 

@@ -21,17 +21,14 @@ using Oceananigans.BoundaryConditions: needs_simulation_context, normal_flow_nee
 end
 
 @testset "RNFBC: normal_flow_needs_simulation_context and clockless fill" begin
-    # NormalFlowBoundaryCondition with NormalRadiation scheme wraps a DiscreteBoundaryFunction.
-    # needs_simulation_context must return false (NFBC catch-all) but
-    # normal_flow_needs_simulation_context must return true (condition is a DBF).
+    # RNFBC: needs_simulation_context=false (NFBC), normal_flow_needs_simulation_context=true (DBF condition).
     rnfbc = NormalFlowBoundaryCondition((i, k, grid, clock, fields) -> zero(grid);
                                         discrete_form = true,
                                         scheme = NormalRadiation())
     @test !needs_simulation_context(rnfbc)
     @test  normal_flow_needs_simulation_context(rnfbc)
 
-    # fill_halo_regions!(v) without clock must not crash for a field carrying RNFBC
-    # (previously triggered InvalidIRError on GPU at first kernel compilation).
+    # Clockless fill must not crash — previously triggered InvalidIRError on GPU.
     # Periodic in x/z so only the y (normal) boundaries need explicit BCs.
     grid = RectilinearGrid(CPU(); size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1),
                            topology=(Periodic, Bounded, Periodic))

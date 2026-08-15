@@ -104,12 +104,7 @@ end
 
 # When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
-# of the interpolating grid.
-#
-# The spacing is read from the grid rather than differenced from two adjacent nodes:
-# subtracting nodes of magnitude ~180 discards most of their significant digits in Float32,
-# and the resulting relative error is multiplied by the cell index. Every longitude spacing
-# on an x-regular grid is `Δλᶜᵃᵃ`.
+# of the interpolating grid. Uses grid.Δλᶜᵃᵃ: subtracting ~180° nodes cancels significant digits in Float32.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = grid.Δλᶜᵃᵃ
@@ -468,8 +463,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    # Skip fill when BCs need clock/model_fields — model's update_state! fills on the first step.
-    # Normal-flow BCs are filled unless their own condition needs simulation context (e.g. Open OBCs).
+    # Skip fill for BCs needing clock/model_fields; normal-flow BCs use their own context flag.
     if !needs_simulation_context(to_field.boundary_conditions)
         fill_normal_flow_bcs = !normal_flow_needs_simulation_context(to_field.boundary_conditions)
         fill_halo_regions!(to_field; fill_normal_flow_bcs)
