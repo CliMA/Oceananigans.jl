@@ -96,7 +96,7 @@ end
 # `getindex` calls the kernel function with the full `(i, j, k, grid, args...)` signature
 # whenever that call is applicable. At a reduced location it otherwise drops the indices of
 # the `Nothing` dimensions, calling e.g. `kernel_function(i, j, grid, args...)`
-@inline function Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+@inline function evaluate_kernel_function_operation(κ::KernelFunctionOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
     if applicable(κ.kernel_function, i, j, k, κ.grid, κ.arguments...)
         return κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
     else
@@ -104,6 +104,8 @@ end
         return κ.kernel_function(reduced_indices..., κ.grid, κ.arguments...)
     end
 end
+
+@inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = evaluate_kernel_function_operation(κ, i, j, k)
 
 @inline kept_index(::Type{Nothing}, index) = ()
 @inline kept_index(::Type, index) = (index,)
