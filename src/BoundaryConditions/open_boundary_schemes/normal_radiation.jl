@@ -385,6 +385,18 @@ end
 @inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, loc, clock, model_fields)
 @inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, loc, clock, model_fields)
 
+# Fallbacks for RNFBC called without clock/model_fields (e.g. bare fill_halo_regions!(field)
+# on a distributed field during initialisation). More specific than the NFBC catch-all in
+# fill_halo_regions_normal_flow.jl so they intercept before getbc tries to call the
+# DiscreteBoundaryFunction with missing args — which would cause an InvalidIRError on GPU.
+# The exact-signature methods above win whenever (loc::FAA, clock, model_fields) are present.
+@inline   _fill_east_halo!(j, k, grid, c, bc::RNFBC, loc, args...) = nothing
+@inline   _fill_west_halo!(j, k, grid, c, bc::RNFBC, loc, args...) = nothing
+@inline  _fill_north_halo!(i, k, grid, c, bc::RNFBC, loc, args...) = nothing
+@inline  _fill_south_halo!(i, k, grid, c, bc::RNFBC, loc, args...) = nothing
+@inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc, args...) = nothing
+@inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc, args...) = nothing
+
 # Advect Value fields with the boundary-face velocity (`use_boundary_velocity`) or the one-cell-interior
 # velocity (default): the interior value is prognostic, the boundary value is radiation-extrapolated.
 @inline radiation_velocity_index(bc, boundary_index, interior_index) =
