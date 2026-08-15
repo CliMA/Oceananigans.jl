@@ -422,11 +422,18 @@ simulation-side location and an integer field index, so the kernel can evaluate 
 inflow/outflow-dependent rate and read `ϕ` from `model_fields` directly (bypassing
 `ContinuousForcing`, which has no hook for a rate that needs `model_fields`).
 """
-function materialize_forcing(forcing::Relaxation{<:FlowDependentRate}, field, field_name, model_field_names)
+function materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
     index = findfirst(==(field_name), model_field_names)
     target = MaterializedRelaxationTarget(instantiated_location(field), forcing.target, index)
     return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), forcing.transform)
 end
+
+materialize_forcing(forcing::Relaxation{<:FlowDependentRate}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
+
+# disambiguates against the FlavorOfFTS-target method above when the target is also an FTS
+materialize_forcing(forcing::Relaxation{<:FlowDependentRate, <:Any, <:Any, <:FlavorOfFTS}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
 
 function Base.show(io::IO, rate::FlowDependentRate)
     FT = typeof(rate.west_edge)
