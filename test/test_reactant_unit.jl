@@ -1,6 +1,7 @@
 include("reactant_test_utils.jl")
 
 using CUDA
+using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices
 
 arch = ReactantState()
@@ -301,10 +302,10 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         z = collect(range(-1, 0, length = Nz + 1))
         grid = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z)
 
-        # An array-valued coordinate traces to a `TracedRArray`, which used to promote the grid's
-        # float type parameter and hence the operation's eltype to a `TracedRNumber`. That made the
-        # operation an `AnyTracedRArray`, whose `getindex` is ambiguous with the operation's own, so
-        # the `_compute!` kernel failed to compile.
+        # An array-valued coordinate traces to a `TracedRArray`, which promotes the grid's float type
+        # parameter and hence the operation's eltype to a `TracedRNumber`. That makes the operation an
+        # `AnyTracedRArray`, whose `getindex` is ambiguous with the operation's own, so the
+        # `_compute!` kernel failed to compile.
         value_c = 2
         c = CenterField(grid); set!(c, value_c)
         value_d = 3
@@ -315,6 +316,34 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         Δz = Field(zspacings(grid, Center(), Center(), Center()))
         @test all(≈(1 / Nz), Array(interior(Δz)))
+    end
+
+    @testset "Reductions of AbstractOperations" begin
+        Nz = 4
+        uniform_grid = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z = (-1, 0))
+        stretched_grid = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1),
+                                         z = collect(range(-1, 0, length = Nz + 1)))
+
+        # Base's generic `mapreducedim!` walks a lazy operation element-by-element, which traced
+        # arrays reject with "Scalar indexing is disallowed". Reductions must materialize first.
+        for grid in (uniform_grid, stretched_grid)
+            value_c = 2
+            c = CenterField(grid); set!(c, value_c)
+            value_d = 3
+            d = CenterField(grid); set!(d, value_d)
+            cd = value_c * value_d
+
+            @test sum(c * d) ≈ cd * prod(size(grid))
+            @test maximum(c * d) ≈ cd
+            @test minimum(-c) ≈ -value_c
+            @test mean(c * d) ≈ cd
+
+            ∫cd = Field(Integral(c * d, dims = 3))
+            @test all(≈(cd), Array(interior(∫cd)))
+
+            cd̄ = Field(Average(c * d, dims = 3))
+            @test all(≈(cd), Array(interior(cd̄)))
+        end
     end
 
     @testset "Field reductions on RectilinearGrid" begin

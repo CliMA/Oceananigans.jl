@@ -3,8 +3,10 @@ module Fields
 using Reactant
 
 using Oceananigans: Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation, BinaryOperation, KernelFunctionOperation,
+                                       evaluate_kernel_function_operation
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, interior, interpolate!
+using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
@@ -15,6 +17,7 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGrid}
 
 reconstruct_global_field(field::ShardedDistributedField) = field
 
@@ -73,6 +76,45 @@ function set_to_field!(u::ReactantField, v::ReactantField)
         copyto!(interior(u), interior(cpu_u))
     end
     return u
+end
+
+# `traced_type_inner` gives `BinaryOperation` and `KernelFunctionOperation` the eltype of their traced
+# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. Since
+# `AnyTracedRArray` is defined purely by eltype (`AbstractArray{TracedRNumber{T}, N}`), the operations
+# then satisfy it and Reactant's indexing becomes ambiguous with the operations' own. Reactant's method
+# assumes a view-like wrapper and reindexes into a single ancestor buffer, which an operation does not
+# have, so resolve in favour of Oceananigans'. Without this, the `_compute!` kernel of a computed field
+# fails to compile whenever the grid carries array-valued coordinates. These cannot be restricted to a
+# `ReactantGrid`: inside a kernel the adapted grid has lost its architecture parameter.
+const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
+
+@inline Base.getindex(β::BinaryOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
+    β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
+
+@inline Base.getindex(κ::KernelFunctionOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
+    evaluate_kernel_function_operation(κ, i, j, k)
+
+# Reactant reduces its own arrays natively, but has no path for a lazy `AbstractOperation` as the
+# reduction source: `mapreducedim!` delegates to `mapreduce`, whose fallback walks the operation
+# element-by-element, which traced data rejects with "Scalar indexing is disallowed". Compute the
+# operation into a `Field` first / materialize it.
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+        Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction!)(r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(r, Field(a); kwargs...)
+
+        Base.$(reduction!)(f, r::AbstractArray, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction)(f::Function, a::ReactantOperation; kwargs...) =
+            Base.$(reduction)(f, Field(a); kwargs...)
+    end
 end
 
 # No need to synchronize -> it should be implicit

@@ -93,7 +93,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     IB2 = Reactant.traced_type_inner(IB, seen, mode, track_numbers, sharding, runtime)
     G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
 
-    T2 = Reactant.unwrapped_eltype(T)
+    T2 = eltype(G2)
     return Oceananigans.AbstractOperations.BinaryOperation{LX2, LY2, LZ2, O2, A2, B2, IA2, IB2, G2, T2}
 end
 
@@ -113,7 +113,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, sharding, runtime)
     K2 = Reactant.traced_type_inner(K, seen, mode, track_numbers, sharding, runtime)
     D2 = Reactant.traced_type_inner(D, seen, mode, track_numbers, sharding, runtime)
-    T2 = Reactant.unwrapped_eltype(T)
+    T2 = eltype(G2)
     return Oceananigans.AbstractOperations.KernelFunctionOperation{LX2, LY2, LZ2, G2, T2, K2, D2}
 end
 
