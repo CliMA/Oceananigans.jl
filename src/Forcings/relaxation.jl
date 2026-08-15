@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: node, xnodes, ynodes, znodes, ξnodes, ηnodes, Face, Center
+using Oceananigans.Grids: node, xnodes, ynodes, ξnodes, ηnodes, Face, Center
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
