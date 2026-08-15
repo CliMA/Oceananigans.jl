@@ -308,6 +308,7 @@ Example
 
 ```jldoctest flowdependentrate
 using Oceananigans
+using Oceananigans.Units
 
 grid = LatitudeLongitudeGrid(size=(10, 10, 1), longitude=(-5, 20), latitude=(-57, -50), z=(-100, 0))
 
@@ -335,36 +336,35 @@ end
 
 @inline rim(ξ, edge, width) = exp(-(ξ - edge)^2 / (2 * width^2))
 
-# u, v interpolated to grid location `loc`, dispatched so u-points, v-points, and
-# cell centers (tracers) each get the correctly-located stencil.
+# dispatch on `loc` so u-points, v-points, and centers each get the right interpolation stencil
 @inline function normal_velocities(i, j, k, model_fields, ::Tuple{Face, Center, Center})
     u = @inbounds model_fields.u[i, j, k]
-    v = @inbounds 0.25 * (model_fields.v[i-1, j,   k] + model_fields.v[i, j,   k] +
-                           model_fields.v[i-1, j+1, k] + model_fields.v[i, j+1, k])
+    v = @inbounds (model_fields.v[i-1, j,   k] + model_fields.v[i, j,   k] +
+                   model_fields.v[i-1, j+1, k] + model_fields.v[i, j+1, k]) / 4
     return u, v
 end
 
 @inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Face, Center})
-    u = @inbounds 0.25 * (model_fields.u[i,   j-1, k] + model_fields.u[i,   j, k] +
-                           model_fields.u[i+1, j-1, k] + model_fields.u[i+1, j, k])
+    u = @inbounds (model_fields.u[i,   j-1, k] + model_fields.u[i,   j, k] +
+                   model_fields.u[i+1, j-1, k] + model_fields.u[i+1, j, k]) / 4
     v = @inbounds model_fields.v[i, j, k]
     return u, v
 end
 
 @inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Center, Center})
-    u = @inbounds 0.5 * (model_fields.u[i, j, k] + model_fields.u[i+1, j, k])
-    v = @inbounds 0.5 * (model_fields.v[i, j, k] + model_fields.v[i, j+1, k])
+    u = @inbounds (model_fields.u[i, j, k] + model_fields.u[i+1, j, k]) / 2
+    v = @inbounds (model_fields.v[i, j, k] + model_fields.v[i, j+1, k]) / 2
     return u, v
 end
 
 @inline function evaluate_rate(r::FlowDependentRate, i, j, k, X, model_fields, loc)
     λ, φ = X[1], X[2]
-    u_n, v_n = normal_velocities(i, j, k, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, model_fields, loc)
 
-    west  = rim(λ, r.west_edge,  r.width) * ifelse(u_n > 0, r.rate_in, r.rate_out)
-    east  = rim(λ, r.east_edge,  r.width) * ifelse(u_n < 0, r.rate_in, r.rate_out)
-    south = rim(φ, r.south_edge, r.width) * ifelse(v_n > 0, r.rate_in, r.rate_out)
-    north = rim(φ, r.north_edge, r.width) * ifelse(v_n < 0, r.rate_in, r.rate_out)
+    west  = rim(λ, r.west_edge,  r.width) * ifelse(uₙ > 0, r.rate_in, r.rate_out)
+    east  = rim(λ, r.east_edge,  r.width) * ifelse(uₙ < 0, r.rate_in, r.rate_out)
+    south = rim(φ, r.south_edge, r.width) * ifelse(vₙ > 0, r.rate_in, r.rate_out)
+    north = rim(φ, r.north_edge, r.width) * ifelse(vₙ < 0, r.rate_in, r.rate_out)
 
     # max, not sum: two rims can overlap at a corner and shouldn't double the rate
     return max(west, east, south, north)
@@ -395,20 +395,20 @@ end
 MaterializedRelaxationTarget(location, target, index::Int) =
     MaterializedRelaxationTarget{typeof(location), typeof(target), index}(location, target)
 
-@inline _field_index(::MaterializedRelaxationTarget{<:Any, <:Any, I}) where I = I
+@inline field_index(::MaterializedRelaxationTarget{<:Any, <:Any, I}) where I = I
 
 Adapt.adapt_structure(to, t::MaterializedRelaxationTarget{<:Any, <:Any, I}) where I =
     MaterializedRelaxationTarget(Adapt.adapt(to, t.location), Adapt.adapt(to, t.target), I)
 
 Base.summary(t::MaterializedRelaxationTarget) =
-    "MaterializedRelaxationTarget(location=$(t.location), index=$(_field_index(t)))"
+    "MaterializedRelaxationTarget(location=$(t.location), index=$(field_index(t)))"
 
 const FlowDependentRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Relaxation{<:FlowDependentRate, F, M, T, L, Tr}
 
 @inline function (f::FlowDependentRelaxation)(i, j, k, grid, clock, model_fields)
     mt = f.target
     X = node(i, j, k, grid, mt.location...)
-    @inbounds ϕ = model_fields[_field_index(mt)][i, j, k]
+    @inbounds ϕ = model_fields[field_index(mt)][i, j, k]
     ϕᵣ = evaluate_target(mt.target, X, clock.time)
     rate = evaluate_rate(f.rate, i, j, k, X, model_fields, mt.location)
     return rate * f.mask(X...) * (ϕᵣ - ϕ)
