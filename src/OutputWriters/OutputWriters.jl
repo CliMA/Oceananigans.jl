@@ -20,8 +20,9 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           LeftConnected, RightConnected, RightFaceFolded, RightCenterFolded,
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                           LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
-                          grid, topology, halo_size, xspacings, yspacings, λspacings, φspacings,
-                          λnodes, φnodes, validate_index, peripheral_node, inactive_node,
+                          grid, topology, halo_size, xspacings, yspacings, rspacings,
+                          λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
+                          ξname, ηname, validate_index, peripheral_node, inactive_node,
                           interior_indices
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
                                         GridFittedBottom, PartialCellBottom,

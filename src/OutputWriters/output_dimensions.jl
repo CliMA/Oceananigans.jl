@@ -326,9 +326,14 @@ end
 ##### Vertical dimensions
 #####
 
-function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
-    zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
-    zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
+# For `MutableVerticalDiscretization`, the saved 1D coordinate is the *reference* (Lagrangian)
+# coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
+# the time-varying `η` (output separately).
+function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
+    z = vertical_coordinate_name(coordinate)
+
+    zᵃᵃᶠ_name = dim_name_generator(z, coordinate, nothing, nothing, f, Val(:z))
+    zᵃᵃᶜ_name = dim_name_generator(z, coordinate, nothing, nothing, c, Val(:z))
 
     zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
@@ -337,90 +342,36 @@ function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ
                 zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
-# For MutableVerticalDiscretization, the saved 1D coordinate is the *reference* (Lagrangian)
-# coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
-# the time-varying `η` (output separately).
-function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
-    rᵃᵃᶠ_name = dim_name_generator("r", coordinate, nothing, nothing, f, Val(:z))
-    rᵃᵃᶜ_name = dim_name_generator("r", coordinate, nothing, nothing, c, Val(:z))
-
-    rᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
-    rᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
-
-    return Dict(rᵃᵃᶠ_name => rᵃᵃᶠ_data,
-                rᵃᵃᶜ_name => rᵃᵃᶜ_data)
-end
-
 #####
 ##### Horizontal dimensions (per grid type)
 #####
 
-function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
+# `RectilinearGrid` and `LatitudeLongitudeGrid` both store 1D horizontal coordinates, so their
+# dimensions differ only in name: (x, y) versus (λ, φ), given by `ξname` and `ηname`.
+const OneDimensionalHorizontalCoordinateGrid = Union{RectilinearGrid, LatitudeLongitudeGrid}
+
+function gather_dimensions(outputs, grid::OneDimensionalHorizontalCoordinateGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
+    x = string(ξname(grid))
+    y = string(ηname(grid))
+
     dims = Dict()
 
     if TX != Flat
-        xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
-        xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
-
-        xᶠᵃᵃ_data = collect_dim(grid.xᶠᵃᵃ, f, TX(), Nx, Hx, indices[1], with_halos)
-        xᶜᵃᵃ_data = collect_dim(grid.xᶜᵃᵃ, c, TX(), Nx, Hx, indices[1], with_halos)
-
-        dims[xᶠᵃᵃ_name] = xᶠᵃᵃ_data
-        dims[xᶜᵃᵃ_name] = xᶜᵃᵃ_data
+        for ℓx in (f, c)
+            name = dim_name_generator(x, grid, ℓx, nothing, nothing, Val(:x))
+            dims[name] = collect_dim(ξnodes(grid, ℓx, with_halos=true), ℓx, TX(), Nx, Hx, indices[1], with_halos)
+        end
     end
 
     if TY != Flat
-        yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
-        yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
-
-        yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
-        yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
-
-        dims[yᵃᶠᵃ_name] = yᵃᶠᵃ_data
-        dims[yᵃᶜᵃ_name] = yᵃᶜᵃ_data
-    end
-
-    if TZ != Flat
-        vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
-        dims = merge(dims, vertical_dims)
-    end
-
-    maybe_add_particle_dims!(dims, outputs)
-
-    return suffix_grid_keys(dims, grid_index)
-end
-
-function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
-    TΛ, TΦ, TZ = topology(grid)
-    Nλ, Nφ, Nz = size(grid)
-    Hλ, Hφ, Hz = halo_size(grid)
-
-    dims = Dict()
-
-    if TΛ != Flat
-        λᶠᵃᵃ_name = dim_name_generator("λ", grid, f, nothing, nothing, Val(:x))
-        λᶜᵃᵃ_name = dim_name_generator("λ", grid, c, nothing, nothing, Val(:x))
-
-        λᶠᵃᵃ_data = collect_dim(grid.λᶠᵃᵃ, f, TΛ(), Nλ, Hλ, indices[1], with_halos)
-        λᶜᵃᵃ_data = collect_dim(grid.λᶜᵃᵃ, c, TΛ(), Nλ, Hλ, indices[1], with_halos)
-
-        dims[λᶠᵃᵃ_name] = λᶠᵃᵃ_data
-        dims[λᶜᵃᵃ_name] = λᶜᵃᵃ_data
-    end
-
-    if TΦ != Flat
-        φᵃᶠᵃ_name = dim_name_generator("φ", grid, nothing, f, nothing, Val(:y))
-        φᵃᶜᵃ_name = dim_name_generator("φ", grid, nothing, c, nothing, Val(:y))
-
-        φᵃᶠᵃ_data = collect_dim(grid.φᵃᶠᵃ, f, TΦ(), Nφ, Hφ, indices[2], with_halos)
-        φᵃᶜᵃ_data = collect_dim(grid.φᵃᶜᵃ, c, TΦ(), Nφ, Hφ, indices[2], with_halos)
-
-        dims[φᵃᶠᵃ_name] = φᵃᶠᵃ_data
-        dims[φᵃᶜᵃ_name] = φᵃᶜᵃ_data
+        for ℓy in (f, c)
+            name = dim_name_generator(y, grid, nothing, ℓy, nothing, Val(:y))
+            dims[name] = collect_dim(ηnodes(grid, ℓy, with_halos=true), ℓy, TY(), Ny, Hy, indices[2], with_halos)
+        end
     end
 
     if TZ != Flat
@@ -510,26 +461,18 @@ gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator; grid_index=nothing)
+function field_dimensions(fd::AbstractField, grid::OneDimensionalHorizontalCoordinateGrid, dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
+    x = string(ξname(grid))
+    y = string(ηname(grid))
     z = vertical_coordinate_name(grid)
-    x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
-    y_dim_name = LY == Nothing ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
-    z_dim_name = LZ == Nothing ? "" : dim_name_generator(z,   grid, nothing, nothing, LZ(), Val(:z))
+
+    x_dim_name = LX == Nothing ? "" : dim_name_generator(x, grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = LY == Nothing ? "" : dim_name_generator(y, grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = LZ == Nothing ? "" : dim_name_generator(z, grid, nothing, nothing, LZ(), Val(:z))
 
     return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (x_dim_name, y_dim_name, z_dim_name))
-end
-
-function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator; grid_index=nothing)
-    LΛ, LΦ, LZ = location(fd)
-
-    z = vertical_coordinate_name(grid)
-    λ_dim_name = LΛ == Nothing ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    φ_dim_name = LΦ == Nothing ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    z_dim_name = LZ == Nothing ? "" : dim_name_generator(z,   grid, nothing, nothing, LZ(), Val(:z))
-
-    return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (λ_dim_name, φ_dim_name, z_dim_name))
 end
 
 function field_dimensions(fd::AbstractField, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)

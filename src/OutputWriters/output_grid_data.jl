@@ -54,20 +54,10 @@ function add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
     return metrics
 end
 
-function vertical_spacing_field(grid, lz, indices)
-    field = Field{Nothing, Nothing, typeof(lz)}(grid; indices)
-    Δ_raw = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
-    Δ = Δ_raw isa Number ? Δ_raw : on_architecture(CPU(), Δ_raw)
-    Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
-    full = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
-                          eltype(grid).(collect(Δ[1:Nz_int]))
-    z_slice = indices[3] isa Colon ? (1:Nz_int) : indices[3]
-    # Must be a plain 3D `Array` so `set!` hits `set_to_array!` (which handles arch
-    # transfer); a `ReshapedArray{Vector}` falls through to broadcast and breaks on GPU.
-    interior_arr = collect(reshape(view(full, z_slice), (1, 1, length(z_slice))))
-    set!(field, interior_arr)
-    return field
-end
+# `rspacings` (rather than `zspacings`) gives the *reference* spacing, which is what the
+# saved 1D vertical coordinate refers to for a `MutableVerticalDiscretization`, and which
+# coincides with the physical spacing for a `StaticVerticalDiscretization`.
+vertical_spacing_field(grid, lz, indices) = Field(rspacings(grid, lz); indices)
 
 function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
     TΛ, TΦ, TZ = topology(grid)
@@ -170,31 +160,32 @@ gather_grid_metrics(grid::ImmersedBoundaryGrid, args...; kw...) = gather_grid_me
 
 const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
 
+# `peripheral_node` and `inactive_node` masks, at the four locations of the C-grid variables.
+function immersed_node_fields(grid, indices)
+    node_fields = Dict()
+
+    for (lx, ly, lz) in ((c, c, c), (f, c, c), (c, f, c), (c, c, f))
+        LX, LY, LZ = map(typeof, (lx, ly, lz))
+        letters = loc2letter(lx) * loc2letter(ly) * loc2letter(lz)
+
+        peripheral_nodes = KernelFunctionOperation{LX, LY, LZ}(peripheral_node, grid, lx, ly, lz)
+        inactive_nodes = KernelFunctionOperation{LX, LY, LZ}(inactive_node, grid, lx, ly, lz)
+
+        node_fields["peripheral_nodes_" * letters] = Field(peripheral_nodes; indices)
+        node_fields["inactive_nodes_" * letters] = Field(inactive_nodes; indices)
+    end
+
+    return node_fields
+end
+
 """
     gather_immersed_boundary(grid, indices, dim_name_generator)
 
 Gather immersed-boundary data for output and grid reconstruction.
 """
 function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator; grid_index=nothing)
-    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
-
-    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
-    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
-    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
-    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
-
-    ib_vars = Dict("bottom_height" => Field(bottom_height_field(grid); indices),
-                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
-                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
-                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
-                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
-                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
+    ib_vars = merge(Dict("bottom_height" => Field(bottom_height_field(grid); indices)),
+                    immersed_node_fields(grid, indices))
 
     return suffix_grid_keys(ib_vars, grid_index)
 end
@@ -202,25 +193,8 @@ end
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator; grid_index=nothing)
-    op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
-
-    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
-    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
-    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
-    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
-
-    ib_vars = Dict("mask" => Field(grid.immersed_boundary.mask; indices),
-                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
-                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
-                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
-                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
-                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
+    ib_vars = merge(Dict("mask" => Field(grid.immersed_boundary.mask; indices)),
+                    immersed_node_fields(grid, indices))
 
     return suffix_grid_keys(ib_vars, grid_index)
 end
