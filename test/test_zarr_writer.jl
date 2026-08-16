@@ -131,7 +131,7 @@ end
         times = g["time"][:]
         @test length(times) == 3                       # initial + 2 iterations
         @test times ≈ [0.0, 1.0, 2.0]
-        @test g.attrs["Conventions"] == "CF-1.10"
+        @test g.attrs["Conventions"] == "CF-1.13"
         @test g.attrs["title"] == "CF interoperability test"
         @test isfile(joinpath(zarrpath, ".zmetadata"))
 

@@ -145,14 +145,22 @@ Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window
 #####
 
 function Oceananigans.prognostic_state(schedule::AveragedTimeInterval)
-    return (first_actuation_time = schedule.first_actuation_time,
+    return (interval = schedule.interval,
+            window = schedule.window,
+            first_actuation_time = schedule.first_actuation_time,
             actuations = schedule.actuations,
             collecting = schedule.collecting)
 end
 
 function Oceananigans.restore_prognostic_state!(restored::AveragedTimeInterval, from)
-    restored.first_actuation_time = from.first_actuation_time
-    restored.actuations = from.actuations
+    same_cadence = !hasproperty(from, :interval) ||
+                   (restored.interval == from.interval && restored.window == from.window)
+
+    if same_cadence
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
+
     restored.collecting = from.collecting
     return restored
 end
@@ -335,7 +343,19 @@ function Oceananigans.restore_prognostic_state!(restored::WindowedTimeAverage, f
     restored.window_start_time = from.window_start_time
     restored.window_start_iteration = from.window_start_iteration
     restored.previous_collection_time = from.previous_collection_time
+
+    same_cadence = !hasproperty(from.schedule, :interval) ||
+                   (restored.schedule.interval == from.schedule.interval &&
+                    restored.schedule.window == from.schedule.window)
+
     restore_prognostic_state!(restored.schedule, from.schedule)
+
+    if !same_cadence
+        window_start_time = from.schedule.collecting ? from.window_start_time : from.previous_collection_time
+        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window - restored.schedule.interval
+        restored.schedule.actuations = 0
+    end
+
     return restored
 end
 

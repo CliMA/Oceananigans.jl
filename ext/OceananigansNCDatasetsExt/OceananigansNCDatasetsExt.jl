@@ -21,7 +21,7 @@ using Statistics: mean
 
 import Oceananigans
 
-using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
+using Oceananigans: prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -80,7 +80,7 @@ using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
 import NCDatasets: defVar
-import Oceananigans: write_output!
+import Oceananigans: initialize!, write_output!
 import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
 import Oceananigans.OutputWriters:
     NetCDFWriter,

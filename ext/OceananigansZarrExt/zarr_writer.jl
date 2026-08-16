@@ -265,7 +265,7 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
         root_attrs["rank_topology"] = [arch.ranks[1], arch.ranks[2], arch.ranks[3]]
     end
 
-    useful_attributes = Dict("Conventions" => "CF-1.10",
+    useful_attributes = Dict("Conventions" => "CF-1.13",
                              "date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
                              "Julia" => "This file was generated using " * versioninfo_with_gpu(),
                              "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
