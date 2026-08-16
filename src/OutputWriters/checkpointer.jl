@@ -1,11 +1,8 @@
-using Glob
+using Glob: Glob, glob
 using StructArrays: StructArray
 
-using Oceananigans
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
@@ -162,22 +159,24 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 ##### Writing checkpoints
 #####
 
-prognostic_state(obj) = obj
-prognostic_state(::NamedTuple{()}) = nothing
-prognostic_state(::NoFileSplitting) = nothing
-prognostic_state(::FileSizeLimit) = nothing
-restore_prognostic_state!(::NoFileSplitting, from) = nothing
-restore_prognostic_state!(::FileSizeLimit, from) = nothing
+Oceananigans.prognostic_state(obj) = obj
+Oceananigans.prognostic_state(::NamedTuple{()}) = nothing
+Oceananigans.prognostic_state(::NoFileSplitting) = nothing
+Oceananigans.prognostic_state(::FileSizeLimit) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
-prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
+Oceananigans.prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
-function prognostic_state(nt::NamedTuple)
+function Oceananigans.prognostic_state(nt::NamedTuple)
     ks = keys(nt)
     vs = Tuple(prognostic_state(v) for v in values(nt))
     return NamedTuple{ks}(vs)
 end
 
-function prognostic_state(dict::AbstractDict)
+function Oceananigans.prognostic_state(dict::AbstractDict)
     isempty(dict) && return nothing
     ks = tuple(keys(dict)...)
     vs = Tuple(prognostic_state(v) for v in values(dict))
@@ -191,7 +190,7 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-function write_output!(c::Checkpointer, simulation)
+function Oceananigans.write_output!(c::Checkpointer, simulation)
     iter = iteration(simulation)
     filepath = checkpoint_path(iter, c)
 
@@ -246,46 +245,46 @@ end
 # Handle case when no checkpoint file exists (filepath is nothing)
 load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
-restore_prognostic_state!(obj, ::Nothing) = nothing
-restore_prognostic_state!(::NamedTuple{()}, from) = nothing
-restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
-restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
-restore_prognostic_state!(::Nothing, from) = nothing
-restore_prognostic_state!(::Nothing, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(obj, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, from) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 
 # To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
-restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
-restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
-restore_prognostic_state!(::StructArray, ::Nothing) = nothing
-restore_prognostic_state!(::Ref, ::Nothing) = nothing
-restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
-restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
 
-function restore_prognostic_state!(restored::AbstractArray, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
     copyto!(restored, from)
     return restored
 end
 
-function restore_prognostic_state!(restored::AbstractDict, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractDict, from)
     for (name, value) in pairs(from)
         haskey(restored, name) && restore_prognostic_state!(restored[name], value)
     end
     return restored
 end
 
-function restore_prognostic_state!(restored::NamedTuple, from)
+function Oceananigans.restore_prognostic_state!(restored::NamedTuple, from)
     for (name, value) in pairs(from)
         restore_prognostic_state!(restored[name], value)
     end
     return restored
 end
 
-function restore_prognostic_state!(t::Tuple, from::Tuple)
+function Oceananigans.restore_prognostic_state!(t::Tuple, from::Tuple)
     new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
     return new_t
 end
 
-function restore_prognostic_state!(restored::StructArray, from)
+function Oceananigans.restore_prognostic_state!(restored::StructArray, from)
     # Get the architecture from one of the component arrays
     some_property = first(propertynames(restored))
     arch = architecture(getproperty(restored, some_property))
@@ -300,18 +299,18 @@ function restore_prognostic_state!(restored::StructArray, from)
 end
 
 # Ref handling: dereference on save, set on restore
-prognostic_state(r::Ref) = r[]
-restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
+Oceananigans.prognostic_state(r::Ref) = r[]
+Oceananigans.restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
 
 #####
 ##### Checkpointing the checkpointer
 #####
 
-function prognostic_state(checkpointer::Checkpointer)
+function Oceananigans.prognostic_state(checkpointer::Checkpointer)
     return (; schedule = prognostic_state(checkpointer.schedule))
 end
 
-function restore_prognostic_state!(restored::Checkpointer, from)
+function Oceananigans.restore_prognostic_state!(restored::Checkpointer, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     return restored
 end
@@ -326,7 +325,7 @@ output_key_to_symbol(name::AbstractString) = Symbol(name)
 output_lookup_key(::JLD2Writer, name::Symbol) = name
 output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
 
-function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
+function Oceananigans.prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
     wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
@@ -342,7 +341,7 @@ function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
             time_derivatives = isempty(derivative_outputs) ? nothing : derivative_outputs)
 end
 
-function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
+function Oceananigans.restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
 
@@ -364,6 +363,10 @@ function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, fr
                 restore_prognostic_state!(restored.outputs[key], wta_state)
             end
         end
+
+        first_average = first(values(restored.outputs))
+        restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
+        restored.schedule.actuations = first_average.schedule.actuations
     end
 
     if hasproperty(from, :time_derivatives) && !isnothing(from.time_derivatives)
@@ -378,18 +381,18 @@ function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, fr
     return restored
 end
 
-function restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
     restored_parent = parent(restored)
     return restore_prognostic_state!(restored_parent, from)
 end
 
-function restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
     restored_parent = parent(restored)
     from_parent = parent(from)
     return restore_prognostic_state!(restored_parent, from_parent)
 end
 
-function restore_prognostic_state!(restored::Number, from::Number)
+function Oceananigans.restore_prognostic_state!(restored::Number, from::Number)
     restored = convert(typeof(restored), from)
     return restored
 end

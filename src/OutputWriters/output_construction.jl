@@ -5,6 +5,7 @@ using Oceananigans.Utils: @apply_regionally
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::Base.OneTo, loc, topo, N) = restrict_to_interior(UnitRange(index), loc, topo, N)
+restrict_to_interior(::Base.OneTo, ::Nothing, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::AbstractUnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
 
 function restrict_to_interior(index::AbstractUnitRange, loc, topo, N)

@@ -1,22 +1,23 @@
 module OutputWriters
 
 export
-    JLD2Writer, NetCDFWriter, ZarrWriter, written_names,
-    Checkpointer, checkpoint, WindowedTimeAverage, TimeDerivative, FileSizeLimit,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
+    JLD2Writer, NetCDFWriter, ZarrWriter,
+    Checkpointer, checkpoint,
+    written_names,
+    WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
 using DocStringExtensions: TYPEDSIGNATURES
-using OffsetArrays
+using OffsetArrays: OffsetArrays, OffsetArray
 
-using Oceananigans: AbstractOutputWriter, boundary_conditions
-using Oceananigans.Architectures
-using Oceananigans.Fields
-using Oceananigans.Grids
-using Oceananigans.Grids: interior_indices
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate,
+using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
+using Oceananigans.Architectures: Architectures, CPU, GPU
+using Oceananigans.Fields: Fields, Field
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, LatitudeLongitudeGrid, RectilinearGrid,
+                          interior_indices
+using Oceananigans.Solvers: iteration
+using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize
-
-import Oceananigans: write_output!, initialize!
 
 const c = Center()
 const f = Face()
@@ -25,7 +26,7 @@ Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
 
 # Default fallback: most output writers don't need special initialization
-initialize!(::AbstractOutputWriter, model) = nothing
+Oceananigans.initialize!(::AbstractOutputWriter, model) = nothing
 
 include("output_writer_utils.jl")
 include("fetch_output.jl")
