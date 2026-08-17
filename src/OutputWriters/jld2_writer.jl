@@ -1,9 +1,10 @@
 using Printf: @sprintf
-using JLD2
-using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
+using JLD2: JLD2, jldopen
+
+using Oceananigans: initialize!
 using Oceananigans.Fields: indices
 using Oceananigans.Grids: grid
+using Oceananigans.Utils: Utils, TimeInterval, prettykeys, materialize_schedule
 
 default_included_properties(model) = []
 
@@ -37,6 +38,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                including = default_included_properties(model),
                verbose = false,
                part = 1,
+               compress = true,
                jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
@@ -83,6 +85,9 @@ Keyword arguments
                     split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
+                    A `FileSizeLimit` must exceed the size of the metadata written to every part
+                    file, which compression barely shrinks; otherwise an `ArgumentError` is thrown
+                    at construction. See [`FileSizeLimit`](@ref).
 
 - `overwrite_existing`: Remove an existing file with the same filename when the writer is initialized.
                         Default: `false`.
@@ -103,7 +108,13 @@ Keyword arguments
 - `part`: The starting part number used when file splitting.
           Default: 1.
 
+- `compress`: Determines whether and how to compress data when writing to the file, forwarded
+              to `JLD2.jldopen`. Can be a `Bool` or any compressor supported by JLD2.jl; see the
+              [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/)
+              for the available options. Default: `true` (compression enabled, using the `Deflate` filter).
+
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
+             A `:compress` entry here takes precedence over the `compress` keyword argument.
 
 Example
 =======
@@ -174,7 +185,11 @@ function JLD2Writer(model, outputs; filename, schedule,
                     including = default_included_properties(model),
                     verbose = false,
                     part = 1,
+                    compress = true,
                     jld2_kw = Dict{Symbol, Any}())
+
+    jld2_kw = Dict{Symbol, Any}(pairs(jld2_kw))
+    get!(jld2_kw, :compress, compress)
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
@@ -189,6 +204,8 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
+
+    validate_file_splitting(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
 
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
@@ -265,6 +282,28 @@ end
 initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
+# Measure the per-part metadata overhead by initializing a probe file in a scratch
+# directory, so the error can be thrown at construction time, before the actual
+# output file exists.
+function validate_file_splitting(file_splitting::FileSizeLimit, filepath, init, jld2_kw, including, outputs, model)
+    metadata_size = mktempdir() do dir
+        probe_filepath = joinpath(dir, basename(filepath))
+        initialize_jld2_file!(probe_filepath, init, jld2_kw, including, outputs, model)
+        filesize(probe_filepath)
+    end
+
+    if metadata_size ≥ file_splitting.size_limit
+        throw(ArgumentError(string("The metadata written when initializing ", filepath,
+                                   " (", pretty_filesize(metadata_size), ")",
+                                   " already exceeds the file size limit (", pretty_filesize(file_splitting.size_limit), ").",
+                                   " Every part file would exceed the limit and contain a single output,",
+                                   " and the total output size could be much larger than without file splitting.",
+                                   " Increase the size limit to account for the metadata written to every part file.")))
+    end
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -276,7 +315,7 @@ has already been initialized, preventing files from being overwritten when `run!
 multiple times.
 
 """
-function initialize!(writer::JLD2Writer, model)
+function Oceananigans.initialize!(writer::JLD2Writer, model)
     # Skip if already initialized (e.g., when run! is called multiple times)
     writer.initialized && return nothing
 
@@ -309,7 +348,7 @@ function iteration_exists(filepath, iter=0)
     return iter_exists
 end
 
-function write_output!(writer::JLD2Writer, model)
+function Oceananigans.write_output!(writer::JLD2Writer, model)
     # Ensure the writer is initialized before writing
     if !writer.initialized
         initialize!(writer, model)
