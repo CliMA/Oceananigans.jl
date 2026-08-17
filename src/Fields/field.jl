@@ -591,6 +591,52 @@ const ReducedField = Union{XReducedField,
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
+#####
+##### Fields windowed to a single plane act as boundary conditions on the parallel boundary
+#####
+
+# A field windowed with `indices` stores its data offset to the window (for example the k-axis of
+# `Field(op, indices=(:, :, Nz))` is `Nz:Nz`), so the boundary-normal index of a boundary condition
+# is the window's own slot rather than 1 (which is what reduced fields and plain 2D arrays use).
+# The locations are restricted to `Face`/`Center` so these do not overlap with the reduced fields above.
+const FaceOrCenter = Union{Face, Center}
+const XPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{<:AbstractRange, Colon, Colon}}
+const YPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, <:AbstractRange, Colon}}
+const ZPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, Colon, <:AbstractRange}}
+
+const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
+
+@inline BoundaryConditions.getbc(condition::XPlaneField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[first(condition.indices[1]), j, k]
+@inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
+@inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
+
+# Preserve the location and the window when adapting fields windowed to a single plane (as is done
+# for reduced fields below), so that the methods above also dispatch inside kernels.
+function Adapt.adapt_structure(to, plane_field::PlaneField)
+    LX, LY, LZ = location(plane_field)
+    return Field{LX, LY, LZ}(nothing,
+                             adapt(to, plane_field.data),
+                             nothing,
+                             plane_field.indices,
+                             nothing,
+                             nothing,
+                             nothing)
+end
+
+# A `Field` used as a boundary condition on dimension `dim` may be reduced or windowed to a single
+# plane along `dim`, but must not be windowed along the other (tangential) dimensions: the
+# tangential indices of the boundary are used to index it directly.
+function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, args...)
+    for d in 1:3
+        idx = condition.indices[d]
+        idx isa Colon && continue
+        d == dim && length(idx) == 1 && continue
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
+                            "to a single plane along dimension $dim, but has indices $(condition.indices)."))
+    end
+    return condition
+end
+
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
