@@ -58,7 +58,7 @@ clock = Clock{Float64}(time=0)
                 Nsubsteps = calculate_substeps(sefs.substepping, 1)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(1))
 
                 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
                 U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
@@ -95,9 +95,9 @@ clock = Clock{Float64}(time=0)
                 weights = sefs.substepping.averaging_weights
 
                 for _ in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
 
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
@@ -142,7 +142,7 @@ clock = Clock{Float64}(time=0)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
 
                 for step in 1:Nsubsteps
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(1))
                 end
 
                 U_computed = Array(deepcopy(interior(U)))
@@ -203,9 +203,9 @@ clock = Clock{Float64}(time=0)
 
                 weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
-                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
+                    iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
                 end
-                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, noforcing, clock, weights, weights, Val(1))
+                iterate_split_explicit!(sefs, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, weights, nothing, Val(1))
 
                 η_mean_after = mean(Array(interior(η)))
 
@@ -298,11 +298,11 @@ end # end of testset loop
         Δτ = 1.0
         fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_extend.substepping, Nsubsteps)
 
-        iterate_split_explicit!(sefs_extend, sefs_extend.displacement.grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(Nsubsteps))
+        iterate_split_explicit!(sefs_extend, sefs_extend.displacement.grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(Nsubsteps))
 
         fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_fill.substepping, Nsubsteps)
 
-        iterate_split_explicit!(sefs_fill, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(Nsubsteps))
+        iterate_split_explicit!(sefs_fill, grid, GU, GV, Δτ, Δτ, noforcing, clock, weights, transport_weights, nothing, Val(Nsubsteps))
 
         # Compare: both should give the same interior result
         η_extend = Array(interior(sefs_extend.displacement))
@@ -369,38 +369,128 @@ end
     end
 end
 
-@testset "Stage-value quadratic slow-forcing reconstruction" begin
+@testset "Slow-forcing reconstruction across the barotropic sub-cycle" begin
     using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
-        stage_quadratic_coefficients, FrozenSlowForcing, StageQuadraticSlowForcing, RungeKutta3Scheme
+        dimensionless_reconstruction_weights, scale_reconstruction_weights,
+        reconstruction_degree, stage_sample_times, cached_stages,
+        FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing, RungeKutta3Scheme
+    using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
+                                     ModifiedRungeKutta4TimeStepper, SSPRK3_COEFFICIENTS
+
+    # Evaluate F(s) from the weights and the samples, in the layout the substep kernel uses: the leading
+    # slots are the cached stage forcings and the last is the live forcing of the stage in progress.
+    poly(w, samples, s) = sum(sum(w[k][j] * samples[j] for j in eachindex(samples)) * s^(k-1) for k in 1:3)
+
+    # Lay `M` stage forcings out the way the substep kernel sees them: samples 1 … M-1 in the cache slots,
+    # and sample M -- the forcing of the stage in progress, which is never cached -- in the last slot.
+    slots(F, N) = ntuple(j -> j == N + 1 ? F[end] : (j < length(F) ? F[j] : 0.0), N + 1)
+
+    # The shape is stored on the reconstruction and only rescaled by Δt at each stage; the tests exercise
+    # exactly that composition.
+    weights(τ, D, N, Δt) = scale_reconstruction_weights(dimensionless_reconstruction_weights(τ, D, N, Float64), Δt)
 
     @testset "Interpolation through the stage values" begin
         Δt = 600.0
         F¹, F², F³ = 1.5, 2.25, 2.5
-        F₀, F₁, F₂ = stage_quadratic_coefficients(F¹, F², F³, 1/3, 1/2, Δt)
 
-        # the quadratic passes through the three stage samples, at s = 0, Δt/3, Δt/2
-        @test F₀                             ≈ F¹ atol=1e-14
-        @test F₀ + F₁*(Δt/3) + F₂*(Δt/3)^2   ≈ F² rtol=1e-12
-        @test F₀ + F₁*(Δt/2) + F₂*(Δt/2)^2   ≈ F³ rtol=1e-12
+        # the low-storage RK3 nodes: the quadratic passes through the three samples, at s = 0, Δt/3, Δt/2
+        w  = weights((0.0, 1/3, 1/2), Val(3), Val(2), Δt)
+        Fs = slots((F¹, F², F³), 2)
+        @test poly(w, Fs, 0.0)    ≈ F¹ rtol=1e-12
+        @test poly(w, Fs, Δt/3)   ≈ F² rtol=1e-12
+        @test poly(w, Fs, Δt/2)   ≈ F³ rtol=1e-12
 
         # a forcing that is exactly quadratic in time is reproduced away from the nodes too
         q(s) = 3.0 - 0.5s + 2e-4 * s^2
-        G₀, G₁, G₂ = stage_quadratic_coefficients(q(0), q(Δt/3), q(Δt/2), 1/3, 1/2, Δt)
+        qs = slots((q(0), q(Δt/3), q(Δt/2)), 2)
         for s in (0.0, 100.0, Δt/2, Δt, 2Δt)
-            @test G₀ + G₁*s + G₂*s^2 ≈ q(s) rtol=1e-10
+            @test poly(w, qs, s) ≈ q(s) rtol=1e-10
         end
 
         # the Shu-Osher nodes (0, Δt, Δt/2) must interpolate at *their* points
-        S₀, S₁, S₂ = stage_quadratic_coefficients(F¹, F², F³, 1.0, 1/2, Δt)
-        @test S₀                           ≈ F¹ atol=1e-14
-        @test S₀ + S₁*Δt     + S₂*Δt^2     ≈ F² rtol=1e-12
-        @test S₀ + S₁*(Δt/2) + S₂*(Δt/2)^2 ≈ F³ rtol=1e-12
+        wS = weights((0.0, 1.0, 1/2), Val(3), Val(2), Δt)
+        @test poly(wS, Fs, 0.0)  ≈ F¹ rtol=1e-12
+        @test poly(wS, Fs, Δt)   ≈ F² rtol=1e-12
+        @test poly(wS, Fs, Δt/2) ≈ F³ rtol=1e-12
 
-        # a constant forcing must reduce to the frozen value
-        H₀, H₁, H₂ = stage_quadratic_coefficients(7.0, 7.0, 7.0, 1/3, 1/2, Δt)
-        @test H₀ ≈ 7.0
-        @test abs(H₁) < 1e-15
-        @test abs(H₂) < 1e-15
+        # a constant forcing must reduce to the frozen value at every s
+        for s in (0.0, 137.0, Δt, 2Δt)
+            @test poly(w, slots((7.0, 7.0, 7.0), 2), s) ≈ 7.0 rtol=1e-12
+        end
+    end
+
+    @testset "Progressive reconstruction on the four-stage nodes" begin
+        Δt = 600.0
+        a  = 0.22
+        τ  = (0.0, a, 1/3, 1/2)
+        q(s) = 3.0 - 0.5s + 2e-4 * s^2
+
+        # stage 2 is linear through two samples: exact for a linear forcing, and it must interpolate
+        ℓ(s) = 2.0 + 0.01s
+        w2 = weights(τ[1:2], Val(2), Val(3), Δt)
+        ℓ2 = slots((ℓ(0), ℓ(a*Δt)), 3)
+        @test poly(w2, ℓ2, 0.0)   ≈ ℓ(0)     rtol=1e-12
+        @test poly(w2, ℓ2, a*Δt)  ≈ ℓ(a*Δt)  rtol=1e-12
+        @test poly(w2, ℓ2, Δt)    ≈ ℓ(Δt)    rtol=1e-10
+
+        # the cache slots the stage does not use carry a zero weight, so their (stale) contents cannot leak in
+        @test all(w2[k][2] == 0 && w2[k][3] == 0 for k in 1:3)
+
+        # stage 3 is the square quadratic through three samples
+        w3 = weights(τ[1:3], Val(3), Val(3), Δt)
+        q3 = slots((q(0), q(a*Δt), q(Δt/3)), 3)
+        for s in (0.0, a*Δt, Δt/3, Δt, 2Δt)
+            @test poly(w3, q3, s) ≈ q(s) rtol=1e-10
+        end
+        @test all(w3[k][3] == 0 for k in 1:3)
+
+        # stage 4 has four samples for three coefficients: a least-squares fit, which is still *exact*
+        # when the data are exactly quadratic
+        w4 = weights(τ, Val(3), Val(3), Δt)
+        q4 = slots((q(0), q(a*Δt), q(Δt/3), q(Δt/2)), 3)
+        for s in (0.0, a*Δt, Δt/3, Δt/2, Δt, 2Δt)
+            @test poly(w4, q4, s) ≈ q(s) rtol=1e-8
+        end
+
+        # and it reduces to the frozen value on a constant forcing
+        for s in (0.0, 137.0, Δt, 2Δt)
+            @test poly(w4, slots((7.0, 7.0, 7.0, 7.0), 3), s) ≈ 7.0 rtol=1e-10
+        end
+    end
+
+    @testset "Nodes follow the composition" begin
+        # RK3 keeps the nodes it always had
+        @test all(stage_sample_times(SplitRungeKuttaTimeStepper(stages=3)) .≈ (0.0, 1/3, 1/2))
+        @test all(stage_sample_times(SSPRungeKuttaTimeStepper(coefficients=SSPRK3_COEFFICIENTS)) .≈ (0.0, 1.0, 1/2))
+
+        # MRK4's leading node *is* its damping fraction, read off the composition rather than stored
+        for a in (0.22, 1/4, 0.18)
+            ts = ModifiedRungeKutta4TimeStepper(; a)
+            @test ts.Nstages == 4
+            @test all(stage_sample_times(ts) .≈ (0.0, a, 1/3, 1/2))
+        end
+
+        # the classical four-stage polynomial is the a = 1/4 member
+        @test all(ModifiedRungeKutta4TimeStepper(a = 1/4).β .≈ (4, 3, 2, 1))
+    end
+
+    @testset "Degree rules" begin
+        prog = ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper())
+        quad = StageQuadraticSlowForcing(SplitRungeKuttaTimeStepper(stages=3))
+
+        @test cached_stages(prog) == 3
+        @test cached_stages(quad) == 2
+
+        # progressive: constant, linear, quadratic, quadratic
+        @test [reconstruction_degree(prog, m, 4) for m in 1:4] == [1, 2, 3, 3]
+
+        # stage-quadratic: frozen until the final stage
+        @test [reconstruction_degree(quad, m, 3) for m in 1:3] == [1, 1, 3]
+
+        @test_throws ArgumentError ProgressiveSlowForcing(SplitRungeKuttaTimeStepper(coefficients=(1,)))
+
+        # the stored nodes are the composition's own
+        @test all(ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper(a=0.22)).nodes .≈ (0.0, 0.22, 1/3, 1/2))
     end
 
     @testset "Model integration and tracer constancy" begin
@@ -424,7 +514,7 @@ end
         end
 
         frozen = run(FrozenSlowForcing())
-        quad   = run(StageQuadraticSlowForcing())
+        quad   = run(StageQuadraticSlowForcing(SplitRungeKuttaTimeStepper(stages=3)))
 
         # The reconstruction touches the momentum forcing only, never the transport that advects tracers,
         # so constancy on the z★ grid must survive untouched.

@@ -1,11 +1,11 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta2Scheme, RungeKutta3Scheme, AdamsBashforth3Scheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta3Scheme
 export FixedSubstepNumber, FixedTimeStepSize
 export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel, SymmetricTrigAveragingKernel
 export WideTrig74AveragingKernel, WideTrig2AveragingKernel
 export OptimizedSymmetricAveragingKernel, OptimizedAsymmetricAveragingKernel
-export FrozenSlowForcing, StageQuadraticSlowForcing
+export FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing
 
 using DocStringExtensions: TYPEDSIGNATURES
 using LinearAlgebra: LinearAlgebra

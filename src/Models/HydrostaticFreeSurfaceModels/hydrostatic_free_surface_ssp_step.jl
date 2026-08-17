@@ -23,6 +23,28 @@ function validate_timestepper_free_surface(::SSPRungeKuttaTimeStepper, ::Implici
     throw(ArgumentError(msg))
 end
 
+function validate_timestepper_free_surface(timestepper::MultiStageTimeStepper, free_surface::SplitExplicitFreeSurface)
+    slow_forcing = free_surface.slow_forcing
+    slow_forcing isa SplitExplicitFreeSurfaces.ReconstructedSlowForcing || return nothing
+
+    nodes = SplitExplicitFreeSurfaces.stage_sample_times(timestepper)
+    name  = nameof(typeof(slow_forcing))
+
+    if length(slow_forcing.nodes) != timestepper.Nstages
+        msg = string(name, " was built for ", length(slow_forcing.nodes), " stages, but the timestepper has ",
+                     timestepper.Nstages, ". Build it from the same timestepper.")
+        throw(ArgumentError(msg))
+    end
+
+    if !all(isapprox.(slow_forcing.nodes, nodes; rtol=1e-12))
+        msg = string(name, " was built on the stage sample times ", slow_forcing.nodes,
+                     ", but the timestepper samples at ", nodes, ". Build it from the same timestepper.")
+        throw(ArgumentError(msg))
+    end
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
