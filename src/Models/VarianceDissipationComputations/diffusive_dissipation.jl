@@ -69,6 +69,24 @@ end
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
 end
 
+# Strong-stability-preserving accumulation. `Vᵐ` is scratch for this stage's flux and `V̄` the running
+# `Σₘ βₘ Vᵐ` the final stage assembles against.
+@kernel function _accumulate_ssp_diffusive_fluxes!(V̄, Vᵐ, grid::AbstractGrid, clo, K, b, c, c_id, clk, fields, β, keep)
+    i, j, k = @index(Global, NTuple)
+
+    Vᵐ.x[i, j, k] = zero(grid)
+    Vᵐ.y[i, j, k] = zero(grid)
+    Vᵐ.z[i, j, k] = zero(grid)
+
+    compute_diffusive_fluxes!(Vᵐ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
+
+    @inbounds begin
+        V̄.x[i, j, k] = keep * V̄.x[i, j, k] + β * Vᵐ.x[i, j, k]
+        V̄.y[i, j, k] = keep * V̄.y[i, j, k] + β * Vᵐ.y[i, j, k]
+        V̄.z[i, j, k] = keep * V̄.z[i, j, k] + β * Vᵐ.z[i, j, k]
+    end
+end
+
 # Deal with tuples of closures and closure_fields
 @inline compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple{<:Any}, K, args...) =
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)

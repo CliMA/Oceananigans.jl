@@ -1,6 +1,7 @@
 using Adapt: Adapt
 using Oceananigans.Grids: Face, Center
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
+                                 MultiStageTimeStepper
 
 import Oceananigans: prognostic_state
 
@@ -59,24 +60,42 @@ prognostic_state(::FrozenSlowForcing) = nothing
 prognostic_state(::StageQuadraticSlowForcing) = nothing
 
 """
-    stage_quadratic_coefficients(F¹, F², F³, Δt)
+    stage_sample_times(timestepper)
 
-Coefficients of `F(s) = F₀ + F₁ s + F₂ s²`, the quadratic through the slow forcing sampled at the
-baroclinic stage times `0`, `Δt/3` and `Δt/2`, with `s` measured from the start of the time step.
+Times, as fractions of `Δt` from the start of the step, that the state entering each Runge-Kutta stage
+approximates. These are the nodes of the reconstruction, and they differ between schemes: the low-storage
+form advances from `Ψⁿ` by `γ = Δt/3, Δt/2, Δt`, so its stage states sit at `0, Δt/3, Δt/2`, whereas the
+Shu-Osher form takes a full step first and sits at `0, Δt, Δt/2`.
 """
-@inline function stage_quadratic_coefficients(F¹, F², F³, Δt)
-    F₀ = F¹
-    F₁ = (-5F¹ +  9F² -  4F³) / Δt
-    F₂ = ( 6F¹ - 18F² + 12F³) / Δt^2
-    return F₀, F₁, F₂
+@inline stage_sample_times(::SplitRungeKuttaTimeStepper) = (0.0, 1/3, 1/2)
+@inline stage_sample_times(::SSPRungeKuttaTimeStepper)   = (0.0, 1.0, 1/2)
+
+"""
+    stage_quadratic_coefficients(F¹, F², F³, t₂, t₃, Δt)
+
+Coefficients of `F(s) = F₀ + F₁ s + F₂ s²`, the quadratic through the slow forcing sampled at `s = 0`,
+`t₂ Δt` and `t₃ Δt`, with `s` measured from the start of the time step.
+
+With the low-storage nodes `(1/3, 1/2)` this reduces to
+`F₁ = (-5F¹ + 9F² - 4F³)/Δt`, `F₂ = (6F¹ - 18F² + 12F³)/Δt²`.
+"""
+@inline function stage_quadratic_coefficients(F¹, F², F³, t₂, t₃, Δt)
+    a  = t₂ * Δt
+    b  = t₃ * Δt
+    Δ₁ = F² - F¹
+    Δ₂ = F³ - F¹
+    den = a * b * (b - a)
+    F₁ = ( Δ₁ * b^2 - Δ₂ * a^2) / den
+    F₂ = (-Δ₁ * b   + Δ₂ * a  ) / den
+    return F¹, F₁, F₂
 end
 
 # `s` is the MIDPOINT of the current barotropic substep, measured from tⁿ. Sampling at either endpoint
 # instead injects an O(Δτ) error which at fixed substep count is O(Δt), and costs two orders.
-@inline slow_forcing(i, j, Gᴴ, ::Nothing, ::Nothing, s, Δt) = @inbounds Gᴴ[i, j, 1]
+@inline slow_forcing(i, j, Gᴴ, ::Nothing, ::Nothing, s, Δt, t₂, t₃) = @inbounds Gᴴ[i, j, 1]
 
-@inline function slow_forcing(i, j, Gᴴ, Gᴴ¹, Gᴴ², s, Δt)
-    @inbounds F₀, F₁, F₂ = stage_quadratic_coefficients(Gᴴ¹[i, j, 1], Gᴴ²[i, j, 1], Gᴴ[i, j, 1], Δt)
+@inline function slow_forcing(i, j, Gᴴ, Gᴴ¹, Gᴴ², s, Δt, t₂, t₃)
+    @inbounds F₀, F₁, F₂ = stage_quadratic_coefficients(Gᴴ¹[i, j, 1], Gᴴ²[i, j, 1], Gᴴ[i, j, 1], t₂, t₃, Δt)
     return F₀ + F₁ * s + F₂ * s^2
 end
 
@@ -102,6 +121,11 @@ end
 @inline stage_forcing_fields(::FrozenSlowForcing, args...) = (nothing, nothing, nothing, nothing)
 
 @inline function stage_forcing_fields(sf::StageQuadraticSlowForcing, timestepper, stage)
-    final_stage = timestepper isa SplitRungeKuttaTimeStepper && stage == timestepper.Nstages
+    final_stage = timestepper isa MultiStageTimeStepper && stage == timestepper.Nstages
     return final_stage ? (sf.Gᵁ¹, sf.Gⱽ¹, sf.Gᵁ², sf.Gⱽ²) : (nothing, nothing, nothing, nothing)
 end
+
+# The reconstruction's nodes are a property of the baroclinic scheme, not of the free surface, so they
+# travel with the timestepper. Anything that is not a multi-stage scheme never reaches the reconstruction.
+@inline reconstruction_nodes(timestepper::MultiStageTimeStepper) = stage_sample_times(timestepper)[2:3]
+@inline reconstruction_nodes(timestepper) = (1/3, 1/2)

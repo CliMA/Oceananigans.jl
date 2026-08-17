@@ -1,3 +1,4 @@
+using Oceananigans.TimeSteppers: MultiStageTimeStepper
 #####
 ##### Compute slow tendencies with an AB2 timestepper
 #####
@@ -63,7 +64,7 @@ end
     end
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) =
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::MultiStageTimeStepper) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!,
             GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_cells_map(grid, Val(:xy)))
 

@@ -15,7 +15,11 @@ using Oceananigans.Fields
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: architecture, AbstractGrid
 using Oceananigans.Operators
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
+using Oceananigans.TimeSteppers: MultiStageTimeStepper,
+                                 SplitRungeKuttaTimeStepper,
+                                 SSPRungeKuttaTimeStepper,
+                                 ssp_quadrature_weights,
+                                 QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
@@ -88,6 +92,12 @@ function VarianceDissipation(tracer_name, grid;
     σ_cache = (x = Field{Face,   Center, Nothing}(grid),
                y = Field{Center, Face,   Nothing}(grid),
                z = Field{Center, Center, Nothing}(grid))
+
+    # The strong-stability-preserving path accumulates raw fluxes across the stages and leaves this cache
+    # at unity, so it must start there rather than at zero.
+    for σ in σ_cache
+        fill!(parent(σ), 1)
+    end
 
     previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ, σ_cache)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)

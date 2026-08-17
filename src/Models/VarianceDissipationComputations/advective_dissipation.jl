@@ -89,3 +89,39 @@ end
         Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end
+
+#####
+##### Strong-stability-preserving accumulation
+#####
+##### The step is `cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ Gᵐ` with `Gᵐ` evaluated at `yᵐ⁻¹`, so the flux and transport that
+##### close the variance budget are the β-weighted sums over the stages rather than a single stage's
+##### value. `Fⁿ⁻¹`/`Uⁿ⁻¹` are unused by the multi-stage path and serve as the accumulators, and the
+##### assembly is then the ordinary `_assemble_rk3_advective_dissipation!` against the step endpoints.
+#####
+##### The accumulated flux and transport are raw (unweighted by σ): the low-storage path multiplies by σ
+##### when caching and divides by the same cached σ when assembling, so the two cancel exactly. Keeping
+##### the sum raw and the σ cache at unity reproduces that identity stage by stage, where a single
+##### snapshot of σ shared by three stages would not.
+
+@kernel function _accumulate_ssp_advective_fluxes!(F★, grid, advection, U, tracer, β, keep)
+    i, j, k = @index(Global, NTuple)
+
+    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer)
+    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer)
+    fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer)
+
+    @inbounds begin
+        F★.x[i, j, k] = keep * F★.x[i, j, k] + β * fx
+        F★.y[i, j, k] = keep * F★.y[i, j, k] + β * fy
+        F★.z[i, j, k] = keep * F★.z[i, j, k] + β * fz
+    end
+end
+
+@kernel function _accumulate_ssp_transport!(U★, grid, U, β, keep)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        U★.u[i, j, k] = keep * U★.u[i, j, k] + β * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
+        U★.v[i, j, k] = keep * U★.v[i, j, k] + β * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
+        U★.w[i, j, k] = keep * U★.w[i, j, k] + β * U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+    end
+end

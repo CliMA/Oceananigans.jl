@@ -376,7 +376,7 @@ end
     @testset "Interpolation through the stage values" begin
         Δt = 600.0
         F¹, F², F³ = 1.5, 2.25, 2.5
-        F₀, F₁, F₂ = stage_quadratic_coefficients(F¹, F², F³, Δt)
+        F₀, F₁, F₂ = stage_quadratic_coefficients(F¹, F², F³, 1/3, 1/2, Δt)
 
         # the quadratic passes through the three stage samples, at s = 0, Δt/3, Δt/2
         @test F₀                             ≈ F¹ atol=1e-14
@@ -385,13 +385,19 @@ end
 
         # a forcing that is exactly quadratic in time is reproduced away from the nodes too
         q(s) = 3.0 - 0.5s + 2e-4 * s^2
-        G₀, G₁, G₂ = stage_quadratic_coefficients(q(0), q(Δt/3), q(Δt/2), Δt)
+        G₀, G₁, G₂ = stage_quadratic_coefficients(q(0), q(Δt/3), q(Δt/2), 1/3, 1/2, Δt)
         for s in (0.0, 100.0, Δt/2, Δt, 2Δt)
             @test G₀ + G₁*s + G₂*s^2 ≈ q(s) rtol=1e-10
         end
 
+        # the Shu-Osher nodes (0, Δt, Δt/2) must interpolate at *their* points
+        S₀, S₁, S₂ = stage_quadratic_coefficients(F¹, F², F³, 1.0, 1/2, Δt)
+        @test S₀                           ≈ F¹ atol=1e-14
+        @test S₀ + S₁*Δt     + S₂*Δt^2     ≈ F² rtol=1e-12
+        @test S₀ + S₁*(Δt/2) + S₂*(Δt/2)^2 ≈ F³ rtol=1e-12
+
         # a constant forcing must reduce to the frozen value
-        H₀, H₁, H₂ = stage_quadratic_coefficients(7.0, 7.0, 7.0, Δt)
+        H₀, H₁, H₂ = stage_quadratic_coefficients(7.0, 7.0, 7.0, 1/3, 1/2, Δt)
         @test H₀ ≈ 7.0
         @test abs(H₁) < 1e-15
         @test abs(H₂) < 1e-15

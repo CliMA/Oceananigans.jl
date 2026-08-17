@@ -31,7 +31,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, sᵐ, grid, filled_halos, Δτ, η, U, V,
-                                                      Gᵁ, Gⱽ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, g, U̅, V̅, timestepper)
+                                                      Gᵁ, Gⱽ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, t₂, t₃, g, U̅, V̅, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -46,8 +46,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     # half of the forward-backward step). Note: use ∂xᵣT/∂yᵣT (derivatives at constant r), since η lives on the
     # surface and has no vertical structure.
     # With the frozen forcing this dispatches back to a plain `Gᵁ[i, j, 1]` load.
-    Gᵁˢ = slow_forcing(i, j, Gᵁ, Gᵁ¹, Gᵁ², sᵐ, Δt)
-    Gⱽˢ = slow_forcing(i, j, Gⱽ, Gⱽ¹, Gⱽ², sᵐ, Δt)
+    Gᵁˢ = slow_forcing(i, j, Gᵁ, Gᵁ¹, Gᵁ², sᵐ, Δt, t₂, t₃)
+    Gⱽˢ = slow_forcing(i, j, Gⱽ, Gⱽ¹, Gⱽ², sᵐ, Δt, t₂, t₃)
 
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁˢ)
@@ -93,7 +93,7 @@ end
 ##### Halos are filled between every stage, so the non-topology-aware operators are used throughout.
 
 @kernel function _barotropic_velocity_stage!(averaging_weight, grid, Δτ, ηᵖ, U, V, U⁰, V⁰,
-                                             Gᵁ, Gⱽ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², s, Δt, g, U̅, V̅)
+                                             Gᵁ, Gⱽ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², s, Δt, t₂, t₃, g, U̅, V̅)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -101,8 +101,8 @@ end
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, ηᵖ)
 
     # With the frozen forcing this dispatches back to a plain `Gᵁ[i, j, 1]` load.
-    Gᵁˢ = slow_forcing(i, j, Gᵁ, Gᵁ¹, Gᵁ², s, Δt)
-    Gⱽˢ = slow_forcing(i, j, Gⱽ, Gⱽ¹, Gⱽ², s, Δt)
+    Gᵁˢ = slow_forcing(i, j, Gᵁ, Gᵁ¹, Gᵁ², s, Δt, t₂, t₃)
+    Gⱽˢ = slow_forcing(i, j, Gⱽ, Gⱽ¹, Gⱽ², s, Δt, t₂, t₃)
 
     @inbounds begin
         U[i, j, 1] = U⁰[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣᶠᶜᶠ(i, j, k_top, grid, ηᵖ) + Gᵁˢ)
@@ -152,6 +152,7 @@ function iterate_split_explicit_multistage!(free_surface, grid, GUⁿ, GVⁿ, Δ
 
     # Non-`nothing` only on the final baroclinic stage, where all three samples of the slow forcing exist.
     Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ² = stage_forcing_fields(free_surface.slow_forcing, baroclinic_timestepper, clock.stage)
+    t₂, t₃ = reconstruction_nodes(baroclinic_timestepper)
 
     for substep in 1:Nsubsteps
         @inbounds averaging_weight = weights[substep]
@@ -177,7 +178,7 @@ function iterate_split_explicit_multistage!(free_surface, grid, GUⁿ, GVⁿ, Δ
             free_surface_kernel!(aw, tw, grid, γ, η, η⁰, U, V, F, clock, η̅, Ũ, Ṽ)
             fill_halo_regions!(η)
 
-            velocity_kernel!(aw, grid, γ, ηᵖ, U, V, U⁰, V⁰, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², s, Δt, g, U̅, V̅)
+            velocity_kernel!(aw, grid, γ, ηᵖ, U, V, U⁰, V⁰, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², s, Δt, t₂, t₃, g, U̅, V̅)
             fill_halo_regions!((U, V))
         end
     end
@@ -235,8 +236,9 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ² = stage_forcing_fields(free_surface.slow_forcing, baroclinic_timestepper, clock.stage)
+    t₂, t₃ = reconstruction_nodes(baroclinic_timestepper)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, g, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, t₂, t₃, g, U̅, V̅, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
@@ -290,8 +292,9 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ² = stage_forcing_fields(free_surface.slow_forcing, baroclinic_timestepper, clock.stage)
+    t₂, t₃ = reconstruction_nodes(baroclinic_timestepper)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, g, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁ¹, Gⱽ¹, Gᵁ², Gⱽ², Δt, t₂, t₃, g, U̅, V̅, timestepper)
     η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin

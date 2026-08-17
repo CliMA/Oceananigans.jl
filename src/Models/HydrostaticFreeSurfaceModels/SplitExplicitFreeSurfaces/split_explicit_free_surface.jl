@@ -185,6 +185,12 @@ end
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
+
+    # Round up to the count the kernel needs for its window edge to land on the τ grid. Rounding up only
+    # shortens the substep, so the requested `cfl` is still met.
+    multiple = required_substep_multiple(averaging_kernel)
+    substeps = multiple * cld(substeps, multiple)
+
     substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)
     return substepping
 end
