@@ -3,7 +3,13 @@ abstract type BalancingStrategy end
 struct BalancedPartition{R, S}
   ranks :: R
   strategy :: S
+
+  function BalancedPartition{R, S}(ranks::R, strategy::S) where {R, S}
+    return new{R, S}(ranks, strategy)
+  end
 end
+
+BalancedPartition(ranks::R, strategy::S) where {R, S} = BalancedPartition{R, S}(ranks, strategy)
 
 # x and y partitioning optimised together to produce balanced loads
 struct GeneralisedBlockDistribution <: BalancingStrategy end
@@ -13,7 +19,10 @@ struct SimplifiedGeneralisedBlockDistribution <: BalancingStrategy end
 
 possibly_balance_partition(partition, weight_map) = partition
 
-possibly_balance_partition(partition::BalancedPartition, weight_map) = balance_partition(partition.strategy, partition.ranks, weight_map)
+possibly_balance_partition(partition::BalancedPartition, weight_map) =
+  BalancedPartition(
+    balance_partition(partition.strategy, partition.ranks, weight_map),
+    partition.strategy)
 
 balance_partition(strategy, ranks, weight_map) = ranks
 
