@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries:
     serially_build_active_cells_map,
     compute_mask
 
-import Oceananigans.ImmersedBoundaries: build_active_cells_map
+import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, AbstractImmersedBoundary, build_active_cells_map, active_cells_per_column
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff
@@ -21,6 +21,26 @@ import Oceananigans.ImmersedBoundaries: build_active_cells_map
 const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ,
                                                              <:DistributedGrid, I, M, S,
                                                              <:Distributed} where {FT, TX, TY, TZ, I, M, S}
+
+# Light-weight overloading to re-partition the grid given the immersed-boundary
+function ImmersedBoundaryGrid(grid::DistributedGrid, ib::AbstractImmersedBoundary;
+                              active_cells_map::Bool=false,
+                              active_z_columns::Bool=active_cells_map)
+  # Without these options, the workload is already balanced
+  if active_cells_map || active_z_columns
+    distributed_weight_map = active_cells_per_column(grid, ib)
+    weight_map = reconstruct_global_field(distributed_weight_map)
+    balanced_partition = possibly_balance_partition(partition, weight_map)
+    arch = grid.arch
+    grid.arch = Distributed(arch.child_architecture;
+                            partition = balanced_partition,
+                            devices = arch.devices,
+                            communicator = arch.communicator,
+                            synchronized_communication = is_synchronized(arch))
+
+  end
+  return ImmersedBoundaryGrid(grid, ib; active_cells_map, active_z_columns)
+end
 
 function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     active_cells_map = has_active_cells_map(grid)

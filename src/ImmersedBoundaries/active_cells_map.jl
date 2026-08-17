@@ -215,7 +215,7 @@ function active_cells_per_column(grid, ib)
 
   launch!(architecture(grid), grid, :xy, _count_active_cells_in_column!, active_cells_count, grid, ib)
 
-  return active_cells_count.data
+  return active_cells_count
 end
 
 @kernel function _count_active_cells_in_column!(active_cells_count, grid, ib)
