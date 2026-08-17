@@ -274,19 +274,31 @@ end
 
 add_dependency!(sim, output) = nothing # fallback
 
+# Number past the largest index already in use rather than counting entries, so that deleting
+# a dependency cannot make the next one overwrite a name that still exists
+function next_dependency_name(prefix, existing_names)
+    pattern = Regex(string("^", prefix, raw"(\d+)$"))
+    largest = 0
+
+    for name in existing_names
+        matched = match(pattern, string(name))
+        isnothing(matched) || (largest = max(largest, parse(Int, matched.captures[1])))
+    end
+
+    return Symbol(prefix, largest + 1)
+end
+
 function add_dependency!(sim, wta::WindowedTimeAverage)
     diags = sim.diagnostics
     if wta ∉ values(diags)
-        num_diags_plus_1 = length(diags) + 1
-        diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+        diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
     end
 end
 
 function add_dependency!(sim, derivative::TimeDerivative)
     callbacks = sim.callbacks
     if !any(cb -> cb.func === derivative, values(callbacks))
-        num_callbacks_plus_1 = length(callbacks) + 1
-        callbacks[Symbol("TimeDerivative$num_callbacks_plus_1")] = Callback(derivative, IterationInterval(1))
+        callbacks[next_dependency_name("TimeDerivative", keys(callbacks))] = Callback(derivative, IterationInterval(1))
     end
 end
 
