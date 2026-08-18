@@ -1,5 +1,6 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
+    BoundaryCondition, AbstractBoundaryConditionClassification,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
@@ -610,17 +611,23 @@ const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
 @inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
 @inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
 
-# Preserve the location and the window when adapting fields windowed to a single plane (as is done
-# for reduced fields below), so that the methods above also dispatch inside kernels.
-function Adapt.adapt_structure(to, plane_field::PlaneField)
+# Preserve the location and the window of a field windowed to a single plane when it is adapted as
+# the condition of a boundary condition (as is done for reduced fields below), so that the methods
+# above also dispatch inside kernels. Elsewhere such fields are adapted to their bare data like any
+# other non-reduced field: for example the free surface displacement of a `HydrostaticFreeSurfaceModel`
+# is windowed to the top plane, and preserving its wrapper would make the tuple of model fields
+# heterogeneous, which cannot be indexed at runtime (as done for field-dependent forcings) on the GPU.
+function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryConditionClassification, <:PlaneField})
+    plane_field = bc.condition
     LX, LY, LZ = location(plane_field)
-    return Field{LX, LY, LZ}(nothing,
-                             adapt(to, plane_field.data),
-                             nothing,
-                             plane_field.indices,
-                             nothing,
-                             nothing,
-                             nothing)
+    condition = Field{LX, LY, LZ}(nothing,
+                                  adapt(to, plane_field.data),
+                                  nothing,
+                                  plane_field.indices,
+                                  nothing,
+                                  nothing,
+                                  nothing)
+    return BoundaryCondition(adapt(to, bc.classification), condition)
 end
 
 # A `Field` used as a boundary condition on dimension `dim` may be reduced or windowed to a single

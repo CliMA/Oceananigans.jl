@@ -478,6 +478,16 @@ end
         fill_halo_regions!(c)
         @test @allowscalar all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2Δz for i in 1:Nx, j in 1:Ny)
 
+        # The window is preserved when the boundary condition is adapted for kernels, but the
+        # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
+        # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
+        # other model fields, so that the tuple of model fields stays homogeneous)
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        adapted_top = Adapt.adapt(Array, bcs.top)
+        @test adapted_top.condition isa Field
+        @test adapted_top.condition.indices == ∂z_cᵗ.indices
+        @test location(adapted_top.condition) == location(∂z_cᵗ)
+
         # Fields reduced along the boundary-normal direction are still supported
         cᵗ = Field{Center, Center, Nothing}(grid)
         set!(cᵗ, (x, y) -> x + y)
