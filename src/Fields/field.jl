@@ -628,12 +628,10 @@ end
 # plane along `dim`, but must not be windowed along the other (tangential) dimensions: the
 # tangential indices of the boundary are used to index it directly.
 function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, args...)
-    for d in 1:3
-        idx = condition.indices[d]
-        idx isa Colon && continue
-        d == dim && length(idx) == 1 && continue
-        throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
-                            "to a single plane along dimension $dim, but has indices $(condition.indices)."))
+    for (d, idx) in enumerate(condition.indices)
+        idx isa Colon || (d == dim && length(idx) == 1) ||
+            throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
+                                "to a single plane along dimension $dim, but has indices $(condition.indices)."))
     end
     return condition
 end
