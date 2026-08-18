@@ -569,17 +569,24 @@ end
             @testset "Relaxation with FlowDependentRate [$A]" begin
                 @info "      Testing Relaxation with FlowDependentRate [$A]..."
 
-                grid = RectilinearGrid(arch, size=(4, 4), extent=(4, 4), topology=(Bounded, Bounded, Flat))
+                grid = RectilinearGrid(arch, size=(4, 4, 1), extent=(4, 4, 1), topology=(Bounded, Bounded, Bounded))
                 c_ref = 5
-                rate  = FlowDependentRate(grid; width=0.3, rate_in=1/60, rate_out=1/6000)
-                r     = Relaxation(rate=rate, target=c_ref)
-                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+                west_edge, east_edge = extrema(xnodes(grid, Center(), Center(), Center()))
+
+                # Spatial shaping is `mask`'s job, same as any other `Relaxation`; `FlowDependentRate`
+                # only chooses between `rate_in` and `rate_out`. One `Relaxation` per sponged edge.
+                west_relaxation = Relaxation(rate=FlowDependentRate{:west}(rate_in=1/60, rate_out=1/6000),
+                                              mask=GaussianMask{:x}(center=west_edge, width=0.3), target=c_ref)
+                east_relaxation = Relaxation(rate=FlowDependentRate{:east}(rate_in=1/60, rate_out=1/6000),
+                                              mask=GaussianMask{:x}(center=east_edge, width=0.3), target=c_ref)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=(west_relaxation, east_relaxation),))
 
                 # Materialization bypasses ContinuousForcing (which has no `model_fields` hook)
                 # and wires in the field index + location directly.
                 rm = model.forcing.c
-                @test rm isa FlowDependentRelaxation
-                @test rm.target isa MaterializedRelaxationTarget
+                @test rm isa MultipleForcings
+                @test all(f isa FlowDependentRelaxation for f in rm.forcings)
+                @test all(f.target isa MaterializedRelaxationTarget for f in rm.forcings)
 
                 # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ rate_in),
                 # east edge sees outflow (u_n < 0 is false ⇒ rate_out).

@@ -1,8 +1,9 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: node, xnodes, ynodes, ξnodes, ηnodes, Face, Center
+using Oceananigans.Grids: node, xnodes, ynodes, Face, Center
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Utils: prettysummary
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
@@ -272,36 +273,15 @@ end
 $(TYPEDSIGNATURES)
 
 Rate for `Relaxation` that nudges toward `target` at `rate_in` where the local horizontal
-normal velocity indicates inflow through a lateral boundary, and at `rate_out` where it
-indicates outflow, following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention.
+normal velocity indicates inflow through the domain boundary in direction `D` (one of
+`:west`, `:east`, `:south`, `:north`), and at `rate_out` where it indicates outflow,
+following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention.
 
-Each of the four domain edges (`west_edge`, `east_edge`, `south_edge`, `north_edge`) gets
-a Gaussian rim of the given `width` (same units as the grid's horizontal coordinates); the
-four rims are combined with `max`, not summed, so that overlapping corners are not
-double-relaxed. Whether a point is on the inflow or outflow side of a given edge is
-determined by the true horizontal normal velocity there (`u` at west/east, `v` at
-south/north) — so `u`, `v`, and every tracer relaxed near a given edge share the same
-in/out gating.
-
-Use `FlowDependentRate(grid; width, rate_in, rate_out)` to build one directly from a
-grid's horizontal extent.
-"""
-struct FlowDependentRate{FT}
-     west_edge :: FT
-     east_edge :: FT
-    south_edge :: FT
-    north_edge :: FT
-         width :: FT
-       rate_in :: FT
-      rate_out :: FT
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Build a [`FlowDependentRate`](@ref) spanning the horizontal extent of `grid`, with lateral
-nudging layers of `width` (same units as the grid's horizontal coordinates) at each of the
-four edges, restoring at `rate_in` on inflow and `rate_out` on outflow.
+Spatial shaping (how the nudging strength varies with distance from the boundary) is the
+job of `mask`, exactly as for a constant-rate `Relaxation` — a `FlowDependentRate` only
+ever chooses between `rate_in` and `rate_out`. To sponge multiple edges, sum one
+`Relaxation` per edge, each with a `FlowDependentRate{D}` and a matching directional
+`mask` (e.g. `GaussianMask{D}` or `PiecewiseLinearMask{D}`).
 
 Example
 =======
@@ -310,64 +290,62 @@ Example
 using Oceananigans
 using Oceananigans.Units
 
-grid = LatitudeLongitudeGrid(size=(10, 10, 1), longitude=(-5, 20), latitude=(-57, -50), z=(-100, 0))
-
-rate = FlowDependentRate(grid; width=0.1, rate_in=1/15minutes, rate_out=1/12hours)
+rate = FlowDependentRate{:west}(rate_in=1/15minutes, rate_out=1/12hours)
 
 # output
-FlowDependentRate{Float64}
-├──  west_edge: -3.75
-├──  east_edge: 18.75
-├── south_edge: -56.65
-├── north_edge: -50.35
-├──      width: 0.1
-├──    rate_in: 0.0011111111111111111
-└──   rate_out: 2.3148148148148147e-5
+FlowDependentRate{:west, Float64}(0.0011111111111111111, 2.3148148148148147e-5)
 ```
 """
-function FlowDependentRate(grid; width, rate_in, rate_out)
-    west_edge,  east_edge  = extrema(ξnodes(grid, Center(), Center(), Center()))
-    south_edge, north_edge = extrema(ηnodes(grid, Center(), Center(), Center()))
-    FT = promote_type(typeof(width), typeof(rate_in), typeof(rate_out))
-    return FlowDependentRate(convert(FT, west_edge),  convert(FT, east_edge),
-                              convert(FT, south_edge), convert(FT, north_edge),
-                              convert(FT, width), convert(FT, rate_in), convert(FT, rate_out))
+struct FlowDependentRate{D, FT}
+    rate_in  :: FT
+    rate_out :: FT
+
+    function FlowDependentRate{D}(; rate_in, rate_out) where D
+        FT = promote_type(typeof(rate_in), typeof(rate_out))
+        return new{D, FT}(convert(FT, rate_in), convert(FT, rate_out))
+    end
 end
 
-@inline rim(ξ, edge, width) = exp(-(ξ - edge)^2 / (2 * width^2))
+Base.summary(r::FlowDependentRate{D}) where D =
+    "FlowDependentRate{:$D}(rate_in=$(r.rate_in), rate_out=$(r.rate_out))"
 
 # dispatch on `loc` so u-points, v-points, and centers each get the right interpolation stencil
-@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Face, Center, Center})
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Face, Center, Center})
     u = @inbounds model_fields.u[i, j, k]
-    v = @inbounds (model_fields.v[i-1, j,   k] + model_fields.v[i, j,   k] +
-                   model_fields.v[i-1, j+1, k] + model_fields.v[i, j+1, k]) / 4
+    v = ℑxyᶠᶜᵃ(i, j, k, grid, model_fields.v)
     return u, v
 end
 
-@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Face, Center})
-    u = @inbounds (model_fields.u[i,   j-1, k] + model_fields.u[i,   j, k] +
-                   model_fields.u[i+1, j-1, k] + model_fields.u[i+1, j, k]) / 4
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Face, Center})
+    u = ℑxyᶜᶠᵃ(i, j, k, grid, model_fields.u)
     v = @inbounds model_fields.v[i, j, k]
     return u, v
 end
 
-@inline function normal_velocities(i, j, k, model_fields, ::Tuple{Center, Center, Center})
-    u = @inbounds (model_fields.u[i, j, k] + model_fields.u[i+1, j, k]) / 2
-    v = @inbounds (model_fields.v[i, j, k] + model_fields.v[i, j+1, k]) / 2
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Center, Center})
+    u = ℑxᶜᵃᵃ(i, j, k, grid, model_fields.u)
+    v = ℑyᵃᶜᵃ(i, j, k, grid, model_fields.v)
     return u, v
 end
 
-@inline function evaluate_rate(r::FlowDependentRate, i, j, k, X, model_fields, loc)
-    λ, φ = X[1], X[2]
-    uₙ, vₙ = normal_velocities(i, j, k, model_fields, loc)
+@inline function evaluate_rate(r::FlowDependentRate{:west}, i, j, k, grid, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ > 0, r.rate_in, r.rate_out)
+end
 
-    west  = rim(λ, r.west_edge,  r.width) * ifelse(uₙ > 0, r.rate_in, r.rate_out)
-    east  = rim(λ, r.east_edge,  r.width) * ifelse(uₙ < 0, r.rate_in, r.rate_out)
-    south = rim(φ, r.south_edge, r.width) * ifelse(vₙ > 0, r.rate_in, r.rate_out)
-    north = rim(φ, r.north_edge, r.width) * ifelse(vₙ < 0, r.rate_in, r.rate_out)
+@inline function evaluate_rate(r::FlowDependentRate{:east}, i, j, k, grid, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ < 0, r.rate_in, r.rate_out)
+end
 
-    # max, not sum: two rims can overlap at a corner and shouldn't double the rate
-    return max(west, east, south, north)
+@inline function evaluate_rate(r::FlowDependentRate{:south}, i, j, k, grid, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ > 0, r.rate_in, r.rate_out)
+end
+
+@inline function evaluate_rate(r::FlowDependentRate{:north}, i, j, k, grid, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ < 0, r.rate_in, r.rate_out)
 end
 
 @inline evaluate_target(target::Number, X, t) = target
@@ -410,7 +388,7 @@ const FlowDependentRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Re
     X = node(i, j, k, grid, mt.location...)
     @inbounds ϕ = model_fields[field_index(mt)][i, j, k]
     ϕᵣ = evaluate_target(mt.target, X, clock.time)
-    rate = evaluate_rate(f.rate, i, j, k, X, model_fields, mt.location)
+    rate = evaluate_rate(f.rate, i, j, k, grid, model_fields, mt.location)
     return rate * f.mask(X...) * (ϕᵣ - ϕ)
 end
 
@@ -434,22 +412,6 @@ materialize_forcing(forcing::Relaxation{<:FlowDependentRate}, field, field_name,
 # disambiguates against the FlavorOfFTS-target method above when the target is also an FTS
 materialize_forcing(forcing::Relaxation{<:FlowDependentRate, <:Any, <:Any, <:FlavorOfFTS}, field, field_name, model_field_names) =
     materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
-
-function Base.show(io::IO, rate::FlowDependentRate)
-    FT = typeof(rate.west_edge)
-    print(io, "FlowDependentRate{$FT}")
-    rows = ["west_edge" => string(rate.west_edge), "east_edge" => string(rate.east_edge),
-            "south_edge" => string(rate.south_edge), "north_edge" => string(rate.north_edge),
-            "width" => string(rate.width), "rate_in" => string(rate.rate_in), "rate_out" => string(rate.rate_out)]
-    width = maximum(length(first(r)) for r in rows)
-    for (i, (key, value)) in enumerate(rows)
-        prefix = i == length(rows) ? "└── " : "├── "
-        print(io, "\n", prefix, lpad(key, width), ": ", value)
-    end
-end
-
-Base.summary(rate::FlowDependentRate) =
-    "FlowDependentRate(rate_in=$(rate.rate_in), rate_out=$(rate.rate_out), width=$(rate.width))"
 
 #####
 ##### Sponge layer functions
