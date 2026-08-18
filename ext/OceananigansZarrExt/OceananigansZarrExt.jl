@@ -17,7 +17,7 @@ using Dates: AbstractTime, UTC, now, DateTime
 using Oceananigans: AbstractModel
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: AbstractField, location, indices
+using Oceananigans.Fields: AbstractField, location, indices, interior
 import Oceananigans.Grids: grid
 using Oceananigans.Grids:
     OrthogonalSphericalShellGrid, Center, Face, grid, topology,

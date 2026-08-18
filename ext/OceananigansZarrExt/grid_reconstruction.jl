@@ -81,6 +81,9 @@ function write_zarr_array!(group, name, data, dimensions, attributes=Dict())
     return nothing
 end
 
+zarr_field_data(field) =
+    squeeze_reduced_dimensions(field, interior(field); array_type = Array{eltype(field)})
+
 function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices,
                                  with_halos, dimension_name_generator,
                                  attributes, dimension_type)
@@ -114,7 +117,7 @@ function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator
     for (name, field) in pairs(metrics)
         dimensions = filter(!isempty, field_dimensions(field, grid, dimension_name_generator;
                                                        grid_index=grid_suffix))
-        data = squeeze_reduced_dimensions(field, collect(field))
+        data = zarr_field_data(field)
         variable_attributes = zarr_attribute_dict(get(attributes, name, Dict()))
         coordinates = field_auxiliary_coordinates(field, grid, dimension_name_generator;
                                                   grid_index=grid_suffix)
@@ -140,7 +143,7 @@ function write_zarr_grid_immersed_boundary!(group, grid::ImmersedBoundaryGrid, i
     for (name, field) in pairs(ib_vars)
         dimensions = filter(!isempty, field_dimensions(field, grid, dimension_name_generator;
                                                        grid_index=grid_suffix))
-        data = squeeze_reduced_dimensions(field, collect(field))
+        data = zarr_field_data(field)
         write_zarr_array!(ibg_group, name, data, dimensions)
     end
     return nothing
