@@ -16,17 +16,11 @@ import Dates
 using Dates: AbstractTime, UTC, now, DateTime
 using Oceananigans: AbstractModel
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: AbstractField, location, indices, interior
 import Oceananigans.Grids: grid
 using Oceananigans.Grids:
-    OrthogonalSphericalShellGrid, Center, Face, grid, topology,
-    constructor_arguments, architecture, generate_coordinate, interior_indices
-
-# Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
-# different function (5-arg, for FieldTimeSeries data allocation).
-import Oceananigans.Grids: new_data as allocate_grid_data
-using OffsetArrays: OffsetArray
+    OrthogonalSphericalShellGrid, Center, Face, grid,
+    constructor_arguments, generate_coordinate
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
@@ -64,6 +58,8 @@ using Oceananigans.OutputWriters:
     drop_reduced_dimensions,
     squeeze_reduced_dimensions,
     inflate_reduced_dimensions,
+    construct_ossg_halo_padded_array,
+    halo_fill_2d_metric,
     materialize_serialized_output
 using Oceananigans.Utils:
     materialize_schedule,

@@ -316,7 +316,7 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
                                     writer.with_halos, writer.dimension_name_generator,
                                     writer.output_attributes, writer.dimension_type)
             if writer.include_grid_metrics
-                write_zarr_grid_metrics!(g, grid, writer.indices,
+                write_zarr_grid_metrics!(g, grid, writer.indices, writer.with_halos,
                                          writer.dimension_name_generator, suffix,
                                          writer.output_attributes)
             end

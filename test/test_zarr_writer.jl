@@ -641,7 +641,7 @@ function matching_grid_structure(original::ImmersedBoundaryGrid,
            typeof(reconstructed.immersed_boundary).name.wrapper
 end
 
-function zarr_round_trip(grid; tag::String)
+function zarr_round_trip(grid; tag::String, with_halos = false)
     return mktempdir() do tmp
         filename = "grid_sweep_$(tag)"
         path = abspath(joinpath(tmp, filename * ".zarr"))
@@ -654,7 +654,7 @@ function zarr_round_trip(grid; tag::String)
                        dir=tmp,
                        schedule=IterationInterval(1),
                        overwrite_existing=true,
-                       with_halos=false)
+                       with_halos)
         run!(simulation)
         field_time_series = FieldTimeSeries(path, "T"; architecture=architecture(grid))
         size_ok = size(field_time_series)[1:3] == size(grid)
@@ -737,6 +737,11 @@ end
             @testset "$tag" begin
                 grid = factory(arch)
                 @test zarr_round_trip(grid; tag)
+
+                if arch isa GPU && tag in ("latitude_longitude_stretched", "tripolar")
+                    halo_tag = tag * "_with_halos"
+                    @test zarr_round_trip(grid; tag = halo_tag, with_halos = true)
+                end
             end
         end
     end

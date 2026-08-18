@@ -81,8 +81,8 @@ function write_zarr_array!(group, name, data, dimensions, attributes=Dict())
     return nothing
 end
 
-zarr_field_data(field) =
-    squeeze_reduced_dimensions(field, interior(field); array_type = Array{eltype(field)})
+zarr_field_data(field, data = interior(field)) =
+    squeeze_reduced_dimensions(field, data; array_type = Array{eltype(field)})
 
 function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices,
                                  with_halos, dimension_name_generator,
@@ -110,14 +110,14 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices,
     return nothing
 end
 
-function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator,
+function write_zarr_grid_metrics!(group, grid, indices, with_halos, dimension_name_generator,
                                   grid_suffix, attributes)
     metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=grid_suffix)
 
     for (name, field) in pairs(metrics)
         dimensions = filter(!isempty, field_dimensions(field, grid, dimension_name_generator;
                                                        grid_index=grid_suffix))
-        data = zarr_field_data(field)
+        data = with_halos ? zarr_field_data(field, parent(field)) : zarr_field_data(field)
         variable_attributes = zarr_attribute_dict(get(attributes, name, Dict()))
         coordinates = field_auxiliary_coordinates(field, grid, dimension_name_generator;
                                                   grid_index=grid_suffix)
@@ -391,38 +391,6 @@ function reconstruct_zarr_ossg_grid(root_group, args, kwargs, grid_suffix)
                                                         conformal_mapping)
 end
 
-# Wrap a bare 2D metric/coord `OffsetMatrix` as a `Field` on `grid`, fill its halos
-# using the grid's default BCs (e.g. the north fold on TripolarGrid), and return a
-# halo-filled `OffsetMatrix` matching the input layout. Necessary because derivatives
-# across the tripolar fold otherwise NaN out if the metric halos are zero.
-function halo_fill_2d_metric(old_data, grid, LX, LY)
-    TX, TY, _ = topology(grid)
-    Nx, Ny, _ = size(grid)
-    new_field = Field{LX, LY, Center}(grid)
-    Ni = Base.length(LX(), TX(), Nx)
-    Nj = Base.length(LY(), TY(), Ny)
-    cpu_old_data = on_architecture(CPU(), old_data)
-    # Broadcast the 2D metric into every z-level so we can slice any of them back out
-    # below; we need `LZ = Center` (not `Nothing`) so the TripolarGrid fold halo-fill
-    # — which dispatches on `Center` z-location — adds the 360° longitude wrap.
-    for k in axes(new_field.data, 3)
-        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
-    end
-    fill_halo_regions!(new_field)
-    # The UPivot fold's "redundancy substitution" rewrites the j=Ny interior row for
-    # Center- and Face-Center y-locations (see fill_halo_regions_upivotzipper.jl) to
-    # mirror the right half of that row from the left half. That's correct for
-    # symmetric metrics (Δx/Δy/Az/φ) but wrong for λ, whose halves differ by 360°.
-    # Re-stamp the interior from the saved data so λ is preserved; for symmetric
-    # metrics this is a no-op.
-    for k in axes(new_field.data, 3)
-        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
-    end
-    # Take z=1 instead of `dropdims`, which would require z to be singleton (it isn't —
-    # the field has Nz+2Hz cells in z). Any k works because we set every level identically.
-    return on_architecture(architecture(grid), deepcopy(view(new_field.data, :, :, 1)))
-end
-
 # Rebuild the `conformal_mapping` from its serialized attributes (see
 # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
 # argument is the y-topology type — for `Tripolar`, that's the fold flavor
@@ -452,16 +420,6 @@ reconstruct_conformal_mapping(attrib, ::Val, TY) = nothing
 # Read a 2D OSSG metric/coord variable from the file and pad it out to the halo-included
 # shape that the OSSG constructor expects. Returns an OffsetMatrix indexed `[1-Hx:Nx+Hx, …]`.
 function read_ossg_halo_padded_array(grid_group, name, FT, arch, lx, ly, topo_instances, sz, halo_sz, file_has_halos)
-    Nx, Ny, Nz = sz
-    TX, TY, _  = topo_instances
-
-    # Allocate a halo-padded 2D array via `Oceananigans.Grids.new_data` (imported as
-    # `allocate_grid_data` to avoid colliding with `OutputReaders`' separate `new_data`),
-    # then drop the singleton vertical dim so we get an `OffsetMatrix` the OSSG
-    # constructor accepts.
-    full3d = allocate_grid_data(FT, arch, (lx, ly, nothing), topo_instances, sz, halo_sz)
-    full2d = OffsetArray(dropdims(parent(full3d), dims=3), full3d.offsets[1:2]...)
-
     raw = collect(grid_group[name])
 
     # Older stores retained a singleton reduced dimension.
@@ -469,21 +427,6 @@ function read_ossg_halo_padded_array(grid_group, name, FT, arch, lx, ly, topo_in
         raw = dropdims(raw; dims=3)
     end
 
-    if file_has_halos
-        # The saved array already includes halos. Sanity-check the size and assign through.
-        expected_full = size(parent(full2d))
-        size(raw) == expected_full || throw(ArgumentError(
-            "Saved array '$name' has size $(size(raw)) but expected halo-included size $expected_full."))
-        parent(full2d) .= FT.(raw)
-    else
-        # The saved array is the interior only. Copy it into the interior of the halo array.
-        i_range = interior_indices(lx, TX, Nx)
-        j_range = interior_indices(ly, TY, Ny)
-        expected_interior = (length(i_range), length(j_range))
-        size(raw) == expected_interior || throw(ArgumentError(
-            "Saved array '$name' has size $(size(raw)) but expected interior size $expected_interior."))
-        full2d[i_range, j_range] .= FT.(raw)
-    end
-
-    return full2d
+    return construct_ossg_halo_padded_array(raw, name, FT, arch, lx, ly,
+                                            topo_instances, sz, halo_sz, file_has_halos)
 end

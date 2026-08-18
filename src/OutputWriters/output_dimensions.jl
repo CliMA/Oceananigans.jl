@@ -53,6 +53,7 @@ function inflate_reduced_dimensions(data, location, grid)
 end
 
 function collect_dim(coordinate, location, topology, size, halo, indices, with_halos)
+    coordinate = on_architecture(CPU(), coordinate)
     with_halos && return collect(coordinate)
     indices = validate_index(indices, location, topology, size, halo)
     indices = restrict_to_interior(indices, location, topology, size)
@@ -401,6 +402,8 @@ end
 # 2D analogue of `collect_dim`: take a 2D coordinate or metric array, optionally trim halos,
 # and return a plain CPU `Array{T,2}`. Indices for OSSG are 2-tuples `(i_range, j_range)`.
 function collect_2d(arr, ℓx, ℓy, Tx, Ty, Nx, Ny, Hx, Hy, indices, with_halos)
+    arr = on_architecture(CPU(), arr)
+
     if with_halos
         return collect(arr)
     else

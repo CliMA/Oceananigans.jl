@@ -12,7 +12,8 @@ using OffsetArrays: OffsetArrays, OffsetArray
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
                           RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
@@ -24,6 +25,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
                           interior_indices
+import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
                                         GridFittedBottom, PartialCellBottom,
                                         CenterImmersedCondition, InterfaceImmersedCondition,

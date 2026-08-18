@@ -1,4 +1,64 @@
 #####
+##### Orthogonal spherical shell grid reconstruction
+#####
+
+function construct_ossg_halo_padded_array(stored_data, variable_name, FT, arch, lx, ly,
+                                          topology_instances, grid_sizes, halo_sizes,
+                                          file_has_halos)
+    Nx, Ny, _ = grid_sizes
+    TX, TY, _ = topology_instances
+
+    three_dimensional_data = allocate_grid_data(FT, arch, (lx, ly, nothing),
+                                                topology_instances, grid_sizes, halo_sizes)
+    halo_array = OffsetArray(dropdims(parent(three_dimensional_data), dims=3),
+                             three_dimensional_data.offsets[1:2]...)
+
+    if file_has_halos
+        destination = parent(halo_array)
+        region = "halo-included"
+    else
+        i_range = interior_indices(lx, TX, Nx)
+        j_range = interior_indices(ly, TY, Ny)
+        destination = view(halo_array, i_range, j_range)
+        region = "interior"
+    end
+
+    size(stored_data) == size(destination) || throw(ArgumentError(
+        "Saved array '$variable_name' has size $(size(stored_data)) but expected $region size $(size(destination))."))
+
+    stored_data = on_architecture(arch, FT.(stored_data))
+    destination .= stored_data
+    return halo_array
+end
+
+# Wrap 2D OSSG data in a Field so that the grid's boundary conditions fill its halos,
+# including the north fold on TripolarGrid.
+function halo_fill_2d_metric(old_data, grid, LX, LY)
+    TX, TY, _ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    new_field = Field{LX, LY, Center}(grid)
+    Ni = Base.length(LX(), TX(), Nx)
+    Nj = Base.length(LY(), TY(), Ny)
+
+    # Use Center in z so the TripolarGrid fold dispatch adds the longitude wrap.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= old_data[1:Ni, 1:Nj]
+    end
+
+    fill_halo_regions!(new_field)
+
+    # The UPivot redundancy substitution rewrites the j=Ny interior row. That is
+    # correct for symmetric metrics but not longitude, so restore all interiors.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= old_data[1:Ni, 1:Nj]
+    end
+
+    # Every z level is identical; retain one while preserving the halo offsets.
+    data = deepcopy(view(new_field.data, :, :, 1))
+    return on_architecture(architecture(grid), data)
+end
+
+#####
 ##### Gathering of grid metrics
 #####
 

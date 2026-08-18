@@ -23,24 +23,18 @@ import Oceananigans
 
 using Oceananigans: prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Center, Face, grid, topology, nodes, constructor_arguments,
-    architecture, generate_coordinate, interior_indices
-
-# Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
-# different function (5-arg, for FieldTimeSeries data allocation).
-import Oceananigans.Grids: new_data as allocate_grid_data
+    Center, Face, grid, nodes, constructor_arguments,
+    generate_coordinate
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
 using Oceananigans.Grids: OrthogonalSphericalShellGrid
 
-using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
@@ -75,7 +69,9 @@ using Oceananigans.OutputWriters:
     field_auxiliary_coordinates,
     squeeze_reduced_dimensions,
     inflate_reduced_dimensions,
-    materialize_serialized_output
+    materialize_serialized_output,
+    construct_ossg_halo_padded_array,
+    halo_fill_2d_metric
 using Oceananigans.Utils:
     materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
