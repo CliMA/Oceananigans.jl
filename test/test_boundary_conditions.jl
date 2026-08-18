@@ -494,9 +494,17 @@ end
         reduced_bcs = FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(cᵗ))
         @test @allowscalar all(getbc(reduced_bcs.top, i, j, grid) == cᵗ[i, j, 1] for i in 1:Nx, j in 1:Ny)
 
-        # A Field windowed to more than one plane, or along a tangential direction, is ambiguous
+        # A Field windowed to more than one plane along the boundary-normal direction is ambiguous...
         @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, :, :, 2:3)))
+
+        # ... and a Field windowed along a tangential direction is rejected too, whether or not it is
+        # also windowed to a single plane (or reduced) along the boundary-normal direction: the
+        # tangential indices of the boundary index the condition directly, so it would be read
+        # outside its window (`condition[i, j, 1]` for the last three) or at the wrong plane.
         @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1, :, :)))
         @test_throws ArgumentError FieldBoundaryConditions(grid, loc; west=ValueBoundaryCondition(∂z_cᵗ))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1:2, :, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 2, 2:3, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(view(cᵗ, 1:2, :, :)))
     end
 end
