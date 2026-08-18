@@ -611,12 +611,6 @@ const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
 @inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
 @inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
 
-# Preserve the location and the window of a field windowed to a single plane when it is adapted as
-# the condition of a boundary condition (as is done for reduced fields below), so that the methods
-# above also dispatch inside kernels. Elsewhere such fields are adapted to their bare data like any
-# other non-reduced field: for example the free surface displacement of a `HydrostaticFreeSurfaceModel`
-# is windowed to the top plane, and preserving its wrapper would make the tuple of model fields
-# heterogeneous, which cannot be indexed at runtime (as done for field-dependent forcings) on the GPU.
 function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryConditionClassification, <:PlaneField})
     plane_field = bc.condition
     LX, LY, LZ = location(plane_field)
