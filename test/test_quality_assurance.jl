@@ -55,6 +55,9 @@ end
         # Oceananigans.ImmersedBoundaries,
         Oceananigans.Logger,
         # Oceananigans.Models,
+        Oceananigans.Models.BulkDragBoundaryConditions,
+        Oceananigans.Models.ShallowWaterModels,
+        Oceananigans.Models.VarianceDissipationComputations,
         # Oceananigans.MultiRegion,
         # Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
@@ -65,6 +68,7 @@ end
         Oceananigans.StokesDrifts,
         Oceananigans.TimeSteppers,
         # Oceananigans.TurbulenceClosures,
+        Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities,
         Oceananigans.Units,
         Oceananigans.Utils,
     )
