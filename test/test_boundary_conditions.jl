@@ -472,6 +472,41 @@ end
             @test all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2 * ρ[i, j, Nz] * Δz for i in 1:Nx, j in 1:Ny)
         end
 
+        # A field neither reduced nor windowed along the boundary-normal direction is windowed, when
+        # the boundary conditions are regularized, to its plane adjacent to (Center) or on (Face)
+        # the boundary
+        w = ZFaceField(grid)
+        set!(w, (x, y, z) -> x - y + 4z)
+        full_bcs = FieldBoundaryConditions(grid, loc;
+                                           west   = ValueBoundaryCondition(ρ),
+                                           east   = ValueBoundaryCondition(ρ),
+                                           south  = ValueBoundaryCondition(ρ),
+                                           north  = ValueBoundaryCondition(ρ),
+                                           bottom = ValueBoundaryCondition(w),
+                                           top    = ValueBoundaryCondition(w))
+
+        @test full_bcs.west.condition.indices   == (1:1,   Colon(), Colon())
+        @test full_bcs.east.condition.indices   == (Nx:Nx, Colon(), Colon())
+        @test full_bcs.south.condition.indices  == (Colon(), 1:1,   Colon())
+        @test full_bcs.north.condition.indices  == (Colon(), Ny:Ny, Colon())
+        @test full_bcs.bottom.condition.indices == (Colon(), Colon(), 1:1)
+        @test full_bcs.top.condition.indices    == (Colon(), Colon(), Nz+1:Nz+1)
+
+        @allowscalar begin
+            @test all(getbc(full_bcs.west,   j, k, grid) == ρ[1,  j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.east,   j, k, grid) == ρ[Nx, j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.south,  i, k, grid) == ρ[i, 1,  k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.north,  i, k, grid) == ρ[i, Ny, k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.bottom, i, j, grid) == w[i, j, 1]     for i in 1:Nx, j in 1:Ny)
+            @test all(getbc(full_bcs.top,    i, j, grid) == w[i, j, Nz+1]  for i in 1:Nx, j in 1:Ny)
+        end
+
+        # ... and it shares its data with the original field
+        c_full = CenterField(grid; boundary_conditions=full_bcs)
+        set!(w, 7)
+        fill_halo_regions!(c_full)
+        @test @allowscalar all(c_full[i, j, Nz+1] ≈ 14 - c_full[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+
         # Updating the windowed computed field updates the boundary condition in place
         set!(ρ, 1)
         compute!(∂z_cᵗ)

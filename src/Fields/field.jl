@@ -1,6 +1,6 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
-    BoundaryCondition, AbstractBoundaryConditionClassification,
+    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
@@ -626,14 +626,26 @@ end
 
 # A `Field` used as a boundary condition on dimension `dim` may be reduced or windowed to a single
 # plane along `dim`, but must not be windowed along the other (tangential) dimensions: the
-# tangential indices of the boundary are used to index it directly.
-function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, args...)
+# tangential indices of the boundary are used to index it directly. A field that is neither reduced
+# nor windowed along `dim` is windowed to its plane on (`Face`) or adjacent to (`Center`) the boundary.
+function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, side, args...)
     for (d, idx) in enumerate(condition.indices)
         idx isa Colon || (d == dim && length(idx) == 1) ||
             throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
                                 "to a single plane along dimension $dim, but has indices $(condition.indices)."))
     end
-    return condition
+    return window_to_boundary(condition, dim, side)
+end
+
+boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
+boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
+
+function window_to_boundary(condition, dim, side)
+    windowed = !(condition.indices[dim] isa Colon)
+    reduced = location(condition)[dim] === Nothing
+    (windowed || reduced) && return condition
+    window = ntuple(d -> d == dim ? boundary_plane(side, condition, dim) : Colon(), 3)
+    return view(condition, window...)
 end
 
 # Preserve location when adapting fields reduced on one or more dimensions

@@ -364,11 +364,13 @@ FluxBoundaryCondition: 16×16 Matrix{Float64}
 When running on the GPU, `Q` must be converted to a `CuArray`.
 
 A `Field` can be used in the same way, which is convenient when the boundary values are computed
-from other fields. The field must be either _reduced_ along the boundary-normal direction (for
-example a `Field{Center, Center, Nothing}` for a bottom or top boundary condition) or _windowed_ to
-a single plane along it with `indices`; the field is then evaluated at its own plane. For instance,
-a top gradient boundary condition on the pressure `p` given by the density `ρ` at the top of the
-domain, which is refreshed by `compute!` whenever `ρ` changes:
+from other fields. The field may be _reduced_ along the boundary-normal direction (for example a
+`Field{Center, Center, Nothing}` for a bottom or top boundary condition) or _windowed_ to a single
+plane along it with `indices`, in which case it is evaluated at its own plane; a field that is
+neither is windowed, when the boundary conditions are regularized (by [`FieldBoundaryConditions`](@ref)
+called with a grid and a location, or by the model constructor), to its plane on (`Face`) or adjacent
+to (`Center`) the boundary. For instance, a top gradient boundary condition on the pressure `p` given
+by the density `ρ` at the top of the domain, which is refreshed by `compute!` whenever `ρ` changes:
 
 ```jldoctest
 julia> grid = RectilinearGrid(size=(4, 4, 8), extent=(1, 1, 1));
