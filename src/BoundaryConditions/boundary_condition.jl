@@ -1,5 +1,3 @@
-import Oceananigans.Architectures: on_architecture
-
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 
@@ -64,16 +62,16 @@ function materialize_condition(condition::Function, parameters, discrete_form, f
 end
 
 # Convenience constructors for boundary condition passing classification types
-BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
-BoundaryCondition(::Type{NormalFlow}, args...; kwargs...)       = BoundaryCondition(NormalFlow(nothing), args...; kwargs...)
-BoundaryCondition(::Type{Value}, args...; kwargs...)            = BoundaryCondition(Value(nothing),      args...; kwargs...)
+BoundaryCondition(Classification::Type, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition(::Type{NormalFlow}, args...; kwargs...)   = BoundaryCondition(NormalFlow(nothing), args...; kwargs...)
+BoundaryCondition(::Type{Value}, args...; kwargs...)        = BoundaryCondition(Value(nothing),      args...; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
     BoundaryCondition(Adapt.adapt(to, b.classification), Adapt.adapt(to, b.condition))
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-on_architecture(to, b::BoundaryCondition) =
+Architectures.on_architecture(to, b::BoundaryCondition) =
     BoundaryCondition(on_architecture(to, b.classification), on_architecture(to, b.condition))
 
 #####
@@ -88,7 +86,7 @@ const NFBC = BoundaryCondition{<:NormalFlow}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const MBC  = BoundaryCondition{<:Mixed}
-const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
+const ZFBC = BoundaryCondition{<:Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
@@ -106,7 +104,6 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
-FluxBoundaryCondition(val; kwargs...)                         = BoundaryCondition(Flux(), val; kwargs...)
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
 NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
@@ -115,6 +112,47 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryConditio
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+"""
+    FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(), kwargs...)
+
+Return a `Flux` `BoundaryCondition` with `flux`.
+
+With the default `ExplicitTimeDiscretization`, `flux` is an ordinary flux boundary condition integrated
+through the tendency.
+
+With an [`IMEXFluxTimeDiscretization`](@ref) carrying a linear coefficient `λ`, the boundary condition
+represents the affine flux `J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The
+explicit part `flux` is integrated through the tendency, while the linear part `λ φ_b` is integrated
+implicitly by the vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit
+flux imposes and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b`
+is a sink:
+
+```julia
+FluxBoundaryCondition(flux; time_discretization = IMEXFluxTimeDiscretization(λ))
+```
+
+`flux` and the `implicit_coefficient` follow the same conventions as any other function boundary condition;
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both. See also
+[`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
+
+!!! warning "Vertical boundaries only"
+    The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
+    `IMEXFluxTimeDiscretization` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
+    (`west`/`east`/`south`/`north`) or immersed boundary errors.
+"""
+function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
+                               parameters = nothing, discrete_form = false, field_dependencies = ())
+
+    return materialize_flux_boundary_condition(flux, time_discretization;
+                                               parameters, discrete_form, field_dependencies)
+end
+
+# Ordinary explicit flux.
+function materialize_flux_boundary_condition(flux, ::ExplicitTimeDiscretization; parameters, discrete_form, field_dependencies)
+    condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
+    return BoundaryCondition(Flux(), condition)
+end
 
 #####
 ##### Support for MixedBoundaryCondition (aka "Robin" boundary condition)
@@ -133,7 +171,7 @@ Adapt.adapt_structure(to, mc::MixedCondition) =
     MixedCondition(_unwrap_for_gpu(mc.coefficient),
                    Adapt.adapt(to, mc.inhomogeneity))
 
-on_architecture(to, mc::MixedCondition) =
+Architectures.on_architecture(to, mc::MixedCondition) =
     MixedCondition(on_architecture(to, mc.coefficient),
                    on_architecture(to, mc.inhomogeneity))
 
@@ -179,7 +217,16 @@ end
 const NumberRef = Base.RefValue{<:Number}
 @inline getbc(condition::NumberRef, args...) = condition[]
 @inline getbc(condition::Number, args...) = condition
-@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
+
+# Tuple and NamedTuple conditions: apply getbc element-wise.
+@inline getbc(condition::Tuple{},             i::Integer, j::Integer, grid::AbstractGrid, args...) = ()
+@inline getbc(condition::Tuple{<:Any},        i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...),)
+@inline getbc(condition::Tuple{<:Any, <:Any}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...), getbc(condition[2], i, j, grid, args...))
+@inline getbc(condition::Tuple,               i::Integer, j::Integer, grid::AbstractGrid, args...) = map(c -> getbc(c, i, j, grid, args...), condition)
+
+# A NamedTuple just returns a tuple output
+@inline getbc(condition::NamedTuple, i::Integer, j::Integer, grid::AbstractGrid, args...) = getbc(values(condition), i, j, grid, args...)
 
 #####
 ##### Validation with topology

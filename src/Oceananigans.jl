@@ -41,8 +41,9 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
-    PerturbationAdvection,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
+    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
+    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -115,6 +116,7 @@ export
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
+    ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
