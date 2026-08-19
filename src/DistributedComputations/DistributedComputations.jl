@@ -7,7 +7,7 @@ export
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
     @root, @onrank, @distribute, @handshake,
-    BalancedPartition, BalancingStrategy, SimplifiedGeneralisedBlockDistribution
+    SimplifiedGeneralisedBlockDistribution, create_weight_map, create_balanced_partition
 
 using MPI
 

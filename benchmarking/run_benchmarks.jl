@@ -70,6 +70,10 @@ function parse_commandline()
             help = "Use distributed architecture."
             action = :store_true
 
+        "--load_balancing"
+            help = "Create a partition that balances workloads between ranks"
+            action = :store_true
+
         "--partition"
             help = "Partition for distributed architecture as Rx x Ry x Rz (e.g., 2x2x1). Ignored unless --distributed is set."
             arg_type = String
@@ -271,6 +275,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
+    load_balancing_enabled = args["load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
@@ -397,7 +402,8 @@ function run_benchmarks(args)
                 tracer_advection,
                 closure,
                 tracers,
-                timestepper
+                timestepper,
+                load_balancing=load_balancing_enabled
             )
         else
             error("Unknown case: $case")
