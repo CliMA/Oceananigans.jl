@@ -13,6 +13,8 @@ BalancedPartition(ranks::R, strategy::S) where {R, S} = BalancedPartition{R, S}(
 
 Base.size(partition::BalancedPartition) = size(partition.ranks)
 
+ranks(partition::BalancedPartition) = ranks(partition.ranks)
+
 # x and y partitioning optimised together to produce balanced loads
 struct GeneralisedBlockDistribution <: BalancingStrategy end
 
