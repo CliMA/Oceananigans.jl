@@ -246,14 +246,16 @@ and `target` restores the field in question to 0.
 
 ### Mask types
 
-Two built-in mask types are available for the `mask` keyword:
+Three built-in mask types are available for the `mask` keyword:
 
 - `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as
   `exp(-(D - center)^2 / (2 * width^2))`.
 - `PiecewiseLinearMask{D}(center, width)`: tent function, equal to 1 at `center`, decreasing linearly
   to 0 at `|D - center| = width`, and 0 outside.
+- `MaximumMask(masks...)`: pointwise maximum of any number of component masks. Useful for
+  composing multiple nudging zones so that overlapping regions saturate at 1 rather than summing.
 
-Both accept `D ∈ {:x, :y, :z}`. For example:
+`GaussianMask` and `PiecewiseLinearMask` both accept `D ∈ {:x, :y, :z}`. For example:
 
 ```jldoctest
 julia> using Oceananigans
@@ -268,6 +270,22 @@ PiecewiseLinearMask{:z, Int64}(-500, 100)
 While `GaussianMask` offers a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
 boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
 a large grid.
+
+`MaximumMask` composes any callable masks. The example below builds a Davies-style lateral nudging
+mask by combining two `GaussianMask`s centered on opposite `x`-boundaries — the combined mask
+saturates at 1 at each boundary without doubling up where the zones meet:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.Forcing: MaximumMask
+
+julia> davies_mask = MaximumMask(GaussianMask{:x}(center=0,   width=10),
+                                 GaussianMask{:x}(center=100, width=10));
+
+julia> summary(davies_mask)
+"max(exp(-x^2 / (2 * 10^2)), exp(-(x - 100)^2 / (2 * 10^2)))"
+```
 
 We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
 velocity fields to zero and restores temperature to a linear gradient in the bottom
