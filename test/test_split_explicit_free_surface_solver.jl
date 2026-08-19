@@ -18,6 +18,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 @inline noforcing(args...) = 0
 
+barotropic_boundary_conditions(grid) =
+    (U = FieldBoundaryConditions(grid, (Face(), Center(), nothing)),
+     V = FieldBoundaryConditions(grid, (Center(), Face(), nothing)))
+
 clock = Clock{Float64}(time=0)
 
 @testset "Split-Explicit Dynamics" begin
@@ -38,7 +42,7 @@ clock = Clock{Float64}(time=0)
             velocities = VelocityFields(grid)
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
-            sefs = materialize_free_surface(sefs, velocities, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
             sefs.displacement .= 0
             GU = Field{Face, Center, Nothing}(grid)
@@ -78,7 +82,7 @@ clock = Clock{Float64}(time=0)
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = ConstantAveragingKernel())
-                sefs = materialize_free_surface(sefs, velocities, grid)
+                sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
@@ -111,7 +115,7 @@ clock = Clock{Float64}(time=0)
             end
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = ConstantAveragingKernel())
-            sefs = materialize_free_surface(sefs, velocities, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
             sefs.displacement .= 0
 
@@ -177,7 +181,7 @@ clock = Clock{Float64}(time=0)
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = ConstantAveragingKernel())
-                sefs = materialize_free_surface(sefs, velocities, grid)
+                sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
@@ -270,12 +274,12 @@ end # end of testset loop
         sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
                                                averaging_kernel = ConstantAveragingKernel(),
                                                extend_halos = true)
-        sefs_extend = materialize_free_surface(sefs_extend, velocities, grid)
+        sefs_extend = materialize_free_surface(sefs_extend, velocities, grid, barotropic_boundary_conditions(grid))
 
         sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
                                              averaging_kernel = ConstantAveragingKernel(),
                                              extend_halos = false)
-        sefs_fill = materialize_free_surface(sefs_fill, velocities, grid)
+        sefs_fill = materialize_free_surface(sefs_fill, velocities, grid, barotropic_boundary_conditions(grid))
 
         # Slow barotropic forcing
         GU = Field{Face, Center, Nothing}(grid)

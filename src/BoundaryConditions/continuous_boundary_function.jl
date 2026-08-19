@@ -75,7 +75,7 @@ $(TYPEDSIGNATURES)
 Regularizes `bc.condition` for location `loc`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.
 
-The regularization of `bc.condition::ContinuousBoundaryFunction` requries
+The regularization of `bc.condition::ContinuousBoundaryFunction` requires
 
 1. Setting the boundary location to `LX, LY, LZ`.
    The location in the boundary-normal direction is `BoundaryAdjacent`.
