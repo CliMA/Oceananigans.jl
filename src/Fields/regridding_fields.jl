@@ -3,6 +3,8 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Azᶜᶜᶜ
 using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
+using Oceananigans.Grids: constructor_arguments, halo_size, pop_flat_elements, reconstruction_faces,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 
 using Base: ForwardOrdering
 
@@ -10,12 +12,18 @@ const f = Face()
 const c = Center()
 
 """
-    regrid!(dst_field, src_field)
+$(TYPEDSIGNATURES)
 
-Regrid `src_field` onto the grid of `dst_field`.
+Regrid `src_field` onto the grid of `dst_field`, conserving the integral of `src_field`.
 
-Example
-=======
+When the grids differ in more than one dimension, the field is regridded one dimension at
+a time, through intermediate fields on grids that combine the coordinates of the target grid
+in the dimensions already regridded with the coordinates of the source grid in the remaining
+ones. This requires grids of the same type (`RectilinearGrid` or `LatitudeLongitudeGrid`)
+with the same topology, and `Center` locations in the differing dimensions.
+
+Examples
+========
 
 Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
 
@@ -42,6 +50,28 @@ output_field[1, 1, :]
  2.333333333333333
  3.0
  0.0
+```
+
+Regrid a field between grids that differ in both `x` and `z`.
+
+```jldoctest
+using Oceananigans
+
+topology = (Bounded, Flat, Bounded)
+
+input_grid = RectilinearGrid(size=(2, 2), x=[0, 0.25, 1], z=[0, 0.5, 1], topology=topology, halo=(1, 1))
+input_field = CenterField(input_grid)
+input_field[1:2, 1, 1:2] = [1 2; 3 4]
+
+output_grid = RectilinearGrid(size=(1, 1), x=(0, 1), z=(0, 1), topology=topology, halo=(1, 1))
+output_field = CenterField(output_grid)
+
+regrid!(output_field, input_field)
+
+output_field[1, 1, 1]
+
+# output
+3.0
 ```
 """
 regrid!(dst_field, src_field) =
@@ -77,10 +107,15 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     return false
 end
 
+# The face search in the regridding kernels spans indices 1:N+1, so the face array must
+# include the closing face, which for a Periodic dimension lives in the halo.
+closed_face_nodes(grid, ℓx, ℓy, ℓz, dimension) =
+    view(nodes(grid, ℓx, ℓy, ℓz; with_halos=true)[dimension], 1:size(grid, dimension)+1)
+
 function regrid_in_z!(a, target_grid, source_grid, b)
     location(a, 3) == Center || throw(ArgumentError("Can only regrid fields in z with Center z-locations."))
     arch = architecture(a)
-    source_z_faces = znodes(source_grid, f)
+    source_z_faces = closed_face_nodes(source_grid, c, c, f, 3)
     launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
 
     return a
@@ -89,8 +124,9 @@ end
 function regrid_in_y!(a, target_grid, source_grid, b)
     location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
-    source_y_faces = nodes(source_grid, c, f, c)[2]
-    Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
+    source_y_faces = closed_face_nodes(source_grid, c, f, c, 2)
+    # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
+    Nx_source_faces = topology(source_grid, 1) == Flat ? 1 : source_grid.Nx + 1
     launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
     return a
 end
@@ -98,8 +134,9 @@ end
 function regrid_in_x!(a, target_grid, source_grid, b)
     location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
-    source_x_faces = nodes(source_grid, f, c, c)[1]
-    Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
+    source_x_faces = closed_face_nodes(source_grid, f, c, c, 1)
+    # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
+    Ny_source_faces = topology(source_grid, 2) == Flat ? 1 : source_grid.Ny + 1
     launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
     return a
 end
@@ -117,6 +154,8 @@ function regrid!(a, target_grid, source_grid, b)
         return regrid_in_y!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
         return regrid_in_x!(a, target_grid, source_grid, b)
+    elseif we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -125,6 +164,81 @@ function regrid!(a, target_grid, source_grid, b)
 
         return throw(ArgumentError(msg))
     end
+end
+
+#####
+##### Multi-dimensional regridding, one dimension at a time
+#####
+
+coordinate_keys(::RectilinearGrid) = (:x, :y, :z)
+coordinate_keys(::LatitudeLongitudeGrid) = (:longitude, :latitude, :z)
+
+function dimension_faces(grid, dimension)
+    face_constructor = (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)[dimension]
+    return reconstruction_faces(face_constructor(grid), size(grid, dimension))
+end
+
+function dimension_differs(target_grid, source_grid, dimension)
+    topology(source_grid, dimension) == Flat && return false
+    size(source_grid, dimension) == size(target_grid, dimension) || return true
+    return !isapprox(dimension_faces(source_grid, dimension), dimension_faces(target_grid, dimension))
+end
+
+function we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper || return false
+    target_grid isa Union{RectilinearGrid, LatitudeLongitudeGrid} || return false
+    topology(source_grid) == topology(target_grid) || return false
+
+    for dimension in 1:3
+        if dimension_differs(target_grid, source_grid, dimension)
+            location(a, dimension) == Center && location(b, dimension) == Center || return false
+        elseif size(a)[dimension] != size(b)[dimension]
+            return false
+        end
+    end
+
+    return true
+end
+
+# Return a grid identical to `source_grid` except along `dimension`, which takes the
+# coordinate, size, and halo of `target_grid`.
+function dimension_swapped_grid(source_grid, target_grid, dimension)
+    args, kwargs = constructor_arguments(source_grid)
+    target_kwargs = constructor_arguments(target_grid)[2]
+
+    key = coordinate_keys(source_grid)[dimension]
+    kwargs[key] = target_kwargs[key]
+
+    grid_size = ntuple(n -> n == dimension ? size(target_grid, n) : size(source_grid, n), 3)
+    grid_halo = ntuple(n -> n == dimension ? halo_size(target_grid, n) : halo_size(source_grid, n), 3)
+    grid_topology = topology(source_grid)
+    kwargs[:size] = pop_flat_elements(grid_size, grid_topology)
+    kwargs[:halo] = pop_flat_elements(grid_halo, grid_topology)
+
+    GridConstructor = typeof(source_grid).name.wrapper
+    return GridConstructor(args[:architecture], args[:number_type]; kwargs...)
+end
+
+function regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    # At least two dimensions differ here: with fewer, one of the single-dimension
+    # paths in regrid! passes its size checks and is dispatched to instead.
+    differing_dimensions = Tuple(n for n in 1:3 if dimension_differs(target_grid, source_grid, n))
+
+    regrid_dimension! = (regrid_in_x!, regrid_in_y!, regrid_in_z!)
+
+    field = b
+    grid = source_grid
+
+    for (step, dimension) in enumerate(differing_dimensions)
+        final_step = step == length(differing_dimensions)
+        next_grid = final_step ? target_grid : dimension_swapped_grid(grid, target_grid, dimension)
+        next_field = final_step ? a : Field{location(b)...}(next_grid)
+        regrid_dimension![dimension](next_field, next_grid, grid, field)
+        field = next_field
+        grid = next_grid
+    end
+
+    return a
 end
 
 #####

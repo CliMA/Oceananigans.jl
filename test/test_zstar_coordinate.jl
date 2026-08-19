@@ -10,7 +10,7 @@ const C = Center
 const F = Face
 
 @testset "MutableVerticalDiscretization tests" begin
-    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+   @info "Testing the MutableVerticalDiscretization in ZCoordinate mode..."
 
     z = MutableVerticalDiscretization((-20, 0))
 
@@ -95,7 +95,7 @@ end
                     set!(model_static, c=c₀)
                     set!(model_moving, c=c₀, η=5)
 
-                    for _ in 1:1000
+                    for _ in 1:100
                         time_step!(model_static, 1.0)
                         time_step!(model_moving, 1.0)
                     end

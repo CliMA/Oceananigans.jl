@@ -7,7 +7,7 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -27,6 +27,19 @@ const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
+const GridFittedBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+
+validate_immersed_boundary(grid, free_surface) = nothing
+validate_immersed_boundary(grid::GridFittedBoundaryIBG, ::Nothing) = nothing
+
+function validate_immersed_boundary(grid::GridFittedBoundaryIBG, free_surface)
+    msg = string("HydrostaticFreeSurfaceModel with a free surface does not support GridFittedBoundary.", '\n',
+                 "Use an immersed boundary that represents a bottom height, such as", '\n',
+                 "GridFittedBottom or PartialCellBottom. Fully immersed columns (e.g. lateral walls", '\n',
+                 "or land masks) can be built with a bottom height equal to the top of the domain.")
+    throw(ArgumentError(msg))
+end
+
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
         return ZStarCoordinate()
@@ -36,11 +49,11 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
+                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
-    clock :: Clock{T}          # Tracks iteration number and simulation time of `Model`
+    clock :: CL                # Tracks iteration number and simulation time of `Model`
     advection :: V             # Advection scheme for tracers
     buoyancy :: B              # Set of parameters for buoyancy model
     coriolis :: R              # Set of parameters for the background rotation rate of `Model`
@@ -70,17 +83,17 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 """
     HydrostaticFreeSurfaceModel(grid;
-                                clock = Clock{Float64}(time = 0),
+                                clock = Clock(grid),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
-                                buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                buoyancy = nothing,
                                 coriolis = nothing,
                                 free_surface = [default_free_surface],
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
                                 boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (:T, :S),
+                                tracers = nothing,
                                 particles::ParticlesOrNothing = nothing,
                                 biogeochemistry::AbstractBGCOrNothing = nothing,
                                 velocities = nothing,
@@ -123,7 +136,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `closure_fields`: Closure fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
@@ -231,6 +244,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracers, free_surface, auxiliary_fields, biogeochemistry, grid)
     default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions() for name in field_names)
+    default_boundary_conditions = merge(default_boundary_conditions, default_free_surface_boundary_conditions(free_surface, boundary_conditions))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
@@ -260,7 +274,8 @@ function HydrostaticFreeSurfaceModel(grid;
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
     free_surface = validate_free_surface(arch, free_surface)
-    free_surface = materialize_free_surface(free_surface, velocities, grid)
+    free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
+    validate_immersed_boundary(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
@@ -355,7 +370,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-    reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     return nothing
 end

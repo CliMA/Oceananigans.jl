@@ -78,3 +78,6 @@ statprof
 
 # Local git worktrees
 .worktrees/
+
+# Sandbox MWEs and scratch experiments (not part of the package)
+sandbox/

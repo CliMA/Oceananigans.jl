@@ -366,7 +366,7 @@ When running on the GPU, `Q` must be converted to a `CuArray`.
 ### 10. Open boundary condition with matching scheme
 
 As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often necessary to specify a matching scheme
-on open boundaries to approximate the behaviour of the boundary nodes given the interior state
+on open boundaries to approximate the behavior of the boundary nodes given the interior state
 and specified external conditions. For example if we want to specify an outflowing boundary
 with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setup a
 [`PerturbationAdvection`](@ref) open boundary:
@@ -531,6 +531,7 @@ model.velocities.w.boundary_conditions.immersed
 │
 │     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│     model = NonhydrostaticModel(grid; pressure_solver)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
 └ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
@@ -567,6 +568,7 @@ model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocit
 │
 │     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 │     pressure_solver = ConjugateGradientPoissonSolver(grid)
+│     model = NonhydrostaticModel(grid; pressure_solver)
 │
 │ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
 └ @ Oceananigans.Models.NonhydrostaticModels ~/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55

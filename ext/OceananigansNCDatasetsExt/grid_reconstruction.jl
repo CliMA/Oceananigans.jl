@@ -242,11 +242,20 @@ function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    ib_vars = Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
+    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
+    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
+    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
+
+    ib_vars = Dict("bottom_height" => Field(bottom_height_field(grid); indices),
                    "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
                    "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
                    "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
+                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
+                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
+                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
+                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
 
     return suffix_grid_keys(ib_vars, grid_index)
 end
@@ -259,11 +268,20 @@ function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generat
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
+    op_inactive_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(inactive_node, grid, Center(), Center(), Center())
+    op_inactive_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(inactive_node, grid, Face(), Center(), Center())
+    op_inactive_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(inactive_node, grid, Center(), Face(), Center())
+    op_inactive_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(inactive_node, grid, Center(), Center(), Face())
+
     ib_vars = Dict("mask" => Field(grid.immersed_boundary.mask; indices),
                    "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
                    "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
                    "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices),
+                   "inactive_nodes_ccc" => Field(op_inactive_nodes_ccc; indices),
+                   "inactive_nodes_fcc" => Field(op_inactive_nodes_fcc; indices),
+                   "inactive_nodes_cfc" => Field(op_inactive_nodes_cfc; indices),
+                   "inactive_nodes_ccf" => Field(op_inactive_nodes_ccf; indices))
 
     return suffix_grid_keys(ib_vars, grid_index)
 end
@@ -305,9 +323,9 @@ end
 function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
     group_name = "$(prefix)immersed_grid_reconstruction_args"
     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
-        bottom_height = pop!(immersed_grid_args, :bottom_height)
+        pop!(immersed_grid_args, :bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
-        defVar(ibg_group, "bottom_height", bottom_height)
+        defVar(ibg_group, "bottom_height", bottom_height_field(grid))
 
     elseif grid.immersed_boundary isa GridFittedBoundary
         mask = pop!(immersed_grid_args, :mask)

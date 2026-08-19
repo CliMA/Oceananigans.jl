@@ -1,10 +1,9 @@
 using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
+                                       regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BoundaryConditions: needs_implicit_solver
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
@@ -30,12 +29,12 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, SD, U, C, Φ, F, FS,
                                    V, S, K, BG, P, BGC, AF, BT} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
-                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+                clock :: CL       # Tracks iteration number and simulation time of `Model`
             advection :: V        # Advection scheme for velocities _and_ tracers
              buoyancy :: B        # Set of parameters for buoyancy model
              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
@@ -106,7 +105,7 @@ Keyword arguments
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
                    Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
                    Default: `:RungeKutta3`.
-  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
+  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `NamedTuple()`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
@@ -120,7 +119,7 @@ Keyword arguments
   - `closure_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
@@ -266,7 +265,7 @@ function NonhydrostaticModel(grid;
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
-        free_surface = materialize_free_surface(free_surface, velocities, grid)
+        free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
     end
 
     # Either check grid-correctness, or construct tuples of fields

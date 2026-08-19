@@ -5,8 +5,9 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
@@ -15,13 +16,11 @@ using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
-using DocStringExtensions: TYPEDFIELDS
-
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models: materialize_free_surface
+import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
@@ -72,11 +71,24 @@ end
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+function free_surface_displacement_field(velocities, free_surface, grid; boundary_conditions = nothing)
+    Nz = size(grid, 3)
+    indices = (:, :, Nz + 1)
+    if isnothing(boundary_conditions)
+        return ZFaceField(grid; indices)
+    else
+        bcs = boundary_conditions
+        @apply_regionally windowed = windowed_bc(bcs, Nz)
+        return ZFaceField(grid; indices, boundary_conditions = windowed)
+    end
+end
+
+windowed_bc(bcs, Nz) = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # Fallback
-reconcile_free_surface!(free_surface, grid, velocities) = nothing
+reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
 
 # Transport velocity computation
 function compute_transport_velocities! end
@@ -114,7 +126,7 @@ include("set_hydrostatic_free_surface_model.jl")
 cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
-    fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
@@ -134,7 +146,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """

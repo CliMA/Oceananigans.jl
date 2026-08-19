@@ -34,7 +34,7 @@ const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 @inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
 
 """
-    div_𝐯u(i, j, k, grid, advection, U, u)
+$(TYPEDSIGNATURES)
 
 Calculate the advection of momentum in the ``x``-direction using the conservative form, ``𝛁⋅(𝐯 u)``,
 
@@ -51,7 +51,7 @@ which ends up at the location `fcc`.
 end
 
 """
-    div_𝐯v(i, j, k, grid, advection, U, v)
+$(TYPEDSIGNATURES)
 
 Calculate the advection of momentum in the ``y``-direction using the conservative form, ``𝛁⋅(𝐯 v)``,
 
@@ -68,7 +68,7 @@ which ends up at the location `cfc`.
 end
 
 """
-    div_𝐯w(i, j, k, grid, advection, U, w)
+$(TYPEDSIGNATURES)
 
 Calculate the advection of momentum in the ``z``-direction using the conservative form, ``𝛁⋅(𝐯 w)``,
 

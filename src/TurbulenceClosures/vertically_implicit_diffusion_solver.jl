@@ -1,13 +1,13 @@
-using Oceananigans.Operators: Δz
-using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Fields: location
-using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
 using Oceananigans.BoundaryConditions: implicit_flux_coefficient
+using Oceananigans.Fields: location
+using Oceananigans.Grids: Periodic, ZDirection, topology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Δz
+using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 import Oceananigans.Solvers: get_coefficient
 import Oceananigans.TimeSteppers: implicit_step!
@@ -144,22 +144,22 @@ struct VerticallyImplicitDiffusionDiagonal end
 struct VerticallyImplicitDiffusionUpperDiagonal end
 
 """
-    implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
+$(TYPEDSIGNATURES)
 
 Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 - Δt ∂z κz ∂z - Δt L) cⁿ⁺¹ = c★
+(1 - Δt ∂_z κ_z ∂_z - Δt L) cⁿ⁺¹ = c_★
 ```
 
 and
 
 ```math
-(1 - Δt ∂z νz ∂z - Δt L) wⁿ⁺¹ = w★
+(1 - Δt ∂_z ν_z ∂_z - Δt L) wⁿ⁺¹ = w_★
 ```
 
-where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
-and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
+where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
+and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -208,17 +208,16 @@ end
 
 is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
+# When closure is nothing but solver exists (e.g., created for AIVA),
+# the pure-diffusion implicit step is a no-op (no diffusion to solve).
 """
-    implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
-                   closure, closure_fields, tracer_index, clock, Δt)
+$(TYPEDSIGNATURES)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient
 functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
 """
-# When closure is nothing but solver exists (e.g., created for AIVA),
-# the pure-diffusion implicit step is a no-op (no diffusion to solve).
 implicit_step!(::Field, ::BatchedTridiagonalSolver, ::Nothing, closure_fields, tracer_index, clock, fields, Δt) = nothing
 
 function implicit_step!(field::Field,
@@ -254,56 +253,61 @@ end
 
 const AIVA = AdaptiveImplicitVerticalAdvection
 
-# With AdaptiveImplicitVerticalAdvection: add the advection contribution. `(top_bc, bottom_bc)`
-# carry the implicit-explicit flux boundary term, summed into the diagonal by `boundary_flux_diagonal`.
+# With AdaptiveImplicitVerticalAdvection: add the advection contribution. `density` selects
+# volume-conserving (Boussinesq) versus density-weighted (mass-flux) advection coefficients, and
+# `(top_bc, bottom_bc)` carry the implicit-explicit flux boundary term summed into the diagonal by
+# `boundary_flux_diagonal`.
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w, top_bc, bottom_bc)
+                                 advection::AIVA, w, density=nothing, top_bc=nothing, bottom_bc=nothing)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    duw  = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     return duκ + duw
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w, top_bc, bottom_bc)
+                                 advection::AIVA, w, density=nothing, top_bc=nothing, bottom_bc=nothing)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dlw  = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     return dlκ + dlw
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w, top_bc, bottom_bc)
+                                 advection::AIVA, w, density=nothing, top_bc=nothing, bottom_bc=nothing)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc)
     return dκ + dw + dbc
 end
 
 # Fallback: non-adaptive advection schemes contribute nothing; the boundary-flux term remains.
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionUpperDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, top_bc, bottom_bc) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing, top_bc=nothing, bottom_bc=nothing) =
     _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionLowerDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, top_bc, bottom_bc) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing, top_bc=nothing, bottom_bc=nothing) =
     _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, top_bc, bottom_bc) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing, top_bc=nothing, bottom_bc=nothing) =
     ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields) +
     boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc)
 
 #####
 ##### Extended implicit_step! that passes advection and vertical velocity through
 #####
+##### The trailing `density` (default `nothing`) selects density-weighted advection coefficients for
+##### mass-flux (anelastic / compressible) models; `nothing` keeps the volume-conserving Boussinesq behavior.
+#####
 
 function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure, closure_fields, tracer_index,
                         clock, fields, Δt,
-                        advection, velocities)
+                        advection, velocities, density=nothing)
 
     # Only vertically-implicit closures contribute to the implicit solve; a `nothing` or
     # purely-explicit closure leaves advection and the boundary-flux term as the implicit parts.
@@ -324,7 +328,8 @@ function implicit_step!(field::Field,
     bottom_bc = field.boundary_conditions.bottom
 
     return solve!(field, implicit_solver, field,
-                    # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_closure_fields, tracer_index, LX(), LY(), LZ(), Δt, clock, fields,
-                  advection, velocities.w, top_bc, bottom_bc)
+                  # ivd_*_diagonal gets called with these args after (i, j, k, grid):
+                  vi_closure, vi_closure_fields, tracer_index,
+                  LX(), LY(), LZ(), Δt, clock, fields,
+                  advection, velocities.w, density, top_bc, bottom_bc)
 end

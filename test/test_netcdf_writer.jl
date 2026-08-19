@@ -11,7 +11,7 @@ using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
-using Oceananigans.OutputWriters: trilocation_dim_name
+using Oceananigans.OutputWriters: trilocation_dim_name, vertical_coordinate_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 using Oceananigans.Fields: interpolate!
 
@@ -726,12 +726,19 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "peripheral_nodes_$loc")
         @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
+        @test haskey(ds_h, "inactive_nodes_$loc")
+        @test eltype(ds_h["inactive_nodes_$loc"]) == Float64
     end
 
     @test dimsize(ds_h[:peripheral_nodes_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
+
+    @test dimsize(ds_h[:inactive_nodes_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -748,6 +755,8 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "peripheral_nodes_$loc")
         @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_n, "inactive_nodes_$loc")
+        @test eltype(ds_n["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_n[:peripheral_nodes_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
@@ -755,7 +764,12 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_n[:peripheral_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
 
-    @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
+    @test dimsize(ds_n[:inactive_nodes_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
+
+    @test all(ds_n[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)))
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -770,6 +784,8 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "peripheral_nodes_$loc")
         @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_s, "inactive_nodes_$loc")
+        @test eltype(ds_s["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_s[:peripheral_nodes_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
@@ -777,7 +793,12 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_s[:peripheral_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
 
-    @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
+    @test dimsize(ds_s[:inactive_nodes_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
+
+    @test all(ds_s[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)[i_slice, j_slice, :]))
 
     close(ds_s)
     rm(filepath_sliced)
@@ -875,12 +896,19 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "peripheral_nodes_$loc")
         @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
+        @test haskey(ds_h, "inactive_nodes_$loc")
+        @test eltype(ds_h["inactive_nodes_$loc"]) == Float64
     end
 
     @test dimsize(ds_h[:peripheral_nodes_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
+
+    @test dimsize(ds_h[:inactive_nodes_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -897,6 +925,8 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "peripheral_nodes_$loc")
         @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_n, "inactive_nodes_$loc")
+        @test eltype(ds_n["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_n[:peripheral_nodes_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
@@ -904,7 +934,12 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_n[:peripheral_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
 
-    @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
+    @test dimsize(ds_n[:inactive_nodes_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
+
+    @test all(ds_n[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)))
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -919,6 +954,8 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "peripheral_nodes_$loc")
         @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_s, "inactive_nodes_$loc")
+        @test eltype(ds_s["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_s[:peripheral_nodes_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
@@ -926,7 +963,12 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_s[:peripheral_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
 
-    @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
+    @test dimsize(ds_s[:inactive_nodes_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
+
+    @test all(ds_s[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)[i_slice, j_slice, :]))
 
     close(ds_s)
     rm(filepath_sliced)
@@ -1800,6 +1842,100 @@ function test_netcdf_time_file_splitting(arch)
     return nothing
 end
 
+function test_netcdf_deferred_file_creation(arch)
+    dir = mktempdir()
+    filename = "test_deferred_file_creation_$(typeof(arch)).nc"
+    filepath = joinpath(dir, filename)
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+
+    simulation = Simulation(model, Δt=1, stop_time=2seconds)
+
+    writer = NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = filename,
+        schedule = IterationInterval(1))
+
+    # The file is created when the run starts rather than by the constructor, so that a
+    # writer whose filepath changes in between leaves no empty file behind.
+    @test !writer.initialized
+    @test !isfile(filepath)
+    @test occursin("file not yet created", sprint(show, writer))
+
+    simulation.output_writers[:nc_writer] = writer
+
+    run!(simulation)
+
+    @test writer.initialized
+    @test isfile(filepath)
+
+    ds = NCDataset(filepath, "r")
+    @test collect(ds["time"]) == [0.0, 1.0, 2.0]
+    @test haskey(ds, "c")
+    close(ds)
+
+    rm(dir, recursive=true, force=true)
+
+    return nothing
+end
+
+function test_netcdf_file_splitting_while_appending(arch)
+    dir = mktempdir()
+    base_filename = "test_file_splitting_while_appending_$(typeof(arch))"
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+
+    simulation = Simulation(model, Δt=1, stop_time=2seconds)
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = base_filename,
+        schedule = IterationInterval(1),
+        overwrite_existing = true)
+
+    run!(simulation)
+
+    # Splitting has to create every new part file, including when the writer appends
+    # to an existing file rather than overwriting it.
+    simulation = Simulation(model, Δt=1, stop_time=8seconds)
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
+        dir = dir,
+        filename = base_filename,
+        schedule = IterationInterval(1),
+        file_splitting = TimeInterval(3seconds),
+        overwrite_existing = false)
+
+    run!(simulation)
+
+    part_filenames = filter(f -> occursin(Regex("^$(base_filename)_part\\d+\\.nc\$"), f), readdir(dir))
+    sort!(part_filenames, by = f -> parse(Int, match(r"_part(\d+)\.nc$", f)[1]))
+
+    @test length(part_filenames) > 1
+
+    all_times = Float64[]
+
+    for part_filename in part_filenames
+        ds = NCDataset(joinpath(dir, part_filename), "r")
+
+        # Every part gets the full metadata, not just the part written in creation mode.
+        @test haskey(ds, "time")
+        @test haskey(ds, "c")
+        @test length(ds["time"]) > 0
+
+        append!(all_times, collect(ds["time"]))
+        close(ds)
+    end
+
+    @test all_times == collect(0.0:8.0)
+
+    rm(dir, recursive=true, force=true)
+
+    return nothing
+end
+
 function test_netcdf_function_output(arch)
     Nx = Ny = Nz = N = 16
     L = 1
@@ -2463,6 +2599,11 @@ function test_netcdf_overriding_attributes(arch)
         global_attributes,
         output_attributes)
 
+    # The writer creates its file when the run starts.
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation.output_writers[:nc_writer] = nc_writer
+    run!(simulation)
+
     ds = NCDataset(nc_filepath)
 
     @test ds.attrib["date"] == "yesterday"
@@ -2815,6 +2956,9 @@ function test_netcdf_buoyancy_force(arch)
                                                          verbose = true)
         # only tests that the writer builds, produces a file at filepath and sets attributes
         @test simulation.output_writers[:b_eos] isa NetCDFWriter
+
+        run!(simulation)
+
         @test isfile(simulation.output_writers[:b_eos].filepath)
         ds = NCDataset(simulation.output_writers[:b_eos].filepath)
         @test ds["T"].attrib["long_name"] == "Conservative temperature"
@@ -3096,6 +3240,64 @@ function test_singleton_dimension_behavior(arch)
     return nothing
 end
 
+function test_netcdf_reduced_field_time_series(arch)
+    # Regression test for reading reduced (Nothing-location) fields back as a
+    # FieldTimeSeries from NetCDF. The on-disk variable is squeezed to fewer than 3
+    # spatial dimensions, and the reader must re-inflate those dimensions (via
+    # `inflate_nothing_dimensions`) before building the OffsetArray — otherwise
+    # `offset_data` is handed a lower-dimensional array than the grid expects.
+    Nx, Ny, Nz = 4, 5, 6
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=:c)
+    set!(model, c=(x, y, z) -> x + 2y + 3z)
+
+    cx  = Field(Average(model.tracers.c, dims=1))        # (Nothing, Center, Center) → 2D on disk
+    cxy = Field(Average(model.tracers.c, dims=(1, 2)))   # (Nothing, Nothing, Center) → 1D on disk
+    cyz = Field(Average(model.tracers.c, dims=(2, 3)))   # (Center, Nothing, Nothing) → 1D on disk
+
+    Nt = 3
+    sim = Simulation(model; Δt=1e-3, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+    fp = "test_reduced_fts_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; cx, cxy, cyz);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           array_type=Array{Float64}, overwrite_existing=true)
+
+    # Snapshot the reduced fields (and the save times) in memory on the same schedule as
+    # the writer so the round-trip can be compared value-for-value.
+    save_times = Float64[]
+    snaps = (cx=Array{Float64,3}[], cxy=Array{Float64,3}[], cyz=Array{Float64,3}[])
+    save = s -> begin
+        push!(save_times, s.model.clock.time)
+        push!(snaps.cx,  Array(interior(compute!(cx))))
+        push!(snaps.cxy, Array(interior(compute!(cxy))))
+        push!(snaps.cyz, Array(interior(compute!(cyz))))
+    end
+    sim.callbacks[:save] = Callback(save, IterationInterval(1))
+
+    run!(sim)
+
+    for (name, ref_loc, ref) in (("cx",  (Nothing, Center, Center), snaps.cx),
+                                 ("cxy", (Nothing, Nothing, Center), snaps.cxy),
+                                 ("cyz", (Center, Nothing, Nothing), snaps.cyz))
+        fts = FieldTimeSeries(fp, name; architecture=arch)
+        @test fts isa FieldTimeSeries
+        @test location(fts) == ref_loc
+        @test fts.times ≈ save_times
+        @test size(fts) == (size(ref[1])..., length(ref))
+        for k in 1:length(ref)
+            rec = Array(interior(fts[k]))
+            @test size(rec) == size(ref[k])
+            @test rec ≈ ref[k]
+        end
+    end
+
+    rm(fp)
+    return nothing
+end
+
 function test_netcdf_dimension_type(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid)
@@ -3163,8 +3365,9 @@ end
 
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                   ConformalCubedSpherePanelGrid
-using Oceananigans.OutputWriters: reconstruct_grid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, bottom_height_interior,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
 
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
@@ -3588,6 +3791,33 @@ function test_netcdf_rectilinear_mvd_output(arch)
     return nothing
 end
 
+# Minimal stand-in for a non-static vertical coordinate defined outside Oceananigans
+# (e.g. in a downstream package); carries the reference-coordinate fields the NetCDF
+# writer reads, shared with `MutableVerticalDiscretization`.
+struct ReferenceTestVerticalCoordinate{C, D, E, F} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
+end
+
+function test_netcdf_abstract_vertical_coordinate_name(arch)
+    # The NetCDF writer labels the vertical axis from the coordinate's *type*: a
+    # `StaticVerticalDiscretization` writes the physical `z`, while every other
+    # `AbstractVerticalCoordinate` writes the reference `r`.
+    custom = ReferenceTestVerticalCoordinate(0:3, 0.5:2.5, 1, 1)
+    @test vertical_coordinate_name(custom) == "r"        # generic fallback (under test)
+
+    mvd = Oceananigans.Grids.MutableVerticalDiscretization(collect(0.0:3.0))
+    @test vertical_coordinate_name(mvd) == "r"           # specific MutableVerticalDiscretization method still wins
+
+    static_grid = RectilinearGrid(arch; size=(1, 1, 2), x=(0, 1), y=(0, 1), z=(0, 1),
+                                  topology=(Periodic, Periodic, Bounded))
+    @test vertical_coordinate_name(static_grid.z) == "z" # static coordinate still writes z
+
+    return nothing
+end
+
 function test_netcdf_tripolar_grid_reconstruction(arch)
     Nx, Ny, Nz = 20, 16, 3
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
@@ -3623,6 +3853,16 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     @test Array(reconstructed.φᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.φᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
 
     rm(filepath)
+    return nothing
+end
+
+function test_materialize_from_netcdf_strings()
+    @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
+    @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
+    @test materialize_from_netcdf("Float64") === Float64
+
+    @test materialize_from_netcdf("CenterImmersedCondition()") isa CenterImmersedCondition
+    @test materialize_from_netcdf("InterfaceImmersedCondition()") isa InterfaceImmersedCondition
     return nothing
 end
 
@@ -3694,10 +3934,16 @@ end
             test_thermal_bubble_netcdf_output(arch, Float32, with_halos=true)
         end
 
+        @testset "Deferred file creation [$A]" begin
+            @info "  Testing deferred file creation [$A]..."
+            test_netcdf_deferred_file_creation(arch)
+        end
+
         @testset "File splitting [$A]" begin
             @info "  Testing file splitting [$A]..."
             test_netcdf_size_file_splitting(arch)
             test_netcdf_time_file_splitting(arch)
+            test_netcdf_file_splitting_while_appending(arch)
         end
 
         @testset "Function and alignment output [$A]" begin
@@ -3753,6 +3999,11 @@ end
             test_singleton_dimension_behavior(arch)
         end
 
+        @testset "Reduced FieldTimeSeries round-trip [$A]" begin
+            @info "  Testing reduced FieldTimeSeries round-trip [$A]..."
+            test_netcdf_reduced_field_time_series(arch)
+        end
+
         @testset "Field defvar and dimension validation [$A]" begin
             @info "  Testing field defvar and dimension validation [$A]..."
             for grids in ((rectilinear_grid1, rectilinear_grid2),
@@ -3780,9 +4031,15 @@ end
             test_netcdf_cubed_sphere_panel_immersed_output(arch)
         end
 
-        @testset "MutableVerticalDiscretization output [$A]" begin
-            @info "  Testing MutableVerticalDiscretization output [$A]..."
+        @testset "Non-static vertical coordinate output [$A]" begin
+            @info "  Testing non-static vertical coordinate output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
+            test_netcdf_abstract_vertical_coordinate_name(arch)
         end
+    end
+
+    @testset "Materialize grid-reconstruction strings from NetCDF" begin
+        @info "  Testing materialize_from_netcdf with qualified and bare type names..."
+        test_materialize_from_netcdf_strings()
     end
 end

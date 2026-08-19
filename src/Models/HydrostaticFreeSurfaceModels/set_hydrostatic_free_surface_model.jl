@@ -4,7 +4,9 @@ using Oceananigans.Utils: @apply_regionally
 import Oceananigans.Fields: set!
 
 """
-    set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+    set!(model::HydrostaticFreeSurfaceModel;
+         u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+         reconcile_state=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:

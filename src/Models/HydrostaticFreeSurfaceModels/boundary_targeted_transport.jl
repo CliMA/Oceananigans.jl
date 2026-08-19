@@ -34,7 +34,7 @@ end
 #####
 
 """
-    initialize_targeted_boundary_transport(velocities)
+$(TYPEDSIGNATURES)
 
 Initialize boundary transport `Field`s only for boundaries with a `target_transport` set
 on their scheme. Returns a `NamedTuple` of transport fields and boundary areas, or
@@ -95,7 +95,7 @@ end
 enforce_targeted_open_boundary_transport!(model, ::Nothing) = nothing
 
 """
-    enforce_targeted_open_boundary_transport!(model, boundary_transport)
+$(TYPEDSIGNATURES)
 
 Correct boundary velocities to achieve the prescribed `target_transport` for all open
 boundaries whose scheme returns `true` from `has_target_transport`.

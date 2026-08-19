@@ -145,7 +145,7 @@ xu, yu = xnodes(u_ts), ynodes(u_ts)
 xv, yv = xnodes(v_ts), ynodes(v_ts)
 xζ, yζ = xnodes(ζ_ts), ynodes(ζ_ts)
 
-# Colour limits: maximum over all snapshots, saturated at 1.5 × U_in for u and v.
+# Color limits: maximum over all snapshots, saturated at 1.5 × U_in for u and v.
 clim_u = 1.5 * U_in
 clim_v = 1.5 * U_in
 clim_ζ = max(1e-6, maximum(

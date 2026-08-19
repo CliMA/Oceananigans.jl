@@ -1,5 +1,3 @@
-import Oceananigans.Architectures: on_architecture
-
 """
     struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 
@@ -73,7 +71,7 @@ Adapt.adapt_structure(to, b::BoundaryCondition) =
     BoundaryCondition(Adapt.adapt(to, b.classification), Adapt.adapt(to, b.condition))
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-on_architecture(to, b::BoundaryCondition) =
+Architectures.on_architecture(to, b::BoundaryCondition) =
     BoundaryCondition(on_architecture(to, b.classification), on_architecture(to, b.condition))
 
 #####
@@ -173,12 +171,12 @@ Adapt.adapt_structure(to, mc::MixedCondition) =
     MixedCondition(_unwrap_for_gpu(mc.coefficient),
                    Adapt.adapt(to, mc.inhomogeneity))
 
-on_architecture(to, mc::MixedCondition) =
+Architectures.on_architecture(to, mc::MixedCondition) =
     MixedCondition(on_architecture(to, mc.coefficient),
                    on_architecture(to, mc.inhomogeneity))
 
 """
-    MixedBoundaryCondition(coefficient, inhomogeneity=0; kwargs...)
+$(TYPEDSIGNATURES)
 
 Construct a `MixedBoundaryCondition` representing the condition
 
@@ -219,7 +217,16 @@ end
 const NumberRef = Base.RefValue{<:Number}
 @inline getbc(condition::NumberRef, args...) = condition[]
 @inline getbc(condition::Number, args...) = condition
-@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
+@inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
+
+# Tuple and NamedTuple conditions: apply getbc element-wise.
+@inline getbc(condition::Tuple{},             i::Integer, j::Integer, grid::AbstractGrid, args...) = ()
+@inline getbc(condition::Tuple{<:Any},        i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...),)
+@inline getbc(condition::Tuple{<:Any, <:Any}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...), getbc(condition[2], i, j, grid, args...))
+@inline getbc(condition::Tuple,               i::Integer, j::Integer, grid::AbstractGrid, args...) = map(c -> getbc(c, i, j, grid, args...), condition)
+
+# A NamedTuple just returns a tuple output
+@inline getbc(condition::NamedTuple, i::Integer, j::Integer, grid::AbstractGrid, args...) = getbc(values(condition), i, j, grid, args...)
 
 #####
 ##### Validation with topology
