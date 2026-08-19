@@ -624,16 +624,24 @@ function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryCondi
     return BoundaryCondition(adapt(to, bc.classification), condition)
 end
 
-# A `Field` used as a boundary condition on dimension `dim` may be reduced or windowed to a single
-# plane along `dim`, but must not be windowed along the other (tangential) dimensions: the
-# tangential indices of the boundary are used to index it directly. A field that is neither reduced
-# nor windowed along `dim` is windowed to its plane on (`Face`) or adjacent to (`Center`) the boundary.
+# A `Field` used as a boundary condition on dimension `dim` is indexed directly with the tangential
+# indices of the boundary (`getbc(condition, j, k, grid)` for the west and east boundaries, and so on),
+# so it must span the whole boundary: it may not be windowed along the tangential dimensions. Along
+# the boundary-normal dimension `dim` it may be reduced, windowed to a single plane (the `getbc`
+# methods above read it there), or neither, in which case it is windowed to its plane on (`Face`) or
+# adjacent to (`Center`) the boundary.
 function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, side, args...)
-    for (d, idx) in enumerate(condition.indices)
-        idx isa Colon || (d == dim && length(idx) == 1) ||
-            throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
-                                "to a single plane along dimension $dim, but has indices $(condition.indices)."))
-    end
+    indices = condition.indices
+    tangential_dims = filter(!=(dim), (1, 2, 3))
+
+    all(indices[d] isa Colon for d in tangential_dims) ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must span the whole boundary, " *
+                            "so it may not be windowed along dimensions $tangential_dims, but has indices $indices."))
+
+    indices[dim] isa Colon || length(indices[dim]) == 1 ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
+                            "to a single plane along dimension $dim, but has indices $indices."))
+
     return window_to_boundary(condition, dim, side)
 end
 
