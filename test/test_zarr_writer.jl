@@ -668,8 +668,6 @@ end
     @info "  Testing ZarrWriter round-trip across grid types..."
 
     for arch in archs
-        arch isa GPU && CUDA.allowscalar(false)
-
         grid_factories = [
             ("latitude_longitude_regular",
              arch -> LatitudeLongitudeGrid(arch;

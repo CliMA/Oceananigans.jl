@@ -40,9 +40,13 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
 
+    # A materializing `old_data[1:Ni, 1:Nj]` would fall back to a scalar loop on
+    # GPU-backed OffsetArrays, so broadcast from a view instead.
+    old_interior = view(old_data, 1:Ni, 1:Nj)
+
     # Use Center in z so the TripolarGrid fold dispatch adds the longitude wrap.
     for k in axes(new_field.data, 3)
-        new_field.data[1:Ni, 1:Nj, k] .= old_data[1:Ni, 1:Nj]
+        new_field.data[1:Ni, 1:Nj, k] .= old_interior
     end
 
     fill_halo_regions!(new_field)
@@ -50,11 +54,14 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     # The UPivot redundancy substitution rewrites the j=Ny interior row. That is
     # correct for symmetric metrics but not longitude, so restore all interiors.
     for k in axes(new_field.data, 3)
-        new_field.data[1:Ni, 1:Nj, k] .= old_data[1:Ni, 1:Nj]
+        new_field.data[1:Ni, 1:Nj, k] .= old_interior
     end
 
     # Every z level is identical; retain one while preserving the halo offsets.
-    data = deepcopy(view(new_field.data, :, :, 1))
+    # Copy from the parent so the result is a plain offset matrix like the
+    # metric arrays a natively constructed grid carries.
+    offsets = new_field.data.offsets
+    data = OffsetArray(copy(view(parent(new_field.data), :, :, 1)), offsets[1], offsets[2])
     return on_architecture(architecture(grid), data)
 end
 

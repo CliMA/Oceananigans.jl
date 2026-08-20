@@ -3499,8 +3499,6 @@ function test_netcdf_rotated_llg_matches_llg(arch)
 end
 
 function test_netcdf_tripolar_field_time_series(arch)
-    arch isa GPU && CUDA.allowscalar(false)
-
     # Use a generous initial condition that stays well within the dynamic range and
     # `stop_iteration=1` to avoid any chance of numerical instability propagating into
     # the round-trip comparison — we're testing the I/O round-trip, not the physics.
