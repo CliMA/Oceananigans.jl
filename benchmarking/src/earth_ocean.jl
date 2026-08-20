@@ -79,7 +79,7 @@ function earth_ocean(arch = CPU();
             partition = arch.partition
             weight_map = create_weight_map(underlying_grid, ib)
             new_partition = create_balanced_partition(SimplifiedGeneralisedBlockDistribution(), partition, weight_map)
-            new_arch = Distributed(arch.device; partition=new_partition)
+            new_arch = Distributed(arch.child_architecture; partition=new_partition)
             new_grid = create_underlying_grid(new_arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
             grid = ImmersedBoundaryGrid(new_grid, ib;
                 active_cells_map = true

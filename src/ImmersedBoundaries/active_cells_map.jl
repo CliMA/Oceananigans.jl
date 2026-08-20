@@ -226,6 +226,6 @@ end
     count += active_cell(i,j,k,grid,ib) ? 1 : 0
   end
 
-  @inbounds active_cells_count[i,j] = count
+  @inbounds active_cells_count[i,j,1] = count
 
 end

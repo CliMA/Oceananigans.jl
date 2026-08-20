@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: on_architecture
+
 abstract type BalancingStrategy end
 
 # x and y partitioning optimised together to produce balanced loads
@@ -9,9 +11,9 @@ struct SimplifiedGeneralisedBlockDistribution <: BalancingStrategy end
 create_balanced_partition(strategy, partition, weight_map) = partition
 
 function create_balanced_partition(strategy::SimplifiedGeneralisedBlockDistribution, ranks, weight_map)
-  weights = interior(weight_map).data
+  weights = on_architecture(CPU(), interior(weight_map))
 
-  x_cumsum = cumsum(weights; dims=1)
+  x_cumsum = cumsum(Iterators.flatten(sum(weights; dims=(2,3))))
   x_total = x_cumsum[end]
   # Optimal weight of each x partition
   x_part_weight = x_total / ranks.x
@@ -19,7 +21,7 @@ function create_balanced_partition(strategy::SimplifiedGeneralisedBlockDistribut
   x_ends = [ searchsortedfirst(x_cumsum, x_part_weight * i) for i in 1:ranks.x]
   x_sizes = accumulate((a,b) -> b-a, x_ends; init=1)
 
-  y_cumsum = cumsum(weights; dims=2)
+  y_cumsum = cumsum(Iterators.flatten(sum(weights; dims=(1,3))))
   y_total = y_cumsum[end]
   # Optimal weight of each y partition
   y_part_weight = y_total / ranks.y
