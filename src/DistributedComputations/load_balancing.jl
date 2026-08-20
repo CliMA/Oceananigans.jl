@@ -32,5 +32,6 @@ function create_balanced_partition(strategy::SimplifiedGeneralisedBlockDistribut
 end
 
 function create_weight_map(grid, ib)
-  return active_cells_per_column(grid, ib)
+  materialized_ib = materialize_immersed_boundary(grid, ib)
+  return active_cells_per_column(grid, materialized_ib)
 end
