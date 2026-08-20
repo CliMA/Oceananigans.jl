@@ -221,10 +221,10 @@ end
     return time_interpolated_getindex(fts, i, j, k, ñ, n₁, n₂)
 end
 
-# The same read with the time indices already in hand. `interpolating_time_indices` searches
-# `fts.times`, which a kernel repeats in every thread; `cpu_interpolating_time_indices` does
-# that search once on the host and returns the `TimeInterpolator` accepted here, so a kernel
-# can read a series at an exact cell without touching `times`.
+# The same read with the time indices already in hand. The `Time` method recomputes them
+# from `fts.times` in every thread; `cpu_interpolating_time_indices` does that once on the
+# host and returns the `TimeInterpolator` accepted here, so a kernel can read a series at
+# an exact cell without touching `times`.
 #
 # The indices are converted because a `TimeInterpolator` reaches a kernel as an argument,
 # where its scalar fields can arrive as `CuTracedRNumber` rather than `Int` (#4230). The
