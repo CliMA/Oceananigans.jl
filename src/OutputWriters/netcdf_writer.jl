@@ -113,8 +113,8 @@ mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     dimensions :: Dict
     with_halos :: Bool
     include_grid_metrics :: Bool
-    overwrite_existing :: Union{Nothing, Bool}
-    duplicate_times :: Symbol
+    overwrite_files :: Union{Nothing, Bool}
+    overwrite_snapshots :: Bool
     verbose :: Bool
     deflatelevel :: Int
     part :: Int
@@ -137,8 +137,8 @@ end
                  dimensions = Dict(),
                  with_halos = false,
                  include_grid_metrics = true,
-                 overwrite_existing = nothing,
-                 duplicate_times = :overwrite,
+                 overwrite_files = nothing,
+                 overwrite_snapshots = true,
                  verbose = false,
                  deflatelevel = 0,
                  part = 1,
@@ -214,24 +214,25 @@ Optional keyword arguments
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
-- `overwrite_existing`: If `false`, `NetCDFWriter` appends to an existing file. If `true`, it
-                        overwrites an existing file. Files that do not exist yet are created in
-                        either case. Default: `nothing`, which chooses between the two when the
-                        file is created, at the start of the run: a file that exists by then is
-                        appended to rather than overwritten, so output from an earlier run is
-                        never destroyed unless `overwrite_existing = true` is passed.
+- `overwrite_files`: If `false`, `NetCDFWriter` appends to an existing file. If `true`, it
+                     overwrites an existing file. Files that do not exist yet are created in
+                     either case. Default: `nothing`, which chooses between the two when the
+                     file is created, at the start of the run: a file that exists by then is
+                     appended to rather than overwritten, so output from an earlier run is
+                     never destroyed unless `overwrite_files = true` is passed.
 
-- `duplicate_times`: What to do when output is written for a time the file already covers, which
-                     happens after picking up from a checkpoint written before the last output.
-                     `:overwrite` rewrites those records with the output of the continued run,
-                     keeping the file consistent with the records that follow. `:skip` keeps the
-                     records already in the file and warns. Either way the time axis stays sorted.
-                     Default: `:overwrite`.
+- `overwrite_snapshots`: Whether to overwrite a snapshot already written for the time being
+                         output, which happens after picking up from a checkpoint written before
+                         the last output. If `true`, those snapshots are rewritten with the output
+                         of the continued run, keeping the file consistent with the snapshots that
+                         follow. If `false`, the snapshots already in the file are kept and the
+                         writer warns. Either way the time axis stays sorted. Default: `true`.
 
-                     A run that picks up with a different time step writes times that do not line
-                     up with the records already in the file. Because NetCDF cannot shorten the
-                     time dimension, `:overwrite` then rewrites the first record at or after each
-                     new time and leaves any records beyond the end of the continued run in place.
+                         A run that picks up with a different time step writes times that do not
+                         line up with the snapshots already in the file. Because NetCDF cannot
+                         shorten the time dimension, `overwrite_snapshots = true` then rewrites the
+                         first snapshot at or after each new time and leaves any snapshots beyond
+                         the end of the continued run in place.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 

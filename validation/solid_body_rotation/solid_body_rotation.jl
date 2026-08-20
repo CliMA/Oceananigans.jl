@@ -121,7 +121,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                                     schedule = TimeInterval(super_rotation_period / 1000),
                                                     filename = output_prefix,
                                                     field_slicer = nothing,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation)
 

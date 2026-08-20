@@ -58,17 +58,17 @@ sim3 = Simulation(model3, Δt=Δt_max, stop_time=10)
 sim1.output_writers[:solution] = JLD2Writer(model1, (; c = model1.tracers.c);
                                             filename="one_d_simulation_1.jld2",
                                             schedule=IterationInterval(10),
-                                            overwrite_existing=true)
+                                            overwrite_files=true)
 
 sim2.output_writers[:solution] = JLD2Writer(model2, (; c = model2.tracers.c);
                                             filename="one_d_simulation_2.jld2",
                                             schedule=IterationInterval(10),
-                                            overwrite_existing=true)
+                                            overwrite_files=true)
 
 sim3.output_writers[:solution] = JLD2Writer(model3, (; c = model3.tracers.c);
                                             filename="one_d_simulation_3.jld2",
                                             schedule=IterationInterval(10),
-                                            overwrite_existing=true)
+                                            overwrite_files=true)
 
 run!(sim1)
 run!(sim2)

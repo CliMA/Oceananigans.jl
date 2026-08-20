@@ -256,12 +256,12 @@ outputs = merge(model.velocities, model.tracers)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                 schedule = TimeInterval(10day),
                                                 filename = "eddying_channel",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 try
     run!(simulation, pickup=false)

@@ -314,7 +314,7 @@ function setup_simulation(params::SolitonParameters;
         (; u, v, w, η);
         schedule           = TimeInterval(params.T),
         filename           = outfile,
-        overwrite_existing = true)
+        overwrite_files = true)
 
     return simulation
 end

@@ -178,14 +178,14 @@ function run_benchmark_simulation(model;
         filename = output_filename,
         indices = (:, :, Nz),
         schedule = TimeInterval(output_interval),
-        overwrite_existing = true
+        overwrite_files = true
     )
 
     # Final snapshot: full 3D fields
     simulation.output_writers[:final_3d] = JLD2Writer(model, outputs;
         filename = final_filename,
         schedule = IterationInterval(typemax(Int)),
-        overwrite_existing = true
+        overwrite_files = true
     )
 
     function save_final_snapshot(sim)
@@ -343,7 +343,7 @@ function run_io_benchmark(model;
         simulation.output_writers[:fields_3d] = ZarrWriter(model, outputs;
             filename = output_filename,
             schedule = IterationInterval(output_iteration_interval),
-            overwrite_existing = true,
+            overwrite_files = true,
             chunks = zarr_chunks
         )
     else
@@ -351,7 +351,7 @@ function run_io_benchmark(model;
         simulation.output_writers[:fields_3d] = Writer(model, outputs;
             filename = output_filename,
             schedule = IterationInterval(output_iteration_interval),
-            overwrite_existing = true
+            overwrite_files = true
         )
     end
 

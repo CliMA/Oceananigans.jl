@@ -108,7 +108,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
                                                     schedule = TimeInterval(super_rotation_period / 20),
                                                     filename = output_prefix,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation)
 

@@ -17,7 +17,7 @@ mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     including :: IN
     part :: Int
     file_splitting :: FS
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     jld2_kw :: KW
     initialized :: Bool
@@ -33,7 +33,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                with_halos = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
+               overwrite_files = false,
                init = noinit,
                including = default_included_properties(model),
                verbose = false,
@@ -88,8 +88,8 @@ Keyword arguments
                     file, which compression barely shrinks; otherwise an `ArgumentError` is thrown
                     at construction. See [`FileSizeLimit`](@ref).
 
-- `overwrite_existing`: Remove an existing file with the same filename when the writer is initialized.
-                        Default: `false`.
+- `overwrite_files`: Remove an existing file with the same filename when the writer is initialized.
+                     Default: `false`.
 
 ## Output file metadata management
 
@@ -179,7 +179,7 @@ function JLD2Writer(model, outputs; filename, schedule,
                     with_halos = true,
                     array_type = Array{Float32},
                     file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
+                    overwrite_files = false,
                     init = noinit,
                     including = default_included_properties(model),
                     verbose = false,
@@ -209,7 +209,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
     return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
-                      including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
+                      including, part, file_splitting, overwrite_files, verbose, jld2_kw, false)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -319,7 +319,7 @@ function Oceananigans.initialize!(writer::JLD2Writer, model)
     writer.initialized && return nothing
 
     # Remove an existing conflicting file once, during writer initialization.
-    if writer.overwrite_existing
+    if writer.overwrite_files
         isfile(writer.filepath) && rm(writer.filepath, force=true)
     end
 
@@ -427,13 +427,13 @@ function start_next_file(model, writer::JLD2Writer)
     if writer.part == 1
         part1_path = replace(writer.filepath, r".jld2$" => "_part1.jld2")
         verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
-        mv(writer.filepath, part1_path, force=writer.overwrite_existing)
+        mv(writer.filepath, part1_path, force=writer.overwrite_files)
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.jld2$" => "part" * string(writer.part) * ".jld2")
-    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    writer.overwrite_files && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)

@@ -1761,7 +1761,7 @@ function test_netcdf_size_file_splitting(arch)
         with_halos = true,
         global_attributes = fake_attributes,
         file_splitting = FileSizeLimit(200KiB),
-        overwrite_existing = true)
+        overwrite_files = true)
 
     # 531 KiB of output will be written which should get split into 3 files.
     run!(simulation)
@@ -1815,7 +1815,7 @@ function test_netcdf_time_file_splitting(arch)
         with_halos = true,
         global_attributes = fake_attributes,
         file_splitting = TimeInterval(4seconds),
-        overwrite_existing = true)
+        overwrite_files = true)
 
     run!(simulation)
 
@@ -1880,7 +1880,7 @@ function test_netcdf_deferred_file_creation(arch)
     return nothing
 end
 
-function test_netcdf_duplicate_times(arch, duplicate_times)
+function test_netcdf_duplicate_times(arch, overwrite_snapshots)
     dir = mktempdir()
     filename = "test_duplicate_times_$(typeof(arch)).nc"
     filepath = joinpath(dir, filename)
@@ -1895,13 +1895,13 @@ function test_netcdf_duplicate_times(arch, duplicate_times)
             dir = dir,
             filename = filename,
             schedule = IterationInterval(1),
-            duplicate_times = duplicate_times)
+            overwrite_snapshots = overwrite_snapshots)
 
         simulation.output_writers[:checkpointer] = Checkpointer(model;
             dir = dir,
             schedule = IterationInterval(5),
             prefix = "checkpoint",
-            overwrite_existing = true,
+            overwrite_files = true,
             cleanup = true)
 
         return simulation
@@ -1924,7 +1924,7 @@ function test_netcdf_duplicate_times(arch, duplicate_times)
 
     rewritten_index = findfirst(==(11.0), collect(ds["time"]))
 
-    if duplicate_times == :overwrite
+    if overwrite_snapshots
         @test ds["c"][1, 1, 1, rewritten_index] == -1
     else
         @test ds["c"][1, 1, 1, rewritten_index] == 0
@@ -1934,12 +1934,6 @@ function test_netcdf_duplicate_times(arch, duplicate_times)
     @test ds["c"][1, 1, 1, end] == -1
 
     close(ds)
-
-    @test_throws ArgumentError NetCDFWriter(model, model.tracers;
-        dir = dir,
-        filename = "invalid_duplicate_times",
-        schedule = IterationInterval(1),
-        duplicate_times = :append)
 
     rm(dir, recursive=true, force=true)
 
@@ -1959,7 +1953,7 @@ function test_netcdf_file_splitting_while_appending(arch)
         dir = dir,
         filename = base_filename,
         schedule = IterationInterval(1),
-        overwrite_existing = true)
+        overwrite_files = true)
 
     run!(simulation)
 
@@ -1972,7 +1966,7 @@ function test_netcdf_file_splitting_while_appending(arch)
         filename = base_filename,
         schedule = IterationInterval(1),
         file_splitting = TimeInterval(3seconds),
-        overwrite_existing = false)
+        overwrite_files = false)
 
     run!(simulation)
 
@@ -2059,7 +2053,7 @@ function test_netcdf_function_output(arch)
             array_type = Array{Float64},
             include_grid_metrics = false,
             verbose = true,
-            overwrite_existing = true)
+            overwrite_files = true)
 
     run!(simulation)
 
@@ -2157,7 +2151,7 @@ function test_netcdf_function_output(arch)
             global_attributes,
             output_attributes,
             filename = nc_filepath,
-            overwrite_existing = false,
+            overwrite_files = false,
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             dimensions = dims,
@@ -2288,7 +2282,7 @@ function test_netcdf_time_averaging(arch)
                              filename = horizontal_average_nc_filepath,
                              schedule = TimeInterval(10Δt),
                              include_grid_metrics = false,
-                             overwrite_existing = true)
+                             overwrite_files = true)
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test_$Arch.nc"
             single_time_average_nc_filepath = "single_decay_windowed_time_average_test_$Arch.nc"
@@ -2304,7 +2298,7 @@ function test_netcdf_time_averaging(arch)
                              filename = single_time_average_nc_filepath,
                              schedule = AveragedTimeInterval(10Δt; window, stride),
                              include_grid_metrics = false,
-                             overwrite_existing = true)
+                             overwrite_files = true)
 
             simulation.output_writers[:multiple_output_time_average] =
                 NetCDFWriter(model,
@@ -2314,7 +2308,7 @@ function test_netcdf_time_averaging(arch)
                              filename = multiple_time_average_nc_filepath,
                              schedule = AveragedTimeInterval(10Δt; window, stride),
                              include_grid_metrics = false,
-                             overwrite_existing = true)
+                             overwrite_files = true)
 
             run!(simulation)
 
@@ -2791,7 +2785,7 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
             with_halos = true,
-            overwrite_existing = true)
+            overwrite_files = true)
 
     filepath_no_halos = "test_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
@@ -2801,7 +2795,7 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
             filename = filepath_no_halos,
             schedule = IterationInterval(1),
             with_halos = false,
-            overwrite_existing = true)
+            overwrite_files = true)
 
     run!(simulation)
 
@@ -2940,7 +2934,7 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
             with_halos = true,
-            overwrite_existing = true)
+            overwrite_files = true)
 
     filepath_no_halos = "test_nonhydrostatic_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
@@ -2950,7 +2944,7 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
             filename = filepath_no_halos,
             schedule = IterationInterval(1),
             with_halos = false,
-            overwrite_existing = true)
+            overwrite_files = true)
 
     run!(simulation)
 
@@ -3213,7 +3207,7 @@ function test_netcdf_writer_different_grid(arch)
     output_writer = NetCDFWriter(model, outputs;
                                  filename = filepath,
                                  schedule = IterationInterval(1),
-                                 overwrite_existing = true)
+                                 overwrite_files = true)
 
     # Run simulation to write output
     simulation = Simulation(model, Δt=0.1, stop_iteration=2)
@@ -3267,7 +3261,7 @@ function test_singleton_dimension_behavior(arch)
                                                     array_type = Array{Float64},
                                                     with_halos = false,
                                                     include_grid_metrics = false,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     filepath_slice = "test_singleton_slice_u_$Arch.nc"
     simulation.output_writers[:slice] = NetCDFWriter(model, (; u = model.velocities.u, u_xavg),
@@ -3277,7 +3271,7 @@ function test_singleton_dimension_behavior(arch)
                                                      array_type = Array{Float64},
                                                      with_halos = false,
                                                      include_grid_metrics = false,
-                                                     overwrite_existing = true)
+                                                     overwrite_files = true)
 
     run!(simulation)
 
@@ -3329,7 +3323,7 @@ function test_netcdf_reduced_field_time_series(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; cx, cxy, cyz);
                                            filename=fp, schedule=IterationInterval(1),
-                                           array_type=Array{Float64}, overwrite_existing=true)
+                                           array_type=Array{Float64}, overwrite_files=true)
 
     # Snapshot the reduced fields (and the save times) in memory on the same schedule as
     # the writer so the round-trip can be compared value-for-value.
@@ -3379,7 +3373,7 @@ function test_netcdf_dimension_type(arch)
                                                        filename = filepath_float64,
                                                        schedule = IterationInterval(1),
                                                        include_grid_metrics = false,
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
 
     # Test with Float32 dimension_type
     filepath_float32 = "test_dimension_type_float32_$Arch.nc"
@@ -3388,7 +3382,7 @@ function test_netcdf_dimension_type(arch)
                                                         schedule = IterationInterval(1),
                                                         dimension_type = Float32,
                                                         include_grid_metrics = false,
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
     run!(simulation)
 
@@ -3449,7 +3443,7 @@ function test_netcdf_tripolar_grid_output(arch)
     simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T, u=model.velocities.u);
                                                   filename = filepath,
                                                   schedule = IterationInterval(1),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   include_grid_metrics = true)
     run!(simulation)
 
@@ -3527,10 +3521,10 @@ function test_netcdf_rotated_llg_matches_llg(arch)
 
     s_llg.output_writers[:nc]  = NetCDFWriter(m_llg,  (; T=m_llg.tracers.T);
                                               filename=p_llg,  schedule=IterationInterval(1),
-                                              overwrite_existing=true, include_grid_metrics=false)
+                                              overwrite_files=true, include_grid_metrics=false)
     s_rllg.output_writers[:nc] = NetCDFWriter(m_rllg, (; T=m_rllg.tracers.T);
                                               filename=p_rllg, schedule=IterationInterval(1),
-                                              overwrite_existing=true, include_grid_metrics=false)
+                                              overwrite_files=true, include_grid_metrics=false)
 
     run!(s_llg)
     run!(s_rllg)
@@ -3586,7 +3580,7 @@ function test_netcdf_tripolar_field_time_series(arch)
     # the Δx/Δy/Az arrays.
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                             filename=fp, schedule=IterationInterval(1),
-                                            overwrite_existing=true, include_grid_metrics=true)
+                                            overwrite_files=true, include_grid_metrics=true)
 
     # Capture in-memory snapshots that align with the file's time series — the
     # callback fires on the same IterationInterval(1) as the writer, so both record
@@ -3646,7 +3640,7 @@ function test_netcdf_tripolar_variable_z_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                            filename=fp, schedule=IterationInterval(1),
-                                           overwrite_existing=true, include_grid_metrics=true)
+                                           overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3684,7 +3678,7 @@ function test_netcdf_tripolar_mvd_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                            filename=fp, schedule=IterationInterval(1),
-                                           overwrite_existing=true, include_grid_metrics=true)
+                                           overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3723,7 +3717,7 @@ function test_netcdf_tripolar_immersed_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                            filename=fp, schedule=IterationInterval(1),
-                                           overwrite_existing=true, include_grid_metrics=true)
+                                           overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3759,7 +3753,7 @@ function test_netcdf_cubed_sphere_panel_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                            filename=fp, schedule=IterationInterval(1),
-                                           overwrite_existing=true, include_grid_metrics=true)
+                                           overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3805,7 +3799,7 @@ function test_netcdf_cubed_sphere_panel_immersed_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                            filename=fp, schedule=IterationInterval(1),
-                                           overwrite_existing=true, include_grid_metrics=true)
+                                           overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3836,7 +3830,7 @@ function test_netcdf_rectilinear_mvd_output(arch)
     isfile(fp) && rm(fp)
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                             filename=fp, schedule=IterationInterval(1),
-                                            overwrite_existing=true, include_grid_metrics=true)
+                                            overwrite_files=true, include_grid_metrics=true)
     run!(sim)
 
     ds = NCDataset(fp)
@@ -3900,7 +3894,7 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                                   filename=filepath,
                                                   schedule=IterationInterval(1),
-                                                  overwrite_existing=true,
+                                                  overwrite_files=true,
                                                   include_grid_metrics=true)
     run!(simulation)
 
@@ -4007,8 +4001,8 @@ end
 
         @testset "Duplicate times [$A]" begin
             @info "  Testing duplicate times [$A]..."
-            test_netcdf_duplicate_times(arch, :overwrite)
-            test_netcdf_duplicate_times(arch, :skip)
+            test_netcdf_duplicate_times(arch, true)
+            test_netcdf_duplicate_times(arch, false)
         end
 
         @testset "File splitting [$A]" begin

@@ -382,7 +382,7 @@ simulation.output_writers[:vorticity] =
     JLD2Writer(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
                schedule = TimeInterval(0.10 / estimated_growth_rate),
                filename = "kelvin_helmholtz_instability.jld2",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # And now we...
 

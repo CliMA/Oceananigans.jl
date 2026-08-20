@@ -201,7 +201,7 @@ function run_stress_test(grid, scheme; label, Δt, stop_time, save_interval, out
     simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                     schedule = TimeInterval(save_interval),
                                                     filename = joinpath(output_dir, "stress_test_$(label)"),
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Running $label..."
     try

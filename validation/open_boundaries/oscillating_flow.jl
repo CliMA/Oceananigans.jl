@@ -76,7 +76,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
         outputs = (; model.velocities..., ζ = (@at (Center, Center, Center) ∂x(w) - ∂z(u)))
     end
     simulation.output_writers[:velocity] = JLD2Writer(model, outputs,
-                                                      overwrite_existing = true,
+                                                      overwrite_files = true,
                                                       filename = filename,
                                                       schedule = TimeInterval(0.5),
                                                       with_halos = true)

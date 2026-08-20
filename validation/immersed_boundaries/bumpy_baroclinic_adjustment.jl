@@ -109,13 +109,13 @@ simulation.output_writers[:surface] = JLD2Writer(model, (; ζ, b, c),
                                                  schedule = TimeInterval(1hour),
                                                  indices = (:, :, grid.Nz),
                                                  filename =name * "_slices",
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                 schedule = TimeInterval(10days),
                                                 with_halos = false,
                                                 filename = name * "_fields",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

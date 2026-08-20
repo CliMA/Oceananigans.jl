@@ -217,7 +217,7 @@ simulation.output_writers[:fields] =
     ZarrWriter(model, fields_to_output,
                schedule = TimeInterval(output_interval),
                filename = "langmuir_turbulence_fields.zarr",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # ### An "averages" writer
 #
@@ -237,7 +237,7 @@ simulation.output_writers[:averages] =
     ZarrWriter(model, (; U, V, B, wu, wv),
                schedule = AveragedTimeInterval(output_interval, window=2minutes),
                filename = "langmuir_turbulence_averages.zarr",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # ## Running the simulation
 #
