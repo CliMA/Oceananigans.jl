@@ -19,7 +19,7 @@ export
     LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
     MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
-    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    nodes, nearest_index, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
