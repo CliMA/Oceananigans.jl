@@ -5,6 +5,10 @@ Abstract supertype for boundary condition types.
 """
 abstract type AbstractBoundaryConditionClassification end
 
+# True when filling the halo requires `clock`/`model_fields` (e.g. ContinuousBoundaryFunction).
+@inline needs_simulation_context(::Nothing) = false
+@inline needs_simulation_context(::AbstractBoundaryConditionClassification) = false
+
 """
     struct Periodic <: AbstractBoundaryConditionClassification
 
@@ -95,6 +99,7 @@ NormalFlow() = NormalFlow(nothing)
 (normal_flow::NormalFlow)() = normal_flow
 
 Adapt.adapt_structure(to, normal_flow::NormalFlow) = NormalFlow(adapt(to, normal_flow.scheme))
+
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification

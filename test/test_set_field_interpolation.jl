@@ -1,3 +1,46 @@
+using Oceananigans.Fields: interpolate!, fill_halo_regions!
+using Oceananigans.BoundaryConditions: needs_simulation_context, normal_flow_needs_simulation_context, NormalRadiation
+
+@testset "needs_simulation_context dispatch" begin
+    # Flux with CBF → true (fill_halo_regions! would crash without clock)
+    cbf_flux_bc = FluxBoundaryCondition((x, y, t) -> 0.0)
+    @test  needs_simulation_context(cbf_flux_bc)
+
+    # NormalFlow BC backed by a CBF → false (NormalFlow fills use fill_normal_flow_bcs=false, not this guard)
+    nf_cbf_bc = NormalFlowBoundaryCondition((x, y, t) -> 0.0)
+    @test !needs_simulation_context(nf_cbf_bc)
+
+    # NormalFlow BC with a plain number → false
+    @test !needs_simulation_context(NormalFlowBoundaryCondition(0.0))
+
+    # FieldBoundaryConditions: CBF top BC → true
+    @test  needs_simulation_context(FieldBoundaryConditions(top=cbf_flux_bc))
+
+    # FieldBoundaryConditions: only NormalFlow BCs → false
+    @test !needs_simulation_context(FieldBoundaryConditions(west=nf_cbf_bc, east=nf_cbf_bc))
+end
+
+@testset "RNFBC: normal_flow_needs_simulation_context and clockless fill" begin
+    # RNFBC: needs_simulation_context=false (NFBC), normal_flow_needs_simulation_context=true (DBF condition).
+    rnfbc = NormalFlowBoundaryCondition((i, k, grid, clock, fields) -> zero(grid);
+                                        discrete_form = true,
+                                        scheme = NormalRadiation())
+    @test !needs_simulation_context(rnfbc)
+    @test  normal_flow_needs_simulation_context(rnfbc)
+
+    # Clockless fill must not crash — previously triggered InvalidIRError on GPU.
+    # Periodic in x/z so only the y (normal) boundaries need explicit BCs.
+    grid = RectilinearGrid(CPU(); size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1),
+                           topology=(Periodic, Bounded, Periodic))
+    south_bc = NormalFlowBoundaryCondition(0.0)
+    v_bcs = FieldBoundaryConditions(grid, (Center(), Face(), Center()); south=south_bc, north=rnfbc)
+    v = YFaceField(grid; boundary_conditions=v_bcs)
+    @test_nowarn fill_halo_regions!(v)
+
+    # set! on a field with RNFBC must also not crash (uses fill_normal_flow_bcs=false path).
+    @test_nowarn set!(v, 0)
+end
+
 @testset "set! field interpolation" begin
     for arch in archs, FT in float_types
         interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
@@ -23,9 +66,7 @@
         interpolate!(expected_fine, coarse_with_filled_halos)
         @test Array(interior(fine)) == Array(interior(expected_fine))
 
-        # When `u` and `v` differ in halo size but otherwise share the same
-        # discretization, `set!` should copy (not interpolate). This matches
-        # how with_halo-extended grids feed into materialize_immersed_boundary.
+        # Different halo size on same grid → copy path, not interpolation.
         big_halo_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
                                         halo=(3, 3, 3),
                                         interp_domain...)
@@ -33,6 +74,18 @@
         big_halo_c = CenterField(big_halo_grid)
         set!(big_halo_c, coarse)
         @test Array(interior(big_halo_c)) == Array(interior(coarse))
+
+        # `set!` must not crash when `to_field` carries a `ContinuousBoundaryFunction` BC.
+        # All sides specified explicitly to avoid unresolved DefaultBoundaryCondition types.
+        bounded_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...,
+                                            topology=(Bounded, Bounded, Bounded))
+        cbf_bc = FluxBoundaryCondition((x, y, t) -> zero(FT))
+        nf_bc  = NoFluxBoundaryCondition()
+        explicit_bcs = FieldBoundaryConditions(west=nf_bc, east=nf_bc, south=nf_bc, north=nf_bc,
+                                               bottom=nf_bc, top=cbf_bc)
+        cbf_field = CenterField(bounded_fine_grid, boundary_conditions=explicit_bcs)
+        set!(cbf_field, coarse)
+        @test Array(interior(cbf_field)) ≈ Array(interior(fine))
     end
 end
 
