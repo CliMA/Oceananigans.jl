@@ -15,7 +15,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
     array_type :: A
     indices :: Tuple
     with_halos :: Bool
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     part :: Int
     file_splitting :: FS
@@ -33,7 +33,7 @@ end
                with_halos = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
+               overwrite_files = false,
                verbose = false,
                part = 1,
                store = nothing,
@@ -104,9 +104,9 @@ Keyword arguments
                     include `NoFileSplitting()` (default), `FileSizeLimit(sz)`,
                     `TimeInterval(Δt)`.
 
-- `overwrite_existing`: Remove an existing store before writing. Default: `false`. When
-                        `false` and the store already exists, the writer appends new
-                        timesteps to the existing time axis.
+- `overwrite_files`: Remove an existing store before writing. Default: `false`. When
+                     `false` and the store already exists, the writer appends new
+                     timesteps to the existing time axis.
 
 ## Miscellaneous
 

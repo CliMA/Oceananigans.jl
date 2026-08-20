@@ -192,7 +192,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
                               init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
-                              overwrite_existing=true, verbose=true)
+                              overwrite_files=true, verbose=true)
 
     #####
     ##### Set up profile output writer
@@ -215,7 +215,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     profile_writer = JLD2Writer(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
                                 init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
-                                overwrite_existing=true, verbose=true)
+                                overwrite_files=true, verbose=true)
 
     #####
     ##### Set up statistic output writer
@@ -232,7 +232,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     statistics_writer = JLD2Writer(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
                                    init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
-                                   overwrite_existing=true, verbose=true)
+                                   overwrite_files=true, verbose=true)
 
     #####
     ##### Time stepping

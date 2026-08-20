@@ -96,7 +96,7 @@ function flow_over_hill_simulation(; arch = CPU(),
     simulation.output_writers[:snaps] = JLD2Writer(model, outputs,
                                                    schedule = TimeInterval(simulation.stop_time / 100),
                                                    filename = simname,
-                                                   overwrite_existing = true,
+                                                   overwrite_files = true,
                                                    with_halos = true)
 
     return simulation

@@ -23,7 +23,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                                                         with_halos = false,
                                                         dir = ".",
                                                         filename = "test.jld2",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
     run!(simulation)
 
@@ -65,7 +65,7 @@ function test_jld2_size_file_splitting(arch, compress)
                                                      with_halos = true,
                                                      file_splitting = FileSizeLimit(threshold),
                                                      compress,
-                                                     overwrite_existing = true)
+                                                     overwrite_files = true)
 
         run!(simulation)
 
@@ -108,7 +108,7 @@ function test_jld2_time_file_splitting(arch)
                                                  array_type = Array{Float64},
                                                  with_halos = true,
                                                  file_splitting = TimeInterval(3seconds),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 
     run!(simulation)
 
@@ -143,7 +143,7 @@ function test_jld2_file_splitting_overhead_error(arch)
                                              filename = "file_splitting_overhead_test.jld2",
                                              schedule = IterationInterval(1),
                                              file_splitting,
-                                             overwrite_existing = true)
+                                             overwrite_files = true)
 
     mktempdir() do dir
         # The metadata written at initialization alone exceeds this limit,
@@ -175,7 +175,7 @@ function test_jld2_compression(arch)
                                                              filename,
                                                              schedule = IterationInterval(1),
                                                              compress,
-                                                             overwrite_existing = true)
+                                                             overwrite_files = true)
 
             run!(simulation)
 
@@ -242,7 +242,7 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
                                                     dir = ".",
                                                     with_halos = false,
                                                     filename = "jld2_time_averaging_test.jld2",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation)
 
@@ -315,7 +315,7 @@ function test_jld2_time_averaging(arch)
                                                                         dir = ".",
                                                                         with_halos = false,
                                                                         filename = horizontal_average_jld2_filepath,
-                                                                        overwrite_existing = true)
+                                                                        overwrite_files = true)
 
             multiple_time_average_jld2_filepath = "decay_windowed_time_average_test.jld2"
             single_time_average_jld2_filepath = "single_decay_windowed_time_average_test.jld2"
@@ -329,7 +329,7 @@ function test_jld2_time_averaging(arch)
                                                                                 dir = ".",
                                                                                 with_halos = false,
                                                                                 filename = single_time_average_jld2_filepath,
-                                                                                overwrite_existing = true)
+                                                                                overwrite_files = true)
 
             simulation.output_writers[:multiple_output_time_average] = JLD2Writer(model,
                                                                                   jld2_outputs,
@@ -337,7 +337,7 @@ function test_jld2_time_averaging(arch)
                                                                                   dir = ".",
                                                                                   with_halos = false,
                                                                                   filename = multiple_time_average_jld2_filepath,
-                                                                                  overwrite_existing = true)
+                                                                                  overwrite_files = true)
 
             run!(simulation)
 
@@ -436,7 +436,7 @@ for arch in archs
                                                             filename = "vanilla_jld2_test",
                                                             indices = (:, :, :),
                                                             with_halos = false,
-                                                            overwrite_existing = true)
+                                                            overwrite_files = true)
 
         simulation.output_writers[:sliced] = JLD2Writer(model, model.velocities,
                                                         schedule = TimeInterval(1),
@@ -444,7 +444,7 @@ for arch in archs
                                                         with_halos = false,
                                                         dir = ".",
                                                         filename = "sliced_jld2_test",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
 
@@ -454,7 +454,7 @@ for arch in archs
                                                               with_halos = false,
                                                               dir = ".",
                                                               filename = "sliced_funcs_jld2_test",
-                                                              overwrite_existing = true)
+                                                              overwrite_files = true)
 
 
         simulation.output_writers[:sliced_func_fields] = JLD2Writer(model, function_and_background_fields,
@@ -463,7 +463,7 @@ for arch in archs
                                                                     with_halos = false,
                                                                     dir = ".",
                                                                     filename = "sliced_func_fields_jld2_test",
-                                                                    overwrite_existing = true)
+                                                                    overwrite_files = true)
 
 
 
@@ -568,7 +568,7 @@ for arch in archs
         ow = JLD2Writer(model, (; η=model.free_surface.displacement); filename,
                         schedule = IterationInterval(1),
                         with_halos = false,
-                        overwrite_existing = true)
+                        overwrite_files = true)
         simulation.output_writers[:free_surface] = ow
         run!(simulation)
         ηt = FieldTimeSeries(filename, "η")

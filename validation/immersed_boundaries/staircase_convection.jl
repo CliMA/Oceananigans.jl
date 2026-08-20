@@ -150,7 +150,7 @@ function setup_simulation(model)
     simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
                                                 filename = filename,
                                                 schedule = TimeInterval(0.1),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
     return simulation, file_prefix
 end

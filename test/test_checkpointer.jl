@@ -1264,7 +1264,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     simulation.output_writers[:averaged] = WriterType(model, model.velocities,
                                                       schedule = AveragedTimeInterval(1.0, window=0.5),
                                                       filename = "$(prefix)_averaged$(ext)",
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
 
     @test_nowarn run!(simulation)
 
@@ -1292,7 +1292,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     new_simulation.output_writers[:averaged] = WriterType(new_model, new_model.velocities,
                                                           schedule = AveragedTimeInterval(1.0, window=0.5),
                                                           filename = "$(prefix)_averaged_restored$(ext)",
-                                                          overwrite_existing = true)
+                                                          overwrite_files = true)
 
     # Restore from checkpoint at iteration 8
     @test_nowarn set!(new_simulation; iteration=8)
@@ -1372,7 +1372,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities,
                                                        schedule = AveragedTimeInterval(1.0, window=0.5),
                                                        filename = "$(prefix_A)$(ext)",
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
 
     @test_nowarn run!(simulation_A)
 
@@ -1389,7 +1389,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B.output_writers[:averaged] = WriterType(model_B, model_B.velocities,
                                                         schedule = AveragedTimeInterval(1.0, window=0.5),
                                                         filename = "$(prefix_B)$(ext)",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
     @test_nowarn run!(simulation_B)
 
@@ -1409,7 +1409,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B_new.output_writers[:averaged] = WriterType(model_B_new, model_B_new.velocities,
                                                             schedule = AveragedTimeInterval(1.0, window=0.5),
                                                             filename = "$(prefix_B)_restored$(ext)",
-                                                            overwrite_existing = true)
+                                                            overwrite_files = true)
 
     @test_nowarn set!(simulation_B_new; checkpoint=:latest)
     @test_nowarn run!(simulation_B_new)
@@ -1448,7 +1448,7 @@ function test_changed_averaged_time_interval(arch)
         JLD2Writer(partial_model, (; clock_time),
                    schedule = AveragedTimeInterval(1day),
                    filename = partial_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn run!(partial_simulation)
 
@@ -1465,7 +1465,7 @@ function test_changed_averaged_time_interval(arch)
         JLD2Writer(restored_model, (; clock_time),
                    schedule = AveragedTimeInterval(2days),
                    filename = restored_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
     restored_cache = only(values(restored_simulation.output_writers[:averaged].outputs))
@@ -1937,13 +1937,13 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                                     dir = dir,
                                                     schedule = IterationInterval(1),
                                                     file_splitting = TimeInterval(3),
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                               schedule = IterationInterval(5),
                                                               dir = dir,
                                                               prefix = "checkpoint",
-                                                              overwrite_existing = true,
+                                                              overwrite_files = true,
                                                               cleanup = true)
     run!(simulation)
 
@@ -1961,13 +1961,13 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                               dir = dir,
                                               schedule = IterationInterval(1),
                                               file_splitting = TimeInterval(3),
-                                              overwrite_existing = false)
+                                              overwrite_files = false)
 
     sim2.output_writers[:checkpointer] = Checkpointer(model2;
                                                         schedule = IterationInterval(5),
                                                         dir = dir,
                                                         prefix = "checkpoint",
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         cleanup = true)
 
     run!(sim2, pickup=true)
@@ -2020,13 +2020,13 @@ function test_checkpointing_with_moved_parts(arch)
                                                      dir = dir,
                                                      schedule = IterationInterval(1),
                                                      file_splitting = TimeInterval(3),
-                                                     overwrite_existing = true)
+                                                     overwrite_files = true)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                               schedule = IterationInterval(10),
                                                               dir = dir,
                                                               prefix = "checkpoint",
-                                                              overwrite_existing = true,
+                                                              overwrite_files = true,
                                                               cleanup = true)
     run!(simulation)
 
@@ -2049,13 +2049,13 @@ function test_checkpointing_with_moved_parts(arch)
                                                dir = dir,
                                                schedule = IterationInterval(1),
                                                file_splitting = TimeInterval(3),
-                                               overwrite_existing = false)
+                                               overwrite_files = false)
 
     sim2.output_writers[:checkpointer] = Checkpointer(model2;
                                                         schedule = IterationInterval(10),
                                                         dir = dir,
                                                         prefix = "checkpoint",
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         cleanup = true)
 
     # Should not error — writer appends to existing part4

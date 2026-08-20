@@ -23,7 +23,7 @@ function test_averaged_specified_times_simulation(model)
     jld2_output_writer = JLD2Writer(model, model.velocities,
                                    schedule = AveragedSpecifiedTimes(times; window),
                                    filename = jld_filename,
-                                   overwrite_existing = true)
+                                   overwrite_files = true)
 
     @test all(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
 
@@ -72,7 +72,7 @@ function test_averaging_scalar_window(model)
     jld2_output_writer = JLD2Writer(model, (; u=model.velocities.u),
                                     schedule = AveragedSpecifiedTimes([output_time]; window),
                                     filename = jld_filename,
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     simulation = Simulation(model, Δt=dt, stop_time=output_time)
     simulation.output_writers[:jld2] = jld2_output_writer
@@ -150,7 +150,7 @@ function test_averaging_varying_windows(model)
     jld2_output_writer = JLD2Writer(model, (; u=model.velocities.u),
                                     schedule = AveragedSpecifiedTimes(output_times; window=windows),
                                     filename = jld_filename,
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     simulation = Simulation(model, Δt=dt, stop_time=FT(1.0))
     simulation.output_writers[:jld2] = jld2_output_writer
@@ -208,7 +208,7 @@ function test_averaging_datetime_windows(model)
     jld2_output_writer = JLD2Writer(datetime_model, datetime_model.velocities,
                                     schedule = AveragedSpecifiedTimes(times; window),
                                     filename = jld_filename,
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     # Set u to the day number from start
     function set_u_to_day!(sim)
@@ -288,7 +288,7 @@ function test_averaging_datetime_varying_period_windows(model)
     jld2_output_writer = JLD2Writer(datetime_model, datetime_model.velocities,
                                     schedule = AveragedSpecifiedTimes(times; window=windows),
                                     filename = jld_filename,
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     # Set u to the day number from start
     function set_u_to_day!(sim)

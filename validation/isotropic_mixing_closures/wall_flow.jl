@@ -68,7 +68,7 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
                                                       filename = joinpath(@__DIR__, simname *"_"* closure_name *".nc"),
                                                       schedule = TimeInterval(1),
                                                       global_attributes = (; u★, z₀, H, L),
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
     run!(simulation)
 
 end

@@ -17,7 +17,7 @@ function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
                                                              filename = "constant_fields",
                                                              schedule = IterationInterval(10),
                                                              array_type = Array{FT},
-                                                             overwrite_existing = true)
+                                                             overwrite_files = true)
 
     run!(simulation)
 
@@ -65,7 +65,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                                                                      filename = filepath3d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
-                                                                     overwrite_existing = true)
+                                                                     overwrite_files = true)
 
     filepath2d = "test_2d_output_with_halos" * file_ext
     if output_writer == JLD2Writer
@@ -74,7 +74,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                                                                          indices = (:, :, grid.Nz),
                                                                          with_halos = true,
                                                                          schedule = TimeInterval(30seconds),
-                                                                         overwrite_existing = true)
+                                                                         overwrite_files = true)
     else
         @warn "Skipping 2D output writer since you cannot pass non-default indices to NetCDFWriter if `with_halos=true`."
     end
@@ -86,14 +86,14 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                                                                      filename = filepath1d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
-                                                                     overwrite_existing = true)
+                                                                     overwrite_files = true)
 
     unsplit_filepath = "test_unsplit_output" * file_ext
     simulation.output_writers[:unsplit_writer] = output_writer(model, profiles,
                                                                filename = unsplit_filepath,
                                                                with_halos = true,
                                                                schedule = TimeInterval(10seconds),
-                                                               overwrite_existing = true)
+                                                               overwrite_files = true)
 
     split_filepath = "test_split_output" * file_ext
     simulation.output_writers[:split_writer] = output_writer(model, profiles,
@@ -101,7 +101,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                                                              with_halos = true,
                                                              schedule = TimeInterval(10seconds),
                                                              file_splitting = TimeInterval(30seconds),
-                                                             overwrite_existing = true)
+                                                             overwrite_files = true)
 
     run!(simulation)
 
@@ -333,7 +333,7 @@ function test_field_time_series_split_files(arch)
                                                      dir = dir,
                                                      schedule = IterationInterval(1),
                                                      file_splitting = TimeInterval(3),
-                                                     overwrite_existing = true)
+                                                     overwrite_files = true)
     run!(simulation)
 
     # Use absolute path (tests glob fix)
@@ -404,7 +404,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
                                                   filename,
                                                   schedule=IterationInterval(1),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
     run!(simulation)
 
     ut = FieldTimeSeries(filename, "u")
@@ -434,7 +434,7 @@ function test_field_time_series_function_boundary_conditions(arch)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
                                                   filename,
                                                   schedule=IterationInterval(1),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
     run!(simulation)
 
     @test FieldTimeSeries(filename, "u") isa FieldTimeSeries

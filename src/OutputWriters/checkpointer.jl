@@ -8,7 +8,7 @@ mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     cleanup :: Bool
 end
@@ -18,7 +18,7 @@ end
                  schedule,
                  dir = ".",
                  prefix = "checkpoint",
-                 overwrite_existing = false,
+                 overwrite_files = false,
                  verbose = false,
                  cleanup = false)
 
@@ -41,7 +41,7 @@ Keyword arguments
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
             On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
-- `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
+- `overwrite_files`: Remove existing files if their filenames conflict. Default: `false`.
 
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
@@ -52,7 +52,7 @@ Keyword arguments
 function Checkpointer(model; schedule,
                       dir = ".",
                       prefix = "checkpoint",
-                      overwrite_existing = false,
+                      overwrite_files = false,
                       verbose = false,
                       cleanup = false)
 
@@ -60,7 +60,7 @@ function Checkpointer(model; schedule,
     filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
     prefix = String(chop(filename, tail=length(".jld2")))
 
-    return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup)
 end
 
 #####
