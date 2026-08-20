@@ -272,10 +272,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     strategy = substep_halo_filling(extend_halos, bcs)
 
+    # Without filling in between substeps the halo erodes by one stencil width per stage, so a multi-stage
+    # substep integrator needs a proportionally deeper halo in `Connected` directions.
+    stages = stages_per_substep(free_surface.timestepper)
+
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
-        maybe_extend_halos(TX, TY, grid, substepping)
+        maybe_extend_halos(TX, TY, grid, substepping, stages)
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
@@ -303,8 +307,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
 
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
-                                          bcs.U, bcs.V)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs)
 
     slow_forcing = materialize_slow_forcing(free_surface.slow_forcing, maybe_extended_grid, bcs.U, bcs.V)
 
@@ -394,14 +397,14 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 #####
 
 # Extending halos is not allowed with variable time-stepping
-maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize, stages) = grid
 
-function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
+function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber, stages)
     old_halos = halo_size(grid)
-    Nsubsteps = length(substepping.averaging_weights)
+    step_halo = stages * length(substepping.averaging_weights) + 2
 
-    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 

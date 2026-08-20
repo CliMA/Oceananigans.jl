@@ -294,11 +294,11 @@ const MRG = MultiRegionGrid
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halos[2]), old_halos[3])
 
-function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber)
+function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber, stages)
     old_halos = halo_size(grid)
-    Nsubsteps = length(substepping.averaging_weights)
+    step_halo = stages * length(substepping.averaging_weights) + 2
 
-    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
+    new_halos = multiregion_split_explicit_halos(old_halos, step_halo, grid.partition)
 
     if new_halos == old_halos
         return grid
