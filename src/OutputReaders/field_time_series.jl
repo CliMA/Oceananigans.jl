@@ -517,13 +517,13 @@ fts[1, 2, 3, Time(-1.25)]
 
 To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
 
-```jldoctest field_time_series; teardown = :(rm("test.jld2"))
+```jldoctest field_time_series; teardown = :(rm("ondisk_example.jld2"))
 output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
     output_times;
     backend = OnDisk(),
-    path = "test.jld2",
+    path = "ondisk_example.jld2",
     name = "c",
 )
 for idx in eachindex(output_times)
