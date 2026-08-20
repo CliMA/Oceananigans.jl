@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices
 
 using Random
 using NCDatasets
@@ -718,6 +718,29 @@ end
 ##### Run tests
 #####
 
+function test_precomputed_time_interpolator(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    times = [0, 1, 3]
+
+    for time_indexing in (Linear(), Clamp(), Cyclical())
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        for n in 1:length(times)
+            set!(fts[n], (x, y, z) -> n * x)
+        end
+
+        # A `TimeInterpolator` built on the host reads the same value as `Time(t)`, which
+        # searches `times` at the point of use.
+        for t in (-1, 0, 0.5, 1, 2.25, 3, 4)
+            time_interpolator = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, t)
+            for (i, j, k) in ((1, 1, 1), (2, 1, 2))
+                @test @allowscalar fts[i, j, k, time_interpolator] == fts[i, j, k, Time(t)]
+            end
+        end
+    end
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
@@ -870,6 +893,12 @@ end
 
     @testset "Time Interpolation" begin
         test_time_interpolation()
+    end
+
+    for arch in archs
+        @testset "Precomputed TimeInterpolator [$(typeof(arch))]" begin
+            test_precomputed_time_interpolator(arch)
+        end
     end
 
     filepath_sine = "one_dimensional_sine.jld2"
