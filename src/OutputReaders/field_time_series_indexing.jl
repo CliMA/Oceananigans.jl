@@ -228,8 +228,8 @@ end
 @inline Base.getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_interpolator::TimeInterpolator) =
     time_interpolated_getindex(fts, i, j, k,
                                time_interpolator.fractional_index,
-                               convert(Int, time_interpolator.first_index),
-                               convert(Int, time_interpolator.second_index))
+                               time_interpolator.first_index,
+                               time_interpolator.second_index)
 
 @inline function time_interpolated_getindex(fts, i, j, k, ñ, n₁, n₂)
     @inbounds begin
