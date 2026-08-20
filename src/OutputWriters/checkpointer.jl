@@ -359,9 +359,12 @@ function Oceananigans.restore_prognostic_state!(restored::Union{JLD2Writer, NetC
             end
         end
 
-        first_average = first(values(restored.outputs))
-        restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
-        restored.schedule.actuations = first_average.schedule.actuations
+        averaged_outputs = filter(output -> output isa WindowedTimeAverage, values(restored.outputs))
+        if !isempty(averaged_outputs)
+            first_average = first(averaged_outputs)::WindowedTimeAverage
+            restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
+            restored.schedule.actuations = first_average.schedule.actuations
+        end
     end
 
     return restored
