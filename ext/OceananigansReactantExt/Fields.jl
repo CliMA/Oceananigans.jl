@@ -79,13 +79,8 @@ function set_to_field!(u::ReactantField, v::ReactantField)
 end
 
 # `traced_type_inner` gives `BinaryOperation` and `KernelFunctionOperation` the eltype of their traced
-# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. Since
-# `AnyTracedRArray` is defined purely by eltype (`AbstractArray{TracedRNumber{T}, N}`), the operations
-# then satisfy it and Reactant's indexing becomes ambiguous with the operations' own. Reactant's method
-# assumes a view-like wrapper and reindexes into a single ancestor buffer, which an operation does not
-# have, so resolve in favour of Oceananigans'. Without this, the `_compute!` kernel of a computed field
-# fails to compile whenever the grid carries array-valued coordinates. These cannot be restricted to a
-# `ReactantGrid`: inside a kernel the adapted grid has lost its architecture parameter.
+# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. This causes an 
+# ambuigity between the indexing that we resolve be defining a more specialized indexing method.
 const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
 
 @inline Base.getindex(β::BinaryOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
@@ -94,10 +89,9 @@ const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
 @inline Base.getindex(κ::KernelFunctionOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
     evaluate_kernel_function_operation(κ, i, j, k)
 
-# Reactant reduces its own arrays natively, but has no path for a lazy `AbstractOperation` as the
-# reduction source: `mapreducedim!` delegates to `mapreduce`, whose fallback walks the operation
-# element-by-element, which traced data rejects with "Scalar indexing is disallowed". Compute the
-# operation into a `Field` first / materialize it.
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation` 
+# we materialize to the CPU fallback. 
+# TODO: find a better way to do this / WIP
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
