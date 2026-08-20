@@ -225,11 +225,15 @@ end
 # `fts.times`, which a kernel repeats in every thread; `cpu_interpolating_time_indices` does
 # that search once on the host and returns the `TimeInterpolator` accepted here, so a kernel
 # can read a series at an exact cell without touching `times`.
+#
+# The indices are converted because a `TimeInterpolator` reaches a kernel as an argument,
+# where its scalar fields can arrive as `CuTracedRNumber` rather than `Int` (#4230). The
+# `Time` method needs no conversion: it computes its indices inside the kernel.
 @inline Base.getindex(fts::FlavorOfFTS, i::Int, j::Int, k::Int, time_interpolator::TimeInterpolator) =
     time_interpolated_getindex(fts, i, j, k,
                                time_interpolator.fractional_index,
-                               time_interpolator.first_index,
-                               time_interpolator.second_index)
+                               convert(Int, time_interpolator.first_index),
+                               convert(Int, time_interpolator.second_index))
 
 @inline function time_interpolated_getindex(fts, i, j, k, ñ, n₁, n₂)
     @inbounds begin
