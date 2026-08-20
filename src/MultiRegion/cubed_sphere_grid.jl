@@ -464,7 +464,7 @@ radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
 Grids.grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"
 
-function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber, stages)
+function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber; stages = 1)
     old_halos = halo_size(grid)
     step_halo = stages * length(substepping.averaging_weights) + 2
 

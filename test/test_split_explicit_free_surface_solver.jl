@@ -14,7 +14,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   WideTrig74AveragingKernel,
                                                                                   WideTrig2AveragingKernel,
                                                                                   OptimizedSymmetricAveragingKernel,
-                                                                                  OptimizedAsymmetricAveragingKernel
+                                                                                  OptimizedAsymmetricAveragingKernel,
+                                                                                  ForwardBackwardScheme,
+                                                                                  RungeKutta3Scheme
 
 @inline noforcing(args...) = 0
 
@@ -256,7 +258,7 @@ clock = Clock{Float64}(time=0)
 end # end of testset loop
 
 @testset "extend_halos vs fill_halos consistency" begin
-    for arch in archs
+    for arch in archs, timestepper in (ForwardBackwardScheme(), RungeKutta3Scheme())
         topology = (Periodic, Periodic, Bounded)
         Nx, Ny, Nz = 32, 32, 1
         Lx = Ly = 2π
@@ -271,12 +273,12 @@ end # end of testset loop
         Nsubsteps = 30
 
         # Create two free surfaces: one with extended halos, one that fills halos each substep
-        sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
+        sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps, timestepper,
                                                averaging_kernel = ConstantAveragingKernel(),
                                                extend_halos = true)
         sefs_extend = materialize_free_surface(sefs_extend, velocities, grid, barotropic_boundary_conditions(grid))
 
-        sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
+        sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps, timestepper,
                                              averaging_kernel = ConstantAveragingKernel(),
                                              extend_halos = false)
         sefs_fill = materialize_free_surface(sefs_fill, velocities, grid, barotropic_boundary_conditions(grid))
@@ -504,8 +506,8 @@ end
         seamount(x, y) = -2000 + 1200 * exp(-((x - 1e5)^2 + (y - 5e4)^2) / (2.5e4)^2)
         grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(seamount))
 
-        function run(slow_forcing)
-            fs = SplitExplicitFreeSurface(grid; substeps=24, timestepper=RungeKutta3Scheme(), slow_forcing)
+        function run(slow_forcing; extend_halos=true)
+            fs = SplitExplicitFreeSurface(grid; substeps=24, timestepper=RungeKutta3Scheme(), slow_forcing, extend_halos)
             model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, buoyancy=BuoyancyTracer(),
                                                 tracers=(:b, :c), timestepper=:SplitRungeKutta3,
                                                 vertical_coordinate=ZStarCoordinate())
@@ -519,10 +521,12 @@ end
 
         frozen = run(FrozenSlowForcing())
         quad   = run(StageQuadraticSlowForcing(SplitRungeKuttaTimeStepper(stages=3)))
+        filled = run(FrozenSlowForcing(); extend_halos=false)
 
         # The reconstruction touches the momentum forcing only, never the transport that advects tracers,
-        # so constancy on the z★ grid must survive untouched.
-        for model in (frozen, quad)
+        # so constancy on the z★ grid must survive untouched -- for either halo strategy, since `filled`
+        # substeps with the plain operators over freshly filled halos rather than into the halo itself.
+        for model in (frozen, quad, filled)
             c = interior(model.tracers.c)
             wet = c .!= 0
             @test maximum(abs, c[wet] .- 1) < 1e-12

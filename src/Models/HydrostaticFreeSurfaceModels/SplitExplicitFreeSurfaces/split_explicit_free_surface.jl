@@ -255,7 +255,6 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
 end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected,
-                                RightCenterFolded, RightFaceFolded,
                                 LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                                 LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 
@@ -279,7 +278,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
-        maybe_extend_halos(TX, TY, grid, substepping, stages)
+        maybe_extend_halos(TX, TY, grid, substepping; stages)
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
@@ -396,10 +395,16 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 ##### Maybe extend halos in Connected topologies
 #####
 
-# Extending halos is not allowed with variable time-stepping
-maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize, stages) = grid
+# Taking the free surface rather than its substepping picks up the stage count of its substep integrator,
+# which is what a caller sizing halos to match the free surface grid wants.
+maybe_extend_halos(TX, TY, grid, free_surface::SplitExplicitFreeSurface) =
+    maybe_extend_halos(TX, TY, grid, free_surface.substepping; stages = stages_per_substep(free_surface.timestepper))
 
-function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber, stages)
+# Extending halos is not allowed with variable time-stepping
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize; stages = 1) = grid
+
+# `stages` is how many kernels advance the state per substep, and so how many cells of halo a substep erodes.
+function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stages = 1)
     old_halos = halo_size(grid)
     step_halo = stages * length(substepping.averaging_weights) + 2
 
@@ -447,9 +452,8 @@ end
 @inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 @inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 @inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
-
-@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
-@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N
+@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
 @inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
