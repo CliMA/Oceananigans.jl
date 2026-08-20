@@ -105,8 +105,8 @@ end
 # The 360° window that a queried longitude is folded into. On a `Periodic` grid every
 # longitude belongs to some cell, so the window starts at the western edge. A `Bounded` grid
 # may cover only part of the globe: a query just west of its western edge must stay just west
-# of it rather than reappear at the eastern edge, so the window is centred on the grid. Without
-# this a node one cell west of λ = 0 folds to λ ≈ 360 and indexes far past the grid. Centring
+# of it rather than reappear at the eastern edge, so the window is centered on the grid. Without
+# this a node one cell west of λ = 0 folds to λ ≈ 360 and indexes far past the grid. Centering
 # on the grid leaves a `Bounded` grid that spans the full globe unchanged.
 @inline longitude_window_start(::Periodic, λᵂ, λᴱ) = λᵂ
 @inline longitude_window_start(topo, λᵂ, λᴱ) = (λᵂ + λᴱ) / 2 - 180
