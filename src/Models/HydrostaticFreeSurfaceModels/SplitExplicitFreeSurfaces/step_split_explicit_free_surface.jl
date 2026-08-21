@@ -41,7 +41,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper, λᵁ, λⱽ)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -56,8 +56,11 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
     # since η lives on the surface and doesn't have vertical structure
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        Uᵗ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        Vᵗ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+
+        U[i, j, 1] = Uᵗ / barotropic_damping(i, j, grid, Δτ, Hᶠᶜ, λᵁ)
+        V[i, j, 1] = Vᵗ / barotropic_damping(i, j, grid, Δτ, Hᶜᶠ, λⱽ)
 
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
@@ -123,7 +126,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    λᵁ, λⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, λᵁ, λⱽ)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     barotropic_model_fields = (; U, V, η)
@@ -181,7 +185,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    λᵁ, λⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, λᵁ, λⱽ)
     η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin
@@ -236,6 +241,14 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
 
+    # Refresh the column-integrated implicit boundary coefficients once per baroclinic step; they are
+    # then held fixed across the substeps, matching the treatment of the barotropic forcing.
+    coefficients = free_surface.implicit_boundary_coefficients
+    compute_column_implicit_coefficients!(coefficients.U, coefficients.V, free_surface_grid,
+                                          model.clock, fields(model),
+                                          model.velocities.u, model.velocities.v,
+                                          free_surface.kernel_parameters)
+
     # Compute barotropic substepping parameters: number of substeps per baroclinic time step, fractional barotropic time
     # step, and the corresponding averaging and transport weights.
     Nsubsteps = calculate_substeps(substepping, Δt)
@@ -274,3 +287,14 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     return nothing
 end
+
+@inline barotropic_damping(i, j, grid, Δτ, H, ::Nothing) = one(grid)
+
+@inline function barotropic_damping(i, j, grid, Δτ, H, λ)
+    wet = H > zero(H)
+    λᵢⱼ = @inbounds λ[i, j, 1]
+    return ifelse(wet, one(grid) + Δτ * λᵢⱼ / H, one(grid))
+end
+
+@inline barotropic_boundary_coefficients(::Nothing) = (nothing, nothing)
+@inline barotropic_boundary_coefficients(coefficients) = (coefficients.U, coefficients.V)
