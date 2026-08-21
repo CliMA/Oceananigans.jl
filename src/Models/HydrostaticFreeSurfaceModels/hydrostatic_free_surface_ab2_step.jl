@@ -43,7 +43,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     @apply_regionally compute_momentum_flux_bcs!(model)
 
     # Advance the free surface
-    compute_free_surface_tendency!(grid, model, model.free_surface, Δt)
+    compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     # Update velocities

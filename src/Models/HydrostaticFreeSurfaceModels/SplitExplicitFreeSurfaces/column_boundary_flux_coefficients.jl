@@ -24,13 +24,12 @@ using Oceananigans.Operators: Δz
 ##### barotropic mode and carries the true stress `λ 𝓋ᵦ`, so a sheared column is damped by the stress
 ##### it actually has rather than by its barotropic velocity.
 #####
-##### The deviation is the one the boundary cell will hold at the end of the step, not the one it holds
-##### now: the vertical solver relaxes that cell by `1 + Λᶠ Δt / Δzᶠ` while the free surface substeps,
-##### and a stiff face relaxes to the barotropic velocity within a single step. Taking `𝓋ᵦ` before that
-##### relaxation damps a stiff face as though it still carried its old velocity, which is precisely the
-##### stress it has just lost. With the relaxation included the scheme is exact in both limits: it
-##### reduces to the explicit stress as `Λᶠ Δt / Δzᶠ → 0`, and to no barotropic damping at all as the
-##### face stiffens and its velocity is clamped to the mean.
+##### The deviation is taken as it stands at the start of the step. Discounting it by the relaxation
+##### `1 + Λᶠ Δt / Δzᶠ` that the vertical solver would apply to an *isolated* boundary cell is only
+##### right without vertical mixing: a shelf column is mixed, its boundary cell is resupplied with
+##### momentum from above, and it holds a large fraction of the barotropic velocity throughout the
+##### step. Discounting it there cancels almost all of the drag and leaves the shallow barotropic mode
+##### undamped.
 #####
 ##### `Λ` is signed the way it enters the implicit diagonal: the domain top contributes `-J/Δz` to the
 ##### tendency and enters with `+λ`; the domain bottom contributes `+J/Δz` and enters with `-λ`; both
@@ -49,17 +48,14 @@ velocity `𝓋ᵦ` from the barotropic velocity `𝓋̄`. Both sum over every ve
 vanish for boundary conditions with no implicit part. A column whose velocity is depth-uniform has
 `Ω = 0`, and the damping is then purely implicit.
 """
-# One face's contribution: its coefficient `Λᶠ`, and the stress it will realize once the vertical
-# solver has relaxed the boundary cell over the step.
-@inline function boundary_face_contribution(i, j, k, grid, ℓx, ℓy, ℓz, Δt, Λᶠ, 𝓋)
-    ρ = one(grid) + Λᶠ * Δt / Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-    return Λᶠ, @inbounds Λᶠ * 𝓋[i, j, k] / ρ
-end
+# One face's contribution: its coefficient `Λᶠ`, and the stress it realizes.
+@inline boundary_face_contribution(i, j, k, grid, ℓx, ℓy, ℓz, Λᶠ, 𝓋) =
+    Λᶠ, @inbounds Λᶠ * 𝓋[i, j, k]
 
-@inline function column_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, Δt, clock, fields, 𝓋, 𝓋̄,
+@inline function column_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, clock, fields, 𝓋, 𝓋̄,
                                                    top_bc, bottom_bc, immersed_bc::ImmersedBoundaryCondition)
     Nz = size(grid, 3)
-    Λ, S = domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, Δt, clock, fields, 𝓋, top_bc, bottom_bc)
+    Λ, S = domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, clock, fields, 𝓋, top_bc, bottom_bc)
 
     # The immersed boundary sits at an arbitrary k, so its contribution is found by walking the column.
     for k in 1:Nz
@@ -74,7 +70,7 @@ end
         λᵗ = immersed_implicit_flux_coefficient(immersed_bc.top,    i, j, k, grid, clock, fields)
         λ  = ifelse(on_bottom, λᵇ, zero(grid)) + ifelse(on_top, λᵗ, zero(grid))
 
-        Λᶠ, Sᶠ = boundary_face_contribution(i, j, k, grid, ℓx, ℓy, ℓz, Δt, -λ, 𝓋)
+        Λᶠ, Sᶠ = boundary_face_contribution(i, j, k, grid, ℓx, ℓy, ℓz, -λ, 𝓋)
         Λ += Λᶠ
         S += Sᶠ
     end
@@ -83,21 +79,21 @@ end
 end
 
 # A field whose immersed condition carries no implicit part contributes only its top and bottom faces.
-@inline function column_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, Δt, clock, fields, 𝓋, 𝓋̄,
+@inline function column_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, clock, fields, 𝓋, 𝓋̄,
                                                    top_bc, bottom_bc, immersed_bc)
-    Λ, S = domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, Δt, clock, fields, 𝓋, top_bc, bottom_bc)
+    Λ, S = domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, clock, fields, 𝓋, top_bc, bottom_bc)
     return Λ, Λ * 𝓋̄ - S
 end
 
 # `Λ` sums the coefficients, `S` the stresses they realize; the caller turns them into `Ω`.
-@inline function domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, Δt, clock, fields, 𝓋, top_bc, bottom_bc)
+@inline function domain_boundary_flux_coefficients(i, j, grid, ℓx, ℓy, ℓz, clock, fields, 𝓋, top_bc, bottom_bc)
     Nz = size(grid, 3)
 
     λᵗ = implicit_flux_coefficient(top_bc,    i, j, grid, clock, fields)
     λᵇ = implicit_flux_coefficient(bottom_bc, i, j, grid, clock, fields)
 
-    Λᵗ, Sᵗ = boundary_face_contribution(i, j, Nz, grid, ℓx, ℓy, ℓz, Δt,  λᵗ, 𝓋)
-    Λᵇ, Sᵇ = boundary_face_contribution(i, j,  1, grid, ℓx, ℓy, ℓz, Δt, -λᵇ, 𝓋)
+    Λᵗ, Sᵗ = boundary_face_contribution(i, j, Nz, grid, ℓx, ℓy, ℓz,  λᵗ, 𝓋)
+    Λᵇ, Sᵇ = boundary_face_contribution(i, j,  1, grid, ℓx, ℓy, ℓz, -λᵇ, 𝓋)
 
     return Λᵗ + Λᵇ, Sᵗ + Sᵇ
 end
@@ -113,7 +109,10 @@ end
 
 @inline barotropic_velocity(i, j, transport, H) = ifelse(H > zero(H), @inbounds(transport[i, j, 1]) / H, zero(H))
 
-@kernel function _compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, Δt, clock, fields, u, v, U, V, η, u_bcs, v_bcs)
+# The boundary conditions are unpacked by the caller: a `FieldBoundaryConditions` holds the compiled
+# halo-filling kernels, so it is not isbits and cannot be indexed into on a GPU.
+@kernel function _compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, clock, fields, u, v, U, V, η,
+                                                        u_top, u_bottom, u_immersed, v_top, v_bottom, v_immersed)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -122,17 +121,25 @@ end
     ū = barotropic_velocity(i, j, U, x_column_depth(i, j, k_top, grid, filled_halos, η))
     v̄ = barotropic_velocity(i, j, V, y_column_depth(i, j, k_top, grid, filled_halos, η))
 
-    Λu, Ωu = column_boundary_flux_coefficients(i, j, grid, Face(), Center(), Center(), Δt, clock, fields, u, ū, u_bcs.top, u_bcs.bottom, u_bcs.immersed)
-    Λv, Ωv = column_boundary_flux_coefficients(i, j, grid, Center(), Face(), Center(), Δt, clock, fields, v, v̄, v_bcs.top, v_bcs.bottom, v_bcs.immersed)
+    Λu, Ωu = column_boundary_flux_coefficients(i, j, grid, Face(), Center(), Center(), clock, fields, u, ū, u_top, u_bottom, u_immersed)
+    Λv, Ωv = column_boundary_flux_coefficients(i, j, grid, Center(), Face(), Center(), clock, fields, v, v̄, v_top, v_bottom, v_immersed)
 
     set_column_coefficients!(cᵁ, i, j, Λu, Ωu)
     set_column_coefficients!(cⱽ, i, j, Λv, Ωv)
 end
 
-compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, Δt, clock, model_fields, u, v, U, V, η) =
+function compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, clock, model_fields, u, v, U, V, η)
+    u_bcs = u.boundary_conditions
+    v_bcs = v.boundary_conditions
+
     launch!(architecture(grid), grid, :xy,
-            _compute_column_implicit_coefficients!, cᵁ, cⱽ, grid, filled_halos, Δt, clock, model_fields,
-            u, v, U, V, η, u.boundary_conditions, v.boundary_conditions)
+            _compute_column_implicit_coefficients!, cᵁ, cⱽ, grid, filled_halos, clock, model_fields,
+            u, v, U, V, η,
+            u_bcs.top, u_bcs.bottom, u_bcs.immersed,
+            v_bcs.top, v_bcs.bottom, v_bcs.immersed)
+
+    return nothing
+end
 
 # Nothing to refresh when neither component carries an implicit part.
 compute_column_implicit_coefficients!(::Nothing, ::Nothing, args...) = nothing

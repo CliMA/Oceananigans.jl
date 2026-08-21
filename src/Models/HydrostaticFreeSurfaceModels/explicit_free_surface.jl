@@ -157,7 +157,7 @@ end
     return - δh_U
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, Δt) =
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
     @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
 
 # Compute free surface tendency
