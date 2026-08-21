@@ -696,15 +696,18 @@ function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing
     cb = condition_operand(b, condition, 0)
 
     B = ca * cb # Binary operation
-    r = zeros(a.grid, 1)
+
+    # Same rank as the source, so the reduced dimensions can be inferred from the shapes
+    r = zeros(a.grid, ntuple(_ -> 1, ndims(B))...)
 
     Base.mapreducedim!(identity, +, r, B)
     return @allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
-    r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    ca = condition_operand(a, condition, 0)
+    r = zeros(a.grid, ntuple(_ -> 1, ndims(ca))...)
+    Base.mapreducedim!(x -> x * x, +, r, ca)
     return @allowscalar sqrt(r[1])
 end
 
