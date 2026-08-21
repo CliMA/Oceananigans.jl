@@ -664,6 +664,16 @@ function zarr_round_trip(grid; tag::String, with_halos = false)
     end
 end
 
+function scalar_free_zarr_round_trip(grid; kwargs...)
+    round_trip() = zarr_round_trip(grid; kwargs...)
+
+    if architecture(grid) isa GPU
+        return with_scalar_indexing_disallowed(round_trip)
+    else
+        return round_trip()
+    end
+end
+
 @testset "ZarrWriter [grid-type sweep]" begin
     @info "  Testing ZarrWriter round-trip across grid types..."
 
@@ -734,11 +744,11 @@ end
         for (tag, factory) in grid_factories
             @testset "$tag" begin
                 grid = factory(arch)
-                @test zarr_round_trip(grid; tag)
+                @test scalar_free_zarr_round_trip(grid; tag)
 
                 if arch isa GPU && tag in ("latitude_longitude_stretched", "tripolar")
                     halo_tag = tag * "_with_halos"
-                    @test zarr_round_trip(grid; tag = halo_tag, with_halos = true)
+                    @test scalar_free_zarr_round_trip(grid; tag = halo_tag, with_halos = true)
                 end
             end
         end

@@ -40,9 +40,9 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
 
-    # A materializing `old_data[1:Ni, 1:Nj]` would fall back to a scalar loop on
-    # GPU-backed OffsetArrays, so broadcast from a view instead.
-    old_interior = view(old_data, 1:Ni, 1:Nj)
+    # Materialize the interior because a lazy view of a GPU-backed OffsetArray
+    # retains generic scalar indexing in its broadcast path.
+    old_interior = old_data[1:Ni, 1:Nj]
 
     # Use Center in z so the TripolarGrid fold dispatch adds the longitude wrap.
     for k in axes(new_field.data, 3)
