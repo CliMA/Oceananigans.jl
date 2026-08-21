@@ -73,7 +73,7 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
+function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface)
 
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
@@ -87,7 +87,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     coefficients = free_surface.implicit_boundary_coefficients
     @apply_regionally compute_column_implicit_coefficients!(coefficients.U, coefficients.V, grid,
-                                                            filled_halos(free_surface), Δt, model.clock,
+                                                            filled_halos(free_surface), model.clock,
                                                             fields(model), model.velocities.u, model.velocities.v,
                                                             free_surface.barotropic_velocities.U,
                                                             free_surface.barotropic_velocities.V,
