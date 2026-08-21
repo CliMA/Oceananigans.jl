@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Utils: prettysummary
-import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -87,8 +87,6 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
     return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt,
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
-
-using Oceananigans.DistributedComputations: all_reduce
 
 """
 $(TYPEDSIGNATURES)

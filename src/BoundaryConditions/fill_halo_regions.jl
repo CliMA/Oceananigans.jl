@@ -1,5 +1,4 @@
 using OffsetArrays: OffsetArray
-using Oceananigans.Utils
 using Oceananigans.Grids: architecture
 
 #####
