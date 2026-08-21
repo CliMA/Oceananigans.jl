@@ -22,6 +22,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     align_time_step :: BL
     running :: BL
     initialized :: BL
+    pickup_pending :: BL
     verbose :: BL
     minimum_relative_step :: FT
 end
@@ -112,6 +113,7 @@ function Simulation(model;
                      callbacks,
                      0.0,
                      align_time_step,
+                     false,
                      false,
                      false,
                      verbose,
@@ -207,6 +209,7 @@ function Oceananigans.TimeSteppers.reset!(sim::Simulation)
     sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
+    sim.pickup_pending = false
     sim.running = true
     reset!(timestepper(sim.model))
     return nothing
@@ -297,6 +300,8 @@ function Oceananigans.restore_prognostic_state!(restored::Simulation, from)
     restored.align_time_step = from.align_time_step
     restored.verbose = from.verbose
     restored.minimum_relative_step = from.minimum_relative_step
+    restored.initialized = false
+    restored.pickup_pending = true
     return restored
 end
 

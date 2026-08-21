@@ -20,6 +20,7 @@ using Oceananigans.Utils: Utils, IterationInterval, ordered_dict_show
 
 # To be extended in the `Models` module
 timestepper(model) = nothing
+initialize_after_pickup!(model) = update_state!(model)
 
 include("callback.jl")
 include("simulation.jl")
