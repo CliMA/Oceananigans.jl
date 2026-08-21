@@ -292,7 +292,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
-    implicit_boundary_coefficients = materialize_column_implicit_coefficients(maybe_extended_grid, velocities.u, velocities.v)
+    implicit_boundary_coefficients = materialize_column_implicit_coefficients(maybe_extended_grid, velocities.u, velocities.v, bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                       barotropic_velocities,

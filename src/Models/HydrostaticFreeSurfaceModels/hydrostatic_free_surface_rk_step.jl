@@ -35,7 +35,7 @@ The order of operations for explicit free surfaces is:
     @apply_regionally compute_momentum_flux_bcs!(model)
 
     # Advance the free surface first
-    compute_free_surface_tendency!(grid, model, free_surface)
+    compute_free_surface_tendency!(grid, model, free_surface, Δτ)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     @apply_regionally begin

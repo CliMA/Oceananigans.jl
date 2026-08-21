@@ -73,7 +73,7 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
+function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
 
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
@@ -84,7 +84,27 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
     baroclinic_timestepper = model.timestepper
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
+
+    coefficients = free_surface.implicit_boundary_coefficients
+    @apply_regionally compute_column_implicit_coefficients!(coefficients.U, coefficients.V, grid,
+                                                            filled_halos(free_surface), Δt, model.clock,
+                                                            fields(model), model.velocities.u, model.velocities.v,
+                                                            free_surface.barotropic_velocities.U,
+                                                            free_surface.barotropic_velocities.V,
+                                                            free_surface.displacement)
+
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
+    fill_column_implicit_coefficient_halos!(coefficients)
 
     return nothing
 end
+
+fill_column_implicit_coefficient_halos!(::Nothing) = nothing
+
+function fill_column_implicit_coefficient_halos!(coefficients)
+    fill_column_implicit_coefficient_halos!(coefficients.U)
+    fill_column_implicit_coefficient_halos!(coefficients.V)
+    return nothing
+end
+
+fill_column_implicit_coefficient_halos!(coefficients::NamedTuple{(:Λ, :Ω)}) = fill_halo_regions!((coefficients.Λ, coefficients.Ω); async=true)

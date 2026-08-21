@@ -249,16 +249,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
 
-    # Refresh the column-integrated implicit boundary coefficients once per baroclinic step; they are
-    # then held fixed across the substeps, matching the treatment of the barotropic forcing.
-    coefficients = free_surface.implicit_boundary_coefficients
-    compute_column_implicit_coefficients!(coefficients.U, coefficients.V, free_surface_grid,
-                                          filled_halos(free_surface), Δt, model.clock, fields(model),
-                                          model.velocities.u, model.velocities.v,
-                                          barotropic_velocities.U, barotropic_velocities.V,
-                                          free_surface.displacement,
-                                          free_surface.kernel_parameters)
-
     # Compute barotropic substepping parameters: number of substeps per baroclinic time step, fractional barotropic time
     # step, and the corresponding averaging and transport weights.
     Nsubsteps = calculate_substeps(substepping, Δt)
