@@ -190,6 +190,39 @@ function test_time_derivative_output(arch, writer_type, path)
     return nothing
 end
 
+# The derivative only has to be evaluated at the output and on the iteration before it, which
+# is all a difference across one time step needs
+function test_time_derivative_output_schedule(arch)
+    model = relaxing_tracer_model(arch)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+    Δt = 1e-2
+
+    simulation = Simulation(model; Δt, stop_iteration=20)
+    simulation.output_writers[:derivative] = JLD2Writer(model, (; dcdt=∂ₜc);
+                                                        filename = "test_dcdt_schedule.jld2",
+                                                        schedule = IterationInterval(10),
+                                                        with_halos = false,
+                                                        overwrite_existing = true)
+    run!(simulation)
+
+    name = only(filter(key -> startswith(string(key), "TimeDerivative"), collect(keys(simulation.callbacks))))
+    schedule = simulation.callbacks[name].schedule
+
+    @test schedule isa PrecedingIterations
+
+    actuations = filter(0:20) do iteration
+        model.clock.iteration = iteration
+        model.clock.last_Δt = Δt
+        schedule(model)
+    end
+
+    @test actuations == [0, 9, 10, 19, 20]
+
+    rm("test_dcdt_schedule.jld2", force=true)
+
+    return nothing
+end
+
 #####
 ##### Checkpointing, through both the writer and the callback, in one pickup
 #####
@@ -268,6 +301,8 @@ end
                                         (ZarrWriter,   abspath("test_dcdt.zarr")))
                 test_time_derivative_output(arch, writer_type, path)
             end
+
+            test_time_derivative_output_schedule(arch)
         end
 
         @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin
