@@ -94,8 +94,12 @@ compute_column_implicit_coefficients!(::Nothing, ::Nothing, args...) = nothing
 
 @inline any_implicit_boundary_flux(bcs) = needs_implicit_solver(bcs.top) |
                                           needs_implicit_solver(bcs.bottom) |
-                                          needs_implicit_solver(bcs.immersed.top) |
-                                          needs_implicit_solver(bcs.immersed.bottom) 
+                                          immersed_needs_implicit_solver(bcs.immersed)
+
+@inline immersed_needs_implicit_solver(immersed_bc) = false
+
+@inline immersed_needs_implicit_solver(immersed_bc::ImmersedBoundaryCondition) =
+    needs_implicit_solver(immersed_bc.top) | needs_implicit_solver(immersed_bc.bottom)
 
 function materialize_column_implicit_coefficients(grid, u, v)
     u_needed = any_implicit_boundary_flux(u.boundary_conditions)
