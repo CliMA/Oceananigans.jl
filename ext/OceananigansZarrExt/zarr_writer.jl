@@ -124,6 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
+output_grid(derivative::TimeDerivative{<:AbstractField})     = grid(derivative.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -445,6 +446,10 @@ end
 
 # WindowedTimeAverage over a Field: delegate to operand (matches NetCDFWriter).
 define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{<:AbstractField}, name, model) =
+    define_zarr_output_variable!(g, writer, output.operand, name, model)
+
+# TimeDerivative of a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative{<:AbstractField}, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
