@@ -4,7 +4,7 @@ using Reactant
 
 using Oceananigans: Oceananigans
 using Oceananigans.AbstractOperations: AbstractOperation, BinaryOperation, KernelFunctionOperation,
-                                       evaluate_kernel_function_operation
+                                       kept_index
 using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!
 
@@ -79,15 +79,23 @@ function set_to_field!(u::ReactantField, v::ReactantField)
 end
 
 # `traced_type_inner` gives `BinaryOperation` and `KernelFunctionOperation` the eltype of their traced
-# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. This causes an 
-# ambuigity between the indexing that we resolve be defining a more specialized indexing method.
+# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. This causes an
+# ambiguity between Reactant's indexing and Oceananigans' that we resolve by defining a more
+# specialized indexing method. 
 const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
 
 @inline Base.getindex(β::BinaryOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
     β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
 
-@inline Base.getindex(κ::KernelFunctionOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
-    evaluate_kernel_function_operation(κ, i, j, k)
+@inline function Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ},
+                               i::TracedIndex, j::TracedIndex, k::TracedIndex) where {LX, LY, LZ}
+    if applicable(κ.kernel_function, i, j, k, κ.grid, κ.arguments...)
+        return κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
+    else
+        reduced_indices = (kept_index(LX, i)..., kept_index(LY, j)..., kept_index(LZ, k)...)
+        return κ.kernel_function(reduced_indices..., κ.grid, κ.arguments...)
+    end
+end
 
 # Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation` 
 # we materialize to the CPU fallback. 
