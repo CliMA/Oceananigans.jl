@@ -24,7 +24,9 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
-                                                        update_vertical_velocities!
+                                                        update_vertical_velocities!,
+                                                        materialize_column_implicit_coefficients,
+                                                        compute_column_implicit_coefficients!
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
