@@ -129,8 +129,8 @@ end
     set_column_coefficients!(cⱽ, i, j, Λv, Ωv)
 end
 
-compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, Δt, clock, model_fields, u, v, U, V, η, parameters) =
-    launch!(architecture(grid), grid, parameters,
+compute_column_implicit_coefficients!(cᵁ, cⱽ, grid, filled_halos, Δt, clock, model_fields, u, v, U, V, η) =
+    launch!(architecture(grid), grid, :xy,
             _compute_column_implicit_coefficients!, cᵁ, cⱽ, grid, filled_halos, Δt, clock, model_fields,
             u, v, U, V, η, u.boundary_conditions, v.boundary_conditions)
 
@@ -150,11 +150,13 @@ compute_column_implicit_coefficients!(::Nothing, ::Nothing, args...) = nothing
 @inline immersed_needs_implicit_solver(immersed_bc::ImmersedBoundaryCondition) =
     needs_implicit_solver(immersed_bc.top) | needs_implicit_solver(immersed_bc.bottom)
 
-column_coefficient_fields(ℓx, ℓy, grid) = (Λ = Field{ℓx, ℓy, Nothing}(grid), Ω = Field{ℓx, ℓy, Nothing}(grid))
+# `Λ` is a coefficient and folds as a scalar at a tripolar seam, `Ω` is a tendency carrying the sign of its velocity component.
+column_coefficient_fields(ℓx, ℓy, grid, bcs) = (Λ = Field{ℓx, ℓy, Nothing}(grid),
+                                                Ω = Field{ℓx, ℓy, Nothing}(grid, boundary_conditions = bcs))
 
-function materialize_column_implicit_coefficients(grid, u, v)
+function materialize_column_implicit_coefficients(grid, u, v, U_bcs, V_bcs)
     u_needed = any_implicit_boundary_flux(u.boundary_conditions)
     v_needed = any_implicit_boundary_flux(v.boundary_conditions)
-    return (U = u_needed ? column_coefficient_fields(Face, Center, grid) : nothing,
-            V = v_needed ? column_coefficient_fields(Center, Face, grid) : nothing)
+    return (U = u_needed ? column_coefficient_fields(Face, Center, grid, U_bcs) : nothing,
+            V = v_needed ? column_coefficient_fields(Center, Face, grid, V_bcs) : nothing)
 end
