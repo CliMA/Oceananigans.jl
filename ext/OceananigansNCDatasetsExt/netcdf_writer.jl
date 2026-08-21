@@ -49,7 +49,7 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
         constructed_fd = construct_output(fd, (:, :, :), with_halos)
-        squeezed_field_data = squeeze_nothing_dimensions(constructed_fd; array_type)
+        squeezed_field_data = squeeze_reduced_dimensions(constructed_fd; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -66,30 +66,9 @@ function add_location_attribute!(attrib, fd::AbstractField)
     return merge(loc_attrib, attrib)
 end
 
-# Entry point: extract the field's (unwrapped) grid and dispatch on its type.
-add_aux_coordinates_attribute!(attrib, fd::AbstractField, dim_name_generator; grid_index=nothing) =
-    add_aux_coordinates_attribute!(attrib, fd, underlying_grid(grid(fd)), dim_name_generator; grid_index)
-
-# Default (Rectilinear / LatitudeLongitude grids): no CF `coordinates` attribute — the field's
-# dim names already point at 1D coordinate variables.
-add_aux_coordinates_attribute!(attrib, fd, grid, dim_name_generator; grid_index=nothing) = attrib
-
-# OrthogonalSphericalShellGrid: write a CF `coordinates` attribute pointing at the 2D λ/φ
-# auxiliary coords + the 1D vertical coord, so xarray/ncview/Panoply pick up the lat/lon.
-function add_aux_coordinates_attribute!(attrib, fd, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
-    LX, LY, LZ = location(fd)
-    parts = String[]
-    if LX !== Nothing && LY !== Nothing
-        λ_name = add_grid_suffix(dim_name_generator("λ", grid, LX(), LY(), nothing, Val(:x)), grid_index)
-        φ_name = add_grid_suffix(dim_name_generator("φ", grid, LX(), LY(), nothing, Val(:y)), grid_index)
-        push!(parts, λ_name, φ_name)
-    end
-    if LZ !== Nothing
-        z = vertical_coordinate_name(grid)
-        z_name = add_grid_suffix(dim_name_generator(z, grid, nothing, nothing, LZ(), Val(:z)), grid_index)
-        push!(parts, z_name)
-    end
-    isempty(parts) || (attrib["coordinates"] = join(parts, " "))
+function add_aux_coordinates_attribute!(attrib, fd::AbstractField, dim_name_generator; grid_index=nothing)
+    coordinates = field_auxiliary_coordinates(fd, dim_name_generator; grid_index)
+    isempty(coordinates) || (attrib["coordinates"] = join(coordinates, " "))
     return attrib
 end
 
@@ -437,7 +416,7 @@ Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
 function save_output!(ds, output, model, output_name, array_type)
     fetched = fetch_output(output, model)
     data = convert_output(fetched, array_type)
-    data = squeeze_nothing_dimensions(output, data)
+    data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons...] = data
     return nothing
@@ -446,7 +425,7 @@ end
 # Saving time-dependent outputs
 function save_output!(ds, output, model, ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
-    data = squeeze_nothing_dimensions(output, data)
+    data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons..., time_index:time_index] = data
     return nothing

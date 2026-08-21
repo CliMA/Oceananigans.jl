@@ -80,20 +80,9 @@ function effective_reduced_dimensions(field)
     return Tuple(unique(all_reduced))
 end
 
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
-
-# We collect to ensure we return an array which NCDatasets.jl needs
-# instead of a range or offset array.
-function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
-    if with_halos
-        return collect(ξ)
-    else
-        inds = validate_index(inds, ℓ, T, N, H)
-        inds = restrict_to_interior(inds, ℓ, T, N)
-        return collect(ξ[inds])
-    end
-end
 
 function create_time_dimension!(dataset; attrib=nothing, dimension_type=Float64)
     if "time" ∉ keys(dataset.dim)
@@ -120,11 +109,7 @@ convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
-# Evaluate in this extension module: it imports the bare type names some values serialize
-# to (e.g. "CenterImmersedCondition()", "GPU()"), while the `import Oceananigans` at the top of
-# module binds `Oceananigans` so fully-qualified names also resolve (e.g. "Oceananigans.Grids.Periodic",
-# which is how they serialize when Oceananigans is imported rather than `using`d).
-materialize_from_netcdf(x::String) = Core.eval(@__MODULE__, Meta.parse(x))
+materialize_from_netcdf(x::String) = materialize_serialized_output(x)
 materialize_from_netcdf(x) = x
 
 #####
