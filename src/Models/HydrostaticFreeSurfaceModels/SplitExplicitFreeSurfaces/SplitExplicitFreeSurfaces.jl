@@ -35,6 +35,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 
+include("column_boundary_flux_coefficients.jl")
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")

@@ -1,6 +1,6 @@
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
-using Oceananigans.BoundaryConditions: _unwrap_for_gpu
+using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
@@ -77,11 +77,11 @@ end
 ##### Utility functions
 #####
 
-needs_implicit_solver(advection) = false
-needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+BoundaryConditions.needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+
 # `any` follows the three-valued logic and _may_ return `missing` in some cases.  Let's
 # inform the compiler with the `::Bool` annotation that we know we only deal with booleans.
-needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))::Bool
+BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions.needs_implicit_solver, values(a))::Bool
 
 """
 $(TYPEDSIGNATURES)
