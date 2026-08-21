@@ -102,8 +102,6 @@ include("nothing_free_surface.jl")
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
-include("column_boundary_flux_coefficients.jl")
-
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 using .SplitExplicitFreeSurfaces
