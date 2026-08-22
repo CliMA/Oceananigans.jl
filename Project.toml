@@ -83,7 +83,7 @@ GPUArraysCore = "0.2"
 Glob = "1.3"
 InteractiveUtils = "1.9"
 JLD2 = "0.4, 0.5, 0.6"
-KernelAbstractions = "0.9.39"
+KernelAbstractions = "0.9.39, 0.10"
 Krylov = "0.10.0"
 LinearAlgebra = "1.9"
 Logging = "1.9"
@@ -108,3 +108,6 @@ StructArrays = "0.4, 0.5, 0.6, 0.7"
 Zarr = "0.10"
 julia = "1.10"
 oneAPI = "2.4.0"
+
+[sources]
+KernelAbstractions = {url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git", rev = "0534c7336ea0ef7a178836cbb6268b1250ff65b2"}
