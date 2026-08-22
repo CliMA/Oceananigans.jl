@@ -191,6 +191,7 @@ difference against. A backward difference needs two evaluations, so the derivati
 zero until the update after this one.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
+    println("    [TimeDerivative] SEED   at iteration ", model.clock.iteration, ", t = ", model.clock.time)  # TEMPORARY
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
@@ -213,6 +214,7 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
+    println("    [TimeDerivative] UPDATE at iteration ", model.clock.iteration, ", t = ", model.clock.time)  # TEMPORARY
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
