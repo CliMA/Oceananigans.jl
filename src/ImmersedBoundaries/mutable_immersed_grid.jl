@@ -1,5 +1,5 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location
+using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
 
 using Oceananigans.Grids: AbstractUnderlyingGrid,
                           Bounded,
@@ -57,13 +57,17 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 
 const AMGXB = MutableGridOfSomeKind{<:Any, Bounded}
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
-const AMGXR = MutableGridOfSomeKind{<:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}}
+const AMGXR = MutableGridOfSomeKind{<:Any, RightConnected}
 const AMGXL = MutableGridOfSomeKind{<:Any, LeftConnected}
 
 const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, Bounded}
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}}
+# `RightCenterFolded` belongs here: the barotropic substep stops at j = Ny on a center-pivot fold, so the
+# column depth never interpolates across it and the only special row is the bounded south, as for
+# `RightConnected`. A face-pivot fold reaches j = Ny + 1 and straddles the fold, so it has its own method.
+const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightCenterFolded}}
 const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
+const AMGYFF = MutableGridOfSomeKind{<:Any, <:Any, RightFaceFolded}
 
 # Enforce Periodic conditions for column depth
 @inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η)
@@ -101,6 +105,17 @@ end
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     η₁ = @inbounds η[1, j, k]
     return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
+end
+
+# The F-pivot fold row j = Ny + 1 is a y-face of the domain, and the free surface north of it mirrors j = Ny.
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYFF, η)
+    Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
+    hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Ny = size(grid, 2)
+    η₁ = @inbounds η[i, j, k]
+    ηᴺ = @inbounds (η[i, Ny, k] + η[north_fold_index(i, grid), Ny, k]) / 2
+    return ifelse(j == 1,      mutable_column_depth(hᶜᶠᵃ, η₁),
+           ifelse(j == Ny + 1, mutable_column_depth(hᶜᶠᵃ, ηᴺ), Hᶜᶠᵃ))
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYR, η)

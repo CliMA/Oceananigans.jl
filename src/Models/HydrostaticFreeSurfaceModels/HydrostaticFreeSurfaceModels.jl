@@ -13,7 +13,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
+                                 MultiStageTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
 import Oceananigans: fields, prognostic_fields, initialize!
@@ -190,6 +191,7 @@ include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk_step.jl")
+include("hydrostatic_free_surface_ssp_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")

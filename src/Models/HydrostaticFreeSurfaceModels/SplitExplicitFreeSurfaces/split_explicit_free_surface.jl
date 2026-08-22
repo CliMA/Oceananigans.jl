@@ -40,7 +40,7 @@ function substep_halo_filling(extend_halos::Bool, bcs)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -48,9 +48,10 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
+    slow_forcing :: W # How the slow forcing is represented across the barotropic sub-cycle
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
-        return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, w::W) where {E, H, U, M, FT, K, S, T, W}
+        return new{E, H, U, M, FT, K, S, T, W}(η, u, m, g, k, s, t, w)
     end
 end
 
@@ -150,8 +151,10 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by
-                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
+                      `averaging_kernel > 0`. The default is `OptimizedAsymmetricAveragingKernel()`, which has
+                      μ₂ = μ₃ = 0 (third order) and imposes its moments directly on the substep grid, so it is
+                      exact for any `substeps` and stays stable at strong stratification. See
+                      `split_explicit_averaging_kernels.jl` for the full list and for how to choose between them.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
@@ -167,8 +170,9 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = averaging_shape_function,
-                                  timestepper = ForwardBackwardScheme())
+                                  averaging_kernel = OptimizedAsymmetricAveragingKernel(),
+                                  timestepper = ForwardBackwardScheme(),
+                                  slow_forcing = FrozenSlowForcing())
 
     if !isnothing(grid)
         FT = eltype(grid)
@@ -192,7 +196,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   gravitational_acceleration,
                                                   nothing,
                                                   substepping,
-                                                  timestepper)
+                                                  timestepper,
+                                                  slow_forcing)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -218,6 +223,12 @@ end
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
+
+    # Round up to the count the kernel needs for its window edge to land on the τ grid. Rounding up only
+    # shortens the substep, so the requested `cfl` is still met.
+    multiple = required_substep_multiple(averaging_kernel)
+    substeps = multiple * cld(substeps, multiple)
+
     substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)
     return substepping
 end
@@ -244,7 +255,6 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
 end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected,
-                                RightCenterFolded, RightFaceFolded,
                                 LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                                 LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 
@@ -261,10 +271,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     strategy = substep_halo_filling(extend_halos, bcs)
 
+    # Without filling in between substeps the halo erodes by one stencil width per stage, so a multi-stage
+    # substep integrator needs a proportionally deeper halo in `Connected` directions.
+    stages = stages_per_substep(free_surface.timestepper)
+
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
-        maybe_extend_halos(TX, TY, grid, substepping)
+        maybe_extend_halos(TX, TY, grid, substepping; stages)
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
@@ -292,8 +306,9 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
 
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
-                                          bcs.U, bcs.V)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs)
+
+    slow_forcing = materialize_slow_forcing(free_surface.slow_forcing, maybe_extended_grid, bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                       barotropic_velocities,
@@ -301,7 +316,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                       gravitational_acceleration,
                                                       kernel_parameters,
                                                       substepping,
-                                                      timestepper)
+                                                      timestepper,
+                                                      slow_forcing)
 end
 
 #####
@@ -334,15 +350,6 @@ end
 
 @inline companion_at_gravity_wave_side(::Nothing, side, companion) = nothing
 @inline companion_at_gravity_wave_side(bcs, side, companion) = gravity_wave_boundary_condition(getproperty(bcs, side)) ? companion : nothing
-
-# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
-@inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
-    τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-    return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
-end
-
-@inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
-@inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotropic` based on a CFL condition """
@@ -377,26 +384,6 @@ function FixedTimeStepSize(grid;
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
-@inline function weights_from_substeps(FT, substeps, averaging_kernel)
-    τᶠ = range(FT(0), FT(2), length = substeps+1)
-    Δτ = τᶠ[2] - τᶠ[1]
-
-    averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    # Find the latest allowable weight
-    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
-
-    trimmed_weights = averaging_weights[1:M★]
-    trimmed_weights ./= sum(trimmed_weights)
-
-    # Rescale the substep size so the trimmed weights' first moment lands exactly on the baroclinic step
-    barycenter = sum(trimmed_weights .* (1:M★)) * Δτ
-    Δτ = Δτ / barycenter
-
-    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] .* Δτ
-
-    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
-end
-
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
 Base.summary(s::FixedSubstepNumber) = string("FixedSubstepNumber($(length(s.averaging_weights)))")
 
@@ -408,15 +395,21 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 ##### Maybe extend halos in Connected topologies
 #####
 
+# Taking the free surface rather than its substepping picks up the stage count of its substep integrator,
+# which is what a caller sizing halos to match the free surface grid wants.
+maybe_extend_halos(TX, TY, grid, free_surface::SplitExplicitFreeSurface) =
+    maybe_extend_halos(TX, TY, grid, free_surface.substepping; stages = stages_per_substep(free_surface.timestepper))
+
 # Extending halos is not allowed with variable time-stepping
-maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize; stages = 1) = grid
 
-function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
+# `stages` is how many kernels advance the state per substep, and so how many cells of halo a substep erodes.
+function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stages = 1)
     old_halos = halo_size(grid)
-    Nsubsteps = length(substepping.averaging_weights)
+    step_halo = stages * length(substepping.averaging_weights) + 2
 
-    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -459,9 +452,8 @@ end
 @inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 @inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 @inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
-
-@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
-@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N
+@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
 @inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
@@ -477,7 +469,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            free_surface.gravitational_acceleration,
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
-                                           Adapt.adapt(to, free_surface.timestepper))
+                                           Adapt.adapt(to, free_surface.timestepper),
+                                           Adapt.adapt(to, free_surface.slow_forcing))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,
@@ -498,7 +491,8 @@ end
 function prognostic_state(fs::SplitExplicitFreeSurface)
     return (displacement = prognostic_state(fs.displacement),
             barotropic_velocities = prognostic_state(fs.barotropic_velocities),
-            timestepper = prognostic_state(fs.timestepper))
+            timestepper = prognostic_state(fs.timestepper),
+            slow_forcing = prognostic_state(fs.slow_forcing))
 end
 
 function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)

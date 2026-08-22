@@ -1,3 +1,4 @@
+using Oceananigans.TimeSteppers: MultiStageTimeStepper
 #####
 ##### Compute slow tendencies with an AB2 timestepper
 #####
@@ -63,7 +64,7 @@ end
     end
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) =
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::MultiStageTimeStepper) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!,
             GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_cells_map(grid, Val(:xy)))
 
@@ -85,6 +86,9 @@ function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
+
+    # Stash the first two stage values for the quadratic reconstruction formed on the final stage.
+    @apply_regionally cache_stage_slow_forcing!(model.free_surface.slow_forcing, GUⁿ, GVⁿ, model.clock.stage)
 
     return nothing
 end
