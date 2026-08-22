@@ -82,6 +82,13 @@ boundary-cell diagonal. Returns zero for any other boundary condition.
 @inline implicit_flux_coefficient(bc, i, j, grid, clock, fields) = zero(grid)
 @inline implicit_flux_coefficient(bc::IEFBC, i, j, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, grid, clock, fields)
 
+@inline immersed_implicit_flux_coefficient(bc, i, j, k, grid, clock, fields) = zero(grid)
+@inline immersed_implicit_flux_coefficient(bc::IEFBC, i, j, k, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, k, grid, clock, fields)
+
+@inline immersed_bottom_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
+@inline immersed_top_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
+
+
 needs_implicit_solver(bc) = false
 needs_implicit_solver(bc::IEFBC) = true
 
@@ -95,16 +102,24 @@ with this function. For any other boundary condition it is just `getbc`.
 """
 @inline total_boundary_flux(bc, i, j, k, grid, clock, fields, ϕ) = getbc(bc, i, j, grid, clock, fields)
 @inline total_boundary_flux(bc::IEFBC, i, j, k, grid, clock, fields, ϕ) = @inbounds getbc(bc, i, j, grid, clock, fields) + implicit_flux_coefficient(bc, i, j, grid, clock, fields) * ϕ[i, j, k]
-
 function validate_implicit_explicit_flux_locations(bcs)
-    for side in (bcs.west, bcs.east, bcs.south, bcs.north, bcs.immersed)
+    for side in (bcs.west, bcs.east, bcs.south, bcs.north)
         if side isa IEFBC
             error("A Flux boundary condition with `IMEXFluxTimeDiscretization` is only supported on " *
                   "vertical (top/bottom) boundaries: its implicit part is embedded in the vertical solver. " *
-                  "Found one on a horizontal or immersed boundary.")
+                  "Found one on a horizontal boundary.")
         end
     end
+    validate_immersed_implicit_explicit_flux(bcs.immersed)
     return nothing
+end
+
+validate_immersed_implicit_explicit_flux(immersed_bc) = nothing
+
+function validate_immersed_implicit_explicit_flux(immersed_bc::IEFBC)
+    error("An immersed Flux boundary condition with `IMEXFluxTimeDiscretization` must be wrapped in " *
+          "an `ImmersedBoundaryCondition` so that the implicit part can be attributed to the bottom " *
+          "or top face of the immersed cell.")
 end
 
 Adapt.adapt_structure(to, c::IMEXFlux) = IMEXFlux(Adapt.adapt(to, c.explicit_flux), Adapt.adapt(to, c.implicit_coefficient))
