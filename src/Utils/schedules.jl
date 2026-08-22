@@ -350,8 +350,13 @@ restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 ##### PrecedingIterations
 #####
 
-struct PrecedingIterations{S} <: AbstractSchedule
+# Exceeds `TimeStepWizard`'s default `max_change = 1.1`, with margin for the floating point
+# comparison against it
+const default_safety_factor = 1.2
+
+struct PrecedingIterations{S, FT} <: AbstractSchedule
     parent :: S
+    safety_factor :: FT
 end
 
 """
@@ -368,13 +373,22 @@ schedule actuates every iteration, which costs extra evaluations but never misse
 
 `parent_schedule` is copied, because actuating a schedule advances it: sharing one with an
 output writer would consume the writer's actuation before it fires.
+
+For a time-based `parent_schedule`, the next actuation is anticipated by comparing against
+`safety_factor * clock.last_Δt`, so `safety_factor` must exceed the factor by which an
+adaptive time step can grow in one iteration — `TimeStepWizard` limits this to `max_change`,
+which defaults to `1.1`. A larger `safety_factor` only costs extra actuations, whereas one
+that is too small widens the interval a difference is taken over.
 """
-PrecedingIterations(parent_schedule::AbstractSchedule) =
-    PrecedingIterations{typeof(parent_schedule)}(deepcopy(parent_schedule))
+function PrecedingIterations(parent_schedule::AbstractSchedule; safety_factor = default_safety_factor)
+    S = typeof(parent_schedule)
+    FT = typeof(safety_factor)
+    return PrecedingIterations{S, FT}(deepcopy(parent_schedule), safety_factor)
+end
 
 function (schedule::PrecedingIterations)(model)
     schedule.parent(model) && return true
-    return actuates_next_iteration(schedule.parent, model.clock)
+    return actuates_next_iteration(schedule.parent, model.clock, schedule.safety_factor)
 end
 
 # Delegate so that the copied parent is initialized exactly as the schedule it was copied
@@ -384,19 +398,16 @@ initialize!(schedule::PrecedingIterations, model) = initialize!(schedule.parent,
 # Actuating more often than necessary is harmless, while missing the iteration before the
 # parent actuates silently widens the interval a difference is taken over. Schedules whose
 # next actuation cannot be anticipated therefore fall back to actuating every iteration.
-actuates_next_iteration(schedule, clock) = true
+actuates_next_iteration(schedule, clock, safety_factor) = true
 
-actuates_next_iteration(schedule::IterationInterval, clock) =
+actuates_next_iteration(schedule::IterationInterval, clock, safety_factor) =
     (clock.iteration + 1 - schedule.offset) % schedule.interval == 0
 
-function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, clock)
+function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, clock, safety_factor)
     t★ = next_actuation_time(schedule)
     t★ === Inf && return false
 
-    # Allow for an adaptive time step growing before the next iteration
-    anticipated_Δt = 2 * clock.last_Δt
-
-    return time_difference_seconds(t★, clock.time) <= anticipated_Δt
+    return time_difference_seconds(t★, clock.time) <= safety_factor * clock.last_Δt
 end
 
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =

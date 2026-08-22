@@ -2,7 +2,7 @@ using Dates: AbstractDateTime
 using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: AbstractField, Scan
-using Oceananigans.Utils: time_difference_seconds
+using Oceananigans.Utils: default_safety_factor, time_difference_seconds
 
 using Statistics: Statistics
 
@@ -17,18 +17,19 @@ Container that holds the state required to compute the time derivative of an `op
 as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
 recently computed `result`. Both are `Field`s at `location(operand)`.
 """
-mutable struct TimeDerivative{O, R, T}
+mutable struct TimeDerivative{O, R, T, FT}
            result :: R
           operand :: O
          previous :: R
     previous_time :: T
+    safety_factor :: FT
 end
 
 materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing)
+    TimeDerivative(operand, model=nothing; safety_factor=1.2)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -108,7 +109,7 @@ simulation.callbacks[:∂ₜc] = ∂ₜc
 Callback of TimeDerivative of 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU on IterationInterval(1)
 ```
 """
-function TimeDerivative(operand, model=nothing)
+function TimeDerivative(operand, model=nothing; safety_factor = default_safety_factor)
     operand = materialize_operand(operand)
 
     result = similar_field(operand)
@@ -116,7 +117,7 @@ function TimeDerivative(operand, model=nothing)
 
     previous_time = isnothing(model) ? zero(defaults.FloatType) : model.clock.time
 
-    derivative = TimeDerivative(result, operand, previous, previous_time)
+    derivative = TimeDerivative(result, operand, previous, previous_time, safety_factor)
 
     isnothing(model) || initialize!(derivative, model)
 
@@ -191,7 +192,7 @@ difference against. A backward difference needs two evaluations, so the derivati
 zero until the update after this one.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
-    println("    [TimeDerivative] SEED   at iteration ", model.clock.iteration, ", t = ", model.clock.time)  # TEMPORARY
+    println("    [TimeDerivative] SEED   at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt)")  # TEMPORARY
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
@@ -214,7 +215,7 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
-    println("    [TimeDerivative] UPDATE at iteration ", model.clock.iteration, ", t = ", model.clock.time)  # TEMPORARY
+    println("    [TimeDerivative] UPDATE at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt), differencing Δt = $(time_difference_seconds(model.clock.time, derivative.previous_time))")  # TEMPORARY
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
