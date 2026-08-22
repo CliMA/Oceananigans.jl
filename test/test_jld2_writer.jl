@@ -160,17 +160,18 @@ function test_jld2_compression(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
 
-    file_sizes = Dict{Bool, Int}()
+    compressors = ("none" => false, "deflate" => true, "zstd" => ZstdFilter())
+    file_sizes = Dict{String, Int}()
 
     mktempdir() do dir
-        for compress in (false, true)
+        for (label, compress) in compressors
             model.clock.iteration = 0
             model.clock.time = 0.0
             set!(model, c=(x, y, z) -> exp(z))
 
             simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-            filename = joinpath(dir, "compression_test_$compress.jld2")
+            filename = joinpath(dir, "compression_test_$label.jld2")
             simulation.output_writers[:tracers] = JLD2Writer(model, model.tracers;
                                                              filename,
                                                              schedule = IterationInterval(1),
@@ -179,14 +180,17 @@ function test_jld2_compression(arch)
 
             run!(simulation)
 
-            file_sizes[compress] = filesize(filename)
+            file_sizes[label] = filesize(filename)
         end
 
-        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_false.jld2"), "c")
-        c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_true.jld2"), "c")
+        c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
+        c_deflate = FieldTimeSeries(joinpath(dir, "compression_test_deflate.jld2"), "c")
+        c_zstd = FieldTimeSeries(joinpath(dir, "compression_test_zstd.jld2"), "c")
 
-        @test parent(c_compressed) == parent(c_uncompressed)
-        @test file_sizes[true] < file_sizes[false]
+        @test parent(c_deflate) == parent(c_uncompressed)
+        @test parent(c_zstd) == parent(c_uncompressed)
+        @test file_sizes["deflate"] < file_sizes["none"]
+        @test file_sizes["zstd"] < file_sizes["none"]
     end
     return nothing
 end
@@ -200,8 +204,9 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == true
+    @test writer().jld2_kw[:compress] == ZstdFilter()
     @test writer(compress=false).jld2_kw[:compress] == false
+    @test writer(compress=true).jld2_kw[:compress] == true
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
 
     # An explicit :compress entry in jld2_kw takes precedence over the compress keyword
