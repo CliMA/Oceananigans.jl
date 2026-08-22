@@ -6,7 +6,7 @@ using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
-using Oceananigans.Utils: schedule_aligned_time_step
+using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
 # Simulations are for running
 
@@ -272,7 +272,7 @@ end
 ##### Simulation initialization
 #####
 
-add_dependency!(sim, output) = nothing # fallback
+add_dependency!(sim, output, schedule) = nothing # fallback
 
 # Number past the largest index already in use rather than counting entries, so that deleting
 # a dependency cannot make the next one overwrite a name that still exists
@@ -288,21 +288,24 @@ function next_dependency_name(prefix, existing_names)
     return Symbol(prefix, largest + 1)
 end
 
-function add_dependency!(sim, wta::WindowedTimeAverage)
+function add_dependency!(sim, wta::WindowedTimeAverage, schedule)
     diags = sim.diagnostics
     if wta ∉ values(diags)
         diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
     end
 end
 
-function add_dependency!(sim, derivative::TimeDerivative)
+# Update the derivative when the writer writes and on the iteration before, which is all that
+# a difference across one time step needs
+function add_dependency!(sim, derivative::TimeDerivative, schedule)
     callbacks = sim.callbacks
     if !any(cb -> cb.func === derivative, values(callbacks))
-        callbacks[next_dependency_name("TimeDerivative", keys(callbacks))] = Callback(derivative, IterationInterval(1))
+        name = next_dependency_name("TimeDerivative", keys(callbacks))
+        callbacks[name] = Callback(derivative, PrecedingIterations(schedule; derivative.safety_factor))
     end
 end
 
-add_dependencies!(sim, writer) = [add_dependency!(sim, out) for out in values(writer.outputs)]
+add_dependencies!(sim, writer) = [add_dependency!(sim, out, writer.schedule) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
