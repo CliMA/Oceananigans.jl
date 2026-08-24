@@ -64,11 +64,10 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
         Vᵗ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
         # A vertical boundary flux affine in the velocity damps the depth-integrated momentum exactly
-        # as it damps the boundary cell. The part of that stress carried by the depth mean is
-        # integrated implicitly; the part carried by the deviation of the boundary velocity from the
-        # mean, which the barotropic mode does not evolve, enters explicitly through `Ω`.
-        U[i, j, 1] = (Uᵗ + Δτ * barotropic_correction(i, j, grid, cᵁ)) / barotropic_damping(i, j, grid, Δτ, Hᶠᶜ, cᵁ)
-        V[i, j, 1] = (Vᵗ + Δτ * barotropic_correction(i, j, grid, cⱽ)) / barotropic_damping(i, j, grid, Δτ, Hᶜᶠ, cⱽ)
+        # as it damps the boundary cell, but the vertical solver takes that contribution out of `Gᵁ`.
+        # `Ω` carries it, as a `U`-independent increment the substepping integrates over exactly `Δt`.
+        U[i, j, 1] = Uᵗ + Δτ * barotropic_correction(i, j, grid, cᵁ)
+        V[i, j, 1] = Vᵗ + Δτ * barotropic_correction(i, j, grid, cⱽ)
 
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
@@ -288,16 +287,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     return nothing
 end
 
-@inline barotropic_damping(i, j, grid, Δτ, H, ::Nothing) = one(grid)
-
-@inline function barotropic_damping(i, j, grid, Δτ, H, coefficients)
-    wet = H > zero(H)
-    Λ = @inbounds coefficients.Λ[i, j, 1]
-    return ifelse(wet, one(grid) + Δτ * Λ / H, one(grid))
-end
-
 @inline barotropic_correction(i, j, grid, ::Nothing) = zero(grid)
-@inline barotropic_correction(i, j, grid, coefficients) = @inbounds coefficients.Ω[i, j, 1]
+@inline barotropic_correction(i, j, grid, Ω) = @inbounds Ω[i, j, 1]
 
 @inline barotropic_boundary_coefficients(::Nothing) = (nothing, nothing)
 @inline barotropic_boundary_coefficients(coefficients) = (coefficients.U, coefficients.V)

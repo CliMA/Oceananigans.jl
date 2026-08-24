@@ -32,6 +32,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          compute_transport_velocities!,
+                                                         store_pre_solve_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 

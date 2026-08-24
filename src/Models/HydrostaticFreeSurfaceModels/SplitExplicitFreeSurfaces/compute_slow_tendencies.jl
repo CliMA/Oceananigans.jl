@@ -85,26 +85,17 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
 
-    coefficients = free_surface.implicit_boundary_coefficients
-    @apply_regionally compute_column_implicit_coefficients!(coefficients.U, coefficients.V, grid,
-                                                            filled_halos(free_surface), model.clock,
-                                                            fields(model), model.velocities.u, model.velocities.v,
-                                                            free_surface.barotropic_velocities.U,
-                                                            free_surface.barotropic_velocities.V,
-                                                            free_surface.displacement)
+    Ω = free_surface.implicit_boundary_coefficients
+    @apply_regionally compute_column_boundary_stress!(Ω.U, Ω.V, grid, model.clock, fields(model),
+                                                      model.velocities.u, model.velocities.v)
 
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
-    fill_column_implicit_coefficient_halos!(coefficients)
+    fill_column_boundary_stress_halos!(Ω)
 
     return nothing
 end
 
-fill_column_implicit_coefficient_halos!(::Nothing) = nothing
-
-function fill_column_implicit_coefficient_halos!(coefficients)
-    fill_column_implicit_coefficient_halos!(coefficients.U)
-    fill_column_implicit_coefficient_halos!(coefficients.V)
-    return nothing
-end
-
-fill_column_implicit_coefficient_halos!(coefficients::NamedTuple{(:Λ, :Ω)}) = fill_halo_regions!((coefficients.Λ, coefficients.Ω); async=true)
+fill_column_boundary_stress_halos!(::Nothing) = nothing
+fill_column_boundary_stress_halos!(Ω::NamedTuple) = (fill_column_boundary_stress_halos!(Ω.U);
+                                                     fill_column_boundary_stress_halos!(Ω.V); nothing)
+fill_column_boundary_stress_halos!(Ω) = fill_halo_regions!(Ω; async=true)

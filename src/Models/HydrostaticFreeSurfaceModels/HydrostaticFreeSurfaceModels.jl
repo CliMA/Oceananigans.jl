@@ -93,6 +93,10 @@ reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
 # Transport velocity computation
 function compute_transport_velocities! end
 
+# Record the velocities as the vertical solver receives them, before its implicit boundary fluxes are
+# applied. Free surfaces that do not reconcile a barotropic mode do nothing.
+store_pre_solve_velocities!(model, free_surface) = nothing
+
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
 
