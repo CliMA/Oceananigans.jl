@@ -25,16 +25,11 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
 end
 
 synchronize_column_implicit_coefficients!(::Nothing) = nothing
+synchronize_column_implicit_coefficients!(Ω) = (synchronize_communication!(Ω); nothing)
 
-function synchronize_column_implicit_coefficients!(coefficients)
-    synchronize_column_implicit_coefficients!(coefficients.U)
-    synchronize_column_implicit_coefficients!(coefficients.V)
-    return nothing
-end
-
-function synchronize_column_implicit_coefficients!(coefficients::NamedTuple{(:Λ, :Ω)})
-    synchronize_communication!(coefficients.Λ)
-    synchronize_communication!(coefficients.Ω)
+function synchronize_column_implicit_coefficients!(Ω::NamedTuple)
+    synchronize_column_implicit_coefficients!(Ω.U)
+    synchronize_column_implicit_coefficients!(Ω.V)
     return nothing
 end
 

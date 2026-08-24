@@ -161,6 +161,12 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
+
+    # The barotropic correction is measured against the column the vertical solver receives.
+    store_pre_solve_velocities!(model, model.free_surface)
+
+    implicit_ab2_step_velocity!(model, Δt, Val(:u))
+    implicit_ab2_step_velocity!(model, Δt, Val(:v))
     return nothing
 end
 
@@ -171,6 +177,12 @@ end
 
     launch!(model.architecture, model.grid, :xyz,
             _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+
+    return nothing
+end
+
+@inline function implicit_ab2_step_velocity!(model, Δt, ::Val{name}) where name
+    velocity_field = model.velocities[name]
 
     implicit_step!(velocity_field,
                    model.timestepper.implicit_solver,

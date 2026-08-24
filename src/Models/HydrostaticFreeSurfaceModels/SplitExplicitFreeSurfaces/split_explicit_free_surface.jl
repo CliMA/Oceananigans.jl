@@ -48,7 +48,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, C} <: AbstractFreeSurfa
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
-    implicit_boundary_coefficients :: C # A namedtuple with U, V holding the column-integrated λ
+    implicit_boundary_coefficients :: C # A namedtuple with U, V holding the column-integrated boundary stress
 
     function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, c::C) where {E, H, U, M, FT, K, S, T, C}
         return new{E, H, U, M, FT, K, S, T, C}(η, u, m, g, k, s, t, c)

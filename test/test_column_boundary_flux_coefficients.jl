@@ -8,12 +8,14 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 #####
-##### The column-integrated coefficients the barotropic mode damps with
+##### The column-integrated boundary stress the barotropic mode carries
 #####
-##### `Λ` is a drag coefficient and `Ω` a tendency carrying the sign of its velocity component, so at a
-##### tripolar seam the first folds as a scalar and the second as a vector. The barotropic mode must
-##### also realize the true boundary stress `λ 𝓋ᵦ`, which is what the explicit treatment delivers
-##### wherever the explicit treatment is stable.
+##### `Ω` is the stress `λ 𝓋ᵦ` the implicit boundary conditions realize, entered as a tendency on the
+##### depth-integrated momentum, so at a tripolar seam it folds as a vector. The barotropic mode must
+##### realize the stress the explicit treatment delivers wherever the explicit treatment is stable —
+##### and, crucially, must not deliver it twice: the correction removes `Δt Ω` again once the vertical
+##### solver has applied the boundary flux for real. A bottom drag acting through a column with no
+##### vertical mixing cannot reach the surface, which makes that double count directly measurable.
 #####
 
 const r_drag = 2e-3
@@ -75,15 +77,12 @@ end
             @test implicit_model.free_surface.implicit_boundary_coefficients.U !== nothing
             @test implicit_model.free_surface.implicit_boundary_coefficients.V === nothing
 
-            # `Λ` is the drag coefficient of the face it came from.
+            # `Ω` is the stress the drag realizes on the boundary cell, `-r 𝓋ᵦ`.
             set!(implicit_model, u = 1)
             time_step!(implicit_model, 600)
-            Λ = implicit_model.free_surface.implicit_boundary_coefficients.U.Λ
-            @test maximum(interior(Λ)) ≈ r_drag
-
-            # A depth-uniform column carries no deviation from the barotropic velocity, so no correction.
-            Ω = implicit_model.free_surface.implicit_boundary_coefficients.U.Ω
-            @test maximum(abs, interior(Ω)) < 1e-12
+            # `Ω` is built at the top of the step, so it carries the velocity the step started from.
+            Ω = implicit_model.free_surface.implicit_boundary_coefficients.U
+            @test minimum(interior(Ω)) ≈ -r_drag
         end
 
         @testset "Tripolar fold signs [$(typeof(arch))]" begin
@@ -104,7 +103,7 @@ end
 
                 coefficients = model.free_surface.implicit_boundary_coefficients
                 Nx, Ny, _ = size(grid)
-                Hx, Hy, _ = halo_size(coefficients.U.Λ.grid)
+                Hx, Hy, _ = halo_size(coefficients.U.grid)
 
                 pivotjᶜ, pivotjᶠ = fold_topology == RightFaceFolded ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
                 iᶠ = iᶜ = 1-Hx:Nx+Hx
@@ -118,19 +117,12 @@ end
                 jᶠ′ = reverse(jᶠ)
 
                 # `.data` keeps the halo-offset axes the fold indices are written in.
-                Λᵁ = on_architecture(CPU(), coefficients.U.Λ.data)
-                Ωᵁ = on_architecture(CPU(), coefficients.U.Ω.data)
-                Λⱽ = on_architecture(CPU(), coefficients.V.Λ.data)
-                Ωⱽ = on_architecture(CPU(), coefficients.V.Ω.data)
+                Ωᵁ = on_architecture(CPU(), coefficients.U.data)
+                Ωⱽ = on_architecture(CPU(), coefficients.V.data)
 
-                # Guard against a vacuous test: a depth-uniform column has `Ω = 0` everywhere, and a
-                # zero array satisfies both symmetry and antisymmetry.
+                # Guard against a vacuous test: a zero array satisfies both symmetry and antisymmetry.
                 @test maximum(abs, view(Ωᵁ, iᶠ, jᶜ, 1)) > 0
                 @test maximum(abs, view(Ωⱽ, iᶜ, jᶠ, 1)) > 0
-
-                # `Λ` is a coefficient: it folds as a scalar.
-                @test view(Λᵁ, iᶠ, jᶜ, 1) == view(Λᵁ, iᶠ′, jᶜ′, 1)
-                @test view(Λⱽ, iᶜ, jᶠ, 1) == view(Λⱽ, iᶜ′, jᶠ′, 1)
 
                 # `Ω` is a tendency on a velocity component: it changes sign across the fold.
                 @test view(Ωᵁ, iᶠ, jᶜ, 1) == -view(Ωᵁ, iᶠ′, jᶜ′, 1)
@@ -159,6 +151,31 @@ end
             # Removing the boundary flux from the tendency must not remove it from the depth integral:
             # the implicit treatment has to reproduce the stress the explicit one applies.
             @test evolve(true) ≈ evolve(false) rtol=2e-2
+        end
+
+        @testset "A bottom drag does not accelerate the surface [$(typeof(arch))]" begin
+            # With no vertical mixing the drag reaches only the bottom cell, so every other cell must
+            # end the run at exactly its initial velocity. The correction is depth-uniform, so any
+            # departure at the surface measures the boundary momentum it double counted — the failure
+            # that grows with `r Δt / Δz` and survives arbitrarily many barotropic substeps.
+            zfaces = [-1000, -800, -750, -650, -500, -350, -200, -80, 0]
+            underlying = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 1e5), y=(0, 1e5), z=zfaces,
+                                         topology=(Periodic, Periodic, Bounded))
+            grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(-800))
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3), Δt in (900, 7200)
+                m = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                                free_surface = SplitExplicitFreeSurface(substeps=30),
+                                                momentum_advection = nothing, tracer_advection = nothing,
+                                                tracers = (), buoyancy = nothing, coriolis = nothing,
+                                                closure = nothing,
+                                                boundary_conditions = (u = drag_boundary_conditions(r_drag; implicit=true),))
+                set!(m, u = 1)
+                for _ in 1:10; time_step!(m, Δt); end
+
+                u = Array(interior(m.velocities.u))[:, :, 3:end]
+                @test maximum(abs, u .- 1) < 1e-12
+            end
         end
 
         @testset "Implicit free surface needs no correction [$(typeof(arch))]" begin

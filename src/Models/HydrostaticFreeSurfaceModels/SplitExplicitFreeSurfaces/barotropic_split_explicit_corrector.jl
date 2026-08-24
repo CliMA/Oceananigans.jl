@@ -1,4 +1,5 @@
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
+using Oceananigans.Grids: peripheral_node
 using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
@@ -26,25 +27,72 @@ function compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
             U̅, V̅, grid, u, v)
+    return nothing
+end
 
+# The mean, not the transport: a mutable coordinate rescales the column before the correction reads this,
+# and `σ` is depth-uniform, so `∫u dz` picks up that factor while the mean does not. Also runs before the
+# velocities are masked, hence the explicit `peripheral_node` guard.
+@kernel function _compute_barotropic_velocity!(ū, v̄, grid, u, v)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid)
+
+    U = zero(grid)
+    V = zero(grid)
+
+    for k in 1:grid.Nz
+        @inbounds U += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * !peripheral_node(i, j, k, grid, Face(), Center(), Center())
+        @inbounds V += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * !peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    end
+
+    @inbounds ū[i, j, 1] = ifelse(Hᶠᶜ > 0, U / Hᶠᶜ, zero(grid))
+    @inbounds v̄[i, j, 1] = ifelse(Hᶜᶠ > 0, V / Hᶜᶠ, zero(grid))
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Store the depth-mean velocities the vertical solver is about to act on, which the correction is measured
+against so that the boundary momentum the solver removes is not overwritten by it.
+"""
+function store_pre_solve_velocities!(model, free_surface::SplitExplicitFreeSurface)
+    coefficients = free_surface.implicit_boundary_coefficients
+    store_pre_solve_velocities!(model, free_surface, coefficients.U, coefficients.V)
+    return nothing
+end
+
+# With no implicit boundary flux the vertical solver carries none, so it conserves the column integral
+# and there is nothing for the correction to preserve.
+store_pre_solve_velocities!(model, free_surface, ::Nothing, ::Nothing) = nothing
+
+function store_pre_solve_velocities!(model, free_surface, cᵁ, cⱽ)
+    state = free_surface.filtered_state
+    u, v, _ = model.velocities
+    grid = model.grid
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid),
+            _compute_barotropic_velocity!, state.U̅, state.V̅, grid, u, v)
     return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Correct baroclinic velocities so that they are consistent with the barotropic flow from
-split-explicit substepping.
+Correct baroclinic velocities so that they are consistent with the barotropic flow from split-explicit substepping.
 
-The correction ensures that the depth-integrated baroclinic velocity matches the
-filtered barotropic velocity from the split-explicit scheme:
+With `ū` the depth mean the vertical solver received and `𝒟` the boundary momentum it then removed, the column holds
+`H ū - 𝒟` and the substepping produced `U = U⁰ + Δt Ω`. Adding
 
-    u = u + (U̅ - ∫udz) / H
+    u = u + (U - Δt Ω) / H - ū
 
-where `U̅` is the filtered barotropic transport from substepping and
-`∫udz` is the depth-integral of the baroclinic velocity.
+leaves `∫u dz = U⁰ - 𝒟`, so the boundary flux is counted once, as the solver realized it, for any stiffness and any
+closure: the solver's interior fluxes telescope and only its boundary flux survives the integral, so `𝒟` never has to
+be predicted. `U` is then re-diagnosed from the corrected column, which the correction deliberately leaves apart from
+it by `𝒟`.
 """
-function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
+function barotropic_split_explicit_corrector!(u, v, free_surface, grid, Δt)
     state = free_surface.filtered_state
     U, V  = free_surface.barotropic_velocities
     U̅, V̅  = state.U̅, state.V̅
@@ -54,16 +102,51 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     mask_immersed_field!(u)
     mask_immersed_field!(v)
 
-    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
-    # so we use the filtered velocities as "work arrays" to store the vertical integrals
-    # of the instantaneous velocities `u` and `v`.
-    compute_barotropic_mode!(U̅, V̅, grid, u, v)
-
-    # add in "good" barotropic mode
-    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, grid)
+    cᵁ, cⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
+    reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid, arch)
 
     return nothing
+end
+
+# With no implicit boundary flux this is the plain projection of the column onto the barotropic
+# transport, bit for bit as it is without any of the machinery above.
+function reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, ::Nothing, ::Nothing, Δt, grid, arch)
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
+            u, v, U, V, U̅, V̅, grid)
+    return nothing
+end
+
+function reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid, arch)
+    # NOTE: `U̅` and `V̅` hold the pre-solve depth means, stored by `store_pre_solve_velocities!`.
+    launch!(arch, grid, volume_kernel_parameters(grid), _correct_barotropic_mode_with_boundary_flux!,
+            u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid)
+
+    # The transport must end the step equal to the column it represents; the correction deliberately
+    # leaves them apart by the boundary momentum the vertical solver removed.
+    compute_barotropic_mode!(U, V, grid, u, v)
+    return nothing
+end
+
+@inline barotropic_stress(i, j, grid, ::Nothing, Δt) = zero(grid)
+@inline barotropic_stress(i, j, grid, Ω, Δt) = @inbounds Δt * Ω[i, j, 1]
+
+@kernel function _correct_barotropic_mode_with_boundary_flux!(u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid)
+    i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | immersed_inactive_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | immersed_inactive_node(i, j, k, grid, Center(), Face(), Center())
+
+    δuᵢ = @inbounds U[i, j, 1] - barotropic_stress(i, j, grid, cᵁ, Δt)
+    δvⱼ = @inbounds V[i, j, 1] - barotropic_stress(i, j, grid, cⱽ, Δt)
+
+    u_correction = @inbounds ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ - U̅[i, j, 1])
+    v_correction = @inbounds ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ - V̅[i, j, 1])
+
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
 end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
