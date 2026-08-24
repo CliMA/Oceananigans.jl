@@ -370,6 +370,42 @@ function Oceananigans.restore_prognostic_state!(restored::Union{JLD2Writer, NetC
     return restored
 end
 
+reconcile_restored_output_schedule!(writer, model) = nothing
+
+function reset_restored_time_average!(average::WindowedTimeAverage, clock)
+    initialize_actuations!(average.schedule, clock.time)
+    average.schedule.collecting = false
+    average.window_start_time = clock.time
+    average.window_start_iteration = clock.iteration
+    average.previous_collection_time = clock.time
+    return nothing
+end
+
+function reconcile_restored_output_schedule!(writer::Union{JLD2Writer, NetCDFWriter}, model)
+    averaged_outputs = filter(output -> output isa IntervalWindowedTimeAverage, values(writer.outputs))
+    isempty(averaged_outputs) && return nothing
+
+    first_average = first(averaged_outputs)::IntervalWindowedTimeAverage
+    schedule = first_average.schedule
+    clock = model.clock
+    next_time = next_actuation_time(schedule)
+    latest_valid_next_time = Utils.add_time_interval(clock.time, schedule.interval)
+
+    # A restored periodic schedule must actuate no more than one interval after the
+    # restored clock. Older checkpoints may pair a new interval with an actuation
+    # count from the old interval, which can put the next output far in the future.
+    if next_time < clock.time || next_time > latest_valid_next_time
+        for average in averaged_outputs
+            reset_restored_time_average!(average, clock)
+        end
+
+        writer.schedule.first_actuation_time = clock.time
+        writer.schedule.actuations = 0
+    end
+
+    return nothing
+end
+
 function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
     restored_parent = parent(restored)
     return restore_prognostic_state!(restored_parent, from)

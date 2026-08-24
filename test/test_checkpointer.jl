@@ -1494,6 +1494,69 @@ function test_changed_averaged_time_interval(arch)
     return nothing
 end
 
+function test_inconsistent_averaged_time_interval_checkpoint(arch)
+    prefix = "inconsistent_averaged_time_interval_$(typeof(arch))"
+    partial_file = "$(prefix)_partial.jld2"
+    restored_file = "$(prefix)_restored.jld2"
+    clock_time(model) = [model.clock.time]
+
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    partial_model = NonhydrostaticModel(grid)
+    partial_simulation = Simulation(partial_model, Δt=0.1days, stop_time=3days)
+    partial_simulation.output_writers[:checkpointer] =
+        Checkpointer(partial_model, schedule=IterationInterval(30), prefix=prefix)
+    partial_simulation.output_writers[:averaged] =
+        JLD2Writer(partial_model, (; clock_time),
+                   schedule = AveragedTimeInterval(1day),
+                   filename = partial_file,
+                   overwrite_existing = true)
+
+    @test_nowarn run!(partial_simulation)
+
+    # Reproduce a checkpoint written by the old restore code: the interval was
+    # changed to five days but the actuation count still belongs to one-day output.
+    poisoned_writer = partial_simulation.output_writers[:averaged]
+    poisoned_writer.schedule.interval = 5days
+    for average in values(poisoned_writer.outputs)
+        average.schedule.interval = 5days
+        average.schedule.window = 5days
+    end
+    @test poisoned_writer.schedule.actuations == 3
+    @test_nowarn checkpoint(partial_simulation)
+
+    restored_model = NonhydrostaticModel(grid)
+    restored_simulation = Simulation(restored_model, Δt=0.1days, stop_time=8days)
+    restored_simulation.output_writers[:checkpointer] =
+        Checkpointer(restored_model, schedule=IterationInterval(30), prefix=prefix)
+    restored_simulation.output_writers[:averaged] =
+        JLD2Writer(restored_model, (; clock_time),
+                   schedule = AveragedTimeInterval(5days),
+                   filename = restored_file,
+                   overwrite_existing = true)
+
+    @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration30.jld2")
+
+    restored_writer = restored_simulation.output_writers[:averaged]
+    restored_average = only(values(restored_writer.outputs))
+    @test restored_writer.schedule.first_actuation_time == 3days
+    @test restored_writer.schedule.actuations == 0
+    @test restored_average.schedule.first_actuation_time == 3days
+    @test restored_average.schedule.actuations == 0
+    @test !restored_average.schedule.collecting
+    @test restored_average.previous_collection_time == 3days
+
+    @test_nowarn run!(restored_simulation)
+
+    jldopen(restored_file, "r") do file
+        iterations = sort(parse.(Int, keys(file["timeseries/t"])))
+        final_iteration = last(iterations)
+        @test file["timeseries/t/$final_iteration"] == 8days
+    end
+
+    rm.(glob("$(prefix)*.jld2"), force=true)
+    return nothing
+end
+
 function test_checkpoint_empty_tracers(arch)
     N = 8
     L = 1
@@ -2237,6 +2300,11 @@ for arch in archs
     @testset "Changed AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
         @info "  Testing changed AveragedTimeInterval checkpointing [$(typeof(arch))]..."
         test_changed_averaged_time_interval(arch)
+    end
+
+    @testset "Inconsistent AveragedTimeInterval checkpointing [$(typeof(arch))]" begin
+        @info "  Testing inconsistent AveragedTimeInterval checkpointing [$(typeof(arch))]..."
+        test_inconsistent_averaged_time_interval_checkpoint(arch)
     end
 
     schemes = [
