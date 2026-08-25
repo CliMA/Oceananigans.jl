@@ -1,7 +1,6 @@
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
@@ -60,3 +59,6 @@ StructArrays = "0.4, 0.5, 0.6, 0.7"
 Test = "<0.0.1, 1"
 TimesDates = "0.3"
 julia = "1.10"
+
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
