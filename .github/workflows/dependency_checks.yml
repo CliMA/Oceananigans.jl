@@ -24,6 +24,7 @@ jobs:
         downgrade_mode: ['deps', 'alldeps']
         version:
           - '1.11.9'
+          - '1.10'
         os:
           - ubuntu-latest
         arch:
