@@ -75,6 +75,7 @@ jobs:
       matrix:
         version:
           - '1.11.9'
+          - '1.10.0'
         os:
           - ubuntu-latest
         arch:
