@@ -88,7 +88,6 @@ boundary-cell diagonal. Returns zero for any other boundary condition.
 @inline immersed_bottom_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
 @inline immersed_top_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
 
-
 needs_implicit_solver(bc) = false
 needs_implicit_solver(bc::IEFBC) = true
 
