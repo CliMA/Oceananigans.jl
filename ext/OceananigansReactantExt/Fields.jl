@@ -99,7 +99,7 @@ end
 
 # Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation` 
 # we materialize to the CPU fallback. 
-# TODO: find a better way to do this / WIP
+# TODO: find a better way to do this. 
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')

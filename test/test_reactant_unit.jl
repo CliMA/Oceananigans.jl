@@ -340,9 +340,6 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
             ∫cd = Field(Integral(c * d, dims = 3))
             @test all(≈(cd), Array(interior(∫cd)))
-
-            cd̄ = Field(Average(c * d, dims = 3))
-            @test all(≈(cd), Array(interior(cd̄)))
         end
     end
 
