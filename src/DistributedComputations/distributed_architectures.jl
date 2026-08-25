@@ -144,8 +144,8 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
-isodd(r::Sizes) = isodd(length(r.sizes))
-isodd(r::Fractional) = isodd(length(r.sizes))
+Base.isodd(r::Sizes) = isodd(length(r.sizes))
+Base.isodd(r::Fractional) = isodd(length(r.sizes))
 
 Base.size(p::Partition) = ranks(p)
 
