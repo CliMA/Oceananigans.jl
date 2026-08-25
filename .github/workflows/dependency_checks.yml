@@ -80,6 +80,11 @@ jobs:
         arch:
           - x64
     steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
       - name: Resolve distributed tests environment
         working-directory: 'test/'
         shell: julia --color=yes --project=ProjectDistributed.toml {0}
