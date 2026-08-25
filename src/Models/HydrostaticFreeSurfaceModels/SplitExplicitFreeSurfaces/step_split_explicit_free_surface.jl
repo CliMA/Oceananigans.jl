@@ -57,9 +57,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     Gᵁˢ = slow_forcing(i, j, Gᵁ, Gᵁᶜ, w, sᵐ)
     Gⱽˢ = slow_forcing(i, j, Gⱽ, Gⱽᶜ, w, sᵐ)
 
-    # ∂τ(U) = - ∇η★ + G, using the free surface η★ that already includes the just-updated ηᵐ⁺¹ (the backward
-    # half of the forward-backward step). Note: use ∂xᵣT/∂yᵣT (derivatives at constant r), since η lives on the
-    # surface and has no vertical structure.
+    # ∂τ(U) = - ∇η + G, using ∂xᵣT/∂yᵣT (derivatives at constant r) since η lives on the surface and has
+    # no vertical structure.
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁˢ)
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽˢ)
@@ -85,8 +84,7 @@ end
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
 
-        # Time-averaging the free surface, and the transport U★/V★ that advanced it (constancy); for plain
-        # forward-backward U★/V★ is simply the current velocity.
+        # Time-averaging η and the transport U★/V★ that advanced it, which is what constancy needs.
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         Ũ[i, j, 1]     += transport_weight * U★(i, j, 1, grid, timestepper, U)
         Ṽ[i, j, 1]     += transport_weight * V★(i, j, 1, grid, timestepper, V)
@@ -96,18 +94,13 @@ end
 #####
 ##### Multi-stage substep kernel (RungeKutta3Scheme)
 #####
-##### Each barotropic substep runs three RK stages from the substep-start state (ηⁿ, Uⁿ, Vⁿ). Within a stage the
-##### free surface and the velocity are advanced together in one kernel: they depend only on the previous-stage
-##### state, the free surface through the transport (ηᵖ, Uᵖ, Vᵖ) and the velocity through the free surface, so
-##### they commute. Fusing them requires the previous stage to live in its own buffer, since a kernel that read
-##### the live `U` while another thread wrote it would race on the `δx` stencil.
-#####
-##### The averaged quantities (η̅, U̅, V̅, Ũ, Ṽ) are accumulated ONLY on the final stage, from the free surface
-##### that ends the substep and the flux U that advances η in that stage — the same continuity-consistent
-##### transport as the forward-backward path, so tracer constancy is preserved.
+##### Each barotropic substep runs three RK stages from the substep-start state (ηⁿ, Uⁿ, Vⁿ). Free surface and
+##### velocity commute within a stage, since both depend only on the previous-stage state, so one kernel does
+##### both; the previous stage needs its own buffer to keep the δx stencil from racing on the live fields.
+##### The averages (η̅, U̅, V̅, Ũ, Ṽ) accumulate only on the final stage, which is what preserves constancy.
 
-# The state triples and the averages travel as tuples rather than as separate arguments: `isregional`, which
-# every launch walks over the argument list, recurses element by element and stops inferring on a long one.
+# The state triples travel as tuples: `isregional` recurses element by element over the argument list and
+# stops inferring on a long one.
 @kernel function _barotropic_stage!(averaging_weight, transport_weight, sᵐ, Δτ, grid, filled_halos,
                                     substep_state, previous_state, stage_state, slow_forcings, g, F, clock, averages)
 
@@ -142,8 +135,7 @@ end
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
         V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
 
-        # The transport carried into the tracer-continuity average is the flux that advanced η above, which is
-        # the previous-stage velocity.
+        # The transport in the tracer-continuity average is the flux that advanced η, i.e. the previous stage.
         Ũ[i, j, 1] += transport_weight * Uᵖ[i, j, 1]
         Ṽ[i, j, 1] += transport_weight * Vᵖ[i, j, 1]
     end
@@ -166,8 +158,7 @@ const MINIMUM_SUBSTEPS = 5
 #####
 ##### Halo filling in between barotropic kernels
 #####
-##### `ExtendedHalos` substeps into the halo rather than filling it, and its argument groups are empty; the
-##### other two strategies carry one argument tuple per field, prepared once per baroclinic step.
+##### `ExtendedHalos` substeps into the halo rather than filling it, so its argument groups are empty.
 
 @inline fill_barotropic_halos!(free_surface, arch, ::Tuple{}) = nothing
 
@@ -198,10 +189,8 @@ end
 #####
 ##### Barotropic substeppers
 #####
-##### A substepper collects, once per baroclinic step, everything that does not change from substep to substep:
-##### the configured kernels, their arguments already converted to device values, and the halo-fill arguments.
+##### A substepper collects, once per baroclinic step, everything that does not change from substep to substep.
 ##### We perform ~50 substeps of ~100 very small kernels, whose latency is dominated by argument conversion.
-##### The substep integrator itself is the dispatch key, so the payload is a plain `NamedTuple`.
 
 # One method per leading-scalar count: a `weights...` vararg splats through a dynamic call and boxes the
 # whole argument list on every launch.
@@ -279,11 +268,11 @@ end
 
 function barotropic_substep!(::ForwardBackwardScheme, substepper, free_surface, arch, averaging_weight, transport_weight, sᵐ)
 
-    fill_barotropic_halos!(free_surface, arch, substepper.velocity_halos)
-    @apply_regionally apply_barotropic_kernel!(substepper.free_surface_kernel!, substepper.η_args, averaging_weight, transport_weight)
-
     fill_barotropic_halos!(free_surface, arch, substepper.free_surface_halos)
     @apply_regionally apply_barotropic_kernel!(substepper.velocity_kernel!, substepper.U_args, averaging_weight, sᵐ)
+
+    fill_barotropic_halos!(free_surface, arch, substepper.velocity_halos)
+    @apply_regionally apply_barotropic_kernel!(substepper.free_surface_kernel!, substepper.η_args, averaging_weight, transport_weight)
 
     return nothing
 end
@@ -317,14 +306,12 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, Δt,
     parameters  = free_surface.kernel_parameters
     g           = free_surface.gravitational_acceleration
 
-    # `nothing` caches wherever the stage's polynomial is a constant, which dispatches the substep kernels back
-    # to the plain frozen load.
     Gᵁᶜ, Gⱽᶜ, w = stage_reconstruction(free_surface.slow_forcing, baroclinic_timestepper, clock.stage, Δt)
 
     substep_arguments = (; Δτᴮ, clock, F, g, GUⁿ, GVⁿ, Gᵁᶜ, Gⱽᶜ, w)
     substepper = barotropic_substepper(timestepper, free_surface, arch, grid, parameters, substep_arguments)
 
-    # The substepper holds device values that do not root the fields they point into: keep the fields alive.
+    # The substepper holds device values that do not root the fields they point into.
     GC.@preserve free_surface GUⁿ GVⁿ Gᵁᶜ Gⱽᶜ F begin
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]

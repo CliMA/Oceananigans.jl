@@ -1,8 +1,7 @@
-using Oceananigans.TimeSteppers: MultiStageTimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: _unwrap_for_gpu
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
 
@@ -124,10 +123,6 @@ end
     td.Δt[] = Δt * sum_rk3_coefficients(timestepper, Val(nstage))
     return nothing
 end
-
-update_advection_timestep!(a::FluxFormAdvection, timestepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
-update_advection_timestep!(a::FluxFormAdvection, timestepper::RungeKutta3TimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
-update_advection_timestep!(a::FluxFormAdvection, timestepper::MultiStageTimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
 
 function update_advection_timestep!(a::NamedTuple, timestepper, clock)
     for scheme in values(a)

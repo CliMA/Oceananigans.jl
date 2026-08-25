@@ -93,15 +93,9 @@ end
 #####
 ##### Strong-stability-preserving accumulation
 #####
-##### The step is `cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ Gᵐ` with `Gᵐ` evaluated at `yᵐ⁻¹`, so the flux and transport that
-##### close the variance budget are the β-weighted sums over the stages rather than a single stage's
-##### value. `Fⁿ⁻¹`/`Uⁿ⁻¹` are unused by the multi-stage path and serve as the accumulators, and the
-##### assembly is then the ordinary `_assemble_rk3_advective_dissipation!` against the step endpoints.
-#####
-##### The accumulated flux and transport are raw (unweighted by σ): the low-storage path multiplies by σ
-##### when caching and divides by the same cached σ when assembling, so the two cancel exactly. Keeping
-##### the sum raw and the σ cache at unity reproduces that identity stage by stage, where a single
-##### snapshot of σ shared by three stages would not.
+##### The step is `cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ Gᵐ`, so the flux and transport that close the variance budget are
+##### the β-weighted sums over the stages. `Fⁿ⁻¹`/`Uⁿ⁻¹` are unused here and serve as the accumulators.
+##### The sums are kept raw (unweighted by σ), which the unit σ cache then divides by.
 
 @kernel function _accumulate_ssp_advective_fluxes!(F★, grid, advection, U, tracer, β, keep)
     i, j, k = @index(Global, NTuple)

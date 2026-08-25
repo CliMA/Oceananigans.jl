@@ -151,10 +151,9 @@ Keyword Arguments
                       the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
                       to the two consecutive baroclinic timesteps between which the barotropic timestepping
                       occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. The default is `OptimizedAsymmetricAveragingKernel()`, which has
-                      μ₂ = μ₃ = 0 (third order) and imposes its moments directly on the substep grid, so it is
-                      exact for any `substeps` and stays stable at strong stratification. See
-                      `split_explicit_averaging_kernels.jl` for the full list and for how to choose between them.
+                      `averaging_kernel > 0`. By default, the averaging kernel described by
+                      [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used; see
+                      `split_explicit_averaging_kernels.jl` for the higher-order alternatives.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
@@ -170,7 +169,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   extend_halos = true,
-                                  averaging_kernel = OptimizedAsymmetricAveragingKernel(),
+                                  averaging_kernel = averaging_shape_function,
                                   timestepper = ForwardBackwardScheme(),
                                   slow_forcing = FrozenSlowForcing())
 
@@ -224,8 +223,7 @@ function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_k
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
 
-    # Round up to the count the kernel needs for its window edge to land on the τ grid. Rounding up only
-    # shortens the substep, so the requested `cfl` is still met.
+    # Rounding up only shortens the substep, so the requested `cfl` is still met.
     multiple = required_substep_multiple(averaging_kernel)
     substeps = multiple * cld(substeps, multiple)
 
@@ -271,8 +269,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     strategy = substep_halo_filling(extend_halos, bcs)
 
-    # Without filling in between substeps the halo erodes by one stencil width per stage, so a multi-stage
-    # substep integrator needs a proportionally deeper halo in `Connected` directions.
     stages = stages_per_substep(free_surface.timestepper)
 
     maybe_extended_grid = if strategy isa CompleteHaloFilling
@@ -395,15 +391,10 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 ##### Maybe extend halos in Connected topologies
 #####
 
-# Taking the free surface rather than its substepping picks up the stage count of its substep integrator,
-# which is what a caller sizing halos to match the free surface grid wants.
-maybe_extend_halos(TX, TY, grid, free_surface::SplitExplicitFreeSurface) =
-    maybe_extend_halos(TX, TY, grid, free_surface.substepping; stages = stages_per_substep(free_surface.timestepper))
-
 # Extending halos is not allowed with variable time-stepping
 maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize; stages = 1) = grid
 
-# `stages` is how many kernels advance the state per substep, and so how many cells of halo a substep erodes.
+# A substep erodes one cell of halo per stage.
 function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stages = 1)
     old_halos = halo_size(grid)
     step_halo = stages * length(substepping.averaging_weights) + 2

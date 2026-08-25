@@ -2,8 +2,8 @@ module SplitExplicitFreeSurfaces
 
 export SplitExplicitFreeSurface, ForwardBackwardScheme, RungeKutta3Scheme
 export FixedSubstepNumber, FixedTimeStepSize
-export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel, SymmetricTrigAveragingKernel
-export WideTrig74AveragingKernel, WideTrig2AveragingKernel
+export ConstantAveragingKernel, CosineAveragingKernel, LowDissipationAveragingKernel
+export SymmetricTrigAveragingKernel, WideTrigAveragingKernel
 export OptimizedSymmetricAveragingKernel, OptimizedAsymmetricAveragingKernel
 export FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing
 

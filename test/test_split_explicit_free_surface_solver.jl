@@ -11,8 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   weights_from_substeps,
                                                                                   LowDissipationAveragingKernel,
                                                                                   SymmetricTrigAveragingKernel,
-                                                                                  WideTrig74AveragingKernel,
-                                                                                  WideTrig2AveragingKernel,
+                                                                                  WideTrigAveragingKernel,
                                                                                   OptimizedSymmetricAveragingKernel,
                                                                                   OptimizedAsymmetricAveragingKernel,
                                                                                   ForwardBackwardScheme,
@@ -335,13 +334,12 @@ end
 @testset "Averaging kernel moments" begin
     kernel_moment(Δτ, w, p) = sum(w[m] * (m * Δτ - 1)^p for m in eachindex(w))
     for FT in float_types
-        # multiples of 16 land the wide-kernel window edges on the substep grid → exact μ₃ = 0
+        # multiples of 8 land the wide-kernel window edges on the substep grid → exact μ₃ = 0
         for substeps in (48, 64)
             tol = sqrt(eps(FT))
             for (kernel, third_order) in ((LowDissipationAveragingKernel(), false),
                                           (SymmetricTrigAveragingKernel(),  true),
-                                          (WideTrig74AveragingKernel(),     true),
-                                          (WideTrig2AveragingKernel(),      true),
+                                          (WideTrigAveragingKernel(),       true),
                                           (OptimizedSymmetricAveragingKernel(),  true),
                                           (OptimizedAsymmetricAveragingKernel(), true))
                 Δτ, w, transport_weights = weights_from_substeps(FT, substeps, kernel)
@@ -352,16 +350,14 @@ end
                 @test sum(transport_weights) ≈ 1            atol=tol   # reversed-cumsum transport ⇒ tracer constancy
             end
 
-            # widening the window deepens μ₄ (more low-frequency dissipation): trig < trig74 < trig2 < 0
-            μ₄_trig   = kernel_moment(weights_from_substeps(FT, substeps, SymmetricTrigAveragingKernel())[1:2]...,   4)
-            μ₄_trig74 = kernel_moment(weights_from_substeps(FT, substeps, WideTrig74AveragingKernel())[1:2]...,      4)
-            μ₄_trig2  = kernel_moment(weights_from_substeps(FT, substeps, WideTrig2AveragingKernel())[1:2]...,       4)
-            @test μ₄_trig74 < μ₄_trig < 0
-            @test μ₄_trig2  < μ₄_trig74
+            # widening the window deepens μ₄, i.e. more low-frequency dissipation
+            μ₄_symmetric = kernel_moment(weights_from_substeps(FT, substeps, SymmetricTrigAveragingKernel())[1:2]..., 4)
+            μ₄_wide      = kernel_moment(weights_from_substeps(FT, substeps, WideTrigAveragingKernel())[1:2]...,      4)
+            @test μ₄_wide < μ₄_symmetric < 0
         end
 
         # The optimized asymmetric kernel imposes μ₀ = 1 and μ₁ = μ₂ = μ₃ = 0 directly on the substep grid
-        # rather than inheriting them from a continuous symmetry, so unlike the WideTrig kernels its moments
+        # rather than inheriting them from a continuous symmetry, so unlike the trigonometric kernels its moments
         # are exact for EVERY substep count, not only where the window edges land on the grid.
         for substeps in (30, 44, 50, 60)
             tol = sqrt(eps(FT))

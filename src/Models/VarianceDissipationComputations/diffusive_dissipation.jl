@@ -69,8 +69,7 @@ end
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
 end
 
-# Strong-stability-preserving accumulation. `Vᵐ` is scratch for this stage's flux and `V̄` the running
-# `Σₘ βₘ Vᵐ` the final stage assembles against.
+# `Vᵐ` is scratch for this stage's flux and `V̄` the running `Σₘ βₘ Vᵐ`.
 @kernel function _accumulate_ssp_diffusive_fluxes!(V̄, Vᵐ, grid::AbstractGrid, clo, K, b, c, c_id, clk, fields, β, keep)
     i, j, k = @index(Global, NTuple)
 

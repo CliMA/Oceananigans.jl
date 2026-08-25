@@ -97,14 +97,9 @@ end
 The weight this stage's flux carries in the running sum `F̄ = Σₘ βₘ Fᵐ`, and whether the sum already
 under way is kept or restarted.
 
-The callback fires at the *end* of stage `m`, where the state is `yᵐ` -- the argument of the tendency of
-stage `m+1`, hence weight `β_{m+1}`. At the final stage the state is `yⁿ⁺¹`, which is the next step's
-`y⁰`: the assembly has already consumed the sum by then, so that flux restarts it with `β₁`, seeding the
-next step.
-
-The first step of a run therefore has no `β₁ F(y⁰)` and its budget does not close. That is the same
-warm-up the low-storage path has -- `cⁿ⁻¹` is likewise unset before the first step ends -- and is why
-the diagnostic is documented as requiring consecutive iterations.
+The callback fires at the end of stage `m`, where the state is `yᵐ`, the argument of the tendency of
+stage `m+1`, hence weight `β_{m+1}`. At the final stage the assembly has already consumed the sum, so
+that flux restarts it with `β₁` and seeds the next step.
 """
 @inline function ssp_accumulation_weights(ts::SSPRungeKuttaTimeStepper, stage, FT)
     β     = ssp_quadrature_weights(ts.coefficients)
@@ -170,7 +165,7 @@ end
 
 store_cache_σ!(σ_cache, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage) = nothing
 
-# The strong-stability-preserving sum is kept raw, so the cache stays at the unity it was built with.
+# The strong-stability-preserving sum is raw, so its cache stays at the unity it was built with.
 store_cache_σ!(σ_cache, grid, params, ts::SSPRungeKuttaTimeStepper, stage) = nothing
 
 function store_cache_σ!(σ_cache, grid, params, ts::MultiStageTimeStepper, stage)

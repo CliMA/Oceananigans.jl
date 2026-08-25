@@ -62,9 +62,8 @@ const AMGXL = MutableGridOfSomeKind{<:Any, LeftConnected}
 
 const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, Bounded}
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-# `RightCenterFolded` belongs here: the barotropic substep stops at j = Ny on a center-pivot fold, so the
-# column depth never interpolates across it and the only special row is the bounded south, as for
-# `RightConnected`. A face-pivot fold reaches j = Ny + 1 and straddles the fold, so it has its own method.
+# A center-pivot fold stops at j = Ny, so the column depth never interpolates across it and the only
+# special row is the bounded south, as for `RightConnected`.
 const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightCenterFolded}}
 const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
 const AMGYFF = MutableGridOfSomeKind{<:Any, <:Any, RightFaceFolded}
@@ -107,7 +106,7 @@ end
     return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
 end
 
-# The F-pivot fold row j = Ny + 1 is a y-face of the domain, and the free surface north of it mirrors j = Ny.
+# The face-pivot fold row j = Ny + 1 is a y-face of the domain, where the free surface mirrors j = Ny.
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYFF, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)

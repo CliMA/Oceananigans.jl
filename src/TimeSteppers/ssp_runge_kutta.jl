@@ -29,11 +29,9 @@ end
     ssp_quadrature_weights(coefficients)
 
 Return the effective quadrature weights `βₘ` on the stage tendencies, i.e. the coefficients such that
-`Ψⁿ⁺¹ = Ψⁿ + Δt Σₘ βₘ Gᵐ`.
-
-For the Shu-Osher recursion `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Δt Gᵐ)` the weight of stage `m` is the product of the
-`b` coefficients of stage `m` and every stage after it. For the three-stage scheme this evaluates to
-`(1/6, 1/6, 2/3)`, which is the combination Lan et al. (2022) apply to the barotropic forcing.
+`Ψⁿ⁺¹ = Ψⁿ + Δt Σₘ βₘ Gᵐ`. For the Shu-Osher recursion `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Δt Gᵐ)` the weight of stage
+`m` is the product of the `b` coefficients of stage `m` and every stage after it, `(1/6, 1/6, 2/3)` for
+the three-stage scheme.
 """
 @inline function ssp_quadrature_weights(coefficients)
     N = length(coefficients)
@@ -41,13 +39,10 @@ For the Shu-Osher recursion `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Δt Gᵐ)` the we
 end
 
 """
-Auxiliary storage the Shu-Osher blend needs beyond `Gⁿ` and `Ψ⁻`.
-
-A scratch copy `η` of the previous stage's free surface is required by every free-surface formulation,
-because the free-surface solve always restarts from `ηⁿ` whereas the blend must apply its increment to
-`ηᵐ⁻¹`. The split-explicit arrangement additionally carries `(U, V)`, the accumulator for the
-stage-weighted slow forcing that drives the corrector sub-cycle. Returns `nothing` for models with no
-free surface at all.
+Auxiliary storage the Shu-Osher blend needs beyond `Gⁿ` and `Ψ⁻`: a scratch copy `η` of the previous
+stage's free surface, since the solve restarts from `ηⁿ` whereas the blend applies its increment to
+`ηᵐ⁻¹`, plus, for the split-explicit arrangement, the `(U, V)` accumulator for the stage-weighted slow
+forcing that drives the corrector sub-cycle. Returns `nothing` for models with no free surface.
 """
 @inline function ssp_auxiliary_state(Gⁿ::NamedTuple, Ψ⁻)
     :η in keys(Ψ⁻) || return nothing
@@ -81,17 +76,14 @@ The three-stage scheme is the classical Shu-Osher form,
 \\end{aligned}
 ```
 which for a linear problem has the same amplification polynomial as the low-storage form of
-`SplitRungeKuttaTimeStepper`, and therefore the same un-split stability limit. What differs is the
-*split-explicit* behaviour: paired with the barotropic sub-cycling arrangement of
-[Lan et al. (2022)](@cite Lan2022) it has no resonance near a barotropic Courant number of `5.7`, where
-the low-storage composition loses about a third of its damping.
+`SplitRungeKuttaTimeStepper`, and therefore the same un-split stability limit. Paired with the barotropic
+sub-cycling arrangement of [Lan et al. (2022)](@cite Lan2022) it has no resonance near a barotropic
+Courant number of `5.7`, where the low-storage composition loses about a third of its damping.
 
 !!! warning "The barotropic mode is advanced once per step"
-    The Shu-Osher weights assume every stage is a forward-Euler step. A sub-cycled barotropic solve is
-    instead a near-exact advance over the full `Δt`, and composing the weights over it over-integrates,
-    costing an order. The barotropic velocity is therefore *not* carried through the stages: it is set
-    by a single corrector sub-cycle after them, using the stage-weighted slow forcing. See
-    `docs/plans/2026-07-31-ssp-runge-kutta-timestepper.md`.
+    The Shu-Osher weights assume every stage is a forward-Euler step, whereas a sub-cycled barotropic
+    solve is a near-exact advance over the full `Δt`. The barotropic velocity is therefore not carried
+    through the stages: it is set by a single corrector sub-cycle after them.
 """
 function SSPRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                   implicit_solver::TI = nothing,
@@ -139,8 +131,7 @@ $(TYPEDSIGNATURES)
 Step forward `model` one time step `Δt` with a strong-stability-preserving Runge-Kutta scheme.
 
 Every stage advances by the full `Δt` and is blended with the cached state `Ψⁿ` by the Shu-Osher
-coefficients. The barotropic mode is handled by the model's `rk_substep!`, which advances it once per
-step rather than once per stage.
+coefficients.
 """
 function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callbacks=[])
 
@@ -204,7 +195,6 @@ end
 ##### The corrector's slow forcing: accumulate βₘ Gᵐ across the stages, then hand it to the barotropic
 ##### solve in place of the final stage's value.
 #####
-
 @inline accumulate_ssp_slow_forcing!(ts::SSPRungeKuttaTimeStepper, stage) = accumulate_ssp_slow_forcing!(ts.G★, ts, stage)
 
 @inline accumulate_ssp_slow_forcing!(G★, ts, stage) = nothing
@@ -235,7 +225,6 @@ end
     const MultiStageTimeStepper
 
 Timesteppers that advance the state through Runge-Kutta stages, as distinct from the two-level
-Adams-Bashforth scheme. Behaviour that depends only on there being stages -- caching fluxes per stage,
-restarting the barotropic solve from `tⁿ`, assembling stage-wise dissipation -- dispatches on this.
+Adams-Bashforth scheme.
 """
 const MultiStageTimeStepper = Union{SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper}

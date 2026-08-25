@@ -119,33 +119,17 @@ end
 """
     ModifiedRungeKutta4TimeStepper(; a = 0.22)
 
-Return the four-stage `SplitRungeKuttaTimeStepper` of Silvestri et al. (2026), with stage fractions `γ = a Δt, Δt/3, Δt/2, Δt`,
-that is `β = (1/a, 3, 2, 1)`.
+Return the four-stage `SplitRungeKuttaTimeStepper` of Silvestri et al. (2026), with stage fractions
+`γ = a Δt, Δt/3, Δt/2, Δt`, that is `β = (1/a, 3, 2, 1)`.
 
-The composition is third order for every `a`, which controls only the free quartic coefficient of the stability function,
+The composition is third order for every `a`, which sets the free quartic coefficient `c₄ = a/6` of the
+stability function `R(z) = 1 + z + z²/2 + z³/6 + c₄ z⁴`. `a = 1/4` recovers the classical fourth-order
+polynomial; smaller `a` trades that order, which the split-explicit coupling caps at two anyway, for the
+quartic dissipation `|R(iθ)| ≈ 1 - (1/24 - c₄) θ⁴` that absorbs the perturbation the barotropic sub-cycle
+injects into the first baroclinic mode. The band closes when `1/24 - c₄ ≥ σ₀`, i.e. `a ≤ 1/4 - 6 σ₀`, with
+`σ₀` the injection measured on the configuration at hand.
 
-```math
-R(z) = 1 + z + z²/2 + z³/6 + c₄ z⁴ , \\qquad c₄ = a/6 ,
-```
-
-so `a = 1/4` recovers the classical fourth-order polynomial `R₄`. That choice is the wrong one here. The coupled accuracy of a
-split-explicit scheme is capped at second order by the frozen exchange with the barotropic solver, so the fourth order `c₄ = 1/24`
-purchases is never realized, while the cancellation that produces it also deletes the polynomial's *quartic* dissipation, leaving
-only a sextic one. The sub-cycle injects a quartic perturbation into the first baroclinic mode, and a quartic injection opposed by
-a sextic dissipation wins as `Δt → 0`: the scheme is then weakly unstable at small Courant number by construction, whatever the constants.
-Choosing `a < 1/4` spends the unrealized order back as dissipation, recovering `|R(iθ)| ≈ 1 - (1/24 - c₄) θ⁴`, and the band closes when
-
-```math
-1/24 - c₄ ≥ σ₀ \\qquad ⟺ \\qquad a ≤ 1/4 - 6 σ₀ ,
-```
-
-with `σ₀` the injection measured on the configuration at hand. The default `a = 0.22` keeps a twofold margin at `ε = N²H/g = 0.06` while
-giving up 2.6% of the four-stage imaginary-axis range. Note that `σ₀` is a property of the modal configuration, so what transfers to a new
-setting is the criterion, not the number.
-
-Must be paired with [`ProgressiveSlowForcing`](@ref): with the slow forcing frozen, the four-stage scheme is destroyed outright by the
-barotropic--baroclinic resonance over `4.9 < μ₀ < 8.9`, and reconstructing on the final stage alone leaves an injection too large for
-any four-stage polynomial to absorb profitably.
+Must be paired with [`ProgressiveSlowForcing`](@ref).
 
 Examples
 ========

@@ -70,16 +70,9 @@ function assemble_advective_dissipation!(P, grid, ts::SplitRungeKuttaTimeStepper
 end
 
 """
-Assemble the advective production of the strong-stability-preserving composition.
-
-The step is a single quadrature, `cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ G(yᵐ⁻¹)`, so it closes against a single
-production, formed with the *same* combination of the stage fluxes and transports that advanced the
-tracer,
-
-    F̄ = Σₘ βₘ Fᵐ ,    Ū = Σₘ βₘ Uᵐ ,    P = 2 δc★ F̄ - δc² Ū ,
-
-evaluated at the endpoints `cⁿ` and `cⁿ⁺¹` of the whole step. `Fⁿ⁻¹` and `Uⁿ⁻¹` hold the running sums,
-which `cache_fluxes!` has filled by the time the final stage assembles.
+Assemble the advective production of the strong-stability-preserving composition, `P = 2 δc★ F̄ - δc² Ū`
+with `F̄ = Σₘ βₘ Fᵐ` and `Ū = Σₘ βₘ Uᵐ` the running sums held in `F̄`/`Ū`, evaluated at the endpoints
+`cⁿ` and `cⁿ⁺¹` of the whole step.
 """
 function assemble_advective_dissipation!(P, grid, ts::SSPRungeKuttaTimeStepper, substep, Fⁿ, F̄, Uⁿ, Ū, σc, cⁿ⁺¹, cⁿ)
     if substep == ts.Nstages
@@ -98,8 +91,7 @@ function assemble_diffusive_dissipation!(K, grid, ts::SplitRungeKuttaTimeStepper
     return nothing
 end
 
-# As for the advective production: the step is one quadrature, so it closes against the β-weighted sum
-# of the stage fluxes, assembled at the endpoints of the whole step.
+# As for the advective production: the β-weighted sum of the stage fluxes, at the endpoints of the step.
 function assemble_diffusive_dissipation!(K, grid, ts::SSPRungeKuttaTimeStepper, substep, Vⁿ, V̄, cⁿ⁺¹, cⁿ)
     if substep == ts.Nstages
         launch!(architecture(grid), grid, :xyz, _assemble_rk3_diffusive_dissipation!, K, grid, V̄, cⁿ⁺¹, cⁿ)

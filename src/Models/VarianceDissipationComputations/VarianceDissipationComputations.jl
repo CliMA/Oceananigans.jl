@@ -87,14 +87,12 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
 
-    # σ frozen at the flux-cache substep so the RK3 assembly divides by the same σ the flux was
-    # weighted with, rather than the live grid σ one substep later.
+    # σ frozen at the flux-cache substep, so the assembly divides by the σ the flux was weighted with.
     σ_cache = (x = Field{Face,   Center, Nothing}(grid),
                y = Field{Center, Face,   Nothing}(grid),
                z = Field{Center, Center, Nothing}(grid))
 
-    # The strong-stability-preserving path accumulates raw fluxes across the stages and leaves this cache
-    # at unity, so it must start there rather than at zero.
+    # The strong-stability-preserving path accumulates raw fluxes and leaves this cache at unity.
     for σ in σ_cache
         fill!(parent(σ), 1)
     end
