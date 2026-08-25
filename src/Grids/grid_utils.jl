@@ -574,10 +574,9 @@ end
 ##### Extensions for kernel launching
 #####
 
-function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
-    T = topology(grid, side)
-    N = size(grid, side)
-
+function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
+    T = @inbounds topology(grid)[side]
+    N = @inbounds size(grid)[side]
     return Utils.periphery_offset(loc, T(), N)
 end
 

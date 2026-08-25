@@ -237,53 +237,57 @@ end
 
 const AIVA = AdaptiveImplicitVerticalAdvection
 
-# With AdaptiveImplicitVerticalAdvection: add advection contribution
+# With AdaptiveImplicitVerticalAdvection: add advection contribution. The optional trailing `density`
+# (default `nothing`) selects volume-conserving (Boussinesq) vs density-weighted (mass-flux) coefficients.
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w)
+                                 advection::AIVA, w, density=nothing)
     du_diff = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    du_adv = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    du_adv = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     return du_diff + du_adv
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w)
+                                 advection::AIVA, w, density=nothing)
     dl_diff = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dl_adv = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    dl_adv = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     return dl_diff + dl_adv
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w)
+                                 advection::AIVA, w, density=nothing)
     d_diff = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    d_adv = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    d_adv = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
     return d_diff + d_adv
 end
 
 # Fallback: non-adaptive advection schemes contribute nothing to the implicit system
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionUpperDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing) =
     _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionLowerDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing) =
     _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 @inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionDiagonal, p, dir::ZDirection,
-                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w, density=nothing) =
     ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 #####
 ##### Extended implicit_step! that passes advection and vertical velocity through
+#####
+##### The trailing `density` (default `nothing`) selects density-weighted advection coefficients for
+##### mass-flux (anelastic / compressible) models; `nothing` keeps the volume-conserving Boussinesq behavior.
 #####
 
 function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure, closure_fields, tracer_index,
                         clock, fields, Δt,
-                        advection, velocities)
+                        advection, velocities, density=nothing)
 
     if closure isa Tuple
         N = length(closure)
@@ -298,5 +302,5 @@ function implicit_step!(field::Field,
     return solve!(field, implicit_solver, field,
                   vi_closure, vi_closure_fields, tracer_index,
                   LX(), LY(), LZ(), Δt, clock, fields,
-                  advection, velocities.w)
+                  advection, velocities.w, density)
 end

@@ -232,10 +232,11 @@ model = NonhydrostaticModel(grid; forcing=(u=damping, v=damping, w=damping))
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Center, Center, Face)
-├── func: Relaxation(rate=0.001, mask=1, target=0)
-├── parameters: nothing
-└── field dependencies: (:w,)
+Relaxation{Float64} at (Center, Center, Face)
+├──    rate: 0.001
+├── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+├──    mask: 1
+└──  target: 0
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -290,20 +291,22 @@ model = NonhydrostaticModel(grid; forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_spo
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
-├── parameters: nothing
-└── field dependencies: (:u,)
+Relaxation{Float64} at (Face, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 0
 ```
 
 ```jldoctest sponge_layer
 model.forcing.T
 
 # output
-ContinuousForcing{Nothing} at (Center, Center, Center)
-├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
-├── parameters: nothing
-└── field dependencies: (:T,)
+Relaxation{Float64} at (Center, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 20.0 + 0.001 * z
 ```
 
 ### `FieldTimeSeries` target
@@ -321,11 +324,62 @@ c_nudge = Relaxation(rate=1/3600, target=fts)
 
 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
 
-summary(model.forcing.c.target)
+model.forcing.c.target.field_time_series === fts
 
 # output
-"FieldTimeSeriesTarget(location=(Center(), Center(), Center()), index=4)"
+true
 ```
+
+### Relaxing a reduction of the field toward a target
+
+Sometimes the quantity to relax is not the forced field directly but a *reduction* of it —
+for example its horizontal average ``\overline{c}(z, t)``. The `transform` keyword applies
+a function to the forced field at materialize time, and the resulting (lazy) field is
+recomputed each step in `update_state!` via `compute_forcing!`. The forcing tendency
+becomes ``\text{rate} \cdot \text{mask}(X) \cdot \big(\text{target}(X, t) - \text{transform}(c)\big)``,
+so the user-supplied `target` is still the RHS the relaxation pulls toward.
+
+The shortcut `transform = :horizontal_average` builds the horizontal average
+`Field(Average(c, dims=(1, 2)))` automatically. Combined with a target profile, it relaxes
+``\overline{c}(z, t)`` toward the target:
+
+```jldoctest horizontal_average_target
+grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+
+c_target = LinearTarget{:z}(intercept=0, gradient=1)
+relax_horizontal_mean = Relaxation(rate=1/60, transform=:horizontal_average, target=c_target)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_horizontal_mean))
+
+summary(model.forcing.c.relaxed)
+
+# output
+"1×1×8 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on RectilinearGrid on CPU"
+```
+
+For any other reduction or custom diagnostic, pass a callable that builds a lazy `Field`
+from the forced field. For instance, an ``xz``-averaged quantity:
+
+```jldoctest xz_average_target
+using Oceananigans.AbstractOperations: Average
+
+grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
+
+xz_average(c) = Field(Average(c, dims=(1, 3)))
+relax_xz_mean = Relaxation(rate=1/60, transform=xz_average)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_xz_mean))
+
+summary(model.forcing.c.relaxed)
+
+# output
+"1×8×1 Field{Nothing, Center, Nothing} reduced over dims = (1, 3) on RectilinearGrid on CPU"
+```
+
+A `mask` can be combined with `transform` exactly as with any other target — for example,
+to confine the relaxation to a sponge layer at the bottom of the domain.
+
+`transform` is not supported with a `FieldTimeSeries` target.
 
 ## `AdvectiveForcing`
 

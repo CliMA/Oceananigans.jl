@@ -51,15 +51,34 @@ struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
     viscosity(closure, closure_fields)
+    viscosity(model)
 
-Returns the scalar viscosity associated with `closure`.
+Return the scalar viscosity associated with `closure`, or with `model.closure` when a model
+is supplied.
+
+Closures with a prescribed viscosity return what was passed to their `ν` keyword argument:
+a number, a function, or a `Field`. Closures that compute an eddy viscosity, such as
+`SmagorinskyLilly` or [`CATKEVerticalDiffusivity`](@ref), return a `Field` held in
+`closure_fields`, which reflects the current model state only after the closure fields have
+been computed. For a `Tuple` of closures, a `Tuple` of viscosities is returned.
+
+See also [`diffusivity`](@ref).
 """
 function viscosity end
 
 """
     diffusivity(closure, closure_fields, tracer_index)
+    diffusivity(model, tracer_index)
 
-Returns the scalar diffusivity associated with `closure` and `tracer_index`.
+Return the scalar diffusivity that `closure` applies to the tracer identified by
+`tracer_index` (typically a `Val` wrapping the tracer name, for example `Val(:T)`).
+For closures whose diffusivity does not depend on tracer identity, `tracer_index` is ignored.
+`closure_fields` are the fields computed by `closure` and correspond to
+`model.closure_fields`.
+
+As for [`viscosity`](@ref), what is returned depends on the closure: a number, function, or
+`Field` for closures with prescribed diffusivities, and a `Field` held in `closure_fields`
+for closures that compute an eddy diffusivity.
 """
 function diffusivity end
 

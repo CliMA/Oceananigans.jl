@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices
 
 using Random
 using NCDatasets
@@ -718,11 +718,61 @@ end
 ##### Run tests
 #####
 
+function test_precomputed_time_interpolator(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    times = [0, 1, 3]
+
+    for time_indexing in (Linear(), Clamp(), Cyclical())
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        for n in 1:length(times)
+            set!(fts[n], (x, y, z) -> n * x)
+        end
+
+        # A `TimeInterpolator` built on the host reads the same value as `Time(t)`, which
+        # searches `times` at the point of use.
+        for t in (-1, 0, 0.5, 1, 2.25, 3, 4)
+            time_interpolator = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, t)
+            for (i, j, k) in ((1, 1, 1), (2, 1, 2))
+                @test @allowscalar fts[i, j, k, time_interpolator] == fts[i, j, k, Time(t)]
+            end
+        end
+    end
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
+
+    for arch in archs
+        @testset "FieldTimeSeries rejects AbstractOperations [$(typeof(arch))]" begin
+            @info "  Testing that FieldTimeSeries operands are rejected by AbstractOperations [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            [set!(a[n], n) for n in 1:length(times)]
+            [set!(b[n], 2n) for n in 1:length(times)]
+
+            # Operations with FieldTimeSeries operands would silently drop
+            # the time dimension (issue #5758), so they throw instead.
+            @test_throws ArgumentError a * b
+            @test_throws ArgumentError a + b
+            @test_throws ArgumentError a * 2
+            @test_throws ArgumentError 2 * a
+            @test_throws ArgumentError sqrt(a)
+            @test_throws ArgumentError -a
+            @test_throws ArgumentError +(a, b, b)
+            @test_throws ArgumentError ∂x(a)
+
+            # Slicing a snapshot out of the series still supports operations
+            c = compute!(Field(a[2] * b[2]))
+            @test CUDA.@allowscalar c[1, 1, 1] == 8
+        end
+    end
 
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
@@ -843,6 +893,12 @@ end
 
     @testset "Time Interpolation" begin
         test_time_interpolation()
+    end
+
+    for arch in archs
+        @testset "Precomputed TimeInterpolator [$(typeof(arch))]" begin
+            test_precomputed_time_interpolator(arch)
+        end
     end
 
     filepath_sine = "one_dimensional_sine.jld2"

@@ -148,7 +148,7 @@ Return kernel parameters for computing 2D (surface) variables in buffer regions.
 The buffer regions are strips along processor boundaries where computations depend on halo data.
 Returns parameters for west, east, south, and north buffer regions.
 """
-function buffer_surface_kernel_parameters(grid, arch)
+@inline function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
@@ -175,7 +175,7 @@ Return kernel parameters for computing 3D (volume) variables in buffer regions.
 Similar to `buffer_surface_kernel_parameters` but for three-dimensional fields.
 The buffer regions span the full vertical extent of the grid.
 """
-function buffer_volume_kernel_parameters(grid, arch)
+@inline function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
