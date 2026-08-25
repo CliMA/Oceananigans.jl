@@ -148,7 +148,6 @@ function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretiz
                                                parameters, discrete_form, field_dependencies)
 end
 
-# Ordinary explicit flux.
 function materialize_flux_boundary_condition(flux, ::ExplicitTimeDiscretization; parameters, discrete_form, field_dependencies)
     condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
     return BoundaryCondition(Flux(), condition)

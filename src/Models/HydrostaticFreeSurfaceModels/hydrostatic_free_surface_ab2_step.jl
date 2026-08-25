@@ -162,7 +162,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
 
-    # The barotropic correction is measured against the column the vertical solver receives.
     store_pre_solve_velocities!(model, model.free_surface)
 
     implicit_ab2_step_velocity!(model, Δt, Val(:u))

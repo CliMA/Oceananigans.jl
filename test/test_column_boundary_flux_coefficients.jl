@@ -10,13 +10,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 #####
 ##### The column-integrated boundary stress the barotropic mode carries
 #####
-##### `Ω` is the stress `λ 𝓋ᵦ` the implicit boundary conditions realize, entered as a tendency on the
-##### depth-integrated momentum, so at a tripolar seam it folds as a vector. The barotropic mode must
-##### realize the stress the explicit treatment delivers wherever the explicit treatment is stable —
-##### and, crucially, must not deliver it twice: the correction removes `Δt Ω` again once the vertical
-##### solver has applied the boundary flux for real. A bottom drag acting through a column with no
-##### vertical mixing cannot reach the surface, which makes that double count directly measurable.
-#####
 
 const r_drag = 2e-3
 
@@ -131,8 +124,7 @@ end
         end
 
         @testset "Barotropic mode realizes the true boundary stress [$(typeof(arch))]" begin
-            # A shelf column: eight levels over 800 m with a thin bottom cell, and a drag weak enough
-            # that the explicit treatment is still stable and can serve as the reference.
+            # The drag is weak enough that the explicit treatment is stable and serves as the reference.
             zfaces = [-1000, -800, -750, -650, -500, -350, -200, -80, 0]
             underlying = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 1e5), y=(0, 1e5), z=zfaces,
                                          topology=(Periodic, Periodic, Bounded))
@@ -148,16 +140,12 @@ end
                 return transport(m) / U₀
             end
 
-            # Removing the boundary flux from the tendency must not remove it from the depth integral:
-            # the implicit treatment has to reproduce the stress the explicit one applies.
             @test evolve(true) ≈ evolve(false) rtol=2e-2
         end
 
         @testset "A bottom drag does not accelerate the surface [$(typeof(arch))]" begin
-            # With no vertical mixing the drag reaches only the bottom cell, so every other cell must
-            # end the run at exactly its initial velocity. The correction is depth-uniform, so any
-            # departure at the surface measures the boundary momentum it double counted — the failure
-            # that grows with `r Δt / Δz` and survives arbitrarily many barotropic substeps.
+            # With no vertical mixing the drag reaches only the bottom cell, so every other cell must end
+            # at its initial velocity: the depth-uniform correction would otherwise double count the stress.
             zfaces = [-1000, -800, -750, -650, -500, -350, -200, -80, 0]
             underlying = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 1e5), y=(0, 1e5), z=zfaces,
                                          topology=(Periodic, Periodic, Bounded))
@@ -179,8 +167,8 @@ end
         end
 
         @testset "Implicit free surface needs no correction [$(typeof(arch))]" begin
-            # Its predictor is stepped, and so already carries `λ`, before the free surface is solved,
-            # and the correction is a projection. It should match the unsplit reference on its own.
+            # Its predictor already carries `λ` before the free surface is solved, so it should match the
+            # unsplit reference with no correction of its own.
             Δt = 3600
             zfaces = collect(range(-1000, 0, length = 21))
             underlying = RectilinearGrid(arch, size=(4, 4, 20), x=(0, 1e5), y=(0, 1e5), z=zfaces,
@@ -190,8 +178,7 @@ end
             Δz = zfaces[2] - zfaces[1]
             β = r_drag * Δt / Δz
 
-            # Unsplit backward Euler: with no vertical viscosity the drag reaches only the bottom cell,
-            # so each step the depth mean loses that cell's share of what the cell itself loses.
+            # Unsplit backward Euler reference.
             Nwet = 16
             𝓋ᵦ = 1.0
             𝓋̄ = 1.0

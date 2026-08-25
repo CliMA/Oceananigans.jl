@@ -30,9 +30,8 @@ function compute_barotropic_mode!(U̅, V̅, grid, u, v)
     return nothing
 end
 
-# The mean, not the transport: a mutable coordinate rescales the column before the correction reads this,
-# and `σ` is depth-uniform, so `∫u dz` picks up that factor while the mean does not. Also runs before the
-# velocities are masked, hence the explicit `peripheral_node` guard.
+# The mean, not the transport: a mutable coordinate rescales the column before the correction reads this.
+# Runs before the velocities are masked, hence the explicit `peripheral_node` guard.
 @kernel function _compute_barotropic_velocity!(ū, v̄, grid, u, v)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
@@ -55,20 +54,14 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Store the depth-mean velocities the vertical solver is about to act on, which the correction is measured
-against so that the boundary momentum the solver removes is not overwritten by it.
+Store the depth-mean velocities the vertical solver is about to act on, against which the correction is
+measured. Without an implicit boundary flux the solver conserves the column integral and there is nothing
+to preserve.
 """
 function store_pre_solve_velocities!(model, free_surface::SplitExplicitFreeSurface)
-    coefficients = free_surface.implicit_boundary_coefficients
-    store_pre_solve_velocities!(model, free_surface, coefficients.U, coefficients.V)
-    return nothing
-end
+    cᵁ, cⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
+    isnothing(cᵁ) && isnothing(cⱽ) && return nothing
 
-# With no implicit boundary flux the vertical solver carries none, so it conserves the column integral
-# and there is nothing for the correction to preserve.
-store_pre_solve_velocities!(model, free_surface, ::Nothing, ::Nothing) = nothing
-
-function store_pre_solve_velocities!(model, free_surface, cᵁ, cⱽ)
     state = free_surface.filtered_state
     u, v, _ = model.velocities
     grid = model.grid
@@ -80,17 +73,13 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Correct baroclinic velocities so that they are consistent with the barotropic flow from split-explicit substepping.
-
-With `ū` the depth mean the vertical solver received and `𝒟` the boundary momentum it then removed, the column holds
-`H ū - 𝒟` and the substepping produced `U = U⁰ + Δt Ω`. Adding
+Correct baroclinic velocities so that they are consistent with the barotropic flow from split-explicit substepping,
 
     u = u + (U - Δt Ω) / H - ū
 
-leaves `∫u dz = U⁰ - 𝒟`, so the boundary flux is counted once, as the solver realized it, for any stiffness and any
-closure: the solver's interior fluxes telescope and only its boundary flux survives the integral, so `𝒟` never has to
-be predicted. `U` is then re-diagnosed from the corrected column, which the correction deliberately leaves apart from
-it by `𝒟`.
+with `ū` the depth mean the vertical solver received and `Ω` the column-integrated boundary stress the substepping
+carried. Subtracting `Δt Ω` counts the boundary flux once, as the solver realized it. Without an implicit boundary
+flux `Ω` and `ū` are absent and this reduces to `u = u + (U - ∫u dz) / H`.
 """
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid, Δt)
     state = free_surface.filtered_state
@@ -108,8 +97,6 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid, Δt)
     return nothing
 end
 
-# With no implicit boundary flux this is the plain projection of the column onto the barotropic
-# transport, bit for bit as it is without any of the machinery above.
 function reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, ::Nothing, ::Nothing, Δt, grid, arch)
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
@@ -117,19 +104,14 @@ function reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, ::Nothing, ::Nothing, 
     return nothing
 end
 
+# `U̅` and `V̅` hold the pre-solve depth means, so the correction must not recompute them here.
 function reconcile_barotropic_mode!(u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid, arch)
-    # NOTE: `U̅` and `V̅` hold the pre-solve depth means, stored by `store_pre_solve_velocities!`.
     launch!(arch, grid, volume_kernel_parameters(grid), _correct_barotropic_mode_with_boundary_flux!,
             u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid)
 
-    # The transport must end the step equal to the column it represents; the correction deliberately
-    # leaves them apart by the boundary momentum the vertical solver removed.
     compute_barotropic_mode!(U, V, grid, u, v)
     return nothing
 end
-
-@inline barotropic_stress(i, j, grid, ::Nothing, Δt) = zero(grid)
-@inline barotropic_stress(i, j, grid, Ω, Δt) = @inbounds Δt * Ω[i, j, 1]
 
 @kernel function _correct_barotropic_mode_with_boundary_flux!(u, v, U, V, U̅, V̅, cᵁ, cⱽ, Δt, grid)
     i, j, k = @index(Global, NTuple)
@@ -139,8 +121,8 @@ end
     immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | immersed_inactive_node(i, j, k, grid, Face(), Center(), Center())
     immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | immersed_inactive_node(i, j, k, grid, Center(), Face(), Center())
 
-    δuᵢ = @inbounds U[i, j, 1] - barotropic_stress(i, j, grid, cᵁ, Δt)
-    δvⱼ = @inbounds V[i, j, 1] - barotropic_stress(i, j, grid, cⱽ, Δt)
+    δuᵢ = @inbounds U[i, j, 1] - Δt * barotropic_correction(i, j, grid, cᵁ)
+    δvⱼ = @inbounds V[i, j, 1] - Δt * barotropic_correction(i, j, grid, cⱽ)
 
     u_correction = @inbounds ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ - U̅[i, j, 1])
     v_correction = @inbounds ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ - V̅[i, j, 1])

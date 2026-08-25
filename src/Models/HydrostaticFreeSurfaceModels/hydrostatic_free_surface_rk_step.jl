@@ -152,7 +152,6 @@ function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
 
-    # The barotropic correction is measured against the column the vertical solver receives.
     store_pre_solve_velocities!(model, model.free_surface)
 
     implicit_substep_velocity!(model, Δt, Val(:u))

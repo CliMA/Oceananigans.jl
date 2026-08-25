@@ -29,10 +29,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
 @inline y_difference_operator(::Val{true})  = δyᶜᶜᶜ
 
-# Whether the substeps run on filled halos, which selects the plain rather than topology-aware operators.
-@inline filled_halos(::FillHaloSplitExplicit) = Val(true)
-@inline filled_halos(::SplitExplicitFreeSurface) = Val(false)
-
 @inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
 @inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
 @inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
@@ -63,9 +59,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
         Uᵗ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         Vᵗ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
-        # A vertical boundary flux affine in the velocity damps the depth-integrated momentum exactly
-        # as it damps the boundary cell, but the vertical solver takes that contribution out of `Gᵁ`.
-        # `Ω` carries it, as a `U`-independent increment the substepping integrates over exactly `Δt`.
         U[i, j, 1] = Uᵗ + Δτ * barotropic_correction(i, j, grid, cᵁ)
         V[i, j, 1] = Vᵗ + Δτ * barotropic_correction(i, j, grid, cⱽ)
 
