@@ -58,6 +58,24 @@ function test_architectures()
     end
 end
 
+# GPUArraysCore has a scoped helper for allowing scalar indexing, but not for
+# disallowing it. Preserve the task-local setting so strict GPU tests do not affect
+# testsets that run afterwards.
+function with_scalar_indexing_disallowed(f)
+    scalar_indexing = get(task_local_storage(), :ScalarIndexing, nothing)
+    task_local_storage(:ScalarIndexing, GPUArraysCore.ScalarDisallowed)
+
+    try
+        return f()
+    finally
+        if isnothing(scalar_indexing)
+            delete!(task_local_storage(), :ScalarIndexing)
+        else
+            task_local_storage(:ScalarIndexing, scalar_indexing)
+        end
+    end
+end
+
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
 function nonhydrostatic_regression_test_architectures()
