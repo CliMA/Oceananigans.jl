@@ -330,4 +330,4 @@ function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, gri
     return KernelParameters(kernel_size, kernel_offsets)
 end
 
-materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids, bcs) = nothing
