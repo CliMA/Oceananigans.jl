@@ -90,7 +90,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
                                                       model.velocities.u, model.velocities.v)
 
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
-    fill_column_boundary_stress_halos!(Ω; async=true)
+    fill_column_boundary_stress_halos!(Ω)
 
     return nothing
 end
