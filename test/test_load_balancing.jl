@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_cells_per_column
+using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes
 
 sizes = [ (6, 6, 3) ]
 halos = [ (4, 4, 4) ]
@@ -56,4 +57,14 @@ grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constru
 
   @test sum(active_cells_per_column(underlying_grid, ib)) == active_cells_count
 
+end
+
+@testset "Partitioning consistent" for (len, ranks) in zip((10, 100, 1000), (2,4,8))
+  weights = rand(len)
+
+  partitions = partition_1d(weights, ranks)
+
+  sizes = ends_to_sizes(partitions)
+
+  @test sum(sizes) == l
 end
