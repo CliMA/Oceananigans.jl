@@ -5,6 +5,7 @@ on:
     paths: &paths
       - '.github/workflows/dependency_checks.yml'
       - 'test/Project.toml'
+      - 'test/ProjectDistributed.toml'
       - 'benchmarks/Project.toml'
       - 'Project.toml'
   push:
@@ -61,6 +62,14 @@ jobs:
       - name: Resolve environment in ${{ matrix.dir }}
         working-directory: ${{ matrix.dir }}
         shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.Registry.add("General")
+          Pkg.Registry.update()
+          Pkg.resolve()
+      - name: Resolve distributed tests environment
+        working-directory: 'test/'
+        shell: julia --color=yes --project=ProjectDistributed.toml {0}
         run: |
           using Pkg
           Pkg.Registry.add("General")
