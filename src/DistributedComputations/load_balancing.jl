@@ -17,13 +17,13 @@ function partition_1d(weights, ranks)
   optimal_weight = total / ranks
   # Indices of ends of partitions
   left = [searchsortedfirst(csum, optimal_weight * i) for i in 0:ranks-1]
-  right = [searchsortedfirst(csum, optimal_weight * i) for i in 1:ranks]
+  right = [searchsortedlast(csum, optimal_weight * i) for i in 1:ranks]
 
   return zip(left, right)
 end
 
 function ends_to_sizes(ends)
-  sizes = [r-l for (l,r) in ends]
+  sizes = [r-l+1 for (l,r) in ends]
   return sizes
 end
 
