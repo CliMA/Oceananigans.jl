@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries:
     serially_build_active_cells_map,
     compute_mask
 
-import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, AbstractImmersedBoundary, build_active_cells_map, active_cells_per_column
+import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, build_active_cells_map, active_cells_per_column
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff
