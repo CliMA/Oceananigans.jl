@@ -67,6 +67,19 @@ jobs:
           Pkg.Registry.add("General")
           Pkg.Registry.update()
           Pkg.resolve()
+  resolve_distributed_dependencies:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.11.9'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
       - name: Resolve distributed tests environment
         working-directory: 'test/'
         shell: julia --color=yes --project=ProjectDistributed.toml {0}
