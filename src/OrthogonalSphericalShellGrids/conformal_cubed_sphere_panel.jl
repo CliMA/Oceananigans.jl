@@ -836,10 +836,12 @@ import Oceananigans.BoundaryConditions: fill_halo_kernels
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
-    Nx, Ny  = grid.Nx, grid.Ny
-    Hx, Hy  = grid.Hx, grid.Hy
-    size    = (Nx+2Hx, Ny+2Hy)
-    offset  = (-Hx, -Hy)
+    # Fill the bottom and top halos across the full horizontal span of `data`,
+    # including horizontal halo columns, which participate in panel corner
+    # exchanges. `data` may be reduced or windowed in x and y, so the span is
+    # taken from the array itself rather than from the grid.
+    size    = (Base.size(data, 1), Base.size(data, 2))
+    offset  = (first(axes(data, 1)) - 1, first(axes(data, 2)) - 1)
     side    = Oceananigans.BoundaryConditions.BottomAndTop()
     bcs     = (bcs.bottom, bcs.top)
     bc      = select_bc(bcs)

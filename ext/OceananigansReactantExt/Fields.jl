@@ -6,7 +6,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.AbstractOperations: AbstractOperation, BinaryOperation, KernelFunctionOperation,
                                        kept_index
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!
+using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
@@ -42,27 +42,18 @@ function set_to_function!(u::ReactantField, f)
     return nothing
 end
 
-# A dimension can be copied by broadcasting when both fields share its location and size,
-# or when v is reduced there (Nothing location, singleton size): broadcasting expands the
-# singleton across u's dimension, as when a 1D reference column is set into a 3D field.
-@inline broadcastable_dimension(ℓu, ℓv, Nu, Nv) = (ℓu == ℓv && Nu == Nv) || (ℓv === Nothing && Nv == 1)
-
-function broadcast_compatible(u, v)
-    ℓu = Oceananigans.location(u)
-    ℓv = Oceananigans.location(v)
-    Nu = size(u)
-    Nv = size(v)
-    return all(broadcastable_dimension(ℓu[d], ℓv[d], Nu[d], Nv[d]) for d in 1:3)
-end
-
-# When v broadcasts against u we can just copy interiors. Otherwise we fall
+# When `v` may be copied into `u` we broadcast interiors, which traces. Otherwise we fall
 # back to interpolation on the CPU, since interpolate!'s KA kernel does not
 # currently trace under Reactant (see Reactant.jl#2364). This mirrors how
 # set_to_function! hops to the CPU. Note that the CPU fallback only works
 # outside of tracing: traced data cannot be materialized on the CPU mid-trace,
-# so under `@compile`/`@jit` only the broadcast path is available.
+# so under `@compile`/`@jit` only the copy path is available.
+#
+# `copyable_fields` is Oceananigans' own copy-versus-interpolate policy; we differ from
+# `copy_to_field!` only in mechanism, copying interiors alone rather than attempting halos
+# through a `try`/`catch` that cannot be traced.
 function set_to_field!(u::ReactantField, v::ReactantField)
-    if broadcast_compatible(u, v)
+    if copyable_fields(u, v)
         interior(u) .= interior(v)
     else
         cpu_grid_u = on_architecture(CPU(), u.grid)
