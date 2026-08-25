@@ -72,7 +72,7 @@ end
 # `traced_type_inner` gives `BinaryOperation` and `KernelFunctionOperation` the eltype of their traced
 # grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. This causes an
 # ambiguity between Reactant's indexing and Oceananigans' that we resolve by defining a more
-# specialized indexing method. 
+# specialized indexing method.
 const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
 
 @inline Base.getindex(β::BinaryOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
@@ -88,9 +88,9 @@ const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
     end
 end
 
-# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation` 
-# we materialize to the CPU fallback. 
-# TODO: find a better way to do this. 
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`
+# we materialize to the CPU fallback.
+# TODO: find a better way to do this.
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
