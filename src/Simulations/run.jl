@@ -1,17 +1,12 @@
 using Dates: unix2datetime
-
-using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, initialize!
 using Oceananigans.Architectures: architecture
-using Oceananigans.Diagnostics: nan_detected
+using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
-using Oceananigans.TimeSteppers: update_state!, unit_time
-
-import Oceananigans: initialize!
-import Oceananigans.Diagnostics: reset_nan_checker!
-import Oceananigans.Fields: set!
-import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: schedule_aligned_time_step
+using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
+using Oceananigans.Utils: schedule_aligned_time_step
 
 # Simulations are for running
 
@@ -25,7 +20,7 @@ function collect_scheduled_activities(sim)
     return tuple(writers..., callbacks...)
 end
 
-function schedule_aligned_time_step(sim, aligned_Δt)
+function Oceananigans.Utils.schedule_aligned_time_step(sim, aligned_Δt)
     clock = sim.model.clock
     activities = collect_scheduled_activities(sim)
 
@@ -87,7 +82,7 @@ Keyword arguments
 
 See also [`run!`](@ref), which accepts a `pickup` keyword argument.
 """
-function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
+function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
     nargs = count(!isnothing, (checkpoint, iteration))
 
     nargs == 0 && return nothing
@@ -201,7 +196,7 @@ function nan_checker_detected_nan(sim::Simulation)
     return global_nan_detected
 end
 
-function reset_nan_checker!(sim::Simulation)
+function Oceananigans.Diagnostics.reset_nan_checker!(sim::Simulation)
     cb = nan_checker(sim)
     isnothing(cb) && return nothing
     reset_nan_checker!(cb.func)
@@ -211,14 +206,14 @@ end
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
 """ Step `sim`ulation forward by Δt. """
-function time_step!(sim::Simulation, Δt)
+function Oceananigans.TimeSteppers.time_step!(sim::Simulation, Δt)
     sim.Δt = Δt
     sim.align_time_step = false # ensure Δt
     return time_step!(sim)
 end
 
 """ Step `sim`ulation forward by one time step. """
-function time_step!(sim::Simulation)
+function Oceananigans.TimeSteppers.time_step!(sim::Simulation)
 
     start_time_step = time_ns()
 
@@ -304,7 +299,7 @@ Initialize a simulation:
 - Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
 - Add diagnostics that "depend" on output writers
 """
-function initialize!(sim::Simulation)
+function Oceananigans.initialize!(sim::Simulation)
     start_time = if sim.verbose
         @info "Initializing simulation..."
         time_ns()
