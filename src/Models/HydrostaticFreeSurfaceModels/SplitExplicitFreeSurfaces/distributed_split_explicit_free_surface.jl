@@ -19,17 +19,6 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
     synchronize_communication!(Gᵁ)
     synchronize_communication!(Gⱽ)
 
-    synchronize_column_implicit_coefficients!(free_surface.implicit_boundary_coefficients)
-
-    return nothing
-end
-
-synchronize_column_implicit_coefficients!(::Nothing) = nothing
-synchronize_column_implicit_coefficients!(Ω) = (synchronize_communication!(Ω); nothing)
-
-function synchronize_column_implicit_coefficients!(Ω::NamedTuple)
-    synchronize_column_implicit_coefficients!(Ω.U)
-    synchronize_column_implicit_coefficients!(Ω.V)
     return nothing
 end
 

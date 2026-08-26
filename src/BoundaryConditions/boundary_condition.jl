@@ -139,7 +139,7 @@ FluxBoundaryCondition(flux; time_discretization = IMEXFluxTimeDiscretization(λ)
 !!! warning "Vertical boundaries only"
     The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
     `IMEXFluxTimeDiscretization` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
-    (`west`/`east`/`south`/`north`) or immersed boundary errors.
+    (`west`/`east`/`south`/`north`) boundary errors.
 """
 function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
                                parameters = nothing, discrete_form = false, field_dependencies = ())
@@ -148,7 +148,6 @@ function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretiz
                                                parameters, discrete_form, field_dependencies)
 end
 
-# Ordinary explicit flux.
 function materialize_flux_boundary_condition(flux, ::ExplicitTimeDiscretization; parameters, discrete_form, field_dependencies)
     condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
     return BoundaryCondition(Flux(), condition)

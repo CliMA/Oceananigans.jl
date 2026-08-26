@@ -1,9 +1,11 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition,
+using Oceananigans.BoundaryConditions: BoundaryConditions,
+                                       BoundaryCondition,
                                        DefaultBoundaryCondition,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux
+                                       VBC, GBC, FBC, Flux,
+                                       needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
                                         bc_str,
@@ -61,6 +63,8 @@ function ImmersedBoundaryCondition(; west = nothing,
 
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
+
+BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs_implicit_solver(ibc.bottom) | needs_implicit_solver(ibc.top)
 
 #####
 ##### Boundary condition "regularization"

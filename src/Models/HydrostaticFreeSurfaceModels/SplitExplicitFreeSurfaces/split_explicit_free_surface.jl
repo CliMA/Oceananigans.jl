@@ -40,7 +40,7 @@ function substep_halo_filling(extend_halos::Bool, bcs)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, C} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -48,10 +48,9 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, C} <: AbstractFreeSurfa
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
-    implicit_boundary_coefficients :: C # A namedtuple with U, V holding the column-integrated boundary stress
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, c::C) where {E, H, U, M, FT, K, S, T, C}
-        return new{E, H, U, M, FT, K, S, T, C}(η, u, m, g, k, s, t, c)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T) where {E, H, U, M, FT, K, S, T}
+        return new{E, H, U, M, FT, K, S, T}(η, u, m, g, k, s, t)
     end
 end
 
@@ -193,8 +192,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   gravitational_acceleration,
                                                   nothing,
                                                   substepping,
-                                                  timestepper,
-                                                  nothing)
+                                                  timestepper)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -292,7 +290,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
-    implicit_boundary_coefficients = materialize_column_implicit_coefficients(maybe_extended_grid, velocities.u, velocities.v, bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                       barotropic_velocities,
@@ -300,8 +297,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                       gravitational_acceleration,
                                                       kernel_parameters,
                                                       substepping,
-                                                      timestepper,
-                                                      implicit_boundary_coefficients)
+                                                      timestepper)
 end
 
 #####
@@ -477,8 +473,7 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            free_surface.gravitational_acceleration,
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
-                                           Adapt.adapt(to, free_surface.timestepper),
-                                           Adapt.adapt(to, free_surface.implicit_boundary_coefficients))
+                                           Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,

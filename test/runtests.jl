@@ -114,6 +114,7 @@ CUDA.allowscalar() do
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+            include("test_field_time_series_round_trip.jl")
             include("test_averaged_specified_times.jl")
             include("test_set_field_time_series.jl")
         end
@@ -188,7 +189,7 @@ CUDA.allowscalar() do
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
             include("test_split_explicit_free_surface_boundaries.jl")
-            include("test_column_boundary_flux_coefficients.jl")
+            include("test_split_explicit_boundary_stress.jl")
             include("test_open_boundary_conditions_hydrostatic.jl")
             include("test_immersed_implicit_free_surface.jl")
         end

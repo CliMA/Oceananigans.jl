@@ -5,10 +5,8 @@ using Oceananigans: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
 
 #####
-##### A single column relaxed by a surface drag flux  J = λ (c_surf − c★).
-##### The dimensionless drag number is β = λ Δt / Δz. An explicit flux is unstable for
-##### β > 2; the implicit (Patankar) treatment embeds the linear part λ c_surf in the
-##### vertical-solver diagonal and is unconditionally stable.
+##### A single column relaxed by a surface drag flux J = λ (cᵦ − c★), with β = λ Δt / Δz. An explicit
+##### flux is unstable for β > 2; the implicit treatment is unconditionally stable.
 #####
 
 # Explicit form: the whole affine flux is evaluated explicitly.
@@ -22,8 +20,7 @@ drag_bc(implicit, λ, c★) = implicit ?
     FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★)) :
     FluxBoundaryCondition(drag_flux; discrete_form=true, parameters=(; λ, c★))
 
-# `closure = :auto` builds a zero-diffusivity vertically-implicit closure for the implicit BC
-# (and none otherwise); pass `closure = nothing` to exercise the implicit BC with no closure.
+# `closure = :auto` builds a zero-diffusivity vertically-implicit closure for the implicit BC, none otherwise.
 function relaxed_column(arch, Δt, nsteps; implicit, closure=:auto, λ=0.05, c★=1.0, c₀=0.0)
     grid = RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
     top = drag_bc(implicit, λ, c★)
@@ -46,8 +43,7 @@ end
 @inline mom_drag_u(i, j, grid, clock, fields, p) = @inbounds p.λ * fields.u[i, j, grid.Nz]
 @inline mom_drag_v(i, j, grid, clock, fields, p) = @inbounds p.λ * fields.v[i, j, grid.Nz]
 
-# CATKE: the TKE surface flux (∝ u★³) is a *derived* boundary condition that inherits stability
-# from the momentum BC, and reads the realized stress through `total_boundary_flux`.
+# The TKE surface flux (∝ u★³) is a derived boundary condition that inherits stability from the momentum BC.
 function catke_drag_column(arch, Δt, nsteps; implicit, λ=0.05, u₀=1.0)
     grid = RectilinearGrid(arch; size=4, z=(-4, 0), topology=(Flat, Flat, Bounded))
     if implicit   # drag toward 0: explicit part 0, coefficient λ (β = λ Δt / Δz = 5 at Δt = 100)
@@ -68,8 +64,7 @@ function catke_drag_column(arch, Δt, nsteps; implicit, λ=0.05, u₀=1.0)
     return (umax=fa(model.velocities.u), vmax=fa(model.velocities.v), emax=fa(model.tracers.e))
 end
 
-# Combined with adaptive implicit vertical advection (AIVA): a field can carry an AIVA advection
-# scheme *and* an implicit-explicit flux BC; the diagonal must sum both contributions.
+# A field carrying both an AIVA advection scheme and an implicit-explicit flux BC: the diagonal sums both.
 function aiva_drag_column(arch, Δt, nsteps; implicit, λ=0.05, c★=1.0, c₀=0.0)
     grid = RectilinearGrid(arch; size=4, z=(-4, 0), topology=(Flat, Flat, Bounded), halo=3)
     advection = WENO(time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))

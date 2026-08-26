@@ -1,15 +1,13 @@
 """
     struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
 
-An implicit-explicit (IMEX) time-discretization for an affine `Flux` boundary condition
-`J(φ_b) = Fₑ + λ φ_b`. The explicit part `Fₑ` is integrated through the tendency like an
-ordinary flux boundary condition, while the linear part `λ φ_b` — with `λ` the stored
-`implicit_coefficient` — is integrated implicitly by the vertical tridiagonal solver.
+Time-discretization of an affine `Flux` boundary condition `J(φᵦ) = Fₑ + λ φᵦ`, where `φᵦ` is the
+boundary-cell field value. `Fₑ` is integrated through the tendency and the linear part `λ φᵦ` — with
+`λ` the stored `implicit_coefficient` — by the vertical tridiagonal solver.
 
     IMEXFluxTimeDiscretization(implicit_coefficient)
 
-Build the discretization carrying the linear coefficient `λ`, then pass it to
-[`FluxBoundaryCondition`](@ref) through the `time_discretization` keyword:
+Build the discretization carrying `λ`, then pass it to [`FluxBoundaryCondition`](@ref):
 
 ```julia
 FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ))
@@ -29,15 +27,8 @@ Adapt.adapt_structure(to, td::IMEXFluxTimeDiscretization) =
 """
     struct IMEXFlux{E, C}
 
-Condition stored by a `Flux` boundary condition with `IMEXFluxTimeDiscretization`,
-representing a flux that is affine in the boundary-cell field value `φ_b`,
-
-```math
-J(φ_b) = Fₑ + λ φ_b ,
-```
-
-where `Fₑ` is the `explicit_flux` and `λ` is the `implicit_coefficient`. Built by
-[`FluxBoundaryCondition`](@ref) when an `IMEXFluxTimeDiscretization` is supplied.
+The condition of a `Flux` boundary condition with `IMEXFluxTimeDiscretization`, holding the
+`explicit_flux` `Fₑ` and the `implicit_coefficient` `λ` of the affine flux `J(φᵦ) = Fₑ + λ φᵦ`.
 """
 struct IMEXFlux{E, C}
     explicit_flux        :: E
@@ -46,8 +37,6 @@ end
 
 const IEFBC = BoundaryCondition{<:Flux{<:IMEXFluxTimeDiscretization}}
 
-# Affine flux `Fₑ + λ φ_b`: the explicit part enters the tendency, the linear part is integrated
-# implicitly by the vertical solver. Selected whenever an `IMEXFluxTimeDiscretization` is supplied.
 function materialize_flux_boundary_condition(explicit_flux, time_discretization::IMEXFluxTimeDiscretization;
                                              parameters, discrete_form, field_dependencies)
 
@@ -60,8 +49,8 @@ end
 """
     IMEXFluxBoundaryCondition(explicit_flux, implicit_coefficient; kwargs...)
 
-Convenience constructor for an affine `Flux` boundary condition `J(φ_b) = explicit_flux + implicit_coefficient φ_b`.
-Equivalent to passing an [`IMEXFluxTimeDiscretization`](@ref) to [`FluxBoundaryCondition`](@ref):
+Return a `Flux` boundary condition with the affine flux `J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`.
+Shorthand for
 
 ```julia
 FluxBoundaryCondition(explicit_flux; time_discretization = IMEXFluxTimeDiscretization(implicit_coefficient), kwargs...)
@@ -75,9 +64,8 @@ IMEXFluxBoundaryCondition(Fₑ, λ; kwargs...) =
 """
     implicit_flux_coefficient(bc, i, j, grid, clock, fields)
 
-Linear coefficient `λ` of an implicit-explicit `Flux` boundary condition (see
-[`FluxBoundaryCondition`](@ref)), used by the vertically-implicit solver to embed `λ φ_b` in the
-boundary-cell diagonal. Returns zero for any other boundary condition.
+The linear coefficient `λ` of an implicit-explicit `Flux` boundary condition, which the vertically-implicit
+solver embeds in the boundary-cell diagonal. Zero for any other boundary condition.
 """
 @inline implicit_flux_coefficient(bc, i, j, grid, clock, fields) = zero(grid)
 @inline implicit_flux_coefficient(bc::IEFBC, i, j, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, grid, clock, fields)
@@ -85,30 +73,23 @@ boundary-cell diagonal. Returns zero for any other boundary condition.
 @inline immersed_implicit_flux_coefficient(bc, i, j, k, grid, clock, fields) = zero(grid)
 @inline immersed_implicit_flux_coefficient(bc::IEFBC, i, j, k, grid, clock, fields) = getbc(bc.condition.implicit_coefficient, i, j, k, grid, clock, fields)
 
-@inline immersed_bottom_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
-@inline immersed_top_implicit_coefficient(ibc, i, j, k, grid, clock, fields) = zero(grid)
-
-
 needs_implicit_solver(bc) = false
 needs_implicit_solver(bc::IEFBC) = true
 
 """
     total_boundary_flux(bc, i, j, k, grid, clock, fields, ϕ)
 
-The *realized* boundary flux of `bc` for the field `ϕ`, evaluated using the boundary-cell value
-`ϕ[i, j, k]` (`k = Nz` for a top boundary, `k = 1` for a bottom boundary). A derived boundary condition
-that needs the actual flux, e.g. the friction velocity `u★` in a TKE closure, must reconstruct `Fₑ + λ φ_b`
-with this function. For any other boundary condition it is just `getbc`.
+The realized boundary flux of `bc` for the field `ϕ`, evaluated with the boundary-cell value `ϕ[i, j, k]`
+(`k = Nz` on a top boundary, `k = 1` on a bottom boundary). A derived boundary condition that needs the
+actual flux, such as the friction velocity `u★` of a TKE closure, reconstructs `Fₑ + λ φᵦ` with this
+function. For any other boundary condition it is `getbc`.
 """
 @inline total_boundary_flux(bc, i, j, k, grid, clock, fields, ϕ) = getbc(bc, i, j, grid, clock, fields)
 @inline total_boundary_flux(bc::IEFBC, i, j, k, grid, clock, fields, ϕ) = @inbounds getbc(bc, i, j, grid, clock, fields) + implicit_flux_coefficient(bc, i, j, grid, clock, fields) * ϕ[i, j, k]
+
 function validate_implicit_explicit_flux_locations(bcs)
     for side in (bcs.west, bcs.east, bcs.south, bcs.north)
-        if side isa IEFBC
-            error("A Flux boundary condition with `IMEXFluxTimeDiscretization` is only supported on " *
-                  "vertical (top/bottom) boundaries: its implicit part is embedded in the vertical solver. " *
-                  "Found one on a horizontal boundary.")
-        end
+        side isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on top and bottom boundaries")
     end
     validate_immersed_implicit_explicit_flux(bcs.immersed)
     return nothing
@@ -116,11 +97,8 @@ end
 
 validate_immersed_implicit_explicit_flux(immersed_bc) = nothing
 
-function validate_immersed_implicit_explicit_flux(immersed_bc::IEFBC)
-    error("An immersed Flux boundary condition with `IMEXFluxTimeDiscretization` must be wrapped in " *
-          "an `ImmersedBoundaryCondition` so that the implicit part can be attributed to the bottom " *
-          "or top face of the immersed cell.")
-end
+validate_immersed_implicit_explicit_flux(immersed_bc::IEFBC) =
+    error("An immersed IMEXFluxTimeDiscretization must be wrapped in an ImmersedBoundaryCondition")
 
 Adapt.adapt_structure(to, c::IMEXFlux) = IMEXFlux(Adapt.adapt(to, c.explicit_flux), Adapt.adapt(to, c.implicit_coefficient))
 

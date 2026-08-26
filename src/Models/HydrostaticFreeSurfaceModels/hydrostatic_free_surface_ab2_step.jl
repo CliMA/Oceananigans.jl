@@ -39,19 +39,21 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Computing momentum flux boundary conditions
-    @apply_regionally compute_momentum_flux_bcs!(model)
-
-    # Advance the free surface
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-
-    # Update velocities
     @apply_regionally begin
-        compute_transport_velocities!(model, model.free_surface)
+        # Stash the pre-step velocities (see `rk_substep!` for why)
+        parent(model.transport_velocities.u) .= parent(model.velocities.u)
+        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+
+        compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
+
+    # Advance the free surface with the change the column actually underwent, boundary drain included
+    compute_free_surface_tendency!(grid, model, model.free_surface, Δt)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
@@ -161,10 +163,6 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
-
-    # The barotropic correction is measured against the column the vertical solver receives.
-    store_pre_solve_velocities!(model, model.free_surface)
-
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     return nothing

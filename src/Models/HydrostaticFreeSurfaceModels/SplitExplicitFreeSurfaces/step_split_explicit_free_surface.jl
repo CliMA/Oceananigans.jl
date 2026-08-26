@@ -29,10 +29,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
 @inline y_difference_operator(::Val{true})  = δyᶜᶜᶜ
 
-# Whether the substeps run on filled halos, which selects the plain rather than topology-aware operators.
-@inline filled_halos(::FillHaloSplitExplicit) = Val(true)
-@inline filled_halos(::SplitExplicitFreeSurface) = Val(false)
-
 @inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
 @inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
 @inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
@@ -45,7 +41,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper, cᵁ, cⱽ)
+@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -60,14 +56,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
     # since η lives on the surface and doesn't have vertical structure
     @inbounds begin
-        Uᵗ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        Vᵗ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-
-        # A vertical boundary flux affine in the velocity damps the depth-integrated momentum exactly
-        # as it damps the boundary cell, but the vertical solver takes that contribution out of `Gᵁ`.
-        # `Ω` carries it, as a `U`-independent increment the substepping integrates over exactly `Δt`.
-        U[i, j, 1] = Uᵗ + Δτ * barotropic_correction(i, j, grid, cᵁ)
-        V[i, j, 1] = Vᵗ + Δτ * barotropic_correction(i, j, grid, cⱽ)
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
@@ -133,8 +123,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    cᵁ, cⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, cᵁ, cⱽ)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     barotropic_model_fields = (; U, V, η)
@@ -192,8 +181,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    cᵁ, cⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, cᵁ, cⱽ)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin
@@ -286,9 +274,3 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     return nothing
 end
-
-@inline barotropic_correction(i, j, grid, ::Nothing) = zero(grid)
-@inline barotropic_correction(i, j, grid, Ω) = @inbounds Ω[i, j, 1]
-
-@inline barotropic_boundary_coefficients(::Nothing) = (nothing, nothing)
-@inline barotropic_boundary_coefficients(coefficients) = (coefficients.U, coefficients.V)
