@@ -46,7 +46,6 @@ steps:
     command:
       - echo "--- Initialize distributed tests"
       - juliaup add $JULIA_VERSION
-      - mv test/ProjectDistributed.toml test/Project.toml
       - rm Manifest.toml
       - "julia +$JULIA_VERSION -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
