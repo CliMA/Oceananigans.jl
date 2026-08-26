@@ -56,15 +56,12 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
     # since η lives on the surface and doesn't have vertical structure
     @inbounds begin
-        Uᵗ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        Vᵗ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-
-        U[i, j, 1] = Uᵗ
-        V[i, j, 1] = Vᵗ
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
         # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * Uᵗ
-        Ṽ[i, j, 1] += transport_weight * Vᵗ
+        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
+        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end
 
@@ -277,5 +274,3 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     return nothing
 end
-
-

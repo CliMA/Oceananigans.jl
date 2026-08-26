@@ -17,12 +17,17 @@
     @inbounds Gⱽ[i, j, 1] = δV / Δt
 end
 
+# Note that for AB2, `transport_velocities` holds the value of the prognostic velocities at `tⁿ`
+@inline baseline_velocities(model, ::SplitRungeKuttaTimeStepper) = model.timestepper.Ψ⁻
+@inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
+
 function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
     u,  v,  _ = model.velocities
-    u⁻, v⁻, _ = model.transport_velocities
+    baseline  = baseline_velocities(model, model.timestepper)
+    u⁻, v⁻    = baseline.u, baseline.v
 
     @apply_regionally launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
 
