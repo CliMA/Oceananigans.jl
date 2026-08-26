@@ -285,7 +285,11 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
-    mpi_requests = MPI.Request[]
+    if synchronized_communication
+      mpi_requests = MPI.Request[]
+    else
+      mpi_requests = Channel{MPI.Request}(Inf)
+    end
 
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,
