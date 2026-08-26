@@ -5,7 +5,6 @@ on:
     paths: &paths
       - '.github/workflows/dependency_checks.yml'
       - 'test/Project.toml'
-      - 'test/ProjectDistributed.toml'
       - 'benchmarks/Project.toml'
       - 'Project.toml'
   push:
@@ -63,33 +62,6 @@ jobs:
       - name: Resolve environment in ${{ matrix.dir }}
         working-directory: ${{ matrix.dir }}
         shell: julia --color=yes --project=. {0}
-        run: |
-          using Pkg
-          Pkg.Registry.add("General")
-          Pkg.Registry.update()
-          Pkg.resolve()
-  resolve_distributed_dependencies:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.11.9'
-          - '1.10.0'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - name: Resolve distributed tests environment
-        working-directory: 'test/'
-        shell: julia --color=yes --project=ProjectDistributed.toml {0}
         run: |
           using Pkg
           Pkg.Registry.add("General")
