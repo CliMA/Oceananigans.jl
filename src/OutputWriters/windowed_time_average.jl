@@ -35,7 +35,7 @@ during the averaging window. For example, `stride=1` computes output every itera
 whereas `stride=2` computes output every other iteration. Time-averages with
 longer `stride`s are faster to compute, but less accurate.
 
-The time-average of ``a`` is a left Riemann sum corresponding to
+The time-average of ``a`` is a right Riemann sum corresponding to
 
 ```math
 ⟨a⟩ = T⁻¹ \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \\, ,
@@ -253,7 +253,7 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     T_current = period_to_number(clock.time - wta.window_start_time)
     T_previous = period_to_number(wta.previous_collection_time - wta.window_start_time)
 
-    # Accumulate left Riemann sum
+    # Accumulate right Riemann sum
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
 
     # Save time of integrand collection
