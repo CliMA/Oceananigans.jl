@@ -4,7 +4,8 @@ agents:
   modules: climacommon/2025_07_30
 
 env:
-  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
+  JULIA_VERSION: "1.12.4"
+  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   OPENBLAS_NUM_THREADS: 1
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
@@ -32,7 +33,7 @@ definitions:
   test_command: &test_command |
     group="{{ matrix.group }}"
     export TEST_GROUP="\${group#* }"
-    srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    srun julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
 steps:
   - label: "initialize"
@@ -44,8 +45,10 @@ steps:
     timeout_in_minutes: 5440
     command:
       - echo "--- Initialize distributed tests"
+      - juliaup add $JULIA_VERSION
       - mv test/ProjectDistributed.toml test/Project.toml
-      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
+      - rm Manifest.toml
+      - "julia +$JULIA_VERSION -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
       slurm_ntasks: 1
