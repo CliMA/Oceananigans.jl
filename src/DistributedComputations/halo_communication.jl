@@ -160,7 +160,7 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     fill_event = record_event(arch)
 
     Threads.@spawn begin
-      wait(fill_event)
+      synchronize(fill_event)
       requests = MPI.Request[]
 
       reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
@@ -200,7 +200,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     fill_event = record_event(arch)
 
     Threads.@spawn begin
-      wait(fill_event)
+      synchronize(fill_event)
 
       requests = kernel!(c, bcs..., loc, grid, arch, buffers)
       pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
