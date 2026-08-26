@@ -61,7 +61,9 @@ function test_averaging_scalar_window(model)
 
     # Test with discrete ramp: u will be set to iteration number
     # With dt=0.1, at t=1.0 we have 10 iterations (0 through 9)
-    # Left Riemann sum: ⟨u⟩ = (1/1.0) × 0.1 × (0+1+2+...+9) = 4.5
+    # The accumulator samples at the end of each subinterval, but the callback that sets u
+    # runs after the diagnostics, so the sampled value lags one iteration and the composite
+    # is a left Riemann sum in u: ⟨u⟩ = (1/1.0) × 0.1 × (0+1+2+...+9) = 4.5
 
     dt = 0.1
     output_time = 1
@@ -92,7 +94,7 @@ function test_averaging_scalar_window(model)
     u_ts = FieldTimeSeries(jld_filename, "u")
     recorded_u = interior(u_ts, 1, 1, 1, :)
 
-    # Expected: left Riemann sum
+    # Expected: left Riemann sum in u, from the one-iteration callback lag
     # Execution order: diagnostics run, then callbacks run
     # So at each iteration i, diagnostic samples the value set by callback at iteration i-1
     # We sample u=0,1,2,...,9 (values from iterations 0-9)
@@ -132,7 +134,7 @@ function test_averaging_varying_windows(model)
     # Window 1 at t=0.5 with window=0.5: samples from t=0.0 to t=0.5
     #   Iterations 0-4 (times 0.0, 0.1, 0.2, 0.3, 0.4)
     #   u values: 0, 1, 2, 3, 4
-    #   Left Riemann sum: dt × (0+1+2+3+4) = 0.1 × 10 = 1.0
+    #   Left Riemann sum in u (callback lag): dt × (0+1+2+3+4) = 0.1 × 10 = 1.0
     #   BUT: averaging normalizes by window duration, so we need to recalculate:
     #   At each diagnostic call, we accumulate (result * T_prev + integrand * dt) / T_current
     #   This gives us the average over the window, which is: (0.1 × 10) / 0.5 = 2.0
@@ -140,7 +142,7 @@ function test_averaging_varying_windows(model)
     # Window 2 at t=1.0 with window=0.4: samples from t=0.6 to t=1.0
     #   Iterations 6-9 (times 0.6, 0.7, 0.8, 0.9)
     #   u values: 6, 7, 8, 9
-    #   Left Riemann sum: dt × (6+7+8+9) = 0.1 × 30 = 3.0
+    #   Left Riemann sum in u (callback lag): dt × (6+7+8+9) = 0.1 × 30 = 3.0
     #   Average: (0.1 × 30) / 0.4 = 7.5
 
     expected_values = [FT(2.0), FT(7.5)]
