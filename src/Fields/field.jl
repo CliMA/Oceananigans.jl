@@ -638,9 +638,10 @@ function BoundaryConditions.regularize_boundary_condition(condition::Field, grid
         throw(ArgumentError("A Field used as a boundary condition on dimension $dim must span the whole boundary, " *
                             "so it may not be windowed along dimensions $tangential_dims, but has indices $indices."))
 
-    indices[dim] isa Colon || length(indices[dim]) == 1 ||
-        throw(ArgumentError("A Field used as a boundary condition on dimension $dim may only be windowed " *
-                            "to a single plane along dimension $dim, but has indices $indices."))
+    location(condition)[dim] === Nothing || indices[dim] isa Colon || length(indices[dim]) == 1 ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must be reduced along dimension $dim, " *
+                            "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
+                            "and indices $indices."))
 
     return window_to_boundary(condition, dim, side)
 end
