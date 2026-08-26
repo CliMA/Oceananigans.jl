@@ -31,38 +31,38 @@ The order of operations for explicit free surfaces is:
 8. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
-    # Compute barotropic and baroclinic tendencies
-    @apply_regionally compute_momentum_flux_bcs!(model)
-
-    # Advance the free surface first
-    compute_free_surface_tendency!(grid, model, free_surface)
-    step_free_surface!(free_surface, model, model.timestepper, Δτ)
-
     @apply_regionally begin
-        compute_transport_velocities!(model, free_surface)
+        # Stash the pre-step velocities: they are the state the filtered transport belongs with, and the
+        # baseline the barotropic tendency is measured against.
+        parent(model.transport_velocities.u) .= parent(model.velocities.u)
+        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+
+        compute_momentum_flux_bcs!(model)
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
-    # Mask and fill velocity halos
+    # Advance the free surface with the change the column actually underwent, boundary drain included
+    compute_free_surface_tendency!(grid, model, free_surface, Δτ)
+    step_free_surface!(free_surface, model, model.timestepper, Δτ)
+
+    @apply_regionally compute_transport_velocities!(model, free_surface)
+
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
-        # compute tracer tendencies
         compute_tracer_tendencies!(model)
 
-        # Advance grid
+        # The barotropic correction integrates over the column, so it must follow the grid update
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
-        # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
     return nothing
 end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -151,9 +151,6 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
-
-    store_pre_solve_velocities!(model, model.free_surface)
-
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
     return nothing

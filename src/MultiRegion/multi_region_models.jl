@@ -6,7 +6,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
                                                                                   FillHaloSplitExplicit,
                                                                                   apply_barotropic_kernel!,
-                                                                                  barotropic_boundary_coefficients,
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
 
@@ -68,8 +67,7 @@ end
                                 getregion(fs.gravitational_acceleration, r),
                                 getregion(fs.kernel_parameters, r),
                                 getregion(fs.substepping, r),
-                                getregion(fs.timestepper, r),
-                                getregion(fs.implicit_boundary_coefficients, r))
+                                getregion(fs.timestepper, r))
 
 @inline Utils.getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
     SplitExplicitFreeSurface{E}(_getregion(fs.displacement, r),
@@ -78,8 +76,7 @@ end
                                 _getregion(fs.gravitational_acceleration, r),
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
-                                _getregion(fs.timestepper, r),
-                                _getregion(fs.implicit_boundary_coefficients, r))
+                                _getregion(fs.timestepper, r),)
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyFormulations.BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
@@ -172,8 +169,6 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
 
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-
-    cᵁ, cⱽ = barotropic_boundary_coefficients(free_surface.implicit_boundary_coefficients)
 
     U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, cᵁ, cⱽ)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)

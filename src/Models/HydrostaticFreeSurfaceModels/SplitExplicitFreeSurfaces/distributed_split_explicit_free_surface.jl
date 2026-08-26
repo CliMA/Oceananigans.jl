@@ -19,10 +19,6 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
     synchronize_communication!(Gᵁ)
     synchronize_communication!(Gⱽ)
 
-    Ω = free_surface.implicit_boundary_coefficients
-    synchronize_communication!(Ω.U)
-    synchronize_communication!(Ω.V)
-
     return nothing
 end
 
