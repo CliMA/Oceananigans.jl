@@ -157,21 +157,24 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
-    sync_device!(arch)
+    fill_event = record_event(arch)
 
-    requests = MPI.Request[]
+    Threads.@spawn begin
+      wait(fill_event)
+      requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
+      reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
+      reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
+      reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
+      reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
-    !isnothing(reqsw) && push!(requests, reqsw...)
-    !isnothing(reqse) && push!(requests, reqse...)
-    !isnothing(reqnw) && push!(requests, reqnw...)
-    !isnothing(reqne) && push!(requests, reqne...)
+      !isnothing(reqsw) && push!(requests, reqsw...)
+      !isnothing(reqse) && push!(requests, reqse...)
+      !isnothing(reqnw) && push!(requests, reqnw...)
+      !isnothing(reqne) && push!(requests, reqne...)
 
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, Val(:corners))
+      pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, Val(:corners))
+    end
 
     return nothing
 end
@@ -194,10 +197,14 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     buffer_side = kernel!.side
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
-    sync_device!(arch) # We need to synchronize the device before we start the communication
+    fill_event = record_event(arch)
 
-    requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+    Threads.@spawn begin
+      wait(fill_event)
+
+      requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+      pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+    end
 
     return nothing
 end
