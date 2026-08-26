@@ -40,9 +40,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        # Stash the pre-step velocities (see `rk_substep!` for why)
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
         compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
@@ -93,8 +91,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)

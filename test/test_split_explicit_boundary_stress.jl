@@ -34,7 +34,7 @@ end
 
 @testset "Split-explicit boundary stress" begin
     for arch in archs
-        @info "Barotropic mode realizes the true boundary stress [$(typeof(arch))]" 
+        @info "Barotropic mode realizes the true boundary stress [$(typeof(arch))]"
 
         # The drag is weak enough that the explicit treatment is stable and serves as the reference.
         zfaces = [-1000, -800, -750, -650, -500, -350, -200, -80, 0]
@@ -52,8 +52,8 @@ end
         end
 
         @test evolve(true) ≈ evolve(false) rtol=2e-2
-        
-        @info "A bottom drag does not accelerate the surface [$(typeof(arch))]" begin
+
+        @info "A bottom drag does not accelerate the surface [$(typeof(arch))]"
 
         for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3), Δt in (900, 7200)
             m = HydrostaticFreeSurfaceModel(grid; timestepper,

@@ -164,7 +164,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
+    args = tuple(model.transport_velocities,
                  model.free_surface,
                  model.tracers,
                  model.auxiliary_fields,
