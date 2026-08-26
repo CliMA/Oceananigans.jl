@@ -1,10 +1,11 @@
 module OutputReaders
 
-export FieldDataset
-export FieldTimeSeries
-export TimeSeriesInterpolation
-export InMemory, OnDisk
-export Cyclical, Linear, Clamp
+export
+    FieldDataset,
+    FieldTimeSeries,
+    TimeSeriesInterpolation,
+    InMemory, OnDisk,
+    Cyclical, Linear, Clamp
 
 using DocStringExtensions: TYPEDSIGNATURES
 

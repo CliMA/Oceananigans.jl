@@ -55,6 +55,34 @@ Distributed.addprocs(2)
     ]
 end
 
+# DocumenterVitepress 0.3.4 emits an ordered list directly after the preceding
+# paragraph, without the blank line that VitePress requires to begin a list.
+# This more-specific rendering method preserves native Markdown ordered lists.
+function DocumenterVitepress.render(io::IO,
+                                    mime::MIME"text/plain",
+                                    node::DocumenterVitepress.MarkdownAST.Node,
+                                    list::DocumenterVitepress.MarkdownAST.List,
+                                    page::Documenter.Page,
+                                    doc::Documenter.Document;
+                                    kwargs...)
+    println(io)
+
+    item_number = 0
+    bullet() = list.type === :ordered ? "$(item_number += 1). " : "- "
+    item_buffer = IOBuffer()
+
+    for item in node.children
+        DocumenterVitepress.render(item_buffer, mime, item, item.children, page, doc;
+                                   prenewline=false, kwargs...)
+        lines = split(String(take!(item_buffer)), '\n')
+        lines[2:end] .= "  " .* lines[2:end]
+        print(io, bullet())
+        println.((io,), lines)
+    end
+
+    return nothing
+end
+
 # We'll append the following postamble to the literate examples, to include
 # information about the computing environment used to run them.
 example_postamble = """
@@ -194,7 +222,7 @@ pages = [
         "Simulation Tips" => "simulation_tips.md",
         # Future tutorials:
         # "Reductions & Accumulations" => "reductions_and_accumulations.md",
-        # "FieldTimeSeries & Post-Processing" => field_time_series.md
+        "FieldTimeSeries & Post-Processing" => "field_time_series.md",
         "Examples" => example_pages,
         "Gallery" => "gallery.md",
     ],

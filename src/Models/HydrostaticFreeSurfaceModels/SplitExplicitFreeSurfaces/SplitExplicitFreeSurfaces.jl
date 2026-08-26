@@ -7,25 +7,28 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: convert_to_device, architecture
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.Fields: Field
+using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, get_active_cells_map
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
+using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
+using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
+using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                           LeftConnected, RightConnected, FullyConnected,
                           RightCenterFolded, RightFaceFolded,
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                           LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
-using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ,
-                              Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, get_active_cells_map
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
+                                                         default_free_surface_boundary_conditions,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          compute_transport_velocities!,

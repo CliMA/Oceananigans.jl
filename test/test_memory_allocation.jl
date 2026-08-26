@@ -3,6 +3,9 @@ include("dependencies_for_runtests.jl")
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
+using Oceananigans.Models: is_local_dimension
+using Oceananigans.Grids: RightConnected, LeftConnected
+using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
 using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
@@ -56,40 +59,61 @@ const serial_memory_cpu = Dict(
     (:hydrostatic,    :flat)            => 560,
     (:hydrostatic,    :immersed)        => 592,
     (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 8.6e5,
-    (:nonhydrostatic, :immersed)        => 8.9e5,
-    (:nonhydrostatic, :active_immersed) => 6.9e5,
+    (:nonhydrostatic, :flat)            => 5.8e5,
+    (:nonhydrostatic, :immersed)        => 6.1e5,
+    (:nonhydrostatic, :active_immersed) => 6.5e5,
 )
 
 const serial_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 2.2e6,
-    (:hydrostatic,    :immersed)        => 2.4e6,
-    (:hydrostatic,    :active_immersed) => 2.1e6,
-    (:nonhydrostatic, :flat)            => 2.0e6,
-    (:nonhydrostatic, :immersed)        => 2.2e6,
-    (:nonhydrostatic, :active_immersed) => 2.1e6,
+    (:hydrostatic,    :flat)            => 8.4e5,
+    (:hydrostatic,    :immersed)        => 9.2e5,
+    (:hydrostatic,    :active_immersed) => 9.3e5,
+    (:nonhydrostatic, :flat)            => 1.2e6,
+    (:nonhydrostatic, :immersed)        => 1.4e6,
+    (:nonhydrostatic, :active_immersed) => 1.4e6,
 )
 
 const distributed_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 7.5e5,
-    (:hydrostatic,    :immersed)        => 8.7e5,
-    (:hydrostatic,    :active_immersed) => 9.1e5,
-    (:nonhydrostatic, :flat)            => 6.6e6,
-    (:nonhydrostatic, :immersed)        => 8.0e6,
-    (:nonhydrostatic, :active_immersed) => 1.0e7,
+    (:hydrostatic,    :flat)            => 6.9e5,
+    (:hydrostatic,    :immersed)        => 8.0e5,
+    (:hydrostatic,    :active_immersed) => 8.5e5,
+    (:nonhydrostatic, :flat)            => 2.3e6,
+    (:nonhydrostatic, :immersed)        => 2.7e6,
+    (:nonhydrostatic, :active_immersed) => 3.4e6,
 )
 
 const distributed_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 8.8e6,
-    (:hydrostatic,    :immersed)        => 1.0e7,
-    (:hydrostatic,    :active_immersed) => 1.2e7,
-    (:nonhydrostatic, :flat)            => 8.4e6,
-    (:nonhydrostatic, :immersed)        => 9.5e6,
-    (:nonhydrostatic, :active_immersed) => 1.2e7,
+    (:hydrostatic,    :flat)            => 3.6e6,
+    (:hydrostatic,    :immersed)        => 4.0e6,
+    (:hydrostatic,    :active_immersed) => 4.3e7,
+    (:nonhydrostatic, :flat)            => 5.4e6,
+    (:nonhydrostatic, :immersed)        => 6.0e6,
+    (:nonhydrostatic, :active_immersed) => 6.5e6,
 )
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
+
+@testset "local_dimension predicate" begin
+    @test is_local_dimension(Periodic) === true
+    @test is_local_dimension(Bounded)  === true
+    @test is_local_dimension(Flat)     === true
+    @test is_local_dimension(RightConnected) === false
+    @test is_local_dimension(LeftConnected)  === false
+    @test @inferred(is_local_dimension(Periodic)) === true
+end
+
+@testset "buffer_parameters is type-stable and allocation-free" begin
+    grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1))  # Periodic, Periodic, Bounded
+    arch = CPU()
+    params = ntuple(_ -> ((1, 1, 1), (0, 0, 0)), 4)
+
+    @test buffer_parameters(params, grid, arch) === ()
+    @test @inferred(buffer_parameters(params, grid, arch)) === ()
+
+    buffer_parameters(params, grid, arch)  # warm up
+    @test @allocated(buffer_parameters(params, grid, arch)) == 0
+end
 
 @testset "flattened_unique_values: correctness, inference, allocations" begin
     grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1))

@@ -59,8 +59,11 @@ function twiddle_factors(arch::GPU, grid, dims)
     inds⁺ = reshape(0:N-1, reshaped_size(N, dim)...)
     inds⁻ = reshape(0:-1:-(N-1), reshaped_size(N, dim)...)
 
-    ω_4N⁺ = ω.(4N, inds⁺)
-    ω_4N⁻ = ω.(4N, inds⁻)
+    # Match the grid's precision: not all backends can store ComplexF64 (e.g. Metal),
+    # and mixed-precision broadcasts would promote the transformed array anyway.
+    C = complex(eltype(grid))
+    ω_4N⁺ = C.(ω.(4N, inds⁺))
+    ω_4N⁻ = C.(ω.(4N, inds⁻))
 
     # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01)
     # is not multiplied by 2.
