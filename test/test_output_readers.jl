@@ -2,10 +2,19 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
+                                  extract_field_time_series, has_field_time_series
 
 using Random
 using NCDatasets
+
+# A boundary condition that stores a `FieldTimeSeries` rather than being one. No `getbc` method is
+# needed: the fallback `getbc(condition, args...) = condition(args...)` accepts any callable.
+struct SeriesHoldingCondition{S}
+    series :: S
+end
+
+@inline (c::SeriesHoldingCondition)(args...) = @inbounds c.series[1, 1, 1, 1]
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -906,4 +915,46 @@ end
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
+
+    # A series reachable only through a boundary condition must still be found, so that
+    # `update_field_time_series!` advances its in-memory window. A condition that stores a series
+    # without being one used to be missed, because the search consulted a list of condition types
+    # instead of `has_field_time_series`. The window then stayed at the frames it was built with and
+    # the time interpolation eventually indexed past them.
+    for arch in archs
+    @testset "Series held by a boundary condition are extracted [$(typeof(arch))]" begin
+        @info "  Testing extraction of series held by boundary conditions [$(typeof(arch))]..."
+
+        grid  = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+        times = [0.0, 1.0, 2.0, 3.0]
+        fts   = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+        plain(v) = ValueBoundaryCondition(v)
+        west_driven(bc) = CenterField(grid; boundary_conditions =
+            FieldBoundaryConditions(west = bc, east = plain(0.0), south = plain(0.0),
+                                    north = plain(0.0), bottom = plain(0.0), top = plain(0.0)))
+
+        @inline read_series(y, z, t, p) = @inbounds p.series[1, 1, 1, 1]
+
+        conditions = (plain(fts),                                                        # the series itself
+                      ValueBoundaryCondition(read_series; parameters = (; series = fts)), # a boundary function
+                      plain(SeriesHoldingCondition(fts)))                                 # a condition storing it
+
+        for bc in conditions
+            c = west_driven(bc)
+            @test has_field_time_series(typeof(c.boundary_conditions))
+            @test length(extract_field_time_series(c)) == 1
+            @test first(extract_field_time_series(c)) === fts
+            # Reaching the series through the field must agree with reaching it directly.
+            @test length(extract_field_time_series(c)) ==
+                  length(extract_field_time_series(c.boundary_conditions))
+        end
+
+        # A field that cannot hold a series still resolves to `()` at compile time, so a model owning
+        # no series pays nothing for the check.
+        @test extract_field_time_series(CenterField(grid)) == ()
+        @test Base.return_types(extract_field_time_series, (typeof(CenterField(grid)),))[1] === Tuple{}
+    end
+    end
+
 end
