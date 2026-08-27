@@ -13,7 +13,9 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
                                        TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
                                        Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly,
                                        LagrangianAveraging,
-                                       AnisotropicMinimumDissipation
+                                       AnisotropicMinimumDissipation,
+                                       IsopycnalSkewSymmetricDiffusivity,
+                                       DiffusiveFormulation, AdvectiveFormulation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -180,6 +182,29 @@ function time_step_with_tupled_closure(FT, arch)
 
     time_step!(model, 1)
     return true
+end
+
+# The explicit path additionally exercises the R₃₃ vertical term in diffusive_flux_z,
+# which is omitted from the tendency under the vertically-implicit default.
+function time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
+    grid = RectilinearGrid(arch, FT; size=(4, 4, 8), extent=(100, 100, 100))
+
+    closure = IsopycnalSkewSymmetricDiffusivity(time_discretization, FT;
+                                                κ_skew = 100,
+                                                κ_symmetric = 100,
+                                                skew_flux_formulation)
+
+    model = HydrostaticFreeSurfaceModel(grid; closure,
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
+
+    set!(model, b=(x, y, z) -> 1e-5 * z + 1e-7 * (x + y))
+
+    for n in 1:3
+        time_step!(model, 1)
+    end
+
+    return !any(isnan, interior(model.tracers.b))
 end
 
 function run_catke_tke_substepping_tests(arch, closure)
@@ -590,6 +615,20 @@ end
         @info "  Testing time-stepping with a tuple of closures..."
         for arch in archs, FT in float_types
             @test time_step_with_tupled_closure(FT, arch)
+        end
+    end
+
+    @testset "IsopycnalSkewSymmetricDiffusivity" begin
+        @info "  Testing time-stepping with IsopycnalSkewSymmetricDiffusivity..."
+        time_discretizations = [ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization()]
+        skew_flux_formulations = [DiffusiveFormulation(), AdvectiveFormulation()]
+        for arch in archs, FT in float_types
+            for time_discretization in time_discretizations, skew_flux_formulation in skew_flux_formulations
+                td = typeof(time_discretization).name.name
+                ff = typeof(skew_flux_formulation).name.name
+                @info "    Time-stepping IsopycnalSkewSymmetricDiffusivity with $td and $ff [$arch, $FT]..."
+                @test time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
+            end
         end
     end
 
