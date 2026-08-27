@@ -642,9 +642,14 @@ end
                                 closure, nothing, nothing, LX(), Center(), LZ(),
                                 Δt, clock, NamedTuple())
 
-            dl = [coefficient(VerticallyImplicitDiffusionLowerDiagonal(), k) for k in 1:Nz]
-            d  = [coefficient(VerticallyImplicitDiffusionDiagonal(),      k) for k in 1:Nz]
-            du = [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz]
+            # Assembling the rows on the host reads grid metrics one level at a time, which on a
+            # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in
+            # `CUDA.allowscalar`, but say so locally rather than lean on that.
+            dl, d, du = @allowscalar begin
+                ([coefficient(VerticallyImplicitDiffusionLowerDiagonal(), k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionDiagonal(),      k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz])
+            end
 
             # A = I - Δt L with Δt = 1, so L = I - A.
             L = zeros(Nz, Nz)
