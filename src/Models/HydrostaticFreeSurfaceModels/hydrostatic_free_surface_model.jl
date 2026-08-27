@@ -1,7 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
@@ -13,7 +13,6 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -279,14 +278,18 @@ function HydrostaticFreeSurfaceModel(grid;
     validate_immersed_boundary(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    # Also create the implicit solver if adaptive implicit advection requires it
-    if isnothing(implicit_solver) && needs_implicit_solver(advection)
-        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    for field in prognostic_fields
+        @apply_regionally validate_implicit_explicit_flux_locations(field.boundary_conditions)
     end
 
-    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
+
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
@@ -325,17 +328,21 @@ copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundar
 copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
 copy_velocity(c) = c
 
-# Fallback transport velocities for a generic free surface (just copy velocities over)
-compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+# A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
+compute_transport_velocities!(model, free_surface) = nothing
 
 # Not if `transport === velocities`
-function update_transport_velocities!(transport_velocities, velocities)
+function update_transport_velocities!(transport_velocities, velocities, free_surface)
     transport_velocities === velocities && return nothing
-    for name in propertynames(transport_velocities)
-        update_transport_velocity_data!(transport_velocities[name], velocities[name])
-    end
+    update_transport_velocity_data!(transport_velocities.u, velocities.u)
+    update_transport_velocity_data!(transport_velocities.v, velocities.v)
+    stash_vertical_velocity!(transport_velocities, velocities, free_surface)
     return nothing
 end
+
+# The explicit free surface evolves `η` with this `w`; the corrected free surfaces rebuild `w̃` from continuity
+stash_vertical_velocity!(transport_velocities, velocities, free_surface) = update_transport_velocity_data!(transport_velocities.w, velocities.w)
+stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
 update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
