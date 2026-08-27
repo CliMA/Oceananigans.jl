@@ -75,8 +75,25 @@ end
 @inline implicit_vertical_velocity(::Face,   ::Center, args...) = implicit_vertical_velocityᶠᶜᶠ(args...)
 @inline implicit_vertical_velocity(::Center, ::Face,   args...) = implicit_vertical_velocityᶜᶠᶠ(args...)
 
+# The advected field's vertical location `ℓz` selects the coefficient family: the methods below
+# implement fields at cell Centers in z (tracers and horizontal velocities). Advection schemes
+# without an adaptive-implicit vertical discretization contribute nothing to the implicit system,
+# at any location; likewise fields at z-Faces (`w`), whose `Ww` flux is kept fully explicit.
+# Downstream models may extend these functions at `ℓz::Face` (dispatching on their own advection
+# type) to solve vertical momentum implicitly; an advection type without a matching method raises
+# a `MethodError` rather than silently dropping the advection contribution.
+const ExplicitOrNothing = Union{Nothing, AbstractAdvectionScheme}
+
+@inline implicit_advection_upper_diagonal(i, j, k, grid, ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_lower_diagonal(i, j, k, grid, ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_diagonal(i, j, k, grid,       ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+
+@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
+@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
+@inline implicit_advection_diagonal(i, j, k, grid,       ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
+
 # Upper diagonal: coefficient of q_{k+1} in the tridiagonal system
-@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td  = TimeSteppers.time_discretization(scheme)
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
@@ -89,7 +106,7 @@ end
 
 # Lower diagonal: coefficient of q_{k-1} in the tridiagonal system
 # Uses k′ = k-1 indexing convention (LinearAlgebra.Tridiagonal convention, matching ivd_lower_diagonal)
-@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td  = TimeSteppers.time_discretization(scheme)
     k   = k′ + 1
@@ -101,7 +118,7 @@ end
     return - Δt * V⁻¹ * Azᵢ * ρᶠ / ρᶜ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
 end
 
-@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td     = TimeSteppers.time_discretization(scheme)
     wⁱ⁺ = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)

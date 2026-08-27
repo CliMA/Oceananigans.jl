@@ -1,5 +1,4 @@
-using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
-                              implicit_advection_upper_diagonal,
+using Oceananigans.Advection: implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
 using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient
@@ -212,42 +211,33 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals. The trailing arguments are supplied
-# by the extended `implicit_step!` below; a non-adaptive advection scheme contributes nothing.
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, args...) =
-    _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, args...) =
-    _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection=nothing, w=nothing, density=nothing, top_bc=nothing, bottom_bc=nothing, immersed_bc=nothing)
-    dκ = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    db = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
-    return dκ + db
-end
-
-const AIVA = AdaptiveImplicitVerticalAdvection
-
-# `density` selects volume-conserving (Boussinesq) versus density-weighted (mass-flux) advection coefficients.
+# by the extended `implicit_step!` below. The advection contribution is always routed through
+# `implicit_advection_*`, which dispatch on the advection scheme and the field's vertical location
+# `ℓz`: explicit schemes (and `advection = nothing`) contribute zero, adaptive-implicit schemes
+# return the z-Center coefficients, and unknown advection types raise a `MethodError` — this is
+# the seam downstream models extend, without touching `get_coefficient`. `density` selects
+# volume-conserving (Boussinesq) versus density-weighted (mass-flux) advection coefficients.
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
-                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection::AIVA, w, density, args...)
+                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                 advection=nothing, w=nothing, density=nothing, args...)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return duκ + duw
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
-                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection::AIVA, w, density, args...)
+                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                 advection=nothing, w=nothing, density=nothing, args...)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return dlκ + dlw
 end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection::AIVA, w, density, top_bc, bottom_bc, immersed_bc)
+                                 advection=nothing, w=nothing, density=nothing, top_bc=nothing, bottom_bc=nothing, immersed_bc=nothing)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
-    dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, density)
+    dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
     return dκ + dw + dbc
 end

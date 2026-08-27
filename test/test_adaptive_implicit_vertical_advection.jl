@@ -7,7 +7,7 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.Grids: Center
+using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: ℑzᵃᵃᶠ
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
                                  time_discretization, implicit_step!, reset!
@@ -138,6 +138,40 @@ end
     @test all(isfinite, parent(model.velocities.v))
 end
 
+@testset "AIVA contributes no implicit coefficients at z-Faces (w is fully explicit)" begin
+    # The `Ww` momentum flux is kept fully explicit under an adaptive-implicit discretization,
+    # so the matching implicit-advection coefficients must vanish for z-Face fields (`w`):
+    # otherwise the implicit solve for `w` would apply z-Center tracer coefficients on top of
+    # the unscaled explicit flux.
+    grid = RectilinearGrid(CPU(), size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           halo=(4, 4, 4), topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = Δt
+    scheme = WENO(; time_discretization=td)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * sinpi(z / 500))   # exceeds the target CFL over part of the column
+    fill_halo_regions!(W)
+
+    ℓx = ℓy = Center()
+    for k in 2:8, j in 1:4, i in 1:4
+        @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
+        @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
+        @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
+    end
+
+    # End-to-end: a NonhydrostaticModel implicit-steps every prognostic field, including `w`.
+    model = NonhydrostaticModel(grid; advection=scheme, tracers=:c)
+    set!(model, u=(x, y, z) -> sinpi(2z / 1000), c=(x, y, z) -> z / 1000)
+    time_step!(model, Δt)
+    time_step!(model, Δt)
+    @test model.clock.iteration == 2
+    @test all(isfinite, parent(model.velocities.w))
+    @test all(isfinite, parent(model.tracers.c))
+end
+
 @testset "Density-weighted implicit advection (mass-flux models)" begin
     grid = RectilinearGrid(CPU(), size=(2, 2, 16), x=(0, 1), y=(0, 1), z=(0, 1000),
                            topology=(Periodic, Periodic, Bounded))
@@ -151,19 +185,19 @@ end
     set!(W, (x, y, z) -> 5 * sinpi(z / 500))   # exceeds the target CFL over part of the column
     fill_halo_regions!(W)
 
-    ℓx = ℓy = Center()
+    ℓx = ℓy = ℓz = Center()
 
     @testset "ρ ≡ 1 reproduces the volume-conserving coefficients" begin
         ρ = CenterField(grid)
         set!(ρ, 1)
         fill_halo_regions!(ρ)
         for k in 2:15, j in 1:2, i in 1:2
-            @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
-            @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
-            @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
+            @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
+            @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
         end
     end
 
@@ -172,12 +206,12 @@ end
         set!(ρ, (x, y, z) -> 1 + z / 1000)   # ρ varies smoothly from 1 to 2
         fill_halo_regions!(ρ)
         for k in 2:15, j in 1:2, i in 1:2
-            uw = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ)
-            u0 = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            uw = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ)
+            u0 = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
             @test uw ≈ u0 * ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) / ρ[i, j, k+1]
 
-            lw = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ)
-            l0 = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            lw = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ)
+            l0 = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
             @test lw ≈ l0 * ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) / ρ[i, j, k]
         end
     end
