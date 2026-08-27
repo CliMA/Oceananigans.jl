@@ -102,14 +102,16 @@ end
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock, fields)
-    k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
+# `dl(m)` is the coefficient of `ϕ[m]` in row `m + 1` (LinearAlgebra.Tridiagonal convention). For a
+# field at z-faces the stress between faces `m` and `m + 1` lives at center `m`, so `ν` and `Δzᶜ` are
+# evaluated there while `Δzᶠ` belongs to the row's own face, `m + 1`.
+@inline function ivd_lower_diagonal(i, j, m, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock, fields)
     closure_ij = getclosure(i, j, closure)
-    νᵏ⁻¹     = ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
-    Δz⁻¹ᶜₖ   = Δz⁻¹(i, j, k′,   grid, ℓx, ℓy, c)
-    Δz⁻¹ᶠₖ₋₁ = Δz⁻¹(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl       = - Δt * νᵏ⁻¹ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₋₁)
-    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
+    νᵐ       = ivd_diffusivity(i, j, m,   grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
+    Δz⁻¹ᶜₘ   = Δz⁻¹(i, j, m,   grid, ℓx, ℓy, c)
+    Δz⁻¹ᶠₘ₊₁ = Δz⁻¹(i, j, m+1, grid, ℓx, ℓy, f)
+    dl       = - Δt * νᵐ * (Δz⁻¹ᶜₘ * Δz⁻¹ᶠₘ₊₁)
+    return dl * !peripheral_node(i, j, m, grid, ℓx, ℓy, c)
 end
 
 ### Diagonal terms
