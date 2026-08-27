@@ -3,7 +3,7 @@ using Oceananigans.TurbulenceClosures: implicit_step!
 import Oceananigans.TimeSteppers: ssp_substep!
 
 using Oceananigans.TimeSteppers: accumulate_ssp_slow_forcing!, install_ssp_slow_forcing!,
-                                 _ssp_substep_field!, SSPRungeKuttaTimeStepper
+                                 _ssp_euler_substep_field!, _ssp_blend_field!, SSPRungeKuttaTimeStepper
 
 # `ImplicitFreeSurface` solves on a predictor velocity, so the Shu-Osher blend would have to be deferred
 # until after a pressure correction that has already overwritten Ψᵐ⁻¹.
@@ -29,11 +29,14 @@ $(TYPEDSIGNATURES)
 Perform one strong-stability-preserving Runge-Kutta stage for `HydrostaticFreeSurfaceModel`.
 
 The baroclinic velocities, tracers and grid are advanced by a full `Δt` and blended with the cached state
-by the Shu-Osher pair `(a, b)`. The barotropic mode is *not* blended: the sub-cycles run on the first
-`Nstages - 1` stages are predictors, supplying the transport that advects tracers at their stage, and the
-barotropic velocity at `n+1` is set by a single corrector sub-cycle after the last stage, forced by the
-stage-weighted slow forcing. The Shu-Osher weights are derived for forward-Euler stages, and carrying a
-sub-cycled barotropic solve through them over-integrates it and costs an order.
+by the Shu-Osher pair `(a, b)`. Each stage is an implicit-explicit forward-Euler step: the explicit tendency
+and the vertical solve are applied to `Ψᵐ⁻¹`, and the blend follows.
+
+The barotropic mode is *not* blended: the sub-cycles run on the first `Nstages - 1` stages are predictors,
+supplying the transport that advects tracers at their stage, and the barotropic velocity at `n+1` is set by a
+single corrector sub-cycle after the last stage, forced by the stage-weighted slow forcing. The Shu-Osher
+weights are derived for forward-Euler stages, and carrying a sub-cycled barotropic solve through them
+over-integrates it and costs an order.
 """
 ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     ssp_substep!(model, model.free_surface, model.grid, Δt, a, b, callbacks)
@@ -42,9 +45,13 @@ ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     timestepper = model.timestepper
     final_stage = model.clock.stage == timestepper.Nstages
 
-    @apply_regionally compute_momentum_flux_bcs!(model)
+    @apply_regionally begin
+        update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
+        compute_momentum_flux_bcs!(model)
+        ssp_euler_substep_velocities!(model.velocities, model, Δt)
+    end
 
-    compute_free_surface_tendency!(grid, model, free_surface)
+    compute_free_surface_tendency!(grid, model, free_surface, Δt)
     accumulate_ssp_slow_forcing!(timestepper, model.clock.stage)
 
     # Must run before `compute_transport_velocities!`: tracer constancy needs the transport that advects
@@ -56,9 +63,9 @@ ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     blend_free_surface!(free_surface, timestepper, a, b)
 
     @apply_regionally begin
-        compute_transport_velocities!(model, free_surface)
-        ssp_substep_velocities!(model.velocities, model, Δt, a, b)
+        ssp_blend_velocities!(model.velocities, model, a, b)
         mask_immersed_horizontal_velocities!(model.velocities)
+        compute_transport_velocities!(model, free_surface)
     end
 
     u, v, _ = model.velocities
@@ -80,23 +87,20 @@ end
 ##### Velocities
 #####
 
-function ssp_substep_velocities!(velocities, model, Δt, a, b)
-    ssp_substep_velocity!(velocities, model, Δt, a, b, Val(:u))
-    ssp_substep_velocity!(velocities, model, Δt, a, b, Val(:v))
+function ssp_euler_substep_velocities!(velocities, model, Δt)
+    ssp_euler_substep_velocity!(velocities, model, Δt, Val(:u))
+    ssp_euler_substep_velocity!(velocities, model, Δt, Val(:v))
     return nothing
 end
 
-@inline function ssp_substep_velocity!(velocities, model, Δt, a, b, ::Val{name}) where name
+@inline function ssp_euler_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
     FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[name]
-    Ψ⁻ = model.timestepper.Ψ⁻[name]
     velocity_field = velocities[name]
 
-    launch!(architecture(grid), grid, :xyz,
-            _ssp_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻,
-            convert(FT, a), convert(FT, b); exclude_periphery=true)
+    launch!(architecture(grid), grid, :xyz, _ssp_euler_substep_field!, velocity_field, convert(FT, Δt), Gⁿ; exclude_periphery=true)
 
     implicit_step!(velocity_field,
                    model.timestepper.implicit_solver,
@@ -108,6 +112,18 @@ end
                    Δt,
                    model.advection.momentum,
                    model.velocities)
+    return nothing
+end
+
+function ssp_blend_velocities!(velocities, model, a, b)
+    grid = model.grid
+    FT = eltype(grid)
+    Ψ⁻ = model.timestepper.Ψ⁻
+    a, b = convert(FT, a), convert(FT, b)
+
+    launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, velocities.u, Ψ⁻.u, a, b; exclude_periphery=true)
+    launch!(architecture(grid), grid, :xyz, _ssp_blend_field!, velocities.v, Ψ⁻.v, a, b; exclude_periphery=true)
+
     return nothing
 end
 
@@ -141,8 +157,7 @@ end
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
     c  = model.tracers[tracer_name]
 
-    launch!(architecture(grid), grid, :xyz,
-            _ssp_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻, convert(FT, a), convert(FT, b))
+    launch!(architecture(grid), grid, :xyz, _ssp_euler_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ)
 
     @inbounds c_advection = model.advection[tracer_name]
     implicit_step!(c,
@@ -155,16 +170,26 @@ end
                    Δt,
                    c_advection,
                    model.transport_velocities)
+
+    launch!(architecture(grid), grid, :xyz, _ssp_blend_tracer_field!, c, grid, Ψ⁻, convert(FT, a), convert(FT, b))
+
     return nothing
 end
 
-# The blend applies to the thickness-weighted tracer, (σc)ᵐ = a (σc)ⁿ + b [(σc)ᵐ⁻¹ + Δt Gᵐ], so the
-# previous-stage term carries σᵐ⁻¹ rather than σᵐ.
-@kernel function _ssp_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻, a, b)
+# The Euler stage advances the thickness-weighted tracer, (σĉ) = (σc)ᵐ⁻¹ + Δt Gᵐ, so the previous-stage
+# term carries σᵐ⁻¹ rather than σᵐ.
+@kernel function _ssp_euler_substep_tracer_field!(c, grid, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (a * σc⁻[i, j, k] + b * (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k])) / σᶜᶜⁿ
+    @inbounds c[i, j, k] = (σᶜᶜ⁻ * c[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+end
+
+# The blend applies to the thickness-weighted tracer, (σc)ᵐ = a (σc)ⁿ + b (σĉ), on the stage thickness σᵐ.
+@kernel function _ssp_blend_tracer_field!(c, grid, σc⁻, a, b)
+    i, j, k = @index(Global, NTuple)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = a * σc⁻[i, j, k] / σᶜᶜⁿ + b * c[i, j, k]
 end
 
 #####

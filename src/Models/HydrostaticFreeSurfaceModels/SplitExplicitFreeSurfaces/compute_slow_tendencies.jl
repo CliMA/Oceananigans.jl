@@ -1,94 +1,42 @@
-using Oceananigans.TimeSteppers: MultiStageTimeStepper
-#####
-##### Compute slow tendencies with an AB2 timestepper
-#####
-
-# Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    i, j  = @index(Global, NTuple)
-
-    locU = (Face(), Center(), Center())
-    locV = (Center(), Face(), Center())
-
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locU..., Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locV..., Gv⁻, Gvⁿ, χ)
-
-    for k in 2:grid.Nz
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locU..., Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locV..., Gv⁻, Gvⁿ, χ)
-    end
-end
-
-@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ)
-    C₁ = 3 * one(grid) / 2 + χ
-    C₂ =     one(grid) / 2 + χ
-
-    # multiply G⁻ by false if C₂ is zero to
-    # prevent propagationg possible NaNs
-    not_euler = C₂ != 0
-
-    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k] * not_euler
-    immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
-
-    return ifelse(immersed, zero(grid), Gⁿ⁺¹)
-end
-
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper)
-    active_cells_map = get_active_cells_map(grid, Val(:xy))
-
-    Gu⁻ = timestepper.G⁻.u
-    Gv⁻ = timestepper.G⁻.v
-
-    launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
-
-    return nothing
-end
-
-#####
-##### Compute slow tendencies with a RK3 timestepper
-#####
-
-@kernel function _compute_integrated_rk_tendencies!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ)
+# The barotropic tendency is the depth-integrated velocity change the step realized, `(∫u dz - ∫u⁻ dz)/Δt`.
+@kernel function _compute_realized_barotropic_tendency!(Gᵁ, Gⱽ, grid, u, v, u⁻, v⁻, Δt)
     i, j = @index(Global, NTuple)
 
     locU = (Face(), Center(), Center())
     locV = (Center(), Face(), Center())
 
-    @inbounds GUⁿ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * Guⁿ[i, j, 1] * !peripheral_node(i, j, 1, grid, locU...)
-    @inbounds GVⁿ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * Gvⁿ[i, j, 1] * !peripheral_node(i, j, 1, grid, locV...)
+    δU = zero(grid)
+    δV = zero(grid)
 
-    for k in 2:grid.Nz
-        @inbounds GUⁿ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * Guⁿ[i, j, k] * !peripheral_node(i, j, k, grid, locU...)
-        @inbounds GVⁿ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * Gvⁿ[i, j, k] * !peripheral_node(i, j, k, grid, locV...)
+    for k in 1:grid.Nz
+        @inbounds δU += Δzᶠᶜᶜ(i, j, k, grid) * (u[i, j, k] - u⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locU...)
+        @inbounds δV += Δzᶜᶠᶜ(i, j, k, grid) * (v[i, j, k] - v⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locV...)
     end
+
+    @inbounds Gᵁ[i, j, 1] = δU / Δt
+    @inbounds Gⱽ[i, j, 1] = δV / Δt
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::MultiStageTimeStepper) =
-    launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!,
-            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_cells_map(grid, Val(:xy)))
+# Note that for AB2 and for an SSP stage, `transport_velocities` holds the value of the prognostic
+# velocities at `tⁿ` and at the stage input respectively.
+@inline baseline_velocities(model, ::SplitRungeKuttaTimeStepper) = model.timestepper.Ψ⁻
+@inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
+@inline baseline_velocities(model, ::SSPRungeKuttaTimeStepper) = model.transport_velocities
 
-#####
-##### Free surface setup
-#####
-
-# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
-# This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
-
-    Guⁿ = model.timestepper.Gⁿ.u
-    Gvⁿ = model.timestepper.Gⁿ.v
-
+function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
-    baroclinic_timestepper = model.timestepper
+    u,  v,  _ = model.velocities
+    baseline  = baseline_velocities(model, model.timestepper)
+    u⁻, v⁻    = baseline.u, baseline.v
 
-    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper)
+    @apply_regionally launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
+
     fill_halo_regions!((GUⁿ, GVⁿ); async=true)
 
     # Stash the first two stage values for the quadratic reconstruction formed on the final stage.
-    @apply_regionally cache_stage_slow_forcing!(model.free_surface.slow_forcing, GUⁿ, GVⁿ, model.clock.stage)
+    @apply_regionally cache_stage_slow_forcing!(free_surface.slow_forcing, GUⁿ, GVⁿ, model.clock.stage)
 
     return nothing
 end

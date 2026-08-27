@@ -183,12 +183,17 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKuttaTime
 end
 
 #####
-##### The stage update. With (a, b) = (0, 1) this is exactly forward Euler, which is stage one.
+##### The stage update: the Euler step Ψ̂ᵐ = Ψᵐ⁻¹ + Δt Gᵐ, and the Shu-Osher blend Ψᵐ = a Ψⁿ + b Ψ̂ᵐ.
 #####
 
-@kernel function _ssp_substep_field!(field, Δt, Gⁿ, Ψ⁻, a, b)
+@kernel function _ssp_euler_substep_field!(field, Δt, Gⁿ)
     i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * (field[i, j, k] + Δt * Gⁿ[i, j, k])
+    @inbounds field[i, j, k] = field[i, j, k] + Δt * Gⁿ[i, j, k]
+end
+
+@kernel function _ssp_blend_field!(field, Ψ⁻, a, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * field[i, j, k]
 end
 
 #####

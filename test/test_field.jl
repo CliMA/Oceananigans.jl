@@ -963,6 +963,33 @@ end
         end
     end
 
+    @testset "Fractional longitude index on regional grids" begin
+        @info "  Testing fractional longitude indices on regional grids..."
+
+        # A `Bounded` grid covers only part of the globe, so a longitude just west of its
+        # western edge must index just west of the grid rather than folding to λ ≈ 360.
+        regional = LatitudeLongitudeGrid(size = (2, 1, 1), longitude = (0, 20),
+                                         latitude = (0, 10), z = (-1, 0),
+                                         topology = (Bounded, Bounded, Bounded))
+
+        for (λ, expected) in ((-15.0, -1), (-5.0, 0), (5.0, 1), (15.0, 2), (25.0, 3))
+            fi = FractionalIndices((λ, 5.0, 0.0), regional, Center(), Center(), Center())
+            @test fi.i ≈ expected
+        end
+
+        # A grid spanning the full globe is unaffected, whether `Bounded` or `Periodic`.
+        for TX in (Bounded, Periodic)
+            global_grid = LatitudeLongitudeGrid(size = (36, 18, 1), longitude = (0, 360),
+                                                latitude = (-80, 80), z = (-1, 0),
+                                                topology = (TX, Bounded, Bounded))
+
+            for (λ, expected) in ((5.0, 1), (180.0, 18.5), (350.0, 35.5), (357.0, 36.2))
+                fi = FractionalIndices((λ, 0.0, 0.0), global_grid, Center(), Center(), Center())
+                @test fi.i ≈ expected
+            end
+        end
+    end
+
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
