@@ -37,24 +37,16 @@ Return an object that computes the time derivative of `operand` while a simulati
 ```
 
 where ``aⁿ`` and ``aⁿ⁻¹`` are `operand` evaluated at the two most recent times the derivative
-was updated. The derivative is a backward difference and is therefore centered at
-``tⁿ - Δt / 2``, where ``Δt = tⁿ - tⁿ⁻¹``. It is zero until `operand` has been evaluated
-twice, which means that the derivative written at the start of a simulation is zero.
+was updated. The derivative is a backward difference, centered at ``tⁿ - Δt / 2`` with
+``Δt = tⁿ - tⁿ⁻¹``, and is zero until `operand` has been evaluated twice.
 
 `operand` may be a `Field`, an `AbstractOperation`, or a `Reduction`; operations and
-reductions are materialized into a `Field` on construction. Δt is measured in seconds,
-including for clocks that keep calendar time.
+reductions are materialized into a `Field` on construction. Δt is measured in seconds.
 
-A `TimeDerivative` is an output that is interpreted by an output writer, and appears in the
-`outputs` of a writer like any other. Updating it is the job of a
-[`TimeDerivativeCallback`](@ref), which a writer adds to `simulation.callbacks` on its own.
-Construct one directly to use a `TimeDerivative` without a writer, or to difference over an
-interval longer than a time step.
-
-It is not an operator, in that `∂ₜ` is not applied lazily: the difference is evaluated when
-the schedule actuates. Field operations are nonetheless forwarded to `result`, so a
-`TimeDerivative` composes into `AbstractOperation`s exactly as the `Field` it computes does,
-and `2 * ∂ₜc` builds the same operation as `2 * ∂ₜc.result`.
+An output writer updates a `TimeDerivative` among its outputs through a
+[`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
+to use one without a writer. Field operations are forwarded to `result`, so `2 * ∂ₜc`
+builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
 
 Example
 =======
@@ -93,20 +85,6 @@ JLD2Writer scheduled on TimeInterval(1 second):
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
-
-An output writer is not required. A [`TimeDerivativeCallback`](@ref) in
-`simulation.callbacks` keeps a `TimeDerivative` up to date on its own schedule. Field
-operations are forwarded to `result`, so `interior(∂ₜc)`, `maximum(abs, ∂ₜc)` and
-`∂ₜc[i, j, k]` read the derivative at any point during the run:
-
-```jldoctest time_derivative
-∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
-
-simulation.callbacks[:∂ₜc] = ∂ₜc
-
-# output
-Callback of TimeDerivative of 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU on IterationInterval(1)
-```
 """
 function TimeDerivative(operand, model=nothing)
     operand = materialize_operand(operand)
@@ -123,18 +101,15 @@ function TimeDerivative(operand, model=nothing)
     return derivative
 end
 
-# Not `Base.similar`, which inherits `operand`'s `operand` and would recompute it
 similar_field(operand) = Field(instantiated_location(operand), operand.grid, eltype(operand),
                                indices = indices(operand))
 
-# Time derivatives don't change spatial location or grid
 grid(derivative::TimeDerivative) = grid(derivative.operand)
 location(derivative::TimeDerivative) = location(derivative.operand)
 indices(derivative::TimeDerivative) = indices(derivative.operand)
 
 #####
-##### Read a `TimeDerivative` like the `Field` it computes, so that `result` need not be
-##### named to inspect it: `interior(∂ₜc)`, `maximum(abs, ∂ₜc)`, `∂ₜc[i, j, k]`
+##### Read a `TimeDerivative` like the `Field` it computes
 #####
 
 Base.parent(derivative::TimeDerivative) = parent(derivative.result)
@@ -159,10 +134,7 @@ Statistics.mean(f::Function, derivative::TimeDerivative; kw...) = Statistics.mea
 ##### `2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`
 #####
 
-# The binary operator methods in `AbstractOperations` are `op(::AbstractField, ::Any)` and
-# `op(::Any, ::AbstractField)`, which already accept a `TimeDerivative` opposite a field.
-# Only the pairings with no field at all are missing, so widening past this union would be
-# ambiguous with them rather than more general.
+# Widening this union is ambiguous with the `op(::AbstractField, ::Any)` operator methods
 const ScalarOperand = Union{Function, Number}
 
 for op in (:sqrt, :sin, :cos, :exp, :tanh, :abs, :log10, :log, :tan, :sinh, :cosh, :-, :+)
@@ -177,8 +149,7 @@ for op in (:+, :-, :*, :/, :^, :>, :<, :>=, :<=, :atan, :atand, :mod)
     end
 end
 
-# Dispatched rather than left to the `output(model)` fallback, because calling a
-# `TimeDerivative` updates it: that is what its `Callback` invokes every actuation.
+# Calling a `TimeDerivative` updates it; `fetch_output` reads it
 fetch_output(derivative::TimeDerivative, model) = parent(derivative.result)
 
 (derivative::TimeDerivative)(sim) = update_time_derivative!(derivative, sim.model)
@@ -186,16 +157,12 @@ fetch_output(derivative::TimeDerivative, model) = parent(derivative.result)
 """
 $(TYPEDSIGNATURES)
 
-Record `derivative.operand` and the current time so that the next update has something to
-difference against. A backward difference needs two evaluations, so the derivative remains
-zero until the update after this one.
+Record `derivative.operand` and the current time for the next update to difference against.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
-        msg = string("Cannot use a TimeDerivative with a $T clock unless it is constructed ",
-                     "with the model, as in TimeDerivative(operand, model).")
-        throw(ArgumentError(msg))
+        throw(ArgumentError("TimeDerivative must be constructed with the model when the clock keeps $T time"))
     end
 
     parent(derivative.previous) .= fetch_output(derivative.operand, model)
@@ -216,8 +183,7 @@ function update_time_derivative!(derivative::TimeDerivative, model)
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
-    # Broadcast over parents so that halo regions are differenced along with the interior,
-    # matching what an output writer with `with_halos = true` saves for a plain `Field`
+    # Difference over parents so that halo regions are included
     current = fetch_output(derivative.operand, model)
     result = parent(derivative.result)
     previous = parent(derivative.previous)

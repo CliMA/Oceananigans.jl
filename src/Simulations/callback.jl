@@ -98,11 +98,7 @@ const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
 
 Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
 `schedule`, so that the derivative is differenced over the interval between actuations.
-
-The derivative itself is `callback.func`, whose `result` is a `Field`. An output writer adds a
-`TimeDerivativeCallback` on `IterationInterval(1)` for each `TimeDerivative` among its
-outputs, so one is only constructed by hand to use a `TimeDerivative` without a writer, or
-to difference over an interval longer than a time step.
+The derivative itself is `callback.func`, whose `result` is a `Field`.
 
 Example
 =======

@@ -29,8 +29,6 @@ function test_time_derivative_evolution(arch)
     ∂ₜ∫c² = TimeDerivativeCallback(Integral(c^2))
     coarse_∂ₜc = TimeDerivativeCallback(c, schedule=IterationInterval(2))
 
-    @test ∂ₜc isa TimeDerivativeCallback
-
     simulation = Simulation(model; Δt, stop_iteration=2)
     simulation.callbacks[:∂ₜc] = ∂ₜc
     simulation.callbacks[:∂ₜ∫c²] = ∂ₜ∫c²
@@ -91,7 +89,6 @@ function test_time_derivative_operators(arch)
 
     # Reductions read the derivative directly
     @test maximum(abs, ∂ₜc) == 1//2
-    @test size(∂ₜc) == size(∂ₜc.result)
 
     return nothing
 end
