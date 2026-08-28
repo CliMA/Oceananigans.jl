@@ -147,7 +147,7 @@ function set_to_array!(u, a)
 end
 
 function set_to_field!(u, v)
-    if matching_field_discretization(u, v)
+    if copyable_fields(u, v)
         copy_to_field!(u, v)
     else
         if !needs_simulation_context(v.boundary_conditions)
@@ -162,28 +162,44 @@ function set_to_field!(u, v)
     return u
 end
 
-function matching_field_discretization(u, v)
-    sz = size(u)
-    sz == size(v) || return false
+# `u` may be filled from `v` by copying, rather than by interpolating, when every
+# dimension is copyable. Note that sizes need not match: `v` may be reduced.
+function copyable_fields(u, v)
     ℓu = location(u)
     ℓv = location(v)
     iu = indices(u)
     iv = indices(v)
-    return matching_field_dimension(ℓu[1], ℓv[1], iu[1], iv[1], sz[1]) &&
-           matching_field_dimension(ℓu[2], ℓv[2], iu[2], iv[2], sz[2]) &&
-           matching_field_dimension(ℓu[3], ℓv[3], iu[3], iv[3], sz[3])
+    Nu = size(u)
+    Nv = size(v)
+    return copyable_dimension(ℓu[1], ℓv[1], iu[1], iv[1], Nu[1], Nv[1]) &&
+           copyable_dimension(ℓu[2], ℓv[2], iu[2], iv[2], Nu[2], Nv[2]) &&
+           copyable_dimension(ℓu[3], ℓv[3], iu[3], iv[3], Nu[3], Nv[3])
 end
 
-# Two fields share their discretization along a dimension when they have the same
-# location and equivalent indices there. The exception is a reduced (`Nothing`) location
-# in a singleton dimension: a `Nothing` dimension carries no node, so there is nothing
-# to interpolate to and the single slab may be copied directly regardless of the other
-# field's location or absolute index (e.g. a reduced field set from a windowed
-# single-layer field, whose locations are `Nothing` vs `Center` and indices `:` vs `k:k`).
-@inline matching_field_dimension(ℓu, ℓv, iu, iv, N) =
-    (ℓu == ℓv && equivalent_index(iu, iv, N)) || reduced_singleton_dimension(ℓu, ℓv, N)
+# Along a dimension, `u` may be filled from `v` by copying in three mutually exclusive
+# situations: the two fields are discretized equivalently, the dimension is degenerate,
+# or `v` is reduced and stretches across `u`.
+@inline copyable_dimension(ℓu, ℓv, iu, iv, Nu, Nv) =
+    equivalent_dimension(ℓu, ℓv, iu, iv, Nu, Nv) ||
+    degenerate_dimension(ℓu, ℓv, Nu, Nv) ||
+    expandable_source_dimension(ℓv, Nu)
 
-@inline reduced_singleton_dimension(ℓu, ℓv, N) = N == 1 && (ℓu === Nothing || ℓv === Nothing)
+# `u` and `v` place their nodes identically: same location, same extent, and windows
+# selecting the same absolute indices.
+@inline equivalent_dimension(ℓu, ℓv, iu, iv, Nu, Nv) =
+    ℓu == ℓv && Nu == Nv && equivalent_index(iu, iv, Nu)
+
+# Both fields span a single point and at least one carries no node there. A `Nothing`
+# location has no node to interpolate to, so the single slab copies directly whatever the
+# other field's location and absolute index are (e.g. a reduced field set from a windowed
+# single-layer field, whose locations are `Nothing` vs `Center` and indices `:` vs `k:k`).
+@inline degenerate_dimension(ℓu, ℓv, Nu, Nv) =
+    Nu == Nv == 1 && (ℓu === Nothing || ℓv === Nothing)
+
+# `v` carries no node, so its single value is replicated across `u`'s cells --- a 1D
+# reference column set into a 3D field, say. Only the source may stretch, mirroring
+# broadcasting, so a reduced `u` fed by a many-celled `v` is not copyable.
+@inline expandable_source_dimension(ℓv, Nu) = ℓv === Nothing && Nu > 1
 
 @inline equivalent_index(a, b, N) = a == b
 @inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
@@ -192,6 +208,20 @@ end
 function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
+
+    if size(u) != size(v)
+        # `v` is reduced along at least one dimension (see `expandable_source_dimension`)
+        # and stretches across `u`. Only interior points participate: `v` spans a single
+        # point along a stretched dimension, so it has no halo data to lend there.
+        if child_architecture(u) === child_architecture(v)
+            interior(u) .= interior(v)
+        else
+            v_data = on_architecture(child_architecture(u), v.data)
+            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
+        end
+
+        return u
+    end
 
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
