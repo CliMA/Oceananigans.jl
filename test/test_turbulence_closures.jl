@@ -620,14 +620,6 @@ end
     @testset "Vertically-implicit diffusion operator" begin
         @info "  Testing that the vertically-implicit stencil reproduces ∂z(ν ∂z ϕ)..."
 
-        # The tridiagonal coefficients must represent ∂z(ν ∂z ϕ). A CONSTANT ν on a UNIFORM grid is
-        # the one combination a mis-indexed stencil still gets right, and it is what every existing
-        # test of this path uses — so ν varies in z here and the grids include a stretched one.
-        #
-        # The coefficients are exactly linear in Δt, so taking Δt = 1 recovers the operator as
-        # L = I - A with no truncation error and nothing to calibrate. Comparing the assembled rows
-        # against the analytic stencil also checks each coefficient individually, rather than only
-        # the operator's action on one field.
         function implicit_operator_rows(arch, LX, LZ, Nz, z, Lz)
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
                                    topology=(Periodic, Periodic, Bounded))
@@ -651,15 +643,12 @@ end
                  [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz])
             end
 
-            # A = I - Δt L with Δt = 1, so L = I - A.
-            L = zeros(Nz, Nz)
+            L = zeros(Nz, Nz) # the coefficients are linear in Δt, so Δt = 1 gives L = I - A exactly
             for k in 1:Nz
                 L[k, k] = 1 - d[k]
                 k < Nz && (L[k, k+1] = -du[k]; L[k+1, k] = -dl[k])
             end
 
-            # Analytic stencil. For a z-face field the stress lives at centers and the row's own
-            # spacing is Δzᶠ; for a z-center field it is the other way round.
             zᶜ = Array(znodes(grid, Center()))
             zᶠ = Array(znodes(grid, Face()))
             Δzᶜ = diff(zᶠ)
