@@ -280,9 +280,12 @@ derivative in it spans exactly one time step. The final record of a run that sto
 is never completed: it holds `NaN` (`NetCDFWriter` and `ZarrWriter`) or is absent from the file
 (`JLD2Writer`).
 
-Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily:
-the difference is evaluated as the simulation runs, by a [`TimeDerivativeCallback`](@ref) that the
-writer registers in `simulation.callbacks` itself.
+A `TimeDerivative` is an `AbstractField`, so it composes into further operations and reductions —
+`2 * ∂ₜc`, or a budget residual containing a derivative, defers and completes on exactly the same
+records as the derivative itself. Evaluating it advances it: a writer's own fetches drive the
+differencing, and a [`TimeDerivativeCallback`](@ref) does the same for use without a writer. Because
+each derivative holds a single differencing window, it should be evaluated on one cadence: do not
+share one between writers with different schedules.
 
 ### Example
 

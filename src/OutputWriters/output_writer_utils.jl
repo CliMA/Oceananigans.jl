@@ -281,6 +281,18 @@ record on the following iteration, so that it carries the time the record was op
 """
 deferred_output(output) = false
 
+# An output is deferred when a `TimeDerivative` is reachable through its operands, so that
+# composites like `2 * ∂ₜc` complete on the same iteration as the derivative itself
+deferred_output(field::Field) = deferred_output(field.operand)
+deferred_output(::Nothing) = false
+deferred_output(operation::UnaryOperation) = deferred_output(operation.arg)
+deferred_output(operation::Derivative) = deferred_output(operation.arg)
+deferred_output(operation::BinaryOperation) = deferred_output(operation.a) || deferred_output(operation.b)
+deferred_output(operation::MultiaryOperation) = any(deferred_output, operation.args)
+deferred_output(operation::KernelFunctionOperation) = any(deferred_output, operation.arguments)
+deferred_output(operation::ConditionalOperation) = deferred_output(operation.operand)
+deferred_output(scan::Scan) = deferred_output(scan.operand)
+
 deferred_outputs(outputs) = filter_outputs(deferred_output, outputs)
 immediate_outputs(outputs) = filter_outputs(!deferred_output, outputs)
 

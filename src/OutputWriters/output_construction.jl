@@ -78,7 +78,7 @@ end
 ##### Time differentiation
 #####
 
-function construct_output(derivative::TimeDerivative{<:Field}, indices, with_halos)
+function construct_output(derivative::TimeDerivative, indices, with_halos)
     output = construct_output(derivative.operand, indices, with_halos)
     return TimeDerivative(output)
 end

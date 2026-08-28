@@ -14,7 +14,9 @@ using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, wri
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!
+using Oceananigans.AbstractOperations: BinaryOperation, ConditionalOperation, Derivative,
+                                       KernelFunctionOperation, MultiaryOperation, UnaryOperation
+using Oceananigans.Fields: Fields, Field, Scan, AbstractField, location, reduced_dimensions, set!
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
                           RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
                           ColumnEnsembleSize, Periodic, Bounded, FullyConnected,

@@ -369,6 +369,9 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         # Fetch JLD2 output and store in `data`
         verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
 
+        # Evaluating a deferred output opens its differencing window at this record's time
+        foreach(output -> fetch_output(output, model), values(deferred_outputs(writer.outputs)))
+
         outputs = immediate_outputs(writer.outputs)
         tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
                                              in zip(keys(outputs), values(outputs)))

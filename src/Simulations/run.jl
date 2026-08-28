@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: schedule_aligned_time_step
 
@@ -291,17 +291,6 @@ function add_dependency!(sim, wta::WindowedTimeAverage, schedule)
     diags = sim.diagnostics
     if wta ∉ values(diags)
         diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
-    end
-end
-
-# The writer's schedule already actuates on the iteration after it opens a record, which is
-# exactly when the forward difference completes. Copy it, because actuating a schedule
-# advances it and the writer needs its own actuations.
-function add_dependency!(sim, derivative::TimeDerivative, schedule)
-    callbacks = sim.callbacks
-    if !any(cb -> cb.func === derivative, values(callbacks))
-        name = next_dependency_name("TimeDerivative", keys(callbacks))
-        callbacks[name] = Callback(derivative, deepcopy(schedule))
     end
 end
 

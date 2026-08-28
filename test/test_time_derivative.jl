@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using NCDatasets
 using Zarr
 using Oceananigans: initialize!
-using Oceananigans.OutputWriters: TimeDerivative, update_time_derivative!
+using Oceananigans.OutputWriters: TimeDerivative
 using Oceananigans.Utils: ConsecutiveIterations
 
 #####
@@ -104,14 +104,14 @@ function test_time_derivative_two_phase(arch)
     @test ∂ₜc.previous_time == model.clock.time
     @test !∂ₜc.pending
 
-    # The first actuation only opens a window
-    update_time_derivative!(∂ₜc, model)
+    # The first evaluation only opens a window
+    compute!(∂ₜc, model.clock.time)
     @test ∂ₜc.pending
     @test all(Array(interior(∂ₜc.previous)) .≈ Array(interior(model.tracers.c)))
     @test all(Array(interior(∂ₜc)) .== 0)
 
-    # A repeated actuation at the same clock time changes nothing
-    update_time_derivative!(∂ₜc, model)
+    # A repeated evaluation at the same clock time changes nothing
+    compute!(∂ₜc, model.clock.time)
     @test all(Array(interior(∂ₜc)) .== 0)
 
     # With a calendar clock the time type must come from the model at construction
@@ -137,9 +137,15 @@ single_column_model(arch, λ=2) = begin
     model
 end
 
-time_derivative_outputs(writer_type, model) = (; dcdt = TimeDerivative(model.tracers.c), c = model.tracers.c)
-time_derivative_outputs(::Type{NetCDFWriter}, model) = Dict("dcdt" => TimeDerivative(model.tracers.c),
-                                                            "c" => model.tracers.c)
+function time_derivative_outputs(writer_type, model)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+    return (; dcdt = ∂ₜc, two_dcdt = 2 * ∂ₜc, c = model.tracers.c)
+end
+
+function time_derivative_outputs(::Type{NetCDFWriter}, model)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+    return Dict("dcdt" => ∂ₜc, "two_dcdt" => 2 * ∂ₜc, "c" => model.tracers.c)
+end
 
 output_writer_kwargs(writer_type, path) = (; filename = path)
 output_writer_kwargs(::Type{ZarrWriter}, path) =
@@ -150,8 +156,9 @@ function read_saved_output(::Type{JLD2Writer}, path)
         iterations(name) = sort(parse.(Int, filter(k -> k != "serialized", keys(file["timeseries/$name"]))))
         times = [file["timeseries/t/$i"] for i in iterations("t")]
         dcdt = [file["timeseries/dcdt/$i"][1, 1, 1] for i in iterations("dcdt")]
+        two_dcdt = [file["timeseries/two_dcdt/$i"][1, 1, 1] for i in iterations("two_dcdt")]
         c = [file["timeseries/c/$i"][1, 1, 1] for i in iterations("c")]
-        return (; times, dcdt, c)
+        return (; times, dcdt, two_dcdt, c)
     end
 end
 
@@ -159,6 +166,7 @@ function read_saved_output(::Type{NetCDFWriter}, path)
     dataset = NCDataset(path)
     saved = (times = Array(dataset["time"][:]),
              dcdt = Array(dataset["dcdt"][1, 1, 1, :]),
+             two_dcdt = Array(dataset["two_dcdt"][1, 1, 1, :]),
              c = Array(dataset["c"][1, 1, 1, :]))
     close(dataset)
     return saved
@@ -166,7 +174,8 @@ end
 
 function read_saved_output(::Type{ZarrWriter}, path)
     store = Zarr.zopen(path)
-    return (times = store["time"][:], dcdt = store["dcdt"][1, 1, 1, :], c = store["c"][1, 1, 1, :])
+    return (times = store["time"][:], dcdt = store["dcdt"][1, 1, 1, :],
+            two_dcdt = store["two_dcdt"][1, 1, 1, :], c = store["c"][1, 1, 1, :])
 end
 
 # Records at t = 0, 2Δt, 4Δt; the first two complete on the following iterations while the
@@ -188,8 +197,8 @@ function test_time_derivative_output(arch, writer_type, path)
 
     written = only(o for o in values(simulation.output_writers[:derivative].outputs) if o isa TimeDerivative)
 
-    # The writer adds the updating callback on its own, on its deferred schedule
-    @test any(cb -> cb.func === written, values(simulation.callbacks))
+    # Evaluation by the writer advances the derivative: no callback is registered
+    @test !any(cb -> cb.func isa TimeDerivative, values(simulation.callbacks))
     @test simulation.output_writers[:derivative].schedule isa ConsecutiveIterations
     @test location(written) == (Center, Center, Center)
 
@@ -200,11 +209,16 @@ function test_time_derivative_output(arch, writer_type, path)
     @test saved.dcdt[1] ≈ forward_difference(0) rtol=1e-4
     @test saved.dcdt[2] ≈ forward_difference(2Δt) rtol=1e-4
 
+    # An operation containing the derivative is written on exactly the same records
+    @test all(saved.two_dcdt[1:2] .≈ 2 .* saved.dcdt[1:2])
+
     if writer_type == JLD2Writer
         @test length(saved.dcdt) == 2
+        @test length(saved.two_dcdt) == 2
     else
         @test length(saved.dcdt) == 3
         @test isnan(saved.dcdt[3])
+        @test isnan(saved.two_dcdt[3])
     end
 
     # Immediate outputs are written at every record, including the last
@@ -273,6 +287,40 @@ function test_time_derivative_output_reduced(arch)
     return nothing
 end
 
+# An operation containing a TimeDerivative, with the derivative itself written nowhere,
+# is calculated and written on exactly the schedule of a pure TimeDerivative
+function test_composite_only_output(arch)
+    λ, Δt = 2, 1e-3
+    model = single_column_model(arch, λ)
+    ∂ₜc = TimeDerivative(model.tracers.c)
+
+    filename = "test_composite_dcdt.nc"
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    simulation.output_writers[:derivative] = NetCDFWriter(model, Dict("two_dcdt" => 2 * ∂ₜc);
+                                                          filename,
+                                                          schedule = IterationInterval(2),
+                                                          overwrite_existing = true)
+    run!(simulation)
+
+    @test !any(cb -> cb.func isa TimeDerivative, values(simulation.callbacks))
+    @test simulation.output_writers[:derivative].schedule isa ConsecutiveIterations
+
+    dataset = NCDataset(filename)
+    times = Array(dataset["time"][:])
+    saved = Array(dataset["two_dcdt"][1, 1, 1, :])
+    close(dataset)
+    rm(filename, force=true)
+
+    forward_difference(t) = -2λ * exp(-λ * t) * exp(-λ * Δt / 2)
+
+    @test all(isapprox.(times, [0, 2Δt, 4Δt], atol=1e-12))
+    @test saved[1] ≈ forward_difference(0) rtol=1e-4
+    @test saved[2] ≈ forward_difference(2Δt) rtol=1e-4
+    @test isnan(saved[3])
+
+    return nothing
+end
+
 #####
 ##### Checkpointing, through both the writer and the callback, in one pickup
 #####
@@ -288,12 +336,14 @@ function test_time_derivative_checkpointing(arch)
 
     simulation = Simulation(model; Δt, stop_iteration=2)
     simulation.callbacks[:callback_∂ₜc] = callback_∂ₜc
-    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(2),
-                                                            prefix = prefix)
+    # The derivative advances when its writer evaluates it, so the checkpointer registers
+    # after that writer to capture the settled state
     simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc, c_avg),
                                                         filename = "$(prefix).jld2",
                                                         schedule = IterationInterval(2),
                                                         overwrite_existing = true)
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(2),
+                                                            prefix = prefix)
     run!(simulation)
 
     written = simulation.output_writers[:derivative].outputs.∂ₜc
@@ -360,6 +410,7 @@ end
 
             test_time_derivative_output_every_iteration(arch)
             test_time_derivative_output_reduced(arch)
+            test_composite_only_output(arch)
         end
 
         @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin
