@@ -80,5 +80,5 @@ end
 
 function construct_output(derivative::TimeDerivative{<:Field}, indices, with_halos)
     output = construct_output(derivative.operand, indices, with_halos)
-    return TimeDerivative(output; safety_factor = derivative.safety_factor)
+    return TimeDerivative(output)
 end

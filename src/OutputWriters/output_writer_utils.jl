@@ -267,3 +267,36 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
+
+#####
+##### Deferred outputs
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` for outputs whose value is not available until the iteration after the writer
+actuates. Such an output is skipped when the record is opened and written into that same
+record on the following iteration, so that it carries the time the record was opened.
+"""
+deferred_output(output) = false
+
+deferred_outputs(outputs) = filter_outputs(deferred_output, outputs)
+immediate_outputs(outputs) = filter_outputs(!deferred_output, outputs)
+
+filter_outputs(keep, outputs::NamedTuple) =
+    NamedTuple(name => outputs[name] for name in keys(outputs) if keep(outputs[name]))
+
+filter_outputs(keep, outputs::AbstractDict) =
+    typeof(outputs)(name => output for (name, output) in outputs if keep(output))
+
+# A deferred output is written as NaN when its record is opened and overwritten once the value
+# completes, so a record left incomplete at the end of a run reads as missing rather than as
+# the format's fill value
+placeholder_output(data::AbstractArray{<:AbstractFloat}) = fill!(similar(data), NaN)
+placeholder_output(data) = data
+
+# A writer holding a deferred output has to actuate again on the following iteration in order
+# to complete the record it opened
+defer_schedule(schedule, outputs) =
+    any(deferred_output, values(outputs)) ? ConsecutiveIterations(schedule) : schedule

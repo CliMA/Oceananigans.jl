@@ -204,6 +204,7 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
+    schedule = defer_schedule(schedule, d_outputs)
 
     validate_file_splitting(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
 
@@ -354,6 +355,8 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         initialize!(writer, model)
     end
 
+    primary_actuation(writer.schedule, model.clock) || return write_deferred_output!(writer, model)
+
     verbose = writer.verbose
     current_iteration = model.clock.iteration
 
@@ -365,8 +368,9 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         # Fetch JLD2 output and store in `data`
         verbose && @info @sprintf("Fetching JLD2 output %s...", keys(writer.outputs))
 
+        outputs = immediate_outputs(writer.outputs)
         tc = Base.@elapsed data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
-                                             in zip(keys(writer.outputs), values(writer.outputs)))
+                                             in zip(keys(outputs), values(outputs)))
 
         verbose && @info "Fetching time: $(prettytime(tc))"
 
@@ -407,6 +411,29 @@ Write the `(name, value)` pairs in `data`, including the simulation
 stamping them with `iter`. Provided `kwargs` are used when opening
 the JLD2 file (i.e., provided to `JLD2.jldopen`).
 """
+# Write into the record opened by an earlier actuation, leaving its time stamp untouched
+function write_deferred_output!(writer::JLD2Writer, model)
+    outputs = deferred_outputs(writer.outputs)
+    isempty(outputs) && return nothing
+
+    iter = writer.schedule.previous_parent_actuation_iteration
+    data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
+                      in zip(keys(outputs), values(outputs)))
+
+    jld2append!(writer.filepath, iter, data, writer.jld2_kw)
+
+    return nothing
+end
+
+function jld2append!(path, iter, data, kwargs)
+    jldopen(path, "r+"; kwargs...) do file
+        for name in keys(data)
+            file["timeseries/$name/$iter"] = data[name]
+        end
+    end
+    return nothing
+end
+
 function jld2output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
         file["timeseries/t/$iter"] = time

@@ -39,7 +39,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    LambertConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
-                          pretty_filesize
+                          ConsecutiveIterations, primary_actuation, pretty_filesize
 
 const c = Center()
 const f = Face()

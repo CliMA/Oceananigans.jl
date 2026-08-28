@@ -63,6 +63,7 @@ function ZarrWriter(model::AbstractModel, outputs;
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
                             for name in keys(outputs))
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
+    schedule = defer_schedule(schedule, d_outputs)
 
     # Detect unique grids across all outputs. Outputs without a grid (functions,
     # particles) map to grid_index = nothing.
@@ -521,20 +522,30 @@ function write_output!(writer::ZarrWriter, model::AbstractModel)
         initialize!(writer, model)
     end
 
+    primary = primary_actuation(writer.schedule, model.clock)
+
     if distributed
-        write_output_distributed!(writer, model)
+        write_output_distributed!(writer, model; primary)
     else
-        write_output_serial!(writer, model)
+        write_output_serial!(writer, model; primary)
     end
 
     return nothing
 end
 
-function write_output_serial!(writer::ZarrWriter, model)
+# Deferred outputs skip the actuation that appends the time value and append on the next one,
+# which lands them at the same index along the time axis as everything else in that record
+function write_output_serial!(writer::ZarrWriter, model; primary=true)
     g = Zarr.zopen(writer.store, "w")
-    time = zarr_time_value(model.clock.time, writer.dimension_type)
-    Zarr.append!(g["time"], [time]; dims=1)
-    for (name, output) in pairs(writer.outputs)
+
+    if primary
+        time = zarr_time_value(model.clock.time, writer.dimension_type)
+        Zarr.append!(g["time"], [time]; dims=1)
+    end
+
+    outputs = primary ? writer.outputs : deferred_outputs(writer.outputs)
+
+    for (name, output) in pairs(outputs)
         data = fetch_and_convert_output(output, model, writer)
         data = squeeze_reduced_dimensions(output, data)
         arr = g[string(name)]
@@ -542,7 +553,15 @@ function write_output_serial!(writer::ZarrWriter, model)
         if eltype(data_arr) === Bool
             data_arr = Int8.(data_arr)
         end
-        Zarr.append!(arr, data_arr; dims=ndims(arr))
+
+        if !primary
+            colons = ntuple(_ -> Colon(), ndims(arr) - 1)
+            arr[colons..., size(arr, ndims(arr))] = data_arr
+        elseif deferred_output(output)
+            Zarr.append!(arr, placeholder_output(data_arr); dims=ndims(arr))
+        else
+            Zarr.append!(arr, data_arr; dims=ndims(arr))
+        end
     end
     Zarr.consolidate_metadata(g)
     return nothing
@@ -564,12 +583,12 @@ end
 #   3. Each rank writes its local slab to its global slice of the array.
 #   4. Rank 0 also writes the time chunk.
 #   5. Barrier so all writes land before the next step starts.
-function write_output_distributed!(writer::ZarrWriter, model)
+function write_output_distributed!(writer::ZarrWriter, model; primary=true)
     is_root = mpi_rank(global_communicator()) == 0
     g = Zarr.zopen(writer.store, "w")
 
     # Bump the time axis and write the new time value (root only).
-    if is_root
+    if is_root && primary
         time = zarr_time_value(model.clock.time, writer.dimension_type)
         Zarr.append!(g["time"], [time]; dims=1)
     end
@@ -578,8 +597,9 @@ function write_output_distributed!(writer::ZarrWriter, model)
     # Re-open after metadata change so all ranks see the new time array length.
     g = Zarr.zopen(writer.store, "w")
     new_time_index = length(g["time"])
+    outputs = primary ? immediate_outputs(writer.outputs) : deferred_outputs(writer.outputs)
 
-    for (name, output) in pairs(writer.outputs)
+    for (name, output) in pairs(outputs)
         arr = g[string(name)]
         data = fetch_and_convert_output(output, model, writer)
         data = squeeze_reduced_dimensions(output, data)

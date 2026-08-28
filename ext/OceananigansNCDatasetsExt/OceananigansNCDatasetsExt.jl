@@ -61,6 +61,10 @@ using Oceananigans.OutputWriters:
     fetch_output,
     convert_output,
     fetch_and_convert_output,
+    deferred_output,
+    deferred_outputs,
+    placeholder_output,
+    defer_schedule,
     show_array_type,
     default_dimension_attributes,
     gather_dimensions,
@@ -74,7 +78,7 @@ using Oceananigans.OutputWriters:
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:
-    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+    materialize_schedule, primary_actuation, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
 import NCDatasets: defVar
 import Oceananigans: initialize!, write_output!
