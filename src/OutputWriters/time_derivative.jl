@@ -14,8 +14,9 @@ import Oceananigans.Fields: location, indices, interior
     mutable struct TimeDerivative{O, R, T}
 
 Container that holds the state required to compute the time derivative of an `operand`
-as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
-recently computed `result`. Both are `Field`s at `location(operand)`.
+as a simulation runs: the `operand` recorded when the current differencing window opened at
+`previous_time`, and the most recently completed `result`. Both are `Field`s at
+`location(operand)`.
 """
 mutable struct TimeDerivative{O, R, T}
            result :: R
@@ -34,20 +35,21 @@ materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
 ```math
-∂ₜ a ≈ \\frac{aⁿ - aⁿ⁻¹}{tⁿ - tⁿ⁻¹} \\, ,
+∂ₜ a \\, (tⁿ) ≈ \\frac{aⁿ⁺¹ - aⁿ}{tⁿ⁺¹ - tⁿ} \\, ,
 ```
 
-where ``aⁿ`` and ``aⁿ⁻¹`` are `operand` evaluated at the two most recent times the derivative
-was updated. The derivative is a backward difference, centered at ``tⁿ - Δt / 2`` with
-``Δt = tⁿ - tⁿ⁻¹``, and is zero until `operand` has been evaluated twice.
+a forward difference labelled by the time ``tⁿ`` at which its window opens and completed at
+the following actuation ``tⁿ⁺¹``.
 
 `operand` may be a `Field`, an `AbstractOperation`, or a `Reduction`; operations and
 reductions are materialized into a `Field` on construction. Δt is measured in seconds.
 
-An output writer updates a `TimeDerivative` among its outputs through a
-[`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
-to use one without a writer. Field operations are forwarded to `result`, so `2 * ∂ₜc`
-builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
+An output writer holding a `TimeDerivative` actuates again on the iteration after each
+output and writes the completed difference into the record it opened, so the record carries
+the output time. A record the run ends before completing holds `NaN` (`NetCDFWriter` and
+`ZarrWriter`) or is absent (`JLD2Writer`). To use a `TimeDerivative` without a writer,
+construct a [`TimeDerivativeCallback`](@ref). Field operations are forwarded to `result`,
+so `2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
 
 Example
 =======
@@ -161,7 +163,7 @@ deferred_output(::TimeDerivative) = true
 """
 $(TYPEDSIGNATURES)
 
-Record `derivative.operand` and the current time for the next update to difference against.
+Reset `derivative` so that its next actuation opens a fresh differencing window.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
@@ -179,8 +181,9 @@ initialize!(derivative::TimeDerivative, sim) = initialize!(derivative, sim.model
 """
 $(TYPEDSIGNATURES)
 
-Difference `derivative.operand` against its value at `derivative.previous_time` and store
-the result in `derivative.result`.
+Complete the difference over the window opened at the previous actuation, storing it in
+`derivative.result` labelled by `derivative.previous_time`, and reopen the window at the
+current time. The first actuation only opens a window.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
     current = fetch_output(derivative.operand, model)
