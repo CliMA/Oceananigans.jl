@@ -78,7 +78,7 @@ using Oceananigans.OutputWriters:
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:
-    materialize_schedule, primary_actuation, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+    materialize_schedule, primary_actuation, follow_up_actuation, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
 import NCDatasets: defVar
 import Oceananigans: initialize!, write_output!

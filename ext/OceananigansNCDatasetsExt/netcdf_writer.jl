@@ -350,6 +350,11 @@ function write_deferred_output!(ow::NetCDFWriter, model)
     ds = open(ow)
     time_index = length(ds["time"])
 
+    if time_index == 0
+        close(ds)
+        return nothing
+    end
+
     for (output_name, output) in outputs
         save_output!(ds, output, model, ow, time_index, output_name)
     end
@@ -481,7 +486,8 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     # Ensure the writer is initialized before writing
     initialize!(ow, model)
 
-    primary_actuation(ow.schedule, model.clock) || return write_deferred_output!(ow, model)
+    follow_up_actuation(ow.schedule, model.clock) && write_deferred_output!(ow, model)
+    primary_actuation(ow.schedule, model.clock) || return nothing
 
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)

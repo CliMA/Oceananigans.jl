@@ -183,26 +183,22 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
-    if !derivative.pending
-        # First of two consecutive actuations: record the operand at the time that the
-        # derivative will be labelled with
-        parent(derivative.previous) .= fetch_output(derivative.operand, model)
-        derivative.previous_time = model.clock.time
-        derivative.pending = true
+    current = fetch_output(derivative.operand, model)
+    Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
 
-        return nothing
+    if derivative.pending && Δt > 0
+        # Difference over parents so that halo regions are included
+        result = parent(derivative.result)
+        previous = parent(derivative.previous)
+        @. result = (current - previous) / Δt
     end
 
-    Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
-    Δt == 0 && return nothing
-
-    # Difference over parents so that halo regions are included
-    current = fetch_output(derivative.operand, model)
-    result = parent(derivative.result)
-    previous = parent(derivative.previous)
-
-    @. result = (current - previous) / Δt
-    derivative.pending = false
+    # Every actuation opens a new window, so the next one differences back to this time
+    if !derivative.pending || Δt > 0
+        parent(derivative.previous) .= current
+        derivative.previous_time = model.clock.time
+        derivative.pending = true
+    end
 
     return nothing
 end

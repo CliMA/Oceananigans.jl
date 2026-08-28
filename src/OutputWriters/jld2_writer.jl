@@ -355,7 +355,8 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         initialize!(writer, model)
     end
 
-    primary_actuation(writer.schedule, model.clock) || return write_deferred_output!(writer, model)
+    follow_up_actuation(writer.schedule, model.clock) && write_deferred_output!(writer, model)
+    primary_actuation(writer.schedule, model.clock) || return nothing
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
@@ -416,7 +417,9 @@ function write_deferred_output!(writer::JLD2Writer, model)
     outputs = deferred_outputs(writer.outputs)
     isempty(outputs) && return nothing
 
-    iter = writer.schedule.previous_parent_actuation_iteration
+    iter = parent_actuation_before(writer.schedule, model.clock)
+    (iter < 0 || !isfile(writer.filepath) || !iteration_exists(writer.filepath, iter)) && return nothing
+
     data = NamedTuple(name => fetch_and_convert_output(output, model, writer) for (name, output)
                       in zip(keys(outputs), values(outputs)))
 

@@ -67,7 +67,7 @@ using Oceananigans.OutputWriters:
     halo_fill_2d_metric,
     materialize_serialized_output
 using Oceananigans.Utils:
-    materialize_schedule, primary_actuation,
+    materialize_schedule, primary_actuation, follow_up_actuation,
     versioninfo_with_gpu, oceananigans_versioninfo,
     prettykeys
 
