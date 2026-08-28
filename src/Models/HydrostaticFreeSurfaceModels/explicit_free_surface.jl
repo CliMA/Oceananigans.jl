@@ -157,15 +157,14 @@ end
     return - δh_U
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
-    @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, Δt) = @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
 
 # Compute free surface tendency
 function compute_explicit_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
+    args = tuple(model.transport_velocities,
                  model.free_surface,
                  model.tracers,
                  model.auxiliary_fields,

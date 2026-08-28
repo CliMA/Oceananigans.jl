@@ -39,19 +39,19 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Computing momentum flux boundary conditions
-    @apply_regionally compute_momentum_flux_bcs!(model)
-
-    # Advance the free surface
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-
-    # Update velocities
     @apply_regionally begin
-        compute_transport_velocities!(model, model.free_surface)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
+
+        compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
+
+    # Advance the free surface with the change the column actually underwent, boundary drain included
+    compute_free_surface_tendency!(grid, model, model.free_surface, Δt)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
@@ -91,8 +91,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
@@ -161,6 +160,8 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
+    implicit_ab2_step_velocity!(model, Δt, Val(:u))
+    implicit_ab2_step_velocity!(model, Δt, Val(:v))
     return nothing
 end
 
@@ -171,6 +172,12 @@ end
 
     launch!(model.architecture, model.grid, :xyz,
             _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+
+    return nothing
+end
+
+@inline function implicit_ab2_step_velocity!(model, Δt, ::Val{name}) where name
+    velocity_field = model.velocities[name]
 
     implicit_step!(velocity_field,
                    model.timestepper.implicit_solver,
