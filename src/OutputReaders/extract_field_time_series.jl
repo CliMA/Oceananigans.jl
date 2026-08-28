@@ -58,11 +58,7 @@ extract_field_time_series(t::Union{Tuple, NamedTuple}) =
     has_field_time_series(typeof(t)) ?
         concatenate_extracted(map(extract_field_time_series, values(t))) : ()
 
-# A field's boundary conditions may hold a series inside a condition of any type — a `FieldTimeSeries`
-# used directly, a boundary function's `parameters`, or a condition type defined downstream. Ask
-# `has_field_time_series` rather than enumerating condition types: it is `@generated`, so a field whose
-# boundary conditions cannot contain a series still resolves to `()` at compile time. The guard lives in
-# the `FieldBoundaryConditions` method below, so none is needed here.
+# A field's boundary conditions may hold a series inside a condition of any type
 extract_field_time_series(f::Field) = extract_field_time_series(f.boundary_conditions)
 
 extract_field_time_series(bcs::FieldBoundaryConditions) =

@@ -8,8 +8,7 @@ using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_in
 using Random
 using NCDatasets
 
-# A boundary condition that stores a `FieldTimeSeries` rather than being one. No `getbc` method is
-# needed: the fallback `getbc(condition, args...) = condition(args...)` accepts any callable.
+# A boundary condition that stores a `FieldTimeSeries` rather than being one.
 struct SeriesHoldingCondition{S}
     series :: S
 end
@@ -917,10 +916,7 @@ end
     rm(filepath_sine)
 
     # A series reachable only through a boundary condition must still be found, so that
-    # `update_field_time_series!` advances its in-memory window. A condition that stores a series
-    # without being one used to be missed, because the search consulted a list of condition types
-    # instead of `has_field_time_series`. The window then stayed at the frames it was built with and
-    # the time interpolation eventually indexed past them.
+    # `update_field_time_series!` advances its in-memory window.
     for arch in archs
     @testset "Series held by a boundary condition are extracted [$(typeof(arch))]" begin
         @info "  Testing extraction of series held by boundary conditions [$(typeof(arch))]..."
@@ -950,8 +946,6 @@ end
                   length(extract_field_time_series(c.boundary_conditions))
         end
 
-        # A field that cannot hold a series still resolves to `()` at compile time, so a model owning
-        # no series pays nothing for the check.
         @test extract_field_time_series(CenterField(grid)) == ()
         @test Base.return_types(extract_field_time_series, (typeof(CenterField(grid)),))[1] === Tuple{}
     end
