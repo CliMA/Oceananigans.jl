@@ -1,19 +1,18 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -27,6 +26,19 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+
+const GridFittedBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+
+validate_immersed_boundary(grid, free_surface) = nothing
+validate_immersed_boundary(grid::GridFittedBoundaryIBG, ::Nothing) = nothing
+
+function validate_immersed_boundary(grid::GridFittedBoundaryIBG, free_surface)
+    msg = string("HydrostaticFreeSurfaceModel with a free surface does not support GridFittedBoundary.", '\n',
+                 "Use an immersed boundary that represents a bottom height, such as", '\n',
+                 "GridFittedBottom or PartialCellBottom. Fully immersed columns (e.g. lateral walls", '\n',
+                 "or land masks) can be built with a bottom height equal to the top of the domain.")
+    throw(ArgumentError(msg))
+end
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
@@ -232,6 +244,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracers, free_surface, auxiliary_fields, biogeochemistry, grid)
     default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions() for name in field_names)
+    default_boundary_conditions = merge(default_boundary_conditions, default_free_surface_boundary_conditions(free_surface, boundary_conditions))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
@@ -261,17 +274,22 @@ function HydrostaticFreeSurfaceModel(grid;
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
     free_surface = validate_free_surface(arch, free_surface)
-    free_surface = materialize_free_surface(free_surface, velocities, grid)
+    free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
+    validate_immersed_boundary(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    # Also create the implicit solver if adaptive implicit advection requires it
-    if isnothing(implicit_solver) && needs_implicit_solver(advection)
-        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    for field in prognostic_fields
+        @apply_regionally validate_implicit_explicit_flux_locations(field.boundary_conditions)
     end
 
-    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
+
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
@@ -310,17 +328,21 @@ copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundar
 copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
 copy_velocity(c) = c
 
-# Fallback transport velocities for a generic free surface (just copy velocities over)
-compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+# A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
+compute_transport_velocities!(model, free_surface) = nothing
 
 # Not if `transport === velocities`
-function update_transport_velocities!(transport_velocities, velocities)
+function update_transport_velocities!(transport_velocities, velocities, free_surface)
     transport_velocities === velocities && return nothing
-    for name in propertynames(transport_velocities)
-        update_transport_velocity_data!(transport_velocities[name], velocities[name])
-    end
+    update_transport_velocity_data!(transport_velocities.u, velocities.u)
+    update_transport_velocity_data!(transport_velocities.v, velocities.v)
+    stash_vertical_velocity!(transport_velocities, velocities, free_surface)
     return nothing
 end
+
+# The explicit free surface evolves `η` with this `w`; the corrected free surfaces rebuild `w̃` from continuity
+stash_vertical_velocity!(transport_velocities, velocities, free_surface) = update_transport_velocity_data!(transport_velocities.w, velocities.w)
+stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
 update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
@@ -349,7 +371,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
-    reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     return nothing
 end

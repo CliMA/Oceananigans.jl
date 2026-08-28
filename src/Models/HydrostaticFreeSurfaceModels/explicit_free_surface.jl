@@ -31,7 +31,7 @@ on_architecture(to, free_surface::ExplicitFreeSurface) =
                         on_architecture(to, free_surface.gravitational_acceleration))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
+function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid, bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
     return ExplicitFreeSurface(η, g)
@@ -157,15 +157,14 @@ end
     return - δh_U
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
-    @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, Δt) = @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
 
 # Compute free surface tendency
 function compute_explicit_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
+    args = tuple(model.transport_velocities,
                  model.free_surface,
                  model.tracers,
                  model.auxiliary_fields,
