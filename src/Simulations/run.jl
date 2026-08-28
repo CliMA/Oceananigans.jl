@@ -274,8 +274,7 @@ end
 
 add_dependency!(sim, output, schedule) = nothing # fallback
 
-# Number past the largest index already in use rather than counting entries, so that deleting
-# a dependency cannot make the next one overwrite a name that still exists
+# One past the largest index in use, so a deleted dependency's name is never reassigned
 function next_dependency_name(prefix, existing_names)
     pattern = Regex(string("^", prefix, raw"(\d+)$"))
     largest = 0
