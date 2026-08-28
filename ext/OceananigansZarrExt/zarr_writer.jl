@@ -509,6 +509,19 @@ function write_output!(writer::ZarrWriter, model::AbstractModel)
     distributed = is_distributed_arch(model)
     is_root = !distributed || mpi_rank(global_communicator()) == 0
 
+    primary = primary_actuation(writer.schedule, model.clock)
+    follow_up = follow_up_actuation(writer.schedule, model.clock)
+
+    # Complete the record opened on the previous iteration before a file split can switch
+    # to a fresh store
+    if follow_up && writer.initialized
+        if distributed
+            write_output_distributed!(writer, model; primary=false, follow_up=true)
+        else
+            write_output_serial!(writer, model; primary=false, follow_up=true)
+        end
+    end
+
     # File splitting (root-only when distributed; everyone else waits)
     if writer.file_splitting(model)
         if is_root
@@ -518,17 +531,16 @@ function write_output!(writer::ZarrWriter, model::AbstractModel)
     end
     update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
 
+    primary || return nothing
+
     if !writer.initialized
         initialize!(writer, model)
     end
 
-    primary = primary_actuation(writer.schedule, model.clock)
-    follow_up = follow_up_actuation(writer.schedule, model.clock)
-
     if distributed
-        write_output_distributed!(writer, model; primary, follow_up)
+        write_output_distributed!(writer, model; primary=true, follow_up=false)
     else
-        write_output_serial!(writer, model; primary, follow_up)
+        write_output_serial!(writer, model; primary=true, follow_up=false)
     end
 
     return nothing

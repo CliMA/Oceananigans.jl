@@ -364,9 +364,15 @@ function Oceananigans.restore_prognostic_state!(restored::Union{JLD2Writer, NetC
             end
         end
 
-        first_average = first(values(restored.outputs))
-        restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
-        restored.schedule.actuations = first_average.schedule.actuations
+        first_average = first(output for output in values(restored.outputs) if output isa WindowedTimeAverage)
+
+        # The writer's schedule may be wrapped in `ConsecutiveIterations` when a deferred
+        # output shares the writer
+        schedule = restored.schedule isa ConsecutiveIterations ? restored.schedule.parent : restored.schedule
+        if hasproperty(schedule, :first_actuation_time)
+            schedule.first_actuation_time = first_average.schedule.first_actuation_time
+            schedule.actuations = first_average.schedule.actuations
+        end
     end
 
     if hasproperty(from, :time_derivatives) && !isnothing(from.time_derivatives)

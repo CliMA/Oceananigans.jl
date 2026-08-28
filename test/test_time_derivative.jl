@@ -244,6 +244,35 @@ function test_time_derivative_output_every_iteration(arch)
     return nothing
 end
 
+# A fully reduced operand squeezes to a scalar, which must still placeholder as NaN
+function test_time_derivative_output_reduced(arch)
+    λ, Δt = 2, 1e-3
+    model = single_column_model(arch, λ)
+
+    filename = "test_dcdt_reduced.nc"
+    simulation = Simulation(model; Δt, stop_iteration=4)
+    outputs = Dict("dcdt" => TimeDerivative(Integral(model.tracers.c^2)))
+    simulation.output_writers[:derivative] = NetCDFWriter(model, outputs;
+                                                          filename,
+                                                          schedule = IterationInterval(2),
+                                                          overwrite_existing = true)
+    run!(simulation)
+
+    dataset = NCDataset(filename)
+    saved = Array(dataset["dcdt"][:])
+    close(dataset)
+    rm(filename, force=true)
+
+    # ∫c² decays at twice the rate of c
+    forward_difference(t) = -2λ * exp(-2λ * t) * exp(-λ * Δt)
+
+    @test saved[1] ≈ forward_difference(0) rtol=1e-4
+    @test saved[2] ≈ forward_difference(2Δt) rtol=1e-4
+    @test isnan(saved[3])
+
+    return nothing
+end
+
 #####
 ##### Checkpointing, through both the writer and the callback, in one pickup
 #####
@@ -255,12 +284,13 @@ function test_time_derivative_checkpointing(arch)
     model = relaxing_tracer_model(arch)
     ∂ₜc = TimeDerivative(model.tracers.c)
     callback_∂ₜc = TimeDerivativeCallback(model.tracers.c)
+    c_avg = WindowedTimeAverage(model.tracers.c, schedule=AveragedTimeInterval(2Δt, window=Δt))
 
     simulation = Simulation(model; Δt, stop_iteration=2)
     simulation.callbacks[:callback_∂ₜc] = callback_∂ₜc
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(2),
                                                             prefix = prefix)
-    simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc),
+    simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc, c_avg),
                                                         filename = "$(prefix).jld2",
                                                         schedule = IterationInterval(2),
                                                         overwrite_existing = true)
@@ -280,7 +310,10 @@ function test_time_derivative_checkpointing(arch)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_model,
                                                                      schedule = IterationInterval(2),
                                                                      prefix = prefix)
-    restored_simulation.output_writers[:derivative] = JLD2Writer(restored_model, (; ∂ₜc=restored_∂ₜc),
+    restored_c_avg = WindowedTimeAverage(restored_model.tracers.c,
+                                         schedule=AveragedTimeInterval(2Δt, window=Δt))
+    restored_simulation.output_writers[:derivative] = JLD2Writer(restored_model,
+                                                                 (; ∂ₜc=restored_∂ₜc, c_avg=restored_c_avg),
                                                                  filename = "$(prefix)_restored.jld2",
                                                                  schedule = IterationInterval(2),
                                                                  overwrite_existing = true)
@@ -326,6 +359,7 @@ end
             end
 
             test_time_derivative_output_every_iteration(arch)
+            test_time_derivative_output_reduced(arch)
         end
 
         @testset "TimeDerivative checkpointing [$(typeof(arch))]" begin

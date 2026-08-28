@@ -294,6 +294,7 @@ filter_outputs(keep, outputs::AbstractDict) =
 # completes, so a record left incomplete at the end of a run reads as missing rather than as
 # the format's fill value
 placeholder_output(data::AbstractArray{<:AbstractFloat}) = fill!(similar(data), NaN)
+placeholder_output(data::AbstractFloat) = oftype(data, NaN)
 placeholder_output(data) = data
 
 # A writer holding a deferred output has to actuate again on the following iteration in order

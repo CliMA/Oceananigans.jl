@@ -78,7 +78,7 @@ simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜc²),
                                                 overwrite_existing = true)
 
 # output
-JLD2Writer scheduled on TimeInterval(1 second):
+JLD2Writer scheduled on ConsecutiveIterations(TimeInterval(1 second), 1):
 ├── filepath: tracer_variance_budget.jld2
 ├── 1 outputs: ∂ₜc²
 ├── array_type: Array{Float32}
