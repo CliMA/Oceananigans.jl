@@ -53,7 +53,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        fields(model),
                        Δτ,
                        model.advection,
-                       model.velocities)
+                       implicit_advecting_velocities(model, name))
     end
 
     compute_pressure_correction!(model, Δτ)

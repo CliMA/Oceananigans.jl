@@ -185,23 +185,30 @@ end
     @test momentum_height(q) > height₀
 end
 
-@testset "NonhydrostaticModel time-steps every prognostic field under AIVA" begin
-    grid = RectilinearGrid(CPU(), size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(0, 1000),
+@testset "NonhydrostaticModel steps w at vertical CFL ≫ 1" begin
+    Nz = 32
+    Δt = 100.0
+    grid = RectilinearGrid(CPU(), size=(8, 8, Nz), x=(0, 1000), y=(0, 1000), z=(0, 1000),
                            halo=(4, 4, 4), topology=(Periodic, Periodic, Bounded))
 
-    Δt = 50.0
     td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
     td.Δt[] = Δt
-    scheme = WENO(; time_discretization=td)
+    model = NonhydrostaticModel(grid; advection=WENO(; time_discretization=td), tracers=:c)
 
-    model = NonhydrostaticModel(grid; advection=scheme, tracers=:c)
-    set!(model, u=(x, y, z) -> sinpi(2z / 1000), w=(x, y, z) -> 5 * sinpi(z / 500), c=(x, y, z) -> z / 1000)
-    time_step!(model, Δt)
-    time_step!(model, Δt)
+    # α = |w| Δt / Δz ≈ 16, the regime the adaptive split exists for. `w` advects itself, so the
+    # implicit coefficients must be evaluated on a `w` the tridiagonal sweep is not overwriting.
+    set!(model.velocities.w, (x, y, z) -> 5 * sinpi(2x / 1000) * exp(-(z - 500)^2 / (2 * 150^2)))
+    fill_halo_regions!(model.velocities.w)
+    set!(model.tracers.c, (x, y, z) -> z / 1000)
 
-    @test model.clock.iteration == 2
-    @test all(isfinite, parent(model.velocities.w))
-    @test all(isfinite, parent(model.tracers.c))
+    for _ in 1:3
+        time_step!(model, Δt)
+    end
+
+    @test model.clock.iteration == 3
+    @test all(isfinite, interior(model.velocities.w))
+    @test maximum(abs, interior(model.velocities.w)) < 10
+    @test all(isfinite, interior(model.tracers.c))
 end
 
 @testset "Density-weighted implicit advection (mass-flux models)" begin

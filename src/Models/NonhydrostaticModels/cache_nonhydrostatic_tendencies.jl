@@ -29,3 +29,11 @@ function cache_previous_tendencies!(model::NonhydrostaticModel)
 
     return nothing
 end
+
+# `w` advects itself so we need to pass a clean `w` without it overriding. Reuse `G⁻.w` that is free between substep kernels.
+@inline function implicit_advecting_velocities(model, name)
+    (name === :w && needs_implicit_solver(model.advection)) || return model.velocities
+    w = model.timestepper.G⁻.w
+    parent(w) .= parent(model.velocities.w)
+    return (; w)
+end

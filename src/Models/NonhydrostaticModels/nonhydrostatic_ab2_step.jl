@@ -47,7 +47,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        fields(model),
                        kernel_Δt,
                        model.advection,
-                       model.velocities)
+                       implicit_advecting_velocities(model, name))
     end
 
     compute_pressure_correction!(model, kernel_Δt)
