@@ -40,7 +40,6 @@ end
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-# `w` advects itself: the advecting velocity sits at cell centers, so the hop is `Δzᶜᶜᶜ`.
 @inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
