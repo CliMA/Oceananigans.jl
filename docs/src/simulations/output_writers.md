@@ -267,21 +267,25 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
 
 [`TimeDerivative`](@ref) computes the time derivative of an output while a simulation runs, which
 makes it possible to, for example, close a budget online instead of differencing two saved snapshots afterwards.
-The derivative is a backward difference,
+The derivative written at time ``t^n`` is the forward difference over the following time step,
 
 ```math
-\partial_t a \approx \frac{a^n - a^{n-1}}{t^n - t^{n-1}} \, ,
+\partial_t a \, (t^n) \approx \frac{a^{n+1} - a^n}{t^{n+1} - t^n} \, ,
 ```
 
-where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times the derivative
-was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
-A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
-start of a simulation is zero.
+which is not available until one iteration after the output time. A writer holding a
+`TimeDerivative` therefore actuates again on the following iteration and writes the completed
+difference into the record it already opened, so every record carries its output time and the
+derivative in it spans exactly one time step. The final record of a run that stops on an output
+is never completed: it holds `NaN` (`NetCDFWriter` and `ZarrWriter`) or is absent from the file
+(`JLD2Writer`).
 
-Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily: the
-difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
-updating it is the job of a [`TimeDerivativeCallback`](@ref) (which a writer can add to
-`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs).
+A `TimeDerivative` is an `AbstractField`, so it composes into further operations and reductions —
+`2 * ∂ₜc`, or a budget residual containing a derivative, defers and completes on exactly the same
+records as the derivative itself. Evaluating it advances it: a writer's own fetches drive the
+differencing, and a [`TimeDerivativeCallback`](@ref) does the same for use without a writer. Because
+each derivative holds a single differencing window, it should be evaluated on one cadence: do not
+share one between writers with different schedules.
 
 ### Example
 
@@ -303,9 +307,10 @@ simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜ∫c²),
                                                 schedule = TimeInterval(1))
 ```
 
-Output derivatives are differenced across consecutive time steps, which is what is needed when the
-other terms of a budget are evaluated every step. To difference over a longer interval, construct the
-updating callback yourself with a coarser `schedule`.
+Output derivatives span a single time step, which is what is needed when the other terms of a
+budget are evaluated every step. To difference over a longer interval, construct the updating
+callback yourself with a coarser `schedule`: each actuation completes the difference back to the
+previous one.
 
 ### Use without an output writer
 
@@ -331,6 +336,6 @@ Field operations are forwarded to the `Field` that the derivative computes (`der
 indexing and other operations apply to the derivative itself.
 
 Callback ordering works in your favor here: callbacks run after the time step and before output
-writers, so a callback that reads the derivative always sees it across the step that just finished.
-Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before any
-callback that reads it.
+writers, so a callback that reads the derivative sees the difference completed at the most recent
+actuation, labelled by the time the window opened. Callbacks are actuated in insertion order, so
+register the `TimeDerivativeCallback` before any callback that reads it.

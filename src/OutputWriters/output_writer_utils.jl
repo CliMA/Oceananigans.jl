@@ -267,3 +267,49 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
+
+#####
+##### Deferred outputs
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` for outputs whose value is not available until the iteration after the writer
+actuates. Such an output is skipped when the record is opened and written into that same
+record on the following iteration, so that it carries the time the record was opened.
+"""
+deferred_output(output) = false
+
+# An output is deferred when a `TimeDerivative` is reachable through its operands, so that
+# composites like `2 * ∂ₜc` complete on the same iteration as the derivative itself
+deferred_output(field::Field) = deferred_output(field.operand)
+deferred_output(::Nothing) = false
+deferred_output(operation::UnaryOperation) = deferred_output(operation.arg)
+deferred_output(operation::Derivative) = deferred_output(operation.arg)
+deferred_output(operation::BinaryOperation) = deferred_output(operation.a) || deferred_output(operation.b)
+deferred_output(operation::MultiaryOperation) = any(deferred_output, operation.args)
+deferred_output(operation::KernelFunctionOperation) = any(deferred_output, operation.arguments)
+deferred_output(operation::ConditionalOperation) = deferred_output(operation.operand)
+deferred_output(scan::Scan) = deferred_output(scan.operand)
+
+deferred_outputs(outputs) = filter_outputs(deferred_output, outputs)
+immediate_outputs(outputs) = filter_outputs(!deferred_output, outputs)
+
+filter_outputs(keep, outputs::NamedTuple) =
+    NamedTuple(name => outputs[name] for name in keys(outputs) if keep(outputs[name]))
+
+filter_outputs(keep, outputs::AbstractDict) =
+    typeof(outputs)(name => output for (name, output) in outputs if keep(output))
+
+# A deferred output is written as NaN when its record is opened and overwritten once the value
+# completes, so a record left incomplete at the end of a run reads as missing rather than as
+# the format's fill value
+placeholder_output(data::AbstractArray{<:AbstractFloat}) = fill!(similar(data), NaN)
+placeholder_output(data::AbstractFloat) = oftype(data, NaN)
+placeholder_output(data) = data
+
+# A writer holding a deferred output has to actuate again on the following iteration in order
+# to complete the record it opened
+defer_schedule(schedule, outputs) =
+    any(deferred_output, values(outputs)) ? ConsecutiveIterations(schedule) : schedule

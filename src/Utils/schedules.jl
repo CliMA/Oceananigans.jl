@@ -307,6 +307,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
     parent :: S
     consecutive_iterations :: Int
     previous_parent_actuation_iteration :: Int
+    penultimate_parent_actuation_iteration :: Int
 end
 
 """
@@ -317,10 +318,13 @@ actuates, and at iterations immediately following the actuation of `parent_sched
 This can be used, for example, when one wants to use output to reproduce a first-order approximation
 of the time derivative of a quantity.
 """
-ConsecutiveIterations(parent_schedule, N=1) = ConsecutiveIterations(parent_schedule, N, 0)
+ConsecutiveIterations(parent_schedule, N=1) = ConsecutiveIterations(parent_schedule, N, 0, -1)
 
 function (schedule::ConsecutiveIterations)(model)
     if schedule.parent(model)
+        if schedule.previous_parent_actuation_iteration != model.clock.iteration
+            schedule.penultimate_parent_actuation_iteration = schedule.previous_parent_actuation_iteration
+        end
         schedule.previous_parent_actuation_iteration = model.clock.iteration
         return true
     elseif model.clock.iteration - schedule.consecutive_iterations <= schedule.previous_parent_actuation_iteration
@@ -335,16 +339,56 @@ schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
 
 function prognostic_state(schedule::ConsecutiveIterations)
     return (parent = prognostic_state(schedule.parent),
-            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
+            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration,
+            penultimate_parent_actuation_iteration = schedule.penultimate_parent_actuation_iteration)
 end
 
 function restore_prognostic_state!(restored::ConsecutiveIterations, from)
     restore_prognostic_state!(restored.parent, from.parent)
     restored.previous_parent_actuation_iteration = from.previous_parent_actuation_iteration
+    if hasproperty(from, :penultimate_parent_actuation_iteration)
+        restored.penultimate_parent_actuation_iteration = from.penultimate_parent_actuation_iteration
+    end
     return restored
 end
 
 restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` when `schedule` actuates in its own right rather than as a follow-up to an
+earlier actuation. Only [`ConsecutiveIterations`](@ref) distinguishes the two.
+"""
+primary_actuation(schedule, clock) = true
+
+primary_actuation(schedule::ConsecutiveIterations, clock) =
+    schedule.previous_parent_actuation_iteration == clock.iteration
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the iteration of the most recent parent actuation strictly before `clock.iteration`,
+or -1 when there is none.
+"""
+parent_actuation_before(schedule::ConsecutiveIterations, clock) =
+    schedule.previous_parent_actuation_iteration == clock.iteration ?
+        schedule.penultimate_parent_actuation_iteration :
+        schedule.previous_parent_actuation_iteration
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` when `schedule` actuates within `consecutive_iterations` of an earlier parent
+actuation. An actuation can be both primary and a follow-up when the parent actuates on
+consecutive iterations.
+"""
+follow_up_actuation(schedule, clock) = false
+
+function follow_up_actuation(schedule::ConsecutiveIterations, clock)
+    j = parent_actuation_before(schedule, clock)
+    return j >= 0 && clock.iteration - j <= schedule.consecutive_iterations
+end
 
 #####
 ##### Any and AndSchedule

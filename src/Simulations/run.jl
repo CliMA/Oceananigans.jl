@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: schedule_aligned_time_step
 
@@ -272,7 +272,7 @@ end
 ##### Simulation initialization
 #####
 
-add_dependency!(sim, output) = nothing # fallback
+add_dependency!(sim, output, schedule) = nothing # fallback
 
 # One past the largest index in use, so a deleted dependency's name is never reassigned
 function next_dependency_name(prefix, existing_names)
@@ -287,21 +287,14 @@ function next_dependency_name(prefix, existing_names)
     return Symbol(prefix, largest + 1)
 end
 
-function add_dependency!(sim, wta::WindowedTimeAverage)
+function add_dependency!(sim, wta::WindowedTimeAverage, schedule)
     diags = sim.diagnostics
     if wta ∉ values(diags)
         diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
     end
 end
 
-function add_dependency!(sim, derivative::TimeDerivative)
-    callbacks = sim.callbacks
-    if !any(cb -> cb.func === derivative, values(callbacks))
-        callbacks[next_dependency_name("TimeDerivative", keys(callbacks))] = Callback(derivative, IterationInterval(1))
-    end
-end
-
-add_dependencies!(sim, writer) = [add_dependency!(sim, out) for out in values(writer.outputs)]
+add_dependencies!(sim, writer) = [add_dependency!(sim, out, writer.schedule) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup

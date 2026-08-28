@@ -45,6 +45,10 @@ using Oceananigans.OutputWriters:
     show_array_type,
     trilocation_dim_name,
     fetch_and_convert_output,
+    deferred_output,
+    deferred_outputs,
+    placeholder_output,
+    defer_schedule,
     WindowedTimeAverage,
     TimeDerivative,
     add_grid_suffix,
@@ -63,7 +67,7 @@ using Oceananigans.OutputWriters:
     halo_fill_2d_metric,
     materialize_serialized_output
 using Oceananigans.Utils:
-    materialize_schedule,
+    materialize_schedule, primary_actuation, follow_up_actuation,
     versioninfo_with_gpu, oceananigans_versioninfo,
     prettykeys
 

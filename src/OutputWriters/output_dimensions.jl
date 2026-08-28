@@ -26,13 +26,13 @@ end
 squeeze_reduced_dimensions(output, data; kw...) = data
 squeeze_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}, data; kw...) =
     squeeze_reduced_dimensions(output.operand, data; kw...)
-squeeze_reduced_dimensions(output::TimeDerivative{<:AbstractField}, data; kw...) =
+squeeze_reduced_dimensions(output::TimeDerivative, data; kw...) =
     squeeze_reduced_dimensions(output.operand, data; kw...)
 squeeze_reduced_dimensions(field::AbstractField; array_type=Array{eltype(field)}) =
     squeeze_reduced_dimensions(field, parent(field); array_type)
 squeeze_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}; kw...) =
     squeeze_reduced_dimensions(output.operand; kw...)
-squeeze_reduced_dimensions(output::TimeDerivative{<:AbstractField}; kw...) =
+squeeze_reduced_dimensions(output::TimeDerivative; kw...) =
     squeeze_reduced_dimensions(output.operand; kw...)
 
 function inflate_reduced_dimensions(data, location, grid)

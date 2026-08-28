@@ -127,6 +127,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
     # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
+    schedule = defer_schedule(schedule, outputs)
 
     return NetCDFWriter(unique_grids,
                         output_grid_map,
@@ -341,11 +342,33 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
 ##### Variable definition
 #####
 
+# Fill the slot left open by an earlier actuation, which already stamped its time
+function write_deferred_output!(ow::NetCDFWriter, model)
+    outputs = deferred_outputs(ow.outputs)
+    isempty(outputs) && return nothing
+
+    ds = open(ow)
+    time_index = length(ds["time"])
+
+    if time_index == 0
+        close(ds)
+        return nothing
+    end
+
+    for (output_name, output) in outputs
+        save_output!(ds, output, model, ow, time_index, output_name)
+    end
+
+    sync(ds)
+    close(ds)
+
+    return nothing
+end
+
 materialize_output(func, model) = func(model)
 materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
-materialize_output(output::TimeDerivative{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(model, dataset, output, output_name; array_type,
@@ -389,7 +412,7 @@ define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractFi
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 """ Defines empty field variable for `TimeDerivative`s of fields. """
-define_output_variable!(model, dataset, output::TimeDerivative{<:AbstractField}, output_name; kwargs...) =
+define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 """ Defines empty variable for particle trackting. """
@@ -419,6 +442,14 @@ function save_output!(ds, output, model, output_name, array_type)
     data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons...] = data
+    return nothing
+end
+
+function save_placeholder_output!(ds, output, model, ow, time_index, output_name)
+    data = fetch_and_convert_output(output, model, ow)
+    data = squeeze_reduced_dimensions(output, data)
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    ds[output_name][colons..., time_index:time_index] = placeholder_output(data)
     return nothing
 end
 
@@ -454,6 +485,9 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     # Ensure the writer is initialized before writing
     initialize!(ow, model)
 
+    follow_up_actuation(ow.schedule, model.clock) && write_deferred_output!(ow, model)
+    primary_actuation(ow.schedule, model.clock) || return nothing
+
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
@@ -476,7 +510,11 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        save_output!(ds, output, model, ow, time_index, output_name)
+        if deferred_output(output)
+            save_placeholder_output!(ds, output, model, ow, time_index, output_name)
+        else
+            save_output!(ds, output, model, ow, time_index, output_name)
+        end
 
         if verbose
             # Time after computing this output.
