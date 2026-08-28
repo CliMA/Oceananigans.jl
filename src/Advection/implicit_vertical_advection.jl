@@ -3,6 +3,7 @@ using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃ�
 
 @inline vertical_scheme(advection) = advection
 @inline vertical_scheme(advection::VectorInvariant) = advection.vertical_advection_scheme
+@inline vertical_scheme(advection::FluxFormAdvection) = advection.z
 
 #####
 ##### Implicit vertical velocity: wⁱ = w - wᵉ = w * (1 - 1/f(α, cfl))
