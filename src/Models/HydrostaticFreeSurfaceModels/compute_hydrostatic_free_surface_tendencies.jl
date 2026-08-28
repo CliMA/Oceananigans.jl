@@ -76,7 +76,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 end
 
 # Fallback
-compute_free_surface_tendency!(grid, model, free_surface) = nothing
+compute_free_surface_tendency!(grid, model, free_surface, Δt) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
