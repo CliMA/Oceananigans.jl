@@ -7,8 +7,8 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.Grids: Center, Face
-using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.Grids: Center, Face, znode
+using Oceananigans.Operators: volume, ℑzᵃᵃᶠ
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
                                  time_discretization, implicit_step!, reset!
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
@@ -138,11 +138,54 @@ end
     @test all(isfinite, parent(model.velocities.v))
 end
 
-@testset "AIVA contributes no implicit coefficients at z-Faces (w is fully explicit)" begin
-    # The `Ww` momentum flux is kept fully explicit under an adaptive-implicit discretization,
-    # so the matching implicit-advection coefficients must vanish for z-Face fields (`w`):
-    # otherwise the implicit solve for `w` would apply z-Center tracer coefficients on top of
-    # the unscaled explicit flux.
+@testset "AIVA implicit vertical advection of w (z-Face fields)" begin
+    Nz = 16
+    grid = RectilinearGrid(CPU(), size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           halo=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    scheme = WENO(; time_discretization=td)
+    solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    clock = Clock(grid)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * exp(-(z - 500)^2 / (2 * 100^2)))   # vanishes in the boundary-adjacent cells
+    fill_halo_regions!(W)
+
+    q₀(x, y, z) = exp(-(z - 400)^2 / (2 * 150^2))
+    q = ZFaceField(grid)
+
+    Vᶜᶜᶠ(k) = volume(1, 1, k, grid, Center(), Center(), Face())
+    column_momentum(q) = sum(Vᶜᶜᶠ(k) * q[1, 1, k] for k in 1:Nz)
+    momentum_height(q) = sum(Vᶜᶜᶠ(k) * q[1, 1, k] * znode(1, 1, k, grid, Center(), Center(), Face()) for k in 1:Nz) /
+                         column_momentum(q)
+
+    # Explicit limit: below the target CFL the implicit velocity vanishes and the solve is the identity.
+    set!(q, q₀)
+    fill_halo_regions!(q)
+    td.Δt[] = 1e-3
+    before = Array(interior(q))
+    implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), 1e-3, scheme, (; w=W))
+    @test Array(interior(q)) == before
+
+    # Strong splitting: the upwind system conserves the column momentum ∑ Vᶜᶜᶠ w (interior fluxes
+    # telescope; wⁱ vanishes at the boundary-adjacent centers), preserves positivity and transports
+    # upward, since the advecting velocity is an updraft.
+    set!(q, q₀)
+    fill_halo_regions!(q)
+    td.Δt[] = Δt
+    momentum₀ = column_momentum(q)
+    height₀ = momentum_height(q)
+    implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), Δt, scheme, (; w=W))
+
+    @test all(isfinite, interior(q))
+    @test column_momentum(q) ≈ momentum₀
+    @test minimum(q[1, 1, k] for k in 1:Nz) ≥ -sqrt(eps(eltype(grid)))
+    @test momentum_height(q) > height₀
+end
+
+@testset "NonhydrostaticModel time-steps every prognostic field under AIVA" begin
     grid = RectilinearGrid(CPU(), size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(0, 1000),
                            halo=(4, 4, 4), topology=(Periodic, Periodic, Bounded))
 
@@ -151,22 +194,11 @@ end
     td.Δt[] = Δt
     scheme = WENO(; time_discretization=td)
 
-    W = ZFaceField(grid)
-    set!(W, (x, y, z) -> 5 * sinpi(z / 500))   # exceeds the target CFL over part of the column
-    fill_halo_regions!(W)
-
-    ℓx = ℓy = Center()
-    for k in 2:8, j in 1:4, i in 1:4
-        @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
-        @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
-        @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, Face()) == 0
-    end
-
-    # End-to-end: a NonhydrostaticModel implicit-steps every prognostic field, including `w`.
     model = NonhydrostaticModel(grid; advection=scheme, tracers=:c)
-    set!(model, u=(x, y, z) -> sinpi(2z / 1000), c=(x, y, z) -> z / 1000)
+    set!(model, u=(x, y, z) -> sinpi(2z / 1000), w=(x, y, z) -> 5 * sinpi(z / 500), c=(x, y, z) -> z / 1000)
     time_step!(model, Δt)
     time_step!(model, Δt)
+
     @test model.clock.iteration == 2
     @test all(isfinite, parent(model.velocities.w))
     @test all(isfinite, parent(model.tracers.c))

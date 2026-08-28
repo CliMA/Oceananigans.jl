@@ -1,7 +1,7 @@
 using Oceananigans.Advection: implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient
+using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient, needs_implicit_solver
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node
@@ -211,15 +211,11 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals. The trailing arguments are supplied
-# by the extended `implicit_step!` below. The advection contribution is always routed through
-# `implicit_advection_*`, which dispatch on the advection scheme and the field's vertical location
-# `ℓz`: explicit schemes (and `advection = nothing`) contribute zero, adaptive-implicit schemes
-# return the z-Center coefficients, and unknown advection types raise a `MethodError` — this is
-# the seam downstream models extend, without touching `get_coefficient`. `density` selects
-# volume-conserving (Boussinesq) versus density-weighted (mass-flux) advection coefficients.
+# by `implicit_step!` below. `density` selects volume-conserving (Boussinesq) versus
+# density-weighted (mass-flux) advection coefficients.
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection=nothing, w=nothing, density=nothing, args...)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return duκ + duw
@@ -227,7 +223,7 @@ end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection=nothing, w=nothing, density=nothing, args...)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return dlκ + dlw
@@ -235,7 +231,7 @@ end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection=nothing, w=nothing, density=nothing, top_bc=nothing, bottom_bc=nothing, immersed_bc=nothing)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
@@ -248,8 +244,6 @@ end
 
 is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
-# When closure is nothing but solver exists (e.g., created for AIVA),
-# the pure-diffusion implicit step is a no-op (no diffusion to solve).
 """
 $(TYPEDSIGNATURES)
 
@@ -257,44 +251,16 @@ Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and 
 tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient
 functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
+
+`advection` and `velocities` add the implicit vertical-advection contribution of an adaptive-implicit
+scheme; `density` selects density-weighted coefficients for mass-flux (anelastic / compressible)
+models, while `nothing` keeps the volume-conserving Boussinesq behavior.
 """
-implicit_step!(::Field, ::BatchedTridiagonalSolver, ::Nothing, closure_fields, tracer_index, clock, fields, Δt) = nothing
-
-function implicit_step!(field::Field,
-                        implicit_solver::BatchedTridiagonalSolver,
-                        closure::Union{AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}, Tuple},
-                        closure_fields,
-                        tracer_index,
-                        clock,
-                        fields,
-                        Δt)
-
-    if closure isa Tuple
-        N = length(closure)
-        vi_closure        = Tuple(closure[n]        for n = 1:N if is_vertically_implicit(closure[n]))
-        vi_closure_fields = Tuple(closure_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
-    else
-        vi_closure = closure
-        vi_closure_fields = closure_fields
-    end
-
-    LX, LY, LZ = location(field)
-    return solve!(field, implicit_solver, field,
-                  vi_closure, vi_closure_fields, tracer_index, LX(), LY(), LZ(), Δt, clock, fields)
-end
-
-#####
-##### Extended implicit_step! that passes advection and vertical velocity through
-#####
-##### The trailing `density` (default `nothing`) selects density-weighted advection coefficients for
-##### mass-flux (anelastic / compressible) models; `nothing` keeps the volume-conserving Boussinesq behavior.
-#####
-
 function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure, closure_fields, tracer_index,
                         clock, fields, Δt,
-                        advection, velocities, density=nothing)
+                        advection=nothing, velocities=nothing, density=nothing)
 
     if closure isa Tuple
         N = length(closure)
@@ -308,13 +274,14 @@ function implicit_step!(field::Field,
         vi_closure_fields = closure_fields
     end
 
+    bcs = field.boundary_conditions
+    isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing
+
     LX, LY, LZ = location(field)
-    top_bc      = field.boundary_conditions.top
-    bottom_bc   = field.boundary_conditions.bottom
-    immersed_bc = field.boundary_conditions.immersed
+    w = isnothing(velocities) ? nothing : velocities.w
 
     return solve!(field, implicit_solver, field,
                   vi_closure, vi_closure_fields, tracer_index,
                   LX(), LY(), LZ(), Δt, clock, fields,
-                  advection, velocities.w, density, top_bc, bottom_bc, immersed_bc)
+                  advection, w, density, bcs.top, bcs.bottom, bcs.immersed)
 end

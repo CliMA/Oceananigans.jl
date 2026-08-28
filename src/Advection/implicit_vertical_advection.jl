@@ -39,6 +39,14 @@ end
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
+@inline function implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    Δt = _unwrap_for_gpu(td.Δt)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    α  = abs(w) * Δt / Δz
+    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
+end
+
 #####
 ##### Optional density weighting for mass-flux (anelastic / compressible) models.
 #####
@@ -75,22 +83,12 @@ end
 @inline implicit_vertical_velocity(::Face,   ::Center, args...) = implicit_vertical_velocityᶠᶜᶠ(args...)
 @inline implicit_vertical_velocity(::Center, ::Face,   args...) = implicit_vertical_velocityᶜᶠᶠ(args...)
 
-# The advected field's vertical location `ℓz` selects the coefficient family: the methods below
-# implement fields at cell Centers in z (tracers and horizontal velocities). Advection schemes
-# without an adaptive-implicit vertical discretization contribute nothing to the implicit system,
-# at any location; likewise fields at z-Faces (`w`), whose `Ww` flux is kept fully explicit.
-# Downstream models may extend these functions at `ℓz::Face` (dispatching on their own advection
-# type) to solve vertical momentum implicitly; an advection type without a matching method raises
-# a `MethodError` rather than silently dropping the advection contribution.
-const ExplicitOrNothing = Union{Nothing, AbstractAdvectionScheme}
+# An advection scheme without an adaptive-implicit vertical discretization contributes nothing.
+const AdvectionOrNothing = Union{Nothing, AbstractAdvectionScheme}
 
-@inline implicit_advection_upper_diagonal(i, j, k, grid, ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
-@inline implicit_advection_lower_diagonal(i, j, k, grid, ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
-@inline implicit_advection_diagonal(i, j, k, grid,       ::ExplicitOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
-
-@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
-@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
-@inline implicit_advection_diagonal(i, j, k, grid,       ::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing) = zero(grid)
+@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_diagonal(i, j, k, grid,       ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
 
 # Upper diagonal: coefficient of q_{k+1} in the tridiagonal system
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
@@ -138,4 +136,64 @@ end
 
     return Δt * V⁻¹ / ρᶜ * (Az⁺ * ρᶠ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
                             Az⁻ * ρᶠ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻)
+end
+
+#####
+##### Tridiagonal coefficients for fields at cell Faces in z (`w`).
+#####
+##### Row k is the control volume around face k, bounded by the cell centers k-1 and k where the
+##### upwind fluxes live. With `ρᶜ` the cell density and `ρᶠ` the density at the reconstructed face:
+#####
+#####   Fⁱ_k = Az_k ρᶜ_k [max(wⁱ_k, 0) q_k / ρᶠ_k + min(wⁱ_k, 0) q_{k+1} / ρᶠ_{k+1}],   q = ρ w
+#####
+##### Boundary faces reduce to identity rows, and the coupling of row Nz to the untouched face
+##### Nz+1 vanishes with `w` there.
+#####
+
+@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td  = TimeSteppers.time_discretization(scheme)
+    wⁱ  = implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, w)
+    Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Center())
+    ρᶜ  = densityᶜᶜᶜ(i, j, k, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k+1, grid, density)
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+    active = !peripheral_node(i, j, k, grid, ℓx, ℓy, Face()) & !peripheral_node(i, j, k, grid, ℓx, ℓy, Center())
+    return Δt * V⁻¹ * Azᵢ * ρᶜ / ρᶠ * min(wⁱ, zero(wⁱ)) * active
+end
+
+@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td  = TimeSteppers.time_discretization(scheme)
+    k   = k′ + 1
+    wⁱ  = implicit_vertical_velocityᶜᶜᶜ(i, j, k′, grid, scheme, td, w)
+    Azᵢ = Az(i, j, k′, grid, ℓx, ℓy, Center())
+    ρᶜ  = densityᶜᶜᶜ(i, j, k′, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k′, grid, density)
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+    active = !peripheral_node(i, j, k, grid, ℓx, ℓy, Face()) & !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
+    return - Δt * V⁻¹ * Azᵢ * ρᶜ / ρᶠ * max(wⁱ, zero(wⁱ)) * active
+end
+
+@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td     = TimeSteppers.time_discretization(scheme)
+    wⁱ⁺ = implicit_vertical_velocityᶜᶜᶜ(i, j, k,   grid, scheme, td, w)
+    wⁱ⁻ = implicit_vertical_velocityᶜᶜᶜ(i, j, k-1, grid, scheme, td, w)
+
+    Az⁺ = Az(i, j, k,   grid, ℓx, ℓy, Center())
+    Az⁻ = Az(i, j, k-1, grid, ℓx, ℓy, Center())
+
+    ρᶜ⁺ = densityᶜᶜᶜ(i, j, k,   grid, density)
+    ρᶜ⁻ = densityᶜᶜᶜ(i, j, k-1, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k,   grid, density)
+
+    active⁺ = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Center())
+    active⁻ = !peripheral_node(i, j, k-1, grid, ℓx, ℓy, Center())
+    active  = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Face())
+
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+
+    return Δt * V⁻¹ / ρᶠ * (Az⁺ * ρᶜ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
+                            Az⁻ * ρᶜ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻) * active
 end
