@@ -32,6 +32,8 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     model_fields = prognostic_fields(model)
 
     # Prognostic variables stepping
+    advecting_velocities = implicit_advecting_velocities(model)
+
     for (i, name) in enumerate(keys(model_fields))
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
@@ -47,7 +49,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        fields(model),
                        kernel_Δt,
                        model.advection,
-                       implicit_advecting_velocities(model, name))
+                       advecting_velocities)
     end
 
     compute_pressure_correction!(model, kernel_Δt)

@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_so
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -30,7 +30,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF, BT} <: AbstractModel{TS, A}
+                                   V, S, K, BG, P, BGC, AF, BT, AW} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -53,6 +53,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, 
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
    boundary_transport :: BT       # Container for transports at open boundaries
+   advecting_vertical_velocity :: AW # `wⁿ` for the adaptive-implicit advection split (`nothing` without it)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
@@ -293,6 +294,9 @@ function NonhydrostaticModel(grid;
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
     end
 
+    # Snapshot of `wⁿ` to solve implicit vertical advection without overwrites.
+    advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
+
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
     # Materialize forcing for model tracer and velocity fields.
@@ -305,7 +309,8 @@ function NonhydrostaticModel(grid;
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport)
+                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport,
+                                advecting_vertical_velocity)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
