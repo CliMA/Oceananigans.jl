@@ -85,11 +85,14 @@ end
 @inline implicit_vertical_velocity(::Center, ::Face,   args...) = implicit_vertical_velocityᶜᶠᶠ(args...)
 
 # An advection scheme without an adaptive-implicit vertical discretization contributes nothing.
+# `ℓz` is typed so that these cannot absorb a call that omits it: an untyped slot would make a stale
+# argument order return zero rather than raise a MethodError.
 const AdvectionOrNothing = Union{Nothing, AbstractAdvectionScheme}
+const CenterOrFace = Union{Center, Face}
 
-@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
-@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
-@inline implicit_advection_diagonal(i, j, k, grid,       ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz::CenterOrFace, density=nothing) = zero(grid)
+@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz::CenterOrFace, density=nothing) = zero(grid)
+@inline implicit_advection_diagonal(i, j, k, grid,       ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz::CenterOrFace, density=nothing) = zero(grid)
 
 # Upper diagonal: coefficient of q_{k+1} in the tridiagonal system
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)

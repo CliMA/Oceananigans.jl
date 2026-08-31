@@ -276,3 +276,33 @@ end
         @test sum(interior(q)) ≈ mass₀ rtol=1e-10
     end
 end
+
+@testset "Implicit advection coefficients reject a missing location" begin
+    grid = RectilinearGrid(CPU(), size=(2, 2, 16), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           topology=(Periodic, Periodic, Bounded))
+
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = 50.0
+    scheme = WENO(; time_discretization=td)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * sinpi(z / 500))
+    fill_halo_regions!(W)
+
+    ρ = CenterField(grid)
+    set!(ρ, (x, y, z) -> 1 + z / 1000)
+    fill_halo_regions!(ρ)
+
+    c = Center()
+
+    # The zero fallback stands in for a scheme with no adaptive-implicit vertical discretization,
+    # and must keep doing so for every well-formed argument list.
+    @test implicit_advection_diagonal(1, 1, 4, grid, scheme,  W, 50.0, c, c, c, ρ) != 0
+    @test implicit_advection_diagonal(1, 1, 4, grid, WENO(),  W, 50.0, c, c, c, ρ) == 0
+    @test implicit_advection_diagonal(1, 1, 4, grid, nothing, W, 50.0, c, c, c, ρ) == 0
+    @test implicit_advection_diagonal(1, 1, 4, grid, WENO(),  W, 50.0, c, c, c)    == 0
+
+    # It must not stand in for a call that omits `ℓz`: that is a caller error, not a scheme
+    # without implicit advection, and returning zero for it hides the mistake.
+    @test_throws MethodError implicit_advection_diagonal(1, 1, 4, grid, scheme, W, 50.0, c, c, ρ)
+end
