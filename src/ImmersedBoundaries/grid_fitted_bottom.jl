@@ -119,9 +119,6 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
 
-    # The kernel only needs `ib.immersed_condition`, but `ib.bottom_height` may be a host
-    # array even when `grid` lives on a GPU, in which case `ib` cannot be passed to a kernel.
-    # Hand the kernel a boundary built from the materialized `bottom_field` instead.
     compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
