@@ -28,7 +28,7 @@ Oceananigans = {path = ".."}
 CairoMakie = "0.15"
 CUDA = "=5.8.5, 5.9.1, 6.0 - 6.1"
 Documenter = "1 - 1.17"
-DocumenterCitations = "1"
+DocumenterCitations = "~1.4"
 DocumenterVitepress = "0.3.1"
 InteractiveUtils = "<0.0.1, 1"
 Literate = "2.9"
