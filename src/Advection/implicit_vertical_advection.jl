@@ -3,6 +3,7 @@ using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃ�
 
 @inline vertical_scheme(advection) = advection
 @inline vertical_scheme(advection::VectorInvariant) = advection.vertical_advection_scheme
+@inline vertical_scheme(advection::FluxFormAdvection) = advection.z
 
 #####
 ##### Implicit vertical velocity: wⁱ = w - wᵉ = w * (1 - 1/f(α, cfl))
@@ -35,6 +36,14 @@ end
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    α  = abs(w) * Δt / Δz
+    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
+end
+
+@inline function implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    Δt = _unwrap_for_gpu(td.Δt)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -75,8 +84,15 @@ end
 @inline implicit_vertical_velocity(::Face,   ::Center, args...) = implicit_vertical_velocityᶠᶜᶠ(args...)
 @inline implicit_vertical_velocity(::Center, ::Face,   args...) = implicit_vertical_velocityᶜᶠᶠ(args...)
 
+# An advection scheme without an adaptive-implicit vertical discretization contributes nothing.
+const AdvectionOrNothing = Union{Nothing, AbstractAdvectionScheme}
+
+@inline implicit_advection_upper_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_lower_diagonal(i, j, k, grid, ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+@inline implicit_advection_diagonal(i, j, k, grid,       ::AdvectionOrNothing, w, Δt, ℓx, ℓy, ℓz, density=nothing) = zero(grid)
+
 # Upper diagonal: coefficient of q_{k+1} in the tridiagonal system
-@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td  = TimeSteppers.time_discretization(scheme)
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
@@ -89,7 +105,7 @@ end
 
 # Lower diagonal: coefficient of q_{k-1} in the tridiagonal system
 # Uses k′ = k-1 indexing convention (LinearAlgebra.Tridiagonal convention, matching ivd_lower_diagonal)
-@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td  = TimeSteppers.time_discretization(scheme)
     k   = k′ + 1
@@ -101,7 +117,7 @@ end
     return - Δt * V⁻¹ * Azᵢ * ρᶠ / ρᶜ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
 end
 
-@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
+@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Center, density=nothing)
     scheme = vertical_scheme(advection)
     td     = TimeSteppers.time_discretization(scheme)
     wⁱ⁺ = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
@@ -121,4 +137,64 @@ end
 
     return Δt * V⁻¹ / ρᶜ * (Az⁺ * ρᶠ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
                             Az⁻ * ρᶠ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻)
+end
+
+#####
+##### Tridiagonal coefficients for fields at cell Faces in z (`w`).
+#####
+##### Row k is the control volume around face k, bounded by the cell centers k-1 and k where the
+##### upwind fluxes live. With `ρᶜ` the cell density and `ρᶠ` the density at the reconstructed face:
+#####
+#####   Fⁱ_k = Az_k ρᶜ_k [max(wⁱ_k, 0) q_k / ρᶠ_k + min(wⁱ_k, 0) q_{k+1} / ρᶠ_{k+1}],   q = ρ w
+#####
+##### Boundary faces reduce to identity rows, and the coupling of row Nz to the untouched face
+##### Nz+1 vanishes with `w` there.
+#####
+
+@inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td  = TimeSteppers.time_discretization(scheme)
+    wⁱ  = implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, w)
+    Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Center())
+    ρᶜ  = densityᶜᶜᶜ(i, j, k, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k+1, grid, density)
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+    active = !peripheral_node(i, j, k, grid, ℓx, ℓy, Face()) & !peripheral_node(i, j, k, grid, ℓx, ℓy, Center())
+    return Δt * V⁻¹ * Azᵢ * ρᶜ / ρᶠ * min(wⁱ, zero(wⁱ)) * active
+end
+
+@inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td  = TimeSteppers.time_discretization(scheme)
+    k   = k′ + 1
+    wⁱ  = implicit_vertical_velocityᶜᶜᶜ(i, j, k′, grid, scheme, td, w)
+    Azᵢ = Az(i, j, k′, grid, ℓx, ℓy, Center())
+    ρᶜ  = densityᶜᶜᶜ(i, j, k′, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k′, grid, density)
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+    active = !peripheral_node(i, j, k, grid, ℓx, ℓy, Face()) & !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
+    return - Δt * V⁻¹ * Azᵢ * ρᶜ / ρᶠ * max(wⁱ, zero(wⁱ)) * active
+end
+
+@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, ℓz::Face, density=nothing)
+    scheme = vertical_scheme(advection)
+    td     = TimeSteppers.time_discretization(scheme)
+    wⁱ⁺ = implicit_vertical_velocityᶜᶜᶜ(i, j, k,   grid, scheme, td, w)
+    wⁱ⁻ = implicit_vertical_velocityᶜᶜᶜ(i, j, k-1, grid, scheme, td, w)
+
+    Az⁺ = Az(i, j, k,   grid, ℓx, ℓy, Center())
+    Az⁻ = Az(i, j, k-1, grid, ℓx, ℓy, Center())
+
+    ρᶜ⁺ = densityᶜᶜᶜ(i, j, k,   grid, density)
+    ρᶜ⁻ = densityᶜᶜᶜ(i, j, k-1, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k,   grid, density)
+
+    active⁺ = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Center())
+    active⁻ = !peripheral_node(i, j, k-1, grid, ℓx, ℓy, Center())
+    active  = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Face())
+
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Face())
+
+    return Δt * V⁻¹ / ρᶠ * (Az⁺ * ρᶜ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
+                            Az⁻ * ρᶜ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻) * active
 end

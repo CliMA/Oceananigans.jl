@@ -632,7 +632,8 @@ end
             coefficient(marker, k) =
                 get_coefficient(1, 1, k, grid, marker, nothing, ZDirection(),
                                 closure, nothing, nothing, LX(), Center(), LZ(),
-                                Δt, clock, NamedTuple())
+                                Δt, clock, NamedTuple(),
+                                nothing, nothing, nothing, nothing, nothing, nothing)
 
             # Assembling the rows on the host reads grid metrics one level at a time, which on a
             # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in
