@@ -4,8 +4,8 @@ using Oceananigans.Operators: ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 """
 $(TYPEDSIGNATURES)
 
-Shift `velocities` by `Δt` times the barotropic acceleration `-g∇η` of `free_surface`, so that implicit momentum flux boundary 
-conditions  act on a velocity that has felt the free surface. Pass `-Δt` to undo the shift once the implicit solve is done. 
+Shift `velocities` by `Δt` times the barotropic acceleration `-g∇η` of `free_surface`, so that implicit momentum flux boundary
+conditions  act on a velocity that has felt the free surface. Pass `-Δt` to undo the shift once the implicit solve is done.
 The ExplicitFreeSurface, and velocities without an implicit flux boundary condition, are left alone.
 """
 add_deferred_barotropic_acceleration!(velocities, grid, free_surface, Δt) = nothing
