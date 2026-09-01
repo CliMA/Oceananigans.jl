@@ -3,6 +3,11 @@ include("dependencies_for_runtests.jl")
 using Random
 
 using Oceananigans.Grids: znode
+using Oceananigans.Grids: ZDirection
+using Oceananigans.Solvers: get_coefficient
+using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
+                                       VerticallyImplicitDiffusionDiagonal,
+                                       VerticallyImplicitDiffusionUpperDiagonal
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
                                        viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
@@ -609,6 +614,77 @@ end
 
         @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
         @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+    end
+
+
+    @testset "Vertically-implicit diffusion operator" begin
+        @info "  Testing that the vertically-implicit stencil reproduces ∂z(ν ∂z ϕ)..."
+
+        function implicit_operator_rows(arch, LX, LZ, Nz, z, Lz)
+            grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
+                                   topology=(Periodic, Periodic, Bounded))
+
+            ν(x, y, z, t) = 1 + 0.8 * sinpi(2z / Lz)
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν)
+            clock = Clock(time=0.0)
+            Δt = 1
+
+            coefficient(marker, k) =
+                get_coefficient(1, 1, k, grid, marker, nothing, ZDirection(),
+                                closure, nothing, nothing, LX(), Center(), LZ(),
+                                Δt, clock, NamedTuple(),
+                                nothing, nothing, nothing, nothing, nothing, nothing)
+
+            # Assembling the rows on the host reads grid metrics one level at a time, which on a
+            # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in
+            # `CUDA.allowscalar`, but say so locally rather than lean on that.
+            dl, d, du = @allowscalar begin
+                ([coefficient(VerticallyImplicitDiffusionLowerDiagonal(), k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionDiagonal(),      k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz])
+            end
+
+            L = zeros(Nz, Nz) # the coefficients are linear in Δt, so Δt = 1 gives L = I - A exactly
+            for k in 1:Nz
+                L[k, k] = 1 - d[k]
+                k < Nz && (L[k, k+1] = -du[k]; L[k+1, k] = -dl[k])
+            end
+
+            zᶜ = Array(znodes(grid, Center()))
+            zᶠ = Array(znodes(grid, Face()))
+            Δzᶜ = diff(zᶠ)
+            Δzᶠ = diff(zᶜ)
+
+            L̂ = zeros(Nz, Nz)
+            for k in 2:Nz-1
+                if LZ === Face      # ϕ at faces, ν and Δzᶜ at centers, row spacing Δzᶠ
+                    a = ν(0, 0, zᶜ[k-1], 0) / (Δzᶠ[k-1] * Δzᶜ[k-1])
+                    b = ν(0, 0, zᶜ[k],   0) / (Δzᶠ[k-1] * Δzᶜ[k])
+                else                # ϕ at centers, ν and Δzᶠ at faces, row spacing Δzᶜ
+                    a = ν(0, 0, zᶠ[k],   0) / (Δzᶜ[k] * Δzᶠ[k-1])
+                    b = ν(0, 0, zᶠ[k+1], 0) / (Δzᶜ[k] * Δzᶠ[k])
+                end
+                L̂[k, k-1] = a
+                L̂[k, k+1] = b
+                L̂[k, k]   = -(a + b)
+            end
+
+            rows = 2:Nz-1
+            return maximum(abs, L[rows, :] .- L̂[rows, :]) / maximum(abs, L̂[rows, :])
+        end
+
+        Nz, Lz = 32, 1000.0
+        uniform = (0, Lz)
+        stretched = [Lz * (k / Nz)^1.3 for k in 0:Nz]
+
+        for arch in archs,
+            (LX, LZ) in ((Face, Center), (Center, Face)),
+            z in (uniform, stretched)
+
+            grid_kind = z isa Tuple ? "uniform" : "stretched"
+            @info "    Testing implicit diffusion operator [$arch, ($LX, Center, $LZ), $grid_kind]..."
+            @test implicit_operator_rows(arch, LX, LZ, Nz, z, Lz) < 1e-12
+        end
     end
 
     @testset "Closure tuples" begin

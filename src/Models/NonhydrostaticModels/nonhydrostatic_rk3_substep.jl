@@ -38,6 +38,8 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     model_fields = prognostic_fields(model)
 
     # Prognostic variables stepping
+    advecting_velocities = implicit_advecting_velocities(model)
+
     for (i, name) in enumerate(keys(model_fields))
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
@@ -53,7 +55,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        fields(model),
                        Δτ,
                        model.advection,
-                       model.velocities)
+                       advecting_velocities)
     end
 
     compute_pressure_correction!(model, Δτ)
