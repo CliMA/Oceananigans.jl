@@ -82,7 +82,7 @@ end
 
 @testset "Partitioning consistent" begin
 
-  @testset "1d partitioning consistent" for (len, ranks) in Iterators.product((10, 100, 1000), (2,4,8))
+  @testset "1d - len:$len, ranks:$ranks" for (len, ranks) in Iterators.product((10, 100, 1000), (2,4,8))
     weights = rand(len)
 
     partitions = partition_1d(weights, ranks)
@@ -92,7 +92,7 @@ end
     @test sum(sizes) == len
   end
 
-  @testset "Grid partitioning consistent" for (arch, gridc, ibc, strategy, partition) in
+  @testset "2d - $arch, $gridc, $ibc, $strategy, $partition" for (arch, gridc, ibc, strategy, partition) in
       Iterators.product(archs, grid_constructors, ib_constructors, strategies, partitions)
 
     grid = gridc(arch)
