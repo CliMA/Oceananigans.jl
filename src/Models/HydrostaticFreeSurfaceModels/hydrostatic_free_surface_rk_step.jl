@@ -32,10 +32,7 @@ The order of operations for explicit free surfaces is:
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     @apply_regionally begin
-        # Stash the pre-step velocities: they are the state the filtered transport belongs with, and the
-        # baseline the barotropic tendency is measured against.
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
         compute_momentum_flux_bcs!(model)
         rk_substep_velocities!(model.velocities, model, Δτ)
@@ -79,8 +76,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
@@ -151,8 +147,12 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
+
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+
     return nothing
 end
 

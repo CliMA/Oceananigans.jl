@@ -328,17 +328,21 @@ copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundar
 copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
 copy_velocity(c) = c
 
-# Fallback transport velocities for a generic free surface (just copy velocities over)
-compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+# A generic free surface transports with the stashed pre-step velocity, so there is nothing left to do
+compute_transport_velocities!(model, free_surface) = nothing
 
 # Not if `transport === velocities`
-function update_transport_velocities!(transport_velocities, velocities)
+function update_transport_velocities!(transport_velocities, velocities, free_surface)
     transport_velocities === velocities && return nothing
-    for name in propertynames(transport_velocities)
-        update_transport_velocity_data!(transport_velocities[name], velocities[name])
-    end
+    update_transport_velocity_data!(transport_velocities.u, velocities.u)
+    update_transport_velocity_data!(transport_velocities.v, velocities.v)
+    stash_vertical_velocity!(transport_velocities, velocities, free_surface)
     return nothing
 end
+
+# The explicit free surface evolves `η` with this `w`; the corrected free surfaces rebuild `w̃` from continuity
+stash_vertical_velocity!(transport_velocities, velocities, free_surface) = update_transport_velocity_data!(transport_velocities.w, velocities.w)
+stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
 update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)

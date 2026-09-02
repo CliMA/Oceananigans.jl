@@ -34,7 +34,7 @@ end
 
 @testset "Split-explicit boundary stress" begin
     for arch in archs
-        @info "Barotropic mode realizes the true boundary stress [$(typeof(arch))]" 
+        @info "Barotropic mode realizes the true boundary stress [$(typeof(arch))]"
 
         # The drag is weak enough that the explicit treatment is stable and serves as the reference.
         zfaces = [-1000, -800, -750, -650, -500, -350, -200, -80, 0]
@@ -52,8 +52,8 @@ end
         end
 
         @test evolve(true) ≈ evolve(false) rtol=2e-2
-        
-        @info "A bottom drag does not accelerate the surface [$(typeof(arch))]" begin
+
+        @info "A bottom drag does not accelerate the surface [$(typeof(arch))]"
 
         for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3), Δt in (900, 7200)
             m = HydrostaticFreeSurfaceModel(grid; timestepper,
@@ -67,6 +67,33 @@ end
 
             u = Array(interior(m.velocities.u))[:, :, 3:end]
             @test maximum(abs, u .- 1) < 1e-12
+        end
+
+        @testset "Steady drag balance feels the free surface [$(typeof(arch))]" begin
+            # One level, periodic: continuity holds u uniform, so the steady balance r u = F(x) - g ∂ₓη
+            # sets u from the mean forcing and the free-surface tilt from the rest.
+            Nx, Lx, H, Δt, Cᴰ = 16, 1e4, 10.0, 20.0, 0.5
+            F₀ = F₁ = 1e-4
+            kx = 2π / Lx
+
+            grid = RectilinearGrid(arch, size=(Nx, 1), x=(0, Lx), z=(-H, 0), topology=(Periodic, Flat, Bounded))
+            m = HydrostaticFreeSurfaceModel(grid;
+                    free_surface = SplitExplicitFreeSurface(grid; substeps=30),
+                    momentum_advection = nothing, tracer_advection = nothing,
+                    tracers = (), buoyancy = nothing, coriolis = nothing, closure = nothing,
+                    boundary_conditions = (u = FieldBoundaryConditions(bottom = IMEXFluxBoundaryCondition(0, -Cᴰ)),),
+                    forcing = (u = Forcing((x, z, t) -> F₀ + F₁ * sin(kx * x)),))
+
+            for _ in 1:2000; time_step!(m, Δt); end
+
+            g  = m.free_surface.gravitational_acceleration
+            xu = xnodes(m.velocities.u)
+            η  = Array(interior(m.free_surface.displacement))[:, 1, 1]
+            u  = Array(interior(m.velocities.u))[:, 1, 1]
+            δxη = (η .- circshift(η, 1)) ./ (Lx / Nx)
+
+            @test u ≈ fill(F₀ * H / Cᴰ, Nx) rtol=1e-6
+            @test -g .* δxη ≈ -F₁ .* sin.(kx .* xu) rtol=1e-6
         end
 
         @testset "Implicit free surface needs no correction [$(typeof(arch))]" begin
