@@ -44,6 +44,7 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    BarotropicBaroclinicBoundaryConditions,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
