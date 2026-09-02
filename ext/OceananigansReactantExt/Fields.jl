@@ -3,8 +3,10 @@ module Fields
 using Reactant
 
 using Oceananigans: Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation, BinaryOperation, KernelFunctionOperation,
+                                       kept_index
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, interior, interpolate!, copyable_fields
+using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
@@ -15,6 +17,7 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGrid}
 
 reconstruct_global_field(field::ShardedDistributedField) = field
 
@@ -64,6 +67,47 @@ function set_to_field!(u::ReactantField, v::ReactantField)
         copyto!(interior(u), interior(cpu_u))
     end
     return u
+end
+
+# `traced_type_inner` gives `BinaryOperation` and `KernelFunctionOperation` the eltype of their traced
+# grid, which Reactant needs so that reductions route through `overloaded_mapreduce`. This causes an
+# ambiguity between Reactant's indexing and Oceananigans' that we resolve by defining a more
+# specialized indexing method.
+const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
+
+@inline Base.getindex(β::BinaryOperation, i::TracedIndex, j::TracedIndex, k::TracedIndex) =
+    β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
+
+@inline function Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ},
+                               i::TracedIndex, j::TracedIndex, k::TracedIndex) where {LX, LY, LZ}
+    if applicable(κ.kernel_function, i, j, k, κ.grid, κ.arguments...)
+        return κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
+    else
+        reduced_indices = (kept_index(LX, i)..., kept_index(LY, j)..., kept_index(LZ, k)...)
+        return κ.kernel_function(reduced_indices..., κ.grid, κ.arguments...)
+    end
+end
+
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`
+# we materialize to the CPU fallback.
+# TODO: find a better way to do this.
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+        Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction!)(r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(r, Field(a); kwargs...)
+
+        Base.$(reduction!)(f, r::AbstractArray, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction)(f::Function, a::ReactantOperation; kwargs...) =
+            Base.$(reduction)(f, Field(a); kwargs...)
+    end
 end
 
 # No need to synchronize -> it should be implicit

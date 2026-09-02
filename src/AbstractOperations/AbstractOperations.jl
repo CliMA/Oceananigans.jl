@@ -26,6 +26,9 @@ import Oceananigans.Fields: compute_at!, indices
 
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
+# An operation computes its values rather than wrapping a buffer, so it is its own ancestor
+Adapt.parent_type(T::Type{<:AbstractOperation}) = T
+
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
 const Location = Union{Face, Center, Nothing}
