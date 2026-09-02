@@ -139,6 +139,11 @@ end
 #####
 
 @inline function boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
+    # Constant-folds away unless a boundary condition is implicit-explicit
+    if needs_implicit_solver(top_bc) | needs_implicit_solver(bottom_bc) | needs_implicit_solver(immersed_bc) 
+        return zero(grid)
+    end
+
     Nz  = size(grid, 3)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     λᵗ  = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
