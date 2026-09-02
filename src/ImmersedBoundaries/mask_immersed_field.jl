@@ -108,7 +108,9 @@ Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k)
+    iᵣ, jᵣ, _ = interior_indices(field)
+    kp = KernelParameters(iᵣ, jᵣ)
+    return launch!(arch, grid, kp, _mask_immersed_field_xy!, field, loc, grid, value, k)
 end
 
 @kernel function _mask_immersed_field_xy!(field, (ℓx, ℓy, ℓz), grid, value, k)
