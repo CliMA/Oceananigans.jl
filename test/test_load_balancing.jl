@@ -59,7 +59,7 @@ grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constru
 
 end
 
-@testset "Partitioning consistent" for (len, ranks) in zip((10, 100, 1000), (2,4,8))
+@testset "Partitioning consistent" for (len, ranks) in product((10, 100, 1000), (2,4,8))
   weights = rand(len)
 
   partitions = partition_1d(weights, ranks)

@@ -230,6 +230,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
+        include("test_load_balancing.jl")
     end
 
     if group == :distributed_memory_allocation || group == :all
