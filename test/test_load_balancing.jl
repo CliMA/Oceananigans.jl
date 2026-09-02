@@ -39,6 +39,17 @@ rectilinear_constructors = [
     Iterators.product(sizes, halos, xs, ys, zs, topologies)
 ]
 
+tripolar_constructors = [
+  arch -> TripolarGrid(arch;
+                       size,
+                       x,
+                       y,
+                       z,
+                       halo)
+  for (size, halo, x, y, z) in
+    Iterators.product(sizes, halos, xs, ys, zs)
+]
+
 ib_constructors = [
   bottom_height -> GridFittedBottom(bottom_height),
   bottom_height -> PartialCellBottom(bottom_height)
@@ -48,7 +59,7 @@ strategies = [nothing, SimplifiedGeneralisedBlockDistribution(), GeneralisedBloc
 
 partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
-grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constructors])
+grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constructors, tripolar_constructors])
 
 @testset "Total active cells consistent" for (arch, grid_constructor, ib_constructor) in
     Iterators.product(archs, grid_constructors, ib_constructors)
