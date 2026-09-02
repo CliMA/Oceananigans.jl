@@ -18,11 +18,15 @@ using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃ�
 
 @inline function implicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+    Δz = previous_Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
+
+@inline previous_Δzᶜᶜᶠ(i, j, k, grid) =
+    Δzᶜᶜᶠ(i, j, k, grid) * Oceananigans.Operators.σ⁻(i, j, k, grid, Center(), Center(), Center()) /
+                           Oceananigans.Operators.σⁿ(i, j, k, grid, Center(), Center(), Center())
 
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)

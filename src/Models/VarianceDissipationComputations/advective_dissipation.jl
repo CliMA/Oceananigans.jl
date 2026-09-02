@@ -36,7 +36,7 @@
     end
 end
 
-@kernel function _assemble_rk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+@kernel function _assemble_rk3_advective_dissipation!(P, grid, Fⁿ, Uⁿ, σc, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
     δˣc★ = δxᶠᶜᶜ(i, j, k, grid, c★, cⁿ⁺¹, cⁿ)
@@ -49,13 +49,13 @@ end
     δᶻc² = δzᶜᶜᶠ(i, j, k, grid, c², cⁿ⁺¹, cⁿ)
 
     @inbounds begin
-        u₁ = Uⁿ.u[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        v₁ = Uⁿ.v[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        w₁ = Uⁿ.w[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        u₁ = Uⁿ.u[i, j, k] / σc.x[i, j, 1]
+        v₁ = Uⁿ.v[i, j, k] / σc.y[i, j, 1]
+        w₁ = Uⁿ.w[i, j, k] / σc.z[i, j, 1]
 
-        fx₁ = Fⁿ.x[i, j, k] / σⁿ(i, j, k, grid, f, c, c)
-        fy₁ = Fⁿ.y[i, j, k] / σⁿ(i, j, k, grid, c, f, c)
-        fz₁ = Fⁿ.z[i, j, k] / σⁿ(i, j, k, grid, c, c, f)
+        fx₁ = Fⁿ.x[i, j, k] / σc.x[i, j, 1]
+        fy₁ = Fⁿ.y[i, j, k] / σc.y[i, j, 1]
+        fz₁ = Fⁿ.z[i, j, k] / σc.z[i, j, 1]
 
         P.x[i, j, k] = 2 * δˣc★ * fx₁ - δˣc² * u₁
         P.y[i, j, k] = 2 * δʸc★ * fy₁ - δʸc² * v₁
@@ -87,5 +87,35 @@ end
         Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
         Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
         Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
+    end
+end
+
+#####
+##### Strong-stability-preserving accumulation
+#####
+##### The step is `cⁿ⁺¹ = cⁿ + Δt Σₘ βₘ Gᵐ`, so the flux and transport that close the variance budget are
+##### the β-weighted sums over the stages. `Fⁿ⁻¹`/`Uⁿ⁻¹` are unused here and serve as the accumulators.
+##### The sums are kept raw (unweighted by σ), which the unit σ cache then divides by.
+
+@kernel function _accumulate_ssp_advective_fluxes!(F★, grid, advection, U, tracer, β, keep)
+    i, j, k = @index(Global, NTuple)
+
+    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer)
+    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer)
+    fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer)
+
+    @inbounds begin
+        F★.x[i, j, k] = keep * F★.x[i, j, k] + β * fx
+        F★.y[i, j, k] = keep * F★.y[i, j, k] + β * fy
+        F★.z[i, j, k] = keep * F★.z[i, j, k] + β * fz
+    end
+end
+
+@kernel function _accumulate_ssp_transport!(U★, grid, U, β, keep)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        U★.u[i, j, k] = keep * U★.u[i, j, k] + β * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
+        U★.v[i, j, k] = keep * U★.v[i, j, k] + β * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
+        U★.w[i, j, k] = keep * U★.w[i, j, k] + β * U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
     end
 end
