@@ -272,9 +272,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
-    u_baroclinic = velocities.u
-    v_baroclinic = velocities.v
-
     U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
@@ -292,8 +289,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
 
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
-                                          bcs.U, bcs.V)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                       barotropic_velocities,
