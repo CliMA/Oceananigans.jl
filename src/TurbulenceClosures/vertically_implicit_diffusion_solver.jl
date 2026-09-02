@@ -101,7 +101,7 @@ end
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
-# `dl(m)` multiplies `ϕ[m]` in row `m + 1`, and the stress between faces `m` and `m + 1` sits at center `m`
+# `dl(m)` multiplies `ϕ[m]` in row `m + 1`, and the viscous flux between faces `m` and `m + 1` sits at center `m`
 @inline function ivd_lower_diagonal(i, j, m, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock, fields)
     closure_ij = getclosure(i, j, closure)
     νᵐ       = ivd_diffusivity(i, j, m,   grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
