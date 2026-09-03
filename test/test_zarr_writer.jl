@@ -875,7 +875,5 @@ guarding_scalar_indexing(f, arch) = f()
             @test length(time_series.times) == 2
             @test size(time_series.grid) == size(grid)
         end
-
-        rm(filepath; recursive=true, force=true)
     end
 end
