@@ -60,7 +60,7 @@ end
         # All sides specified explicitly to avoid unresolved DefaultBoundaryCondition types.
         bounded_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...,
                                             topology=(Bounded, Bounded, Bounded))
-        cbf_bc = FluxBoundaryCondition((x, y, t) -> zero(FT))
+        cbf_bc = FluxBoundaryCondition((x, y, t) -> zero(x))
         nf_bc  = NoFluxBoundaryCondition()
         explicit_bcs = FieldBoundaryConditions(west=nf_bc, east=nf_bc, south=nf_bc, north=nf_bc,
                                                bottom=nf_bc, top=cbf_bc)
