@@ -36,7 +36,7 @@ mutable struct TimeInterval{IT, TT} <: AbstractSchedule
 end
 
 """
-    TimeInterval(interval)
+$(TYPEDSIGNATURES)
 
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
@@ -156,6 +156,7 @@ next_actuation_time(schedule::IterationInterval) = Inf
 
 # IterationInterval has no state
 prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(restored::IterationInterval, from) = restored
 restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
 
 #####
@@ -181,7 +182,7 @@ other than the moment `WallTimeInterval` is constructed.
 """
 function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
     FT = Oceananigans.defaults.FloatType
-    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+    return WallTimeInterval(convert(FT, interval), convert(FT, start_time))
 end
 
 function (schedule::WallTimeInterval)(model)
@@ -211,7 +212,7 @@ mutable struct SpecifiedTimes{FT} <: AbstractSchedule
 end
 
 """
-    SpecifiedTimes(times)
+$(TYPEDSIGNATURES)
 
 Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
@@ -309,7 +310,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    ConsecutiveIterations(parent_schedule)
+    ConsecutiveIterations(parent_schedule, N=1)
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -355,7 +356,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -371,7 +372,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """

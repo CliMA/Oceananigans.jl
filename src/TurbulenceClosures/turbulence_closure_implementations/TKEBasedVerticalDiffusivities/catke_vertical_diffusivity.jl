@@ -357,7 +357,7 @@ end
 #####
 
 function Base.summary(closure::CATKEVD)
-    TD = nameof(typeof(time_discretization(closure)))
+    TD = nameof(typeof(TimeSteppers.time_discretization(closure)))
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 

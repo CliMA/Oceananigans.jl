@@ -50,7 +50,7 @@ const BoundaryConditionField{LX, LY, LZ} =
     Field{LX, LY, LZ, <:BoundaryConditionOperation} where {LX, LY, LZ}
 
 """
-    BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Returns a `KernelFunctionOperation` that evaluates a `field`'s boundary condition
 on the specified `side` using the properties of `model`.

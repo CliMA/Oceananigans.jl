@@ -4,6 +4,43 @@
 #####
 
 """
+    path_size(p)
+
+On-disk size of a file or directory tree, in bytes. Returns `0` if the path doesn't exist.
+Required for directory-store outputs (e.g. Zarr's `DirectoryStore`).
+"""
+function path_size(p)
+    isfile(p) && return filesize(p)
+    isdir(p)  || return 0
+    total = 0
+    for (root, _, files) in walkdir(p)
+        for f in files
+            total += filesize(joinpath(root, f))
+        end
+    end
+    return total
+end
+
+"""
+    zarr_chunk_shape(zarr_path::AbstractString, variable_name::AbstractString)
+
+Read the actual spatial chunk shape used for `variable_name` from a written Zarr store
+(excludes the time axis, which the ZarrWriter always chunks at 1). Returns `nothing` if
+the store or variable cannot be opened.
+"""
+function zarr_chunk_shape(zarr_path::AbstractString, variable_name::AbstractString)
+    try
+        group = Zarr.zopen(zarr_path)
+        arr = group[variable_name]
+        chunks = collect(Int, arr.metadata.chunks)
+        return chunks[1:end-1]
+    catch
+        return nothing
+    end
+end
+
+
+"""
     benchmark_time_stepping(model;
                             time_steps = 100,
                             Δt = 60,
@@ -264,14 +301,18 @@ end
                      output_format = "jld2",
                      output_dir = ".",
                      name = "io_benchmark",
+                     zarr_chunks = nothing,
                      verbose = true)
 
 Run a benchmark that measures the performance impact of writing heavy 3D output.
 Outputs 5 full 3D fields (u, v, w, T, S) at the specified `output_iteration_interval`.
 
-The `output_format` can be `"jld2"` or `"netcdf"`.
+The `output_format` can be `"jld2"`, `"netcdf"`, or `"zarr"`. When `output_format = "zarr"`,
+`zarr_chunks` may be a tuple of spatial chunk sizes (matching the grid rank) or `nothing`
+to let `ZarrWriter` pick the default.
 
-Returns an `IOBenchmarkResult` containing timing information, output file path, and total output size.
+Returns an `IOBenchmarkResult` containing timing information, output file path, total
+output size, and (for Zarr) the resolved spatial chunk shape.
 """
 function run_io_benchmark(model;
                           time_steps = 1440,
@@ -282,10 +323,11 @@ function run_io_benchmark(model;
                           output_dir = ".",
                           name = "io_benchmark",
                           group = "",
+                          zarr_chunks = nothing,
                           verbose = true)
 
-    output_format in ("jld2", "netcdf") ||
-        error("Unknown output_format: $output_format. Use \"jld2\" or \"netcdf\".")
+    output_format in ("jld2", "netcdf", "zarr") ||
+        error("Unknown output_format: $output_format. Use \"jld2\", \"netcdf\", or \"zarr\".")
 
     grid = model.grid
     arch = architecture(grid)
@@ -293,9 +335,11 @@ function run_io_benchmark(model;
     Nx, Ny, Nz = size(grid)
     total_points = Nx * Ny * Nz
 
-    ext = output_format == "jld2" ? "jld2" : "nc"
+    extension = output_format == "jld2"   ? "jld2" :
+                output_format == "netcdf" ? "nc"   :
+                "zarr"
     timestamp = Dates.format(now(UTC), "yyyy-mm-dd_HHMMSS")
-    output_filename = joinpath(output_dir, "$(name)_$(timestamp).$ext")
+    output_filename = joinpath(output_dir, "$(name)_$(timestamp).$extension")
 
     if verbose
         @info "IO Benchmark: $name"
@@ -309,26 +353,25 @@ function run_io_benchmark(model;
         @info "  Output iteration interval: $output_iteration_interval"
         @info "  Output fields: u, v, w, T, S (full 3D)"
         @info "  Output file: $output_filename"
+        if output_format == "zarr"
+            @info "  Zarr chunks: $(isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))"
+        end
     end
 
-    # Warmup phase (no output, just JIT compilation)
     if verbose
         @info "  Running warmup..."
     end
     many_time_steps!(model, Δt, warmup_steps)
     sync_device!(arch)
 
-    # Reset clock for the timed run
     model.clock.iteration = 0
     model.clock.time = 0
 
-    # Build simulation for the timed run
     simulation = Simulation(model; Δt, stop_iteration=time_steps)
 
-    # Build outputs dictionary: 5 full 3D fields
-    output_fields = (:u, :v, :w, :T, :S)
+    output_field_names = (:u, :v, :w, :T, :S)
     outputs = Dict{Symbol, Any}()
-    for field_name in output_fields
+    for field_name in output_field_names
         if haskey(model.velocities, field_name)
             outputs[field_name] = model.velocities[field_name]
         elseif hasproperty(model, :tracers) && haskey(model.tracers, field_name)
@@ -336,13 +379,26 @@ function run_io_benchmark(model;
         end
     end
 
-    Writer = output_format == "jld2" ? JLD2Writer : NetCDFWriter
-
-    simulation.output_writers[:fields_3d] = Writer(model, outputs;
-        filename = output_filename,
-        schedule = IterationInterval(output_iteration_interval),
-        overwrite_existing = true
-    )
+    if output_format == "jld2"
+        simulation.output_writers[:fields_3d] = JLD2Writer(model, outputs;
+            filename = output_filename,
+            schedule = IterationInterval(output_iteration_interval),
+            overwrite_existing = true,
+        )
+    elseif output_format == "netcdf"
+        simulation.output_writers[:fields_3d] = NetCDFWriter(model, outputs;
+            filename = output_filename,
+            schedule = IterationInterval(output_iteration_interval),
+            overwrite_existing = true,
+        )
+    else  # zarr
+        simulation.output_writers[:fields_3d] = ZarrWriter(model, outputs;
+            filename = output_filename,
+            schedule = IterationInterval(output_iteration_interval),
+            overwrite_existing = true,
+            chunks = zarr_chunks,
+        )
+    end
 
     if verbose
         wall_time_ref = Ref(time_ns())
@@ -352,7 +408,6 @@ function run_io_benchmark(model;
             @info @sprintf("  Step %d/%d, wall: %.1f s",
                            iteration(sim), time_steps, elapsed)
         end
-        # Report progress ~10 times during the run
         progress_interval = max(1, time_steps ÷ 10)
         simulation.callbacks[:progress] = Callback(progress, IterationInterval(progress_interval))
     end
@@ -371,8 +426,11 @@ function run_io_benchmark(model;
     steps_per_second = time_steps / total_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    # Compute total output file size
-    total_output_size_bytes = isfile(output_filename) ? filesize(output_filename) : 0
+    total_output_size_bytes = path_size(output_filename)
+
+    chunk_shape = output_format == "zarr" ?
+                  zarr_chunk_shape(output_filename, "T") :
+                  nothing
 
     gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
     metadata = BenchmarkMetadata(arch)
@@ -392,6 +450,7 @@ function run_io_benchmark(model;
         grid_points_per_second,
         output_filename,
         Int64(total_output_size_bytes),
+        chunk_shape,
         gpu_memory_used,
         metadata,
     )
@@ -403,6 +462,9 @@ function run_io_benchmark(model;
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
         @info "    Output file: $output_filename"
         @info "    Output size: $(Base.format_bytes(total_output_size_bytes))"
+        if !isnothing(chunk_shape)
+            @info "    Chunk shape: $(Tuple(chunk_shape))"
+        end
         if arch isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
@@ -410,6 +472,140 @@ function run_io_benchmark(model;
 
     if arch isa GPU
         CUDA.reclaim()
+    end
+
+    return result
+end
+
+#####
+##### Read benchmark (measuring read performance of a previously-written store)
+#####
+
+"""
+    run_read_benchmark(model;
+                       time_steps = 100,
+                       Δt = 60,
+                       warmup_steps = 5,
+                       output_iteration_interval = 1,
+                       format = "zarr",
+                       output_dir = ".",
+                       name = "read_benchmark",
+                       zarr_chunks = nothing,
+                       read_variable = "T",
+                       verbose = true)
+
+Write a small dataset with the requested `format` (`"jld2"`, `"netcdf"`, or `"zarr"`),
+then benchmark reading it back. Times the bulk `FieldTimeSeries(path, name)` construction
+and a per-snapshot iteration over `fts[1..Nt]`. The `model` is used only for the setup
+write; reads are timed independently.
+
+Returns a `ReadBenchmarkResult`.
+"""
+function run_read_benchmark(model;
+                            time_steps = 100,
+                            Δt = 60,
+                            warmup_steps = 5,
+                            output_iteration_interval = 1,
+                            format = "zarr",
+                            output_dir = ".",
+                            name = "read_benchmark",
+                            group = "",
+                            zarr_chunks = nothing,
+                            read_variable = "T",
+                            verbose = true)
+
+    format in ("jld2", "netcdf", "zarr") ||
+        error("Unknown format: $format. Use \"jld2\", \"netcdf\", or \"zarr\".")
+
+    grid = model.grid
+    arch = architecture(grid)
+    FT = eltype(grid)
+    Nx, Ny, Nz = size(grid)
+    total_points = Nx * Ny * Nz
+
+    if verbose
+        @info "Read Benchmark: $name"
+        @info "  Architecture: $arch"
+        @info "  Float type: $FT"
+        @info "  Grid size: $Nx × $Ny × $Nz ($total_points points)"
+        @info "  Time steps to write: $time_steps"
+        @info "  Output iteration interval: $output_iteration_interval"
+        @info "  Format: $format"
+        @info "  Variable to read: $read_variable"
+        @info "  Setting up: writing source dataset..."
+    end
+
+    io_result = run_io_benchmark(model;
+        time_steps,
+        Δt,
+        warmup_steps,
+        output_iteration_interval,
+        output_format = format,
+        output_dir,
+        name = "$(name)_source",
+        group,
+        zarr_chunks,
+        verbose = false,
+    )
+
+    output_filename = io_result.output_file
+    file_size_bytes = io_result.total_output_size_bytes
+    chunk_shape = io_result.chunk_shape
+
+    if verbose
+        @info "  Source dataset ready: $output_filename"
+        @info "  Source dataset size: $(Base.format_bytes(file_size_bytes))"
+        @info "  Starting read benchmark..."
+    end
+
+    sync_device!(arch)
+
+    bulk_start = time_ns()
+    field_time_series = FieldTimeSeries(output_filename, read_variable)
+    bulk_end = time_ns()
+
+    snapshots = length(field_time_series.times)
+
+    iteration_start = time_ns()
+    for n in 1:snapshots
+        @inbounds field_time_series[n]
+    end
+    iteration_end = time_ns()
+
+    bulk_read_seconds = (bulk_end - bulk_start) / 1e9
+    iteration_seconds = (iteration_end - iteration_start) / 1e9
+    time_per_snapshot_seconds = iteration_seconds / max(snapshots, 1)
+    snapshots_per_second = snapshots / max(iteration_seconds, eps())
+    grid_points_per_second = total_points / max(time_per_snapshot_seconds, eps())
+
+    metadata = BenchmarkMetadata(arch)
+
+    result = ReadBenchmarkResult(
+        name,
+        group,
+        format,
+        string(FT),
+        (Nx, Ny, Nz),
+        snapshots,
+        output_filename,
+        Int64(file_size_bytes),
+        chunk_shape,
+        bulk_read_seconds,
+        iteration_seconds,
+        time_per_snapshot_seconds,
+        snapshots_per_second,
+        grid_points_per_second,
+        metadata,
+    )
+
+    if verbose
+        @info "  Read Benchmark complete!"
+        @info "    Snapshots: $snapshots"
+        @info "    Bulk read: $(@sprintf("%.6f", bulk_read_seconds)) s"
+        @info "    Iteration: $(@sprintf("%.6f", iteration_seconds)) s"
+        @info "    Per-snapshot: $(@sprintf("%.6f", time_per_snapshot_seconds)) s"
+        @info "    Snapshots/s: $(@sprintf("%.2f", snapshots_per_second))"
+        @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
     end
 
     return result

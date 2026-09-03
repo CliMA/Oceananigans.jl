@@ -221,7 +221,9 @@ This is preferred to a divergent interior solution as open boundary conditions (
 are typically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
 
-Open boundary conditions are represented by the [`Open`](@ref) type.
+Open boundary conditions are represented by the [`NormalFlow`](@ref) classification (for the
+boundary-normal velocity), and tracer open boundaries by a [`Value`](@ref) condition with a
+matching `scheme`.
 
 ## Open boundary condition "schemes"
 
@@ -238,11 +240,11 @@ locally determined phase speed. We can show that this is the first-order approxi
 of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity
 component (the east boundary):
 ```math
-    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau})_x + F,
+    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = - (\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau})_x + F,
 ```
 let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}'`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{\boldsymbol{x}}``
 where ``U`` is an externally determined "background" wall-normal flow in the proximity of the boundary,
-and assume that the stress tensor gradient is small,
+and assume that the divergence of ``\boldsymbol{\tau}`` is small,
 ```math
     \partial_t u = -(U + u') \partial_x(U + u') - v \partial_y (U + u') - w \partial_z (U + u') + F,
 ```

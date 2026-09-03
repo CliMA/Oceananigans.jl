@@ -1,31 +1,24 @@
 using Base: @propagate_inbounds
 
-using OffsetArrays
-using Statistics
-using JLD2
-using Adapt
-using Glob
-using GPUArraysCore
-
+using Adapt: Adapt, adapt
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
+using JLD2: JLD2, jldopen
+using Glob: Glob, glob
+using GPUArraysCore: GPUArraysCore, @allowscalar
+using OffsetArrays: OffsetArrays, OffsetArray
+using Statistics: Statistics, mean
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Fields
-
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid, validate_indices
+using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, FieldBoundaryConditions
+using Oceananigans.Fields: Fields, AbstractField, compute!, data, field, interior,
+                           interior_view_indices, indices_summary, instantiate
+using Oceananigans.Grids: Grids, Center, Flat, grid, offset_data,
+                          topology, total_size, interior_parent_indices,
+                          AbstractGrid, validate_indices
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-
-using Oceananigans.Fields: interior_view_indices,
-                           indices_summary, instantiate
-
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
-
-import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
-import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
 ##### Data backends for FieldTimeSeries
@@ -40,10 +33,11 @@ struct InMemory{S} <: AbstractInMemoryBackend{S}
 end
 
 """
-    InMemory(length=nothing)
+    InMemory()
+    InMemory(length)
 
-Return a `backend` for `FieldTimeSeries` that stores `size`
-fields in memory. The default `size = nothing` stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `length`
+fields in memory. If `nothing` is provided (default), then all fields are stored in memory.
 """
 function InMemory(length::Int)
     length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
@@ -81,7 +75,7 @@ struct SplitFilePath
 end
 
 """
-    file_and_local_index(sfp::SplitFilePath, n)
+$(TYPEDSIGNATURES)
 
 Return `(filepath, local_index)` for global time index `n`.
 """
@@ -152,7 +146,7 @@ struct Clamp end # clamp to nearest value
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
 """
-    time_index(backend::PartlyInMemory, time_indexing, Nt, m)
+$(TYPEDSIGNATURES)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
@@ -170,7 +164,7 @@ end
 end
 
 """
-    memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
+$(TYPEDSIGNATURES)
 
 Compute the current index of a snapshot in memory that has
 the time index `n`, given `backend`, `time_indexing`, and number of times `Nt`.
@@ -220,7 +214,7 @@ end
 end
 
 """
-    time_indices(backend, time_indexing, Nt)
+$(TYPEDSIGNATURES)
 
 Return a collection of the time indices that are currently in memory.
 If `backend::TotallyInMemory` then return `1:length(times)`.
@@ -312,7 +306,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
     end
 end
 
-on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
@@ -373,7 +367,7 @@ const    ClampFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp,    K} where K
 
 const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
 
-architecture(fts::FieldTimeSeries) = architecture(fts.grid)
+Architectures.architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.times))
 
 @inline function memory_index(fts, n)
@@ -382,6 +376,15 @@ time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.time
     Nt = length(fts.times)
     return memory_index(backend, ti, Nt, n)
 end
+
+# A FieldTimeSeries cannot be an operand of a (three-dimensional) AbstractOperation:
+# the result would silently drop the time dimension (issue #5758).
+Oceananigans.AbstractOperations.validate_operand(fts::FieldTimeSeries) =
+    throw(ArgumentError("AbstractOperations on FieldTimeSeries are not supported yet: the" *
+                        " result would be a three-dimensional operation that silently drops" *
+                        " the time dimension. To operate on a single snapshot, slice the" *
+                        " FieldTimeSeries first with `fts[n]` or `fts[Time(t)]`, or wrap it" *
+                        " in `TimeSeriesInterpolation` to interpolate to a clock time."))
 
 #####
 ##### Constructors
@@ -427,7 +430,7 @@ Keyword arguments
 - `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
 - `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
 - `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
-- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
+- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamp()` (default), `Cyclical()`, or `Linear()`.
 - `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
 - `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
 
@@ -514,13 +517,13 @@ fts[1, 2, 3, Time(-1.25)]
 
 To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
 
-```jldoctest field_time_series; teardown = :(rm("test.jld2"))
+```jldoctest field_time_series; teardown = :(rm("ondisk_example.jld2"))
 output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
     output_times;
     backend = OnDisk(),
-    path = "test.jld2",
+    path = "ondisk_example.jld2",
     name = "c",
 )
 for idx in eachindex(output_times)
@@ -611,7 +614,7 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
-    load_serialized_grid(file, name)
+$(TYPEDSIGNATURES)
 
 Load the grid associated with the output variable `name` from a JLD2 `file`.
 
@@ -632,7 +635,7 @@ function load_serialized_grid(file, name)
 end
 
 """
-    reconstruct_legacy_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
 that did not serialize grids properly. Reads raw grid data from the top-level
@@ -688,7 +691,7 @@ function reconstruct_legacy_grid(grid, file, architecture)
 end
 
 """
-    manually_reconstruct_rectilinear_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
@@ -745,7 +748,7 @@ end
                     iterations = nothing,
                     times = nothing,
                     combine = true,
-                    reader_kw = Dict{Symbol, Any}())
+                    reader_kw = NamedTuple())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.
@@ -909,13 +912,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    # For OnDisk backend with split files, store a SplitFilePath so getindex
-    # can find the correct part file for each time index.
-    fts_path = if !isnothing(Nparts) && backend isa OnDisk
-        SplitFilePath(part_paths, cumsum(iterations_per_part))
-    else
-        path
-    end
+    fts_path = isnothing(Nparts) ? path : SplitFilePath(part_paths, cumsum(iterations_per_part))
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, fts_path, name, time_indexing, reader_kw)
@@ -923,9 +920,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     if isnothing(Nparts)
         set!(time_series, path, name)
     else
-        for path in part_paths
-            set!(time_series, path, name; warn_missing_data=false)
-        end
+        set!(time_series, fts_path, name)
     end
 
     return time_series
@@ -934,11 +929,15 @@ end
 ext(path) = splitext(path) |> last
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
-    path = auto_extension(path, ".jld2") # JLD2 is the default extension
+    # JLD2 is the default; don't append .jld2 to paths that already carry a recognized extension
+    path = (endswith(path, ".nc") || endswith(path, ".zarr") || endswith(path, ".zip")) ?
+           path : auto_extension(path, ".jld2")
     typed_path = if ext(path) == ".jld2"
                      JLD2Path(path)
                  elseif ext(path) == ".nc"
                      NetCDFPath(path)
+                 elseif ext(path) == ".zarr" || ext(path) == ".zip"
+                     ZarrPath(path)
                  else
                      error("Unsupported file extension: $(path)")
                  end
@@ -1015,12 +1014,12 @@ end
 Load a field called `name` saved in a JLD2 file at `file` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, file::JLD2.JLDFile, name::String, iter;
-               grid = nothing,
-               architecture = nothing,
-               indices = (:, :, :),
-               boundary_conditions = nothing,
-               reader_kw = NamedTuple())
+function Fields.Field(location, file::JLD2.JLDFile, name::String, iter;
+                      grid = nothing,
+                      architecture = nothing,
+                      indices = (:, :, :),
+                      boundary_conditions = nothing,
+                      reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)
@@ -1049,15 +1048,15 @@ end
 Base.lastindex(fts::FlavorOfFTS, dim) = lastindex(fts.data, dim)
 Base.parent(fts::InMemoryFTS)         = parent(fts.data)
 Base.parent(fts::OnDiskFTS)           = nothing
-indices(fts::FieldTimeSeries)         = fts.indices
-interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
+Fields.indices(fts::FieldTimeSeries)         = fts.indices
+Fields.interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 
 # Make FieldTimeSeries behave like Vector wrt to singleton indices
 Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
-function interior(fts::FieldTimeSeries)
+function Fields.interior(fts::FieldTimeSeries)
     Topo = topology(fts.grid)
     ℓx, ℓy, ℓz = instantiated_location(fts)
     𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
@@ -1083,9 +1082,9 @@ end
 
 const MAX_FTS_TUPLE_SIZE = 10
 
-fill_halo_regions!(fts::OnDiskFTS) = nothing
+BoundaryConditions.fill_halo_regions!(fts::OnDiskFTS) = nothing
 
-function fill_halo_regions!(fts::InMemoryFTS)
+function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
     partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 

@@ -7,7 +7,7 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch, Nothing}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
@@ -36,11 +36,12 @@ has_active_z_columns(::NoActiveZColumnsIBG) = false
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
-                         active_cells_map=false, active_z_columns=active_cells_map)
+                         active_cells_map=false,
+                         active_z_columns=active_cells_map)
 
-Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
-the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
-interior and on a reduced x-y plane, respectively.
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or
+`active_z_columns` are `true`, the grid will populate `interior_active_cells` and `active_z_columns`
+fields -- a list of active indices in the interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
                               active_cells_map::Bool=false,
@@ -88,9 +89,24 @@ const IBG = ImmersedBoundaryGrid
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
+@inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
+@inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
+
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
 @inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
+
+"""
+    underlying_grid(grid)
+    underlying_grid(field)
+
+Return the non-immersed grid: for an `ImmersedBoundaryGrid` this is the wrapped
+`grid.underlying_grid`; for any other grid this is the grid itself. Passing a
+`Field` extracts its grid and unwraps in one call.
+"""
+@inline underlying_grid(grid::AbstractGrid) = grid
+@inline underlying_grid(ibg::IBG) = ibg.underlying_grid
+@inline underlying_grid(field::AbstractField) = underlying_grid(field.grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),

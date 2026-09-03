@@ -1,18 +1,11 @@
-using Oceananigans: AbstractModel
-import Dates
-
-using Dates: AbstractTime
+using Dates: Dates, AbstractTime
+using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
-using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
-using Oceananigans.Utils: period_to_seconds
-
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Diagnostics: CFL
-import Oceananigans.Utils: prettytime
-import Oceananigans.TimeSteppers: reset!
-import Oceananigans.OutputWriters: write_output!
-import Oceananigans.Solvers: iteration
+using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter, ZarrWriter, write_output!
+using Oceananigans.Solvers: iteration
+using Oceananigans.TimeSteppers: reset!
+using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
@@ -150,7 +143,7 @@ end
 #####
 
 """
-    validate_Δt(Δt, arch)
+$(TYPEDSIGNATURES)
 
 Make sure different workers are using the same time step
 """
@@ -166,18 +159,18 @@ end
 validate_Δt(Δt, arch) = Δt
 
 """
-    time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation time.
 """
 Base.time(sim::Simulation) = time(sim.model)
 
 """
-    iteration(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation iteration.
 """
-iteration(sim::Simulation) = iteration(sim.model)
+Oceananigans.Solvers.iteration(sim::Simulation) = iteration(sim.model)
 
 """
     prettytime(sim::Simulation, longform=true)
@@ -186,21 +179,21 @@ Return `sim.model.clock.time` as a prettily formatted string."
 
 For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
+Oceananigans.Utils.prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
-    run_wall_time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
-Return `sim.run_wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string.
 """
 run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
 """
-    reset!(sim)
+$(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
-function reset!(sim::Simulation)
+function Oceananigans.TimeSteppers.reset!(sim::Simulation)
     reset_clock!(sim.model)
     sim.stop_iteration = Inf
 
@@ -221,7 +214,7 @@ end
 
 # Fallback. Models without clocks should extend this function.
 """
-    reset_clock!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Reset `model.clock` to its initial state.
 """
@@ -280,12 +273,12 @@ end
 #####
 
 # Fallback, to be elaborated on
-write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
-write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+Oceananigans.OutputWriters.write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
 
-function prognostic_state(sim::Simulation)
+function Oceananigans.prognostic_state(sim::Simulation)
     return (model = prognostic_state(sim.model),
-            Δt = sim.Δt,
             diagnostics = prognostic_state(sim.diagnostics),
             output_writers = prognostic_state(sim.output_writers),
             callbacks = prognostic_state(sim.callbacks),
@@ -295,9 +288,8 @@ function prognostic_state(sim::Simulation)
             minimum_relative_step = sim.minimum_relative_step)
 end
 
-function restore_prognostic_state!(restored::Simulation, from)
+function Oceananigans.restore_prognostic_state!(restored::Simulation, from)
     restore_prognostic_state!(restored.model, from.model)
-    restored.Δt = from.Δt
     restore_prognostic_state!(restored.diagnostics, from.diagnostics)
     restore_prognostic_state!(restored.output_writers, from.output_writers)
     restore_prognostic_state!(restored.callbacks, from.callbacks)
@@ -309,10 +301,10 @@ function restore_prognostic_state!(restored::Simulation, from)
 end
 
 # Disambiguation: handle case when no checkpoint file exists
-restore_prognostic_state!(::Simulation, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Simulation, ::Nothing) = nothing
 
 #####
 ##### Diagnostics
 #####
 
-(c::CFL)(sim::Simulation) = c(sim.model)
+(c::Oceananigans.Diagnostics.CFL)(sim::Simulation) = c(sim.model)

@@ -1,18 +1,18 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
+                                       regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver, initialize_closure_fields!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
@@ -29,12 +29,12 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, SD, U, C, Φ, F, FS,
+                                   V, S, K, BG, P, BGC, AF, BT, AW} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
-                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+                clock :: CL       # Tracks iteration number and simulation time of `Model`
             advection :: V        # Advection scheme for velocities _and_ tracers
              buoyancy :: B        # Set of parameters for buoyancy model
              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
@@ -52,14 +52,15 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
- boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
+   boundary_transport :: BT       # Container for transports at open boundaries
+   advecting_vertical_velocity :: AW # `wⁿ` for the adaptive-implicit advection split (`nothing` without it)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
     NonhydrostaticModel(grid;
-                        clock = Clock{eltype(grid)}(time = 0),
+                        clock = Clock(grid),
                         advection = Centered(),
                         momentum_advection = advection,
                         tracer_advection = advection,
@@ -116,7 +117,7 @@ Keyword arguments
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
                    Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
                    Default: `:RungeKutta3`.
-  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
+  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `NamedTuple()`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
@@ -130,7 +131,7 @@ Keyword arguments
   - `closure_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
@@ -276,7 +277,7 @@ function NonhydrostaticModel(grid;
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
-        free_surface = materialize_free_surface(free_surface, velocities, grid)
+        free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
     end
 
     # Either check grid-correctness, or construct tuples of fields
@@ -294,21 +295,33 @@ function NonhydrostaticModel(grid;
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
+    foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
+
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
+
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
+
+    # Snapshot of `wⁿ` to solve implicit vertical advection without overwrites.
+    advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
+
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
     # Materialize forcing for model tracer and velocity fields.
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
-    # Initialize boundary mass fluxes container
-    boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
+    # Initialize boundary transport container
+    boundary_transport = initialize_boundary_transport(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
+                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport,
+                                advecting_vertical_velocity)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -364,7 +377,7 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes))
+            boundary_transport = prognostic_state(model.boundary_transport))
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
@@ -375,7 +388,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-    restore_prognostic_state!(restored.boundary_mass_fluxes, from.boundary_mass_fluxes)
+    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
     return restored
 end
 
