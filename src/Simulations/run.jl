@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: schedule_aligned_time_step
 
@@ -272,16 +272,36 @@ end
 ##### Simulation initialization
 #####
 
-add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(sim, output) = nothing # fallback
 
-function add_dependency!(diags, wta::WindowedTimeAverage)
+# One past the largest index in use, so a deleted dependency's name is never reassigned
+function next_dependency_name(prefix, existing_names)
+    pattern = Regex(string("^", prefix, raw"(\d+)$"))
+    largest = 0
+
+    for name in existing_names
+        matched = match(pattern, string(name))
+        isnothing(matched) || (largest = max(largest, parse(Int, matched.captures[1])))
+    end
+
+    return Symbol(prefix, largest + 1)
+end
+
+function add_dependency!(sim, wta::WindowedTimeAverage)
+    diags = sim.diagnostics
     if wta ∉ values(diags)
-        num_diags_plus_1 = length(diags) + 1
-        diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+        diags[next_dependency_name("WindowedTimeAverage", keys(diags))] = wta
     end
 end
 
-add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+function add_dependency!(sim, derivative::TimeDerivative)
+    callbacks = sim.callbacks
+    if !any(cb -> cb.func === derivative, values(callbacks))
+        callbacks[next_dependency_name("TimeDerivative", keys(callbacks))] = Callback(derivative, IterationInterval(1))
+    end
+end
+
+add_dependencies!(sim, writer) = [add_dependency!(sim, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
@@ -320,7 +340,7 @@ function Oceananigans.initialize!(sim::Simulation)
     update_state!(model)
 
     # Output and diagnostics initialization
-    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
+    [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
 
     # Things to do for fresh simulations (not after checkpoint restore)
     if model.clock.iteration == 0
