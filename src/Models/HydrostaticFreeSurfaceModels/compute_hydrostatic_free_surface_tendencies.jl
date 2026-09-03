@@ -3,7 +3,6 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: halo_size
-using Oceananigans.Advection: compute_bounds_preserving_limiter!
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
@@ -109,8 +108,6 @@ compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_ma
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
     @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-
-    compute_bounds_preserving_limiter!(c_advection, grid, model.tracers[tracer_name])
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gc!,

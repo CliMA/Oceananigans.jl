@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Advection: div_Uc, materialize_advection, compute_bounds_preserving_limiter!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -27,7 +27,7 @@ function advect_forward_euler!(grid, scheme, c, U, N, steps, courant_number)
     cᵐⁱⁿ, cᵐᵃˣ = minimum(interior(c)), maximum(interior(c))
 
     for step in 1:steps
-        compute_bounds_preserving_limiter!(scheme, grid, c)
+        update_advection!(scheme, (; grid), c)
         for k in 1:N, j in 1:N, i in 1:N
             @inbounds tendency[i, j, k] = - div_Uc(i, j, k, grid, scheme, U, c)
         end
@@ -56,7 +56,7 @@ end
                 fill_halo_regions!(field)
             end
 
-            compute_bounds_preserving_limiter!(scheme, grid, c)
+            update_advection!(scheme, (; grid), c)
 
             @test abs(sum(div_Uc(i, j, k, grid, scheme, U, c) * Vᶜᶜᶜ(i, j, k, grid)
                           for i in 1:N, j in 1:N, k in 1:N)) < 1e-12

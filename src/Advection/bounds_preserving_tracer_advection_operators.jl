@@ -4,6 +4,34 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
+"""
+    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, limiter)
+
+The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, and the field
+`limiter` holding the cell-wise rescaling factor ``θ``. `limiter` is `nothing` until the scheme is materialized
+on a grid.
+"""
+struct BoundsPreservation{FT, L}
+    minimum_value :: FT
+    maximum_value :: FT
+    maximum_courant_number :: FT
+    limiter :: L
+end
+
+Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
+
+Adapt.adapt_structure(to, bounds::BoundsPreservation) =
+    BoundsPreservation(Adapt.adapt(to, bounds.minimum_value),
+                       Adapt.adapt(to, bounds.maximum_value),
+                       Adapt.adapt(to, bounds.maximum_courant_number),
+                       Adapt.adapt(to, bounds.limiter))
+
+Architectures.on_architecture(to, bounds::BoundsPreservation) =
+    BoundsPreservation(on_architecture(to, bounds.minimum_value),
+                       on_architecture(to, bounds.maximum_value),
+                       on_architecture(to, bounds.maximum_courant_number),
+                       on_architecture(to, bounds.limiter))
+
 const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
@@ -71,15 +99,18 @@ end
     @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
 end
 
+function update_advection!(scheme::BoundsPreservingWENO, model, tracer)
+    isnothing(tracer) && return nothing # the `momentum` entry has no tracer to limit
+    compute_bounds_preserving_limiter!(scheme, model.grid, tracer)
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
-Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`. A no-op for every
-other advection scheme.
+Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
 """
-compute_bounds_preserving_limiter!(scheme, grid, c) = nothing
-
-function compute_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+function compute_bounds_preserving_limiter!(scheme, grid, c)
     θ = scheme.bounds.limiter
     launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
     fill_halo_regions!(θ)

@@ -1,5 +1,4 @@
 using Oceananigans: fields, TendencyCallsite
-using Oceananigans.Advection: compute_bounds_preserving_limiter!
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
@@ -88,8 +87,6 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
         @inbounds c_advection = model.advection[tracer_name]
         @inbounds forcing = forcings[tracer_name]
         @inbounds c_immersed_bc = tracers[tracer_name].boundary_conditions.immersed
-
-        compute_bounds_preserving_limiter!(advection, grid, tracers[tracer_index])
 
         launch!(arch, grid, kernel_parameters, compute_Gc!,
                 c_tendency, grid,
