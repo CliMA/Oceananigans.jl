@@ -98,8 +98,81 @@ end
         if Nz > 1
             bottom_u = Field{Face, Center, Center}(grid, indices=(:, :, 1:1))
             top_u    = Field{Face, Center, Center}(grid, indices=(:, :, Nz:Nz))
-            @test !Oceananigans.Fields.matching_field_discretization(bottom_u, top_u)
+            @test !Oceananigans.Fields.copyable_fields(bottom_u, top_u)
         end
+    end
+end
+
+@testset "copyable_fields policy" begin
+    copyable_fields = Oceananigans.Fields.copyable_fields
+
+    for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT; size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(0, 1))
+        Nz = size(grid, 3)
+
+        # equivalent_dimension: identical discretization copies.
+        @test copyable_fields(CenterField(grid), CenterField(grid))
+
+        # Differing locations in a non-degenerate dimension must interpolate, which is the
+        # case the policy exists to protect: u and v sit at different physical nodes.
+        @test !copyable_fields(XFaceField(grid), CenterField(grid))
+
+        # degenerate_dimension: a reduced field and a windowed single layer both span one
+        # vertical point, so the slab copies in either direction.
+        reduced = Field{Center, Center, Nothing}(grid)
+        single_layer = Field{Center, Center, Center}(grid, indices=(:, :, Nz:Nz))
+        @test copyable_fields(reduced, single_layer)
+        @test copyable_fields(single_layer, reduced)
+
+        # expandable_source_dimension: a reduced source stretches across a full field.
+        column = Field{Nothing, Nothing, Center}(grid)
+        slice  = Field{Center, Center, Nothing}(grid)
+        @test copyable_fields(CenterField(grid), column)
+        @test copyable_fields(CenterField(grid), slice)
+
+        # ...but only the source may stretch. A reduced *destination* fed by a many-celled
+        # source would have to compress, which broadcasting cannot do, so it interpolates.
+        @test !copyable_fields(column, CenterField(grid))
+        @test !copyable_fields(slice, CenterField(grid))
+
+        # A singleton dimension that still carries a node is not degenerate: stretching a
+        # `Center` value across many cells is not a copy.
+        thin_grid = RectilinearGrid(arch, FT; size=(4, 4, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+        @test !copyable_fields(CenterField(grid), CenterField(thin_grid))
+    end
+end
+
+@testset "set! expands a reduced source by copying" begin
+    for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT; size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(0, 1))
+
+        # A 1D reference column set into a 3D field must reproduce what interpolation
+        # produced before expansion became a copy: a reduced dimension carries no node,
+        # so replicating the single value is exactly the interpolated result.
+        column = Field{Nothing, Nothing, Center}(grid)
+        set!(column, z -> 2z + 1)
+        fill_halo_regions!(column)
+
+        expanded = CenterField(grid)
+        set!(expanded, column)
+
+        expected = CenterField(grid)
+        interpolate!(expected, column)
+
+        @test Array(interior(expanded)) == Array(interior(expected))
+
+        # The same for a horizontal slice stretched over every vertical level.
+        slice = Field{Center, Center, Nothing}(grid)
+        set!(slice, (x, y) -> x + 2y)
+        fill_halo_regions!(slice)
+
+        expanded_slice = CenterField(grid)
+        set!(expanded_slice, slice)
+
+        expected_slice = CenterField(grid)
+        interpolate!(expected_slice, slice)
+
+        @test Array(interior(expanded_slice)) == Array(interior(expected_slice))
     end
 end
 
