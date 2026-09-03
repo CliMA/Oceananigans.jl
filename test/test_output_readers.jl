@@ -714,6 +714,70 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
     return nothing
 end
 
+function test_field_time_series_time_average(arch)
+    grid = RectilinearGrid(arch, size=(2, 1, 4), extent=(1, 1, 1))
+    times = 0:7
+    bounds = 0:8:64
+
+    ramp = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in 1:8
+        set!(ramp[n], n)
+    end
+
+    # Windows of 31, 31, and the 2 units left over, so samples 4 and 8 straddle an edge.
+    averaged = time_average(ramp, bounds, 31)
+    values = Array(interior(averaged))
+
+    @test Array(averaged.times) == [15.5, 46.5, 63]
+    @test values[1, 1, 1, 1] ≈ (8 * 1 + 8 * 2 + 8 * 3 + 7 * 4) / 31
+    @test values[1, 1, 1, 2] ≈ (1 * 4 + 8 * 5 + 8 * 6 + 8 * 7 + 6 * 8) / 31
+    @test values[1, 1, 1, 3] ≈ 8
+
+    whole_record = time_average(ramp, bounds, 100)
+    @test Array(whole_record.times) == [32]
+    @test Array(interior(whole_record))[1, 1, 1, 1] ≈ mean(1:8)
+
+    @test_throws ArgumentError time_average(ramp, times, 31)
+
+    # A NaN sample drops out of the cell that carries it and the rest renormalize.
+    gap = Array(interior(ramp[2]))
+    gap[1, 1, :] .= NaN
+    copyto!(interior(ramp[2]), gap)
+    gappy = Array(interior(time_average(ramp, bounds, 31)))
+    @test gappy[1, 1, 1, 1] ≈ (8 * 1 + 8 * 3 + 7 * 4) / 23
+    @test gappy[2, 1, 1, 1] ≈ (8 * 1 + 8 * 2 + 8 * 3 + 7 * 4) / 31
+
+    for n in 1:8
+        set!(ramp[n], NaN)
+    end
+    @test all(isnan, Array(interior(time_average(ramp, bounds, 31))))
+
+    # A partly resident series streamed from disk averages to the same numbers.
+    path = joinpath(mktempdir(), "ramp.jld2")
+    ondisk = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path, name="ramp")
+    sample = CenterField(grid)
+    for n in 1:8
+        set!(sample, n)
+        set!(ondisk, sample, n)
+    end
+    windowed = FieldTimeSeries(path, "ramp"; architecture=arch, backend=InMemory(2))
+    @test Array(interior(time_average(windowed, bounds, 31))) == values
+
+    surface = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, :, 4))
+    for n in 1:8
+        set!(surface[n], n)
+    end
+    sliced = time_average(surface, bounds, 31)
+    @test sliced.indices == surface.indices
+    @test size(interior(sliced)) == (2, 1, 1, 3)
+    @test Array(interior(sliced))[1, 1, 1, 3] ≈ 8
+
+    cyclic = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical())
+    @test time_average(cyclic, bounds, 31).time_indexing isa Cyclical
+
+    return nothing
+end
+
 #####
 ##### Run tests
 #####
@@ -898,6 +962,12 @@ end
     for arch in archs
         @testset "Precomputed TimeInterpolator [$(typeof(arch))]" begin
             test_precomputed_time_interpolator(arch)
+        end
+    end
+
+    for arch in archs
+        @testset "FieldTimeSeries time_average [$(typeof(arch))]" begin
+            test_field_time_series_time_average(arch)
         end
     end
 
