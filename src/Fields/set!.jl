@@ -43,8 +43,8 @@ function set!(dst::NamedFieldTuple, src::NamedTuple)
 end
 
 # This interface helps us do things like set distributed fields
-set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, f::Function, clock=nothing, model_fields=nothing) = set_to_function!(u, f, clock)
+set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
 
 """
 $(TYPEDSIGNATURES)
@@ -59,20 +59,24 @@ architectures.
 
 Note that the interpolation path samples `v` pointwise; for conservative
 remapping, call [`regrid!`](@ref) explicitly.
-"""
-set!(u::Field, v::Field) = set_to_field!(u, v)
 
-function set!(u::Field, a::Number)
+When `u` is set from a model's `set!(model; kwargs...)`, `clock` and `model_fields`
+carry the model's simulation context through to the halo fill of `v`, so that `v`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
+"""
+set!(u::Field, v::Field, clock=nothing, model_fields=nothing) = set_to_field!(u, v, clock, model_fields)
+
+function set!(u::Field, a::Number, args...)
     fill!(interior(u), a) # note all other set! only change interior
     return u # return u, not parent(u), for type-stability
 end
 
-function set!(u::Field, v)
+function set!(u::Field, v, args...)
     u .= v # fallback
     return u
 end
 
-set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+set!(u::Field, z::ZeroField, args...) = set!(u, zero(eltype(u)))
 
 #####
 ##### Setting to specific things
@@ -146,17 +150,14 @@ function set_to_array!(u, a)
     return u
 end
 
-function set_to_field!(u, v)
+function set_to_field!(u, v, clock=nothing, model_fields=nothing)
     if matching_field_discretization(u, v)
         copy_to_field!(u, v)
     else
-        if !needs_simulation_context(v.boundary_conditions)
-            fill_normal_flow_bcs = !normal_flow_needs_simulation_context(v.boundary_conditions)
-            fill_halo_regions!(v; fill_normal_flow_bcs)
-        end
+        fill_halo_regions!(v, clock, model_fields)
         # Avoid reconstructing immersed grids when architectures already match.
         v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
-        interpolate!(u, v_on_u)
+        interpolate!(u, v_on_u, clock, model_fields)
     end
 
     return u

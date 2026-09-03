@@ -1,32 +1,12 @@
 using Oceananigans.Fields: interpolate!, fill_halo_regions!
-using Oceananigans.BoundaryConditions: needs_simulation_context, normal_flow_needs_simulation_context, NormalRadiation
+using Oceananigans.BoundaryConditions: NormalRadiation
 
-@testset "needs_simulation_context dispatch" begin
-    # Flux with CBF → true (fill_halo_regions! would crash without clock)
-    cbf_flux_bc = FluxBoundaryCondition((x, y, t) -> 0.0)
-    @test  needs_simulation_context(cbf_flux_bc)
-
-    # NormalFlow BC backed by a CBF → false (NormalFlow fills use fill_normal_flow_bcs=false, not this guard)
-    nf_cbf_bc = NormalFlowBoundaryCondition((x, y, t) -> 0.0)
-    @test !needs_simulation_context(nf_cbf_bc)
-
-    # NormalFlow BC with a plain number → false
-    @test !needs_simulation_context(NormalFlowBoundaryCondition(0.0))
-
-    # FieldBoundaryConditions: CBF top BC → true
-    @test  needs_simulation_context(FieldBoundaryConditions(top=cbf_flux_bc))
-
-    # FieldBoundaryConditions: only NormalFlow BCs → false
-    @test !needs_simulation_context(FieldBoundaryConditions(west=nf_cbf_bc, east=nf_cbf_bc))
-end
-
-@testset "RNFBC: normal_flow_needs_simulation_context and clockless fill" begin
-    # RNFBC: needs_simulation_context=false (NFBC), normal_flow_needs_simulation_context=true (DBF condition).
+@testset "RNFBC: clockless fill" begin
+    # RNFBC's condition is a DiscreteBoundaryFunction, but NormalFlow fills use
+    # fill_normal_flow_bcs=false, so this never needs a clock.
     rnfbc = NormalFlowBoundaryCondition((i, k, grid, clock, fields) -> zero(grid);
                                         discrete_form = true,
                                         scheme = NormalRadiation())
-    @test !needs_simulation_context(rnfbc)
-    @test  normal_flow_needs_simulation_context(rnfbc)
 
     # Clockless fill must not crash — previously triggered InvalidIRError on GPU.
     # Periodic in x/z so only the y (normal) boundaries need explicit BCs.
@@ -75,7 +55,8 @@ end
         set!(big_halo_c, coarse)
         @test Array(interior(big_halo_c)) == Array(interior(coarse))
 
-        # `set!` must not crash when `to_field` carries a `ContinuousBoundaryFunction` BC.
+        # `set!` must not crash when `to_field` carries a `ContinuousBoundaryFunction` BC,
+        # provided a `clock` is threaded through to the halo fill of `to_field`.
         # All sides specified explicitly to avoid unresolved DefaultBoundaryCondition types.
         bounded_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...,
                                             topology=(Bounded, Bounded, Bounded))
@@ -84,7 +65,7 @@ end
         explicit_bcs = FieldBoundaryConditions(west=nf_bc, east=nf_bc, south=nf_bc, north=nf_bc,
                                                bottom=nf_bc, top=cbf_bc)
         cbf_field = CenterField(bounded_fine_grid, boundary_conditions=explicit_bcs)
-        set!(cbf_field, coarse)
+        set!(cbf_field, coarse, Clock(time=zero(FT)), NamedTuple())
         @test Array(interior(cbf_field)) ≈ Array(interior(fine))
     end
 end

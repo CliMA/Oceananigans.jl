@@ -66,11 +66,6 @@ BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondit
 BoundaryCondition(::Type{NormalFlow}, args...; kwargs...)       = BoundaryCondition(NormalFlow(nothing), args...; kwargs...)
 BoundaryCondition(::Type{Value}, args...; kwargs...)            = BoundaryCondition(Value(nothing),      args...; kwargs...)
 
-@inline needs_simulation_context(::Missing) = false
-@inline needs_simulation_context(condition) = false # fallback: Number, AbstractArray, NumberRef, Tuple, NamedTuple, ...
-@inline needs_simulation_context(bc::BoundaryCondition) =
-    needs_simulation_context(bc.classification) | needs_simulation_context(bc.condition)
-
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
     BoundaryCondition(Adapt.adapt(to, b.classification), Adapt.adapt(to, b.condition))
@@ -88,13 +83,6 @@ const BC   = BoundaryCondition
 const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
 const NFBC = BoundaryCondition{<:NormalFlow}
-
-# NormalFlow fills use fill_normal_flow_bcs=false, not needs_simulation_context, to skip context-needing conditions.
-@inline needs_simulation_context(::NFBC) = false
-
-# True when the NFBC's condition (e.g. a DiscreteBoundaryFunction) requires clock/model_fields.
-@inline normal_flow_needs_simulation_context(bc::NFBC) = needs_simulation_context(bc.condition)
-@inline normal_flow_needs_simulation_context(bc) = false
 
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}

@@ -435,8 +435,10 @@ end
 $(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
+`clock` and `model_fields` are forwarded to the halo fill, so `to_field`'s boundary
+conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
 """
-function interpolate!(to_field::Field, from_field::AbstractField)
+function interpolate!(to_field::Field, from_field::AbstractField, clock=nothing, model_fields=nothing)
     to_grid   = to_field.grid
     from_grid = from_field.grid
 
@@ -463,11 +465,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    # Skip fill for BCs needing clock/model_fields; normal-flow BCs use their own context flag.
-    if !needs_simulation_context(to_field.boundary_conditions)
-        fill_normal_flow_bcs = !normal_flow_needs_simulation_context(to_field.boundary_conditions)
-        fill_halo_regions!(to_field; fill_normal_flow_bcs)
-    end
+    fill_halo_regions!(to_field, clock, model_fields)
 
     return to_field
 end

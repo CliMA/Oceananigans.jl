@@ -31,8 +31,6 @@ struct DiscreteBoundaryFunction{P, F}
     parameters :: P
 end
 
-@inline needs_simulation_context(::DiscreteBoundaryFunction) = true # Every `getbc` method below requires `clock, model_fields`.
-
 const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
 
 @inline getbc(condition::UnparameterizedDBF, i::Integer, j::Integer, grid::AbstractGrid, clock, model_fields, args...) =

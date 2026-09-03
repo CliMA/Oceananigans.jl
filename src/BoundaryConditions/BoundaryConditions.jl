@@ -2,7 +2,7 @@ module BoundaryConditions
 
 export
     Flux, Gradient, Value, NormalFlow,
-    BoundaryCondition, getbc, needs_simulation_context,
+    BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection, has_target_transport, get_target_transport,
