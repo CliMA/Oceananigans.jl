@@ -1,5 +1,4 @@
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
-using Oceananigans.Grids: peripheral_node
 using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
@@ -37,7 +36,7 @@ Project the baroclinic velocities onto the barotropic transport produced by the 
 
     u = u + (U - ∫u dz) / H
 """
-function barotropic_split_explicit_corrector!(u, v, free_surface, grid, Δt)
+function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     U, V  = free_surface.barotropic_velocities
     U̅, V̅  = state.U̅, state.V̅
@@ -47,12 +46,10 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid, Δt)
     mask_immersed_field!(v)
 
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, grid)
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!, u, v, U, V, U̅, V̅, grid)
 
     return nothing
 end
-
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
     i, j, k = @index(Global, NTuple)
