@@ -16,6 +16,7 @@ export
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
     update_advection_timestep!,
+    compute_bounds_preserving_limiter!,
     EnergyConserving,
     EnstrophyConserving
 
@@ -65,6 +66,7 @@ include("upwind_biased_advective_fluxes.jl")
 include("reconstruction_coefficients.jl")
 include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
+include("bounds_preservation.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
 include("stretched_weno_smoothness.jl")

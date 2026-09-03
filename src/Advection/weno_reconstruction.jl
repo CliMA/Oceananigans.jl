@@ -22,6 +22,7 @@ end
          buffer_scheme = DecreasingOrderAdvectionScheme(),
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
+         maximum_courant_number = 5//18,
          minimum_buffer_upwind_order = 3)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
@@ -37,9 +38,15 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
-                           that attempts to restrict a quantity to lie between a `bounds` tuple.
-                           Default: `nothing`, which does not use a boundary-preserving scheme.
+- `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
+                           Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
+                           mean so that the advective update stays within `bounds`. One rescaling factor is
+                           shared by the three directions, so the bound is three-dimensional. It is guaranteed
+                           for a forward Euler or strong-stability-preserving update whose Courant numbers
+                           satisfy `λˣ + λʸ + λᶻ ≤ maximum_courant_number`.
+                           Default: `nothing`, which does not use a bounds-preserving scheme.
+- `maximum_courant_number`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed. Raising it
+                            admits a larger time step and limits more aggressively. Default: `5//18`.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
@@ -110,14 +117,13 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
+              maximum_courant_number = 5//18,
               minimum_buffer_upwind_order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    if !isnothing(bounds)
-        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
-        bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
-    end
+    isnothing(bounds) || bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+    0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
@@ -130,12 +136,15 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
+                buffer_scheme = WENO(FT; order=order-2, bounds, maximum_courant_number, minimum_buffer_upwind_order, weight_computation)
             end
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        preserved_bounds = isnothing(bounds) ? nothing :
+            BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
+
+        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 
