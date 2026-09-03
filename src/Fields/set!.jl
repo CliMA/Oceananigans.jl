@@ -43,7 +43,10 @@ function set!(dst::NamedFieldTuple, src::NamedTuple)
 end
 
 # This interface helps us do things like set distributed fields
-set!(u::Field, f::Function, clock=nothing, model_fields=nothing) = set_to_function!(u, f, clock)
+# Note: `clock` and `model_fields` are accepted (so the generic model-level `set!` can pass
+# them uniformly) but ignored here --- function-based initial conditions are always called
+# as `f(x, y, z)`, never `f(x, y, z, t)`.
+set!(u::Field, f::Function, clock=nothing, model_fields=nothing) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
 
 """
