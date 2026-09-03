@@ -834,8 +834,7 @@ end
 
 # `allowscalar(f)` scopes the *enabling* of scalar indexing; this is its inverse. The
 # previous setting is restored on exit so it cannot leak into subsequent testsets.
-disallowing_scalar_indexing(f) =
-    task_local_storage(f, :ScalarIndexing, GPUArraysCore.ScalarDisallowed)
+disallowing_scalar_indexing(f) = task_local_storage(f, :ScalarIndexing, GPUArraysCore.ScalarDisallowed)
 
 # Scalar indexing is only restricted for GPU arrays, so the guard is a no-op on the CPU.
 guarding_scalar_indexing(f, arch::GPU) = disallowing_scalar_indexing(f)
