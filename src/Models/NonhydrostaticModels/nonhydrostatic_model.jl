@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
@@ -233,8 +233,7 @@ function NonhydrostaticModel(grid;
                                           default_generator, with_velocities=false)
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
-    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
-    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+    advection = materialize_model_advection(advection, grid)
 
     grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
@@ -332,6 +331,13 @@ end
 
 architecture(model::NonhydrostaticModel) = model.architecture
 timestepper(model::NonhydrostaticModel) = model.timestepper
+
+# Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
+# `inflate_grid_halo_size` and would therefore be boxed.
+function materialize_model_advection(advection, grid)
+    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
+    return NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+end
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
