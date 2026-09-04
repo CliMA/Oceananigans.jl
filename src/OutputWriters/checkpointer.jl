@@ -4,6 +4,8 @@ using StructArrays: StructArray
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
+const OutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
+
 mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
@@ -258,7 +260,7 @@ Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::OutputWriters, ::Nothing) = nothing
 
 function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
     copyto!(restored, from)
@@ -325,7 +327,7 @@ output_key_to_symbol(name::AbstractString) = Symbol(name)
 output_lookup_key(::JLD2Writer, name::Symbol) = name
 output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
 
-function Oceananigans.prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
+function Oceananigans.prognostic_state(writer::OutputWriters)
     wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
@@ -336,7 +338,7 @@ function Oceananigans.prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
             windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
-function Oceananigans.restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
+function Oceananigans.restore_prognostic_state!(restored::OutputWriters, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
 
@@ -381,7 +383,7 @@ function reset_restored_time_average!(average::WindowedTimeAverage, clock)
     return nothing
 end
 
-function reconcile_restored_output_schedule!(writer::Union{JLD2Writer, NetCDFWriter}, model)
+function reconcile_restored_output_schedule!(writer::OutputWriters, model)
     averaged_outputs = filter(output -> output isa IntervalWindowedTimeAverage, values(writer.outputs))
     isempty(averaged_outputs) && return nothing
 
