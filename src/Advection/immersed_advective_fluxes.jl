@@ -170,9 +170,9 @@ for side in (:ᶜ, :ᶠ)
         @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
         @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
+        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
+        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
     end
 
     for buffer in advection_buffers
@@ -181,9 +181,18 @@ for side in (:ᶜ, :ᶠ)
             @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side; yside = side)...))
             @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side; zside = side)...))
 
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                ifelse(bias == LeftBias,
+                       (|)($(inside_immersed_boundary(buffer, :left,  :x, side; xside = side)...)),
+                       (|)($(inside_immersed_boundary(buffer, :right, :x, side; xside = side)...)))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                ifelse(bias == LeftBias,
+                       (|)($(inside_immersed_boundary(buffer, :left,  :y, side; yside = side)...)),
+                       (|)($(inside_immersed_boundary(buffer, :right, :y, side; yside = side)...)))
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                ifelse(bias == LeftBias,
+                       (|)($(inside_immersed_boundary(buffer, :left,  :z, side; zside = side)...)),
+                       (|)($(inside_immersed_boundary(buffer, :right, :z, side; zside = side)...)))
         end
     end
 end
@@ -200,15 +209,18 @@ for bias in (:symmetric, :biased)
 
             near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
 
+            # the biased predicate now needs to know which side it is reconstructing from
+            b = bias == :biased ? (:bias,) : ()
+
             @eval begin
                 # Fallback for low order interpolation
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
 
                 # Conditional high-order interpolation in Bounded directions
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
+                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, $(b...), args...) =
+                    ifelse($near_boundary(i, j, k, ibg, scheme, $(b...)),
+                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, $(b...), args...),
+                           $interp(i, j, k, ibg, scheme, $(b...), args...))
             end
         end
     end

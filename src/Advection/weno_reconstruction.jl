@@ -21,8 +21,7 @@ end
          order = 5,
          buffer_scheme = DecreasingOrderAdvectionScheme(),
          time_discretization = ExplicitTimeDiscretization(),
-         bounds = nothing,
-         minimum_buffer_upwind_order = 3)
+         bounds = nothing)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -40,10 +39,9 @@ Keyword arguments
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
                            Default: `nothing`, which does not use a boundary-preserving scheme.
-- `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
-                                 scheme order reaches this value, subsequent buffers use
-                                 `Centered(order=2)` instead of continuing to decrease the
-                                 upwind order. Default: 3.
+- `buffer_scheme`: The scheme used where the stencil does not fit. `DecreasingOrderAdvectionScheme()` steps the
+                   order down by two until third order and then uses its `boundary_scheme`, which defaults to
+                   `Centered(order=2)`.
 
 Examples
 ========
@@ -73,16 +71,15 @@ WENO{5, Float64, Nothing}(order=9)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
-To build a 9th-order scheme with `minimum_buffer_upwind_order=5`,
-which uses `Centered(order=2)` as the innermost buffer scheme:
+To terminate the chain in a boundary reconstruction other than the default:
 
 ```jldoctest weno
-julia> WENO(order=9, minimum_buffer_upwind_order=5)
-WENO{5, Float64, Nothing}(order=9)
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│       └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+julia> WENO(order=7, buffer_scheme=DecreasingOrderAdvectionScheme(boundary_scheme=UpwindBiased(order=1)))
+WENO{4, Float64, Nothing}(order=7)
+├── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
+│   └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
+│       └── buffer_scheme: UpwindBiased(order=1)
+└── advecting_velocity_scheme: Centered(order=6)
 ```
 
 ```jldoctest weno
@@ -109,8 +106,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
-              bounds = nothing,
-              minimum_buffer_upwind_order = 3)
+              bounds = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
@@ -126,11 +122,11 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         advecting_velocity_scheme = Centered(FT; order=order-1)
 
         if buffer_scheme isa DecreasingOrderAdvectionScheme
-            if order ≤ minimum_buffer_upwind_order
-                # At minimum order, switch to Centered scheme
-                buffer_scheme = Centered(FT; order=2)
+            if order ≤ 3 # the boundary reconstruction takes over here
+                buffer_scheme = something(buffer_scheme.boundary_scheme, Centered(FT; order=2))
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
+                buffer_scheme = WENO(FT; order=order-2, bounds, weight_computation,
+                                     buffer_scheme = DecreasingOrderAdvectionScheme(; boundary_scheme = buffer_scheme.boundary_scheme))
             end
         end
 

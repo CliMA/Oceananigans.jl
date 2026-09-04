@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, CWENOZ,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -56,7 +56,23 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-struct DecreasingOrderAdvectionScheme end
+"""
+    DecreasingOrderAdvectionScheme(; boundary_scheme = nothing)
+
+Marker asking a scheme constructor to build its own `buffer_scheme` chain by stepping the order
+down two at a time. `boundary_scheme` is what that chain terminates in — the reconstruction used
+in a cell whose stencil no longer fits, i.e. against a boundary. Passing `nothing` keeps each
+family's default terminal (`Centered(order=2)` for `WENO`).
+
+For `WENO` the chain reads, for example,
+
+    WENO(order=7)  ->  WENO7 -> WENO5 -> WENO3 -> boundary_scheme
+"""
+struct DecreasingOrderAdvectionScheme{BS}
+    boundary_scheme :: BS
+end
+
+DecreasingOrderAdvectionScheme(; boundary_scheme = nothing) = DecreasingOrderAdvectionScheme(boundary_scheme)
 
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
@@ -77,6 +93,7 @@ include("flux_form_advection.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 
+include("boundary_weno_scheme.jl")
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
