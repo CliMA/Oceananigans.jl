@@ -822,3 +822,58 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
         rm(zarrpath; recursive=true, force=true)
     end
 end
+
+#####
+##### Scalar indexing
+#####
+#
+# Zarr grid serialization and reconstruction touch device-backed grid coordinates and
+# metrics, which must never fall back to elementwise iteration on a GPU. The rest of the
+# test suite runs inside `CUDA.allowscalar()`, which masks that class of regression, so
+# these testsets opt back out for the duration of a write and a read.
+
+# `allowscalar(f)` scopes the *enabling* of scalar indexing; this is its inverse. The
+# previous setting is restored on exit so it cannot leak into subsequent testsets.
+disallowing_scalar_indexing(f) = task_local_storage(f, :ScalarIndexing, GPUArraysCore.ScalarDisallowed)
+
+# Scalar indexing is only restricted for GPU arrays, so the guard is a no-op on the CPU.
+guarding_scalar_indexing(f, arch::GPU) = disallowing_scalar_indexing(f)
+guarding_scalar_indexing(f, arch) = f()
+
+@testset "ZarrWriter [scalar indexing]" begin
+    @info "  Testing ZarrWriter and FieldTimeSeries without scalar indexing..."
+
+    for arch in archs, with_halos in (false, true)
+        # An OrthogonalSphericalShellGrid exercises the widest device-backed surface:
+        # two-dimensional λ/φ auxiliary coordinates and horizontal metrics on write, and
+        # metric halo filling on read.
+        grid = TripolarGrid(arch;
+                            size = (8, 8, 2),
+                            z = (-100, 0),
+                            first_pole_longitude = 75,
+                            north_poles_latitude = 35,
+                            southernmost_latitude = -35)
+        free_surface = SplitExplicitFreeSurface(grid; substeps=5)
+        model = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T)
+
+        filename = "test_zarr_scalar_indexing"
+        directory = mktempdir()
+        filepath = joinpath(directory, filename * ".zarr")
+
+        simulation = Simulation(model; Δt=1, stop_iteration=1)
+        simulation.output_writers[:zarr] = ZarrWriter(model, (; T=model.tracers.T);
+                                                      filename,
+                                                      dir = directory,
+                                                      schedule = IterationInterval(1),
+                                                      with_halos,
+                                                      overwrite_existing = true)
+
+        guarding_scalar_indexing(arch) do
+            run!(simulation)
+
+            time_series = FieldTimeSeries(filepath, "T"; architecture=arch)
+            @test length(time_series.times) == 2
+            @test size(time_series.grid) == size(grid)
+        end
+    end
+end

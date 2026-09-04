@@ -62,7 +62,7 @@ for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
 
         @inline $outer_f(i, j, k, grid, closures::Tuple, Ks, args...) = (
                     $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
+                  + $outer_f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
     end
 end
 

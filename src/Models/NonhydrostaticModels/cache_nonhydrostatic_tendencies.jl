@@ -29,3 +29,11 @@ function cache_previous_tendencies!(model::NonhydrostaticModel)
 
     return nothing
 end
+
+# Snapshot `wⁿ`, before any field is stepped, for use in the `implicit_step!`.
+function implicit_advecting_velocities(model)
+    w = model.advecting_vertical_velocity
+    isnothing(w) && return model.velocities
+    parent(w) .= parent(model.velocities.w)
+    return (; w)
+end
