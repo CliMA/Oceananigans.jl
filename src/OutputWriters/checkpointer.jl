@@ -23,7 +23,7 @@ end
                  verbose = false,
                  cleanup = false)
 
-Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
+Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
 To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
@@ -164,10 +164,6 @@ Oceananigans.prognostic_state(obj) = obj
 Oceananigans.prognostic_state(::NamedTuple{()}) = nothing
 Oceananigans.prognostic_state(::NoFileSplitting) = nothing
 Oceananigans.prognostic_state(::FileSizeLimit) = nothing
-Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
-Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
-Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
 Oceananigans.prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
@@ -247,19 +243,23 @@ end
 load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
 Oceananigans.restore_prognostic_state!(obj, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::NamedTuple{()}, from) = nothing
 Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
-Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
 # To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
 Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::NamedTuple,    ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::StructArray,   ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::Ref,           ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::Checkpointer,  ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::OutWriters,    ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::OutWriters, ::Nothing) = nothing
 
 function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
     copyto!(restored, from)
@@ -317,7 +317,7 @@ function Oceananigans.restore_prognostic_state!(restored::Checkpointer, from)
 end
 
 #####
-##### Checkpointing file-based output writers (JLD2Writer, NetCDFWriter)
+##### Checkpointing file-based output writers
 #####
 
 output_key_to_symbol(name::Symbol) = name
@@ -325,6 +325,7 @@ output_key_to_symbol(name::AbstractString) = Symbol(name)
 
 output_lookup_key(::JLD2Writer, name::Symbol) = name
 output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
+output_lookup_key(::ZarrWriter, name::Symbol) = name
 
 function Oceananigans.prognostic_state(writer::OutWriters)
     wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
