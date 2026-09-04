@@ -857,12 +857,13 @@ guarding_scalar_indexing(f, arch) = f()
         model = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T)
 
         filename = "test_zarr_scalar_indexing"
-        filepath = joinpath(mktemp(), filename * ".zarr")
+        directory = mktempdir()
+        filepath = joinpath(directory, filename * ".zarr")
 
         simulation = Simulation(model; Δt=1, stop_iteration=1)
         simulation.output_writers[:zarr] = ZarrWriter(model, (; T=model.tracers.T);
                                                       filename,
-                                                      dir = ".",
+                                                      dir = directory,
                                                       schedule = IterationInterval(1),
                                                       with_halos,
                                                       overwrite_existing = true)
