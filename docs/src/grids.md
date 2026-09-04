@@ -1061,7 +1061,8 @@ nothing # hide
 Now we're getting somewhere. Let's note a few things:
 
 * For the second example, we explicitly specified `child_architecture = CPU()` to distribute
-  the grid across CPUs. Changing this to `child_architecture = GPU()` distributes the grid across GPUs.
+  the grid across CPUs. Changing this to `child_architecture = GPU()` distributes the grid across GPUs;
+  see [Multi-GPU simulations with NCCL](@ref nccl_multi_gpu) for GPU communication through NCCL.
 
 * We built the grid with `size = (48, 48, 16)`, but ended up with a `24×48×16` grid. Why's that?
   Well, `(48, 48, 16)` is the size of the _global_ grid, or in other words, the grid that we would get
@@ -1207,3 +1208,61 @@ using MPI
 run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
 nothing # hide
 ```
+
+### [Multi-GPU simulations with NCCL](@id nccl_multi_gpu)
+
+`Distributed(GPU())` passes GPU buffers to MPI directly, which requires a CUDA-aware MPI.
+Alternatively, the [`NCCLDistributed`](@ref) architecture communicates between GPUs through
+[NCCL](https://developer.nvidia.com/nccl), the NVIDIA Collective Communications Library.
+It is provided by the `OceananigansNCCLExt` extension, which is loaded when both `CUDA` and `NCCL`
+are imported.
+
+!!! note "Requirements"
+    * NVIDIA GPUs, with `CUDA` and `NCCL` in the environment alongside `MPI`.
+    * MPI still launches the job (`mpiexec`, `srun`) and must be initialized, as for `Distributed`.
+    * Exactly one MPI rank per GPU. With Slurm, use `--ntasks-per-node` equal to the number of GPUs
+      per node and `--gpus-per-task=1`.
+    * A `Partition` with `z = 1`, as for `Distributed`.
+
+The following script runs on 4 GPUs. It cannot be executed by the documentation build, so unlike
+the examples above it is not run here.
+
+```julia
+using MPI
+using CUDA
+using NCCL
+using Oceananigans
+
+architecture = NCCLDistributed(GPU(); partition = Partition(x = 2, y = 2))
+
+grid = RectilinearGrid(architecture,
+                       size = (256, 256, 64),
+                       extent = (1, 1, 1),
+                       topology = (Periodic, Periodic, Bounded))
+
+model = NonhydrostaticModel(grid)
+```
+
+```bash
+mpiexec -n 4 julia --project multi_gpu_script.jl
+```
+
+With `NCCLDistributed`, communication is split between NCCL and MPI:
+
+* NCCL carries the halo exchange in ``x`` and ``y``, including corners, and the transposes of the
+  distributed FFT-based pressure solvers used by [`NonhydrostaticModel`](@ref).
+* MPI bootstraps the NCCL communicator and carries reductions, broadcasts and barriers, such as
+  `maximum` or `mean` of a distributed field. GPU buffers passed to these MPI calls are staged
+  through host memory, so MPI does not need to be CUDA-aware.
+
+Everything else -- `Partition`, `@onrank`, `@handshake`, output writers -- works as with `Distributed`.
+NCCL transfers are issued on a dedicated CUDA stream, so the models overlap them with computations
+in the interior of the local grid, as they do with MPI. `synchronized_communication = true` disables
+the overlap.
+
+!!! tip "Troubleshooting"
+    Setting the environment variable `NCCL_DEBUG=INFO` prints the transport that NCCL selects
+    between each pair of ranks. On HPE Cray EX systems, see [`sanitize_environ!`](@ref) for a
+    Cray MPICH bug affecting multi-node GPU jobs.
+
+See [`NCCLDistributed`](@ref) for the full list of arguments.
