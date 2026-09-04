@@ -43,7 +43,8 @@ julia> model = NonhydrostaticModel(grid; boundary_conditions=(u=no_slip_field_bc
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -488,7 +489,9 @@ julia> model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   ├── momentum: Centered(order=2)
+│   └── c: Centered(order=2)
 ├── tracers: c
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -595,7 +598,8 @@ model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocit
 NonhydrostaticModel{CPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
