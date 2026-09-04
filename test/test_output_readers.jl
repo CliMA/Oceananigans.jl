@@ -725,7 +725,7 @@ function test_field_time_series_time_average(arch)
     end
 
     # Windows of 31, 31, and the 2 units left over, so samples 4 and 8 straddle an edge.
-    averaged = time_average(ramp, bounds, 31)
+    averaged = @test_logs (:warn, r"last window") time_average(ramp, bounds, 31)
     values = Array(interior(averaged))
 
     @test Array(averaged.times) == [15.5, 46.5, 63]

@@ -26,21 +26,47 @@ end
                                             convert(FT, NaN))
 end
 
-# TODO: once #5761 (`FieldTimeSeriesOperation`) lands, make this a lazy operation over `fts`
-# whose window `w` is computed from its overlapping samples on slide, and materialize it here.
 """
 $(TYPEDSIGNATURES)
 
 Average `fts` onto consecutive windows of length `window`, in the units of `fts.times`.
 
 `bounds` has `length(fts.times) + 1` entries and sample `n` covers `[bounds[n], bounds[n+1])`.
-The windows tile `[first(bounds), last(bounds))` from `first(bounds)`, the last one truncated
-at `last(bounds)`, and each sample is weighted by its overlap with the window. `NaN` samples
-are skipped and the remaining weights renormalized, so a window with no valid sample is `NaN`.
+The windows tile `[first(bounds), last(bounds))` from `first(bounds)`, the last one truncated at
+`last(bounds)` with a warning, and each sample is weighted by its overlap with the window. `NaN`
+samples are skipped and the remaining weights renormalized, so a window with no valid sample is `NaN`.
 
 The result is a `FieldTimeSeries` with the grid, indices, and time indexing of `fts` and
 times at the window centers. Samples are read one at a time through `fts[n]`, so `fts` may
 keep only part of its record in memory.
+
+Example
+=======
+
+Average four daily samples onto two-day windows:
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Units
+
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+daily = FieldTimeSeries{Center, Center, Center}(grid, (0.5:3.5) * days)
+
+sample = CenterField(grid)
+for n in 1:4
+    set!(sample, n)
+    set!(daily, sample, n)
+end
+
+bounds = (0:4) * days # sample n covers [bounds[n], bounds[n+1])
+averaged = time_average(daily, bounds, 2days)
+Array(interior(averaged, 1, 1, 1, :))
+
+# output
+2-element Vector{Float64}:
+ 1.5
+ 3.5
+```
 """
 function time_average(fts::FieldTimeSeries, bounds, window)
     Nt = length(fts.times)
@@ -48,7 +74,10 @@ function time_average(fts::FieldTimeSeries, bounds, window)
         throw(ArgumentError("bounds must have $(Nt + 1) entries, found $(length(bounds))"))
 
     edges = collect(first(bounds):window:last(bounds))
-    last(edges) < last(bounds) && push!(edges, last(bounds))
+    if last(edges) < last(bounds)
+        push!(edges, last(bounds))
+        @warn "The last window spans $(last(bounds) - edges[end - 1]) rather than $window"
+    end
     Nw = length(edges) - 1
     times = [(edges[w] + edges[w + 1]) / 2 for w in 1:Nw]
 
