@@ -361,7 +361,8 @@ function Oceananigans.restore_prognostic_state!(restored::OutWriters, from)
             end
         end
 
-        averaged_outputs = filter(output -> output isa WindowedTimeAverage, values(restored.outputs))
+        averaged_outputs = [output for output in values(writer.outputs)
+                            if output isa IntervalWindowedTimeAverage]
         if !isempty(averaged_outputs)
             first_average = first(averaged_outputs)::WindowedTimeAverage
             restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
@@ -384,7 +385,8 @@ function reset_restored_time_average!(average::WindowedTimeAverage, clock)
 end
 
 function reconcile_restored_output_schedule!(writer::OutWriters, model)
-    averaged_outputs = filter(output -> output isa IntervalWindowedTimeAverage, values(writer.outputs))
+    averaged_outputs = [output for output in values(writer.outputs)
+                        if output isa IntervalWindowedTimeAverage]
     isempty(averaged_outputs) && return nothing
 
     first_average = first(averaged_outputs)::IntervalWindowedTimeAverage

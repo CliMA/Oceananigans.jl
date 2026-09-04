@@ -71,10 +71,10 @@ end
 
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
-    loc === instantiated_location(f) && grid === f.grid && return f
+    loc == instantiated_location(f) && grid == f.grid && return f
 
     msg = """
-    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+    Cannot reconstruct field, originally located at $(instantiated_location(f)), at $loc.
 
     Destination grid:
     $grid
