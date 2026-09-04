@@ -1,7 +1,7 @@
 using Adapt
 using Oceananigans.Grids: AbstractGrid, AbstractCurvilinearGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
-using Oceananigans.Fields: AbstractField, Field, default_indices, indices, instantiated_location, location
+using Oceananigans.Fields: AbstractField, Field, default_indices, instantiated_location, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
@@ -96,25 +96,43 @@ end
 ##### Nodes
 #####
 
-# Field node coordinates use the same lazy-operation interface as grid spacings. This avoids
-# materializing coordinate arrays (which is particularly important for curvilinear grids) and
-# lets a node coordinate participate directly in AbstractOperations.
-#
-# We constrain the grid type explicitly so these methods are more specific than the legacy
-# `Field` methods in Fields/field.jl, while leaving the one-dimensional raw grid-coordinate
-# accessors (for example `xnodes(grid, Center())`) unchanged.
-@inline function node_field(metric::NodeMetric, field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid}
-    op = grid_metric_operation(instantiated_location(field), metric, field.grid)
-    return Field(op; indices=indices(field))
+# The source field is deliberately an argument of these kernels even though its data are not
+# used. `KernelFunctionOperation.indices` intersects the indices of its arguments, so carrying
+# the field here makes windowing propagate naturally to the node operation.
+@inline xnode_for_field(i, j, k, grid, field) = xnode(i, j, k, grid, instantiated_location(field)...)
+@inline ynode_for_field(i, j, k, grid, field) = ynode(i, j, k, grid, instantiated_location(field)...)
+@inline znode_for_field(i, j, k, grid, field) = znode(i, j, k, grid, instantiated_location(field)...)
+@inline rnode_for_field(i, j, k, grid, field) = rnode(i, j, k, grid, instantiated_location(field)...)
+@inline λnode_for_field(i, j, k, grid, field) = λnode(i, j, k, grid, instantiated_location(field)...)
+@inline φnode_for_field(i, j, k, grid, field) = φnode(i, j, k, grid, instantiated_location(field)...)
+
+@inline function node_operation(kernel, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ}
+    return KernelFunctionOperation{LX, LY, LZ}(kernel, field.grid, field)
 end
 
-@inline xnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(XNode(), field)
-@inline ynodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(YNode(), field)
-@inline znodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(ZNode(), field)
-@inline rnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(RNode(), field)
+# These methods are intentionally more specific than the legacy `Field` methods in
+# Fields/field.jl. The no-keyword interface now mirrors `xspacings(field)`: it returns a lazy
+# operation. Keyword calls retain the raw-coordinate behavior for compatibility with callers
+# that explicitly request, for example, halo nodes.
+@inline xnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(xnode_for_field, field)
+@inline ynodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(ynode_for_field, field)
+@inline znodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(znode_for_field, field)
+@inline rnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(rnode_for_field, field)
 
-@inline λnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_field(ΛNode(), field)
-@inline φnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_field(ΦNode(), field)
+@inline λnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(λnode_for_field, field)
+@inline φnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(φnode_for_field, field)
+
+@inline xnodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
+    xnodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[1], kwargs...)
+
+@inline ynodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
+    ynodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[2], kwargs...)
+
+@inline znodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
+    znodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[3], kwargs...)
+
+@inline rnodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
+    rnodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[3], kwargs...)
 
 #####
 ##### Spacings
