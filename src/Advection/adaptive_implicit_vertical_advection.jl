@@ -103,11 +103,17 @@ field the scheme advects, or `nothing` for the `momentum` entry.
 """
 update_advection!(advection, model) = nothing
 
-function update_advection!(advection::NamedTuple, model)
-    for (name, scheme) in pairs(advection)
-        update_advection!(scheme, model, get(model.tracers, name, nothing))
-    end
-    return nothing
+# `advection` is `(momentum, tracer_names...)`, with the tracer entries in `model.tracers` order.
+@inline function update_advection!(advection::NamedTuple, model)
+    update_advection!(advection.momentum, model, nothing)
+    return update_tracer_advection!(Base.tail(values(advection)), values(model.tracers), model)
+end
+
+@inline update_tracer_advection!(::Tuple{}, ::Tuple{}, model) = nothing
+
+@inline function update_tracer_advection!(schemes::Tuple, tracers::Tuple, model)
+    update_advection!(first(schemes), model, first(tracers))
+    return update_tracer_advection!(Base.tail(schemes), Base.tail(tracers), model)
 end
 
 update_advection!(scheme, model, tracer) = nothing
