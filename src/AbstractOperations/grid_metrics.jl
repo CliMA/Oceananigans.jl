@@ -110,29 +110,40 @@ end
     return KernelFunctionOperation{LX, LY, LZ}(kernel, field.grid, field)
 end
 
-# These methods are intentionally more specific than the legacy `Field` methods in
-# Fields/field.jl. The no-keyword interface now mirrors `xspacings(field)`: it returns a lazy
-# operation. Keyword calls retain the raw-coordinate behavior for compatibility with callers
-# that explicitly request, for example, halo nodes.
-@inline xnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(xnode_for_field, field)
-@inline ynodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(ynode_for_field, field)
-@inline znodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(znode_for_field, field)
-@inline rnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_operation(rnode_for_field, field)
+# No-keyword calls mirror `xspacings(field)` and return lazy operations. Explicit coordinate
+# keywords retain the raw-coordinate behavior for compatibility (for example,
+# `xnodes(field; with_halos=true)`). `with_halos=nothing` lets us distinguish omission from an
+# explicit `false` because keyword arguments do not participate in Julia method dispatch.
+@inline function xnodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(xnode_for_field, field)
+    with_halos = something(with_halos, false)
+    return xnodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[1], kwargs...)
+end
+
+@inline function ynodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(ynode_for_field, field)
+    with_halos = something(with_halos, false)
+    return ynodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[2], kwargs...)
+end
+
+@inline function znodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(znode_for_field, field)
+    with_halos = something(with_halos, false)
+    return znodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[3], kwargs...)
+end
+
+@inline function rnodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(rnode_for_field, field)
+    with_halos = something(with_halos, false)
+    return rnodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[3], kwargs...)
+end
 
 @inline λnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(λnode_for_field, field)
 @inline φnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(φnode_for_field, field)
-
-@inline xnodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
-    xnodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[1], kwargs...)
-
-@inline ynodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
-    ynodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[2], kwargs...)
-
-@inline znodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
-    znodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[3], kwargs...)
-
-@inline rnodes(field::Field{LX, LY, LZ, O, G}; kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid} =
-    rnodes(field.grid, instantiated_location(field)...; indices=Oceananigans.Fields.indices(field)[3], kwargs...)
 
 #####
 ##### Spacings
