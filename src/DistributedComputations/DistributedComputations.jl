@@ -1,7 +1,7 @@
 module DistributedComputations
 
 export
-    Distributed, Partition, Equal, Fractional,
+    Distributed, NCCLDistributed, Partition, Equal, Fractional,
     child_architecture, reconstruct_global_grid, partition,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
@@ -38,7 +38,43 @@ include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
 
-function NCCLDistributed end
+"""
+$(TYPEDSIGNATURES)
+
+Return a [`Distributed`](@ref) architecture whose halo exchange in `x` and `y` (including
+corners) and whose transposes for the distributed FFT-based pressure solvers use NCCL
+(NVIDIA Collective Communications Library). MPI is still used to launch the job, to bootstrap
+the NCCL communicator, and for reductions, broadcasts and barriers; device buffers passed to
+these MPI calls are staged through host memory, so MPI does not need to be CUDA-aware.
+
+Provided by the `OceananigansNCCLExt` extension: requires `using CUDA` and `using NCCL`,
+NVIDIA GPUs, and one MPI rank per GPU.
+
+## Positional arguments
+
+- `child_architecture`: must be a CUDA `GPU()`. Default: `GPU()`.
+
+## Keyword arguments
+
+Same as [`Distributed`](@ref): `partition` (use `z = 1`), `devices`, `communicator`,
+`synchronized_communication`.
+
+See the manual section [Multi-GPU simulations with NCCL](@ref nccl_multi_gpu).
+"""
+function NCCLDistributed(child_architecture = GPU(); kwargs...)
+    error("""
+    NCCLDistributed is provided via an extension and requires CUDA and NCCL,
+    and a CUDA `GPU()` child architecture.
+
+    Fix:
+      julia> using CUDA, NCCL
+
+      julia> NCCLDistributed(GPU(); ...)
+
+    If NCCL isn't installed:
+      julia> using Pkg; Pkg.add("NCCL")
+    """)
+end
 
 fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 

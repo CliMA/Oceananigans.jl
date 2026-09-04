@@ -61,6 +61,11 @@ using CUDA
     @onrank split_comm 1 @test a == [2, 4, 6, 8, 10]
 end
 
+@testset "NCCLDistributed fallback" begin
+    # The extension only defines the CUDA `GPU` method, so a CPU child architecture reaches the fallback
+    @test_throws ErrorException NCCLDistributed(CPU())
+end
+
 #=
 @testset "Distributed architectures" begin
     for arch in test_architectures()

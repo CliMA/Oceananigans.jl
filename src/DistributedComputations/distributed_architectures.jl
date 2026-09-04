@@ -207,6 +207,8 @@ end
                 synchronized_communication = false)
 
 Return a distributed architecture that uses MPI for communications.
+With `child_architecture = GPU()`, device buffers are passed to MPI directly, which requires
+a CUDA-aware MPI; see [`NCCLDistributed`](@ref) for communication through NCCL instead.
 
 Positional arguments
 ====================

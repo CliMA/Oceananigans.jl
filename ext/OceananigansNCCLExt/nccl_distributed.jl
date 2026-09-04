@@ -57,7 +57,8 @@ end
 ##### Type aliases for dispatch
 #####
 
-const NCCLDistributedArchitecture = Distributed{<:GPU, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
+const CUDAGPU = GPU{<:CUDABackend}
+const NCCLDistributedArchitecture = Distributed{<:CUDAGPU, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
 const NCCLDistributedGrid{FT, TX, TY, TZ}  = Oceananigans.Grids.AbstractGrid{FT, TX, TY, TZ, <:NCCLDistributedArchitecture}
 const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedGrid}
 
@@ -65,8 +66,8 @@ const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:An
 ##### NCCLDistributed constructor
 #####
 
-function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
-    mpi_arch = Distributed(child_arch; partition, kwargs...)
+function DC.NCCLDistributed(child_architecture::CUDAGPU; partition = nothing, kwargs...)
+    mpi_arch = Distributed(child_architecture; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
     comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)
     nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream)
