@@ -26,6 +26,7 @@ end
                                             convert(FT, NaN))
 end
 
+# TODO: make this a lazy `FieldTimeSeriesOperation` once #5761 lands.
 """
 $(TYPEDSIGNATURES)
 
