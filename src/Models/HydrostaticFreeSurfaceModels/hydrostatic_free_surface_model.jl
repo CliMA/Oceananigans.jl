@@ -345,7 +345,7 @@ stash_vertical_velocity!(transport_velocities, velocities, free_surface) = updat
 stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
-update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst::Field, src::Field) = copyto!(parent(dst), parent(src))
 update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
