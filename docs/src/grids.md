@@ -1224,8 +1224,7 @@ are imported.
       per node and `--gpus-per-task=1`.
     * A `Partition` with `z = 1`, as for `Distributed`.
 
-The following script runs on 4 GPUs. It cannot be executed by the documentation build, so unlike
-the examples above it is not run here.
+The following script runs on 4 GPUs.
 
 ```julia
 using MPI

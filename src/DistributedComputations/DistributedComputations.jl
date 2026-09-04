@@ -50,13 +50,11 @@ these MPI calls are staged through host memory, so MPI does not need to be CUDA-
 Provided by the `OceananigansNCCLExt` extension: requires `using CUDA` and `using NCCL`,
 NVIDIA GPUs, and one MPI rank per GPU.
 
-Positional arguments
-====================
+## Positional arguments
 
 - `child_architecture`: must be a CUDA `GPU()`. Default: `GPU()`.
 
-Keyword arguments
-=================
+## Keyword arguments
 
 Same as [`Distributed`](@ref): `partition` (use `z = 1`), `devices`, `communicator`,
 `synchronized_communication`.
