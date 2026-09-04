@@ -1,10 +1,11 @@
 using Adapt
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, AbstractCurvilinearGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
-using Oceananigans.Fields: AbstractField, default_indices, location
+using Oceananigans.Fields: AbstractField, Field, default_indices, indices, instantiated_location, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
+import Oceananigans.Grids: xnodes, ynodes, znodes, rnodes, λnodes, φnodes
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
 const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
@@ -90,6 +91,30 @@ function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid)
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
 end
+
+#####
+##### Nodes
+#####
+
+# Field node coordinates use the same lazy-operation interface as grid spacings. This avoids
+# materializing coordinate arrays (which is particularly important for curvilinear grids) and
+# lets a node coordinate participate directly in AbstractOperations.
+#
+# We constrain the grid type explicitly so these methods are more specific than the legacy
+# `Field` methods in Fields/field.jl, while leaving the one-dimensional raw grid-coordinate
+# accessors (for example `xnodes(grid, Center())`) unchanged.
+@inline function node_field(metric::NodeMetric, field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid}
+    op = grid_metric_operation(instantiated_location(field), metric, field.grid)
+    return Field(op; indices=indices(field))
+end
+
+@inline xnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(XNode(), field)
+@inline ynodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(YNode(), field)
+@inline znodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(ZNode(), field)
+@inline rnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractGrid} = node_field(RNode(), field)
+
+@inline λnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_field(ΛNode(), field)
+@inline φnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_field(ΦNode(), field)
 
 #####
 ##### Spacings
