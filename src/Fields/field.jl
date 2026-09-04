@@ -850,6 +850,17 @@ end
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
+# Index reductions: locate extrema within `interior(c)`, consistently with `nodes(c)`.
+# The generic fallbacks scalar-index on the GPU and are blind to immersed boundaries;
+# here immersed or conditioned cells are masked with the neutral element before the search.
+for (locator, neutral) in ((:argmax, -Inf), (:findmax, -Inf), (:argmin, Inf), (:findmin, Inf))
+    @eval function Base.$locator(c::AbstractField; condition = nothing, mask = $neutral)
+        operand = condition_operand(c, condition, convert(eltype(c), mask))
+        values = operand === c ? interior(c) : interior(Field(operand))
+        return Base.$locator(values)
+    end
+end
+
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     mask = convert(eltype(c), mask)
     operator = condition_operand(f, c, condition, mask)
