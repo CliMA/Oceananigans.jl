@@ -178,6 +178,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @testset "coriolis=nothing" begin
                         @info "Testing compute_simple_Gu! on RectilinearGrid($topo) with coriolis=nothing..."
                         for advection in advection_schemes
+                            # We want to select differed setting based on reactant
+                            advection = Oceananigans.Advection.materialize_advection(advection, reactant_grid)
                             @testset "advection=$(adv_name(advection))" begin
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
@@ -199,6 +201,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         @info "Testing compute_simple_Gu! on RectilinearGrid($topo) with FPlane Coriolis..."
                         coriolis = FPlane(f=1e-4)
                         for advection in advection_schemes
+                            # We want to select differed setting based on reactant
+                            advection = Oceananigans.Advection.materialize_advection(advection, reactant_grid)
                             @testset "advection=$(adv_name(advection))" begin
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
@@ -248,6 +252,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 @testset "coriolis=nothing" begin
                     @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
                     for advection in advection_schemes
+                        # We want to select differed setting based on reactant
+                        advection = Oceananigans.Advection.materialize_advection(advection, reactant_grid)
                         @testset "advection=$(adv_name(advection))" begin
                             fill!(vanilla_Gu, 0)
                             fill!(reactant_Gu, 0)
@@ -269,6 +275,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
                     coriolis = HydrostaticSphericalCoriolis()
                     for advection in advection_schemes
+                        # We want to select differed setting based on reactant
+                        advection = Oceananigans.Advection.materialize_advection(advection, reactant_grid)
                         @testset "advection=$(adv_name(advection))" begin
                             fill!(vanilla_Gu, 0)
                             fill!(reactant_Gu, 0)

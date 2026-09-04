@@ -8,13 +8,14 @@ export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate
 
-using OffsetArrays: OffsetArray
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid,
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid, Periodic,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
 using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator
@@ -40,7 +41,7 @@ include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
 """
-    field(loc, a, grid)
+$(TYPEDSIGNATURES)
 
 Build a field from array `a` at `loc` and on `grid`.
 """

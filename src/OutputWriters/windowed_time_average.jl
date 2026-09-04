@@ -1,12 +1,13 @@
-using Oceananigans.Diagnostics: AbstractDiagnostic
-using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Utils: AbstractSchedule, prettytime
-using Oceananigans.TimeSteppers: Clock
-using Dates: Period, Second, value
+using Dates: Period, Second, value, AbstractDateTime
 
-import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
-import Oceananigans.Utils: TimeInterval, SpecifiedTimes
-import Oceananigans.Fields: location, indices, set!
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.Diagnostics: AbstractDiagnostic
+using Oceananigans.Fields: Fields, set!, indices, location
+using Oceananigans.Grids: Grids, grid
+using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Utils: Utils, AbstractSchedule, prettytime, period_type, time_type,
+                          TimeInterval, initialize_actuations!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -34,7 +35,7 @@ during the averaging window. For example, `stride=1` computes output every itera
 whereas `stride=2` computes output every other iteration. Time-averages with
 longer `stride`s are faster to compute, but less accurate.
 
-The time-average of ``a`` is a left Riemann sum corresponding to
+The time-average of ``a`` is a right Riemann sum corresponding to
 
 ```math
 ⟨a⟩ = T⁻¹ \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \\, ,
@@ -80,14 +81,19 @@ JLD2Writer scheduled on TimeInterval(4 days):
 ├── filepath: averaged_velocity_data.jld2
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
 ├── array_type: Array{Float32}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── including: [:coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
     window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
-    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, 0, false)
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    window = convert(IT, window)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return AveragedTimeInterval{IT, TT}(interval, window, stride, first_actuation_time, 0, false)
 end
 
 function next_actuation_time(sch::AveragedTimeInterval)
@@ -104,7 +110,21 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 
-initialize!(sch::AveragedTimeInterval, model) = nothing
+Oceananigans.initialize!(sch::AveragedTimeInterval, model) = initialize_actuations!(sch, model.clock.time)
+
+function Utils.initialize_actuations!(schedule::AveragedTimeInterval, first_actuation_time)
+    if schedule.first_actuation_time isa Number && first_actuation_time isa AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T AveragedTimeInterval times with DateTime clock. Use a Dates.Period instead."
+        throw(ArgumentError(msg))
+    end
+
+    schedule.first_actuation_time = first_actuation_time
+    schedule.actuations = 0
+
+    return true
+end
+
 outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
 
@@ -117,27 +137,35 @@ function end_of_window(sch::AveragedTimeInterval, clock)
     return clock.time >= t★ - eps(t★)
 end
 
-TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
+Utils.TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
 #####
 ##### Checkpointing
 #####
 
-function prognostic_state(schedule::AveragedTimeInterval)
-    return (first_actuation_time = schedule.first_actuation_time,
+function Oceananigans.prognostic_state(schedule::AveragedTimeInterval)
+    return (interval = schedule.interval,
+            window = schedule.window,
+            first_actuation_time = schedule.first_actuation_time,
             actuations = schedule.actuations,
             collecting = schedule.collecting)
 end
 
-function restore_prognostic_state!(restored::AveragedTimeInterval, from)
-    restored.first_actuation_time = from.first_actuation_time
-    restored.actuations = from.actuations
+function Oceananigans.restore_prognostic_state!(restored::AveragedTimeInterval, from)
+    same_cadence = !hasproperty(from, :interval) ||
+                   (restored.interval == from.interval && restored.window == from.window)
+
+    if same_cadence
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
+
     restored.collecting = from.collecting
     return restored
 end
 
-restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
 
 #####
 ##### WindowedTimeAverage
@@ -160,7 +188,7 @@ stride(wta::IntervalWindowedTimeAverage) = wta.schedule.stride
 stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
 
 """
-    WindowedTimeAverage(operand, model=nothing; schedule)
+    WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=true)
 
 Returns an object for computing running averages of `operand` over `schedule.window` and
 recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval` or `AveragedSpecifiedTimes`.
@@ -190,10 +218,11 @@ end
 get_default_time(schedule::AveragedTimeInterval) = zero(typeof(schedule.interval))
 get_default_time(schedule::AveragedSpecifiedTimes) = zero(eltype(schedule.specified_times.times))
 
-# Time-averaging doesn't change spatial location
-location(wta::WindowedTimeAverage) = location(wta.operand)
-indices(wta::WindowedTimeAverage) = indices(wta.operand)
-set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
+# Time-averaging doesn't change spatial location or grid
+Grids.grid(wta::WindowedTimeAverage) = grid(wta.operand)
+Fields.location(wta::WindowedTimeAverage) = location(wta.operand)
+Fields.indices(wta::WindowedTimeAverage) = indices(wta.operand)
+Fields.set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
 Base.parent(wta::WindowedTimeAverage) = parent(wta.result)
 
 # This is called when output is requested.
@@ -224,7 +253,7 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     T_current = period_to_number(clock.time - wta.window_start_time)
     T_previous = period_to_number(wta.previous_collection_time - wta.window_start_time)
 
-    # Accumulate left Riemann sum
+    # Accumulate right Riemann sum
     @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
 
     # Save time of integrand collection
@@ -299,9 +328,9 @@ end
 
 
 # So it can be used as a Diagnostic
-run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
+Oceananigans.run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
-function prognostic_state(wta::WindowedTimeAverage)
+function Oceananigans.prognostic_state(wta::WindowedTimeAverage)
     return (result = prognostic_state(wta.result),
             window_start_time = wta.window_start_time,
             window_start_iteration = wta.window_start_iteration,
@@ -309,16 +338,28 @@ function prognostic_state(wta::WindowedTimeAverage)
             schedule = prognostic_state(wta.schedule))
 end
 
-function restore_prognostic_state!(restored::WindowedTimeAverage, from)
+function Oceananigans.restore_prognostic_state!(restored::WindowedTimeAverage, from)
     restore_prognostic_state!(restored.result, from.result)
     restored.window_start_time = from.window_start_time
     restored.window_start_iteration = from.window_start_iteration
     restored.previous_collection_time = from.previous_collection_time
+
+    same_cadence = !hasproperty(from.schedule, :interval) ||
+                   (restored.schedule.interval == from.schedule.interval &&
+                    restored.schedule.window == from.schedule.window)
+
     restore_prognostic_state!(restored.schedule, from.schedule)
+
+    if !same_cadence
+        window_start_time = from.schedule.collecting ? from.window_start_time : from.previous_collection_time
+        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window - restored.schedule.interval
+        restored.schedule.actuations = 0
+    end
+
     return restored
 end
 
-restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
 
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 
@@ -341,7 +382,7 @@ time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 const AveragedTimeSchedule = Union{AveragedTimeInterval, AveragedSpecifiedTimes}
 
 """
-    time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)
+$(TYPEDSIGNATURES)
 
 Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
 

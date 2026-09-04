@@ -3,9 +3,10 @@ module ShallowWaterModels
 export ShallowWaterModel, ShallowWaterScalarDiffusivity,
        ConservativeFormulation, VectorInvariantFormulation
 
+using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
@@ -24,7 +25,7 @@ include("show_shallow_water_model.jl")
 #####
 
 """
-    fields(model::ShallowWaterModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers` for
 a `ShallowWaterModel` model.
@@ -32,7 +33,7 @@ a `ShallowWaterModel` model.
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `ShallowWaterModel`.
 """

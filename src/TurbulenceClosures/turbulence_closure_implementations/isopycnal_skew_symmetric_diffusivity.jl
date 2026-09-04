@@ -1,4 +1,4 @@
-using Oceananigans.Fields: VelocityFields, NamedFieldTuple
+using Oceananigans.Fields: VelocityFields
 
 struct AdvectiveFormulation end
 struct DiffusiveFormulation end
@@ -32,12 +32,7 @@ const NoSkewAdvectionISSD = ISSD{<:Any, <:AdvectiveFormulation, Nothing}
 const issd_coefficient_loc = (Center(), Center(), Face())
 
 """
-    IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
-                                      κ_skew = 0,
-                                      κ_symmetric = 0,
-                                      skew_flux_formulation = DiffusiveFormulation(),
-                                      isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                      slope_limiter = FluxTapering(1e-2))
+$(TYPEDSIGNATURES)
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
@@ -76,13 +71,13 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:DiffusiveFormulation, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:AdvectiveFormulation, N}
     κ_skew = closure.κ_skew
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
@@ -105,7 +100,7 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
     else
-        NamedFieldTuple()
+        NamedTuple()
     end
 
     if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
@@ -116,15 +111,17 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
     return closure_fields
 end
 
-function compute_closure_fields!(closure_fields, closure::FlavorOfISSD, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::FlavorOfISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
-    launch!(arch, grid, parameters,
-            compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+    if TD() isa VerticallyImplicitTimeDiscretization
+        launch!(arch, grid, parameters,
+                compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+    end
 
     compute_eddy_velocities!(closure_fields, closure, model; parameters)
 
@@ -143,6 +140,17 @@ end
 end
 
 #####
+##### Utilities
+#####
+
+function Adapt.adapt_structure(to, closure::IsopycnalSkewSymmetricDiffusivity{TD, A, K, S, M, L, N}) where {TD, A, K, S, M, L, N}
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(Adapt.adapt(to, closure.κ_skew),
+                                                       Adapt.adapt(to, closure.κ_symmetric),
+                                                       Adapt.adapt(to, closure.isopycnal_tensor),
+                                                       Adapt.adapt(to, closure.slope_limiter))
+end
+
+#####
 ##### Tapering
 #####
 
@@ -151,7 +159,7 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
@@ -317,7 +325,7 @@ end
                                          (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
-@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
+@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 

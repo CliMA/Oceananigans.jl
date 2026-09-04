@@ -9,9 +9,12 @@ export
     benchmark_time_stepping,
     run_benchmark_simulation,
     run_io_benchmark,
+    run_read_benchmark,
+    path_size,
     BenchmarkResult,
     SimulationResult,
     IOBenchmarkResult,
+    ReadBenchmarkResult,
     BenchmarkMetadata
 
 using Dates
@@ -26,10 +29,19 @@ using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
 
 using NCDatasets
+using Zarr
+
+using Zarr
 
 using DataDeps
 
 using CUDA: CUDA
+# Compatibility for CUDA v5 and v6
+if isdefined(CUDA, :CUDACore)
+    using CUDA: CUDACore
+else
+    const CUDACore = CUDA
+end
 
 const BATHYMETRY_URL = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/ss/bathymetry-for-benchmarks/bathymetry_for_benchmarks"
 

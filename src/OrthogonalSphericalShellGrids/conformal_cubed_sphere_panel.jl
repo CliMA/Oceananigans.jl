@@ -250,7 +250,7 @@ julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids
 
 julia> grid = ConformalCubedSpherePanelGrid(size=(36, 34, 25), z=(-1000, 0))
 36×34×25 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
-├── centered at: North Pole, (λ, φ) = (0.0, 90.0)
+├── centered at: North Pole, (λ, φ) = (0, 90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616164, max(Δλ)=2.58892
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664958, max(Δφ)=2.74119
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -263,7 +263,7 @@ julia> using Oceananigans, Oceananigans.OrthogonalSphericalShellGrids, Rotations
 
 julia> grid = ConformalCubedSpherePanelGrid(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))
 36×34×25 OrthogonalSphericalShellGrid{Float32, Bounded, Bounded, Bounded} on CPU with 1×1×1 halo
-├── centered at: South Pole, (λ, φ) = (0.0, -90.0)
+├── centered at: South Pole, (λ, φ) = (0, -90.0)
 ├── longitude: Bounded  extent 90.0 degrees variably spaced with min(Δλ)=0.616167, max(Δλ)=2.58891
 ├── latitude:  Bounded  extent 90.0 degrees variably spaced with min(Δφ)=0.664956, max(Δφ)=2.7412
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -836,10 +836,12 @@ import Oceananigans.BoundaryConditions: fill_halo_kernels
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::ConformalCubedSpherePanelGridOfSomeKind, loc, indices)
     reduced_dimensions = findall(x -> x isa Nothing, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
-    Nx, Ny  = grid.Nx, grid.Ny
-    Hx, Hy  = grid.Hx, grid.Hy
-    size    = (Nx+2Hx, Ny+2Hy)
-    offset  = (-Hx, -Hy)
+    # Fill the bottom and top halos across the full horizontal span of `data`,
+    # including horizontal halo columns, which participate in panel corner
+    # exchanges. `data` may be reduced or windowed in x and y, so the span is
+    # taken from the array itself rather than from the grid.
+    size    = (Base.size(data, 1), Base.size(data, 2))
+    offset  = (first(axes(data, 1)) - 1, first(axes(data, 2)) - 1)
     side    = Oceananigans.BoundaryConditions.BottomAndTop()
     bcs     = (bcs.bottom, bcs.top)
     bc      = select_bc(bcs)
@@ -862,7 +864,7 @@ end
 import Oceananigans.Operators: Γᶠᶠᶜ
 
 """
-    Γᶠᶠᶜ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, u, v)
+$(TYPEDSIGNATURES)
 
 The vertical circulation associated with horizontal velocities ``u`` and ``v`` on a conformal cubed sphere grid
 """

@@ -3,18 +3,18 @@ using Oceananigans.Fields: AbstractField, instantiated_location
 
 const unary_operators = Set()
 
+"""
+    UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
+
+Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
 struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     arg :: A
     ▶ :: IN
     grid :: G
 
-    @doc """
-        UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
-
-    Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
-    and subsequent interpolation by `▶` on `grid`.
-    """
     function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G,
                                         ::Type{T}=Base.promote_op(op, eltype(arg))) where {LX, LY, LZ, O, A, IN, G, T}
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
@@ -32,6 +32,7 @@ indices(υ::UnaryOperation) = indices(υ.arg)
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
 function _unary_operation(L::Tuple{LX, LY, LZ}, operator, arg, Larg, grid) where {LX, LY, LZ}
+    arg = validate_operand(arg)
     ▶ = interpolation_operator(Larg, L)
     return UnaryOperation{LX, LY, LZ}(operator, arg, ▶, grid)
 end

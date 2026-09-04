@@ -1,8 +1,12 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: constructor_arguments, halo_size
+using Oceananigans.Grids: Face, architecture, constructor_arguments, halo_size, topology, znodes
 using NCDatasets
 using Oceananigans.OutputWriters: write_grid_reconstruction_data!, materialize_from_netcdf, reconstruct_grid
+using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConicGrid
+using Oceananigans.Architectures: on_architecture
+
+cpu_parent_array(array) = Array(parent(on_architecture(CPU(), array)))
 
 #####
 ##### Grid reconstruction tests using constructor_arguments
@@ -226,6 +230,63 @@ function test_latitude_longitude_grid_reconstruction(original_grid)
     return nothing
 end
 
+function test_lambert_conformal_conic_grid_reconstruction(original_grid)
+    args, kwargs = constructor_arguments(original_grid)
+
+    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+
+    @test reconstructed_grid isa LambertConformalConicGrid
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+    @test reconstructed_grid.conformal_mapping == original_grid.conformal_mapping
+    @test topology(reconstructed_grid) == topology(original_grid)
+    @test znodes(reconstructed_grid, Face()) == znodes(original_grid, Face())
+    @test reconstructed_grid.z.Δᵃᵃᶠ == original_grid.z.Δᵃᵃᶠ
+    @test reconstructed_grid.z.Δᵃᵃᶜ == original_grid.z.Δᵃᵃᶜ
+
+    coordinate_names = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ,
+                        :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ)
+
+    metric_names = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+                    :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                    :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+    for name in (coordinate_names..., metric_names...)
+        @test cpu_parent_array(getproperty(reconstructed_grid, name)) ==
+              cpu_parent_array(getproperty(original_grid, name))
+    end
+
+    return nothing
+end
+
+function test_flat_lambert_conformal_conic_grid_reconstruction(original_grid)
+    args, kwargs = constructor_arguments(original_grid)
+
+    reconstructed_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
+
+    @test reconstructed_grid isa LambertConformalConicGrid
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
+    @test reconstructed_grid.conformal_mapping == original_grid.conformal_mapping
+    @test topology(reconstructed_grid) == topology(original_grid)
+
+    coordinate_names = (:λᶜᶜᵃ, :λᶠᶜᵃ, :λᶜᶠᵃ, :λᶠᶠᵃ,
+                        :φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ)
+
+    metric_names = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ,
+                    :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                    :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+
+    for name in (coordinate_names..., metric_names...)
+        @test cpu_parent_array(getproperty(reconstructed_grid, name)) ==
+              cpu_parent_array(getproperty(original_grid, name))
+    end
+
+    return nothing
+end
+
 function test_immersed_grid_reconstruction(original_grid)
     underlying_grid_args, underlying_grid_kwargs, immersed_boundary_args = constructor_arguments(original_grid)
 
@@ -265,7 +326,7 @@ function test_netcdf_grid_reconstruction(original_grid)
     # Create NetCDF dataset and write grid reconstruction data
     filename = "test_netcdf_grid_reconstruction.nc"
     ds = NCDataset(filename, "c")
-    write_grid_reconstruction_data!(ds, original_grid)
+    write_grid_reconstruction_data!(ds, original_grid, 1)
     close(ds)
 
     # Read back the grid reconstruction metadata
@@ -351,6 +412,35 @@ N = 6
             @info "  Testing LatitudeLongitudeGrid reconstruction [$FT, $(typeof(arch))]..."
             test_latitude_longitude_grid_reconstruction(regular_latlon_grid)
             test_latitude_longitude_grid_reconstruction(stretched_latlon_grid)
+        end
+
+        lcc_grid = LambertConformalConicGrid(arch, FT;
+                                             size = (N, N, N),
+                                             center = (-105, 40),
+                                             spacing = 20e3,
+                                             standard_parallels = (30, 60),
+                                             false_easting = 500e3,
+                                             false_northing = -200e3,
+                                             radius = 6.3e6,
+                                             z = (-1, 0),
+                                             halo = (2, 2, 2))
+
+        flat_lcc_grid = LambertConformalConicGrid(arch, FT;
+                                                  size = (N, N),
+                                                  center = (-105, 40),
+                                                  spacing = 20e3,
+                                                  standard_parallels = (30, 60),
+                                                  false_easting = 500e3,
+                                                  false_northing = -200e3,
+                                                  radius = 6.3e6,
+                                                  z = nothing,
+                                                  topology = (Bounded, Bounded, Flat),
+                                                  halo = (2, 2))
+
+        @testset "LambertConformalConicGrid reconstruction tests [$FT, $(typeof(arch))]" begin
+            @info "  Testing LambertConformalConicGrid reconstruction [$FT, $(typeof(arch))]..."
+            test_lambert_conformal_conic_grid_reconstruction(lcc_grid)
+            test_flat_lambert_conformal_conic_grid_reconstruction(flat_lcc_grid)
         end
 
         @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin

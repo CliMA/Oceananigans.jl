@@ -1,10 +1,11 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
+    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -29,8 +30,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -54,7 +55,7 @@ end
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
 
-const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+const ValidFaceBCS = Union{NFBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
@@ -153,6 +154,8 @@ at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
 
+julia> set!(u, (x, y, z) -> x * y); set!(v, (x, y, z) -> x^2 * y);
+
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
@@ -162,18 +165,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(ωₛ)
-2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
-├── indices: (:, :, 4:4)
-├── operand: BinaryOperation at (Face, Face, Center)
-├── status: time=0.0
-└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
 function Field{LX, LY, LZ}(grid::AbstractGrid,
@@ -247,7 +239,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, data_indices, loc, grid, view_indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -273,7 +265,7 @@ end
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
 """
-    view(f::Field, indices...)
+$(TYPEDSIGNATURES)
 
 Returns a `Field` with `indices`, whose `data` is
 a view into `f`, offset to preserve index meaning.
@@ -416,7 +408,7 @@ function interior(a::OffsetArray,
 end
 
 """
-    interior(f::Field)
+$(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
@@ -522,14 +514,14 @@ struct FixedTime{T}
 end
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
 """
 compute_at!(field, time) = compute!(field)
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` if `time != field.status.time`.
 """
@@ -599,6 +591,71 @@ const ReducedField = Union{XReducedField,
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
+
+#####
+##### Fields windowed to a single plane act as boundary conditions on the parallel boundary
+#####
+
+# A field windowed with `indices` stores its data offset to the window (for example the k-axis of
+# `Field(op, indices=(:, :, Nz))` is `Nz:Nz`), so the boundary-normal index of a boundary condition
+# is the window's own slot rather than 1 (which is what reduced fields and plain 2D arrays use).
+# The locations are restricted to `Face`/`Center` so these do not overlap with the reduced fields above.
+const FaceOrCenter = Union{Face, Center}
+const XPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{<:AbstractRange, Colon, Colon}}
+const YPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, <:AbstractRange, Colon}}
+const ZPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, Colon, <:AbstractRange}}
+
+const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
+
+@inline BoundaryConditions.getbc(condition::XPlaneField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[first(condition.indices[1]), j, k]
+@inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
+@inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
+
+function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryConditionClassification, <:PlaneField})
+    plane_field = bc.condition
+    LX, LY, LZ = location(plane_field)
+    condition = Field{LX, LY, LZ}(nothing,
+                                  adapt(to, plane_field.data),
+                                  nothing,
+                                  plane_field.indices,
+                                  nothing,
+                                  nothing,
+                                  nothing)
+    return BoundaryCondition(adapt(to, bc.classification), condition)
+end
+
+# A `Field` used as a boundary condition on dimension `dim` is indexed directly with the tangential
+# indices of the boundary (`getbc(condition, j, k, grid)` for the west and east boundaries, and so on),
+# so it must span the whole boundary: it may not be windowed along the tangential dimensions. Along
+# the boundary-normal dimension `dim` it may be reduced, windowed to a single plane (the `getbc`
+# methods above read it there), or neither, in which case it is windowed to its plane on (`Face`) or
+# adjacent to (`Center`) the boundary.
+function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, side, args...)
+    indices = condition.indices
+    tangential_dims = filter(!=(dim), (1, 2, 3))
+
+    all(indices[d] isa Colon for d in tangential_dims) ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must span the whole boundary, " *
+                            "so it may not be windowed along dimensions $tangential_dims, but has indices $indices."))
+
+    location(condition)[dim] === Nothing || indices[dim] isa Colon || length(indices[dim]) == 1 ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must be reduced along dimension $dim, " *
+                            "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
+                            "and indices $indices."))
+
+    return window_to_boundary(condition, dim, side)
+end
+
+boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
+boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
+
+function window_to_boundary(condition, dim, side)
+    windowed = !(condition.indices[dim] isa Colon)
+    reduced = location(condition)[dim] === Nothing
+    (windowed || reduced) && return condition
+    window = ntuple(d -> d == dim ? boundary_plane(side, condition, dim) : Colon(), 3)
+    return view(condition, window...)
+end
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -705,7 +762,7 @@ get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
 """
-    condition_operand(f::Function, op::AbstractField, condition, mask)
+$(TYPEDSIGNATURES)
 
 Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
 
@@ -868,12 +925,17 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 ##### Checkpointing
 #####
 
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = prognostic_state(field.data))
+    return (; data = on_architecture(CPU(), parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
     return restored
 end
 

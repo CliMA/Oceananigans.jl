@@ -1,0 +1,662 @@
+#####
+##### Zarr output writer for Oceananigans
+#####
+
+function ZarrWriter(model::AbstractModel, outputs;
+                    filename = nothing,
+                    schedule,
+                    dir = ".",
+                    indices = (:, :, :),
+                    with_halos = false,
+                    array_type = Array{Float32},
+                    global_attributes = Dict(),
+                    output_attributes = Dict(),
+                    file_splitting = NoFileSplitting(),
+                    overwrite_existing = false,
+                    verbose = false,
+                    part = 1,
+                    store = nothing,
+                    chunks = nothing,
+                    compressor = nothing,
+                    dimensions = Dict{String, Any}(),
+                    include_grid_metrics = true,
+                    dimension_name_generator = trilocation_dim_name,
+                    dimension_type = Float64)
+
+    # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
+    if store isa Zarr.ZipStore
+        throw(ArgumentError("""
+            ZipStore is read-only in Zarr.jl; ZarrWriter cannot write to one.
+
+            Write to a DirectoryStore (or DictStore) and finalize to zip at the end:
+
+                writer = ZarrWriter(model, outputs; filename="out", ...)
+                run!(simulation)
+                open("out.zip", "w") do io
+                    Zarr.writezip(io, writer.store)
+                end
+            """))
+    end
+
+    # Resolve filepath + store.
+    if isnothing(store)
+        isnothing(filename) && throw(ArgumentError("ZarrWriter requires either `filename` or `store`"))
+        mkpath(dir)
+        filename = auto_extension(filename, ".zarr")
+        filepath = abspath(joinpath(dir, filename))
+        # Construct DirectoryStore eagerly so the struct's `store` field has a concrete
+        # type. The directory itself is not created until `initialize!` runs.
+        store = Zarr.DirectoryStore(filepath)
+    else
+        filepath = string(store)
+    end
+
+    if with_halos && indices != (:, :, :)
+        throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
+    end
+
+    initialize!(file_splitting, model)
+
+    schedule = materialize_schedule(schedule)
+    update_file_splitting_schedule!(file_splitting, filepath)
+
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
+                            for name in keys(outputs))
+    schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
+
+    # Detect unique grids across all outputs. Outputs without a grid (functions,
+    # particles) map to grid_index = nothing.
+    output_grids = Dict{String, Any}()
+    for (n, out) in pairs(d_outputs)
+        g = output_grid(out)
+        output_grids[string(n)] = g
+    end
+    unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
+    output_grid_map = Dict{String, Union{Int, Nothing}}(
+        name => (isnothing(g) ? nothing : findfirst(ug -> ug === g, unique_grids))
+        for (name, g) in output_grids
+    )
+
+    global_attributes = zarr_attribute_dict(global_attributes)
+    output_attributes = Dict{String, Any}(string(name) => zarr_attribute_dict(attributes)
+                                          for (name, attributes) in pairs(output_attributes))
+    dimensions = Dict{String, Any}(string(name) => value for (name, value) in pairs(dimensions))
+
+    dim_grid_suffix(index) = length(unique_grids) == 1 ? nothing : index
+    dimension_attributes = Dict{String, Any}()
+    for (grid_index, grid) in enumerate(unique_grids)
+        attributes = default_dimension_attributes(grid, dimension_name_generator;
+                                                  grid_index=dim_grid_suffix(grid_index))
+        merge!(dimension_attributes, attributes)
+    end
+    output_attributes = merge(dimension_attributes,
+                              default_output_attributes(model),
+                              output_attributes)
+
+    return ZarrWriter(filepath,
+                      store,
+                      unique_grids,
+                      output_grid_map,
+                      d_outputs,
+                      schedule,
+                      array_type,
+                      indices,
+                      global_attributes,
+                      output_attributes,
+                      dimensions,
+                      with_halos,
+                      include_grid_metrics,
+                      overwrite_existing,
+                      verbose,
+                      part,
+                      file_splitting,
+                      compressor,
+                      chunks,
+                      dimension_name_generator,
+                      dimension_type,
+                      false)
+end
+
+zarr_attribute_dict(attributes) =
+    Dict{String, Any}(string(name) => value for (name, value) in pairs(attributes))
+
+# Extract grid for an output. Field-like outputs delegate to `grid(...)`; non-field
+# outputs return nothing.
+output_grid(field::AbstractField)                            = grid(field)
+output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
+output_grid(other)                                           = nothing
+
+#####
+##### Initialization
+#####
+
+"""
+    initialize!(writer::ZarrWriter, model)
+
+Create the Zarr store, output arrays, root-level coordinate arrays, and a growing
+one-dimensional `time` array. Private grid reconstruction metadata is stored in subgroups.
+"""
+function initialize!(writer::ZarrWriter, model)
+    writer.initialized && return nothing
+
+    distributed = is_distributed_arch(model)
+    is_root = !distributed || mpi_rank(global_communicator()) == 0
+    starting_fresh = model.clock.iteration == 0
+
+    # Particles under MPI: not supported in v1.
+    if distributed
+        for (n, out) in pairs(writer.outputs)
+            if out isa LagrangianParticles
+                throw(ArgumentError("ZarrWriter under MPI does not support LagrangianParticles outputs (saw `$n`)."))
+            end
+        end
+    end
+
+    # Overwrite removes the existing directory (root only).
+    if writer.overwrite_existing && starting_fresh && writer.store isa Zarr.DirectoryStore
+        if is_root && !isempty(writer.filepath) && isdir(writer.filepath)
+            rm(writer.filepath; recursive=true, force=true)
+        end
+        zarr_barrier()
+        writer.store = Zarr.DirectoryStore(writer.filepath)
+    end
+
+    # `initialize_zarr_store!` may call MPI collectives (concatenate_local_sizes) when
+    # the model is distributed, so *all* ranks must enter it together. The Zarr write
+    # primitives inside are root-gated.
+    if zarr_store_has_group_safely(writer)
+        if is_root
+            validate_existing_zarr_store(writer)
+        end
+        zarr_barrier()
+    else
+        initialize_zarr_store!(writer, model)
+        zarr_barrier()
+    end
+
+    writer.initialized = true
+    return nothing
+end
+
+# Root checks the filesystem; result is broadcast to other ranks via barrier semantics
+# (no actual MPI broadcast — just both ranks ask the FS and we trust they see the same
+# thing after the rm step's barrier). For simplicity we ask every rank, since reading
+# `.zgroup` is cheap and idempotent.
+zarr_store_has_group_safely(writer) = zarr_store_has_group(writer.store)
+
+#####
+##### Distributed helpers
+#####
+
+is_distributed_arch(model) = architecture(model) isa Distributed
+zarr_barrier()             = mpi_initialized() && (global_barrier(); nothing)
+
+# Per-axis offsets (0-based) for this rank's slab within the global field.
+function rank_global_offsets(field::AbstractField)
+    arch = architecture(field.grid)
+    if !(arch isa Distributed)
+        return ntuple(_ -> 0, length(size(field)))
+    end
+    local_sz = size(field)
+    per_axis_locals = concatenate_local_sizes(local_sz, arch)
+    li = arch.local_index
+    return ntuple(d -> sum(@view(per_axis_locals[d][1:li[d]-1])), length(local_sz))
+end
+
+rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
+    rank_global_offsets(output.operand)
+
+# Global shape of a Field on a (possibly distributed) grid.
+function global_field_size(field::AbstractField)
+    arch = architecture(field.grid)
+    arch isa Distributed || return size(field)
+    local_sz = size(field)
+    per_axis_locals = concatenate_local_sizes(local_sz, arch)
+    return map(sum, per_axis_locals)
+end
+
+# GCD of per-rank local extents along each axis. Used as the default chunk shape
+# for distributed writers; ensures every rank's slab is chunk-aligned.
+function distributed_gcd_chunks(field::AbstractField)
+    arch = architecture(field.grid)
+    arch isa Distributed || return size(field)
+    local_sz = size(field)
+    per_axis_locals = concatenate_local_sizes(local_sz, arch)
+    return map(t -> Int(gcd(t...)), per_axis_locals)
+end
+
+"""
+    zarr_store_has_group(store) -> Bool
+
+True if the store already contains a Zarr v2 group (i.e. a `.zgroup` key at root).
+"""
+zarr_store_has_group(store) = Zarr.is_zgroup(Zarr.ZarrFormat(Val(2)), store, "")
+
+"""
+    validate_existing_zarr_store(writer)
+
+Open the existing Zarr store and check that each output's dtype matches what
+`array_type` would produce. Errors with a clear message on mismatch.
+"""
+function validate_existing_zarr_store(writer::ZarrWriter)
+    g = Zarr.zopen(writer.store, "w")
+    FT_requested = eltype(writer.array_type)
+    for (name, _) in pairs(writer.outputs)
+        name_str = string(name)
+        haskey(g.arrays, name_str) || continue
+        arr_eltype = eltype(g[name_str])
+        if arr_eltype !== FT_requested && !(arr_eltype === Int8 && FT_requested === Bool)
+            throw(ArgumentError(
+                "Zarr array `$name_str` in $(writer.filepath) has dtype $arr_eltype " *
+                "but `array_type` requests $FT_requested. " *
+                "Re-use the original `array_type` or pass `overwrite_existing=true`."))
+        end
+    end
+    return nothing
+end
+
+function initialize_zarr_store!(writer::ZarrWriter, model)
+    arch = architecture(model)
+    distributed = arch isa Distributed
+    is_root = !distributed || mpi_rank(global_communicator()) == 0
+    # Record rank topology at root level for restart validation.
+    root_attrs = copy(writer.global_attributes)
+    if distributed
+        root_attrs["rank_topology"] = [arch.ranks[1], arch.ranks[2], arch.ranks[3]]
+    end
+
+    useful_attributes = Dict("Conventions" => "CF-1.13",
+                             "date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
+                             "Julia" => "This file was generated using " * versioninfo_with_gpu(),
+                             "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
+
+    if writer.with_halos
+        useful_attributes["output_includes_halos"] =
+            "The outputs include data from the halo regions of the grid."
+    end
+
+    root_attrs = merge(useful_attributes, root_attrs)
+
+    add_schedule_metadata!(root_attrs, writer.schedule)
+
+    # Compute the "global" grids that we want to serialize. For distributed grids,
+    # `reconstruct_global_grid` is a collective — all ranks must call it. For non-
+    # distributed grids it's an identity.
+    serialize_grids = Tuple(
+        grid isa DistributedGrid ?
+            Oceananigans.DistributedComputations.reconstruct_global_grid(grid) : grid
+        for grid in writer.grids
+    )
+    if is_root
+        g = Zarr.zgroup(writer.store; attrs=root_attrs)
+
+        time_units = model.clock.time isa AbstractTime ?
+            "seconds since 2000-01-01 00:00:00" : "seconds"
+        time_attrs = Dict{String, Any}(
+            "_ARRAY_DIMENSIONS" => ["time"],
+            "units"             => time_units,
+            "long_name"         => "Time",
+            "standard_name"     => "time",
+            "axis"              => "T",
+        )
+        Zarr.zcreate(writer.dimension_type, g, "time", 0; chunks=(1,), attrs=time_attrs)
+
+        grid_groups = write_zarr_grid_reconstruction!(g, serialize_grids)
+
+        dim_grid_suffix(idx) = length(serialize_grids) == 1 ? nothing : idx
+
+        for (grid_index, (grid_group, grid)) in enumerate(zip(grid_groups, serialize_grids))
+            grid_outputs = Dict(
+                name => output
+                for (name, output) in pairs(writer.outputs)
+                if writer.output_grid_map[string(name)] == grid_index
+            )
+            suffix = dim_grid_suffix(grid_index)
+            write_zarr_grid_coords!(g, grid, grid_outputs, suffix, writer.indices,
+                                    writer.with_halos, writer.dimension_name_generator,
+                                    writer.output_attributes, writer.dimension_type)
+            if writer.include_grid_metrics
+                write_zarr_grid_metrics!(g, grid, writer.indices, writer.with_halos,
+                                         writer.dimension_name_generator, suffix,
+                                         writer.output_attributes)
+            end
+            write_zarr_grid_immersed_boundary!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))
+        end
+    else
+        g = nothing
+    end
+
+    for (name, output) in pairs(writer.outputs)
+        define_zarr_output_variable!(g, writer, output, string(name), model)
+    end
+
+    isnothing(g) || Zarr.consolidate_metadata(g)
+
+    return nothing
+end
+
+
+"""
+    define_zarr_output_variable!(g, writer, output, name, model)
+
+Create a Zarr array for `output` under group `g`, with shape `(spatial_dims..., 0)` and
+chunk `(spatial_chunks..., 1)`. Time grows along the last axis.
+
+Dispatched on output type:
+  - `AbstractField`: uses field location + grid to name dims via `trilocation_dim_name`.
+  - `WindowedTimeAverage{<:AbstractField}`: delegates to the wrapped field.
+  - Anything else (functions, custom callables): requires `writer.dimensions[name]` to
+    supply a tuple of dimension names.
+"""
+
+# NoCompressor's multidimensional single-chunk fastpath can't write to `Vector{UInt8}`-backed stores (`DictStore`, S3); compress there.
+zarr_compressor(compressor, store) = compressor
+zarr_compressor(::Nothing, store) = Zarr.BloscCompressor()
+zarr_compressor(::Nothing, ::Zarr.DirectoryStore) = Zarr.NoCompressor()
+
+function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractField, name, model)
+    arch = architecture(output.grid)
+    distributed = arch isa Distributed
+
+    # On-disk shape and chunk default depend on whether we're distributed.
+    if distributed
+        spatial_size = drop_reduced_dimensions(output, global_field_size(output))
+        gcd_chunks = drop_reduced_dimensions(output, distributed_gcd_chunks(output))
+    else
+        sample = fetch_and_convert_output(output, model, writer)
+        sample = squeeze_reduced_dimensions(output, sample)
+        spatial_size = size(sample)
+        gcd_chunks = spatial_size
+    end
+    FT = eltype(writer.array_type)
+
+    # Chunk shape: user override > distributed-GCD default > full extent.
+    spatial_chunks = if isnothing(writer.chunks)
+        gcd_chunks
+    else
+        length(writer.chunks) == length(spatial_size) ? writer.chunks :
+        length(writer.chunks) == length(spatial_size) + 1 ? writer.chunks[1:end-1] :
+        throw(ArgumentError("`chunks` length $(length(writer.chunks)) doesn't match field rank $(length(spatial_size))"))
+    end
+
+    # Warn (root only) if the GCD-derived chunk gives a pathologically small chunk
+    # count for distributed runs — usually indicates accidental coprime decomposition.
+    # All ranks call concatenate_local_sizes (it's a collective), but only root emits.
+    if distributed && isnothing(writer.chunks)
+        per_axis_locals_for_warn = concatenate_local_sizes(size(output), arch)
+        per_axis_locals_for_warn = drop_reduced_dimensions(output, per_axis_locals_for_warn)
+        if mpi_rank(global_communicator()) == 0
+            for d in 1:length(spatial_size)
+                n_chunks = spatial_size[d] ÷ max(spatial_chunks[d], 1)
+                n_ranks_d = length(per_axis_locals_for_warn[d])
+                if n_chunks > 10 * n_ranks_d
+                    @warn "ZarrWriter: axis $d would produce $n_chunks chunks/timestep across $n_ranks_d ranks (GCD-default). Consider passing an explicit `chunks` kwarg or rebalancing the decomposition."
+                end
+            end
+        end
+    end
+
+    shape  = (spatial_size...,    0)
+    chunks = (spatial_chunks..., 1)
+
+    # _ARRAY_DIMENSIONS in C order (reverse of Julia order, then `time` last in Julia
+    # but first in C order — i.e., the reversed sequence ends in the slowest-varying axis).
+    grid_index = get(writer.output_grid_map, name, nothing)
+    grid_suffix = length(writer.grids) == 1 ? nothing : grid_index
+    spatial_dim_names = filter(!isempty,
+                               field_dimensions(output, writer.dimension_name_generator;
+                                                grid_index=grid_suffix))
+    array_dimensions = reverse(String[spatial_dim_names..., "time"])
+
+    # For distributed runs, the field's local `indices` reflect this rank's slab and
+    # are not meaningful on disk (the on-disk array is the GLOBAL field). Save the
+    # default `(:, :, :)` indices in that case.
+    indices_for_attr = distributed ?
+        [":", ":", ":"] :
+        collect(string.(indices_strings(output)))
+
+    attrs = zarr_attribute_dict(get(writer.output_attributes, name, Dict()))
+    attrs["_ARRAY_DIMENSIONS"] = array_dimensions
+    attrs["location"] = collect(string.(location_strings(output)))
+    attrs["indices"] = indices_for_attr
+
+    coordinates = field_auxiliary_coordinates(output, writer.dimension_name_generator;
+                                              grid_index=grid_suffix)
+    isempty(coordinates) || (attrs["coordinates"] = join(coordinates, " "))
+
+    # Tag with grid_index when there are multiple grids (1-based; matches NetCDFWriter).
+    if length(writer.grids) > 1
+        isnothing(grid_index) || (attrs["grid_index"] = grid_index)
+    end
+
+    compressor = zarr_compressor(writer.compressor, writer.store)
+
+    # Only the root rank persists the array; under distributed writes the other ranks
+    # have already participated in the collectives above (via global_field_size etc.)
+    # and need not touch the store at this point.
+    if !isnothing(g)
+        Zarr.zcreate(FT, g, name, shape...;
+                     chunks=chunks,
+                     compressor=compressor,
+                     attrs=attrs)
+    end
+    return nothing
+end
+
+# WindowedTimeAverage over a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{<:AbstractField}, name, model) =
+    define_zarr_output_variable!(g, writer, output.operand, name, model)
+
+# Function / generic custom output: requires `writer.dimensions[name]` to be set.
+function define_zarr_output_variable!(g, writer::ZarrWriter, output, name, model)
+    if !haskey(writer.dimensions, name)
+        throw(ArgumentError(
+            "`dimensions[$name]` must be provided when constructing ZarrWriter for " *
+            "non-field output $name = $(typeof(output))"))
+    end
+
+    sample = fetch_and_convert_output(output, model, writer)
+    sample_arr = sample isa AbstractArray ? sample : fill(sample)
+    spatial_size = size(sample_arr)
+    FT = eltype(writer.array_type)
+
+    user_dims = collect(string.(writer.dimensions[name]))
+    if length(user_dims) != length(spatial_size)
+        throw(ArgumentError(
+            "`dimensions[$name]` has $(length(user_dims)) entries but the output has " *
+            "$(length(spatial_size)) dimensions"))
+    end
+
+    spatial_chunks = if isnothing(writer.chunks)
+        spatial_size
+    elseif length(writer.chunks) == length(spatial_size)
+        writer.chunks
+    elseif length(writer.chunks) == length(spatial_size) + 1
+        writer.chunks[1:end-1]
+    else
+        throw(ArgumentError("`chunks` length doesn't match output `$name` rank"))
+    end
+
+    shape  = (spatial_size...,    0)
+    chunks = (spatial_chunks..., 1)
+    array_dimensions = reverse(String[user_dims..., "time"])
+
+    attrs = zarr_attribute_dict(get(writer.output_attributes, name, Dict()))
+    attrs["_ARRAY_DIMENSIONS"] = array_dimensions
+
+    compressor = zarr_compressor(writer.compressor, writer.store)
+
+    if !isnothing(g)
+        Zarr.zcreate(FT, g, name, shape...;
+                     chunks=chunks,
+                     compressor=compressor,
+                     attrs=attrs)
+    end
+    return nothing
+end
+
+#####
+##### Per-step write
+#####
+
+function write_output!(writer::ZarrWriter, model::AbstractModel)
+    distributed = is_distributed_arch(model)
+    is_root = !distributed || mpi_rank(global_communicator()) == 0
+
+    # File splitting (root-only when distributed; everyone else waits)
+    if writer.file_splitting(model)
+        if is_root
+            start_next_file(model, writer)
+        end
+        zarr_barrier()
+    end
+    update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+    if !writer.initialized
+        initialize!(writer, model)
+    end
+
+    if distributed
+        write_output_distributed!(writer, model)
+    else
+        write_output_serial!(writer, model)
+    end
+
+    return nothing
+end
+
+function write_output_serial!(writer::ZarrWriter, model)
+    g = Zarr.zopen(writer.store, "w")
+    time = zarr_time_value(model.clock.time, writer.dimension_type)
+    Zarr.append!(g["time"], [time]; dims=1)
+    for (name, output) in pairs(writer.outputs)
+        data = fetch_and_convert_output(output, model, writer)
+        data = squeeze_reduced_dimensions(output, data)
+        arr = g[string(name)]
+        data_arr = data isa AbstractArray ? data : fill(data)
+        if eltype(data_arr) === Bool
+            data_arr = Int8.(data_arr)
+        end
+        Zarr.append!(arr, data_arr; dims=ndims(arr))
+    end
+    Zarr.consolidate_metadata(g)
+    return nothing
+end
+
+zarr_time_value(time, dimension_type) = convert(dimension_type, time)
+function zarr_time_value(time::AbstractTime, dimension_type)
+    epoch = DateTime(2000, 1, 1)
+    milliseconds = Dates.value(DateTime(time) - epoch)
+    return convert(dimension_type, milliseconds) / convert(dimension_type, 1000)
+end
+
+# Distributed write:
+#   1. All ranks open the store (read-write).
+#   2. Each rank resizes its in-memory handle so the time axis grows by 1.
+#      Persisting the new `.zarray` is rank-0 only — all ranks would otherwise race on
+#      the same JSON file. (`writemetadata` inside Zarr.resize! happens once per call;
+#      we suppress it on non-root ranks by mutating the metadata directly.)
+#   3. Each rank writes its local slab to its global slice of the array.
+#   4. Rank 0 also writes the time chunk.
+#   5. Barrier so all writes land before the next step starts.
+function write_output_distributed!(writer::ZarrWriter, model)
+    is_root = mpi_rank(global_communicator()) == 0
+    g = Zarr.zopen(writer.store, "w")
+
+    # Bump the time axis and write the new time value (root only).
+    if is_root
+        time = zarr_time_value(model.clock.time, writer.dimension_type)
+        Zarr.append!(g["time"], [time]; dims=1)
+    end
+    zarr_barrier()
+
+    # Re-open after metadata change so all ranks see the new time array length.
+    g = Zarr.zopen(writer.store, "w")
+    new_time_index = length(g["time"])
+
+    for (name, output) in pairs(writer.outputs)
+        arr = g[string(name)]
+        data = fetch_and_convert_output(output, model, writer)
+        data = squeeze_reduced_dimensions(output, data)
+        data_arr = data isa AbstractArray ? data : fill(data)
+        if eltype(data_arr) === Bool
+            data_arr = Int8.(data_arr)
+        end
+
+        # Bump the array's time axis by 1. On root, persist; on others, just update
+        # the in-memory metadata so subsequent slice writes know the new shape.
+        old_shape = size(arr)
+        new_shape = ntuple(d -> d == length(old_shape) ? new_time_index : old_shape[d], length(old_shape))
+        if is_root
+            Zarr.resize!(arr, new_shape)
+        else
+            arr.metadata.shape[] = new_shape
+        end
+
+        # Compute this rank's global slice (0-based offsets) and write the slab.
+        offsets = drop_reduced_dimensions(output, rank_global_offsets(output))
+        spatial_slices = ntuple(d -> (offsets[d]+1):(offsets[d]+size(data_arr, d)), length(offsets))
+        full_slices = (spatial_slices..., new_time_index:new_time_index)
+
+        # Reshape data to include singleton time dim, matching the global array's rank.
+        data_with_time = reshape(data_arr, size(data_arr)..., 1)
+        arr[full_slices...] = data_with_time
+    end
+
+    zarr_barrier()
+    if is_root
+        g = Zarr.zopen(writer.store, "w")
+        Zarr.consolidate_metadata(g)
+    end
+    zarr_barrier()
+    return nothing
+end
+
+#####
+##### File splitting
+#####
+
+function start_next_file(model, writer::ZarrWriter)
+    writer.verbose && @info "Splitting Zarr output because $(summary(writer.file_splitting)) is activated."
+
+    if writer.part == 1
+        part1_path = replace(writer.filepath, r".zarr$" => "_part1.zarr")
+        writer.verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
+        if isdir(writer.filepath)
+            mv(writer.filepath, part1_path; force=writer.overwrite_existing)
+        end
+        writer.filepath = part1_path
+    end
+
+    writer.part += 1
+    writer.filepath = replace(writer.filepath, r"part\d+.zarr$" => "part" * string(writer.part) * ".zarr")
+    if writer.overwrite_existing && isdir(writer.filepath)
+        rm(writer.filepath; recursive=true, force=true)
+    end
+    writer.store = Zarr.DirectoryStore(writer.filepath)
+    writer.verbose && @info "Now writing to: $(writer.filepath)"
+
+    initialize_zarr_store!(writer, model)
+    return nothing
+end
+
+Base.summary(ow::ZarrWriter) =
+    string("ZarrWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+
+function Base.show(io::IO, ow::ZarrWriter)
+    averaging_schedule = output_averaging_schedule(ow)
+    Noutputs = length(ow.outputs)
+
+    store_str = isnothing(ow.store) ? "DirectoryStore (deferred)" : string(typeof(ow.store).name.name)
+    compressor_str = isnothing(ow.compressor) ? "none" : string(typeof(ow.compressor).name.name)
+    chunks_str = isnothing(ow.chunks) ? "auto" : string(ow.chunks)
+
+    print(io, "ZarrWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: ", ow.filepath, "\n",
+              "├── store: ", store_str, "\n",
+              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
+              "├── array_type: ", show_array_type(ow.array_type), "\n",
+              "├── chunks: ", chunks_str, "\n",
+              "├── compressor: ", compressor_str, "\n",
+              "└── file_splitting: ", summary(ow.file_splitting))
+end

@@ -21,6 +21,8 @@ definitions:
     - "🦍 distributed_nonhydrostatic_regression"
     - "🍊 distributed_vertical_coordinate_1"
     - "🍇 distributed_vertical_coordinate_2"
+    - "🧠 distributed_memory_allocation"
+    # nccl_extension intentionally GPU-only — added to the GPU matrix below.
 
   retry_config: &retry_config
     automatic:
@@ -39,8 +41,10 @@ steps:
       TEST_GROUP: "init"
       TEST_ARCHITECTURE: "GPU"
       MPI_TEST: "false"
+    timeout_in_minutes: 5440
     command:
       - echo "--- Initialize distributed tests"
+      - mv test/ProjectDistributed.toml test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
@@ -76,7 +80,16 @@ steps:
     retry: *retry_config
     matrix:
       setup:
-        group: *test_groups
+        group:
+          - "🐉 distributed"
+          - "🦾 distributed_solvers"
+          - "🤿 distributed_hydrostatic_regression"
+          - "🤺 distributed_hydrostatic_model"
+          - "🦍 distributed_nonhydrostatic_regression"
+          - "🍊 distributed_vertical_coordinate_1"
+          - "🍇 distributed_vertical_coordinate_2"
+          - "🧠 distributed_memory_allocation"
+          - "⚡ nccl_extension"
 
   - wait
 

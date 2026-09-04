@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
-using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
-using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!
+using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner, iteration, VolumeInverseNorm
+using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!, solve_for_pressure!
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
@@ -56,6 +57,30 @@ function test_conjugate_gradient_basic_functionality(grid, preconditioner)
 
     # Should converge
     @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
+end
+
+function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preconditioner)
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-underlying_grid.Lz / 2))
+    arch = architecture(grid)
+    preconditioner = make_preconditioner(underlying_grid, grid)
+    preconditioner_name = typeof(preconditioner).name.wrapper
+    @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
+
+    reltol = abstol = eps(eltype(grid))
+    maxiter = 10 * prod(size(grid))
+    solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol, maxiter)
+    R, U = random_divergent_source_term(grid)
+
+    p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
+    ϕ   = CenterField(grid, boundary_conditions=p_bcs)
+    ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
+
+    @test_nowarn solve_for_pressure!(ϕ, solver, nothing, U, 1)
+    @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
+
+    # The solution should be divergence-free: ∇²ϕ should recover the source term R
+    compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    @test interior(∇²ϕ) ≈ interior(R)
 end
 
 function test_conjugate_gradient_default_constructor(arch)
@@ -180,8 +205,8 @@ function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     U = 1
     inflow_timescale = 1e-4
     outflow_timescale = Inf
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
+    u_boundaries = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                           east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
 
     model = NonhydrostaticModel(grid;
                                 boundary_conditions = (u = u_boundaries,),
@@ -314,6 +339,92 @@ end
             for (underlying_grid_name, underlying_grid) in underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
+        end
+
+        Nh, Nz = 8, 8
+        Lh, Lz = 1, 1/8
+        stretched_aniso_z = [-Lz * (1 - tanh(2k / Nz) / tanh(2)) for k in 0:Nz]
+        anisotropic_grids = Dict(
+            "regular grid"   => RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded),
+                                                size=(Nh, Nh, Nz), x=(0, Lh), y=(0, Lh), z=(-Lz, 0)),
+            "stretched grid" => RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded),
+                                                size=(Nh, Nh, Nz), x=(0, Lh), y=(0, Lh), z=stretched_aniso_z))
+
+        # (ug, g) -> preconditioner, given the underlying grid ug and the (possibly immersed) grid g
+        preconditioner_builders = [(ug, g) -> DiagonallyDominantPreconditioner(),
+                                   (ug, g) -> fft_poisson_solver(ug),
+                                   (ug, g) -> ColumnwiseTridiagonalPreconditioner(g)]
+
+        @testset "Conjugate gradient solver on anisotropic grids [$(typeof(arch))]" begin
+            for (underlying_grid_name, grid) in anisotropic_grids, make_preconditioner in preconditioner_builders
+                @info "  Testing CG solver on anisotropic $underlying_grid_name [$(typeof(arch))]..."
+                test_conjugate_gradient_basic_functionality(grid, make_preconditioner(grid, grid))
+                test_conjugate_gradient_with_nonhydrostatic_model(grid, make_preconditioner(grid, grid))
+            end
+        end
+
+        @testset "Conjugate gradient solver with a PartialCellBottom [$(typeof(arch))]" begin
+            for (underlying_grid_name, underlying_grid) in anisotropic_grids, make_preconditioner in preconditioner_builders
+                test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preconditioner)
+            end
+        end
+
+        @testset "VolumeInverseNorm correctness [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(4, 4, 4), extent=(2, 3, 5))
+            r = CenterField(grid)
+            set!(r, (x, y, z) -> sin(x) * cos(y) * z)
+            r_before = Array(interior(r))
+
+            vin = VolumeInverseNorm(grid)
+            computed = vin(r)
+
+            # Check r is restored after in-place scaling
+            @test Array(interior(r)) ≈ r_before
+
+            # Check norm value against manual computation
+            expected = 0.0
+            for k in 1:4, j in 1:4, i in 1:4
+                v_inv = @allowscalar V⁻¹ᶜᶜᶜ(i, j, k, grid)
+                expected += (r_before[i, j, k] * v_inv)^2
+            end
+            @test computed ≈ sqrt(expected) rtol=1e-10
+        end
+
+        @testset "PCG volume-independent convergence [$(typeof(arch))]" begin
+            N = 8
+            topo = (Periodic, Periodic, Bounded)
+            z_stretched(L) = L .* [-1 + (tanh(2(k/N - 1)) + tanh(2)) / (2tanh(2)) for k in 0:N]
+            Ls = [1, 1e-3, 1e4]
+
+            for (grid_type, make_grid) in [
+                ("uniform",   L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), extent=(L, L, L))),
+                ("stretched", L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), x=(0, L), y=(0, L), z=z_stretched(L)))
+            ]
+                for L in Ls
+                    grid = make_grid(L)
+                    ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(-L * 0.6))
+                    solver = ConjugateGradientPoissonSolver(ibg; maxiter=5000)
+                    vin = VolumeInverseNorm(ibg)
+
+                    u, v, w = XFaceField(ibg), YFaceField(ibg), ZFaceField(ibg)
+                    seed!(42)
+                    set!(u, (x, y, z) -> rand())
+                    set!(v, (x, y, z) -> rand())
+                    set!(w, (x, y, z) -> rand())
+                    fill_halo_regions!((u, v, w))
+
+                    pressure = CenterField(ibg)
+                    solve_for_pressure!(pressure, solver, nothing, (u=u, v=v, w=w), 1.0)
+
+                    cgs = solver.conjugate_gradient_solver
+                    initial_weighted_residual = vin(solver.right_hand_side)
+                    final_weighted_residual = vin(cgs.residual)
+                    tolerance = max(cgs.reltol * initial_weighted_residual, cgs.abstol)
+
+                    @info "  PCG $grid_type convergence on $(typeof(arch))" L iteration=iteration(solver) initial_weighted_residual final_weighted_residual tolerance
+                    @test final_weighted_residual ≤ tolerance
+                end
             end
         end
     end

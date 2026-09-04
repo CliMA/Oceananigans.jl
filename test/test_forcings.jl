@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings
+using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -147,14 +147,14 @@ function time_step_with_field_time_series_forcing(arch)
     return true
 end
 
-function relaxed_time_stepping(arch, mask_type)
-    x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(center=0.5, width=0.1),
+function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
+    x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(; mask_kwargs...),
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
 
-    y_relax = Relaxation(rate = 1/60,   mask = mask_type{:y}(center=0.5, width=0.1),
+    y_relax = Relaxation(rate = 1/60,   mask = mask_type{:y}(; mask_kwargs...),
                                       target = LinearTarget{:y}(intercept=π, gradient=ℯ))
 
-    z_relax = Relaxation(rate = 1/60,   mask = mask_type{:z}(center=0.5, width=0.1),
+    z_relax = Relaxation(rate = 1/60,   mask = mask_type{:z}(; mask_kwargs...),
                                       target = π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -357,7 +357,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
     function build_settling_model(grid, w_settle)
         # Create settling velocity as a field with appropriate boundary conditions
-        bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
+        bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w_settle) : NormalFlowBoundaryCondition(nothing)
         boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
         w_settle_field = ZFaceField(grid; boundary_conditions)
 
@@ -460,8 +460,69 @@ function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
     return all(Gc .≈ Gd) && all(Gc .≈ -3)
 end
 
+""" Build a time-invariant FTS where each snapshot equals `f(x, y, z)`. Used to
+isolate the spatial-interpolation path: temporal interpolation collapses to a
+constant since all snapshots are identical.
+
+`fill_halo_regions!` is required after `set!` because sim cells outside the FTS
+*Center* coverage (the boundary sim cells when FTS is coarser than sim) sample
+halo cells during interpolation. Without halo-filling, halos are zero-initialized
+and bias the interpolation toward zero. """
+function spatial_test_fts(grid, times, f::Function)
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in eachindex(times)
+        set!(fts[n], f)
+        fill_halo_regions!(fts[n])
+    end
+    return fts
+end
+
+""" Build a spatially-uniform FTS where snapshot `n` is the scalar `g(times[n])`.
+Used with an FTS grid that matches the simulation grid to isolate the
+temporal-interpolation path: spatial interpolation collapses to identity. """
+function temporal_test_fts(grid, times, g::Function)
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in eachindex(times)
+        set!(fts[n], g(times[n]))
+        fill_halo_regions!(fts[n])
+    end
+    return fts
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
+
+    @testset "CosineRampMask cosine ramp" begin
+        @info "  Testing CosineRampMask cosine ramp..."
+
+        for (D, eval_at) in ((:x, (m, ξ) -> m(ξ, 0, 0)),
+                             (:y, (m, ξ) -> m(0, ξ, 0)),
+                             (:z, (m, ξ) -> m(0, 0, ξ)))
+
+            m = CosineRampMask{D}(start=1500.0, stop=2500.0)
+
+            @test eval_at(m, 1400.0) == 0
+            @test eval_at(m, 1500.0) == 0
+            @test eval_at(m, 2500.0) ≈ 1
+            @test eval_at(m, 2600.0) ≈ 1
+            @test eval_at(m, 2000.0) ≈ 0.5
+
+            r₁ = eval_at(m, 1750.0)
+            r₃ = eval_at(m, 2250.0)
+            @test r₁ + r₃ ≈ 1
+            @test 0 < r₁ < 0.5 < r₃ < 1
+
+            weights = [eval_at(m, ξ) for ξ in range(1500, 2500, length=11)]
+            @test all(diff(weights) .> 0)
+
+            m_rev = CosineRampMask{D}(start=2500.0, stop=1500.0)
+            @test eval_at(m_rev, 1500.0) ≈ 1
+            @test eval_at(m_rev, 2500.0) == 0
+            @test eval_at(m_rev, 2000.0) ≈ 0.5
+        end
+
+        @test_throws ArgumentError CosineRampMask{:z}(start=1500, stop=1500)
+    end
 
     for arch in archs
         A = typeof(arch)
@@ -499,8 +560,286 @@ end
 
             @testset "Relaxation forcing functions [$A]" begin
                 @info "      Testing relaxation forcing functions [$A]..."
-                @test relaxed_time_stepping(arch, GaussianMask)
-                @test relaxed_time_stepping(arch, PiecewiseLinearMask)
+                @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
+                @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
+                @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+            end
+
+            @testset "Relaxation with FieldTimeSeries target [$A]" begin
+                @info "      Testing Relaxation with FieldTimeSeries target [$A]..."
+
+                grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ     = 60
+                c_ref = 5
+
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
+                for n in eachindex(fts.times)
+                    set!(fts[n], c_ref)
+                end
+
+                r = Relaxation(rate=1/τ, target=fts)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                # Materialization wraps the FTS in a FieldTimeSeriesTarget so the FTS's grid
+                # survives Adapt to the device, and records the forced field's location.
+                rm = model.forcing.c
+                @test rm isa FieldTimeSeriesRelaxation
+                @test rm.target.field_time_series === fts
+                @test rm.target.grid === fts.grid
+                @test rm.relaxed === model.tracers.c
+                @test rm.location == (Center(), Center(), Center())
+
+                # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
+                # c ≈ c_ref * (1 - exp(-Δt/τ)) for c(0) = 0.
+                set!(model, c=0)
+                Δt = 1
+                time_step!(model, Δt)
+                c_after  = Array(interior(model.tracers.c))
+                expected = c_ref * (1 - exp(-Δt/τ))
+                @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
+
+                # Extent validation: FTS strictly smaller than the simulation grid throws.
+                small_grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
+                fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0, 1e6])
+                r_small    = Relaxation(rate=1/τ, target=fts_small)
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
+            end
+
+            @testset "Relaxation with Field target [$A]" begin
+                @info "      Testing Relaxation with Field target [$A]..."
+
+                grid  = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ     = 60
+                c_ref = 5
+
+                target_field = CenterField(grid)
+                set!(target_field, c_ref)
+
+                r     = Relaxation(rate=1/τ, target=target_field)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                rm = model.forcing.c
+                @test rm isa FieldRelaxation
+                @test !(rm isa FieldTimeSeriesRelaxation)
+                @test rm.target === target_field
+                @test rm.relaxed === model.tracers.c
+                @test rm.location == (Center(), Center(), Center())
+
+                set!(model, c=0)
+                Δt = 1
+                time_step!(model, Δt)
+                c_after  = Array(interior(model.tracers.c))
+                expected = c_ref * (1 - exp(-Δt/τ))
+                @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
+
+                # Location mismatch on the same grid: target is auto-wrapped for spatial
+                # interpolation so the (Face, Center, Center) staggering is sampled at the
+                # tracer's (Center, Center, Center) nodes. A uniform target still drives
+                # the tracer toward `c_ref`.
+                wrong_loc = XFaceField(grid)
+                set!(wrong_loc, c_ref)
+                fill_halo_regions!(wrong_loc)
+                r_loc = Relaxation(rate=1/τ, target=wrong_loc)
+                model_loc = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_loc))
+                @test model_loc.forcing.c.target isa InterpolatedFieldTarget
+                set!(model_loc, c=0)
+                time_step!(model_loc, Δt)
+                @test all(isapprox.(Array(interior(model_loc.tracers.c)), expected; atol=1e-6 * c_ref))
+
+                # Grid mismatch: target lives on a different grid that fully contains the
+                # simulation grid and is auto-wrapped for interpolation. A uniform target
+                # of value `c_ref` should still drive the tracer toward `c_ref` after one
+                # step, just as the same-grid case does.
+                other_grid   = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=(-1000, 0),
+                                                topology=(Periodic, Periodic, Bounded))
+                wrong_grid   = CenterField(other_grid)
+                set!(wrong_grid, c_ref)
+                fill_halo_regions!(wrong_grid)
+                r_grid = Relaxation(rate=1/τ, target=wrong_grid)
+                model_grid = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_grid))
+                @test model_grid.forcing.c.target isa InterpolatedFieldTarget
+                set!(model_grid, c=0)
+                time_step!(model_grid, Δt)
+                c_grid_after = Array(interior(model_grid.tracers.c))
+                @test all(isapprox.(c_grid_after, expected; atol=1e-6 * c_ref))
+            end
+
+            @testset "Relaxation with transform=:horizontal_average [$A]" begin
+                @info "      Testing Relaxation with transform=:horizontal_average [$A]..."
+
+                Nx, Ny, Nz = 4, 4, 2
+                Lx, Ly, Lz = 100.0, 100.0, 100.0
+                grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+                τ = 60.0
+                c_target = 5.0
+
+                # transform produces the LHS (horizontal average); the user-supplied
+                # `target` is the RHS the average is pulled toward.
+                r = Relaxation(rate=1/τ, transform=:horizontal_average, target=c_target)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                rm = model.forcing.c
+                @test rm.transform === :horizontal_average
+                @test rm.target === c_target
+                @test rm.relaxed isa Field
+                @test rm.relaxed !== model.tracers.c
+
+                # IC: zero-mean horizontal sinusoid. The forcing is i,j-independent
+                # at fixed k, so it drives only the horizontal mean — fluctuations
+                # in (x, y) are preserved.
+                set!(model, c=(x, y, z) -> sin(2π * x / Lx))
+                c_initial = Array(interior(model.tracers.c))
+                fluctuation_initial = c_initial .- mean(c_initial, dims=(1, 2))
+
+                Δt = 0.5
+                Nsteps = 20
+                for _ in 1:Nsteps
+                    time_step!(model, Δt)
+                end
+                t_end = model.clock.time
+
+                c_final = Array(interior(model.tracers.c))
+                mean_final = mean(c_final, dims=(1, 2))
+                fluctuation_final = c_final .- mean_final
+
+                # d<c>/dt = (c_target - <c>)/τ with <c>(0) = 0  ⇒  <c>(t) = c_target (1 - exp(-t/τ))
+                expected_mean = c_target * (1 - exp(-t_end / τ))
+                @test all(isapprox.(mean_final, expected_mean; atol=1e-3 * c_target))
+                @test all(isapprox.(fluctuation_final, fluctuation_initial; atol=1e-6))
+
+                # Closure form is equivalent to the :horizontal_average symbol.
+                r_closure = Relaxation(rate=1/τ, target=c_target,
+                                       transform = f -> Field(Average(f, dims=(1, 2))))
+                model_closure = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_closure))
+                @test model_closure.forcing.c.relaxed isa Field
+
+                # z-varying target profile: <c>(z) relaxes toward LinearTarget at each k.
+                c_profile = LinearTarget{:z}(intercept=1.0, gradient=0.01)
+                r_profile = Relaxation(rate=1/τ, transform=:horizontal_average, target=c_profile)
+                model_profile = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_profile))
+                set!(model_profile, c=0)
+                for _ in 1:Nsteps
+                    time_step!(model_profile, Δt)
+                end
+                t_p = model_profile.clock.time
+                c_p = Array(interior(model_profile.tracers.c))
+                mean_p = dropdims(mean(c_p, dims=(1, 2)), dims=(1, 2))
+                for k in 1:Nz
+                    _, _, z = node(1, 1, k, grid, Center(), Center(), Center())
+                    expected_k = c_profile(0, 0, z, 0) * (1 - exp(-t_p / τ))
+                    @test isapprox(mean_p[k], expected_k; atol=1e-3)
+                end
+
+                # Mixing transform with FieldTimeSeries target should error.
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c,
+                    forcing=(; c=Relaxation(rate=1/τ, target=fts, transform=:horizontal_average)))
+            end
+
+            @testset "Relaxation FTS-target cross-grid spatial interp [$A]" begin
+                @info "      Testing Relaxation FTS-target cross-grid spatial interp [$A]..."
+
+                Lx, Ly, Lz = 1000.0, 1000.0, 100.0
+                # Bounded topology so Face-node extrema reach the domain edges
+                # exactly, matching the physical setting for Davies-style fringes.
+                topology = (Bounded, Bounded, Bounded)
+                # Coarse-FTS / fine-sim is the primary use case (reanalysis FTS
+                # driving an LES interior). The FTS x and y must be **padded**
+                # so the FTS Centers bracket the sim Centers — otherwise the
+                # sim boundary cells fall outside FTS Center coverage and
+                # trilinear interpolation reads zero-initialized FTS halos.
+                # The validator `validate_fts_target_extent` checks this at
+                # materialize time; the calculation below leaves a comfortable
+                # margin past the minimum δ ≈ 53.6 m required at this resolution.
+                δ_pad = 100.0
+                sim_grid = RectilinearGrid(arch, size=(32, 32, 4), extent=(Lx, Ly, Lz), topology=topology)
+                fts_grid = RectilinearGrid(arch, size=( 8,  8, 4),
+                                           x=(-δ_pad, Lx + δ_pad),
+                                           y=(-δ_pad, Ly + δ_pad),
+                                           z=(-Lz, 0),               # match ocean-facing z of sim_grid
+                                           topology=topology)
+
+                f(x, y, z) = x                                    # affine → trilinear-exact
+                fts = spatial_test_fts(fts_grid, [0.0, 1.0], f)
+
+                Δ_fringe = Lx / 4
+                # NOTE: single-sided fringe; switch to MaximumMask of west + east
+                # CosineRampMask{:x} once #5576 lands for a true Davies two-sided fringe.
+                mask = CosineRampMask{:x}(start=Δ_fringe, stop=0)  # full at x=0, off at x=Δ_fringe
+
+                τ  = 100.0
+                Δt = 0.1                                          # w·Δt/τ ≤ 1e-3 → tight linearization
+                forcing = Relaxation(rate=1/τ, mask=mask, target=fts)
+                model = NonhydrostaticModel(sim_grid; tracers=:c, forcing=(; c=forcing))
+                # model.tracers.c is zero-initialized by NonhydrostaticModel.
+                time_step!(model, Δt)
+
+                c = Array(interior(model.tracers.c))
+
+                interior_max_abs = 0.0
+                fringe_count = 0
+                for k in 1:size(sim_grid, 3), j in 1:size(sim_grid, 2), i in 1:size(sim_grid, 1)
+                    x, y, z = node(i, j, k, sim_grid, Center(), Center(), Center())
+                    w = mask(x, y, z)
+                    if w ≈ 0
+                        interior_max_abs = max(interior_max_abs, abs(c[i, j, k]))
+                    else
+                        fringe_count += 1
+                        # Exact one-step solution of dc/dt = (w/τ)·(f(x,y,z) - c), c(0)=0:
+                        # c(Δt) = f(x,y,z) · (1 - exp(-w·Δt/τ))
+                        expected = f(x, y, z) * (1 - exp(-w * Δt / τ))
+                        @test c[i, j, k] ≈ expected rtol=1e-3
+                    end
+                end
+                @test interior_max_abs < 1e-12                    # no leakage into interior
+                @test fringe_count > 0                            # sanity: mask is non-trivial
+            end
+
+            @testset "Relaxation FTS-target temporal interp [$A]" begin
+                @info "      Testing Relaxation FTS-target temporal interp [$A]..."
+
+                Lx, Ly, Lz = 1000.0, 1000.0, 100.0
+                # Bounded x mirrors the spatial-interp test for consistency.
+                topology = (Bounded, Bounded, Bounded)
+                grid = RectilinearGrid(arch, size=(8, 8, 4), extent=(Lx, Ly, Lz), topology=topology)
+
+                g(t) = t                                          # affine in t → linear-interp exact
+                times = [0.0, 1.0, 2.0]
+                fts = temporal_test_fts(grid, times, g)           # FTS on sim grid → identity spatial
+
+                Δ_fringe = Lx / 4
+                mask = CosineRampMask{:x}(start=Δ_fringe, stop=0)
+
+                τ  = 1.0
+                Δt = 0.05
+                Nsteps = 10                                       # step to t = 0.5, well inside [0, 1]
+                forcing = Relaxation(rate=1/τ, mask=mask, target=fts)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=forcing))
+                for _ in 1:Nsteps
+                    time_step!(model, Δt)
+                end
+                t_end = model.clock.time
+
+                c = Array(interior(model.tracers.c))
+
+                interior_max_abs = 0.0
+                fringe_count = 0
+                for k in 1:size(grid, 3), j in 1:size(grid, 2), i in 1:size(grid, 1)
+                    x, y, z = node(i, j, k, grid, Center(), Center(), Center())
+                    w = mask(x, y, z)
+                    if w ≈ 0
+                        interior_max_abs = max(interior_max_abs, abs(c[i, j, k]))
+                    else
+                        fringe_count += 1
+                        # Exact solution of dc/dt = (w/τ)·(t - c), c(0)=0:
+                        # c(t) = t - τ_eff + τ_eff · exp(-t/τ_eff),  τ_eff = τ/w
+                        τ_eff = τ / w
+                        expected = t_end - τ_eff + τ_eff * exp(-t_end / τ_eff)
+                        @test c[i, j, k] ≈ expected rtol=1e-3
+                    end
+                end
+                @test interior_max_abs < 1e-12
+                @test fringe_count > 0
             end
 
             @testset "Advective and multiple forcing [$A]" begin
@@ -519,6 +858,7 @@ end
             @testset "Momentum flux zero at immersed peripheral nodes" begin
                 @info "      Testing momentum flux is zero at immersed peripheral nodes..."
                 for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
+                    scheme = Oceananigans.Advection.materialize_advection(scheme, MockGrid(arch))
                     @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
                 end
             end

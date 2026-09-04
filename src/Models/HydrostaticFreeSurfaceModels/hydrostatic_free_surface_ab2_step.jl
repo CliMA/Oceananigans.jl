@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 #####
 
 """
-    ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step.
 
@@ -19,7 +19,7 @@ ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """
-    hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
@@ -39,19 +39,19 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Computing momentum flux boundary conditions
-    @apply_regionally compute_momentum_flux_bcs!(model)
-
-    # Advance the free surface
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-
-    # Update velocities
     @apply_regionally begin
-        compute_transport_velocities!(model, model.free_surface)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
+
+        compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
+
+    # Advance the free surface with the change the column actually underwent, boundary drain included
+    compute_free_surface_tendency!(grid, model, model.free_surface, Δt)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
@@ -73,16 +73,16 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 end
 
 """
-    hydrostatic_ab2_step!(model::HydrostaticFreeSurfaceModel, ::ImplicitFreeSurface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities using AB2 (predictor step)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
+1. Advance velocities using AB2 (predictor step)
+2. Enforce targeted open boundary transports on the predictor velocity
+3. Solve implicit free surface equation
+4. Correct velocities for the updated barotropic pressure gradient
+5. Advance grid scaling (for z-star coordinates)
 6. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
@@ -91,8 +91,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
@@ -100,6 +99,11 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
     end
+
+    # Enforce targeted open boundary transports on the predictor velocity, before the
+    # free-surface solve, so the implicit free surface is solved consistently with the
+    # prescribed boundary transport.
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -116,6 +120,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
+        # Advance grid (z-star scaling)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
         # Finally step tracers
@@ -130,7 +135,7 @@ end
 #####
 
 """
-    ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update grid scaling factors during an AB2 time step.
 
@@ -144,7 +149,7 @@ ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ) = nothing
 #####
 
 """
-    ab2_step_velocities!(velocities, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance horizontal velocities `u` and `v` using the AB2 scheme.
 
@@ -153,25 +158,41 @@ Velocities are updated as: `u += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`.
 If an implicit solver is configured, implicit vertical diffusion is applied after the explicit step.
 """
 function ab2_step_velocities!(velocities, model, Δt, χ)
+    ab2_step_velocity!(model, Δt, χ, Val(:u))
+    ab2_step_velocity!(model, Δt, χ, Val(:v))
 
-    for (i, name) in enumerate((:u, :v))
-        Gⁿ = model.timestepper.Gⁿ[name]
-        G⁻ = model.timestepper.G⁻[name]
-        velocity_field = model.velocities[name]
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    implicit_ab2_step_velocity!(model, Δt, Val(:u))
+    implicit_ab2_step_velocity!(model, Δt, Val(:v))
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
 
-        launch!(model.architecture, model.grid, :xyz,
-                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    return nothing
+end
 
-        implicit_step!(velocity_field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       nothing,
-                       model.clock,
-                       fields(model),
-                       Δt)
-    end
+@inline function ab2_step_velocity!(model, Δt, χ, ::Val{name}) where name
+    Gⁿ = model.timestepper.Gⁿ[name]
+    G⁻ = model.timestepper.G⁻[name]
+    velocity_field = model.velocities[name]
 
+    launch!(model.architecture, model.grid, :xyz,
+            _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+
+    return nothing
+end
+
+@inline function implicit_ab2_step_velocity!(model, Δt, ::Val{name}) where name
+    velocity_field = model.velocities[name]
+
+    implicit_step!(velocity_field,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   nothing,
+                   model.clock,
+                   fields(model),
+                   Δt,
+                   model.advection.momentum,
+                   model.velocities)
     return nothing
 end
 
@@ -187,7 +208,7 @@ hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) f
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 """
-    ab2_step_tracers!(tracers, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance tracer fields using the AB2 scheme.
 
@@ -198,40 +219,43 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 as they are handled separately. Implicit vertical diffusion is applied if configured.
 """
 function ab2_step_tracers!(tracers, model, Δt, χ)
+    ab2_step_tracers!(model, Δt, χ, Val(1), Val(propertynames(tracers)))
+    return nothing
+end
 
+@inline ab2_step_tracers!(model, Δt, χ, ::Val, ::Val{()}) = nothing
+
+@inline function ab2_step_tracers!(model, Δt, χ, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
+    ab2_step_tracer!(model, Δt, χ, Val(tracer_index), Val(first(names)))
+    ab2_step_tracers!(model, Δt, χ, Val(tracer_index + 1), Val(Base.tail(names)))
+    return nothing
+end
+
+@inline function ab2_step_tracer!(model, Δt, χ, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
-    td_in_closures    = hasclosure(closure, FlavorOfTD)
+    skip = (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) ||
+           (hasclosure(closure, FlavorOfTD) && (tracer_name == :ϵ || tracer_name == :e))
+    skip && return nothing
 
-    # Tracer update kernels
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+    Gⁿ = model.timestepper.Gⁿ[tracer_name]
+    G⁻ = model.timestepper.G⁻[tracer_name]
+    tracer_field = model.tracers[tracer_name]
+    grid = model.grid
 
-        if catke_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
-        elseif td_in_closures && tracer_name == :ϵ
-            @debug "Skipping AB2 step for ϵ"
-        elseif td_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
-        else
-            Gⁿ = model.timestepper.Gⁿ[tracer_name]
-            G⁻ = model.timestepper.G⁻[tracer_name]
-            tracer_field = tracers[tracer_name]
-            grid = model.grid
+    FT = eltype(grid)
+    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
-            FT = eltype(grid)
-            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
-
-            implicit_step!(tracer_field,
-                           model.timestepper.implicit_solver,
-                           closure,
-                           model.closure_fields,
-                           Val(tracer_index),
-                           model.clock,
-                           fields(model),
-                           Δt)
-        end
-    end
-
+    @inbounds c_advection = model.advection[tracer_name]
+    implicit_step!(tracer_field,
+                   model.timestepper.implicit_solver,
+                   closure,
+                   model.closure_fields,
+                   Val(tracer_index),
+                   model.clock,
+                   fields(model),
+                   Δt,
+                   c_advection,
+                   model.transport_velocities)
     return nothing
 end
 

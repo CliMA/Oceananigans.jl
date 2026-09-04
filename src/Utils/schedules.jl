@@ -36,7 +36,7 @@ mutable struct TimeInterval{IT, TT} <: AbstractSchedule
 end
 
 """
-    TimeInterval(interval)
+$(TYPEDSIGNATURES)
 
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
@@ -72,13 +72,30 @@ function next_actuation_time(schedule::TimeInterval)
     return add_time_interval(t₀, T, N + 1)
 end
 
+#  Return `Inf` if we exhausted the actuations in a TimeInterval(::SpecifiedTimes)
+function next_actuation_time(schedule::TimeInterval{<:AbstractArray})
+    schedule.actuations ≥ length(schedule.interval) && return Inf
+    return add_time_interval(schedule.first_actuation_time, schedule.interval, schedule.actuations + 1)
+end
+
 function (schedule::TimeInterval)(model)
     t = model.clock.time
     t★ = next_actuation_time(schedule)
 
-    if t >= t★
+    # Array-interval schedules return `Inf` once exhausted; never fire again.
+    t★ === Inf && return false
+
+    if t ≥ t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
+            # Advance actuations so the next actuation is strictly in the future.
+            while schedule.actuations < typemax(Int)
+                tN = next_actuation_time(schedule)
+                if tN === Inf || tN > t
+                    break
+                end
+                schedule.actuations += 1
+            end
         else # re-initialize the schedule to t★
             initialize!(schedule, t★)
         end
@@ -90,6 +107,7 @@ end
 
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
+    t★ === Inf && return Δt
     t = clock.time
     δt = time_difference_seconds(t★, t)
     return min(Δt, δt)
@@ -97,12 +115,15 @@ end
 
 function prognostic_state(schedule::TimeInterval)
     return (first_actuation_time = schedule.first_actuation_time,
-            actuations = schedule.actuations)
+            actuations = schedule.actuations,
+            interval = schedule.interval)
 end
 
 function restore_prognostic_state!(restored::TimeInterval, from)
-    restored.first_actuation_time = from.first_actuation_time
-    restored.actuations = from.actuations
+    if hasproperty(from, :interval) && from.interval == restored.interval
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
     return restored
 end
 
@@ -135,6 +156,7 @@ next_actuation_time(schedule::IterationInterval) = Inf
 
 # IterationInterval has no state
 prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(restored::IterationInterval, from) = restored
 restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
 
 #####
@@ -160,7 +182,7 @@ other than the moment `WallTimeInterval` is constructed.
 """
 function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
     FT = Oceananigans.defaults.FloatType
-    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+    return WallTimeInterval(convert(FT, interval), convert(FT, start_time))
 end
 
 function (schedule::WallTimeInterval)(model)
@@ -190,7 +212,7 @@ mutable struct SpecifiedTimes{FT} <: AbstractSchedule
 end
 
 """
-    SpecifiedTimes(times)
+$(TYPEDSIGNATURES)
 
 Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
@@ -288,7 +310,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    ConsecutiveIterations(parent_schedule)
+    ConsecutiveIterations(parent_schedule, N=1)
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -334,7 +356,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -350,7 +372,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """

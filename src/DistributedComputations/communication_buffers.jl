@@ -28,8 +28,8 @@ end
 Adapt.adapt_structure(to, buff::CommunicationBuffers) =
     CommunicationBuffers(Adapt.adapt(to, buff.west),
                          Adapt.adapt(to, buff.east),
-                         Adapt.adapt(to, buff.north),
                          Adapt.adapt(to, buff.south),
+                         Adapt.adapt(to, buff.north),
                          Adapt.adapt(to, buff.southwest),
                          Adapt.adapt(to, buff.southeast),
                          Adapt.adapt(to, buff.northwest),
@@ -38,8 +38,8 @@ Adapt.adapt_structure(to, buff::CommunicationBuffers) =
 on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
                          on_architecture(arch, buff.east),
-                         on_architecture(arch, buff.north),
                          on_architecture(arch, buff.south),
+                         on_architecture(arch, buff.north),
                          on_architecture(arch, buff.southwest),
                          on_architecture(arch, buff.southeast),
                          on_architecture(arch, buff.northwest),
@@ -48,7 +48,7 @@ on_architecture(arch, buff::CommunicationBuffers) =
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
-    CommunicationBuffers(grid, data, boundary_conditions)
+$(TYPEDSIGNATURES)
 
 Construct communication buffers for distributed halo exchange.
 
@@ -237,7 +237,7 @@ function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedg
 end
 
 """
-    fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing.
 """
@@ -311,7 +311,7 @@ end
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAndTop) = nothing
 
 """
-    recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred.
 """
