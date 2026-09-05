@@ -58,24 +58,8 @@ extract_field_time_series(t::Union{Tuple, NamedTuple}) =
     has_field_time_series(typeof(t)) ?
         concatenate_extracted(map(extract_field_time_series, values(t))) : ()
 
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const DFBC     = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
-const CFBC     = BoundaryCondition{<:Any, <:ContinuousBoundaryFunction}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC, DFBC, CFBC}
-
-const WFTSBCS = FieldBoundaryConditions{<:FTSBC}
-const EFTSBCS = FieldBoundaryConditions{<:Any, <:FTSBC}
-const SFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:FTSBC}
-const NFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:FTSBC}
-const BFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:FTSBC}
-const TFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:Any, <:FTSBC}
-const IFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:FTSBC}
-
-const FieldBCsFTS = Union{WFTSBCS, EFTSBCS, SFTSBCS, NFTSBCS, BFTSBCS, TFTSBCS, IFTSBCS}
-const FieldFTS = Field{LX, LY, LZ, O, G, I, D, T, <:FieldBCsFTS} where {LX, LY, LZ, O, G, I, D, T}
-
-extract_field_time_series(f::FieldFTS) = extract_field_time_series(f.boundary_conditions)
+# A field's boundary conditions may hold a series inside a condition of any type
+extract_field_time_series(f::Field) = extract_field_time_series(f.boundary_conditions)
 
 extract_field_time_series(bcs::FieldBoundaryConditions) =
     has_field_time_series(typeof(bcs)) ?
