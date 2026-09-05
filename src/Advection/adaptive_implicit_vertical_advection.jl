@@ -142,15 +142,12 @@ end
     return Δt / timestepper.β[nstage]
 end
 
-@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SSPRungeKuttaTimeStepper, clock)
-    td = TimeSteppers.time_discretization(a)
-    td.Δt[] = clock.last_stage_Δt
-    return nothing
-end
+# Every SSP stage is a forward-Euler step over the full Δt, so the next substep has the same Δτ.
+@inline adaptive_advection_timestep(timestepper::SSPRungeKuttaTimeStepper, clock) = clock.last_stage_Δt
 
 @inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
 @inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²
-@inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ¹ + ts.ζ³
+@inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ³ + ts.ζ³
 
 @inline function adaptive_advection_timestep(timestepper::RungeKutta3TimeStepper, clock)
     stage  = clock.stage
