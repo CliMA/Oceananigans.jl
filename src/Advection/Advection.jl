@@ -61,13 +61,14 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 Marker asking a scheme constructor to build its own `buffer_scheme` chain by stepping the order down two at a time.
 `boundary_scheme` is what that chain terminates in — the reconstruction used in a cell whose stencil no longer fits,
-i.e. against a boundary. Default: `Centered(order=2)`.
+i.e. against a boundary. `nothing` leaves the terminal to the scheme being constructed; `WENO` then reaches for
+`Centered(order=2)`.
 """
 struct DecreasingOrderAdvectionScheme{BS}
     boundary_scheme :: BS
 end
 
-DecreasingOrderAdvectionScheme(; boundary_scheme = Centered(order=2)) = DecreasingOrderAdvectionScheme(boundary_scheme)
+DecreasingOrderAdvectionScheme(; boundary_scheme = nothing) = DecreasingOrderAdvectionScheme(boundary_scheme)
 
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")

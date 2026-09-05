@@ -116,7 +116,6 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
-              bounds = nothing)
               bounds = nothing,
               maximum_courant_number = 5//18)
 
