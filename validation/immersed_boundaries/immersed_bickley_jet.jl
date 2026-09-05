@@ -46,12 +46,6 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     c = sqrt(10.0)
     Δt = 0.1 * grid.Δxᶜᵃᵃ / c
 
-    timescale = (5days / (6minutes) * Δt)
-    @show prettytime(timescale)
-
-    @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
-    biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
-
     model = HydrostaticFreeSurfaceModel(mrg; momentum_advection, tracer_advection = WENO(), tracers = :c,
                                              free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0))
 
