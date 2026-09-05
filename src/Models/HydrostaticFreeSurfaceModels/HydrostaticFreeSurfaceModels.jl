@@ -93,6 +93,7 @@ reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
 # Transport velocity computation
 function compute_transport_velocities! end
 
+
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
 
@@ -188,6 +189,7 @@ include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
 include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
+include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")

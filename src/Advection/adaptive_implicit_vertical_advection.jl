@@ -1,6 +1,6 @@
-using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
-using Oceananigans.BoundaryConditions: _unwrap_for_gpu
+using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
@@ -40,6 +40,14 @@ end
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
+@inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    Δt = _unwrap_for_gpu(td.Δt)
+    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    α  = abs(w) * Δt / Δz
+    return ifelse(α > td.cfl, td.cfl / α, one(α))
+end
+
 #####
 ##### Flux dispatch, use scaled w velocities for explicit fluxes
 #####
@@ -53,16 +61,15 @@ end
     return s * advective_tracer_flux_z(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, c)
 end
 
-# Horizontal momentum fluxes (and Ww) are fully explicit with AVID
+# Horizontal momentum fluxes are fully explicit with AVID
 @inline advective_momentum_flux_Uu(i, j, k, grid, scheme, ::AVID, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, u)
 @inline advective_momentum_flux_Vu(i, j, k, grid, scheme, ::AVID, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, u)
 @inline advective_momentum_flux_Uv(i, j, k, grid, scheme, ::AVID, U, v) = advective_momentum_flux_Uv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, v)
 @inline advective_momentum_flux_Vv(i, j, k, grid, scheme, ::AVID, V, v) = advective_momentum_flux_Vv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, v)
 @inline advective_momentum_flux_Uw(i, j, k, grid, scheme, ::AVID, U, w) = advective_momentum_flux_Uw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, w)
 @inline advective_momentum_flux_Vw(i, j, k, grid, scheme, ::AVID, V, w) = advective_momentum_flux_Vw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, w)
-@inline advective_momentum_flux_Ww(i, j, k, grid, scheme, ::AVID, W, w) = advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 
-# Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
+# Vertical advection of momentum: scale by explicit_velocity_scale.
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, td::AVID, W, u)
     s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_momentum_flux_Wu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, u)
@@ -73,15 +80,20 @@ end
     return s * advective_momentum_flux_Wv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, v)
 end
 
+@inline function advective_momentum_flux_Ww(i, j, k, grid, scheme, td::AVID, W, w)
+    s  = explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
+    return s * advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
+end
+
 #####
 ##### Utility functions
 #####
 
-needs_implicit_solver(advection) = false
-needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+BoundaryConditions.needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+
 # `any` follows the three-valued logic and _may_ return `missing` in some cases.  Let's
 # inform the compiler with the `::Bool` annotation that we know we only deal with booleans.
-needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))::Bool
+BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions.needs_implicit_solver, values(a))::Bool
 
 """
 $(TYPEDSIGNATURES)

@@ -199,7 +199,7 @@ where, e.g., for the non-hydrostatic model (ignoring background velocities and s
 \boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}}
                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
                        - \boldsymbol{f} \times \boldsymbol{v}
-                       + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
+                       - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                        + \boldsymbol{F}_{\boldsymbol{v}}
 ```
 
