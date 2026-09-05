@@ -178,7 +178,7 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
                         multi_dimensional_stencil = false,
-                        buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(order=1)),
+                        boundary_scheme = nothing,
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -215,7 +215,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
                              multi_dimensional_stencil = false,
-                             buffer_scheme = DecreasingOrderAdvectionScheme(boundary_scheme = UpwindBiased(order=1)),
+                             boundary_scheme = nothing,
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -230,10 +230,12 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, buffer_scheme, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, buffer_scheme, time_discretization, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, buffer_scheme, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, buffer_scheme, weno_kw...)
+    boundary_scheme = something(boundary_scheme, UpwindBiased(FT; order=1))
+
+    vorticity_scheme               = WENO(FT; order=vorticity_order, boundary_scheme, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, boundary_scheme, time_discretization, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, boundary_scheme, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, boundary_scheme, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)

@@ -168,9 +168,7 @@ function run_hat_advection(; Nx = 128, Nz = 64, courant = 0.2, Nsteps = 3000,
     @printf("Courant %.2f, Δt = %.3e, %d steps\n\n", courant, Δt, Nsteps)
 
     schemes = ["WENO(order=7)"             => WENO(order = 7, weight_computation = NormalDivision),
-               "WENO(order=5)"             => WENO(order = 5, weight_computation = NormalDivision),
-               "WENO(order=7) min_buffer=1" => WENO(order = 7, weight_computation = NormalDivision,
-                                                    minimum_buffer_upwind_order = 1)]
+               "WENO(order=5)"             => WENO(order = 5, weight_computation = NormalDivision)]
 
     interval = isnothing(save_prefix) ? 0 : snapshot_interval
 

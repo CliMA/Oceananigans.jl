@@ -11,7 +11,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, CWENOZ,
+    Centered, UpwindBiased, WENO, CWENOZ, BoundsPreservation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -56,18 +56,6 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-"""
-    DecreasingOrderAdvectionScheme(; boundary_scheme = nothing)
-
-Marker asking a scheme constructor to build its own `buffer_scheme` chain by stepping the order down two at a time.
-`boundary_scheme` is what that chain terminates in — the reconstruction used in a cell whose stencil no longer fits,
-i.e. against a boundary. `nothing` leaves the terminal to the scheme being constructed; `WENO` then reaches for
-`Centered(order=2)`.
-"""
-struct DecreasingOrderAdvectionScheme{BS}
-    boundary_scheme :: BS
-end
-
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
@@ -98,7 +86,5 @@ include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 include("materialize_advection.jl")
-
-DecreasingOrderAdvectionScheme(; boundary_scheme = CWENOZ()) = DecreasingOrderAdvectionScheme(boundary_scheme)
 
 end # module

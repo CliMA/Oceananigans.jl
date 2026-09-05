@@ -12,10 +12,10 @@ using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
            smoothness_ratio_exponent = 1,
            relative_oscillation_floor = eps(FT),
            weight_computation = Nothing,
-           symmetric_scheme = Centered(FT; order=2))
+           symmetric_scheme = nothing)
 
-Third order central-WENO reconstruction on a stencil that extends only into the interior, for use as the `boundary_scheme` of a
-`DecreasingOrderAdvectionScheme`. An inward parabola `P²`, a linear polynomial `P¹` and a constant `P⁰` are blended with Z-weights:
+Third order central-WENO reconstruction on a stencil that extends only into the interior, for use as the `boundary_scheme` in
+which a buffer chain terminates. An inward parabola `P²`, a linear polynomial `P¹` and a constant `P⁰` are blended with Z-weights:
 the `CWZb3` reconstruction of [SempliceTravagliaPuppo22](@cite).
 
 Explicitly, the reconstruction is `(αᵒPᵒ + α¹P¹ + α⁰P⁰) / (αᵒ + α¹ + α⁰)` with `αₖ = dₖ(1 + (τ / (Iₖ + ϵ))^p)`, where `Iₖ` is the oscillation
@@ -46,7 +46,8 @@ positive weights are chosen. However, they set how quickly each low order candid
 - `weight_computation`: the type of approximate division used for the smoothness ratios, as in `WENO`. `Nothing` defers the choice to the
   architecture the scheme is materialized on.
 
-- `symmetric_scheme`: the reconstruction that the symmetric interpolations, which need no bias, defer to.
+- `symmetric_scheme`: the reconstruction that the symmetric interpolations, which need no bias, defer to. `nothing` selects
+  `Centered(FT; order=2)`.
 
 The defaults are those of [SempliceTravagliaPuppo22](@cite) and, through it, of [NaumannKolbSemplice18](@cite).
 """
@@ -68,7 +69,9 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
                 smoothness_ratio_exponent = 1,
                 relative_oscillation_floor = eps(FT),
                 weight_computation::DataType = Nothing,
-                symmetric_scheme = Centered(FT; order=2, buffer_scheme=nothing))
+                symmetric_scheme = nothing)
+
+    symmetric_scheme = something(symmetric_scheme, Centered(FT; order=2))
 
     M = Int(constant_weight_exponent)
     P = Int(smoothness_ratio_exponent)
