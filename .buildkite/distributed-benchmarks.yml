@@ -25,6 +25,8 @@ steps:
       - echo "--- Pre-download bathymetry data"
       - julia $JULIA_ARGS -e 'using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
     agents:
+      queue: central
+      modules: climacommon/2025_07_30
       slurm_mem: 50G
       slurm_ntasks: 1
       slurm_gpus_per_task: 1
@@ -43,6 +45,8 @@ steps:
       # WENOVectorInvariant + WENO7, CATKE) on one central GPU.
       julia $JULIA_ARGS $BENCHMARK_SCRIPT --device=GPU --size=360x180x50 --group="Default" --output=benchmark_results_default.json --clear
     agents:
+      queue: central
+      modules: climacommon/2025_07_30
       slurm_mem: 100G
       slurm_ntasks: 1
       slurm_gpus_per_task: 1
@@ -75,6 +79,8 @@ steps:
       echo "========================================"
       srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=2x2x1 --size=360x180x50 --group="2x2" --output=benchmark_results_distributed.json
     agents:
+      queue: central
+      modules: climacommon/2025_07_30
       slurm_mem: 150G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
@@ -92,6 +98,8 @@ steps:
   - label: "📊 Compare with main"
     key: "merge-compare"
     agents:
+      queue: central
+      modules: climacommon/2025_07_30
       slurm_mem: 8G
       slurm_ntasks: 1
     command: |
@@ -163,6 +171,8 @@ steps:
   - label: "📢 Notify GitHub to publish results"
     key: "notify-github"
     agents:
+      queue: central
+      modules: climacommon/2025_07_30
       slurm_mem: 8G
       slurm_ntasks: 1
     command: |
