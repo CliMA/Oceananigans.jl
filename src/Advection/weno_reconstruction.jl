@@ -21,7 +21,8 @@ end
          order = 5,
          buffer_scheme = DecreasingOrderAdvectionScheme(),
          time_discretization = ExplicitTimeDiscretization(),
-         bounds = nothing)
+         bounds = nothing,
+         maximum_courant_number = 5//18)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -42,6 +43,15 @@ Keyword arguments
 - `buffer_scheme`: The scheme used where the stencil does not fit. `DecreasingOrderAdvectionScheme()` steps the
                    order down by two until third order and then uses its `boundary_scheme`, which defaults to
                    `Centered(order=2)`.
+- `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
+                           Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
+                           mean so that the advective update stays within `bounds`. One rescaling factor is
+                           shared by the three directions, so the bound is three-dimensional. It is guaranteed
+                           for a forward Euler or strong-stability-preserving update whose Courant numbers
+                           satisfy `λˣ + λʸ + λᶻ ≤ maximum_courant_number`.
+                           Default: `nothing`, which does not use a bounds-preserving scheme.
+- `maximum_courant_number`: The Courant number `ω̂₁ ∈ (0, 1/2)` up to which `bounds` is guaranteed. Raising it
+                            admits a larger time step and limits more aggressively. Default: `5//18`.
 
 Examples
 ========
@@ -107,13 +117,13 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing)
+              bounds = nothing,
+              maximum_courant_number = 5//18)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    if !isnothing(bounds)
-        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
-        bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
-    end
+    isnothing(bounds) || bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+    0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
@@ -125,13 +135,16 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
             if order ≤ 3 # the boundary reconstruction takes over here
                 buffer_scheme = something(buffer_scheme.boundary_scheme, Centered(FT; order=2))
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, weight_computation,
+                buffer_scheme = WENO(FT; order=order-2, bounds, weight_computation, maximum_courant_number,
                                      buffer_scheme = DecreasingOrderAdvectionScheme(; boundary_scheme = buffer_scheme.boundary_scheme))
             end
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        preserved_bounds = isnothing(bounds) ? nothing :
+            BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
+
+        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 
