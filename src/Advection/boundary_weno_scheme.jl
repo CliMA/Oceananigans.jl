@@ -66,7 +66,7 @@ drops to the one that fits.
     P¹ = (u₁ + u₂) / 2
     P² = (u₁ + 5u₂ / 2 - u₃ / 2) / 3
 
-    Pᵒ = @muladd (P² - d¹ * P¹ - d⁰ * P⁰) * (one(FT) / dᵒ)
+    Pᵒ = @muladd (P² - d¹ * P¹ - d⁰ * P⁰) * (1 / dᵒ)
     blended = @muladd (αᵒ * Pᵒ + α¹ * P¹ + α⁰ * P⁰) / Σα
 
     return ifelse(wet₃, blended, ifelse(wet₂, P¹, u₁))
