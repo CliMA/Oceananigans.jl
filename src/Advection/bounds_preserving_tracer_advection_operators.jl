@@ -88,8 +88,12 @@ end
     m, M = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
     m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
 
+    # M - cᵢ ≥ 0 and m - cᵢ ≤ 0, so the regularization keeps each denominator away from zero
+    # only when it is added on the max side and subtracted on the min side; with + ε₂ on both,
+    # a cell at the lower bound whose undershoot is exactly ε₂ (reconstructions are frequently
+    # exact multiples of ε₂ once a limited tracer has decayed to zero) divides 0 by 0.
     θᵐᵃˣ = abs((cᵐᵃˣ - cᵢ) / (M - cᵢ + ε₂))
-    θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ + ε₂))
+    θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ - ε₂))
 
     return min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
 end

@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, compute_bounds_preserving_limiter!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -84,6 +85,27 @@ end
         cᵐⁱⁿ, cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 100, 5//18)
 
         @test cᵐⁱⁿ < -1e-6
+    end
+
+    @testset "Limiter at the lower bound with an undershoot of exactly ε₂" begin
+        # A tracer that has decayed to zero below a tail of ε₂-multiples: the right-biased
+        # reconstruction at the face below the zero cell is exactly -ε₂ (0.3 × (-1/6) × 2e-19),
+        # which used to give θ = |0 / (m - cᵢ + ε₂)| = 0/0. Taken from a Float32 P3 rain-number
+        # field at cloud top.
+        FT = Float32
+        grid = RectilinearGrid(CPU(), FT; size=(8, 8, 12), x=(0, 8), y=(0, 8), z=(0, 12), halo=(5, 5, 5),
+                               topology=(Periodic, Periodic, Bounded))
+        column = FT[1.45, 9.531033f-13, 2.0000002f-19, 4.6913728f-29, 0, 0, 0, 0, 0, 0, 0, 0]
+        for bounds in ((0.0, 1.0), (0.0, Inf))
+            scheme = materialize_advection(WENO(FT; order=5, bounds), grid)
+            c = CenterField(grid)
+            set!(c, (x, y, z) -> column[clamp(Int(floor(z)) + 1, 1, 12)])
+            fill_halo_regions!(c)
+            compute_bounds_preserving_limiter!(scheme, grid, c)
+            θ = Array(interior(scheme.bounds.limiter))
+            @test all(isfinite, θ)
+            @test all(θ[:, :, 5:end] .== 0)   # zero cells at the lower bound admit no excursion
+        end
     end
 
     @testset "maximum_courant_number" begin
