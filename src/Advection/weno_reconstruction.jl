@@ -19,10 +19,9 @@ end
     WENO([FT=Oceananigans.defaults.FloatType;]
          weight_computation=Nothing,
          order = 5,
-         buffer_scheme = DecreasingOrderAdvectionScheme(),
+         boundary_scheme = nothing,
          time_discretization = ExplicitTimeDiscretization(),
-         bounds = nothing,
-         minimum_buffer_upwind_order = 3)
+         bounds = nothing)
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 
@@ -37,13 +36,17 @@ Keyword arguments
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5.
-- `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
-                           that attempts to restrict a quantity to lie between a `bounds` tuple.
-                           Default: `nothing`, which does not use a boundary-preserving scheme.
-- `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
-                                 scheme order reaches this value, subsequent buffers use
-                                 `Centered(order=2)` instead of continuing to decrease the
-                                 upwind order. Default: 3.
+- `boundary_scheme`: The reconstruction the buffer chain terminates in, used in a cell whose stencil no longer
+                     fits, i.e. against a boundary. The chain steps the order down by two until third order and
+                     then reaches for it. Default: `nothing`, which selects `Centered(FT; order=2)`.
+- `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
+                           Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
+                           mean so that the advective update stays within `bounds`. One rescaling factor is
+                           shared by the three directions, so the bound is three-dimensional. It is guaranteed
+                           for a forward Euler or strong-stability-preserving update whose Courant numbers
+                           satisfy `λˣ + λʸ + λᶻ ≤ 5//18`. Pass a [`BoundsPreservation`](@ref) instead of a tuple
+                           to choose that Courant number.
+                           Default: `nothing`, which does not use a bounds-preserving scheme.
 
 Examples
 ========
@@ -73,16 +76,15 @@ WENO{5, Float64, Nothing}(order=9)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
-To build a 9th-order scheme with `minimum_buffer_upwind_order=5`,
-which uses `Centered(order=2)` as the innermost buffer scheme:
+To terminate the chain in a boundary reconstruction other than the default:
 
 ```jldoctest weno
-julia> WENO(order=9, minimum_buffer_upwind_order=5)
-WENO{5, Float64, Nothing}(order=9)
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│       └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+julia> WENO(order=7, boundary_scheme=UpwindBiased(order=1))
+WENO{4, Float64, Nothing}(order=7)
+├── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
+│   └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
+│       └── buffer_scheme: UpwindBiased(order=1)
+└── advecting_velocity_scheme: Centered(order=6)
 ```
 
 ```jldoctest weno
@@ -107,17 +109,16 @@ WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,
               order = 5,
-              buffer_scheme = DecreasingOrderAdvectionScheme(),
+              boundary_scheme = nothing,
+              buffer_scheme = nothing,
               time_discretization = ExplicitTimeDiscretization(),
-              bounds = nothing,
-              minimum_buffer_upwind_order = 3)
+              bounds = nothing)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    if !isnothing(bounds)
-        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
-        bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
-    end
+    bounds isa NTuple{2} && (bounds = BoundsPreservation(bounds...))
+    isnothing(bounds) || bounds isa BoundsPreservation ||
+        throw(ArgumentError("bounds must be nothing, a tuple of two values, or a BoundsPreservation"))
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
@@ -125,17 +126,17 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
 
-        if buffer_scheme isa DecreasingOrderAdvectionScheme
-            if order ≤ minimum_buffer_upwind_order
-                # At minimum order, switch to Centered scheme
-                buffer_scheme = Centered(FT; order=2)
-            else
-                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
-            end
+        if isnothing(buffer_scheme)
+            boundary_scheme = something(boundary_scheme, Centered(FT; order=2))
+            buffer_scheme = order ≤ 3 ? boundary_scheme : WENO(FT; order=order-2, bounds, weight_computation, boundary_scheme)
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+        preserved_bounds = isnothing(bounds) ? nothing :
+            BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
+                               convert(FT, bounds.maximum_courant_number), nothing)
+
+        return WENO{N, FT, weight_computation}(preserved_bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 

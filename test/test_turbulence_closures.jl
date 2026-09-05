@@ -179,8 +179,8 @@ function time_step_with_variable_AMD_coefficient(arch; use_field_coefficient=fal
     return true
 end
 
-function time_step_with_tupled_closure(FT, arch)
-    closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
+function time_step_with_tupled_closure(FT, arch, additional_closures...)
+    closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT), additional_closures...)
     grid = RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid; closure=closure_tuple)
@@ -691,6 +691,9 @@ end
         @info "  Testing time-stepping with a tuple of closures..."
         for arch in archs, FT in float_types
             @test time_step_with_tupled_closure(FT, arch)
+            # Test up to 6 closures in a tuple
+            additional_closures = (VerticalScalarDiffusivity(κ=1e-6), VerticalScalarDiffusivity(κ=2e-5), ScalarDiffusivity(ν=1e-5), HorizontalScalarDiffusivity(κ=1e-5))
+            @test time_step_with_tupled_closure(FT, arch, additional_closures...)
         end
     end
 
