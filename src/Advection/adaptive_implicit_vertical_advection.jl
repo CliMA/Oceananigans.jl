@@ -98,45 +98,51 @@ BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions
 """
 $(TYPEDSIGNATURES)
 
-Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the next wⁱ.
+Refresh the state an advection scheme carries between stages, before tendencies are computed. `tracer` is the
+field the scheme advects, or `nothing` for the `momentum` entry.
 """
-update_advection_timestep!(advection, timestepper, clock) = nothing
+update_advection!(advection, model) = nothing
 
-function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper, clock)
-    td = TimeSteppers.time_discretization(a)
-    td.Δt[] = clock.last_Δt
+# `advection` is `(momentum, tracer_names...)`, with the tracer entries in `model.tracers` order.
+@inline function update_advection!(advection::NamedTuple, model)
+    update_advection!(advection.momentum, model, nothing)
+    return update_tracer_advection!(Base.tail(values(advection)), values(model.tracers), model)
+end
+
+@inline update_tracer_advection!(::Tuple{}, ::Tuple{}, model) = nothing
+
+@inline function update_tracer_advection!(schemes::Tuple, tracers::Tuple, model)
+    update_advection!(first(schemes), model, first(tracers))
+    return update_tracer_advection!(Base.tail(schemes), Base.tail(tracers), model)
+end
+
+update_advection!(scheme, model, tracer) = nothing
+
+update_advection!(scheme::FluxFormAdvection, model, tracer) = update_advection!(scheme.z, model, tracer)
+
+@inline function update_advection!(scheme::AdaptiveImplicitVerticalAdvection, model, tracer)
+    td = TimeSteppers.time_discretization(scheme)
+    td.Δt[] = adaptive_advection_timestep(model.timestepper, model.clock)
     return nothing
 end
 
-@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, clock)
-    td      = TimeSteppers.time_discretization(a)
-    stage   = clock.stage
-    Δt      = clock.last_stage_Δt * timestepper.β[stage]
-    nstage  = ifelse(stage < timestepper.Nstages, stage + 1, 1)
-    td.Δt[] = Δt / timestepper.β[nstage]
-    return nothing
+# Δτ of the *next* substep, so that wᵉ in Gⁿ matches the next wⁱ.
+@inline adaptive_advection_timestep(timestepper, clock) = clock.last_Δt
+
+@inline function adaptive_advection_timestep(timestepper::SplitRungeKuttaTimeStepper, clock)
+    stage  = clock.stage
+    Δt     = clock.last_stage_Δt * timestepper.β[stage]
+    nstage = ifelse(stage < timestepper.Nstages, stage + 1, 1)
+    return Δt / timestepper.β[nstage]
 end
 
 @inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
 @inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²
 @inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ¹ + ts.ζ³
 
-@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::RungeKutta3TimeStepper, clock)
-    td      = TimeSteppers.time_discretization(a)
-    stage   = clock.stage
-    nstage  = stage == 3 ? 1 : stage + 1
-    Δt      = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
-    td.Δt[] = Δt * sum_rk3_coefficients(timestepper, Val(nstage))
-    return nothing
-end
-
-update_advection_timestep!(a::FluxFormAdvection, timestepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
-update_advection_timestep!(a::FluxFormAdvection, timestepper::RungeKutta3TimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
-update_advection_timestep!(a::FluxFormAdvection, timestepper::SplitRungeKuttaTimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
-
-function update_advection_timestep!(a::NamedTuple, timestepper, clock)
-    for scheme in values(a)
-        update_advection_timestep!(scheme, timestepper, clock)
-    end
-    return nothing
+@inline function adaptive_advection_timestep(timestepper::RungeKutta3TimeStepper, clock)
+    stage  = clock.stage
+    nstage = stage == 3 ? 1 : stage + 1
+    Δt     = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
+    return Δt * sum_rk3_coefficients(timestepper, Val(nstage))
 end
