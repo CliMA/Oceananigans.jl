@@ -52,9 +52,6 @@ for dir in (:x, :y, :z)
         @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
         @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
-        # Each bias is tested on its own span. Taking their union instead would demote a
-        # reconstruction whose own stencil fits comfortably, purely because the opposite one
-        # does not -- which costs order on the downwind side of every boundary.
         @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv, bias) =
             ifelse(bias == LeftBias,
                    (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)),
@@ -108,7 +105,6 @@ for bias in (:symmetric, :biased)
 
             outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
 
-            # the biased predicate now needs to know which side it is reconstructing from
             b = bias == :biased ? (:bias,) : ()
 
             # Conditional high-order interpolation in Bounded directions

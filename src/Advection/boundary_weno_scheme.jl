@@ -24,24 +24,21 @@ optimal polynomial is defined as `Pᵒ = (P² - d¹P¹ - d⁰P⁰) / dᵒ` with 
 positive weights are chosen. However, they set how quickly each low order candidate takes over near a discontinuity.
 
 - `reference_gradient`: gradient of the reconstructed field, in units of `ψ` per unit length, setting the scale `ϵ = (reference_gradient * Δ)²`
-  at which the constant takes over. Raising it lowers the spurious mixing against the boundary and raises the overshoot. Zero estimates it from the stencil.
+  at which the constant takes over. Zero estimates it from the stencil.
 
 - `reference_length`: length scale that nondimensionalizes the grid spacing in `d⁰ = min((Δ / reference_length)^constant_weight_exponent, maximum_constant_weight)`.
   `d⁰ -> 0` under refinement is what recovers third order accuracy on smooth data next to the boundary. Zero holds `d⁰` at `maximum_constant_weight`.
 
 - `linear_weight`: `d¹`, the linear weight of the linear polynomial.
 
-- `maximum_constant_weight`: the cap on `d⁰`, and its value everywhere if `reference_length` is zero. This cap fixes how sharp a feature has to be
-  before the constant stencil contributes: lowering it weights less the constant stencil against the high order one.
+- `maximum_constant_weight`: the cap on `d⁰`, and its value everywhere if `reference_length` is zero.
 
-- `constant_weight_exponent`: the exponent with which `d⁰` vanishes under refinement. Third order accuracy needs it to be at least one.
+- `constant_weight_exponent`: the exponent with which `d⁰` vanishes under refinement, at least one for third order accuracy.
 
-- `smoothness_ratio_exponent`: the exponent `p` of the Z-weights, which sharpens the response to a discontinuity as it grows. Third order accuracy
-  needs it to be at least one.
+- `smoothness_ratio_exponent`: the exponent `p` of the Z-weights, at least one for third order accuracy.
 
 - `relative_oscillation_floor`: the value `ϵ` falls back to, relative to the square of the largest average in the stencil, where the estimate from
-  the stencil vanishes. A flat pair of averages next to a jump is exactly such a case, and the constant only takes over there because `ϵ` stays
-  positive: lowering the floor sharpens that response.
+  the stencil vanishes.
 
 - `weight_computation`: the type of approximate division used for the smoothness ratios, as in `WENO`. `Nothing` defers the choice to the
   architecture the scheme is materialized on.

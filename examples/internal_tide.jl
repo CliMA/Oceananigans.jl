@@ -125,7 +125,7 @@ set!(model, u=U₂, b=bᵢ)
 # Now let's build a `Simulation`.
 
 Δt = 5minutes
-stop_time = 40days
+stop_time = 4days
 simulation = Simulation(model; Δt, stop_time)
 
 # We add a callback to print a message about how the simulation is going,
