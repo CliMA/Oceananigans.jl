@@ -246,20 +246,20 @@ Oceananigans.restore_prognostic_state!(obj, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
 Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::NamedTuple{()}, from) = nothing
-Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
 Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
-Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
-# To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
-Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+# Disambiguation methods for `restore_prognostic_state!(obj, ::Nothing)`
 Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::OutWriters, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
 function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
     copyto!(restored, from)
