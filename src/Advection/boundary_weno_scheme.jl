@@ -68,7 +68,7 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
                 smoothness_ratio_exponent = 1,
                 relative_oscillation_floor = eps(FT),
                 weight_computation::DataType = Nothing,
-                symmetric_scheme = Centered(FT; order=2))
+                symmetric_scheme = Centered(FT; order=2, buffer_scheme=nothing))
 
     M = Int(constant_weight_exponent)
     P = Int(smoothness_ratio_exponent)
