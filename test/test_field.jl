@@ -117,6 +117,16 @@ function run_field_reduction_tests(grid)
         @test argmin(ψ) == argmin(interior_values)
         @test findmin(ψ) == findmin(interior_values)
 
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
+
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))

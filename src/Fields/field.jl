@@ -850,8 +850,10 @@ end
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
-# Index reductions: locate extrema within `interior(c)`, consistently with `nodes(c)`.
-# The generic fallbacks scalar-index on the GPU and are blind to immersed boundaries.
+# Index reductions: locate extrema over `interior(c)`, returning indices in the field's own
+# axes so that `c[argmax(c)] == maximum(c)` — which for default fields coincide with positional
+# interior (and `nodes`) indices. The generic fallbacks scalar-index on the GPU and are blind
+# to immersed boundaries.
 # The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
 # on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
 # the one-element destination — so neither the operand nor the pairs are materialized.
@@ -867,7 +869,7 @@ function locate_extremum(better, c::AbstractField, condition, mask)
     indices = OffsetArray(LinearIndices(size(operand)), axes(operand))
     pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, operand, indices))
     value, i = fold_pairs(architecture(c), tiebreak, pairs, (mask, 1))
-    return value, CartesianIndices(size(operand))[i]
+    return value, CartesianIndices(axes(operand))[i]
 end
 
 function fold_pairs(::Architectures.CPU, tiebreak, pairs, init)
