@@ -57,9 +57,9 @@ drops to the one that fits.
     # τ is the indicator of the first interior cell, whose stencil is these same three averages
     τ = abs(2 * centred_parabola_oscillation(u₁, u₂, u₃) - linear_oscillation(u₁, u₂) - linear_oscillation(u₂, u₃))
 
-    αᵒ = dᵒ * (one(FT) + smoothness_ratio(τ, I², ϵ))
-    α¹ = d¹ * (one(FT) + smoothness_ratio(τ, I¹, ϵ))
-    α⁰ = d⁰ * (one(FT) + smoothness_ratio(τ, zero(FT), ϵ))
+    αᵒ = dᵒ * (1 + smoothness_ratio(τ, I², ϵ))
+    α¹ = d¹ * (1 + smoothness_ratio(τ, I¹, ϵ))
+    α⁰ = d⁰ * (1 + smoothness_ratio(τ, zero(FT), ϵ))
     Σα = αᵒ + α¹ + α⁰
 
     P⁰ = u₁
