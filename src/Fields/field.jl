@@ -865,22 +865,30 @@ function locate_extremum(better, c::AbstractField, condition, mask)
     tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
                                isequal(x, y) ? (x, min(i, j)) : (x, i)
 
-    # `OffsetArray` re-axes the linear positions onto windowed (non-1-based) operand axes
-    indices = OffsetArray(LinearIndices(size(operand)), axes(operand))
-    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, operand, indices))
-    value, i = fold_pairs(architecture(c), tiebreak, pairs, (mask, 1))
-    return value, CartesianIndices(axes(operand))[i]
+    # Everything is 1-based from here: a windowed interior is a 1-based view and a
+    # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
+    values = operand === c ? interior(c) : operand
+
+    value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
+    positional = CartesianIndices(size(values))[i]
+
+    # Shift into the field's own axes so that `c[argmax(c)] == maximum(c)` holds for
+    # windowed fields too; for default fields the shift vanishes
+    return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
 end
 
-function fold_pairs(::Architectures.CPU, tiebreak, pairs, init)
+function fold_pairs(::Architectures.CPU, tiebreak, values, init)
     result = init
-    @inbounds for I in CartesianIndices(axes(pairs))
-        result = tiebreak(result, pairs[I])
+    linear = 0
+    @inbounds for I in CartesianIndices(size(values))
+        linear += 1
+        result = tiebreak(result, (values[I], linear))
     end
     return result
 end
 
-function fold_pairs(arch, tiebreak, pairs, init)
+function fold_pairs(arch, tiebreak, values, init)
+    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, values, LinearIndices(size(values))))
     result = on_architecture(arch, fill(init, 1, 1, 1))
     Base.mapreducedim!(identity, tiebreak, result, pairs)
     return first(Array(result))
