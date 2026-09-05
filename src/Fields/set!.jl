@@ -43,10 +43,10 @@ function set!(dst::NamedFieldTuple, src::NamedTuple)
 end
 
 # This interface helps us do things like set distributed fields
-# Note: `clock` and `model_fields` are accepted (so the generic model-level `set!` can pass
-# them uniformly) but ignored here --- function-based initial conditions are always called
-# as `f(x, y, z)`, never `f(x, y, z, t)`.
-set!(u::Field, f::Function, clock=nothing, model_fields=nothing) = set_to_function!(u, f)
+# Note: `args...` (eg `clock, model_fields` from the generic model-level `set!`) is accepted
+# but ignored here --- function-based initial conditions are always called as `f(x, y, z)`,
+# never `f(x, y, z, t)`.
+set!(u::Field, f::Function, args...) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
 
 """
@@ -63,11 +63,12 @@ architectures.
 Note that the interpolation path samples `v` pointwise; for conservative
 remapping, call [`regrid!`](@ref) explicitly.
 
-When `u` is set from a model's `set!(model; kwargs...)`, `clock` and `model_fields`
-carry the model's simulation context through to the halo fill of `v`, so that `v`'s
-boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
+When `u` is set from a model's `set!(model; kwargs...)`, `args...` (eg `clock, model_fields`)
+carries the model's simulation context through to the halo fill of `v`, so that `v`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`). Different
+models pass different `args` into `fill_halo_regions!`, so this is kept generic.
 """
-set!(u::Field, v::Field, clock=nothing, model_fields=nothing) = set_to_field!(u, v, clock, model_fields)
+set!(u::Field, v::Field, args...) = set_to_field!(u, v, args...)
 
 function set!(u::Field, a::Number, args...)
     fill!(interior(u), a) # note all other set! only change interior
@@ -153,14 +154,14 @@ function set_to_array!(u, a)
     return u
 end
 
-function set_to_field!(u, v, clock=nothing, model_fields=nothing)
+function set_to_field!(u, v, args...)
     if copyable_fields(u, v)
         copy_to_field!(u, v)
     else
-        fill_halo_regions!(v, clock, model_fields)
+        fill_halo_regions!(v, args...)
         # Avoid reconstructing immersed grids when architectures already match.
         v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
-        interpolate!(u, v_on_u, clock, model_fields)
+        interpolate!(u, v_on_u, args...)
     end
 
     return u

@@ -448,10 +448,10 @@ end
 $(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
-`clock` and `model_fields` are forwarded to the halo fill, so `to_field`'s boundary
-conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
+`args...` (eg `clock, model_fields`) is forwarded to the halo fill, so `to_field`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
 """
-function interpolate!(to_field::Field, from_field::AbstractField, clock=nothing, model_fields=nothing)
+function interpolate!(to_field::Field, from_field::AbstractField, args...)
     to_grid   = to_field.grid
     from_grid = from_field.grid
 
@@ -478,7 +478,7 @@ function interpolate!(to_field::Field, from_field::AbstractField, clock=nothing,
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    fill_halo_regions!(to_field, clock, model_fields)
+    fill_halo_regions!(to_field, args...)
 
     return to_field
 end
