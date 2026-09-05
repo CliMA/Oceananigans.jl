@@ -851,15 +851,43 @@ Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; k
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
 # Index reductions: locate extrema within `interior(c)`, consistently with `nodes(c)`.
-# The generic fallbacks scalar-index on the GPU and are blind to immersed boundaries;
-# here immersed or conditioned cells are masked with the neutral element before the search.
-for (locator, neutral) in ((:argmax, -Inf), (:findmax, -Inf), (:argmin, Inf), (:findmin, Inf))
-    @eval function Base.$locator(c::AbstractField; condition = nothing, mask = $neutral)
-        operand = condition_operand(c, condition, convert(eltype(c), mask))
-        values = operand === c ? interior(c) : interior(Field(operand))
-        return Base.$locator(values)
-    end
+# The generic fallbacks scalar-index on the GPU and are blind to immersed boundaries.
+# The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
+# on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
+# the one-element destination — so neither the operand nor the pairs are materialized.
+function locate_extremum(better, c::AbstractField, condition, mask)
+    mask = convert(eltype(c), mask)
+    operand = condition_operand(c, condition, mask)
+
+    # Ties resolve to the smaller linear index, matching Base
+    tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
+                               isequal(x, y) ? (x, min(i, j)) : (x, i)
+
+    # `OffsetArray` re-axes the linear positions onto windowed (non-1-based) operand axes
+    indices = OffsetArray(LinearIndices(size(operand)), axes(operand))
+    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, operand, indices))
+    value, i = fold_pairs(architecture(c), tiebreak, pairs, (mask, 1))
+    return value, CartesianIndices(size(operand))[i]
 end
+
+function fold_pairs(::Architectures.CPU, tiebreak, pairs, init)
+    result = init
+    @inbounds for I in CartesianIndices(axes(pairs))
+        result = tiebreak(result, pairs[I])
+    end
+    return result
+end
+
+function fold_pairs(arch, tiebreak, pairs, init)
+    result = on_architecture(arch, fill(init, 1, 1, 1))
+    Base.mapreducedim!(identity, tiebreak, result, pairs)
+    return first(Array(result))
+end
+
+Base.findmax(c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    c, condition, mask)
+Base.findmin(c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, c, condition, mask)
+Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
+Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     mask = convert(eltype(c), mask)
