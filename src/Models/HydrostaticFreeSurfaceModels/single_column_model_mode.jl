@@ -1,7 +1,7 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
@@ -85,7 +85,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock)
+    update_advection!(model.advection, model)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing
