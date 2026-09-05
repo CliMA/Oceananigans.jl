@@ -1,4 +1,5 @@
 using Oceananigans.ImmersedBoundaries: inactive_node
+using Oceananigans.Utils: newton_div
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
@@ -10,6 +11,7 @@ using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
            constant_weight_exponent = 1,
            smoothness_ratio_exponent = 1,
            relative_oscillation_floor = eps(FT),
+           weight_computation = Nothing,
            symmetric_scheme = Centered(FT; order=2))
 
 Third order central-WENO reconstruction on a stencil that extends only into the interior, for use as the `boundary_scheme` of a
@@ -34,17 +36,21 @@ positive weights are chosen. However, they set how quickly each low order candid
 
 - `constant_weight_exponent`: the exponent with which `d⁰` vanishes under refinement. Third order accuracy needs it to be at least one.
 
-- `smoothness_ratio_exponent`: the exponent `p` of the Z-weights, which sharpens the response to a discontinuity as it grows. Third order accuracy needs it to be at least one.
+- `smoothness_ratio_exponent`: the exponent `p` of the Z-weights, which sharpens the response to a discontinuity as it grows. Third order accuracy
+  needs it to be at least one.
 
 - `relative_oscillation_floor`: the value `ϵ` falls back to, relative to the square of the largest average in the stencil, where the estimate from
   the stencil vanishes. A flat pair of averages next to a jump is exactly such a case, and the constant only takes over there because `ϵ` stays
   positive: lowering the floor sharpens that response.
 
+- `weight_computation`: the type of approximate division used for the smoothness ratios, as in `WENO`. `Nothing` defers the choice to the
+  architecture the scheme is materialized on.
+
 - `symmetric_scheme`: the reconstruction that the symmetric interpolations, which need no bias, defer to.
 
 The defaults are those of [SempliceTravagliaPuppo22](@cite) and, through it, of [NaumannKolbSemplice18](@cite).
 """
-struct CWENOZ{FT, M, P, C}
+struct CWENOZ{FT, M, P, WCT, C}
     reference_gradient :: FT
     reference_length :: FT
     linear_weight :: FT
@@ -61,23 +67,24 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
                 constant_weight_exponent = 1,
                 smoothness_ratio_exponent = 1,
                 relative_oscillation_floor = eps(FT),
+                weight_computation::DataType = Nothing,
                 symmetric_scheme = Centered(FT; order=2))
 
     M = Int(constant_weight_exponent)
     P = Int(smoothness_ratio_exponent)
 
-    return CWENOZ{FT, M, P, typeof(symmetric_scheme)}(convert(FT, reference_gradient),
-                                                      convert(FT, reference_length),
-                                                      convert(FT, linear_weight),
-                                                      convert(FT, maximum_constant_weight),
-                                                      convert(FT, relative_oscillation_floor),
-                                                      symmetric_scheme)
+    return CWENOZ{FT, M, P, weight_computation, typeof(symmetric_scheme)}(convert(FT, reference_gradient),
+                                                                          convert(FT, reference_length),
+                                                                          convert(FT, linear_weight),
+                                                                          convert(FT, maximum_constant_weight),
+                                                                          convert(FT, relative_oscillation_floor),
+                                                                          symmetric_scheme)
 end
 
 Base.eltype(::CWENOZ{FT}) where FT = FT
 Base.summary(::CWENOZ{FT}) where FT = string("CWENOZ{$FT}")
 
-Base.show(io::IO, scheme::CWENOZ{FT, M, P}) where {FT, M, P} =
+Base.show(io::IO, scheme::CWENOZ{FT, M, P, WCT}) where {FT, M, P, WCT} =
     print(io, summary(scheme), '\n',
               "├── reference_gradient: ",         scheme.reference_gradient, '\n',
               "├── reference_length: ",           scheme.reference_length, '\n',
@@ -86,13 +93,15 @@ Base.show(io::IO, scheme::CWENOZ{FT, M, P}) where {FT, M, P} =
               "├── constant_weight_exponent: ",   M, '\n',
               "├── smoothness_ratio_exponent: ",  P, '\n',
               "├── relative_oscillation_floor: ", scheme.relative_oscillation_floor, '\n',
+              "├── weight_computation: ",         WCT, '\n',
               "└── symmetric_scheme: ",           summary(scheme.symmetric_scheme))
 
 @inline  inward_parabola_oscillation(u₁, u₂, u₃) = @muladd 13//12 * (u₁ - 2u₂ + u₃)^2 + 1//4 * (3u₁ - 4u₂ + u₃)^2
 @inline centred_parabola_oscillation(u₁, u₂, u₃) = @muladd 13//12 * (u₁ - 2u₂ + u₃)^2 + 1//4 * (u₁ - u₃)^2
 @inline linear_oscillation(uₐ, u_b) = (u_b - uₐ)^2
 
-@inline smoothness_ratio(scheme::CWENOZ{FT, M, P}, τ, β, ϵ) where {FT, M, P} = ifelse(β + ϵ > zero(τ), Base.literal_pow(^, τ / (β + ϵ), Val(P)), zero(τ))
+# β vanishes only where the whole stencil does, and there every candidate already agrees
+@inline smoothness_ratio(::Type{WCT}, τ, β) where WCT = ifelse(β > zero(τ), newton_div(WCT, τ, β), zero(τ))
 
 """
     cwenoz_reconstruction(scheme, u₁, u₂, u₃, active₂, active₃, Δ)
@@ -101,7 +110,7 @@ Point value at the inward face of the boundary cell, from the cell averages `u�
 the boundary. `active₂` and `active₃` report whether the second and third cells exist; a run too short for a
 candidate drops to the one that fits.
 """
-@inline function cwenoz_reconstruction(scheme::CWENOZ{FT, M}, u₁, u₂, u₃, active₂, active₃, Δ) where {FT, M}
+@inline function cwenoz_reconstruction(scheme::CWENOZ{FT, M, P, WCT}, u₁, u₂, u₃, active₂, active₃, Δ) where {FT, M, P, WCT}
     # Δ / 0 is infinite, so a vanishing reference length pins d⁰ to its cap
     d⁰ = min(Base.literal_pow(^, Δ / scheme.reference_length, Val(M)), scheme.maximum_constant_weight)
     d¹ = scheme.linear_weight
@@ -120,17 +129,21 @@ candidate drops to the one that fits.
     # τ is the indicator of the first interior cell, whose stencil is these same three averages
     τ = abs(2 * centred_parabola_oscillation(u₁, u₂, u₃) - I¹ - linear_oscillation(u₂, u₃))
 
-    αᵒ = dᵒ * (1 + smoothness_ratio(scheme, τ, I², ϵ))
-    α¹ = d¹ * (1 + smoothness_ratio(scheme, τ, I¹, ϵ))
-    α⁰ = d⁰ * (1 + smoothness_ratio(scheme, τ, zero(FT), ϵ))
+    fᵒ = 1 + Base.literal_pow(^, smoothness_ratio(WCT, τ, I² + ϵ), Val(P))
+    f¹ = 1 + Base.literal_pow(^, smoothness_ratio(WCT, τ, I¹ + ϵ), Val(P))
+    f⁰ = 1 + Base.literal_pow(^, smoothness_ratio(WCT, τ,      ϵ), Val(P))
+
+    αᵒ = dᵒ * fᵒ
+    α¹ = d¹ * f¹
+    α⁰ = d⁰ * f⁰
     Σα = αᵒ + α¹ + α⁰
 
     P⁰ = u₁
-    P¹ = (u₁ + u₂) / 2
-    P² = (u₁ + 5u₂ / 2 - u₃ / 2) / 3
+    P¹ = 1//2 * (u₁ + u₂)
+    P² = 1//3 * (u₁ + 5//2 * u₂ - 1//2 * u₃)
 
-    Pᵒ = @muladd (P² - d¹ * P¹ - d⁰ * P⁰) * (1 / dᵒ)
-    blended = @muladd (αᵒ * Pᵒ + α¹ * P¹ + α⁰ * P⁰) (1 / Σα)
+    # dᵒ cancels against its own appearance in the definition of Pᵒ
+    blended = @muladd (fᵒ * (P² - d¹ * P¹ - d⁰ * P⁰) + α¹ * P¹ + α⁰ * P⁰) / Σα
 
     return ifelse(active₃, blended, ifelse(active₂, P¹, u₁))
 end

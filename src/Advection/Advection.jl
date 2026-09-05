@@ -68,8 +68,6 @@ struct DecreasingOrderAdvectionScheme{BS}
     boundary_scheme :: BS
 end
 
-DecreasingOrderAdvectionScheme(; boundary_scheme = nothing) = DecreasingOrderAdvectionScheme(boundary_scheme)
-
 include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
@@ -100,5 +98,7 @@ include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 include("materialize_advection.jl")
+
+DecreasingOrderAdvectionScheme(; boundary_scheme = CWENOZ()) = DecreasingOrderAdvectionScheme(boundary_scheme)
 
 end # module
