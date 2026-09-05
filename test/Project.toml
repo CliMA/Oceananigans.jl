@@ -40,7 +40,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
 Oceananigans = {path = ".."}
-ConservativeRegridding = {url = "ConservativeRegridding", rev = "ss/update-oceananigans4"}
+ConservativeRegridding = {url = "https://github.com/JuliaGeo/ConservativeRegridding.jl", rev = "ss/update-oceananigans4"}
 
 [compat]
 AMDGPU = "1.3.6, 2"
