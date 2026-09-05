@@ -45,7 +45,7 @@ drops to the one that fits.
 """
 @inline function cwenoz_reconstruction(scheme::CWENOZ{FT}, u₁, u₂, u₃, wet₂, wet₃, Δ) where FT
     d⁰, d¹ = convert(FT, 0.01), convert(FT, 0.25)
-    dᵒ = one(FT) - d¹ - d⁰
+    dᵒ = 1 - d¹ - d⁰
 
     u₂ = ifelse(wet₂, u₂, u₁)
     u₃ = ifelse(wet₃, u₃, u₂)
