@@ -62,3 +62,43 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
         end
     end
 end
+
+@testset "Float32 WENO weights across a large-magnitude jump" begin
+    # A number concentration of ~5e8 kg⁻¹ dropping to ~3e8 kg⁻¹ inside the stencil: the smooth
+    # sub-stencils have β ≈ 0 while τ ~ Δψ² ≈ 3e16, and (τ / ϵ)² overflows Float32 unless the
+    # ratio is capped, which used to leave NaN weights.
+    for order in (3, 5, 7, 9)
+        buffer = Int((order + 1) ÷ 2)
+        n_stencil = 2 * buffer
+        S_f64 = ntuple(i -> i == 1 ? 2.776208e8 : 4.6214154e8, n_stencil)
+        S_f32 = ntuple(i -> Float32(S_f64[i]), n_stencil)
+
+        ψ_f64 = ntuple(Val(buffer)) do k
+            start = buffer - k + 1
+            ntuple(j -> S_f64[start + j - 1], Val(buffer))
+        end
+
+        ψ_f32 = ntuple(Val(buffer)) do k
+            start = buffer - k + 1
+            ntuple(j -> S_f32[start + j - 1], Val(buffer))
+        end
+
+        for weight_computation in (Oceananigans.Utils.BackendOptimizedDivision, Oceananigans.Utils.NormalDivision)
+            scheme_f64 = WENO(Float64; order, weight_computation)
+            scheme_f32 = WENO(Float32; order, weight_computation)
+
+            ω_f64 = biased_weno_weights(ψ_f64, nothing, scheme_f64)
+            ω_f32 = biased_weno_weights(ψ_f32, nothing, scheme_f32)
+
+            @test all(isfinite, ω_f32)
+            @test sum(ω_f32) ≈ 1
+            @test sum(ω_f64) ≈ 1
+
+            # The sub-stencil that straddles the jump carries no weight in either precision;
+            # how the rest is shared among the smooth sub-stencils (all of which reconstruct
+            # the same value) is set by round-off in their β and is not compared.
+            @test ω_f32[end] < 1e-6
+            @test ω_f64[end] < 1e-6
+        end
+    end
+end

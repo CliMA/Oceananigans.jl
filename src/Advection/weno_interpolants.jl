@@ -302,11 +302,17 @@ end
     return :($(elem...),)
 end
 
+# Largest τ / (β + ϵ) admitted into the α weights: a jump Δψ inside the wide stencil gives
+# τ ~ Δψ² next to a smooth sub-stencil with β ≈ 0, and the unbounded ratio squared overflows
+# Float32 for Δψ ≳ 4e5, turning the normalized weights into NaN. The cap keeps every α finite
+# (six stencils at most, so the sum stays below `floatmax`) and leaves finite ratios untouched.
+@inline maximum_weight_ratio(FT) = sqrt(floatmax(FT)) / 8
+
 # ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + min(newton_div(WCT, τ, β[$stencil] + ϵ), maximum_weight_ratio(FT))^2))
     end
 
     return :($(elem...),)
