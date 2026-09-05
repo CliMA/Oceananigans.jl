@@ -105,7 +105,7 @@ candidate drops to the one that fits.
     # Δ / 0 is infinite, so a vanishing reference length pins d⁰ to its cap
     d⁰ = min(Base.literal_pow(^, Δ / scheme.reference_length, Val(M)), scheme.maximum_constant_weight)
     d¹ = scheme.linear_weight
-    dᵒ = one(FT) - d¹ - d⁰
+    dᵒ = 1 - d¹ - d⁰
 
     u₂ = ifelse(active₂, u₂, u₁)
     u₃ = ifelse(active₃, u₃, u₂)
@@ -120,17 +120,17 @@ candidate drops to the one that fits.
     # τ is the indicator of the first interior cell, whose stencil is these same three averages
     τ = abs(2 * centred_parabola_oscillation(u₁, u₂, u₃) - I¹ - linear_oscillation(u₂, u₃))
 
-    αᵒ = dᵒ * (one(FT) + smoothness_ratio(scheme, τ, I², ϵ))
-    α¹ = d¹ * (one(FT) + smoothness_ratio(scheme, τ, I¹, ϵ))
-    α⁰ = d⁰ * (one(FT) + smoothness_ratio(scheme, τ, zero(FT), ϵ))
+    αᵒ = dᵒ * (1 + smoothness_ratio(scheme, τ, I², ϵ))
+    α¹ = d¹ * (1 + smoothness_ratio(scheme, τ, I¹, ϵ))
+    α⁰ = d⁰ * (1 + smoothness_ratio(scheme, τ, zero(FT), ϵ))
     Σα = αᵒ + α¹ + α⁰
 
     P⁰ = u₁
     P¹ = (u₁ + u₂) / 2
     P² = (u₁ + 5u₂ / 2 - u₃ / 2) / 3
 
-    Pᵒ = @muladd (P² - d¹ * P¹ - d⁰ * P⁰) / dᵒ
-    blended = @muladd (αᵒ * Pᵒ + α¹ * P¹ + α⁰ * P⁰) / Σα
+    Pᵒ = @muladd (P² - d¹ * P¹ - d⁰ * P⁰) * (1 / dᵒ)
+    blended = @muladd (αᵒ * Pᵒ + α¹ * P¹ + α⁰ * P⁰) (1 / Σα)
 
     return ifelse(active₃, blended, ifelse(active₂, P¹, u₁))
 end
