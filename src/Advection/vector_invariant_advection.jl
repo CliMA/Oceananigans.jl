@@ -178,7 +178,7 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
                         multi_dimensional_stencil = false,
-                        boundary_scheme = nothing,
+                        boundary_scheme = UpwindBiased(FT; order=1),
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -215,7 +215,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
                              multi_dimensional_stencil = false,
-                             boundary_scheme = nothing,
+                             boundary_scheme = UpwindBiased(FT; order=1),
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -229,8 +229,6 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         divergence_order              = nothing_to_default(divergence_order, default = order)
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
-
-    boundary_scheme = something(boundary_scheme, UpwindBiased(FT; order=1))
 
     vorticity_scheme               = WENO(FT; order=vorticity_order, boundary_scheme, weno_kw...)
     vertical_advection_scheme      = WENO(FT; order=vertical_order, boundary_scheme, time_discretization, weno_kw...)

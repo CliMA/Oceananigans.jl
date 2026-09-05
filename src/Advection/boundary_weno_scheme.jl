@@ -179,13 +179,17 @@ for (d, ξ) in enumerate((:x, :y, :z))
         symmetric = Symbol(:symmetric_interpolate_, ξ, code...)
         @eval @inline $symmetric(i, j, k, grid, scheme::CWENOZ, args...) = $symmetric(i, j, k, grid, scheme.symmetric_scheme, args...)
 
-        @eval @inline function $interp(i, j, k, grid, scheme::CWENOZ, bias, ψ)
+        # `ψ` is either a field, read by index, or a function of `(i, j, k, grid, args...)`
+        for ψtype in (:Any, :Callable)
+            load(idx) = ψtype == :Callable ? :(ψ($(idx...), grid, args...)) : :(@inbounds ψ[$(idx...)])
+
+        @eval @inline function $interp(i, j, k, grid, scheme::CWENOZ, bias, ψ::$ψtype, args...)
             inward = bias == LeftBias
 
-            ψ₋₂ = @inbounds ψ[$(J₋₂...)]
-            ψ₋₁ = @inbounds ψ[$(J₋₁...)]
-            ψ₀  = @inbounds ψ[$(J₀...)]
-            ψ₊₁ = @inbounds ψ[$(J₊₁...)]
+            ψ₋₂ = $(load(J₋₂))
+            ψ₋₁ = $(load(J₋₁))
+            ψ₀  = $(load(J₀))
+            ψ₊₁ = $(load(J₊₁))
 
             u₁ = ifelse(inward, ψ₋₁, ψ₀)
             u₂ = ifelse(inward, ψ₀,  ψ₋₁)
@@ -198,6 +202,11 @@ for (d, ξ) in enumerate((:x, :y, :z))
                                      !inactive_node($(J₋₂...), grid, $ℓx, $ℓy, $ℓz))
 
             return cwenoz_reconstruction(scheme, u₁, u₂, u₃, active₂, active₃, $(Symbol(:Δ, ξ, :ᶜᶜᶜ))($(J₀...), grid))
+        end
+
+        # the smoothness stencil is a WENO concept; the boundary reconstruction has its own indicators
+        @eval @inline $interp(i, j, k, grid, scheme::CWENOZ, bias, ψ::$ψtype, ::AbstractSmoothnessStencil, args...) =
+            $interp(i, j, k, grid, scheme, bias, ψ, args...)
         end
     end
 end
