@@ -40,6 +40,8 @@ const AGXYZ = AG{<:Any, <:BT, <:BT, <:BT}
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
+@inline biased_index(i, bias) = ifelse(bias == LeftBias, i - 1, i)
+
 for dir in (:x, :y, :z)
     outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
     outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
@@ -53,32 +55,24 @@ for dir in (:x, :y, :z)
         @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
         @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv, bias) =
-            ifelse(bias == LeftBias,
-                   (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)),
-                   (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv)))
+            (biased_index(i, bias) >= $required_halo_size(adv))     & (biased_index(i, bias) <= N + 1 - $required_halo_size(adv))
 
         @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv, bias) =
-            ifelse(bias == LeftBias,
-                   (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)),
-                   (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv)))
+            (biased_index(i, bias) >= $required_halo_size(adv) - 1) & (biased_index(i, bias) <= N + 1 - $required_halo_size(adv))
 
         # Right connected topologies (only test the left side, i.e. the bounded side)
         @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1
         @inline $outside_symmetric_haloᶜ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv, bias) =
-            ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv, bias) =
-            ifelse(bias == LeftBias, i >= $required_halo_size(adv), i >= $required_halo_size(adv) - 1)
+        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv, bias) = biased_index(i, bias) >= $required_halo_size(adv)
+        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv, bias) = biased_index(i, bias) >= $required_halo_size(adv) - 1
 
         # Left bounded topologies (only test the right side, i.e. the bounded side)
         @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
         @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv, bias) =
-            ifelse(bias == LeftBias, i <= N + 1 - ($required_halo_size(adv) - 1), i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv, bias) =
-            ifelse(bias == LeftBias, i <= N + 1 - ($required_halo_size(adv) - 1), i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv, bias) = biased_index(i, bias) <= N + 1 - $required_halo_size(adv)
+        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv, bias) = biased_index(i, bias) <= N + 1 - $required_halo_size(adv)
     end
 end
 

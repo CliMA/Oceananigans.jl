@@ -58,12 +58,12 @@ Random.seed!(314159) # for reproducible results
 arch = GPU()
 resolution = 3 // 2        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
-Ny = 170 ÷ resolution      # number of latitude points (avoiding poles)
+Ny = 150 ÷ resolution      # number of latitude points (avoiding poles)
 Nz = 10                    # number of vertical levels
 size = (Nx, Ny, Nz)
 halo = (7, 7, 7)           # halo size for higher-order advection schemes
 H = 5000                   # domain depth [m]
-latitude = (-85, 85)       # latitude range (avoiding poles for lat-lon grid)
+latitude = (-75, 75)       # latitude range; meridians converge sharply poleward of this on a lat-lon grid
 longitude = (0, 360)       # longitude range
 z = (-H, 0)                # vertical extent
 
