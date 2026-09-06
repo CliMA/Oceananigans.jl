@@ -54,11 +54,15 @@ for dir in (:x, :y, :z)
         @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
         @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv, bias) =
-            (biased_index(i, bias) >= $required_halo_size(adv))     & (biased_index(i, bias) <= N + 1 - $required_halo_size(adv))
+        @inline function $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv, bias)
+            i = biased_index(i, bias)
+            return (i >= $required_halo_size(adv)) & (i <= N + 1 - $required_halo_size(adv))
+        end
 
-        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv, bias) =
-            (biased_index(i, bias) >= $required_halo_size(adv) - 1) & (biased_index(i, bias) <= N + 1 - $required_halo_size(adv))
+        @inline function $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv, bias)
+            i = biased_index(i, bias)
+            return (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))
+        end
 
         # Right connected topologies (only test the left side, i.e. the bounded side)
         @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1

@@ -164,28 +164,30 @@ for side in (:ᶜ, :ᶠ)
         @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
     end
 
-    # The left-biased span is the right-biased one shifted a cell towards the boundary, so one span serves both.
+    # The left-biased span is 1:2buffer-1 and the right-biased one 2:2buffer, so both share 2:2buffer-1 and the
+    # bias picks only which end cell joins it.
     for buffer in advection_buffers
-        full   = 1:2buffer
-        biased = 2:2buffer
+        full    = 1:2buffer
+        shared  = 2:2buffer-1
+        westmost, eastmost = 1:1, 2buffer:2buffer
 
         @eval begin
             @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :x, side; xside = side)...))
             @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :y, side; yside = side)...))
             @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :z, side; zside = side)...))
 
-            @inline function $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias)
-                i = biased_index(i, bias)
-                return (|)($(inside_immersed_boundary(biased, buffer, :x, side; xside = side)...))
-            end
-            @inline function $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias)
-                j = biased_index(j, bias)
-                return (|)($(inside_immersed_boundary(biased, buffer, :y, side; yside = side)...))
-            end
-            @inline function $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias)
-                k = biased_index(k, bias)
-                return (|)($(inside_immersed_boundary(biased, buffer, :z, side; zside = side)...))
-            end
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                (|)($(inside_immersed_boundary(shared, buffer, :x, side; xside = side)...),
+                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :x, side; xside = side))),
+                                             $(only(inside_immersed_boundary(eastmost, buffer, :x, side; xside = side)))))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                (|)($(inside_immersed_boundary(shared, buffer, :y, side; yside = side)...),
+                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :y, side; yside = side))),
+                                             $(only(inside_immersed_boundary(eastmost, buffer, :y, side; yside = side)))))
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
+                (|)($(inside_immersed_boundary(shared, buffer, :z, side; zside = side)...),
+                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :z, side; zside = side))),
+                                             $(only(inside_immersed_boundary(eastmost, buffer, :z, side; zside = side)))))
         end
     end
 end
