@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Grids: with_halo
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.ImmersedBoundaries: immersed_cell
 
@@ -87,6 +88,14 @@ Nz = 10
                 active = (i, j) ∈ surface_active_cells_map
                 @test immersed ⊻ active
             end
+        end
+
+        @testset "Active cells map after with_halo" begin
+            new_halo = (6, 6, 5)
+            extended_grid = with_halo(new_halo, immersed_active_grid)
+            rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), GridFittedBottom(bottom_height); active_cells_map = true)
+            @test get_active_cells_map(extended_grid, Val(:core)) == get_active_cells_map(rebuilt_grid, Val(:core))
+            @test get_active_cells_map(extended_grid, Val(:xy)) == get_active_cells_map(rebuilt_grid, Val(:xy))
         end
 
         @testset "Active cells map solid body rotation" begin
