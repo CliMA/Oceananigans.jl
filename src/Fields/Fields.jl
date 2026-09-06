@@ -57,7 +57,7 @@ Build a field from array `a` at `loc` and on `grid`.
     return f
 end
 
-# Build a field off of the current data
+# Construct a field from the supplied data
 @inline function field(loc, a::OffsetArray, grid)
     loc = instantiate(loc)
     a = on_architecture(architecture(grid), a)
@@ -71,10 +71,10 @@ end
 
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
-    loc === instantiated_location(f) && grid === f.grid && return f
+    loc === instantiated_location(f) && grid == f.grid && return f
 
     msg = """
-    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+    Cannot reconstruct field, originally located at $(instantiated_location(f)), at $loc.
 
     Destination grid:
     $grid
