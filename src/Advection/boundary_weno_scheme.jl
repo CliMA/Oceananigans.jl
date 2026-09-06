@@ -165,7 +165,6 @@ for (d, ξ) in enumerate((:x, :y, :z))
         # four offsets, so that both biases read from the same static addresses: inwards (J₋₁, J₀, J₊₁), outwards (J₀, J₋₁, J₋₂)
         J₋₂, J₋₁, J₀, J₊₁ = shifted_indices.(halfshift .+ (-2, -1, 0, 1))
 
-        # Location of the reconstructed field.
         ℓx, ℓy, ℓz = if loc == :ᶠ
             (:c, :c, :c)
         elseif ξ == :x
@@ -204,7 +203,6 @@ for (d, ξ) in enumerate((:x, :y, :z))
             return cwenoz_reconstruction(scheme, u₁, u₂, u₃, active₂, active₃, $(Symbol(:Δ, ξ, :ᶜᶜᶜ))($(J₀...), grid))
         end
 
-        # the smoothness stencil is a WENO concept; the boundary reconstruction has its own indicators
         @eval @inline $interp(i, j, k, grid, scheme::CWENOZ, bias, ψ::$ψtype, ::AbstractSmoothnessStencil, args...) =
             $interp(i, j, k, grid, scheme, bias, ψ, args...)
         end
