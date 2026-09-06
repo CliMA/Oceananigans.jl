@@ -4,7 +4,8 @@ using StructArrays: StructArray
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-const OutWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
+const NonCheckpointingOutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
+
 mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
@@ -257,7 +258,7 @@ Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::OutWriters, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonCheckpointingOutputWriters, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
 Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
@@ -327,7 +328,7 @@ output_lookup_key(::JLD2Writer, name::Symbol) = name
 output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
 output_lookup_key(::ZarrWriter, name::Symbol) = name
 
-function Oceananigans.prognostic_state(writer::OutWriters)
+function Oceananigans.prognostic_state(writer::NonCheckpointingOutputWriters)
     wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
@@ -338,7 +339,7 @@ function Oceananigans.prognostic_state(writer::OutWriters)
             windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
-function Oceananigans.restore_prognostic_state!(restored::OutWriters, from)
+function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutputWriters, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
 
@@ -384,7 +385,7 @@ function reset_restored_time_average!(average::WindowedTimeAverage, clock)
     return nothing
 end
 
-function reconcile_restored_output_schedule!(writer::OutWriters, model)
+function reconcile_restored_output_schedule!(writer::NonCheckpointingOutputWriters, model)
     averaged_outputs = [output for output in values(writer.outputs)
                         if output isa IntervalWindowedTimeAverage]
     isempty(averaged_outputs) && return nothing
