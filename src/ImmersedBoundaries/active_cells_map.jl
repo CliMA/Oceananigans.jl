@@ -170,11 +170,14 @@ end
 # is performed only once on setup)
 function findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
     Wx, Wy, Wz = worksize(grid)
+    # A full collection costs hundreds of milliseconds, so it is only worth it
+    # when the temporaries of one level are large
+    collect_each_level = Wx * Wy > 2^22
     for k in 1:Wz
         interior_indices = findall(on_architecture(CPU(), view(active_cells_field.data, 1:Wx, 1:Wy, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
         active_indices   = vcat(active_indices, interior_indices)
-        GC.gc()
+        collect_each_level && GC.gc()
     end
     return active_indices
 end
