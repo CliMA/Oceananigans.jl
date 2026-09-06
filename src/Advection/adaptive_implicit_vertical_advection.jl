@@ -116,11 +116,17 @@ end
     return update_tracer_advection!(Base.tail(schemes), Base.tail(tracers), model)
 end
 
-update_advection!(scheme, model, tracer) = nothing
+@inline function update_advection!(scheme, model, tracer)
+    update_adaptive_timestep!(scheme, model)
+    update_bounds_preserving_limiter!(scheme, model.grid, tracer)
+    return nothing
+end
 
 update_advection!(scheme::FluxFormAdvection, model, tracer) = update_advection!(scheme.z, model, tracer)
 
-@inline function update_advection!(scheme::AdaptiveImplicitVerticalAdvection, model, tracer)
+update_adaptive_timestep!(scheme, model) = nothing
+
+@inline function update_adaptive_timestep!(scheme::AdaptiveImplicitVerticalAdvection, model)
     td = TimeSteppers.time_discretization(scheme)
     td.Δt[] = adaptive_advection_timestep(model.timestepper, model.clock)
     return nothing
