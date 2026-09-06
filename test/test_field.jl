@@ -103,6 +103,30 @@ function run_field_reduction_tests(grid)
         @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
         @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
 
+        # Index reductions locate extrema within `interior(ϕ)`, consistently with `nodes(ϕ)`,
+        # and must be blind to the halo regions, poisoned here on a copy
+        ψ = similar(ϕ)
+        parent(ψ) .= convert(eltype(ψ), 1e6)
+        interior(ψ) .= interior(ϕ)
+        interior_values = Array(interior(ψ))
+        @test argmax(ψ) == argmax(interior_values)
+        @test findmax(ψ) == findmax(interior_values)
+
+        parent(ψ) .= convert(eltype(ψ), -1e6)
+        interior(ψ) .= interior(ϕ)
+        @test argmin(ψ) == argmin(interior_values)
+        @test findmin(ψ) == findmin(interior_values)
+
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
+
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
@@ -787,6 +811,17 @@ end
                                  (:variably_spaced_grid => variably_spaced_grid)]
                 @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
+            end
+
+            @testset "Index reductions on an immersed grid [$(typeof(arch)), $FT]" begin
+                immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(0))
+                c = CenterField(immersed_grid)
+                set!(c, (x, y, z) -> -z) # the raw extremum hides in the immersed region
+                values = Array(interior(c))
+                @test argmax(values) != argmax(c)
+                @test values[argmax(c)] == maximum(c)
+                @test values[argmin(c)] == minimum(c)
+                @test findmax(c) == (maximum(c), argmax(c))
             end
         end
 
