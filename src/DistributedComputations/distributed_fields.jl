@@ -37,7 +37,8 @@ struct CommState
   fill_events::Base.Lockable{UInt64}
 end
 
-FillEvent(event::E, callback::C) where {E, C} = FillEvent{E, C}(event, callback)
+# Default contstructor for convenience
+CommState() = CommState(Channel(Inf), Base.Lockable(UInt64(0)))
 
 add_fill_event!(f) = nothing
 add_fill_event!(f::DistributedField) = _add_fill_event!(f.comm_state)
@@ -78,9 +79,6 @@ function _wait_for_comms!(cs::CommState)
   # Wait for MPI comms to complete
   cooperative_waitall!(cs.comm_requests)
 end
-
-# Default contstructor for convenience
-CommState() = CommState(Channel(Inf), Base.Lockable(UInt64(0)))
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
