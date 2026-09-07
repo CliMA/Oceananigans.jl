@@ -288,7 +288,7 @@ function Distributed(child_architecture = CPU();
     if synchronized_communication
       mpi_requests = MPI.Request[]
     else
-      mpi_requests = Channel{MPI.Request}(Inf)
+      mpi_requests = nothing
     end
 
     return Distributed{synchronized_communication}(child_architecture,
@@ -485,3 +485,8 @@ function Base.show(io::IO, arch::Distributed)
         print(io, connectivity_info)
     end
 end
+
+count_requests(reqs::MPI.Request) = 1
+count_requests(reqs::Array) = length(reqs)
+count_requests(reqs::MPI.MultiRequest) = length(reqs)
+count_requests(reqs::Channel{MPI.Request}) =

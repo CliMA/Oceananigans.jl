@@ -96,7 +96,7 @@ fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::Dist
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
-    outstanding_requests = length(arch.mpi_requests)
+    outstanding_requests = count_requests(arch.mpi_requests)
 
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, args...; kwargs...)
 
@@ -187,19 +187,26 @@ end
 
 function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
   fill_event = record_event(arch)
+  add_fill_event!(c)
 
   Threads.@spawn begin
-    synchronize(fill_event)
+    # Need to lock the channel to show we are waiting on send buffers
+    sync_event(fill_event)
 
     reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
     reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
     reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
     reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
-    !isnothing(reqsw) && push!(arch.mpi_requests, reqsw...)
-    !isnothing(reqse) && push!(arch.mpi_requests, reqse...)
-    !isnothing(reqnw) && push!(arch.mpi_requests, reqnw...)
-    !isnothing(reqne) && push!(arch.mpi_requests, reqne...)
+    reqs = []
+
+    !isnothing(reqsw) && push!(reqs, reqsw...)
+    !isnothing(reqse) && push!(reqs, reqse...)
+    !isnothing(reqnw) && push!(reqs, reqnw...)
+    !isnothing(reqne) && push!(reqs, reqne...)
+
+    complete_fill_event!(c)
+    add_comm_requests!(c, reqs)
 
   end
 
@@ -229,8 +236,17 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
     fill_event = record_event(arch)
+    add_fill_event!(c)
 
-    Threads.@spawn begin
+    if arch isa AsynchronousDistributed
+      Threads.@spawn begin
+        synchronize(fill_event)
+
+        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+        complete_fill_event!(c)
+        add_comm_requests!(c, requests)
+      end
+    else
       synchronize(fill_event)
 
       requests = kernel!(c, bcs..., loc, grid, arch, buffers)
