@@ -5,7 +5,8 @@ export
     FieldTimeSeries,
     TimeSeriesInterpolation,
     InMemory, OnDisk,
-    Cyclical, Linear, Clamp
+    Cyclical, Linear, Clamp,
+    time_average
 
 using DocStringExtensions: TYPEDSIGNATURES
 
@@ -42,6 +43,7 @@ include("field_time_series_indexing.jl")
 include("time_series_interpolated_field.jl")
 include("set_field_time_series.jl")
 include("field_time_series_reductions.jl")
+include("time_average.jl")
 include("show_field_time_series.jl")
 include("extract_field_time_series.jl")
 include("combining_field_time_series.jl")

@@ -43,6 +43,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     for (i, name) in enumerate(keys(model_fields))
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
+        field_advection = exclude_periphery ? model.advection.momentum : model.advection[name]
         kernel_args = (field, kernel_Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
 
@@ -54,7 +55,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        model.clock,
                        fields(model),
                        Δτ,
-                       model.advection,
+                       field_advection,
                        advecting_velocities)
     end
 
