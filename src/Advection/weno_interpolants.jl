@@ -102,39 +102,60 @@ for FT in fully_supported_float_types
     end
 end
 
+# Reconstruction coefficients on the first differences `δ[i] = S[i+1] - S[i]`, relative to the anchor
+# `S[buffer]`. The change of basis is exact because `∑ⱼ cⱼ = 1`.
+function difference_reconstruction_coefficients(FT, buffer, stencil)
+    c = stencil_coefficients(BigFloat, 50, stencil, collect(1:100), collect(1:100); order=buffer)
+    d = zeros(BigFloat, buffer - 1)
+
+    for k in 1:buffer - 1
+        i = buffer - stencil + k - 1 # the difference δ[i] that d[k] multiplies
+
+        for j in 1:buffer
+            mⱼ = buffer - stencil + j - 1 # the stencil value S[mⱼ] that c[j] multiplies
+
+            if i ≥ buffer && mⱼ > i
+                d[k] += c[j]
+            elseif i < buffer && mⱼ ≤ i
+                d[k] -= c[j]
+            end
+        end
+    end
+
+    return FT.(tuple(d...))
+end
+
 # ENO reconstruction procedure per stencil
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     for stencil in collect(0:1:buffer-1)
         for FT in fully_supported_float_types
-            # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any)
             @eval begin
                 """
-                    coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil})
+                    coeff_p(::WENO{buffer, FT}, ::Val{stencil})
 
                 Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction
-                of order `buffer * 2 - 1`.
+                of order `buffer * 2 - 1`, expressed in the first differences of the stencil.
                 """
-                @inline coeff_p(::WENO{$buffer, $FT}, bias, ::Val{$stencil}) =
-                    @inbounds $(stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=buffer))
+                @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$stencil}) =
+                    @inbounds $(difference_reconstruction_coefficients(FT, buffer, stencil))
             end
         end
 
-        # left biased and right biased reconstruction value for each stencil
         @eval begin
             """
-                biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ)
+                biased_p(scheme::WENO{buffer}, ::Val{stencil}, δ)
 
-            Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
-            order `buffer * 2 - 1`. The reconstruction is calculated as
+            Reconstruction from the stencil `stencil` of a WENO reconstruction of order `buffer * 2 - 1`,
+            relative to the anchor value `ψ₀`. `δ` are the `buffer - 1` first differences spanned by the
+            stencil, and the reconstruction is calculated as
 
             ```math
-            ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
+            ψ★ - ψ₀ = ∑ᵢ dᵢ ⋅ δᵢ
             ```
 
-            where ``cᵣ`` is computed from the function `coeff_p`
+            where ``dᵢ`` is computed from the function `coeff_p`
             """
-            @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ) =
-                @inbounds sum(coeff_p(scheme, bias, Val($stencil)) .* ψ)
+            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, δ) = @inbounds sum(coeff_p(scheme, Val($stencil)) .* δ)
         end
     end
 end
@@ -146,17 +167,16 @@ for FT in fully_supported_float_types
             smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
 
         Return the coefficients used to calculate the smoothness indicators for the stencil
-        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The coefficients
-        β measures the derivatives of the reconstructing polynomial, so it is invariant to a constant shift of
-        the stencil and is a quadratic form in the `buffer - 1` differences `δ[i] = ψ[i+1] - ψ[i]` rather than in
-        the `buffer` values themselves. The coefficients are ordered to calculate it in the following fashion:
+        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. β measures the derivatives of
+        the reconstructing polynomial, so it is invariant to a constant shift of the stencil and is a
+        quadratic form in the `buffer - 1` first differences spanned by the stencil rather than in the
+        `buffer` values themselves. The coefficients are ordered to calculate it in the following fashion:
 
         ```julia
         buffer  = 4
         stencil = 0
 
-        ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
-        δ = (ψ[2] - ψ[1], ψ[3] - ψ[2], ψ[4] - ψ[3])
+        δ = # The three differences spanned by stencil 0 with buffer 4 (7th order WENO)
 
         C = smoothness_coefficients(Val(buffer), Val(0))
 
@@ -196,7 +216,7 @@ for FT in fully_supported_float_types
 end
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order),
-# where δ[i] = ψ[i+1] - ψ[i]
+# where δ are the three differences spanned by the stencil
 # δ[1] (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
 # δ[2] (C[4] * δ[2] + C[5] * δ[3]) +
 # δ[3] (C[6] * δ[3])
@@ -205,19 +225,18 @@ end
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_smoothness_operation(buffer)
     N = buffer - 1
-    δ(i) = :(ψ[$(i+1)] - ψ[$i])
 
     elem = Vector{Expr}(undef, N)
     c_idx = 1
 
     for stencil = 1:N - 1
         local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(δ(i))) for i in stencil:N)...)
-        elem[stencil] = :($(δ(stencil)) * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * δ[$i]) for i in stencil:N)...)
+        elem[stencil] = :(δ[$stencil] * $stencil_sum)
         c_idx += N - stencil + 1
     end
 
-    elem[N] = :($(δ(N)) * $(δ(N)) * C[$c_idx])
+    elem[N] = :(δ[$N] * δ[$N] * C[$c_idx])
 
     return Expr(:call, :+, elem...)
 end
@@ -225,12 +244,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`.
+Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`,
+from the `buffer - 1` first differences `δ` spanned by that stencil.
 The smoothness indicator (β) is calculated as follows
 
 ```julia
 C = smoothness_coefficients(Val(buffer), Val(stencil))
-δ = ntuple(i -> ψ[i+1] - ψ[i], buffer - 1)
 
 # The smoothness indicator
 β = 0
@@ -260,15 +279,15 @@ while for `buffer == 4` unrolls into
     δ[3] * (C[6] * δ[3])
 ```
 """
-@inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
+@inline smoothness_indicator(δ, args...) = zero(δ[1]) # This is a fallback method, here only for documentation purposes
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, δ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
-                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        @eval @inline smoothness_indicator(δ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
+                      smoothness_operation(scheme, δ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
     end
 end
 
@@ -282,11 +301,14 @@ end
     return :($(elem...),)
 end
 
+# The `buffer - 1` differences spanned by stencil number `stencil`
+stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer - stencil):(2buffer - 2 - stencil))...)
+
 # smoothness_indicator calculation for scheme and stencil = 0:buffer - 1
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(smoothness_indicator(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(smoothness_indicator($(stencil_differences(buffer, stencil-1)), scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
@@ -305,7 +327,7 @@ end
 for buffer in advection_buffers[2:end]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer, FT}, δ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
@@ -335,8 +357,8 @@ where
 
 The ``α`` values are normalized before returning
 """
-@inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
-    β = beta_loop(scheme, ψ)
+@inline function biased_weno_weights(δ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
+    β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
     Σα⁻¹ =  1 / sum(α)
@@ -348,8 +370,8 @@ end
 
     uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
     vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
-    βᵤ = beta_loop(scheme, uₛ)
-    βᵥ = beta_loop(scheme, vₛ)
+    βᵤ = beta_loop(scheme, weno_differences(scheme, uₛ))
+    βᵥ = beta_loop(scheme, weno_differences(scheme, vₛ))
     β  = beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(Val(N), β)
@@ -402,63 +424,39 @@ julia> load_weno_stencil(2, :x)
     return :($(stencil...),)
 end
 
-# Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ)
-# where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
+# The right-biased stencil is the mirror of the left-biased one, so both use the left-biased coefficients
 for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
     @eval begin
         @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(2, dir, f))
-            return S₀₂(S, bias), S₁₂(S, bias)
+            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3]), (S[4], S[3], S[2]))
         end
 
         @inline function $stencil(i, j, k, grid, ::WENO{3}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(3, dir, f))
-            return S₀₃(S, bias), S₁₃(S, bias), S₂₃(S, bias)
+            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[6], S[5], S[4], S[3], S[2]))
         end
 
         @inline function $stencil(i, j, k, grid, ::WENO{4}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(4, dir, f))
-            return S₀₄(S, bias), S₁₄(S, bias), S₂₄(S, bias), S₃₄(S, bias)
+            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7]), (S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
         end
 
         @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(5, dir, f))
-            return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
+            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]), (S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
         end
 
         @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(6, dir, f))
-            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
+            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9], S[10], S[11]), (S[12], S[11], S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
         end
     end
 end
 
-# WENO stencils
-@inline S₀₂(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3]), (S[3], S[2]))
-@inline S₁₂(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2]), (S[4], S[3]))
-
-@inline S₀₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
-@inline S₁₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
-@inline S₂₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
-
-@inline S₀₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
-@inline S₁₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
-@inline S₂₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
-@inline S₃₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
-
-@inline S₀₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
-@inline S₁₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
-@inline S₂₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
-@inline S₃₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
-@inline S₄₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
-
-@inline S₀₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
+@inline weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
+@inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
@@ -471,39 +469,35 @@ end
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, bias, Val($(stencil-1)), ψ[$stencil]))
+        elem[stencil] = :(ω[$stencil] * biased_p(scheme, Val($(stencil-1)), $(stencil_differences(buffer, stencil-1))))
     end
 
-    return Expr(:call, :+, elem...)
+    return Expr(:call, :+, :ψ₀, elem...)
 end
 
 """
 $(TYPEDSIGNATURES)
 
-`bias`ed reconstruction of stencils `ψ` for a WENO scheme of order `buffer * 2 - 1` weighted by WENO
-weights `ω`. `ψ` is a `Tuple` of `buffer` stencils of size `buffer` and `ω` is a `Tuple` of size `buffer`
-containing the computed weights for each of the reconstruction stencils.
-
-The location `loc` and index `idx` that appear in the unrolled example below are used internally by
-[`biased_p`](@ref) for stretched WENO directions.
+Reconstruction of a WENO scheme of order `buffer * 2 - 1` from the anchor value `ψ₀` and the `2buffer - 2`
+first differences `δ` of the bias-ordered stencil, weighted by the WENO weights `ω`.
 
 The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_weno_reconstruction` function which, for
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ω[1] * biased_p(scheme, bias, Val(0), ψ[1], cT, Val(val), idx, loc) +
-    ω[2] * biased_p(scheme, bias, Val(1), ψ[2], cT, Val(val), idx, loc) +
-    ω[3] * biased_p(scheme, bias, Val(2), ψ[3], cT, Val(val), idx, loc) +
-    ω[4] * biased_p(scheme, bias, Val(3), ψ[4], cT, Val(val), idx, loc))
+ψ̂ = ψ₀ + ω[1] * biased_p(scheme, Val(0), (δ[4], δ[5], δ[6])) +
+         ω[2] * biased_p(scheme, Val(1), (δ[3], δ[4], δ[5])) +
+         ω[3] * biased_p(scheme, Val(2), (δ[2], δ[3], δ[4])) +
+         ω[4] * biased_p(scheme, Val(3), (δ[1], δ[2], δ[3]))
 ```
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
-@inline weno_reconstruction(scheme, bias, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
+@inline weno_reconstruction(scheme, ψ₀, δ, args...) = ψ₀ # Fallback only for documentation purposes
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, bias, ψ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions
@@ -516,37 +510,39 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             scheme::WENO{N, FT}, bias,
                                             ψ, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, bias, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω)
+            S = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
+            δ = weno_differences(scheme, S)
+            ω = biased_weno_weights(δ, grid, scheme, bias, args...)
+            return weno_reconstruction(scheme, weno_anchor(scheme, S), δ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
                                             scheme::WENO{N, FT}, bias,
                                             ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω)
+            S = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
+            δ = weno_differences(scheme, S)
+            ω = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
+            return weno_reconstruction(scheme, weno_anchor(scheme, S), δ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
                                             scheme::WENO{N, FT}, bias,
                                             ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
+            S = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
             ω = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, bias, ψₜ, ω)
+            return weno_reconstruction(scheme, weno_anchor(scheme, S), weno_differences(scheme, S), ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
                                             scheme::WENO{N, FT}, bias,
                                             ψ, VI::FunctionStencil, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
-            ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
-            ω = biased_weno_weights(ψₛ, grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω)
+            S  = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
+            Sₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
+            ω = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, bias, VI, args...)
+            return weno_reconstruction(scheme, weno_anchor(scheme, S), weno_differences(scheme, S), ω)
         end
     end
 end
