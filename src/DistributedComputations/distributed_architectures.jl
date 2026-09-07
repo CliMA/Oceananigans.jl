@@ -485,8 +485,3 @@ function Base.show(io::IO, arch::Distributed)
         print(io, connectivity_info)
     end
 end
-
-count_requests(reqs::MPI.Request) = 1
-count_requests(reqs::Array) = length(reqs)
-count_requests(reqs::MPI.MultiRequest) = length(reqs)
-count_requests(reqs::Channel{MPI.Request}) =

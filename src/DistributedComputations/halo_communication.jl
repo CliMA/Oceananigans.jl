@@ -96,8 +96,6 @@ fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::Dist
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
-    outstanding_requests = count_requests(arch.mpi_requests)
-
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, args...; kwargs...)
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
@@ -105,9 +103,7 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
-    if length(arch.mpi_requests) > outstanding_requests
-        arch.mpi_tag[] += 1
-    end
+    arch.mpi_tag[] += 1
 
     return nothing
 end
