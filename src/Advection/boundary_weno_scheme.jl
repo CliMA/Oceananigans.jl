@@ -4,8 +4,8 @@ using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     CWENOZ([FT=Oceananigans.defaults.FloatType;]
-           reference_gradient = 0,
-           reference_length = 0,
+           reference_gradient = nothing,
+           reference_length = nothing,
            linear_weight = 0.25,
            maximum_constant_weight = 0.01,
            constant_weight_exponent = 1,
@@ -24,10 +24,10 @@ optimal polynomial is defined as `Pᵒ = (P² - d¹P¹ - d⁰P⁰) / dᵒ` with 
 positive weights are chosen. However, they set how quickly each low order candidate takes over near a discontinuity.
 
 - `reference_gradient`: gradient of the reconstructed field, in units of `ψ` per unit length, setting the scale `ϵ = (reference_gradient * Δ)²`
-  at which the constant takes over. Zero estimates it from the stencil.
+  at which the constant takes over. `nothing` estimates it from the stencil.
 
 - `reference_length`: length scale that nondimensionalizes the grid spacing in `d⁰ = min((Δ / reference_length)^constant_weight_exponent, maximum_constant_weight)`.
-  `d⁰ -> 0` under refinement is what recovers third order accuracy on smooth data next to the boundary. Zero holds `d⁰` at `maximum_constant_weight`.
+  `d⁰ -> 0` under refinement is what recovers third order accuracy on smooth data next to the boundary. `nothing` holds `d⁰` at `maximum_constant_weight`.
 
 - `linear_weight`: `d¹`, the linear weight of the linear polynomial.
 
@@ -48,9 +48,9 @@ positive weights are chosen. However, they set how quickly each low order candid
 
 The defaults are those of [SempliceTravagliaPuppo22](@cite) and, through it, of [NaumannKolbSemplice18](@cite).
 """
-struct CWENOZ{FT, M, P, WCT, C}
-    reference_gradient :: FT
-    reference_length :: FT
+struct CWENOZ{FT, M, P, WCT, G, L, C}
+    reference_gradient :: G
+    reference_length :: L
     linear_weight :: FT
     maximum_constant_weight :: FT
     relative_oscillation_floor :: FT
@@ -58,8 +58,8 @@ struct CWENOZ{FT, M, P, WCT, C}
 end
 
 function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
-                reference_gradient = 0,
-                reference_length = 0,
+                reference_gradient = nothing,
+                reference_length = nothing,
                 linear_weight = 0.25,
                 maximum_constant_weight = 0.01,
                 constant_weight_exponent = 1,
@@ -73,8 +73,13 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
     M = Int(constant_weight_exponent)
     P = Int(smoothness_ratio_exponent)
 
-    return CWENOZ{FT, M, P, weight_computation, typeof(symmetric_scheme)}(convert(FT, reference_gradient),
-                                                                          convert(FT, reference_length),
+    reference_gradient = isnothing(reference_gradient) ? nothing : convert(FT, reference_gradient)
+    reference_length = isnothing(reference_length) ? nothing : convert(FT, reference_length)
+
+    return CWENOZ{FT, M, P, weight_computation,
+                  typeof(reference_gradient), typeof(reference_length),
+                  typeof(symmetric_scheme)}(reference_gradient,
+                                                                          reference_length,
                                                                           convert(FT, linear_weight),
                                                                           convert(FT, maximum_constant_weight),
                                                                           convert(FT, relative_oscillation_floor),
@@ -96,6 +101,17 @@ Base.show(io::IO, scheme::CWENOZ{FT, M, P, WCT}) where {FT, M, P, WCT} =
               "├── weight_computation: ",         WCT, '\n',
               "└── symmetric_scheme: ",           summary(scheme.symmetric_scheme))
 
+@inline constant_weight(scheme::CWENOZ{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing}, Δ) = scheme.maximum_constant_weight
+@inline constant_weight(scheme::CWENOZ{<:Any, M}, Δ) where M =
+    min(Base.literal_pow(^, Δ / scheme.reference_length, Val(M)), scheme.maximum_constant_weight)
+
+@inline oscillation_estimate(scheme::CWENOZ{<:Any, <:Any, <:Any, <:Any, Nothing}, Δ, Iᵢ, Iₒ) = min(Iᵢ, Iₒ)
+@inline oscillation_estimate(scheme::CWENOZ{FT}, Δ, Iᵢ, Iₒ) where FT =
+    ifelse(scheme.reference_gradient > zero(FT), (scheme.reference_gradient * Δ)^2, min(Iᵢ, Iₒ))
+
+@inline reference_spacing(::CWENOZ{<:Any, <:Any, <:Any, <:Any, Nothing, Nothing}, Δ, i, j, k, grid) = nothing
+@inline reference_spacing(::CWENOZ, Δ, i, j, k, grid) = Δ(i, j, k, grid)
+
 @inline  inward_parabola_oscillation(u₁, u₂, u₃) = @muladd 13//12 * (u₁ - 2u₂ + u₃)^2 + 1//4 * (3u₁ - 4u₂ + u₃)^2
 @inline centred_parabola_oscillation(u₁, u₂, u₃) = @muladd 13//12 * (u₁ - 2u₂ + u₃)^2 + 1//4 * (u₁ - u₃)^2
 @inline linear_oscillation(uₐ, u_b) = (u_b - uₐ)^2
@@ -111,8 +127,7 @@ the boundary. `active₂` and `active₃` report whether the second and third ce
 candidate drops to the one that fits.
 """
 @inline function cwenoz_reconstruction(scheme::CWENOZ{FT, M, P, WCT}, u₁, u₂, u₃, active₂, active₃, Δ) where {FT, M, P, WCT}
-    # Δ / 0 is infinite, so a vanishing reference length pins d⁰ to its cap
-    d⁰ = min(Base.literal_pow(^, Δ / scheme.reference_length, Val(M)), scheme.maximum_constant_weight)
+    d⁰ = constant_weight(scheme, Δ)
     d¹ = scheme.linear_weight
     dᵒ = 1 - d¹ - d⁰
 
@@ -122,8 +137,7 @@ candidate drops to the one that fits.
     I² = inward_parabola_oscillation(u₁, u₂, u₃)
     I¹ = linear_oscillation(u₁, u₂)
 
-    ∇ref = scheme.reference_gradient
-    estimated = ifelse(∇ref > zero(FT), (∇ref * Δ)^2, min(I¹, linear_oscillation(u₂, u₃)))
+    estimated = oscillation_estimate(scheme, Δ, I¹, linear_oscillation(u₂, u₃))
     ϵ = max(estimated, scheme.relative_oscillation_floor * max(abs(u₁), abs(u₂), abs(u₃))^2)
 
     # τ is the indicator of the first interior cell, whose stencil is these same three averages
@@ -200,7 +214,7 @@ for (d, ξ) in enumerate((:x, :y, :z))
             active₃ = ifelse(inward, !inactive_node($(J₊₁...), grid, $ℓx, $ℓy, $ℓz),
                                      !inactive_node($(J₋₂...), grid, $ℓx, $ℓy, $ℓz))
 
-            return cwenoz_reconstruction(scheme, u₁, u₂, u₃, active₂, active₃, $(Symbol(:Δ, ξ, :ᶜᶜᶜ))($(J₀...), grid))
+            return cwenoz_reconstruction(scheme, u₁, u₂, u₃, active₂, active₃, reference_spacing(scheme, $(Symbol(:Δ, ξ, :ᶜᶜᶜ)), $(J₀...), grid))
         end
 
         @eval @inline $interp(i, j, k, grid, scheme::CWENOZ, bias, ψ::$ψtype, ::AbstractSmoothnessStencil, args...) =
