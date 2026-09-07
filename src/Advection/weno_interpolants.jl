@@ -147,74 +147,77 @@ for FT in fully_supported_float_types
 
         Return the coefficients used to calculate the smoothness indicators for the stencil
         number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The coefficients
-        are ordered in such a way to calculate the smoothness in the following fashion:
+        β measures the derivatives of the reconstructing polynomial, so it is invariant to a constant shift of
+        the stencil and is a quadratic form in the `buffer - 1` differences `δ[i] = ψ[i+1] - ψ[i]` rather than in
+        the `buffer` values themselves. The coefficients are ordered to calculate it in the following fashion:
 
         ```julia
         buffer  = 4
         stencil = 0
 
         ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
+        δ = (ψ[2] - ψ[1], ψ[3] - ψ[2], ψ[4] - ψ[3])
 
         C = smoothness_coefficients(Val(buffer), Val(0))
 
         # The smoothness indicator
-        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) +
-            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) +
-            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-            ψ[4] * (C[10] * ψ[4])
+        β = δ[1] * (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
+            δ[2] * (C[4] * δ[2] + C[5] * δ[3]) +
+            δ[3] * (C[6] * δ[3])
         ```
 
         This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{0}) = $(FT.((1, -2, 1)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{1}) = $(FT.((1, -2, 1)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{0}) = $(FT.((1,)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{1}) = $(FT.((1,)))
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{0}) = $(FT.((10, -31, 11, 25, -19,  4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}) = $(FT.((4,  -13, 5,  13, -13,  4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}) = $(FT.((4,  -19, 11, 25, -31, 10)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{0}) = $(FT.((10, -11, 4)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}) = $(FT.((4, -5, 4)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}) = $(FT.((4, -11, 10)))
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{0}) = $(FT.((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{1}) = $(FT.((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{2}) = $(FT.((0.267,  -1.642, 1.602, -0.494,  2.843,  - 5.966,  1.922,  3.443,  -2.522, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{3}) = $(FT.((0.547,  -3.882, 4.642, -1.854,  7.043,  -17.246,  7.042, 11.003,  -9.402, 2.107)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{0}) = $(FT.((2.107, -5.188, 1.854, 3.708, -2.788, 0.547)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{1}) = $(FT.((0.547, -1.428, 0.494, 1.468, -1.108, 0.267)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{2}) = $(FT.((0.267, -1.108, 0.494, 1.468, -1.428, 0.547)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{3}) = $(FT.((0.547, -2.788, 1.854, 3.708, -5.188, 2.107)))
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{0}) = $(FT.((1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{1}) = $(FT.((0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{2}) = $(FT.((0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{3}) = $(FT.((0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{4}) = $(FT.((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{0}) = $(FT.((1.07918, -4.33665, 3.25158, -0.86329, 4.7898, -7.45293, 2.01678, 2.9712, -1.63185, 0.22658)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{1}) = $(FT.((0.22658, -0.94935, 0.70218, -0.18079, 1.2513, -1.96563, 0.52158, 0.846, -0.47055, 0.06908)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{2}) = $(FT.((0.06908, -0.37185, 0.30738, -0.08209, 0.6087, -1.09413, 0.30738, 0.6087, -0.37185, 0.06908)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{3}) = $(FT.((0.06908, -0.47055, 0.52158, -0.18079, 0.846, -1.96563, 0.70218, 1.2513, -0.94935, 0.22658)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{4}) = $(FT.((0.22658, -1.63185, 2.01678, -0.86329, 2.9712, -7.45293, 3.25158, 4.7898, -4.33665, 1.07918)))
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{0}) = $(FT.((0.6150211, -4.7460464, 7.6206736, -6.3394124, 2.7060170, -0.4712740,  9.4851237, -31.1771244, 26.2901672, -11.3206788,  1.9834350, 26.0445372, -44.4003904, 19.2596472, -3.3918804, 19.0757572, -16.6461044, 2.9442256, 3.6480687, -1.2950184, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{1}) = $(FT.((0.1152561, -0.9117992, 1.4742480, -1.2183636, 0.5134574, -0.0880548,  1.9365967,  -6.5224244,  5.5053752,  -2.3510468,  0.4067018,  5.6662212,  -9.7838784,  4.2405032, -0.7408908,  4.3093692,  -3.7913324, 0.6694608, 0.8449957, -0.3015728, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{2}) = $(FT.((0.0271779, -0.2380800, 0.4086352, -0.3462252, 0.1458762, -0.0245620,  0.5653317,  -2.0427884,  1.7905032,  -0.7727988,  0.1325006,  1.9510972,  -3.5817664,  1.5929912, -0.2792660,  1.7195652,  -1.5880404, 0.2863984, 0.3824847, -0.1429976, 0.0139633)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{3}) = $(FT.((0.0139633, -0.1429976, 0.2863984, -0.2792660, 0.1325006, -0.0245620,  0.3824847,  -1.5880404,  1.5929912,  -0.7727988,  0.1458762,  1.7195652,  -3.5817664,  1.7905032, -0.3462252,  1.9510972,  -2.0427884, 0.4086352, 0.5653317, -0.2380800, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{4}) = $(FT.((0.0271779, -0.3015728, 0.6694608, -0.7408908, 0.4067018, -0.0880548,  0.8449957,  -3.7913324,  4.2405032,  -2.3510468,  0.5134574,  4.3093692,  -9.7838784,  5.5053752, -1.2183636,  5.6662212,  -6.5224244, 1.4742480, 1.9365967, -0.9117992, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{5}) = $(FT.((0.1152561, -1.2950184, 2.9442256, -3.3918804, 1.9834350, -0.4712740,  3.6480687, -16.6461044, 19.2596472, -11.3206788,  2.7060170, 19.0757572, -44.4003904, 26.2901672, -6.3394124, 26.0445372, -31.1771244, 7.6206736, 9.4851237, -4.7460464, 0.6150211)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{0}) = $(FT.((0.6150211, -3.5160042, 4.1046694, -2.234743, 0.471274, 5.3540984, -12.848254, 7.1025008, -1.512161, 7.8421848, -8.765266, 1.8797194, 2.4683064, -1.0645062, 0.1152561)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{1}) = $(FT.((0.1152561, -0.681287, 0.792961, -0.4254026, 0.0880548, 1.1400536, -2.7680692, 1.5189424, -0.318647, 1.7580984, -1.98067, 0.4222438, 0.5706008, -0.247217, 0.0271779)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{2}) = $(FT.((0.0271779, -0.1837242, 0.224911, -0.1213142, 0.024562, 0.3544296, -0.925294, 0.518984, -0.1079386, 0.6713736, -0.7947412, 0.1713274, 0.2534504, -0.115071, 0.0139633)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{3}) = $(FT.((0.0139633, -0.115071, 0.1713274, -0.1079386, 0.024562, 0.2534504, -0.7947412, 0.518984, -0.1213142, 0.6713736, -0.925294, 0.224911, 0.3544296, -0.1837242, 0.0271779)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{4}) = $(FT.((0.0271779, -0.247217, 0.4222438, -0.318647, 0.0880548, 0.5706008, -1.98067, 1.5189424, -0.4254026, 1.7580984, -2.7680692, 0.792961, 1.1400536, -0.681287, 0.1152561)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{5}) = $(FT.((0.1152561, -1.0645062, 1.8797194, -1.512161, 0.471274, 2.4683064, -8.765266, 7.1025008, -2.234743, 7.8421848, -12.848254, 4.1046694, 5.3540984, -3.5160042, 0.6150211)))
     end
 end
 
-# The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order)
-# ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) +
-# ψ[2] (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) +
-# ψ[3] (C[8]  * ψ[3] + C[9] * ψ[4])
-# ψ[4] (C[10] * ψ[4])
+# The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order),
+# where δ[i] = ψ[i+1] - ψ[i]
+# δ[1] (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
+# δ[2] (C[4] * δ[2] + C[5] * δ[3]) +
+# δ[3] (C[6] * δ[3])
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
-@inline function metaprogrammed_smoothness_operation(buffer; shift=false)
-    elem = Vector{Expr}(undef, buffer)
+@inline function metaprogrammed_smoothness_operation(buffer)
+    N = buffer - 1
+    δ(i) = :(ψ[$(i+1)] - ψ[$i])
+
+    elem = Vector{Expr}(undef, N)
     c_idx = 1
 
-    ψ_expr(i) = shift ? :(ψ[$i] - ψ̂) : :(ψ[$i])
-
-    for stencil = 1:buffer - 1
+    for stencil = 1:N - 1
         local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(ψ_expr(i))) for i in stencil:buffer)...)
-        elem[stencil] = :($(ψ_expr(stencil)) * $stencil_sum)
-        c_idx += buffer - stencil + 1
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(δ(i))) for i in stencil:N)...)
+        elem[stencil] = :($(δ(stencil)) * $stencil_sum)
+        c_idx += N - stencil + 1
     end
 
-    elem[buffer] = :($(ψ_expr(buffer)) * $(ψ_expr(buffer)) * C[$c_idx])
+    elem[N] = :($(δ(N)) * $(δ(N)) * C[$c_idx])
 
     return Expr(:call, :+, elem...)
 end
@@ -227,35 +230,34 @@ The smoothness indicator (β) is calculated as follows
 
 ```julia
 C = smoothness_coefficients(Val(buffer), Val(stencil))
+δ = ntuple(i -> ψ[i+1] - ψ[i], buffer - 1)
 
 # The smoothness indicator
 β = 0
 c_idx = 1
-for stencil = 1:buffer - 1
-    partial_sum = [C[c_idx + i - stencil)] * ψ[i]) for i in stencil:buffer]
-    β          += ψ[stencil] * partial_sum
-    c_idx += buffer - stencil + 1
+for stencil = 1:buffer - 2
+    partial_sum = [C[c_idx + i - stencil)] * δ[i]) for i in stencil:buffer-1]
+    β          += δ[stencil] * partial_sum
+    c_idx += buffer - stencil
 end
 
-β += ψ[buffer] * ψ[buffer] * C[c_idx])
+β += δ[buffer-1] * δ[buffer-1] * C[c_idx])
 ```
 
 This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
 and, for `buffer == 3` unrolls into
 
 ```julia
-β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3]) +
-    ψ[2] * (C[4]  * ψ[2] + C[5] * ψ[3]) +
-    ψ[3] * (C[6])
+β = δ[1] * (C[1] * δ[1] + C[2] * δ[2]) +
+    δ[2] * (C[3] * δ[2])
 ```
 
 while for `buffer == 4` unrolls into
 
 ```julia
-β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) +
-    ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) +
-    ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-    ψ[4] * (C[10] * ψ[4])
+β = δ[1] * (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
+    δ[2] * (C[4] * δ[2] + C[5] * δ[3]) +
+    δ[3] * (C[6] * δ[3])
 ```
 """
 @inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
@@ -265,20 +267,8 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
-        if FT in (Float64, BigFloat)
-            @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
-                          smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
-        else
-            # Subtract central stencil value before computing smoothness indicators to avoid
-            # catastrophic cancellation for Float32 when stencil values are large.
-            # β is invariant to constant shifts (it measures polynomial derivatives),
-            # so subtracting any constant preserves correctness.
-            @eval @inline function smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil})
-                C = $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil)))
-                ψ̂ = ψ[$(buffer ÷ 2 + 1)]
-                @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer; shift=true))
-            end
-        end
+        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
+                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
     end
 end
 
