@@ -20,7 +20,7 @@ const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
 
 """
-    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=ExplicitTimeDiscretization(), FT=Float64;]
+    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
@@ -40,7 +40,7 @@ References
 ==========
 * Griffies, S. M., A. Gnanadesikan, R. C. Pacanowski, V. D. Larichev, J. K. Dukowicz, and R. D. Smith (1998) Isoneutral diffusion in a z-coordinate ocean model. _J. Phys. Oceanogr._, **28**, 805–830, doi:10.1175/1520-0485(1998)028<0805:IDIAZC>2.0.CO;2
 """
-function TriadIsopycnalSkewSymmetricDiffusivity(time_disc=ExplicitTimeDiscretization(), FT=Float64;
+function TriadIsopycnalSkewSymmetricDiffusivity(time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;
                                                 κ_skew = 0,
                                                 κ_symmetric = 0,
                                                 isopycnal_tensor = SmallSlopeIsopycnalTensor(),
