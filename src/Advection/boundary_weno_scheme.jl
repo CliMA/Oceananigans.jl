@@ -172,8 +172,8 @@ for (d, ξ) in enumerate((:x, :y, :z))
         # a `ᶜ` reconstruction is the `ᶠ` operator one index along, reading a Face-located field
         halfshift = loc == :ᶠ ? 0 : 1
 
-        shifted_indices(offset) = ξ == :x ? (:(i + $offset), :j, :k) : 
-                                  ξ == :y ? (:i, :(j + $offset), :k) : 
+        shifted_indices(offset) = ξ == :x ? (:(i + $offset), :j, :k) :
+                                  ξ == :y ? (:i, :(j + $offset), :k) :
                                             (:i, :j, :(k + $offset))
 
         # four offsets, so that both biases read from the same static addresses: inwards (J₋₁, J₀, J₊₁), outwards (J₀, J₋₁, J₋₂)
