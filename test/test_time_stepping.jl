@@ -2,8 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Adapt: Adapt
 using TimesDates: TimeDate
+using Dates: Minute
 using Oceananigans.Grids: topological_tuple_length
-using Oceananigans.TimeSteppers: Clock
+using Oceananigans.TimeSteppers: Clock, kernel_time_step
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
@@ -17,6 +18,21 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
+
+"""
+Records the type of the `Δt` that `time_step!` hands to the model, via the `dynamics`
+interface of `LagrangianParticles` (which receives the same `Δt` that kernels do).
+
+`Clock.time` accumulates in Float64, so a Float64 `Δt` can reach `time_step!` even for a
+Float32 model. `time_step!` must demote it with `kernel_time_step`, or the Float64 leaks
+into kernels --- which promotes Float32 arithmetic everywhere and is invalid IR on
+architectures without double precision (e.g. Metal).
+"""
+mutable struct ΔtTypeRecorder
+    Δt_type :: Any
+end
+
+(recorder::ΔtTypeRecorder)(particles, model, Δt) = (recorder.Δt_type = typeof(Δt); nothing)
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
@@ -370,6 +386,58 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         explicit_clock = Clock(time=0.0f0)
         @test explicit_clock isa Clock{Float32}
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
+    end
+
+    @testset "kernel_time_step demotes Δt to the kernel time type" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
+            # `aligned_time_step` mixes `clock.time` (Float64) into Δt, so Δt reaching
+            # `time_step!` may be Float64 even for a Float32 model. It must not reach kernels.
+            @test kernel_time_step(clock, 60.0) isa FT
+            @test kernel_time_step(clock, 60.0f0) isa FT
+            @test kernel_time_step(clock, 60) isa FT
+        end
+
+        # `Δt` for DateTime clocks is interpreted as Float64 seconds, and stays Float64.
+        datetime_clock = Clock(time=DateTime(2020))
+        @test kernel_time_step(datetime_clock, 60.0) isa Float64
+        @test kernel_time_step(datetime_clock, 60.0f0) isa Float64
+
+        # Non-numeric time steps are passed through untouched.
+        @test kernel_time_step(datetime_clock, Minute(1)) === Minute(1)
+    end
+
+    # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939. See `ΔtTypeRecorder` above.
+    @testset "time_step! demotes Δt to the kernel time type" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))
+
+            x = on_architecture(arch, FT[0.5])
+            y = on_architecture(arch, FT[0.5])
+            z = on_architecture(arch, FT[-0.5])
+
+            # Probe Δt where it is handed to the model, via the `dynamics` interface
+            # of `LagrangianParticles`, which receives the same Δt that kernels do.
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = NonhydrostaticModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0) # a Float64 Δt, as `aligned_time_step` may return
+                @test recorder.Δt_type === FT
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = HydrostaticFreeSurfaceModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0)
+                @test recorder.Δt_type === FT
+            end
+        end
     end
 
     for arch in archs, FT in float_types

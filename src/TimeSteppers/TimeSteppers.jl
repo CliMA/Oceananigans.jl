@@ -7,6 +7,7 @@ export
     time_step!,
     Clock,
     convert_time,
+    kernel_time_step,
     AbstractTimeDiscretization,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,

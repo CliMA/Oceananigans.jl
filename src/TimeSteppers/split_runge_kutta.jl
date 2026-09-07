@@ -164,6 +164,9 @@ After all substeps, Lagrangian particles are stepped and the `model.clock`s is a
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
+    # See the note in `time_step!` for `QuasiAdamsBashforth2TimeStepper`.
+    Δt = kernel_time_step(model.clock, Δt)
+
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)

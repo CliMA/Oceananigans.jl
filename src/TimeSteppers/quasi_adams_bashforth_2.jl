@@ -92,6 +92,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
+    # Demote Δt to the kernel time type: clock.time accumulates in high precision,
+    # but Δt is passed straight into kernels and must match the grid's precision.
+    Δt = kernel_time_step(model.clock, Δt)
+
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we

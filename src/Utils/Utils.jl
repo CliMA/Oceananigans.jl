@@ -13,6 +13,7 @@ export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSch
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
+export f32_safe_cbrt
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
@@ -49,6 +50,7 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
 

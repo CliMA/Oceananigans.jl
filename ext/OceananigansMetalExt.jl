@@ -8,6 +8,7 @@ using Oceananigans.Architectures: Architectures
 using Oceananigans.Grids: Bounded, Periodic
 using Oceananigans.Solvers: Solvers
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+import Oceananigans.Utils as UT
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
@@ -42,6 +43,12 @@ function Solvers.plan_backward_transform(A::MtlArray, ::Union{Bounded, Periodic}
     length(dims) == 0 && return nothing
     return plan_ifft!(A, dims)
 end
+
+# `Base.cbrt(::Float32)` refines its estimate in Float64, which Metal cannot compile,
+# and Metal provides no native cube-root intrinsic (there is no `air.cbrt.f32`).
+# Compute it with `air.pow.f32` instead, which `^(::Float32, ::Float32)` lowers to,
+# taking the sign convention of `cbrt` for negative arguments.
+Metal.@device_override @inline UT.f32_safe_cbrt(x::Float32) = copysign(abs(x)^(1f0/3f0), x)
 
 Metal.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
