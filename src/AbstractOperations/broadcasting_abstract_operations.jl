@@ -18,6 +18,10 @@ end
 @inline broadcasted_to_abstract_operation(loc, grid, op::AbstractOperation) = at(loc, op)
 
 @inline function broadcasted_to_abstract_operation(loc, grid, bc::Broadcasted{<:Any, <:Any, <:Any, <:Any})
-    abstract_op = bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
-    return interpolate_operation(loc, abstract_op) # For "stubborn" BinaryOperations
+    if Symbol(bc.f) ∈ operators
+        abstract_op = bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
+        return interpolate_operation(loc, abstract_op) # For "stubborn" BinaryOperations
+    else
+        return bc
+    end
 end
