@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: needs_implicit_solver
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
+                              update_advection!,
                               advective_tracer_flux_z,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
@@ -275,4 +276,24 @@ end
         # The upwind operator is flux-form, so a closed column conserves ∑ V q (uniform V here).
         @test sum(interior(q)) ≈ mass₀ rtol=1e-10
     end
+end
+
+@testset "AIVA and bounds preservation both refresh" begin
+    grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), halo=(6, 6, 6))
+    advection = WENO(order=5, bounds=(0, 1), time_discretization=AdaptiveVerticallyImplicitDiscretization())
+    model = NonhydrostaticModel(grid; advection, tracers=:c)
+    scheme = model.advection.c
+
+    @test scheme isa AdaptiveImplicitVerticalAdvection
+
+    set!(model, c=(x, y, z) -> x > 0.5 ? 1.0 : 0.0)
+    time_step!(model, 0.25)
+
+    scheme.time_discretization.Δt[] = NaN
+    fill!(parent(scheme.bounds.limiter), NaN)
+
+    update_advection!(model.advection, model)
+
+    @test isfinite(scheme.time_discretization.Δt[])
+    @test all(isfinite, interior(scheme.bounds.limiter))
 end
