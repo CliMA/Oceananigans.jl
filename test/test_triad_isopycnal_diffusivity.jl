@@ -37,16 +37,8 @@ const Lz = 1000.0
 
 sloping_buoyancy(x, z) = 1e-5 * z + 1e-2 * (1 + tanh((x - Lx/2) / 100e3)) / 2
 
-"""
-$(TYPEDSIGNATURES)
-
-Return the matrix `L` of the tracer operator (`∂t c = L c`) that `closure` applies over one
-`Δt`, built column by column on a uniform two-dimensional grid with a frozen buoyancy field.
-
-The Griffies (1998) triads are constructed so that `L` is self-adjoint and negative
-semi-definite: they pair each horizontal derivative with the vertical derivative of the same
-triad, so the quadratic form collapses to `-∑ ϵκ (∂ₓc + S ∂zc)²`.
-"""
+# Return the matrix `L` of the tracer operator (`∂t c = L c`) that `closure` applies over one
+# `Δt`, built column by column on a uniform two-dimensional grid with a frozen buoyancy field.
 function tracer_operator_matrix(closure, arch; nx=8, nz=6, Δt=1.0, binit=sloping_buoyancy)
     grid = RectilinearGrid(arch, size=(nx, nz), x=(0, Lx), z=(-Lz, 0), halo=(4, 4),
                            topology=(Bounded, Flat, Bounded))
