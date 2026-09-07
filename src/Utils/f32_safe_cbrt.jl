@@ -1,16 +1,14 @@
+# This file works around `Base.cbrt(::Float32)` emitting double-precision instructions,
+# and can be deleted in its entirety once that compiles on every backend we support.
+# Upstream issue: https://github.com/JuliaGPU/Metal.jl/issues/952
+
 """
 $(TYPEDSIGNATURES)
 
-Return the cube root of `x`, computed without recourse to double precision when
-`x isa Float32`.
+Return the cube root of `x`, without recourse to double precision when `x isa Float32`.
 
-`Base.cbrt(x::Float32)` performs its Newton refinement in `Float64` (see
-`Base._improve_cbrt` in `base/special/cbrt.jl`), so it emits double-precision
-instructions even for a `Float32` argument. That is a performance pitfall on most
-GPUs, and invalid IR on architectures that have no double precision at all
-(e.g. Metal, which additionally provides no native cube-root intrinsic).
-
-The fallback defined here simply calls `Base.cbrt`. Architectures that cannot compile
-it override this function in the corresponding package extension.
+`Base.cbrt(::Float32)` refines its estimate in `Float64`, which is invalid on
+architectures with no double precision (e.g. Metal). Backends that cannot compile
+`Base.cbrt` override this function in their package extension.
 """
 @inline f32_safe_cbrt(x) = cbrt(x)

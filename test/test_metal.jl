@@ -177,9 +177,6 @@ end
 end
 
 @testset "MetalGPU: f32_safe_cbrt" begin
-    # `Base.cbrt(::Float32)` refines in Float64, which Metal cannot compile, so
-    # `f32_safe_cbrt` is overridden in `OceananigansMetalExt` --- see
-    # https://github.com/CliMA/Oceananigans.jl/issues/5939.
     x = Float32[8, 27, 1000, 0.125, 1, 0, -8, -0.125]
     mtl_x = MtlArray(x)
     mtl_y = f32_safe_cbrt.(mtl_x) # compiles and runs a Metal kernel
@@ -190,9 +187,7 @@ end
 end
 
 @testset "MetalGPU: CATKEVerticalDiffusivity" begin
-    # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939: a Float64
-    # `Δt` used to leak into `_ab2_substep_turbulent_kinetic_energy!`, and `Base.cbrt` into
-    # `compute_average_surface_buoyancy_flux!`.
+    # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939
     arch = GPU(Metal.MetalBackend())
     grid = RectilinearGrid(arch; size=(8, 8, 16), x=(0, 128), y=(0, 128), z=(-64, 0),
                            topology=(Periodic, Periodic, Bounded))
@@ -213,7 +208,7 @@ end
     @test Oceananigans.TimeSteppers.kernel_time_type(model.clock) == Float32 # ...but Float32 in kernels
 
     set!(model, T=(x, y, z) -> 20f0 + 0.01f0 * z, S=35f0)
-    set!(model, e=1f-6) # note: a Float64 scalar cannot be `set!` on Metal
+    set!(model, e=1f-6)
 
     @test maximum(model.tracers.e) == 1f-6
 
@@ -223,7 +218,6 @@ end
     @test iteration(simulation) == 3
     @test time(simulation) == 3minutes
 
-    # Surface cooling should generate turbulence and cool the surface
     @test maximum(model.tracers.e) > 1f-6
     @test maximum(model.tracers.T) < 20
 end

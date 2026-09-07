@@ -121,15 +121,12 @@ $(TYPEDSIGNATURES)
 Return `Δt` converted to the time-step type used _inside_ kernels, which follows
 `kernel_time_type(clock)`.
 
-`Clock.time` accumulates in high precision (`Float64` by default, see [`Clock`](@ref)),
-but a `Float64` `Δt` must not reach kernels: it promotes otherwise-`Float32` arithmetic,
-which costs performance on every GPU and is unsupported outright on architectures
-without double precision (e.g. Metal). Call this at the top of `time_step!` so that
-every `Δt` handed to the model --- and thus to kernels --- carries the kernel time type.
+`Clock.time` accumulates in high precision, so arithmetic involving it promotes `Δt`
+even for a lower-precision model. Kernels must not see that promotion.
 """
 @inline kernel_time_step(clock, Δt::Number) = clock_convert(time_step_type(kernel_time_type(clock)), Δt)
 
-# Fallback for non-numeric time steps, eg `Dates.Period`.
+# eg `Dates.Period`
 @inline kernel_time_step(clock, Δt) = Δt
 
 function Base.summary(clock::Clock)

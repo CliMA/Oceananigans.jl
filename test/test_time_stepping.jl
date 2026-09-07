@@ -21,12 +21,7 @@ end
 
 """
 Records the type of the `Δt` that `time_step!` hands to the model, via the `dynamics`
-interface of `LagrangianParticles` (which receives the same `Δt` that kernels do).
-
-`Clock.time` accumulates in Float64, so a Float64 `Δt` can reach `time_step!` even for a
-Float32 model. `time_step!` must demote it with `kernel_time_step`, or the Float64 leaks
-into kernels --- which promotes Float32 arithmetic everywhere and is invalid IR on
-architectures without double precision (e.g. Metal).
+interface of `LagrangianParticles`, which receives the same `Δt` that kernels do.
 """
 mutable struct ΔtTypeRecorder
     Δt_type :: Any
@@ -393,19 +388,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
             clock = Clock(grid)
 
-            # `aligned_time_step` mixes `clock.time` (Float64) into Δt, so Δt reaching
-            # `time_step!` may be Float64 even for a Float32 model. It must not reach kernels.
             @test kernel_time_step(clock, 60.0) isa FT
             @test kernel_time_step(clock, 60.0f0) isa FT
             @test kernel_time_step(clock, 60) isa FT
         end
 
-        # `Δt` for DateTime clocks is interpreted as Float64 seconds, and stays Float64.
+        # `Δt` for DateTime clocks is Float64 seconds
         datetime_clock = Clock(time=DateTime(2020))
         @test kernel_time_step(datetime_clock, 60.0) isa Float64
         @test kernel_time_step(datetime_clock, 60.0f0) isa Float64
 
-        # Non-numeric time steps are passed through untouched.
         @test kernel_time_step(datetime_clock, Minute(1)) === Minute(1)
     end
 
@@ -418,14 +410,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             y = on_architecture(arch, FT[0.5])
             z = on_architecture(arch, FT[-0.5])
 
-            # Probe Δt where it is handed to the model, via the `dynamics` interface
-            # of `LagrangianParticles`, which receives the same Δt that kernels do.
             for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
                 recorder = ΔtTypeRecorder(nothing)
                 particles = LagrangianParticles(; x, y, z, dynamics=recorder)
                 model = NonhydrostaticModel(grid; particles, timestepper)
 
-                time_step!(model, 1.0) # a Float64 Δt, as `aligned_time_step` may return
+                time_step!(model, 1.0) # Float64, as `aligned_time_step` may return
                 @test recorder.Δt_type === FT
             end
 
