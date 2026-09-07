@@ -374,6 +374,7 @@ function Base.show(io::IO, clo::CATKEVD)
               "├── mixing_length: ", prettysummary(clo.mixing_length), '\n',
               "│   ├── Cˢ:   ", prettysummary(clo.mixing_length.Cˢ), '\n',
               "│   ├── Cᵇ:   ", prettysummary(clo.mixing_length.Cᵇ), '\n',
+              "│   ├── Cᵘⁿᵇ: ", prettysummary(clo.mixing_length.Cᵘⁿᵇ), '\n',
               "│   ├── Cʰⁱu: ", prettysummary(clo.mixing_length.Cʰⁱu), '\n',
               "│   ├── Cʰⁱc: ", prettysummary(clo.mixing_length.Cʰⁱc), '\n',
               "│   ├── Cʰⁱe: ", prettysummary(clo.mixing_length.Cʰⁱe), '\n',

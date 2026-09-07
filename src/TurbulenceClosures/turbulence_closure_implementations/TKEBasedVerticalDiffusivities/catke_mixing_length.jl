@@ -8,10 +8,23 @@ using ..TurbulenceClosures:
     struct CATKEMixingLength{FT}
 
 Contains mixing length parameters for CATKE vertical diffusivity.
+
+`Cᵘⁿᵇ` weights `|N²|` where the stratification is unstable, so that the stratification mixing length
+`w★ / √(N²)` continues through `N² = 0` onto the unstable branch. With `Cᵘⁿᵇ = 0` the unstable branch
+is unbounded and the length falls back to the geometric `min(Cˢ ⋅ depth, Cᵇ ⋅ height above bottom)`;
+with `Cᵘⁿᵇ = 1` it is `w★ / √(|N²|)`, the distance a parcel travels in one e-folding of the fastest
+growing convective mode. Stably stratified water is unaffected for any value.
+
+`Cᵘⁿᵇ` acts as a threshold rather than a continuous weight. Balancing buoyancy production
+`Cᵘⁿc ⋅ ℓ ⋅ √e ⋅ |N²|` against dissipation `CᵘⁿD ⋅ e^(3/2) / ℓ` on the unstable branch gives
+`e = Cᵘⁿc / (CᵘⁿD ⋅ Cᵘⁿᵇ) ⋅ e`, so turbulence sustains itself for `Cᵘⁿᵇ < Cᵘⁿc / CᵘⁿD ≈ 0.62` and
+decays for larger values. Intermediate settings below that ratio leave the length at its geometric
+value and change nothing.
 """
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
+    Cᵘⁿᵇ :: FT = 0.0    # Weight on |N²| where N² < 0 in the stratification length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
     CRiᵟ :: FT = 1.02   # Stability function width
     CRi⁰ :: FT = 0.254  # Stability function lower Ri
@@ -39,7 +52,8 @@ end
 @inline function stratification_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    N²⁺ = clip(N²)
+    Cᵘⁿᵇ = closure.mixing_length.Cᵘⁿᵇ
+    N²⁺ = clip(N²) + Cᵘⁿᵇ * clip(-N²)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
@@ -47,7 +61,8 @@ end
 @inline function stratification_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     FT = eltype(grid)
     N² = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    N²⁺ = clip(N²)
+    Cᵘⁿᵇ = closure.mixing_length.Cᵘⁿᵇ
+    N²⁺ = clip(N²) + Cᵘⁿᵇ * clip(-N²)
     w★ = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
