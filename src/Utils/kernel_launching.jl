@@ -11,6 +11,8 @@ using KernelAbstractions: Kernel,
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 using Oceananigans.Architectures: Architectures
 
+import KernelAbstractions as KA
+
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
 
@@ -134,6 +136,24 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Return the workgroup for a kernel launched over `launch_size` on the device `dev`.
+`grid_size` is the size of the grid (with reduced dimensions flattened), which
+the GPU heuristic uses regardless of the dimensions the kernel spans.
+"""
+@inline workgroup_layout(dev, grid_size, launch_size) = heuristic_workgroup(grid_size...)
+
+# The KernelAbstractions CPU backend runs each block as a loop over `CartesianIndices(workgroup)`,
+# so a workgroup spanning the first dimension of `launch_size` yields a single contiguous inner loop.
+@inline workgroup_layout(::KA.CPU, grid_size, launch_size) = cpu_workgroup(launch_size...)
+
+@inline cpu_workgroup(W1::Int) = W1
+@inline cpu_workgroup(W1::Int, W2::Int, Wz...) = W1 == 1 ? (1, W2) : (W1, 1)
+
+@inline kernel_device(grid) = Architectures.device(Architectures.architecture(grid))
+
 # To be extended in the `Grids` modules for non-trivial peripheries,
 # for all other cases, `periphery_offset` is zero.
 periphery_offset(loc, grid, side) = 0
@@ -165,9 +185,10 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     oz = periphery_offset(ℓz, grid, Val(3))
 
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
-    workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup_layout(kernel_device(grid), (Wx, Wy, Wz), launch_size))
 
-    range = contiguousrange(select_dims(workdims, Wx, Wy, Wz), select_dims(workdims, ox, oy, oz))
+    range = contiguousrange(launch_size, select_dims(workdims, ox, oy, oz))
 
     return workgroup, OffsetStaticSize(range)
 end
@@ -184,15 +205,16 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 @inline function work_layout(grid, workdims::Val, reduced_dimensions)
     Fx, Fy, Fz = worksize(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
-    workgroup  = heuristic_workgroup(Wx, Wy, Wz)
-    return StaticSize(workgroup), StaticSize(select_dims(workdims, Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = workgroup_layout(kernel_device(grid), (Wx, Wy, Wz), launch_size)
+    return StaticSize(workgroup), StaticSize(launch_size)
 end
 
 @inline work_layout(grid, workdims::Symbol, reduced_dimensions) = work_layout(grid, Val(workdims), reduced_dimensions)
 @inline interior_work_layout(grid, workdims::Symbol, location) = interior_work_layout(grid, Val(workdims), location)
 
 @inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
-    workgroup = heuristic_workgroup(worksize...)
+    workgroup = workgroup_layout(kernel_device(grid), worksize, worksize)
     return StaticSize(workgroup), StaticSize(worksize)
 end
 
