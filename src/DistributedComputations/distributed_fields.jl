@@ -20,6 +20,10 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
 
+const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
+
 # State of communications for MPI
 # The requests Channel exists for threads to add MPI requests to, in a thread safe way,
 # for the main thread to then wait on.
@@ -92,10 +96,6 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
 
     return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers, comm_state)
 end
-
-const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
-const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
