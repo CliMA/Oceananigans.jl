@@ -70,12 +70,14 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
 end
 
 function with_halo(halo, ibg::ImmersedBoundaryGrid)
-    active_cells_map = has_active_cells_map(ibg)
-    active_z_columns = has_active_z_columns(ibg)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
-    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
-                                active_cells_map,
-                                active_z_columns)
+    materialized_ib = materialize_immersed_boundary(underlying_grid, ibg.immersed_boundary)
+    TX, TY, TZ = topology(underlying_grid)
+    # The active cells maps hold interior indices, which do not depend on the halo
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
+                                            materialized_ib,
+                                            ibg.interior_active_cells,
+                                            ibg.active_z_columns)
 end
 
 const IBG = ImmersedBoundaryGrid
