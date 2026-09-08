@@ -77,7 +77,8 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
     reference_length = isnothing(reference_length) ? nothing : convert(FT, reference_length)
 
     return CWENOZ{FT, M, P, weight_computation,
-                  typeof(reference_variation), typeof(reference_length),
+                  typeof(reference_variation), 
+                  typeof(reference_length),
                   typeof(symmetric_scheme)}(reference_variation,
                                             reference_length,
                                             convert(FT, linear_weight),
