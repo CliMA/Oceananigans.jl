@@ -160,84 +160,139 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     end
 end
 
-# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
-for FT in fully_supported_float_types
-    @eval begin
-        """
-            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
+#####
+##### Smoothness indicators
+#####
 
-        Return the coefficients used to calculate the smoothness indicators for the stencil
-        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. β measures the derivatives of
-        the reconstructing polynomial, so it is invariant to a constant shift of the stencil and is a
-        quadratic form in the `buffer - 1` first differences spanned by the stencil rather than in the
-        `buffer` values themselves. The coefficients are ordered to calculate it in the following fashion:
+# Normalization of the smoothness indicators tabulated in the literature relative to the Jiang & Shu definition,
+# for `buffer = 2:6` (orders 3, 5, 7, 9, 11). The orders 7 and 9 follow Balsara & Shu (2000).
+const reference_smoothness_normalization = (1, 3, 6//25, 63//1250, 189//15625)
 
-        ```julia
-        buffer  = 4
-        stencil = 0
+"""
+    exact_smoothness_matrix(buffer, stencil)
 
-        δ = # The three differences spanned by stencil 0 with buffer 4 (7th order WENO)
+Return the `buffer × buffer` matrix `Q` of the Jiang & Shu smoothness indicator
 
-        C = smoothness_coefficients(Val(buffer), Val(0))
+```math
+β = ∑ₗ₌₁ᵇᵘᶠᶠᵉʳ⁻¹ ∫ (dˡpᵣ / dxˡ)² dx = ψᵀ Q ψ
+```
 
-        # The smoothness indicator
-        β = δ[1] * (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
-            δ[2] * (C[4] * δ[2] + C[5] * δ[3]) +
-            δ[3] * (C[6] * δ[3])
-        ```
+of the stencil number `stencil` of a WENO reconstruction of order `2buffer - 1`, computed exactly in rational
+arithmetic. `pᵣ` is the polynomial that reconstructs the cell averages `ψ` of the stencil (ordered from left to
+right), the integral spans the cell whose right face is reconstructed (of unit width), and `Q` is multiplied by
+the normalization of the reference tables.
+"""
+function exact_smoothness_matrix(buffer, stencil)
+    R = Rational{BigInt}
+    k = buffer
 
-        This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
-        """
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{0}) = $(FT.((1,)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{1}) = $(FT.((1,)))
+    # Cell averages of the monomials xⁿ over the cells of the stencil, centered at m - (stencil + 1)
+    A = zeros(R, k, k)
+    for m in 1:k, n in 0:k-1
+        c = R(m - (stencil + 1))
+        A[m, n+1] = ((c + 1//2)^(n+1) - (c - 1//2)^(n+1)) / (n + 1)
+    end
+    B = inv(A) # polynomial coefficients aₙ = ∑ⱼ B[n+1, j] ψⱼ
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{0}) = $(FT.((10, -11, 4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}) = $(FT.((4, -5, 4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}) = $(FT.((4, -11, 10)))
+    # Integrals ∫ xᵃ xᵇ dx over the reconstructed cell [-1/2, 1/2]
+    M = zeros(R, k, k)
+    for a in 0:k-1, b in 0:k-1
+        M[a+1, b+1] = iseven(a + b) ? R(2, (a + b + 1) * BigInt(2)^(a + b + 1)) : zero(R)
+    end
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{0}) = $(FT.((2.107, -5.188, 1.854, 3.708, -2.788, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{1}) = $(FT.((0.547, -1.428, 0.494, 1.468, -1.108, 0.267)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{2}) = $(FT.((0.267, -1.108, 0.494, 1.468, -1.428, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{3}) = $(FT.((0.547, -2.788, 1.854, 3.708, -5.188, 2.107)))
+    Q = zeros(R, k, k)
+    for l in 1:k-1
+        Dₗ = zeros(R, k, k) # coefficients of the l-th derivative, xⁿ → n! / (n - l)! xⁿ⁻ˡ
+        for n in l:k-1, j in 1:k
+            Dₗ[n-l+1, j] = B[n+1, j] * prod(n-l+1:n)
+        end
+        Q += Dₗ' * M * Dₗ
+    end
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{0}) = $(FT.((1.07918, -4.33665, 3.25158, -0.86329, 4.7898, -7.45293, 2.01678, 2.9712, -1.63185, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{1}) = $(FT.((0.22658, -0.94935, 0.70218, -0.18079, 1.2513, -1.96563, 0.52158, 0.846, -0.47055, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{2}) = $(FT.((0.06908, -0.37185, 0.30738, -0.08209, 0.6087, -1.09413, 0.30738, 0.6087, -0.37185, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{3}) = $(FT.((0.06908, -0.47055, 0.52158, -0.18079, 0.846, -1.96563, 0.70218, 1.2513, -0.94935, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{4}) = $(FT.((0.22658, -1.63185, 2.01678, -0.86329, 2.9712, -7.45293, 3.25158, 4.7898, -4.33665, 1.07918)))
+    return Q * reference_smoothness_normalization[buffer - 1]
+end
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{0}) = $(FT.((0.6150211, -3.5160042, 4.1046694, -2.234743, 0.471274, 5.3540984, -12.848254, 7.1025008, -1.512161, 7.8421848, -8.765266, 1.8797194, 2.4683064, -1.0645062, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{1}) = $(FT.((0.1152561, -0.681287, 0.792961, -0.4254026, 0.0880548, 1.1400536, -2.7680692, 1.5189424, -0.318647, 1.7580984, -1.98067, 0.4222438, 0.5706008, -0.247217, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{2}) = $(FT.((0.0271779, -0.1837242, 0.224911, -0.1213142, 0.024562, 0.3544296, -0.925294, 0.518984, -0.1079386, 0.6713736, -0.7947412, 0.1713274, 0.2534504, -0.115071, 0.0139633)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{3}) = $(FT.((0.0139633, -0.115071, 0.1713274, -0.1079386, 0.024562, 0.2534504, -0.7947412, 0.518984, -0.1213142, 0.6713736, -0.925294, 0.224911, 0.3544296, -0.1837242, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{4}) = $(FT.((0.0271779, -0.247217, 0.4222438, -0.318647, 0.0880548, 0.5706008, -1.98067, 1.5189424, -0.4254026, 1.7580984, -2.7680692, 0.792961, 1.1400536, -0.681287, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{5}) = $(FT.((0.1152561, -1.0645062, 1.8797194, -1.512161, 0.471274, 2.4683064, -8.765266, 7.1025008, -2.234743, 7.8421848, -12.848254, 4.1046694, 5.3540984, -3.5160042, 0.6150211)))
+# LDLᵀ factorization of the quadratic form β = δᵀ Qδ δ, packed as, for each l, the strictly-lower column of L
+# followed by Dₗ, so that β = ∑ₗ Dₗ (δₗ + ∑ᵢ₌ₗ₊₁ Lᵢₗ δᵢ)²
+function ldlt_smoothness_coefficients(Qδ)
+    N = size(Qδ, 1)
+    R = eltype(Qδ)
+    L = zeros(R, N, N)
+    D = zeros(R, N)
+
+    for j in 1:N
+        L[j, j] = 1
+        D[j] = Qδ[j, j] - sum((L[j, k]^2 * D[k] for k in 1:j-1); init=zero(R))
+        for i in j+1:N
+            L[i, j] = (Qδ[i, j] - sum((L[i, k] * L[j, k] * D[k] for k in 1:j-1); init=zero(R))) / D[j]
+        end
+    end
+
+    C = R[]
+    for l in 1:N
+        append!(C, L[l+1:N, l])
+        push!(C, D[l])
+    end
+
+    return Tuple(C)
+end
+
+"""
+    smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
+
+Return the coefficients used to calculate the smoothness indicator for the stencil number `stencil`
+of a WENO reconstruction of order `buffer * 2 - 1`: the packed LDLᵀ factorization of the smoothness
+indicator as a quadratic form in the `buffer - 1` first differences `δ` spanned by the stencil, computed
+exactly and rounded to `FT`. They are ordered to calculate β in the following fashion:
+
+```julia
+buffer  = 4
+stencil = 0
+
+δ = # The three differences spanned by stencil 0 with buffer 4 (7th order WENO)
+
+C = smoothness_coefficients(Val(Float64), Val(buffer), Val(stencil))
+
+# The smoothness indicator
+β = C[3] * (δ[1] + C[1] * δ[2] + C[2] * δ[3])^2 +
+    C[5] * (δ[2] + C[4] * δ[3])^2 +
+    C[6] *  δ[3]^2
+```
+
+This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
+"""
+@inline smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil}) where {FT, buffer, stencil} = nothing # Fallback only for documentation purposes
+
+for buffer in advection_buffers[2:end], stencil in 0:buffer-1
+    Q = exact_smoothness_matrix(buffer, stencil)
+
+    # β is invariant to a constant shift of the stencil, so substituting ψₘ = ψ₁ + ∑ᵢ₌₁ᵐ⁻¹ δᵢ = ψ₁ + (T δ)ₘ
+    # makes it a quadratic form in the first differences δ
+    T = [i < m ? 1 : 0 for m in 1:buffer, i in 1:buffer-1]
+    C = ldlt_smoothness_coefficients(T' * Q * T)
+
+    for FT in fully_supported_float_types
+        @eval @inline smoothness_coefficients(::Val{$FT}, ::Val{$buffer}, ::Val{$stencil}) = $(FT.(C))
     end
 end
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order),
 # where δ are the three differences spanned by the stencil
-# δ[1] (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
-# δ[2] (C[4] * δ[2] + C[5] * δ[3]) +
-# δ[3] (C[6] * δ[3])
+# C[3] * (δ[1] + C[1] * δ[2] + C[2] * δ[3])^2 +
+# C[5] * (δ[2] + C[4] * δ[3])^2 +
+# C[6] *  δ[3]^2
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_smoothness_operation(buffer)
     N = buffer - 1
-
     elem = Vector{Expr}(undef, N)
-    c_idx = 1
-
-    for stencil = 1:N - 1
-        local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * δ[$i]) for i in stencil:N)...)
-        elem[stencil] = :(δ[$stencil] * $stencil_sum)
-        c_idx += N - stencil + 1
+    p = 1
+    for l in 1:N
+        t = Expr(:call, :+, :(δ[$l]), (:(C[$(p + i - l - 1)] * δ[$i]) for i in l+1:N)...)
+        elem[l] = :(C[$(p + N - l)] * $t * $t)
+        p += N - l + 1
     end
-
-    elem[N] = :(δ[$N] * δ[$N] * C[$c_idx])
-
     return Expr(:call, :+, elem...)
 end
 
@@ -245,38 +300,33 @@ end
 $(TYPEDSIGNATURES)
 
 Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`,
-from the `buffer - 1` first differences `δ` spanned by that stencil.
-The smoothness indicator (β) is calculated as follows
+from the `buffer - 1` first differences `δ` spanned by that stencil. β is evaluated as a sum of squares from the packed
+LDLᵀ coefficients `C = smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))`:
 
 ```julia
-C = smoothness_coefficients(Val(buffer), Val(stencil))
-
-# The smoothness indicator
+N = buffer - 1
 β = 0
-c_idx = 1
-for stencil = 1:buffer - 2
-    partial_sum = [C[c_idx + i - stencil)] * δ[i]) for i in stencil:buffer-1]
-    β          += δ[stencil] * partial_sum
-    c_idx += buffer - stencil
+p = 1
+for l = 1:N
+    t  = δ[l] + sum(C[p + i - l - 1] * δ[i] for i in l+1:N)
+    β += C[p + N - l] * t^2
+    p += N - l + 1
 end
-
-β += δ[buffer-1] * δ[buffer-1] * C[c_idx])
 ```
 
-This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
+This operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
 and, for `buffer == 3` unrolls into
 
 ```julia
-β = δ[1] * (C[1] * δ[1] + C[2] * δ[2]) +
-    δ[2] * (C[3] * δ[2])
+β = C[2] * (δ[1] + C[1] * δ[2])^2 + C[3] * δ[2]^2
 ```
 
 while for `buffer == 4` unrolls into
 
 ```julia
-β = δ[1] * (C[1] * δ[1] + C[2] * δ[2] + C[3] * δ[3]) +
-    δ[2] * (C[4] * δ[2] + C[5] * δ[3]) +
-    δ[3] * (C[6] * δ[3])
+β = C[3] * (δ[1] + C[1] * δ[2] + C[2] * δ[3])^2 +
+    C[5] * (δ[2] + C[4] * δ[3])^2 +
+    C[6] *  δ[3]^2
 ```
 """
 @inline smoothness_indicator(δ, args...) = zero(δ[1]) # This is a fallback method, here only for documentation purposes
