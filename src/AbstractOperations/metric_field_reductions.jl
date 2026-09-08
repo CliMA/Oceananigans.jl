@@ -1,6 +1,7 @@
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
-using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: Field, Scan, Reducing, ScannedComputedField, condition_operand, reverse_cumsum!,
+                          AbstractAccumulating, AbstractReducing
 using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
 #####
@@ -31,14 +32,12 @@ const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
 
 function average!(avg::AveragedField, operand)
     sum!(avg, operand)
-    averaging = avg.operand.type
+    volume = avg.operand.type.volume
 
-    V = if averaging.volume isa Field
-        interior(averaging.volume)
-    else
-        averaging.volume
-    end
+    # A lazy reduction: the grid metrics evolve in time, so the averaging volume is stale
+    volume isa ScannedComputedField && compute!(volume)
 
+    V = volume isa Field ? interior(volume) : volume
     interior(avg) ./= V
 
     return avg
@@ -64,28 +63,30 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dims = filter_nothing_dims(dims, instantiated_location(field))
 
-    if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
+    static_discretization = has_static_discretization(field.grid)
+
+    if static_discretization && all(d in regular_dimensions(field.grid) for d in dims)
+        # Dimensions being reduced are regular and frozen, so we don't need to involve the grid metrics
         operand = condition_operand(field, condition, mask)
         N = conditional_length(operand, dims)
         averaging = Averaging(N)
         return Scan(averaging, average!, operand, dims)
     else
-        # Compute "size" (length, area, or volume) of averaging region
+        # Compute "size" (length, area, or volume) of the averaging region
         dx = reduction_grid_metric(dims)
         metric = grid_metric_operation(location(field), dx, field.grid)
-        field_dx = field * dx
+        metric_operand = condition_operand(metric, condition, convert(eltype(metric), mask))
 
-        if has_static_discretization(grid)
-            V⁻¹_field_dx = field * dx / volume
-            operand = condition_operand(V⁻¹_field_dx, condition, mask)
-            return Scan(Averaging(), sum!, operand, dims)
+        volume = if static_discretization
+            sum(metric_operand; dims)
         else
-            volume = sum(metric; condition, mask, dims)
-            operand = condition_operand(field_dx, condition, mask)
-            averaging = Averaging(volume)
-            return Scan(averaging, average!, operand, dims)
+            Field(Scan(Reducing(), sum!, metric_operand, dims))
         end
+
+        operand = condition_operand(field * dx, condition, mask)
+        averaging = Averaging(volume)
+
+        return Scan(averaging, average!, operand, dims)
     end
 end
 
