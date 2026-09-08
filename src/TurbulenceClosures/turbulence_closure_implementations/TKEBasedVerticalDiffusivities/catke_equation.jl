@@ -42,7 +42,11 @@ end
     # Dissipation length
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓᴰ = max(ℓ★, ℓʰ)
+    ml = closure.mixing_length
+    S² = shearᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v)
+    N²ᶜ = ℑbzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    f  = geometric_floor_weight(S², N²ᶜ, ml.Cᶠ, ml.Cᶠ⁰, ml.Cᶠᵟ)
+    ℓᴰ = convective_floor_length(ℓ★, ℓʰ, f)
 
     H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓᴰ)
