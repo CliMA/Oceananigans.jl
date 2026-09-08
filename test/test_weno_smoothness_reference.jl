@@ -53,9 +53,7 @@ end
 
         for stencil in 0:buffer-1, FT in (Float64, Float32)
             scheme = WENO(FT; order)
-            # The exact coefficients are rounded to FT and the sum of squares has no cancellation,
-            # so the result is accurate to a few ulps (the tolerance leaves room for the rounding of δ)
-            rtol = FT == Float64 ? 1e-13 : 1e-4
+            rtol = 20eps(FT)
 
             for _ in 1:20
                 # A stencil with a large mean and O(1) variations, in BigFloat for the reference
