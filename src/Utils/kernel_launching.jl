@@ -5,13 +5,12 @@
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel,
+                          KernelAbstractions as KA,
                           ndrange, workgroupsize,
                           __iterspace, __groupindex, __dynamic_checkbounds,
                           CompilerMetadata
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 using Oceananigans.Architectures: Architectures
-
-import KernelAbstractions as KA
 
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
