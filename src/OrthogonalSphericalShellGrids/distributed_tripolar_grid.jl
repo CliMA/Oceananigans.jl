@@ -53,8 +53,8 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
                       halo=(4, 4, 4),
                       kwargs...)
 
+    # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
-
     return distribute_tripolar_grid(arch, global_grid)
 end
 
