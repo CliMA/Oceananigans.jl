@@ -68,9 +68,9 @@ const serial_memory_gpu = Dict(
     (:hydrostatic,    :flat)            => 8.4e5,
     (:hydrostatic,    :immersed)        => 9.2e5,
     (:hydrostatic,    :active_immersed) => 9.3e5,
-    (:nonhydrostatic, :flat)            => 1.2e6,
-    (:nonhydrostatic, :immersed)        => 1.4e6,
-    (:nonhydrostatic, :active_immersed) => 1.4e6,
+    (:nonhydrostatic, :flat)            => 7.6e5,
+    (:nonhydrostatic, :immersed)        => 8.6e5,
+    (:nonhydrostatic, :active_immersed) => 8.7e5,
 )
 
 const distributed_memory_cpu = Dict(
