@@ -54,8 +54,8 @@ function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
                             weno.time_discretization)
 end
 
-materialize_advection(scheme::CWENOZ{FT, M, P, Nothing, G, L, C}, grid) where {FT, M, P, G, L, C} =
-    CWENOZ{FT, M, P, default_weno_weight_computation(architecture(grid)), G, L, C}(scheme.reference_gradient,
+materialize_advection(scheme::CWENOZ{FT, M, P, Nothing, V, L, C}, grid) where {FT, M, P, V, L, C} =
+    CWENOZ{FT, M, P, default_weno_weight_computation(architecture(grid)), V, L, C}(scheme.reference_variation,
                                                                                    scheme.reference_length,
                                                                                    scheme.linear_weight,
                                                                                    scheme.maximum_constant_weight,

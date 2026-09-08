@@ -4,7 +4,7 @@ using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     CWENOZ([FT=Oceananigans.defaults.FloatType;]
-           reference_gradient = nothing,
+           reference_variation = nothing,
            reference_length = nothing,
            linear_weight = 0.25,
            maximum_constant_weight = 0.01,
@@ -23,22 +23,22 @@ indicator of the k-th candidate and `τ` a global one. The linear weights `d¹` 
 optimal polynomial is defined as `Pᵒ = (P² - d¹P¹ - d⁰P⁰) / dᵒ` with `dᵒ = 1 - d¹ - d⁰`, so that `P²` is recovered exactly on smooth data whatever
 positive weights are chosen. However, they set how quickly each low order candidate takes over near a discontinuity.
 
-- `reference_gradient`: gradient of the reconstructed field, in units of `ψ` per unit length, setting the scale `ϵ = (reference_gradient * Δ)²`
-  at which the constant takes over. `nothing` estimates it from the stencil.
+- `reference_variation`: the cell-to-cell variation of `ψ`, in units of `ψ`, below which the stencil is read as noise,
+  flooring `ϵ` at `reference_variation²`. The constant takes over above a variation of about `8.6 * reference_variation`
+  between adjacent averages. `nothing` leaves `ϵ` to the stencil.
 
 - `reference_length`: length scale that nondimensionalizes the grid spacing in `d⁰ = min((Δ / reference_length)^constant_weight_exponent, maximum_constant_weight)`.
   `d⁰ -> 0` under refinement is what recovers third order accuracy on smooth data next to the boundary. `nothing` holds `d⁰` at `maximum_constant_weight`.
 
 - `linear_weight`: `d¹`, the linear weight of the linear polynomial.
 
-- `maximum_constant_weight`: the cap on `d⁰`, and its value everywhere if `reference_length` is zero.
+- `maximum_constant_weight`: the cap on the linear weight `d⁰`, and its value everywhere if `reference_length` is zero.
 
 - `constant_weight_exponent`: the exponent with which `d⁰` vanishes under refinement, at least one for third order accuracy.
 
 - `smoothness_ratio_exponent`: the exponent `p` of the Z-weights, at least one for third order accuracy.
 
-- `relative_oscillation_floor`: the value `ϵ` falls back to, relative to the square of the largest average in the stencil, where the estimate from
-  the stencil vanishes.
+- `relative_oscillation_floor`: a floor on `ϵ` relative to the largest oscillation indicator in the stencil.
 
 - `weight_computation`: the type of approximate division used for the smoothness ratios, as in `WENO`. `Nothing` defers the choice to the
   architecture the scheme is materialized on.
@@ -48,8 +48,8 @@ positive weights are chosen. However, they set how quickly each low order candid
 
 The defaults are those of [SempliceTravagliaPuppo22](@cite) and, through it, of [NaumannKolbSemplice18](@cite).
 """
-struct CWENOZ{FT, M, P, WCT, G, L, C}
-    reference_gradient :: G
+struct CWENOZ{FT, M, P, WCT, V, L, C}
+    reference_variation :: V
     reference_length :: L
     linear_weight :: FT
     maximum_constant_weight :: FT
@@ -58,7 +58,7 @@ struct CWENOZ{FT, M, P, WCT, G, L, C}
 end
 
 function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
-                reference_gradient = nothing,
+                reference_variation = nothing,
                 reference_length = nothing,
                 linear_weight = 0.25,
                 maximum_constant_weight = 0.01,
@@ -73,17 +73,17 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
     M = Int(constant_weight_exponent)
     P = Int(smoothness_ratio_exponent)
 
-    reference_gradient = isnothing(reference_gradient) ? nothing : convert(FT, reference_gradient)
+    reference_variation = isnothing(reference_variation) ? nothing : convert(FT, reference_variation)
     reference_length = isnothing(reference_length) ? nothing : convert(FT, reference_length)
 
     return CWENOZ{FT, M, P, weight_computation,
-                  typeof(reference_gradient), typeof(reference_length),
-                  typeof(symmetric_scheme)}(reference_gradient,
-                                                                          reference_length,
-                                                                          convert(FT, linear_weight),
-                                                                          convert(FT, maximum_constant_weight),
-                                                                          convert(FT, relative_oscillation_floor),
-                                                                          symmetric_scheme)
+                  typeof(reference_variation), typeof(reference_length),
+                  typeof(symmetric_scheme)}(reference_variation,
+                                            reference_length,
+                                            convert(FT, linear_weight),
+                                            convert(FT, maximum_constant_weight),
+                                            convert(FT, relative_oscillation_floor),
+                                            symmetric_scheme)
 end
 
 Base.eltype(::CWENOZ{FT}) where FT = FT
@@ -91,7 +91,7 @@ Base.summary(::CWENOZ{FT}) where FT = string("CWENOZ{$FT}")
 
 Base.show(io::IO, scheme::CWENOZ{FT, M, P, WCT}) where {FT, M, P, WCT} =
     print(io, summary(scheme), '\n',
-              "├── reference_gradient: ",         scheme.reference_gradient, '\n',
+              "├── reference_variation: ",        scheme.reference_variation, '\n',
               "├── reference_length: ",           scheme.reference_length, '\n',
               "├── linear_weight: ",              scheme.linear_weight, '\n',
               "├── maximum_constant_weight: ",    scheme.maximum_constant_weight, '\n',
@@ -105,11 +105,10 @@ Base.show(io::IO, scheme::CWENOZ{FT, M, P, WCT}) where {FT, M, P, WCT} =
 @inline constant_weight(scheme::CWENOZ{<:Any, M}, Δ) where M =
     min(Base.literal_pow(^, Δ / scheme.reference_length, Val(M)), scheme.maximum_constant_weight)
 
-@inline oscillation_estimate(scheme::CWENOZ{<:Any, <:Any, <:Any, <:Any, Nothing}, Δ, Iᵢ, Iₒ) = min(Iᵢ, Iₒ)
-@inline oscillation_estimate(scheme::CWENOZ{FT}, Δ, Iᵢ, Iₒ) where FT =
-    ifelse(scheme.reference_gradient > zero(FT), (scheme.reference_gradient * Δ)^2, min(Iᵢ, Iₒ))
+@inline oscillation_estimate(::CWENOZ{<:Any, <:Any, <:Any, <:Any, Nothing}, Iᵢ, Iₒ) = min(Iᵢ, Iₒ)
+@inline oscillation_estimate(scheme::CWENOZ, Iᵢ, Iₒ) = max(min(Iᵢ, Iₒ), scheme.reference_variation^2)
 
-@inline reference_spacing(::CWENOZ{<:Any, <:Any, <:Any, <:Any, Nothing, Nothing}, Δ, i, j, k, grid) = nothing
+@inline reference_spacing(::CWENOZ{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing}, Δ, i, j, k, grid) = nothing
 @inline reference_spacing(::CWENOZ, Δ, i, j, k, grid) = Δ(i, j, k, grid)
 
 @inline  inward_parabola_oscillation(u₁, u₂, u₃) = @muladd 13//12 * (u₁ - 2u₂ + u₃)^2 + 1//4 * (3u₁ - 4u₂ + u₃)^2
@@ -136,12 +135,12 @@ candidate drops to the one that fits.
 
     I² = inward_parabola_oscillation(u₁, u₂, u₃)
     I¹ = linear_oscillation(u₁, u₂)
+    Iₒ = linear_oscillation(u₂, u₃)
 
-    estimated = oscillation_estimate(scheme, Δ, I¹, linear_oscillation(u₂, u₃))
-    ϵ = max(estimated, scheme.relative_oscillation_floor * max(abs(u₁), abs(u₂), abs(u₃))^2)
+    ϵ = max(oscillation_estimate(scheme, I¹, Iₒ), scheme.relative_oscillation_floor * max(I¹, Iₒ))
 
     # τ is the indicator of the first interior cell, whose stencil is these same three averages
-    τ = abs(2 * centred_parabola_oscillation(u₁, u₂, u₃) - I¹ - linear_oscillation(u₂, u₃))
+    τ = abs(2 * centred_parabola_oscillation(u₁, u₂, u₃) - I¹ - Iₒ)
 
     fᵒ = 1 + Base.literal_pow(^, smoothness_ratio(WCT, τ, I² + ϵ), Val(P))
     f¹ = 1 + Base.literal_pow(^, smoothness_ratio(WCT, τ, I¹ + ϵ), Val(P))
