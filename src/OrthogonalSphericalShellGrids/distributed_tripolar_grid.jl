@@ -59,12 +59,15 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
 end
 
 """
-    distribute_tripolar_grid(arch::Distributed, global_grid)
+    distribute_tripolar_grid(arch, global_grid)
 
 Return the slice of the global tripolar `global_grid` owned by `arch`'s rank. The fold pairs points
 across the northern seam, so a tripolar grid is built globally and then partitioned. See
-[`TripolarGrid`](@ref) for the supported partitionings.
+[`TripolarGrid`](@ref) for the supported partitionings. On a serial `arch` the whole grid is returned,
+moved to that architecture.
 """
+distribute_tripolar_grid(arch, global_grid) = on_architecture(arch, global_grid)
+
 function distribute_tripolar_grid(arch::Distributed, global_grid)
 
     workers = ranks(arch.partition)
