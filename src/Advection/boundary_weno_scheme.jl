@@ -77,13 +77,14 @@ function CWENOZ(FT::DataType = Oceananigans.defaults.FloatType;
     reference_length = isnothing(reference_length) ? nothing : convert(FT, reference_length)
 
     return CWENOZ{FT, M, P, weight_computation,
-                  typeof(reference_gradient), typeof(reference_length),
+                  typeof(reference_gradient),
+                  typeof(reference_length),
                   typeof(symmetric_scheme)}(reference_gradient,
-                                                                          reference_length,
-                                                                          convert(FT, linear_weight),
-                                                                          convert(FT, maximum_constant_weight),
-                                                                          convert(FT, relative_oscillation_floor),
-                                                                          symmetric_scheme)
+                                            reference_length,
+                                            convert(FT, linear_weight),
+                                            convert(FT, maximum_constant_weight),
+                                            convert(FT, relative_oscillation_floor),
+                                            symmetric_scheme)
 end
 
 Base.eltype(::CWENOZ{FT}) where FT = FT
