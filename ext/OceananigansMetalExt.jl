@@ -44,11 +44,8 @@ function Solvers.plan_backward_transform(A::MtlArray, ::Union{Bounded, Periodic}
     return plan_ifft!(A, dims)
 end
 
-# Metal has no `air.cbrt.f32` intrinsic and cannot compile the Float64 refinement in
-# `Base.cbrt(::Float32)`; `^(::Float32, ::Float32)` lowers to `air.pow.f32`.
-# Remove, with `f32_safe_cbrt` itself, once JuliaGPU/Metal.jl#952 is resolved.
-# Subnormal arguments return zero, as they do for every other arithmetic operation on
-# Metal, which flushes subnormal operands.
+# `Base.cbrt(::Float32)` refines in Float64 and Metal has no `air.cbrt.f32`; `^` lowers to
+# `air.pow.f32`, which zeroes subnormals. Remove after JuliaGPU/Metal.jl#952.
 Metal.@device_override @inline UT.f32_safe_cbrt(x::Float32) = copysign(abs(x)^(1f0/3f0), x)
 
 Metal.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
