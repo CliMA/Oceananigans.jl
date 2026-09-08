@@ -268,7 +268,7 @@ for buffer in advection_buffers[2:end], stencil in 0:buffer-1
 
     # β is invariant to a constant shift of the stencil, so substituting ψₘ = ψ₁ + ∑ᵢ₌₁ᵐ⁻¹ δᵢ = ψ₁ + (T δ)ₘ
     # makes it a quadratic form in the first differences δ
-    T = [i < m ? 1 : 0 for m in 1:buffer, i in 1:buffer-1]
+    T = [Int(i < m) for m in 1:buffer, i in 1:buffer-1]
     C = ldlt_smoothness_coefficients(T' * Q * T)
 
     for FT in fully_supported_float_types
