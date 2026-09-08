@@ -164,7 +164,7 @@ After all substeps, Lagrangian particles are stepped and the `model.clock`s is a
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
-    Δt = kernel_time_step(model.clock, Δt)
+    Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 

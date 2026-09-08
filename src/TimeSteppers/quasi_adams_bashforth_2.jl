@@ -92,7 +92,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    Δt = kernel_time_step(model.clock, Δt)
+    Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     # Take an euler step if:
     #   * We detect that the time-step size has changed.

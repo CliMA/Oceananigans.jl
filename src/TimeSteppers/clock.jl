@@ -115,20 +115,6 @@ Clock(grid::AbstractGrid{FT}) where {FT} = Clock{Float64}(; time=0, kernel_time_
 
 kernel_time_type(::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S} = KT
 
-"""
-$(TYPEDSIGNATURES)
-
-Return `Δt` converted to the time-step type used _inside_ kernels, which follows
-`kernel_time_type(clock)`.
-
-`Clock.time` accumulates in high precision, so arithmetic involving it promotes `Δt`
-even for a lower-precision model. Kernels must not see that promotion.
-"""
-@inline kernel_time_step(clock, Δt::Number) = clock_convert(time_step_type(kernel_time_type(clock)), Δt)
-
-# eg `Dates.Period`
-@inline kernel_time_step(clock, Δt) = Δt
-
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
     DT = typeof(clock.last_Δt)

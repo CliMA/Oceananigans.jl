@@ -2,9 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Adapt: Adapt
 using TimesDates: TimeDate
-using Dates: Minute
 using Oceananigans.Grids: topological_tuple_length
-using Oceananigans.TimeSteppers: Clock, kernel_time_step
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Utils: kernel_time_step
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
@@ -383,22 +383,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
-    @testset "kernel_time_step demotes Δt to the kernel time type" begin
+    @testset "kernel_time_step demotes Δt to the grid eltype" begin
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
-            clock = Clock(grid)
 
-            @test kernel_time_step(clock, 60.0) isa FT
-            @test kernel_time_step(clock, 60.0f0) isa FT
-            @test kernel_time_step(clock, 60) isa FT
+            @test kernel_time_step(arch, grid, 60.0) isa FT
+            @test kernel_time_step(arch, grid, 60.0f0) isa FT
+            @test kernel_time_step(arch, grid, 60) isa FT
         end
-
-        # `Δt` for DateTime clocks is Float64 seconds
-        datetime_clock = Clock(time=DateTime(2020))
-        @test kernel_time_step(datetime_clock, 60.0) isa Float64
-        @test kernel_time_step(datetime_clock, 60.0f0) isa Float64
-
-        @test kernel_time_step(datetime_clock, Minute(1)) === Minute(1)
     end
 
     # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939. See `ΔtTypeRecorder` above.

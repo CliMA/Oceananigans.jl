@@ -2,6 +2,13 @@
 ##### Utilities for launching kernels
 #####
 
+# Convert Δt to the kernel-compatible time type for `grid`'s architecture.
+# Metal cannot load Float64 kernel arguments, so we must convert at the launch
+# site for Float32 grids. Reactant tracing breaks if we convert outside the
+# kernel — OceananigansReactantExt overrides this for `ReactantState` archs to
+# pass Δt through unchanged.
+@inline kernel_time_step(arch, grid, Δt) = convert(eltype(grid), Δt)
+
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel,
