@@ -137,7 +137,6 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
-    Δt = convert(FT, Δt)
     α = convert(FT, 3/2) + χ
     β = convert(FT, 1/2) + χ
     not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻

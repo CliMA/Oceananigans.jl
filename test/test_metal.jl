@@ -179,7 +179,7 @@ end
 @testset "MetalGPU: f32_safe_cbrt" begin
     x = Float32[8, 27, 1000, 0.125, 1, 0, -8, -0.125]
     mtl_x = MtlArray(x)
-    mtl_y = f32_safe_cbrt.(mtl_x) # compiles and runs a Metal kernel
+    mtl_y = f32_safe_cbrt.(mtl_x)
 
     y = Array(mtl_y)
     @test eltype(y) == Float32
@@ -187,7 +187,7 @@ end
 end
 
 @testset "MetalGPU: CATKEVerticalDiffusivity" begin
-    # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939
+    # https://github.com/CliMA/Oceananigans.jl/issues/5939
     arch = GPU(Metal.MetalBackend())
     grid = RectilinearGrid(arch; size=(8, 8, 16), x=(0, 128), y=(0, 128), z=(-64, 0),
                            topology=(Periodic, Periodic, Bounded))
@@ -204,8 +204,8 @@ end
                                         closure = CATKEVerticalDiffusivity(),
                                         boundary_conditions = (; T=Tbcs))
 
-    @test model.clock isa Clock{Float64} # accumulate time in Float64...
-    @test Oceananigans.TimeSteppers.kernel_time_type(model.clock) == Float32 # ...but Float32 in kernels
+    @test model.clock isa Clock{Float64}
+    @test Oceananigans.TimeSteppers.kernel_time_type(model.clock) == Float32
 
     set!(model, T=(x, y, z) -> 20f0 + 0.01f0 * z, S=35f0)
     set!(model, e=1f-6)

@@ -19,10 +19,7 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-"""
-Records the type of the `Δt` that `time_step!` hands to the model, via the `dynamics`
-interface of `LagrangianParticles`, which receives the same `Δt` that kernels do.
-"""
+# `LagrangianParticles` dynamics receive the same Δt that kernels do
 mutable struct ΔtTypeRecorder
     Δt_type :: Any
 end
@@ -393,7 +390,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    # Regression test for https://github.com/CliMA/Oceananigans.jl/issues/5939. See `ΔtTypeRecorder` above.
+    # https://github.com/CliMA/Oceananigans.jl/issues/5939
     @testset "time_step! demotes Δt to the kernel time type" begin
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))

@@ -30,9 +30,7 @@ are corrected to satisfy the incompressibility constraint.
 """
 function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     grid = model.grid
-    FT        = eltype(grid)
-    kernel_Δt = convert(FT, Δt)
-    Δτ        = convert(FT, stage_Δt(Δt, γⁿ, ζⁿ))
+    Δτ = stage_Δt(Δt, γⁿ, ζⁿ)
 
     compute_flux_bc_tendencies!(model)
     model_fields = prognostic_fields(model)
@@ -44,7 +42,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
         field_advection = exclude_periphery ? model.advection.momentum : model.advection[name]
-        kernel_args = (field, kernel_Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
 
         implicit_step!(field,

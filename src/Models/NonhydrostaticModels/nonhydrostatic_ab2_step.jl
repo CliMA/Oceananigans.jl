@@ -25,7 +25,6 @@ This predictor-corrector scheme:
 """
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
-    kernel_Δt = convert(eltype(grid), Δt)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
@@ -38,7 +37,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
         field_advection = exclude_periphery ? model.advection.momentum : model.advection[name]
-        kernel_args = (field, kernel_Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
+        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery)
 
         implicit_step!(field,
@@ -48,13 +47,13 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       kernel_Δt,
+                       Δt,
                        field_advection,
                        advecting_velocities)
     end
 
-    compute_pressure_correction!(model, kernel_Δt)
-    make_pressure_correction!(model, kernel_Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
 
     return nothing
 end
