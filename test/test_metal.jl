@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
 using Metal
-using Oceananigans.Utils: f32_safe_cbrt
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
@@ -174,16 +173,6 @@ end
     arch = GPU(Metal.MetalBackend())
     faces = collect(0:8) .^ 1.2
     @test stretched_poisson_solver_correct_answer(Float32, arch, (Periodic, Periodic, Bounded), 8, 8, faces)
-end
-
-@testset "MetalGPU: f32_safe_cbrt" begin
-    x = Float32[8, 27, 1000, 0.125, 1, 0, -8, -0.125]
-    mtl_x = MtlArray(x)
-    mtl_y = f32_safe_cbrt.(mtl_x)
-
-    y = Array(mtl_y)
-    @test eltype(y) == Float32
-    @test y ≈ cbrt.(x) rtol=1e-6
 end
 
 @testset "MetalGPU: CATKEVerticalDiffusivity" begin

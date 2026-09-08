@@ -103,7 +103,7 @@ The specific implementation of `rk3_substep!` varies by model type.
 function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     # Be paranoid and prepare at iteration 0, in case run! is not used:
     maybe_prepare_first_time_step!(model, Δt, callbacks)
@@ -118,7 +118,10 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     first_stage_Δt  = stage_Δt(Δt, γ¹, ζ¹)      # =  γ¹ * Δt
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
-    third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)      # = (γ³ + ζ³) * Δt
+
+    kernel_first_stage_Δt  = stage_Δt(kernel_Δt, γ¹, ζ¹)
+    kernel_second_stage_Δt = stage_Δt(kernel_Δt, γ², ζ²)
+    kernel_third_stage_Δt  = stage_Δt(kernel_Δt, γ³, ζ³)
 
     # Compute tⁿ⁺¹ a priori to reduce floating point error accumulation
     tⁿ⁺¹ = next_time(model.clock, Δt)
@@ -127,33 +130,33 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    rk3_substep!(model, Δt, γ¹, nothing, callbacks)
+    rk3_substep!(model, kernel_Δt, γ¹, nothing, callbacks)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, first_stage_Δt)
 
-    step_closure_prognostics!(model, first_stage_Δt)
+    step_closure_prognostics!(model, kernel_first_stage_Δt)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, first_stage_Δt)
+    step_lagrangian_particles!(model, kernel_first_stage_Δt)
 
     #
     # Second stage
     #
 
-    rk3_substep!(model, Δt, γ², ζ², callbacks)
+    rk3_substep!(model, kernel_Δt, γ², ζ², callbacks)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, second_stage_Δt)
 
-    step_closure_prognostics!(model, second_stage_Δt)
+    step_closure_prognostics!(model, kernel_second_stage_Δt)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, second_stage_Δt)
+    step_lagrangian_particles!(model, kernel_second_stage_Δt)
 
     #
     # Third stage
     #
 
-    rk3_substep!(model, Δt, γ³, ζ³, callbacks)
+    rk3_substep!(model, kernel_Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
     # Correct the third stage Δt to reduce floating point error accumulation.
@@ -162,9 +165,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
     tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
-    step_closure_prognostics!(model, third_stage_Δt)
+    step_closure_prognostics!(model, kernel_third_stage_Δt)
     update_state!(model, callbacks)
-    step_lagrangian_particles!(model, third_stage_Δt)
+    step_lagrangian_particles!(model, kernel_third_stage_Δt)
 
     return nothing
 end

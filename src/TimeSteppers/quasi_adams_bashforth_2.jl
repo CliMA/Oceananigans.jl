@@ -92,7 +92,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
@@ -111,15 +111,15 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    ab2_step!(model, Δt, callbacks)
+    ab2_step!(model, kernel_Δt, callbacks)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
-    step_closure_prognostics!(model, Δt)
+    step_closure_prognostics!(model, kernel_Δt)
     update_state!(model, callbacks)
 
-    step_lagrangian_particles!(model, Δt)
+    step_lagrangian_particles!(model, kernel_Δt)
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
