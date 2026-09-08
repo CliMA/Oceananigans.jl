@@ -148,7 +148,7 @@ function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyI
                                                  tke_dissipation_time_step)
 end
 
-function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
+Base.@constprop :aggressive function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     :e ∈ tracer_names && :ϵ ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e and :ϵ to represent turbulent kinetic energy " *
                             "for `TKEDissipationVerticalDiffusivity`."))

@@ -14,36 +14,34 @@ extract_bc(bcs, ::SouthAndNorth) = (bcs.south, bcs.north)
 # fill_halo! events (see issue #3342)
 # `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in
 # position [1] and the associated boundary conditions in position [2]
-function permute_boundary_conditions(bcs)
+Base.@constprop :aggressive function permute_boundary_conditions(bcs)
 
     split_x_halo_filling = split_halo_filling(bcs.west, bcs.east)
     split_y_halo_filling = split_halo_filling(bcs.south, bcs.north)
 
-    if split_x_halo_filling
-        if split_y_halo_filling
-            sides      = [West(), East(), South(), North(), BottomAndTop()]
-            bcs_array  = [bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom]
-        else
-            sides     = [West(), East(), SouthAndNorth(), BottomAndTop()]
-            bcs_array = [bcs.west, bcs.east, bcs.south, bcs.bottom]
-        end
+    # A single assignment keeps `sides` unboxed in the closures below
+    sides, bcs_tuple = if split_x_halo_filling && split_y_halo_filling
+        (West(), East(), South(), North(), BottomAndTop()), (bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom)
+    elseif split_x_halo_filling
+        (West(), East(), SouthAndNorth(), BottomAndTop()), (bcs.west, bcs.east, bcs.south, bcs.bottom)
+    elseif split_y_halo_filling
+        (WestAndEast(), South(), North(), BottomAndTop()), (bcs.west, bcs.south, bcs.north, bcs.bottom)
     else
-        if split_y_halo_filling
-            sides     = [WestAndEast(), South(), North(), BottomAndTop()]
-            bcs_array = [bcs.west, bcs.south, bcs.north, bcs.bottom]
-        else
-            sides     = [WestAndEast(), SouthAndNorth(), BottomAndTop()]
-            bcs_array = [bcs.west, bcs.south, bcs.bottom]
-        end
+        (WestAndEast(), SouthAndNorth(), BottomAndTop()), (bcs.west, bcs.south, bcs.bottom)
     end
 
-    perm  = sortperm(bcs_array, lt=fill_first)
-    sides = tuple(sides[perm]...)
+    perm = filling_order(map(fill_priority, bcs_tuple))
 
-    boundary_conditions = Tuple(extract_bc(bcs, side) for side in sides)
+    ordered_sides = ntuple(Val(length(sides))) do n
+        Base.@_inline_meta
+        @inbounds sides[perm[n]]
+    end
 
-    return sides, boundary_conditions
+    boundary_conditions = map(side -> extract_bc(bcs, side), ordered_sides)
+
+    return ordered_sides, boundary_conditions
 end
+
 
 side_name(::West) = :west
 side_name(::East) = :east
@@ -92,51 +90,31 @@ const OBCTC = Union{NFBC, Tuple{Vararg{NFBC}}}
 # Periodic fills also corners while Flux, Value, Gradient do not
 # TODO: remove this ordering requirement (see issue https://github.com/CliMA/Oceananigans.jl/issues/3342)
 
-# Order of halo filling
+# Order of halo filling (see `fill_priority`)
 # 0) Nothing / no-op (Face on Bounded axis — no halo needed)
 # 1) Flux, Value, Gradient (TODO: remove these BC and apply them as fluxes)
 # 2) Periodic (PBCT)
 # 3) Shared Communication (MCBCT)
 # 4) Distributed Communication (DCBCT)
 
-# We define "greater than" `>` and "lower than", for boundary conditions
-# following the rules outlined in `fill_first`
-# i.e. if `bc1 > bc2` then `bc2` precedes `bc1` in filling order
-@inline Base.isless(bc1::BoundaryCondition, bc2::BoundaryCondition) = fill_first(bc1, bc2)
+# Sides are filled by increasing priority; among equal priorities, the side listed last goes first.
+# Everything here folds at compile time because the priorities depend only on the boundary condition types.
+@inline fill_priority(::Nothing) = 0
+@inline fill_priority(bc)        = 1
+@inline fill_priority(::PBCT)    = 2
+@inline fill_priority(::MCBCT)   = 3
+@inline fill_priority(::DCBCT)   = 4
 
-# fallback for `Nothing` BC.
-@inline Base.isless(::Nothing,           ::Nothing) = true
-@inline Base.isless(::BoundaryCondition, ::Nothing) = false
-@inline Base.isless(::Nothing, ::BoundaryCondition) = true
-@inline Base.isless(::BoundaryCondition, ::Missing) = false
-@inline Base.isless(::Missing, ::BoundaryCondition) = true
+@inline fills_before((p₁, i₁), (p₂, i₂)) = p₁ < p₂ || (p₁ == p₂ && i₁ > i₂)
 
-# Nothing BCs are no-ops; fill them first to get them out of the way.
-# These must be defined to maintain strict-weak-ordering for sortperm.
-fill_first(::Nothing, ::Nothing) = true
-fill_first(::Nothing, bc2)       = true
-fill_first(bc1, ::Nothing)       = false
-# Resolve method ambiguities with specific BC types
-fill_first(::Nothing, ::PBCT)    = true
-fill_first(::Nothing, ::DCBCT)   = true
-fill_first(::Nothing, ::MCBCT)   = true
-fill_first(::PBCT,    ::Nothing) = false
-fill_first(::DCBCT,   ::Nothing) = false
-fill_first(::MCBCT,   ::Nothing) = false
+@inline insert_in_order(x, ::Tuple{}) = (x,)
+Base.@constprop :aggressive @inline insert_in_order(x, sorted::Tuple) =
+    fills_before(x, first(sorted)) ? (x, sorted...) : (first(sorted), insert_in_order(x, Base.tail(sorted))...)
 
-fill_first(bc1::DCBCT, bc2)        = false
-fill_first(bc1::PBCT,  bc2::DCBCT) = true
-fill_first(bc1::DCBCT, bc2::PBCT)  = false
-fill_first(bc1::MCBCT, bc2::DCBCT) = true
-fill_first(bc1::DCBCT, bc2::MCBCT) = false
-fill_first(bc1, bc2::DCBCT)        = true
-fill_first(bc1::DCBCT, bc2::DCBCT) = true
-fill_first(bc1::PBCT,  bc2)        = false
-fill_first(bc1::MCBCT, bc2)        = false
-fill_first(bc1::PBCT,  bc2::MCBCT) = true
-fill_first(bc1::MCBCT, bc2::PBCT)  = false
-fill_first(bc1, bc2::PBCT)         = true
-fill_first(bc1, bc2::MCBCT)        = true
-fill_first(bc1::PBCT,  bc2::PBCT)  = true
-fill_first(bc1::MCBCT, bc2::MCBCT) = true
-fill_first(bc1, bc2)               = true
+@inline sort_in_order(::Tuple{}) = ()
+Base.@constprop :aggressive @inline sort_in_order(t::Tuple) = insert_in_order(first(t), sort_in_order(Base.tail(t)))
+
+Base.@constprop :aggressive @inline function filling_order(priorities::NTuple{N, Int}) where N
+    keyed = ntuple(i -> (priorities[i], i), Val(N))
+    return map(last, sort_in_order(keyed))
+end

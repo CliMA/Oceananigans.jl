@@ -41,7 +41,7 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See [`launch!`](@ref).
 """
-KernelParameters(size, offsets) = KernelParameters{size, offsets}()
+@inline KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
 # If `size` and `offsets` are numbers, we convert them to tuples
 KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))

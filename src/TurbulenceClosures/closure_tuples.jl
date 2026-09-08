@@ -71,7 +71,7 @@ end
 ##### Utilities
 #####
 
-Utils.with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+Base.@constprop :aggressive Utils.with_tracers(tracers, closure_tuple::Tuple) = map(closure -> with_tracers(tracers, closure), closure_tuple)
 
 function compute_closure_fields!(closure_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
     for (α, closure) in enumerate(closure_tuple)

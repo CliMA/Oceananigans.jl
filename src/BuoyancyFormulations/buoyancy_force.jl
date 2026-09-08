@@ -51,7 +51,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 """
-function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
+Base.@constprop :aggressive function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
     if materialize_gradients
