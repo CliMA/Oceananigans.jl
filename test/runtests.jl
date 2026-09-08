@@ -44,6 +44,7 @@ CUDA.allowscalar() do
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
+            include("test_implicit_boundary_fluxes.jl")
             include("test_field.jl")
             include("test_set_field_interpolation.jl")
             include("test_lcc_interpolation.jl")
@@ -57,6 +58,7 @@ CUDA.allowscalar() do
             include("test_schedules.jl")
             include("test_newton_div.jl")
             include("test_materialize_advection.jl")
+            include("test_bounds_preserving_advection.jl")
             include("test_adaptive_implicit_vertical_advection.jl")
             include("test_weno_smoothness.jl")
         end
@@ -188,6 +190,7 @@ CUDA.allowscalar() do
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
             include("test_split_explicit_free_surface_boundaries.jl")
+            include("test_split_explicit_boundary_stress.jl")
             include("test_open_boundary_conditions_hydrostatic.jl")
             include("test_immersed_implicit_free_surface.jl")
         end

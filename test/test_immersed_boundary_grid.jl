@@ -37,15 +37,22 @@ function test_immersed_boundary_grid_with_array_bottom(FT, arch, boundary_type)
     underlying_grid = RectilinearGrid(arch, FT, size=(3, 3, 4), extent=(1, 1, 1))
 
     Nx, Ny = size(underlying_grid)[1:2]
-    bottom_array = zeros(FT, Nx, Ny) .+ 0.3
-    bottom_array = on_architecture(arch, bottom_array)
+    host_bottom_array = zeros(FT, Nx, Ny) .- 0.3
+    device_bottom_array = on_architecture(arch, host_bottom_array)
 
-    ib = boundary_type(bottom_array)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+    # A host array must work as bottom height even when the grid lives on a GPU
+    bottom_heights = map((host_bottom_array, device_bottom_array)) do bottom_array
+        ib = boundary_type(bottom_array)
+        ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
-    @test architecture(ibg) === arch
-    @test eltype(ibg) === FT
-    @test size(ibg) == size(underlying_grid)
+        @test architecture(ibg) === arch
+        @test eltype(ibg) === FT
+        @test size(ibg) == size(underlying_grid)
+
+        return Array(interior(bottom_height_field(ibg)))
+    end
+
+    @test bottom_heights[1] == bottom_heights[2]
 
     return nothing
 end

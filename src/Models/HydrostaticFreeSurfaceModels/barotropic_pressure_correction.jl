@@ -55,7 +55,7 @@ from the split-explicit substepping.
 function correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
     u, v, _ = model.velocities
     grid = model.grid
-    barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
+    barotropic_split_explicit_corrector!(u, v, model.free_surface, grid, Δt)
 
     return nothing
 end

@@ -45,7 +45,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
     grid                 = model.grid
-    advection            = model.advection
+    advection            = model.advection.momentum
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
     biogeochemistry      = model.biogeochemistry
@@ -82,15 +82,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
             active_cells_map, exclude_periphery)
 
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index + 3]
-        @inbounds forcing = forcings[tracer_index + 3]
-        @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds tracer_name = keys(tracers)[tracer_index]
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        @inbounds c_tendency = tendencies[tracer_name]
+        @inbounds c_advection = model.advection[tracer_name]
+        @inbounds forcing = forcings[tracer_name]
+        @inbounds c_immersed_bc = tracers[tracer_name].boundary_conditions.immersed
 
         launch!(arch, grid, kernel_parameters, compute_Gc!,
                 c_tendency, grid,
-                Val(tracer_index), Val(tracer_name), advection, closure, c_immersed_bc, buoyancy,
+                Val(tracer_index), Val(tracer_name), c_advection, closure, c_immersed_bc, buoyancy,
                 biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, closure_fields,
                 clock, forcing;
                 active_cells_map)

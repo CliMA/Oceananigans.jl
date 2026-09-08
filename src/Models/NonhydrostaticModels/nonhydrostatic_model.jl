@@ -1,15 +1,15 @@
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection, needs_implicit_solver
+using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
-using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
+                                       regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
@@ -30,7 +30,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF, BT} <: AbstractModel{TS, A}
+                                   V, S, K, BG, P, BGC, AF, BT, AW} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -53,6 +53,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, 
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
    boundary_transport :: BT       # Container for transports at open boundaries
+   advecting_vertical_velocity :: AW # `wⁿ` for the adaptive-implicit advection split (`nothing` without it)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
@@ -61,6 +62,8 @@ supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     NonhydrostaticModel(grid;
                         clock = Clock(grid),
                         advection = Centered(),
+                        momentum_advection = advection,
+                        tracer_advection = advection,
                         buoyancy = nothing,
                         coriolis = nothing,
                         stokes_drift = nothing,
@@ -93,7 +96,16 @@ Arguments
 Keyword arguments
 =================
 
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `advection`: Convenience keyword that sets the default value of both `momentum_advection`
+                 and `tracer_advection` to the same scheme. Useful when velocities and tracers
+                 share the same advection scheme. Either `momentum_advection` or
+                 `tracer_advection` may still be passed to override the default per-field.
+                 Default: `Centered()`.
+  - `momentum_advection`: The scheme used to advect velocities. Defaults to `advection`.
+                          See `Oceananigans.Advection`.
+  - `tracer_advection`: The scheme used to advect tracers. Defaults to `advection`. May also
+                        be a `NamedTuple` specifying a different scheme per tracer; see
+                        `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
@@ -124,6 +136,8 @@ Keyword arguments
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
                              advection = Centered(),
+                             momentum_advection = advection,
+                             tracer_advection = advection,
                              buoyancy = nothing,
                              coriolis = nothing,
                              stokes_drift = nothing,
@@ -212,19 +226,16 @@ function NonhydrostaticModel(grid;
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
-    # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
-    # is smaller than the advection order, reduce the order of the advection in that particular
-    # direction
-    advection = adapt_advection_order(advection, grid)
+    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+    default_generator(name, tracer_advection) = default_tracer_advection
 
-    # Fill any settings in advection scheme that might have been deferred until
-    # the grid and backend is known
-    advection = materialize_advection(advection, grid)
+    tracer_advection_tuple = with_tracers(tracernames(tracers), tracer_advection,
+                                          default_generator, with_velocities=false)
+    momentum_advection_tuple = (; momentum = momentum_advection)
+    advection = merge(momentum_advection_tuple, tracer_advection_tuple)
+    advection = materialize_model_advection(advection, grid)
 
-    # Adjust halos when the advection scheme or turbulence closure requires it.
-    # Note that halos are isotropic by default; however we respect user-input here
-    # by adjusting each (x, y, z) halo individually.
-    grid = inflate_grid_halo_size(grid, advection, closure)
+    grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -283,13 +294,18 @@ function NonhydrostaticModel(grid;
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
+    foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
+
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
 
-    # Also create the implicit solver if adaptive implicit advection requires it
-    if isnothing(implicit_solver) && needs_implicit_solver(advection)
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
     end
+
+    # Snapshot of `wⁿ` to solve implicit vertical advection without overwrites.
+    advecting_vertical_velocity = needs_implicit_solver(advection) ? ZFaceField(grid) : nothing
 
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
@@ -303,7 +319,8 @@ function NonhydrostaticModel(grid;
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport)
+                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport,
+                                advecting_vertical_velocity)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -314,6 +331,13 @@ end
 
 architecture(model::NonhydrostaticModel) = model.architecture
 timestepper(model::NonhydrostaticModel) = model.timestepper
+
+# Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
+# `inflate_grid_halo_size` and would therefore be boxed.
+function materialize_model_advection(advection, grid)
+    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
+    return NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+end
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz
