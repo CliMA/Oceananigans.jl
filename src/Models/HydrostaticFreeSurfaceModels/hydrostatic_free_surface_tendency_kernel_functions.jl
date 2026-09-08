@@ -9,6 +9,22 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot
 using Oceananigans.Utils: sum_of_velocities
 
 """
+$(TYPEDSIGNATURES)
+
+Return the velocities that advect the tracer named by `val_tracer_name`: the resolved transport velocities plus 
+any biogeochemical drift velocity, closure eddy velocity, and advective forcing.
+"""
+@inline function tracer_advecting_velocities(velocities, closure, closure_fields, biogeochemistry, forcing, val_tracer_name)
+
+    biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+    closure_velocities = closure_auxiliary_velocity(closure, closure_fields, val_tracer_name)
+
+    total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
+
+    return with_advective_forcing(forcing, total_velocities)
+end
+
+"""
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
 direction, ``u``, at grid point `i, j, k` for a `HydrostaticFreeSurfaceModel`.
 
@@ -127,11 +143,7 @@ where `c = C[tracer_index]`.
                          auxiliary_fields,
                          biogeochemical_auxiliary_fields(biogeochemistry))
 
-    biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
-    closure_velocities = closure_auxiliary_velocity(closure, closure_fields, val_tracer_name)
-
-    total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
-    total_velocities = with_advective_forcing(forcing, total_velocities)
+    total_velocities = tracer_advecting_velocities(velocities, closure, closure_fields, biogeochemistry, forcing, val_tracer_name)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_tracer_index, c, clock, model_fields, buoyancy)
