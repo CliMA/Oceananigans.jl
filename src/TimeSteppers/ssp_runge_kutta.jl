@@ -39,21 +39,23 @@ the three-stage scheme.
 end
 
 """
-Auxiliary storage the Shu-Osher blend needs beyond `Gⁿ` and `Ψ⁻`: a scratch copy `η` of the previous
-stage's free surface, since the solve restarts from `ηⁿ` whereas the blend applies its increment to
-`ηᵐ⁻¹`, plus, for the split-explicit arrangement, the `(U, V)` accumulator for the stage-weighted slow
-forcing that drives the corrector sub-cycle. Returns `nothing` for models with no free surface.
+Auxiliary storage the Shu-Osher blend needs beyond `Gⁿ` and `Ψ⁻`: scratch copies of the previous stage's
+barotropic state, since every solve restarts from `(ηⁿ, Uⁿ, Vⁿ)` whereas the blend applies its increment
+to `(ηᵐ⁻¹, Uᵐ⁻¹, Vᵐ⁻¹)`, plus, for the split-explicit arrangement, the `(U, V)` accumulator for the
+stage-weighted slow forcing that drives the corrector sub-cycle. Returns `nothing` for models with no
+free surface.
 """
 @inline function ssp_auxiliary_state(Gⁿ::NamedTuple, Ψ⁻)
     :η in keys(Ψ⁻) || return nothing
     η = similar(Ψ⁻.η)
     has_barotropic = (:U in keys(Gⁿ)) && (:V in keys(Gⁿ))
-    return has_barotropic ? (U = similar(Gⁿ.U), V = similar(Gⁿ.V), η = η) : (; η)
+    return has_barotropic ? (U = similar(Gⁿ.U), V = similar(Gⁿ.V),
+                             Uᵐ = similar(Ψ⁻.U), Vᵐ = similar(Ψ⁻.V), η = η) : (; η)
 end
 
 @inline ssp_auxiliary_state(Gⁿ, Ψ⁻) = nothing
 
-const SSPBarotropicForcing = NamedTuple{(:U, :V, :η)}
+const SSPBarotropicForcing = NamedTuple{(:U, :V, :Uᵐ, :Vᵐ, :η)}
 
 # Shu-Osher pairs (a, b) for the classical three-stage strong-stability-preserving scheme.
 const SSPRK3_COEFFICIENTS = ((0//1, 1//1), (3//4, 1//4), (1//3, 2//3))
@@ -80,10 +82,13 @@ which for a linear problem has the same amplification polynomial as the low-stor
 sub-cycling arrangement of [Lan et al. (2022)](@cite Lan2022) it has no resonance near a barotropic
 Courant number of `5.7`, where the low-storage composition loses about a third of its damping.
 
-!!! warning "The barotropic mode is advanced once per step"
+!!! note "The barotropic mode is blended by increment, not by state"
     The Shu-Osher weights assume every stage is a forward-Euler step, whereas a sub-cycled barotropic
-    solve is a near-exact advance over the full `Δt`. The barotropic velocity is therefore not carried
-    through the stages: it is set by a single corrector sub-cycle after them.
+    solve is a near-exact advance over the full `Δt`, so composing three such advances would
+    over-integrate the barotropic mode. The blend therefore acts on the *increment* each sub-cycle
+    produces, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`: every sub-cycle restarts from `Ψⁿ` and the weights sum
+    to one, so the free barotropic propagator is applied exactly once per step while the responses to
+    the stage forcings are combined as the Shu-Osher recursion requires.
 """
 function SSPRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                   implicit_solver::TI = nothing,

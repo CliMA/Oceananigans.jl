@@ -3,7 +3,8 @@ using Oceananigans.TurbulenceClosures: implicit_step!
 import Oceananigans.TimeSteppers: ssp_substep!
 
 using Oceananigans.TimeSteppers: accumulate_ssp_slow_forcing!, install_ssp_slow_forcing!,
-                                 _ssp_euler_substep_field!, _ssp_blend_field!, SSPRungeKuttaTimeStepper
+                                 _ssp_euler_substep_field!, _ssp_blend_field!, SSPRungeKuttaTimeStepper,
+                                 SSPBarotropicForcing
 
 # `ImplicitFreeSurface` solves on a predictor velocity, so the Shu-Osher blend would have to be deferred
 # until after a pressure correction that has already overwritten Ψᵐ⁻¹.
@@ -32,11 +33,14 @@ The baroclinic velocities, tracers and grid are advanced by a full `Δt` and ble
 by the Shu-Osher pair `(a, b)`. Each stage is an implicit-explicit forward-Euler step: the explicit tendency
 and the vertical solve are applied to `Ψᵐ⁻¹`, and the blend follows.
 
-The barotropic mode is *not* blended: the sub-cycles run on the first `Nstages - 1` stages are predictors,
-supplying the transport that advects tracers at their stage, and the barotropic velocity at `n+1` is set by a
-single corrector sub-cycle after the last stage, forced by the stage-weighted slow forcing. The Shu-Osher
-weights are derived for forward-Euler stages, and carrying a sub-cycled barotropic solve through them
-over-integrates it and costs an order.
+The barotropic pair is blended by *increment* rather than by state: every sub-cycle restarts from
+`(ηⁿ, Uⁿ, Vⁿ)` and spans the full `Δt`, and the blend applies the increment it produced to the previous
+stage, `Ψᵐ = a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`. Because the Shu-Osher weights sum to one, the free barotropic
+propagator is applied exactly once per step, so the over-integration that blending the barotropic *state*
+would incur -- the Shu-Osher weights are derived for forward-Euler stages, not for near-exact advances --
+does not arise, while the barotropic stage values are the ones the Shu-Osher recursion requires. The last
+stage is driven by the stage-weighted slow forcing, so its sub-cycle is simultaneously the predictor that
+supplies that stage's transport and the corrector that sets the barotropic pair at `n+1`.
 """
 ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     ssp_substep!(model, model.free_surface, model.grid, Δt, a, b, callbacks)
@@ -57,10 +61,10 @@ ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     # Must run before `compute_transport_velocities!`: tracer constancy needs the transport that advects
     # them to be the same flux that advanced the free surface.
     final_stage && install_ssp_slow_forcing!(timestepper)
-    cache_previous_stage_free_surface!(free_surface, timestepper)
+    cache_previous_stage_barotropic_state!(free_surface, timestepper)
     step_free_surface!(free_surface, model, timestepper, Δt)
 
-    blend_free_surface!(free_surface, timestepper, a, b)
+    blend_barotropic_state!(free_surface, timestepper, a, b)
 
     @apply_regionally begin
         ssp_blend_velocities!(model.velocities, model, a, b)
@@ -193,29 +197,64 @@ end
 end
 
 #####
-##### Blending the free surface into the Shu-Osher combination
+##### Blending the barotropic state into the Shu-Osher combination
 #####
+##### Every sub-cycle restarts from (ηⁿ, Uⁿ, Vⁿ) and spans the full Δt, so its output is Ψ⋆ = Ψⁿ + ΔΨ and
+##### the blend applies ΔΨ to the previous stage. Unrolled, Ψⁿ⁺¹ = Ψⁿ + Σₘ βₘ ΔΨᵐ with Σₘ βₘ = 1: the free
+##### barotropic propagator acts once per step, and only the responses to the stage forcings are combined.
+##### Blending the barotropic *state* instead would compose three near-exact advances and over-integrate.
 
-@inline function cache_previous_stage_free_surface!(free_surface, timestepper)
-    isnothing(timestepper.G★) && return nothing
-    parent(timestepper.G★.η) .= parent(free_surface.displacement)
+@inline cache_previous_stage_barotropic_state!(free_surface, timestepper::SSPRungeKuttaTimeStepper) =
+    cache_previous_stage_barotropic_state!(free_surface, timestepper.G★)
+
+@inline cache_previous_stage_barotropic_state!(free_surface, ::Nothing) = nothing
+
+@inline function cache_previous_stage_barotropic_state!(free_surface, G★)
+    parent(G★.η) .= parent(free_surface.displacement)
+    return nothing
+end
+
+@inline function cache_previous_stage_barotropic_state!(free_surface, G★::SSPBarotropicForcing)
+    U, V = free_surface.barotropic_velocities
+    parent(G★.η)  .= parent(free_surface.displacement)
+    parent(G★.Uᵐ) .= parent(U)
+    parent(G★.Vᵐ) .= parent(V)
     return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Blend the free-surface displacement into the Shu-Osher combination, `η ← a ηⁿ + b η̂`, where `η̂` is what
-the barotropic sub-cycle just produced. The thickness follows η, so the increment `b (η̂ - ηⁿ) = -b Δt ∇·Ũ`
-carries the same factor `b` as the tracer update, which is what keeps `σ` consistent with the transport.
-"""
-@inline function blend_free_surface!(free_surface, timestepper, a, b)
-    isnothing(timestepper.G★) && return nothing
-    η    = free_surface.displacement
-    ηⁿ   = timestepper.Ψ⁻.η
-    ηᵐ⁻¹ = timestepper.G★.η
+Blend the barotropic state into the Shu-Osher combination, `Ψ ← a Ψⁿ + b (Ψᵐ⁻¹ + Ψ⋆ - Ψⁿ)`, where `Ψ⋆` is
+what the sub-cycle just produced from `Ψⁿ`.
 
-    # The sub-cycle restarts from ηⁿ, so its output is η̂ = ηⁿ + Δη and the blend applies Δη to ηᵐ⁻¹.
-    parent(η) .= a .* parent(ηⁿ) .+ b .* (parent(ηᵐ⁻¹) .+ parent(η) .- parent(ηⁿ))
+The free surface carries the identity: the thickness follows `η`, so its increment
+`b (η⋆ - ηⁿ) = -b Δt ∇·Ũ` must carry the same factor `b` as the tracer update, which is what keeps `σ`
+consistent with the transport that advected the tracers. The barotropic velocity carries the order: with
+the same blend, `Uᵐ` is the Shu-Osher stage value the quadrature `β` expects, so a slow forcing that
+depends on the velocity -- Coriolis, drag, momentum advection of the barotropic flow -- is integrated at
+the order of the composition rather than at first order.
+"""
+@inline blend_barotropic_state!(free_surface, timestepper::SSPRungeKuttaTimeStepper, a, b) =
+    blend_barotropic_state!(free_surface, timestepper.G★, timestepper.Ψ⁻, a, b)
+
+@inline blend_barotropic_state!(free_surface, ::Nothing, Ψ⁻, a, b) = nothing
+
+@inline function blend_barotropic_state!(free_surface, G★, Ψ⁻, a, b)
+    blend_increment!(free_surface.displacement, Ψ⁻.η, G★.η, a, b)
+    return nothing
+end
+
+@inline function blend_barotropic_state!(free_surface, G★::SSPBarotropicForcing, Ψ⁻, a, b)
+    U, V = free_surface.barotropic_velocities
+    blend_increment!(free_surface.displacement, Ψ⁻.η, G★.η,  a, b)
+    blend_increment!(U,                         Ψ⁻.U, G★.Uᵐ, a, b)
+    blend_increment!(V,                         Ψ⁻.V, G★.Vᵐ, a, b)
+    return nothing
+end
+
+# ψ holds the sub-cycle output Ψ⋆; ψⁿ the state at n; ψᵐ⁻¹ the previous stage.
+@inline function blend_increment!(ψ, ψⁿ, ψᵐ⁻¹, a, b)
+    parent(ψ) .= a .* parent(ψⁿ) .+ b .* (parent(ψᵐ⁻¹) .+ parent(ψ) .- parent(ψⁿ))
     return nothing
 end
