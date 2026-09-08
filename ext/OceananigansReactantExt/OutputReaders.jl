@@ -1,7 +1,7 @@
 module OutputReaders
 
 using GPUArraysCore: @allowscalar
-using Oceananigans.Architectures: ReactantState, on_architecture, CPU, architecture
+using Oceananigans.Architectures: ReactantState, on_architecture, CPU
 using Oceananigans.Fields: Field, FixedTime, instantiated_location
 using Oceananigans.Grids: offset_data
 using Oceananigans.OutputReaders: TimeInterpolator, TotallyInMemoryFTS, memory_index
@@ -29,7 +29,7 @@ end
 
 function cpu_interpolating_time_indices(::ReactantState, times, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
-    return @allowscalar TimeInterpolator(time_indexing, cpu_times, t)
+    return TimeInterpolator(time_indexing, cpu_times, t)
 end
 
 # A dynamic slice along the time axis, so the index may be known only at run time
@@ -43,7 +43,7 @@ function Base.getindex(fts::TotallyInMemoryFTS, n::TracedRNumber)
 end
 
 function Base.getindex(fts::TotallyInMemoryFTS, time_index::Time{<:TracedRNumber})
-    indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, time_index.time)
+    indices = @allowscalar TimeInterpolator(fts, time_index.time)
 
     # `ñ = 0` when `n₁ == n₂`, so no branch is needed
     ñ  = TracedRNumber{eltype(fts.grid)}(indices.fractional_index)
