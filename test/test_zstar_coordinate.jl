@@ -106,3 +106,24 @@ end
         end
     end
 end
+
+@testset "Average on a MutableVerticalDiscretization" begin
+    @info "Testing that Average follows a MutableVerticalDiscretization..."
+
+    for arch in archs
+        grid = RectilinearGrid(arch; size=(2, 1, 4), x=(0, 2), y=(0, 1), topology=(Periodic, Periodic, Bounded),
+                               z=MutableVerticalDiscretization((-4, 0)))
+
+        c = CenterField(grid)
+        set!(c, (x, y, z) -> ifelse(x < 1, 1, 2))
+
+        average_c = Field(Average(c))
+        CUDA.@allowscalar @test average_c[1, 1, 1] ≈ 1.5
+
+        # Tripling the thickness of the second column triples the weight of the cells that hold c = 2
+        grid.z.σᶜᶜⁿ[2, :, :] .= 3
+        compute!(average_c)
+
+        CUDA.@allowscalar @test average_c[1, 1, 1] ≈ (1 + 2 * 3) / 4
+    end
+end
