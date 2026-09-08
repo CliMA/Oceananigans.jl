@@ -88,9 +88,8 @@ const TracedIndex = Union{Int, Reactant.TracedRNumber{Int}}
     end
 end
 
-# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`
-# we materialize to the CPU fallback.
-# TODO: find a better way to do this.
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`.
+# We materialize the Field here: this isn't ideal but works until we have a better solution in Reactant
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
