@@ -5,6 +5,8 @@ using StructArrays
 using Oceananigans.Architectures: architecture, on_architecture
 
 using Oceananigans.Models.LagrangianParticleTracking: no_dynamics
+using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 struct TestParticle{T}
     x::T
@@ -14,6 +16,66 @@ struct TestParticle{T}
     v::T
     w::T
     s::T
+end
+
+function record_particle_samples!(particles, model, Δt)
+    properties = particles.properties
+    properties.previous_concentration .= properties.concentration
+    properties.dynamics_calls .+= 1
+    return nothing
+end
+
+@testset "Tracked fields at final positions [$arch, $FT, $timestepper]" for
+    arch in archs, FT in float_types, (timestepper, stages) in ((:QuasiAdamsBashforth2, 1), (:RungeKutta3, 3))
+
+    grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0, 1000), y=(0, 1000), z=(0, 1000))
+    concentration = CenterField(grid)
+    altitude = CenterField(grid)
+    set!(concentration, (x, y, z) -> x)
+    set!(altitude, (x, y, z) -> z)
+
+    values = (x = FT[300], y = FT[300], z = FT[500],
+              concentration = FT[-1], altitude = FT[-1],
+              previous_concentration = FT[-1], dynamics_calls = FT[0])
+    properties = StructArray(on_architecture(arch, values))
+    particles = LagrangianParticles(properties; tracked_fields=(; concentration, altitude),
+                                   dynamics=record_particle_samples!)
+    model = NonhydrostaticModel(grid; particles, timestepper)
+    set!(model.velocities.u, 10)
+    set!(model.velocities.w, 20)
+    step_lagrangian_particles!(model, FT(1))
+
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[310]
+    @test saved.z ≈ FT[520]
+    @test saved.concentration ≈ FT[310]
+    @test saved.altitude ≈ FT[520]
+    @test saved.previous_concentration ≈ FT[300]
+    @test saved.dynamics_calls == [1]
+
+    set!(concentration, (x, y, z) -> x + FT(1000))
+    step_lagrangian_particles!(model, FT(1))
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.concentration ≈ FT[1320]
+    @test saved.previous_concentration ≈ FT[1310]
+    @test saved.dynamics_calls == [2]
+
+    set!(model.velocities.u, 1100)
+    set!(model.velocities.w, 800)
+    fill_halo_regions!(model.velocities.u)
+    step_lagrangian_particles!(model, FT(1))
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.x ≈ FT[420]
+    @test saved.z ≈ FT[660]
+    @test saved.concentration ≈ FT[1420]
+    @test saved.altitude ≈ FT[660]
+
+    set!(model; u=10, w=0)
+    time_step!(model, FT(1))
+    saved = on_architecture(CPU(), fetch_output(particles, model))
+    @test saved.concentration ≈ saved.x .+ 1000
+    @test saved.altitude ≈ saved.z
+    @test saved.dynamics_calls == [3 + stages]
 end
 
 function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta3, velocities=nothing)
