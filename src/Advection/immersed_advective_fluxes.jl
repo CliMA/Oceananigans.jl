@@ -104,34 +104,41 @@ end
 
 `inactive_node` expressions for the cells `rng` of the reconstruction stencil along `dir`, where `rng` runs from
 `1` to `2buffer`. A symmetric reconstruction spans all of them; a left-biased one spans `1:2buffer-1` and a
-right-biased one `2:2buffer`.
+right-biased one `2:2buffer`. Cells come back ordered outwards from the center of the stencil, which makes a
+narrower buffer's span a prefix of a wider one's.
 
 Example
 =======
 
 ```
-julia> inside_immersed_boundary(1:4, 2, :z, :ᶜ)
+julia> inside_immersed_boundary(1:4, 2, :z, :ᶜ; zside = :ᶜ)
 4-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 0,  ibg, c, c, f))
  :(inactive_node(i, j, k + 1,  ibg, c, c, f))
+ :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 2,  ibg, c, c, f))
 
-julia> inside_immersed_boundary(1:5, 3, :x, :ᶠ)
+julia> inside_immersed_boundary(1:5, 3, :x, :ᶠ; xside = :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(i + -3, j, k, ibg, c, c, c))
- :(inactive_node(i + -2, j, k, ibg, c, c, c))
- :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 0,  j, k, ibg, c, c, c))
+ :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
+ :(inactive_node(i + -2, j, k, ibg, c, c, c))
+ :(inactive_node(i + -3, j, k, ibg, c, c, c))
 ```
 """
 @inline function inside_immersed_boundary(rng, buffer, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
 
     inactive_cells  = Vector(undef, length(rng))
 
-    for (idx, n) in enumerate(rng)
-        c = side == :ᶠ ? n - buffer - 1 : n - buffer
+    center_offset(n) = side == :ᶠ ? n - buffer - 1 : n - buffer
+    distance_from_center(n) = abs(center_offset(n))
+    deepest_side_first(n) = side == :ᶠ ? center_offset(n) : -center_offset(n)
+
+    ordered_cells = sort(collect(rng), by = n -> (distance_from_center(n), deepest_side_first(n)))
+
+    for (idx, n) in enumerate(ordered_cells)
+        c = center_offset(n)
         xflipside = xside == :ᶠ ? :c : :f
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f

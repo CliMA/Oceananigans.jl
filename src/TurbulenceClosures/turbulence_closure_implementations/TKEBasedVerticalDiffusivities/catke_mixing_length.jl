@@ -43,6 +43,9 @@ Base.@kwdef struct CATKEMixingLength{FT}
     Cᵘⁿe :: FT = 1.447  # Shear mixing length coefficient for TKE at negative Ri
     Cᶜe  :: FT = 3.642  # Convective mixing length coefficient for TKE
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
+    Cᶠ   :: FT = 1.0    # Weight on the geometric floor where convection is active and shear is weak
+    Cᶠ⁰  :: FT = 1e9    # S²/|N²| below which the geometric floor is fully weighted by Cᶠ (gate open)
+    Cᶠᵟ  :: FT = 0.75   # Width in S²/|N²| over which the floor ramps back to full strength
 end
 
 #####
@@ -227,6 +230,45 @@ end
     return scale(Ri, Cᵘⁿ, Cˡᵒ, Cʰⁱ, CRi⁰, CRiᵟ)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Weight on the geometric length where it acts as a FLOOR on the mixing length.
+
+CATKE takes `ℓ = max(ℓ★, ℓʰ)`, so the geometric/stratification length `ℓ★` floors the mixing length even
+where convection is active. On the unstable branch `ℓᴺ = Inf`, so that floor is
+`d = min(Cˢ ⋅ depth, Cᵇ ⋅ height_above_bottom)`. Where convection is weak, `ℓʰ < ℓ★` and the geometry
+wins: `κ = Cᵘⁿc ⋅ d ⋅ √e`, set by how deep the water is rather than by the convection.
+
+`d` is a law-of-the-wall length — `Cˢ` is a "shear length scale" coefficient — and law-of-the-wall
+turbulence is shear-generated, so where convection rather than shear sets the turbulence the floor has no
+mechanism behind it. `Cᶠ` weights it there, at cells where convection is active (`ℓʰ > 0`). Cells with
+`ℓʰ = 0` keep `max(ℓ★, ℓʰ)` unchanged at every `Cᶠ`.
+
+`Cᶠ⁰` and `Cᶠᵟ` optionally restore the floor where shear is strong, ramping the weight from `Cᶠ` at
+`S²/|N²| = Cᶠ⁰` to 1 at `Cᶠ⁰ + Cᶠᵟ`. The default `Cᶠ⁰ = 1e9` leaves the weight at `Cᶠ` for every shear:
+`S²/|N²|` separates convection driven by surface buoyancy loss from shear-driven entrainment by only a
+factor ~1.4, too weak to gate on, and the strongly sheared cells it was meant to protect already reach
+`ℓʰ = 0` through the `ϵˢᵖ` clip in [`convective_length_scaleᶜᶜᶜ`](@ref) and so are untouched regardless.
+
+`Cᶠ = 1` returns `max(ℓ★, ℓʰ)` for every input and is bit-identical to the unmodified closure.
+"""
+@inline function geometric_floor_weight(S², N², Cᶠ, Cᶠ⁰, Cᶠᵟ)
+    x = abs(S²) / max(abs(N²), eps(typeof(S²)))         # = 1/|Ri| on the unstable branch
+    w = clamp((x - Cᶠ⁰) / Cᶠᵟ, zero(x), one(x))         # 0 = weakly sheared, 1 = sheared
+    # Cᶠ⁰ must stay finite: an infinite Cᶠ⁰ gives NaN here when x is also infinite
+    return Cᶠ + (one(Cᶠ) - Cᶠ) * w
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Combine the geometric length `ℓ★` with the convective length `ℓʰ`, weighting `ℓ★` as a floor by
+[`geometric_floor_weight`](@ref) where convection is active. Reduces to `max(ℓ★, ℓʰ)` at `Cᶠ = 1`.
+"""
+@inline convective_floor_length(ℓ★, ℓʰ, f) =
+    ifelse(ℓʰ > zero(ℓʰ), max(ℓʰ, f * ℓ★), max(ℓ★, ℓʰ))
+
 @inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     Cᶜ  = closure.mixing_length.Cᶜu
     Cᵉ  = closure.mixing_length.Cᵉu
@@ -242,7 +284,11 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓu = max(ℓ★, ℓʰ)
+    ml = closure.mixing_length
+    S² = shearᶜᶜᶠ(i, j, k, grid, velocities.u, velocities.v)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    f  = geometric_floor_weight(S², N², ml.Cᶠ, ml.Cᶠ⁰, ml.Cᶠᵟ)
+    ℓu = convective_floor_length(ℓ★, ℓʰ, f)
 
     H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓu)
@@ -262,7 +308,11 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓc = max(ℓ★, ℓʰ)
+    ml = closure.mixing_length
+    S² = shearᶜᶜᶠ(i, j, k, grid, velocities.u, velocities.v)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    f  = geometric_floor_weight(S², N², ml.Cᶠ, ml.Cᶠ⁰, ml.Cᶠᵟ)
+    ℓc = convective_floor_length(ℓ★, ℓʰ, f)
 
     H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓc)
@@ -282,7 +332,11 @@ end
 
     ℓʰ = ifelse(isnan(ℓʰ), zero(grid), ℓʰ)
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
-    ℓe = max(ℓ★, ℓʰ)
+    ml = closure.mixing_length
+    S² = shearᶜᶜᶠ(i, j, k, grid, velocities.u, velocities.v)
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    f  = geometric_floor_weight(S², N², ml.Cᶠ, ml.Cᶠ⁰, ml.Cᶠᵟ)
+    ℓe = convective_floor_length(ℓ★, ℓʰ, f)
 
     H = static_column_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓe)
@@ -294,6 +348,10 @@ Base.show(io::IO, ml::CATKEMixingLength) =
     print(io, "TKEBasedVerticalDiffusivities.CATKEMixingLength parameters:\n",
               " ├── Surface distance coefficient for shear length scale:           Cˢ   = $(ml.Cˢ)\n",
               " ├── Bottom distance coefficient for shear length scale:            Cᵇ   = $(ml.Cᵇ)\n",
+              " ├── Weight on |N²| on the unstable stratification branch:          Cᵘⁿᵇ = $(ml.Cᵘⁿᵇ)\n",
+              " ├── Geometric floor weight while convecting, unsheared:            Cᶠ   = $(ml.Cᶠ)\n",
+              " ├── S²/|N²| below which that floor weight applies:                 Cᶠ⁰  = $(ml.Cᶠ⁰)\n",
+              " ├── Ramp width in S²/|N²| back to a full floor:                    Cᶠᵟ  = $(ml.Cᶠᵟ)\n",
               " ├── Shear mixing length coefficient for momentum at high Ri:       Cʰⁱu = $(ml.Cʰⁱu)\n",
               " ├── Shear mixing length coefficient for tracers at high Ri:        Cʰⁱc = $(ml.Cʰⁱc)\n",
               " ├── Shear mixing length coefficient for TKE at high Ri:            Cʰⁱe = $(ml.Cʰⁱe)\n",
