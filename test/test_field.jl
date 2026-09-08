@@ -13,7 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -1166,6 +1166,26 @@ end
             mask_immersed_field!(f_full, 0.0)
             @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
             @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "mask_immersed_field_xy! with an active cells map" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field_xy! with an active cells map [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+            # The western half of the domain is dry from top to bottom, so those columns hold no active cell
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> ifelse(x < 0.5, 0, -1));
+                                        active_cells_map = true)
+
+            f = CenterField(grid)
+            set!(f, 1)
+            mask_immersed_field_xy!(f, 0; k=Nz)
+
+            @test all(interior(f, 1:2, :, Nz) .== 0)
+            @test all(interior(f, 3:4, :, Nz) .== 1)
         end
     end
 
