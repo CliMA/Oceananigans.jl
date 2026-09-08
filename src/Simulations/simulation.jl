@@ -292,6 +292,11 @@ function Oceananigans.restore_prognostic_state!(restored::Simulation, from)
     restore_prognostic_state!(restored.model, from.model)
     restore_prognostic_state!(restored.diagnostics, from.diagnostics)
     restore_prognostic_state!(restored.output_writers, from.output_writers)
+
+    for writer in values(restored.output_writers)
+        OutputWriters.reconcile_restored_output_schedule!(writer, restored.model)
+    end
+
     restore_prognostic_state!(restored.callbacks, from.callbacks)
     restored.run_wall_time = from.run_wall_time
     restored.align_time_step = from.align_time_step
