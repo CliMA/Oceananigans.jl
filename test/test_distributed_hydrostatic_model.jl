@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using MPI
-using Oceananigans.Grids: MutableVerticalDiscretization, StaticVerticalDiscretization
+using Oceananigans.Grids: MutableVerticalDiscretization, StaticVerticalDiscretization, with_halo
 
 # # Distributed model tests
 #
@@ -112,6 +112,13 @@ for arch in archs
 
                 immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = false)
                 immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+                # The halo-dependent and halo-independent maps must follow the new halo
+                new_halo = (5, 5, 3)
+                extended_active_grid = with_halo(new_halo, immersed_active_grid)
+                rebuilt_active_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), GridFittedBottom(bottom); active_cells_map = true)
+                @test extended_active_grid.interior_active_cells == rebuilt_active_grid.interior_active_cells
+                @test extended_active_grid.active_z_columns == rebuilt_active_grid.active_z_columns
 
                 global_underlying_grid = reconstruct_global_grid(underlying_grid)
                 global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))

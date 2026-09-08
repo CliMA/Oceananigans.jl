@@ -266,9 +266,9 @@ function HydrostaticFreeSurfaceModel(grid;
     closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
-    tracers            = TracerFields(tracers, grid, boundary_conditions)
-    pressure           = PressureField(grid)
+    velocities     = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
+    tracers        = TracerFields(tracers, grid, boundary_conditions)
+    pressure       = PressureField(grid)
     closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
