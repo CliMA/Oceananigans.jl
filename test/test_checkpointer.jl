@@ -1232,6 +1232,43 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     return nothing
 end
 
+mutable struct ActuationCounter <: Function
+    actuations :: Int
+end
+
+(counter::ActuationCounter)(sim) = counter.actuations += 1
+
+Oceananigans.prognostic_state(counter::ActuationCounter) = (; actuations = counter.actuations)
+
+function Oceananigans.restore_prognostic_state!(counter::ActuationCounter, state)
+    counter.actuations = state.actuations
+    return counter
+end
+
+function test_stateful_callback_checkpointing(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    simulation = Simulation(NonhydrostaticModel(grid), Δt=0.1, stop_iteration=10)
+
+    prefix = "stateful_callback_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(10), prefix=prefix)
+    simulation.callbacks[:counter] = Callback(ActuationCounter(0), IterationInterval(1))
+
+    run!(simulation)
+    checkpointed_actuations = simulation.callbacks[:counter].func.actuations
+    @test checkpointed_actuations > 0
+
+    new_simulation = Simulation(NonhydrostaticModel(RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))), Δt=0.1, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_simulation.model, schedule=IterationInterval(10), prefix=prefix)
+    new_simulation.callbacks[:counter] = Callback(ActuationCounter(0), IterationInterval(1))
+
+    set!(new_simulation; checkpoint=:latest)
+    @test new_simulation.callbacks[:counter].func.actuations == checkpointed_actuations
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_windowed_time_average_checkpointing(arch, WriterType)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -2218,6 +2255,11 @@ for arch in archs
             @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
             test_stateful_schedule_checkpointing(arch, schedule_type)
         end
+    end
+
+    @testset "Stateful callback checkpointing [$(typeof(arch))]" begin
+        @info "  Testing stateful callback checkpointing [$(typeof(arch))]..."
+        test_stateful_callback_checkpointing(arch)
     end
 
     for WriterType in (JLD2Writer, NetCDFWriter)
