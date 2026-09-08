@@ -182,22 +182,23 @@ end
 ##### NetCDF file initialization
 #####
 
-function initialize_nc_file(model,
-                            grids,
-                            output_grid_map,
-                            filepath,
-                            outputs,
-                            array_type,
-                            indices,
-                            global_attributes,
-                            output_attributes,
-                            dimensions,
-                            with_halos,
-                            include_grid_metrics,
-                            overwrite_existing,
-                            deflatelevel,
-                            dimension_name_generator,
-                            dimension_type)
+# Runs once per file: not specializing on the model saves seconds of inference per model type
+Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
+                                                    @nospecialize(grids),
+                                                    output_grid_map,
+                                                    filepath,
+                                                    @nospecialize(outputs),
+                                                    array_type,
+                                                    indices,
+                                                    global_attributes,
+                                                    output_attributes,
+                                                    dimensions,
+                                                    with_halos,
+                                                    include_grid_metrics,
+                                                    overwrite_existing,
+                                                    deflatelevel,
+                                                    dimension_name_generator,
+                                                    dimension_type)
 
     mode = (overwrite_existing || !isfile(filepath)) ? "c" : "a"
 
