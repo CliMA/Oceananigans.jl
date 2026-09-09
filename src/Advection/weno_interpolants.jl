@@ -289,8 +289,9 @@ end
     elem = Vector{Expr}(undef, N)
     p = 1
     for l in 1:N
-        t = Expr(:call, :+, :(δ[$l]), (:(C[$(p + i - l - 1)] * δ[$i]) for i in l+1:N)...)
-        elem[l] = :(C[$(p + N - l)] * $t * $t)
+        q = p # Avoid boxing
+        t = Expr(:call, :+, :(δ[$l]), (:(C[$(q + i - l - 1)] * δ[$i]) for i in l+1:N)...)
+        elem[l] = :(C[$(q + N - l)] * $t * $t)
         p += N - l + 1
     end
     return Expr(:call, :+, elem...)
