@@ -9,9 +9,9 @@ Return a new `FieldBoundaryConditions` object with the preconfigured kernels and
 ordered boundary conditions.
 """
 Base.@constprop :aggressive function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
-                                               data::OffsetArray,
-                                               grid::AbstractGrid,
-                                               loc, indices)
+                                                                           data::OffsetArray,
+                                                                           grid::AbstractGrid,
+                                                                           loc, indices)
 
     kernels!, ordered_bcs = fill_halo_kernels(bcs, data, grid, loc, indices)
     regularized_bcs = FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north,
