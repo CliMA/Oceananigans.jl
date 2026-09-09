@@ -121,29 +121,30 @@ end
         @testset "$fold_topology fold topology" for fold_topology in fold_topologies
             grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
 
-            # Wrong free surface
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+            # A serial fold is applied by the topology-aware operators rather than substepped into, so the
+            # default CFL-based free surface, whose substep count follows Δt, is now supported here.
+            @test HydrostaticFreeSurfaceModel(grid) isa HydrostaticFreeSurfaceModel
 
             free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
             model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
-            # Tests the grid has been extended
             η = model.free_surface.displacement
             P = model.free_surface.kernel_parameters
 
             range = contiguousrange(P)
 
-            # Should have extended halos in the north
             Hx, Hy, _ = halo_size(η.grid)
             Nx, Ny, _ = size(grid)
 
+            # The halos are not extended: the fold is an index transformation, not a halo to substep into.
             @test P isa KernelParameters
-            @test range[1] == 1:Nx
-            @test range[2] == 1:Ny+Hy-1
-
             @test Hx == halo_size(grid, 1)
-            @test Hy != halo_size(grid, 2)
-            @test Hy == length(free_surface.substepping.averaging_weights) + 2
+            @test Hy == halo_size(grid, 2)
+            @test range[1] == 1:Nx
+
+            # A face-pivot fold lies on the y-face row Ny + 1, which belongs to the domain and is computed.
+            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
+            @test range[2] == 1:northernmost_row
 
             @test begin
                 time_step!(model, 1.0)

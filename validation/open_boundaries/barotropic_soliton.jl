@@ -275,7 +275,7 @@ function setup_simulation(params::SolitonParameters;
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface,
-        momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
+        momentum_advection  = WENO(order=5),
         timestepper = :SplitRungeKutta3,
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β),

@@ -73,7 +73,7 @@ function step_free_surface!(free_surface::ExplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::MultiStageTimeStepper, Δt)
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
     fill_halo_regions!(free_surface.displacement; async=true)
     return nothing

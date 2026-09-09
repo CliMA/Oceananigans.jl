@@ -73,7 +73,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
-supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5, :SSPRungeKutta3, :ModifiedRungeKutta4)
 
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
@@ -294,6 +294,7 @@ function HydrostaticFreeSurfaceModel(grid;
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
+    validate_timestepper_free_surface(timestepper, free_surface)
     materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.

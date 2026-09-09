@@ -1,7 +1,10 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.Utils: NormalDivision
 using Oceananigans.Advection:
+        CWENOZ,
+        cwenoz_reconstruction,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -143,6 +146,60 @@ for arch in archs
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)
             end
+        end
+    end
+
+    @testset "CWENOZ boundary reconstruction" begin
+        @info "Running CWENOZ boundary reconstruction tests..."
+
+        # the reconstruction is the point value at the face between u₁ and u₂
+        P¹(u₁, u₂) = (u₁ + u₂) / 2
+        P²(u₁, u₂, u₃) = (2u₁ + 5u₂ - u₃) / 6
+
+        reconstruct(scheme, u₁, u₂, u₃, Δ = 1.0) = cwenoz_reconstruction(scheme, u₁, u₂, u₃, true, true, Δ)
+
+        unlimited = CWENOZ(; weight_computation = NormalDivision)
+        threshold = CWENOZ(; reference_variation = 0.05, weight_computation = NormalDivision)
+
+        for scheme in (unlimited, threshold)
+            @test reconstruct(scheme, 3.0, 3.0, 3.0) ≈ 3.0
+            @test reconstruct(scheme, 0.0, 1.0, 2.0) ≈ P²(0.0, 1.0, 2.0)
+
+            # a run too short for a candidate drops to the one that fits
+            @test cwenoz_reconstruction(scheme, 2.0, 5.0, 9.0, false, false, 1.0) ≈ 2.0
+            @test cwenoz_reconstruction(scheme, 2.0, 5.0, 9.0, true, false, 1.0) ≈ P¹(2.0, 5.0)
+        end
+
+        # `reference_variation` floors the oscillation scale rather than replacing it, so asking for a threshold can
+        # only move the blend towards the optimal polynomial
+        for (u₁, u₂, u₃) in ((0.0, 2.0, 3.5), (0.0, 0.01, 0.0175), (1.0, exp(0.2), exp(0.4)))
+            @test reconstruct(threshold, u₁, u₂, u₃) ≈ P²(u₁, u₂, u₃) rtol=0.05
+            @test abs(reconstruct(threshold, u₁, u₂, u₃) - P²(u₁, u₂, u₃)) ≤
+                  abs(reconstruct(unlimited, u₁, u₂, u₃) - P²(u₁, u₂, u₃))
+        end
+
+        # a variation below the threshold is noise and stays unlimited, one above it is limited onto the constant,
+        # and the stencil estimate alone limits at every amplitude because it reads shape and never amplitude
+        @test reconstruct(threshold, 0.0, 1e-3, 1e-3) ≈ P²(0.0, 1e-3, 1e-3) rtol=1e-3
+        @test reconstruct(threshold, 0.0, 5.0, 5.0)   ≈ 0.0 atol=0.05
+        @test reconstruct(unlimited, 0.0, 1e-3, 1e-3) ≈ 0.0 atol=1e-9
+
+        # the threshold carries no grid spacing, so a thin cell is limited no differently from a thick one
+        @test all(Δ -> reconstruct(threshold, 0.0, 0.1, 0.1, Δ) ≈ reconstruct(threshold, 0.0, 0.1, 0.1),
+                  (0.02, 1.0, 1e4))
+
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+
+        c = CenterField(ibg)
+        set!(c, 1)
+        mask_immersed_field!(c)
+        fill_halo_regions!(c)
+
+        weno = materialize_advection(WENO(order=7; boundary_scheme=threshold), ibg)
+        for j in 6:19, i in 6:19
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, weno, LeftBias,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, weno, RightBias, c) ≈ 1.0
         end
     end
 

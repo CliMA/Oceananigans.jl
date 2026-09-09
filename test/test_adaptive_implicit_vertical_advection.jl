@@ -4,6 +4,7 @@ using Oceananigans.BoundaryConditions: needs_implicit_solver
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               update_advection!,
+                              adaptive_advection_timestep,
                               advective_tracer_flux_z,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
@@ -11,7 +12,9 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
 using Oceananigans.Grids: Center, Face, znode
 using Oceananigans.Operators: volume, ℑzᵃᵃᶠ
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
-                                 time_discretization, implicit_step!, reset!
+                                 time_discretization, implicit_step!, reset!, Clock,
+                                 SSPRungeKuttaTimeStepper, SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper,
+                                 QuasiAdamsBashforth2TimeStepper
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
@@ -296,4 +299,37 @@ end
 
     @test isfinite(scheme.time_discretization.Δt[])
     @test all(isfinite, interior(scheme.bounds.limiter))
+end
+
+@testset "adaptive_advection_timestep across timesteppers" begin
+    grid = RectilinearGrid(CPU(), size=(1, 1, 4), extent=(1, 1, 1))
+    Δt = 60.0
+
+    # Each SSP stage is a forward-Euler step over the full Δt, so the explicit scaling and the implicit solve
+    # must see the same Δt at every stage.
+    ssp = SSPRungeKuttaTimeStepper()
+    for stage in 1:3
+        clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt, stage=stage)
+        @test adaptive_advection_timestep(ssp, clock) == Δt
+    end
+
+    # The low-storage stages are Euler steps of Δt / βᵐ, and the scheme must be primed with the *next* one.
+    split = SplitRungeKuttaTimeStepper(stages=3)
+    for stage in 1:3
+        clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt/split.β[stage], stage=stage)
+        nstage = stage < split.Nstages ? stage + 1 : 1
+        @test adaptive_advection_timestep(split, clock) ≈ Δt / split.β[nstage]
+    end
+
+    rk3 = RungeKutta3TimeStepper(grid, (; c = CenterField(grid)))
+    stage_fractions = (rk3.γ¹, rk3.γ² + rk3.ζ², rk3.γ³ + rk3.ζ³)
+    for stage in 1:3
+        clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt*stage_fractions[stage], stage=stage)
+        nstage = stage < 3 ? stage + 1 : 1
+        @test adaptive_advection_timestep(rk3, clock) ≈ Δt * stage_fractions[nstage]
+    end
+
+    qab2 = QuasiAdamsBashforth2TimeStepper(grid, (; c = CenterField(grid)))
+    clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt, stage=1)
+    @test adaptive_advection_timestep(qab2, clock) == Δt
 end

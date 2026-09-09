@@ -1,7 +1,7 @@
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
 
@@ -142,9 +142,12 @@ end
     return Δt / timestepper.β[nstage]
 end
 
+# Every SSP stage is a forward-Euler step over the full Δt, so the next substep has the same Δτ.
+@inline adaptive_advection_timestep(timestepper::SSPRungeKuttaTimeStepper, clock) = clock.last_stage_Δt
+
 @inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
 @inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²
-@inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ¹ + ts.ζ³
+@inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ³ + ts.ζ³
 
 @inline function adaptive_advection_timestep(timestepper::RungeKutta3TimeStepper, clock)
     stage  = clock.stage
