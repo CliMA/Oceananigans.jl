@@ -4,7 +4,6 @@ using Oceananigans.Grids: inactive_node, peripheral_node
 
 # Fallback
 compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
-compute_eddy_velocities!(closure_fields, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
 
 function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, model; parameters = :xyz)
     uₑ = closure_fields.u
@@ -105,7 +104,6 @@ end
 
 # Single closure version
 @inline closure_auxiliary_velocity(clo, K, val_tracer_name) = nothing
-@inline closure_auxiliary_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
 @inline closure_auxiliary_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # 2-tuple closure
