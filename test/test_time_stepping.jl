@@ -4,6 +4,7 @@ using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Utils: kernel_time_step
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
@@ -17,6 +18,13 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
+
+# `LagrangianParticles` dynamics receive the same Δt that kernels do
+mutable struct ΔtTypeRecorder
+    Δt_type :: Any
+end
+
+(recorder::ΔtTypeRecorder)(particles, model, Δt) = (recorder.Δt_type = typeof(Δt); nothing)
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
@@ -370,6 +378,45 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         explicit_clock = Clock(time=0.0f0)
         @test explicit_clock isa Clock{Float32}
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
+    end
+
+    @testset "kernel_time_step demotes Δt to the grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+
+            @test kernel_time_step(arch, grid, 60.0) isa FT
+            @test kernel_time_step(arch, grid, 60.0f0) isa FT
+            @test kernel_time_step(arch, grid, 60) isa FT
+        end
+    end
+
+    # https://github.com/CliMA/Oceananigans.jl/issues/5939
+    @testset "time_step! demotes Δt to the kernel time type" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), extent=(1, 1, 1))
+
+            x = on_architecture(arch, FT[0.5])
+            y = on_architecture(arch, FT[0.5])
+            z = on_architecture(arch, FT[-0.5])
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = NonhydrostaticModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0) # Float64, as `aligned_time_step` may return
+                @test recorder.Δt_type === FT
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                recorder = ΔtTypeRecorder(nothing)
+                particles = LagrangianParticles(; x, y, z, dynamics=recorder)
+                model = HydrostaticFreeSurfaceModel(grid; particles, timestepper)
+
+                time_step!(model, 1.0)
+                @test recorder.Δt_type === FT
+            end
+        end
     end
 
     for arch in archs, FT in float_types

@@ -95,7 +95,7 @@ end
 
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
-    Δᶠ = cbrt(Δ³)
+    Δᶠ = f32_safe_cbrt(Δ³)
     cˢ² = square_smagorinsky_coefficient(i, j, k, grid, closure, closure_fields, Σ², buoyancy, tracers)
 
     νₑ = closure_fields.νₑ

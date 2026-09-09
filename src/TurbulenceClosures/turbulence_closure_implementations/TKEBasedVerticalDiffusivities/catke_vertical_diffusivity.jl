@@ -289,7 +289,7 @@ end
     Jᵇᵋ = closure.minimum_convective_buoyancy_flux
     Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
     Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ, Jᵇ★) # selects fastest (dominant) time-scale
-    t★ = cbrt(ℓᴰ^2 / Jᵇ⁺)
+    t★ = f32_safe_cbrt(ℓᴰ^2 / Jᵇ⁺)
     ϵ = Δt / t★
 
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
