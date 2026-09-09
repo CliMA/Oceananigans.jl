@@ -12,6 +12,8 @@ deps/deps.jl
 *.swp
 *~
 
+docs/plans/
+
 # Documenter.jl and MkDocs
 docs/build
 docs/site
@@ -77,3 +79,6 @@ statprof
 
 # Sandbox MWEs and scratch experiments (not part of the package)
 sandbox/
+
+# Local git worktrees
+.worktrees/

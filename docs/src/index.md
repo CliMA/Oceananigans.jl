@@ -132,6 +132,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Liang, H., Zakem, E. J., Lauderdale, J. M., and Ferrari, R. (2026). [Beyond the Martin Curve: A mechanistic yet simple model for dynamic ocean particulate organic carbon fluxes](https://doi.org/10.1029/2026GB009184), _Global Biogeochemical Cycles_, **40(8)**, e2026GB009184. DOI: [10.1029/2026GB009184](https://doi.org/10.1029/2026GB009184)
+
 1. Wu, W. (2026). [Ageostrophic velocities of curved ocean fronts](https://doi.org/10.1029/2025JC023961), _Journal of Geophysical Research: Oceans_, **131(8)**, e2025JC023961. DOI: [10.1029/2025JC023961](https://doi.org/10.1029/2025JC023961)
 
 1. Bisits, J. I., McDougall, T. J., and Zika, J. D. (2026). [Determining how nonlinearities in the equation of state affect diffusive interfaces in the ocean](https://doi.org/10.1017/jfm.2026.11889), _Journal of Fluid Mechanics_, **1040**, A33. DOI: [10.1017/jfm.2026.11889](https://doi.org/10.1017/jfm.2026.11889)
@@ -178,7 +180,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1103/jjdt-zp9n](https://doi.org/10.1103/jjdt-zp9n)
 
-1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, e250077, in press. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
+1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, **56(4)**, 855–871. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
 
 1. Peng. S., Silvestri, S., and Bodner, A. (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
 
@@ -216,7 +218,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
 
-1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
+1. Shikanian, A. and Parfenyev, V. (2025). [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.1063/5.0288507), _Physics of Fluids_, **37(9)**, 095127. DOI: [10.1063/5.0288507](https://doi.org/10.1063/5.0288507)
 
 1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2504.15308](https://doi.org/10.48550/arXiv.2504.15308)
 

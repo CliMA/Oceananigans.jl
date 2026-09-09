@@ -44,7 +44,8 @@ model = NonhydrostaticModel(grid; particles=lagrangian_particles)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 10×10×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing

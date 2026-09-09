@@ -17,5 +17,5 @@ required_tracers(::BuoyancyTracer) = (:b,)
 @inline  ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) =  ∂yᶜᶠᶜ(i, j, k, grid, C.b)
 @inline  ∂z_b(i, j, k, grid, ::BuoyancyTracer, C) =  ∂zᶜᶜᶠ(i, j, k, grid, C.b)
 
-@inline    top_buoyancy_flux(i, j, grid, ::BuoyancyTracer, top_tracer_bcs, clock, fields) = getbc(top_tracer_bcs.b, i, j, grid, clock, fields)
-@inline bottom_buoyancy_flux(i, j, grid, ::BuoyancyTracer, bottom_tracer_bcs, clock, fields) = getbc(bottom_tracer_bcs.b, i, j, grid, clock, fields)
+@inline    top_buoyancy_flux(i, j, grid, ::BuoyancyTracer, top_tracer_bcs, clock, fields) = total_boundary_flux(top_tracer_bcs.b, i, j, size(grid, 3), grid, clock, fields, fields.b)
+@inline bottom_buoyancy_flux(i, j, grid, ::BuoyancyTracer, bottom_tracer_bcs, clock, fields) = total_boundary_flux(bottom_tracer_bcs.b, i, j, 1, grid, clock, fields, fields.b)

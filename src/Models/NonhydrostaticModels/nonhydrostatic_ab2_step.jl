@@ -29,29 +29,81 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
-    model_fields = prognostic_fields(model)
 
     # Prognostic variables stepping
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        kernel_args = (field, kernel_Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery)
+    χ = model.timestepper.χ
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, kernel_Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, kernel_Δt, χ, Gⁿ, G⁻)
 
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
-                       model.clock,
-                       fields(model),
-                       kernel_Δt,
-                       model.advection,
-                       model.velocities)
-    end
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, kernel_Δt)
 
     compute_pressure_correction!(model, kernel_Δt)
     make_pressure_correction!(model, kernel_Δt)
 
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Advance the velocities of `model` with `substep_velocity!(u, Gⁿ, G⁻)` and its tracers with
+`substep_tracer!(c, Gⁿ, G⁻)`, then apply implicit vertical diffusion over `implicit_Δt`.
+The recursions over `Val`-wrapped field names keep each launch type stable.
+"""
+function step_prognostic_fields!(model, substep_velocity!, substep_tracer!, implicit_Δt)
+    implicit_advecting_velocities(model)
+    step_velocities!(model, substep_velocity!, implicit_Δt, Val(keys(model.velocities)))
+    step_tracers!(model, substep_tracer!, implicit_Δt, Val(1), Val(keys(model.tracers)))
+    return nothing
+end
+
+# `fields(model)` and `advecting_velocities(model)` are rebuilt at every level of the recursions
+# below: passing the tuples down the recursion allocates
+
+@inline step_velocities!(model, substep_velocity!, implicit_Δt, ::Val{()}) = nothing
+
+@inline function step_velocities!(model, substep_velocity!, implicit_Δt, ::Val{names}) where names
+    name = first(names)
+    u  = model.velocities[name]
+    Gⁿ = model.timestepper.Gⁿ[name]
+    G⁻ = model.timestepper.G⁻[name]
+    substep_velocity!(u, Gⁿ, G⁻)
+
+    implicit_step!(u,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   nothing,
+                   model.clock,
+                   fields(model),
+                   implicit_Δt,
+                   model.advection.momentum,
+                   advecting_velocities(model))
+
+    step_velocities!(model, substep_velocity!, implicit_Δt, Val(Base.tail(names)))
+    return nothing
+end
+
+@inline step_tracers!(model, substep_tracer!, implicit_Δt, ::Val, ::Val{()}) = nothing
+
+@inline function step_tracers!(model, substep_tracer!, implicit_Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
+    name = first(names)
+    c  = model.tracers[name]
+    Gⁿ = model.timestepper.Gⁿ[name]
+    G⁻ = model.timestepper.G⁻[name]
+    substep_tracer!(c, Gⁿ, G⁻)
+
+    implicit_step!(c,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   Val(tracer_index),
+                   model.clock,
+                   fields(model),
+                   implicit_Δt,
+                   model.advection[name],
+                   advecting_velocities(model))
+
+    step_tracers!(model, substep_tracer!, implicit_Δt, Val(tracer_index + 1), Val(Base.tail(names)))
     return nothing
 end

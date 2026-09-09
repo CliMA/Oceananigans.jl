@@ -2,10 +2,18 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
+                                  extract_field_time_series, has_field_time_series
 
 using Random
 using NCDatasets
+
+# A boundary condition that stores a `FieldTimeSeries` rather than being one.
+struct SeriesHoldingCondition{S}
+    series :: S
+end
+
+@inline (c::SeriesHoldingCondition)(args...) = @inbounds c.series[1, 1, 1, 1]
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -714,9 +722,96 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
     return nothing
 end
 
+function test_field_time_series_time_average(arch)
+    grid = RectilinearGrid(arch, size=(2, 1, 4), extent=(1, 1, 1))
+    times = 0:7
+    bounds = 0:8:64
+
+    ramp = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in 1:8
+        set!(ramp[n], n)
+    end
+
+    # Windows of 31, 31, and the 2 units left over, so samples 4 and 8 straddle an edge.
+    averaged = @test_logs (:warn, r"last window") time_average(ramp, bounds, 31)
+    values = Array(interior(averaged))
+
+    @test Array(averaged.times) == [15.5, 46.5, 63]
+    @test values[1, 1, 1, 1] ≈ (8 * 1 + 8 * 2 + 8 * 3 + 7 * 4) / 31
+    @test values[1, 1, 1, 2] ≈ (1 * 4 + 8 * 5 + 8 * 6 + 8 * 7 + 6 * 8) / 31
+    @test values[1, 1, 1, 3] ≈ 8
+
+    whole_record = time_average(ramp, bounds, 100)
+    @test Array(whole_record.times) == [32]
+    @test Array(interior(whole_record))[1, 1, 1, 1] ≈ mean(1:8)
+
+    @test_throws ArgumentError time_average(ramp, times, 31)
+
+    # A NaN sample drops out of the cell that carries it and the rest renormalize.
+    gap = Array(interior(ramp[2]))
+    gap[1, 1, :] .= NaN
+    copyto!(interior(ramp[2]), gap)
+    gappy = Array(interior(time_average(ramp, bounds, 31)))
+    @test gappy[1, 1, 1, 1] ≈ (8 * 1 + 8 * 3 + 7 * 4) / 23
+    @test gappy[2, 1, 1, 1] ≈ (8 * 1 + 8 * 2 + 8 * 3 + 7 * 4) / 31
+
+    for n in 1:8
+        set!(ramp[n], NaN)
+    end
+    @test all(isnan, Array(interior(time_average(ramp, bounds, 31))))
+
+    # A partly resident series streamed from disk averages to the same numbers.
+    path = joinpath(mktempdir(), "ramp.jld2")
+    ondisk = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path, name="ramp")
+    sample = CenterField(grid)
+    for n in 1:8
+        set!(sample, n)
+        set!(ondisk, sample, n)
+    end
+    windowed = FieldTimeSeries(path, "ramp"; architecture=arch, backend=InMemory(2))
+    @test Array(interior(time_average(windowed, bounds, 31))) == values
+
+    surface = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, :, 4))
+    for n in 1:8
+        set!(surface[n], n)
+    end
+    sliced = time_average(surface, bounds, 31)
+    @test sliced.indices == surface.indices
+    @test size(interior(sliced)) == (2, 1, 1, 3)
+    @test Array(interior(sliced))[1, 1, 1, 3] ≈ 8
+
+    cyclic = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical())
+    @test time_average(cyclic, bounds, 31).time_indexing isa Cyclical
+
+    return nothing
+end
+
 #####
 ##### Run tests
 #####
+
+function test_precomputed_time_interpolator(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    times = [0, 1, 3]
+
+    for time_indexing in (Linear(), Clamp(), Cyclical())
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        for n in 1:length(times)
+            set!(fts[n], (x, y, z) -> n * x)
+        end
+
+        # A `TimeInterpolator` built on the host reads the same value as `Time(t)`, which
+        # searches `times` at the point of use.
+        for t in (-1, 0, 0.5, 1, 2.25, 3, 4)
+            time_interpolator = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, t)
+            for (i, j, k) in ((1, 1, 1), (2, 1, 2))
+                @test @allowscalar fts[i, j, k, time_interpolator] == fts[i, j, k, Time(t)]
+            end
+        end
+    end
+
+    return nothing
+end
 
 @testset "OutputReaders" begin
     @info "Testing output readers..."
@@ -872,9 +967,58 @@ end
         test_time_interpolation()
     end
 
+    for arch in archs
+        @testset "Precomputed TimeInterpolator [$(typeof(arch))]" begin
+            test_precomputed_time_interpolator(arch)
+        end
+    end
+
+    for arch in archs
+        @testset "FieldTimeSeries time_average [$(typeof(arch))]" begin
+            test_field_time_series_time_average(arch)
+        end
+    end
+
     filepath_sine = "one_dimensional_sine.jld2"
     @testset "Test interpolation using `InMemory` backend" begin
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
+
+    # A series reachable only through a boundary condition must still be found, so that
+    # `update_field_time_series!` advances its in-memory window.
+    for arch in archs
+    @testset "Series held by a boundary condition are extracted [$(typeof(arch))]" begin
+        @info "  Testing extraction of series held by boundary conditions [$(typeof(arch))]..."
+
+        grid  = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+        times = [0.0, 1.0, 2.0, 3.0]
+        fts   = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+        plain(v) = ValueBoundaryCondition(v)
+        west_driven(bc) = CenterField(grid; boundary_conditions =
+            FieldBoundaryConditions(west = bc, east = plain(0.0), south = plain(0.0),
+                                    north = plain(0.0), bottom = plain(0.0), top = plain(0.0)))
+
+        @inline read_series(y, z, t, p) = @inbounds p.series[1, 1, 1, 1]
+
+        conditions = (plain(fts),                                                        # the series itself
+                      ValueBoundaryCondition(read_series; parameters = (; series = fts)), # a boundary function
+                      plain(SeriesHoldingCondition(fts)))                                 # a condition storing it
+
+        for bc in conditions
+            c = west_driven(bc)
+            @test has_field_time_series(typeof(c.boundary_conditions))
+            @test length(extract_field_time_series(c)) == 1
+            @test first(extract_field_time_series(c)) === fts
+            # Reaching the series through the field must agree with reaching it directly.
+            @test length(extract_field_time_series(c)) ==
+                  length(extract_field_time_series(c.boundary_conditions))
+        end
+
+        @test extract_field_time_series(CenterField(grid)) == ()
+        @test Base.return_types(extract_field_time_series, (typeof(CenterField(grid)),))[1] === Tuple{}
+    end
+    end
+
 end

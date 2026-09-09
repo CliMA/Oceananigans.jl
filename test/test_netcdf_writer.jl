@@ -442,7 +442,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     @test eltype(ds_mh["time"]) == Float64 # All dimensions should be Float64 by default
 
     dims = ("λ_faa", "λ_caa", "φ_afa", "φ_aca", "z_aaf", "z_aac")
-    metrics = ("Δλ_faa", "Δλ_caa", "Δλ_afa", "Δλ_aca", "Δz_aaf", "Δz_aac",
+    metrics = ("Δλ_faa", "Δλ_caa", "Δφ_afa", "Δφ_aca", "Δz_aaf", "Δz_aac",
                "Δx_ffa", "Δx_fca", "Δx_cfa", "Δx_cca",
                "Δy_ffa", "Δy_fca", "Δy_cfa", "Δy_cca")
     vars = ("u", "v", "w", "T", "S")
@@ -472,8 +472,8 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_mh[:Δλ_faa]) == (λ_faa=Nλ + 2Hλ + 1,)
     @test dimsize(ds_mh[:Δλ_caa]) == (λ_caa=Nλ + 2Hλ,)
-    @test dimsize(ds_mh[:Δλ_afa]) == (φ_afa=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_mh[:Δλ_aca]) == (φ_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:Δφ_afa]) == (φ_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:Δφ_aca]) == (φ_aca=Nφ + 2Hφ,)
     @test dimsize(ds_mh[:Δz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
     @test dimsize(ds_mh[:Δz_aac]) == (z_aac=Nz + 2Hz,)
 
@@ -565,8 +565,8 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_m[:Δλ_faa]) == (λ_faa=Nλ + 1,)
     @test dimsize(ds_m[:Δλ_caa]) == (λ_caa=Nλ,)
-    @test dimsize(ds_m[:Δλ_afa]) == (φ_afa=Nφ + 1,)
-    @test dimsize(ds_m[:Δλ_aca]) == (φ_aca=Nφ,)
+    @test dimsize(ds_m[:Δφ_afa]) == (φ_afa=Nφ + 1,)
+    @test dimsize(ds_m[:Δφ_aca]) == (φ_aca=Nφ,)
     @test dimsize(ds_m[:Δz_aaf]) == (z_aaf=Nz + 1,)
     @test dimsize(ds_m[:Δz_aac]) == (z_aac=Nz,)
 
@@ -615,8 +615,8 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_s[:Δλ_faa]) == (λ_faa=nx + 1,)
     @test dimsize(ds_s[:Δλ_caa]) == (λ_caa=nx,)
-    @test dimsize(ds_s[:Δλ_afa]) == (φ_afa=ny,)
-    @test dimsize(ds_s[:Δλ_aca]) == (φ_aca=ny,)
+    @test dimsize(ds_s[:Δφ_afa]) == (φ_afa=ny,)
+    @test dimsize(ds_s[:Δφ_aca]) == (φ_aca=ny,)
     @test dimsize(ds_s[:Δz_aaf]) == (z_aaf=nz,)
     @test dimsize(ds_s[:Δz_aac]) == (z_aac=nz,)
 

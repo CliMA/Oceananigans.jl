@@ -221,7 +221,7 @@ See [`JLD2Writer`](@ref) for more information.
 Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFWriter` or
 `JLD2Writer` to [`AveragedTimeInterval`](@ref).
 
-With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Riemann sum corresponding to
+With `AveragedTimeInterval`, the time-average of ``a`` is taken as a right Riemann sum corresponding to
 
 ```math
 \langle a \rangle = \frac{1}{T} \int_{t_i-T}^{t_i} a \, \mathrm{d} t \, ,

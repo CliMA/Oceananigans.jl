@@ -517,13 +517,13 @@ fts[1, 2, 3, Time(-1.25)]
 
 To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
 
-```jldoctest field_time_series; teardown = :(rm("test.jld2"))
+```jldoctest field_time_series; teardown = :(rm("ondisk_example.jld2"))
 output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
     output_times;
     backend = OnDisk(),
-    path = "test.jld2",
+    path = "ondisk_example.jld2",
     name = "c",
 )
 for idx in eachindex(output_times)
@@ -539,7 +539,7 @@ fts[5]
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=4.0, min=4.0, mean=4.0
+    └── max=5.0, min=5.0, mean=5.0
 ```
 """
 function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();

@@ -76,7 +76,7 @@ end
                                 _getregion(fs.gravitational_acceleration, r),
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
-                                _getregion(fs.timestepper, r))
+                                _getregion(fs.timestepper, r),)
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyFormulations.BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
