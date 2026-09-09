@@ -38,7 +38,7 @@ snapshot(fts, n) = parent(fts)[:, :, :, memory_index(fts, n)]
 function Base.getindex(fts::TotallyInMemoryFTS, n::TracedRNumber)
     loc = instantiated_location(fts)
     data = offset_data(snapshot(fts, n), fts.grid, loc, fts.indices)
-    status = @allowscalar FixedTime(fts.times[n])
+    status = FixedTime(@allowscalar fts.times[n])
     return Field(loc, fts.grid; data, fts.boundary_conditions, fts.indices, status)
 end
 
