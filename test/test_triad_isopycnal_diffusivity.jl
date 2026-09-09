@@ -2,23 +2,24 @@ include("dependencies_for_runtests.jl")
 
 using LinearAlgebra
 
-using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization,
-                                       compute_closure_fields!
+                                       compute_closure_fields!, FluxTapering
 
 """
-Test that TriadIsopycnalSkewSymmetricDiffusivity can be constructed and timestepped
+Test that IsopycnalSkewSymmetricDiffusivity can be constructed and timestepped
 with both any time discretization.
 """
 function time_step_with_triad_isopycnal_diffusivity(arch, time_discretization)
     grid = RectilinearGrid(arch, size=(4, 4, 8), extent=(100, 100, 100))
 
-    closure = TriadIsopycnalSkewSymmetricDiffusivity(time_discretization, Float64,
+    closure = IsopycnalSkewSymmetricDiffusivity(time_discretization, Float64,
                                                      κ_skew = 100.0,
                                                      κ_symmetric = 100.0)
 
-    # TriadIsopycnalSkewSymmetricDiffusivity only works with HydrostaticFreeSurfaceModel
+    # IsopycnalSkewSymmetricDiffusivity only works with HydrostaticFreeSurfaceModel
     model = HydrostaticFreeSurfaceModel(grid; closure,
                                         buoyancy = BuoyancyTracer(),
                                         tracers = (:b, :c))
@@ -66,15 +67,44 @@ function tracer_operator_matrix(closure, arch; nx=8, nz=6, Δt=1.0, binit=slopin
 end
 
 triad_closure(time_discretization; kw...) =
-    TriadIsopycnalSkewSymmetricDiffusivity(time_discretization, Float64; κ_symmetric=1000.0, κ_skew=0, kw...)
+    IsopycnalSkewSymmetricDiffusivity(time_discretization, Float64; κ_symmetric=1000.0, κ_skew=0, kw...)
 
-@testset "TriadIsopycnalSkewSymmetricDiffusivity" begin
-    @info "Testing TriadIsopycnalSkewSymmetricDiffusivity..."
+# Stratification that is healthy everywhere except across one interface of one column, sitting next
+# to a sharp front — the shape a mixed-layer base takes in a global simulation. The front runs along
+# x + y so that both horizontal slopes are steep at once, which is what makes `ϵ S² ≤ Sₘ²` per
+# component add up to the `2 κ Sₘ²` ceiling on `ϵ κ R₃₃`.
+function patchy_front_model(closure, arch; n=8, nz=6, N²=1e-5, Δb=1e-2, stratification_contrast=1e-2)
+    grid = RectilinearGrid(arch, size=(n, n, nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0), halo=(4, 4, 4),
+                           topology=(Bounded, Bounded, Bounded))
+
+    model = HydrostaticFreeSurfaceModel(grid; closure,
+                                        velocities = PrescribedVelocityFields(),
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = (:b, :c))
+
+    z = znodes(grid, Center())
+    b = zeros(n, n, nz)
+
+    for i in 1:n, j in 1:n, k in 1:nz
+        b[i, j, k] = N² * z[k] + Δb * (i + j > n)
+    end
+
+    i, j, k = n ÷ 2, n ÷ 2, nz ÷ 2
+    b[i, j, k] = b[i, j, k+1] - stratification_contrast * N² * (z[k+1] - z[k])
+
+    set!(model, b = b)
+    update_state!(model)
+
+    return model
+end
+
+@testset "IsopycnalSkewSymmetricDiffusivity" begin
+    @info "Testing IsopycnalSkewSymmetricDiffusivity..."
 
     for arch in archs
-        @testset "Time stepping with TriadIsopycnalSkewSymmetricDiffusivity [$arch]" begin
+        @testset "Time stepping with IsopycnalSkewSymmetricDiffusivity [$arch]" begin
             for time_discretization in [ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization()]
-                @info "  Time-stepping TriadIsopycnalSkewSymmetricDiffusivity with $(typeof(time_discretization)) on $arch..."
+                @info "  Time-stepping IsopycnalSkewSymmetricDiffusivity with $(typeof(time_discretization)) on $arch..."
                 @test time_step_with_triad_isopycnal_diffusivity(arch, time_discretization)
            end
         end
@@ -87,6 +117,22 @@ triad_closure(time_discretization; kw...) =
 
             @test maximum(abs, L .- L') < 1e-12 * maximum(abs, L)
             @test maximum(λ) < 1e-10 * abs(minimum(λ))
+        end
+
+        @testset "Tapering bounds the triad slopes [$arch]" begin
+            @info "  Testing that the tapering factor bounds the triad slopes on $arch..."
+
+            max_slope = 1e-2
+            κ = 1000.0
+
+            closure = IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), Float64;
+                                                             κ_symmetric = κ, κ_skew = 0,
+                                                             slope_limiter = FluxTapering(max_slope))
+
+            model = patchy_front_model(closure, arch)
+
+            # Each triad obeys ϵ S² ≤ Sₘ², so the eight meeting a vertical face average to ϵ κ R₃₃ ≤ 2 κ Sₘ².
+            @test maximum(Array(interior(model.closure_fields.ϵκR₃₃))) <= 2κ * max_slope^2 * (1 + 1e-12)
         end
 
         @testset "Vertically implicit triads reproduce the explicit operator [$arch]" begin
