@@ -162,21 +162,22 @@ end
 @inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   j, k, k,   grid, buoyancy, tracers)
 
 # We remove triads that live on a boundary (immersed or top / bottom / north / south / east / west)
-@inline triad_mask_x(ix, iz, j, kx, kz, grid) =
-   !peripheral_node(ix, j, kx, grid, Face(), Center(), Center()) & !peripheral_node(iz, j, kz, grid, Center(), Center(), Face())
+@inline triad_mask_x(ix, iz, j, kx, kz, grid) = !peripheral_node(ix, j, kx, grid, Face(), Center(), Center()) & !peripheral_node(iz, j, kz, grid, Center(), Center(), Face())
+@inline triad_mask_y(i, jy, jz, ky, kz, grid) = !peripheral_node(i, jy, ky, grid, Center(), Face(), Center()) & !peripheral_node(i, jz, kz, grid, Center(), Center(), Face())
 
-@inline triad_mask_y(i, jy, jz, ky, kz, grid) =
-   !peripheral_node(i, jy, ky, grid, Center(), Face(), Center()) & !peripheral_node(i, jz, kz, grid, Center(), Center(), Face())
+# A triad standing on an unstratified vertical face carries no isoneutral flux.
+@inline stably_stratified(i, j, k, grid, buoyancy, tracers) = ∂z_b(i, j, k, grid, buoyancy, tracers) > 0
 
-@inline ϵx⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵx⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵx⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵx⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+# The limiter must bound the diffusivity each triad actually carries, `ϵ κ S²`, so `ϵ` is built from that triad's own slope.
+@inline ϵx⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(Sx⁺⁺(i, j, k, grid, b, C), zero(grid), sl)
+@inline ϵx⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(Sx⁺⁻(i, j, k, grid, b, C), zero(grid), sl)
+@inline ϵx⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(Sx⁻⁺(i, j, k, grid, b, C), zero(grid), sl)
+@inline ϵx⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(Sx⁻⁻(i, j, k, grid, b, C), zero(grid), sl)
 
-@inline ϵy⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵy⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵy⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
-@inline ϵy⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵy⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁺⁺(i, j, k, grid, b, C), sl)
+@inline ϵy⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁺⁻(i, j, k, grid, b, C), sl)
+@inline ϵy⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁻⁺(i, j, k, grid, b, C), sl)
+@inline ϵy⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁻⁻(i, j, k, grid, b, C), sl)
 
 @inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure, clock, C) =
     (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C),
