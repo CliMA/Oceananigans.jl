@@ -13,6 +13,7 @@ tripolar_reconstructed_grid_script(fold_topology) = """
     include("distributed_tests_utils.jl")
 
     using Oceananigans.OrthogonalSphericalShellGrids: distribute_tripolar_grid
+    using Oceananigans.Grids: total_length
 
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
@@ -41,6 +42,20 @@ tripolar_reconstructed_grid_script(fold_topology) = """
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
+        end
+
+        # Each metric spans the extent of its own location: on the rank owning a `RightFaceFolded`
+        # fold a `Face`-in-y metric has one row more than a `Center`-in-y one.
+        Hy = halo_size(local_grid)[2]
+        TY = topology(local_grid, 2)()
+
+        for (var, ℓy) in [(:λᶜᶜᵃ, Center()), (:λᶠᶜᵃ, Center()), (:λᶜᶠᵃ, Face()), (:λᶠᶠᵃ, Face()),
+                          (:φᶜᶜᵃ, Center()), (:φᶠᶜᵃ, Center()), (:φᶜᶠᵃ, Face()), (:φᶠᶠᵃ, Face()),
+                          (:Δxᶜᶜᵃ, Center()), (:Δxᶠᶜᵃ, Center()), (:Δxᶜᶠᵃ, Face()), (:Δxᶠᶠᵃ, Face()),
+                          (:Δyᶜᶜᵃ, Center()), (:Δyᶠᶜᵃ, Center()), (:Δyᶜᶠᵃ, Face()), (:Δyᶠᶠᵃ, Face()),
+                          (:Azᶜᶜᵃ, Center()), (:Azᶠᶜᵃ, Center()), (:Azᶜᶠᵃ, Face()), (:Azᶠᶠᵃ, Face())]
+
+            @test size(parent(getproperty(local_grid, var)), 2) == total_length(ℓy, TY, ny, Hy)
         end
     end
 """
