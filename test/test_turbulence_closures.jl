@@ -1,26 +1,26 @@
 include("dependencies_for_runtests.jl")
 
 using Random
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
-
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
-                                       required_halo_size_x, required_halo_size_y, required_halo_size_z,
-                                       cell_diffusion_timescale, formulation, min_Δxyz
-
-using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
-
-using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
-                                       ScalarBiharmonicDiffusivity,
-                                       TwoDimensionalLeith,
-                                       ConvectiveAdjustmentVerticalDiffusivity,
-                                       Smagorinsky,
-                                       DynamicSmagorinsky,
-                                       SmagorinskyLilly,
-                                       LagrangianAveraging,
-                                       AnisotropicMinimumDissipation
 
 using Oceananigans.Grids: znode
+using Oceananigans.Grids: ZDirection
+using Oceananigans.Solvers: get_coefficient
+using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
+                                       VerticallyImplicitDiffusionDiagonal,
+                                       VerticallyImplicitDiffusionUpperDiagonal
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
+                                       viscosity_location, diffusivity_location,
+                                       required_halo_size_x, required_halo_size_y, required_halo_size_z,
+                                       cell_diffusion_timescale, formulation, min_Δxyz,
+                                       diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
+                                       ScalarDiffusivity, ScalarBiharmonicDiffusivity,
+                                       TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
+                                       Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly,
+                                       LagrangianAveraging,
+                                       AnisotropicMinimumDissipation,
+                                       IsopycnalSkewSymmetricDiffusivity,
+                                       DiffusiveFormulation, AdvectiveFormulation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -179,14 +179,37 @@ function time_step_with_variable_AMD_coefficient(arch; use_field_coefficient=fal
     return true
 end
 
-function time_step_with_tupled_closure(FT, arch)
-    closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
+function time_step_with_tupled_closure(FT, arch, additional_closures...)
+    closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT), additional_closures...)
     grid = RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid; closure=closure_tuple)
 
     time_step!(model, 1)
     return true
+end
+
+# The explicit path additionally exercises the R₃₃ vertical term in diffusive_flux_z,
+# which is omitted from the tendency under the vertically-implicit default.
+function time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
+    grid = RectilinearGrid(arch, FT; size=(4, 4, 8), extent=(100, 100, 100))
+
+    closure = IsopycnalSkewSymmetricDiffusivity(time_discretization, FT;
+                                                κ_skew = 100,
+                                                κ_symmetric = 100,
+                                                skew_flux_formulation)
+
+    model = HydrostaticFreeSurfaceModel(grid; closure,
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = :b)
+
+    set!(model, b=(x, y, z) -> 1e-5 * z + 1e-7 * (x + y))
+
+    for n in 1:3
+        time_step!(model, 1)
+    end
+
+    return !any(isnan, interior(model.tracers.b))
 end
 
 function run_catke_tke_substepping_tests(arch, closure)
@@ -366,12 +389,12 @@ end
 
     @testset "ScalarDiffusivity" begin
         @info "  Testing ScalarDiffusivity..."
-        for T in float_types
+        for FT in float_types
             ν, κ = 0.3, 0.7
-            closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
-            @test closure.ν == T(ν)
-            @test closure.κ.T == T(κ)
-            run_constant_isotropic_diffusivity_fluxdiv_tests(T)
+            closure = ScalarDiffusivity(FT; κ=(T=κ, S=κ), ν=ν)
+            @test closure.ν == FT(ν)
+            @test closure.κ.T == FT(κ)
+            run_constant_isotropic_diffusivity_fluxdiv_tests(FT)
         end
 
         @info "  Testing ScalarDiffusivity with different halo requirements..."
@@ -400,10 +423,10 @@ end
 
     @testset "HorizontalScalarDiffusivity" begin
         @info "  Testing HorizontalScalarDiffusivity..."
-        for T in float_types
-            @test tracer_specific_horizontal_diffusivity(T)
-            @test horizontal_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
-            @test horizontal_diffusivity_fluxdiv(T)
+        for FT in float_types
+            @test tracer_specific_horizontal_diffusivity(FT)
+            @test horizontal_diffusivity_fluxdiv(FT, νz=zero(FT), νh=zero(FT))
+            @test horizontal_diffusivity_fluxdiv(FT)
         end
     end
 
@@ -525,11 +548,165 @@ end
         end
     end
 
+    @testset "Vertical diffusive CFL diagnostics" begin
+        @info "  Testing vertical diffusive CFL diagnostics..."
+        grid = RectilinearGrid(CPU(); size=(20, 30, 4), x=(-10, 10), y=(-10, 10), z=(-10, 0), halo=(6, 6, 5))
+
+        implicit_catke = CATKEVerticalDiffusivity()
+        explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = implicit_catke)
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = explicit_catke)
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) ≈ 19764.23537605237
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) ≈ 5.0596442562694076e-6
+
+        model = NonhydrostaticModel(grid;
+                                    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1, κ=1),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = NonhydrostaticModel(grid;
+                                    closure = RiBasedVerticalDiffusivity(warning=false),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = TKEDissipationVerticalDiffusivity())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = NonhydrostaticModel(grid;
+                                    closure = ConvectiveAdjustmentVerticalDiffusivity(ExplicitTimeDiscretization()),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+
+        model = NonhydrostaticModel(grid;
+                                    closure = RiBasedVerticalDiffusivity(ExplicitTimeDiscretization(); warning=false),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = TKEDissipationVerticalDiffusivity(ExplicitTimeDiscretization()))
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+    end
+
+
+    @testset "Vertically-implicit diffusion operator" begin
+        @info "  Testing that the vertically-implicit stencil reproduces ∂z(ν ∂z ϕ)..."
+
+        function implicit_operator_rows(arch, LX, LZ, Nz, z, Lz)
+            grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
+                                   topology=(Periodic, Periodic, Bounded))
+
+            ν(x, y, z, t) = 1 + 0.8 * sinpi(2z / Lz)
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν)
+            clock = Clock(time=0.0)
+            Δt = 1
+
+            coefficient(marker, k) =
+                get_coefficient(1, 1, k, grid, marker, nothing, ZDirection(),
+                                closure, nothing, nothing, LX(), Center(), LZ(),
+                                Δt, clock, NamedTuple(),
+                                nothing, nothing, nothing, nothing, nothing, nothing)
+
+            # Assembling the rows on the host reads grid metrics one level at a time, which on a
+            # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in
+            # `CUDA.allowscalar`, but say so locally rather than lean on that.
+            dl, d, du = @allowscalar begin
+                ([coefficient(VerticallyImplicitDiffusionLowerDiagonal(), k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionDiagonal(),      k) for k in 1:Nz],
+                 [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz])
+            end
+
+            L = zeros(Nz, Nz) # the coefficients are linear in Δt, so Δt = 1 gives L = I - A exactly
+            for k in 1:Nz
+                L[k, k] = 1 - d[k]
+                k < Nz && (L[k, k+1] = -du[k]; L[k+1, k] = -dl[k])
+            end
+
+            zᶜ = Array(znodes(grid, Center()))
+            zᶠ = Array(znodes(grid, Face()))
+            Δzᶜ = diff(zᶠ)
+            Δzᶠ = diff(zᶜ)
+
+            L̂ = zeros(Nz, Nz)
+            for k in 2:Nz-1
+                if LZ === Face      # ϕ at faces, ν and Δzᶜ at centers, row spacing Δzᶠ
+                    a = ν(0, 0, zᶜ[k-1], 0) / (Δzᶠ[k-1] * Δzᶜ[k-1])
+                    b = ν(0, 0, zᶜ[k],   0) / (Δzᶠ[k-1] * Δzᶜ[k])
+                else                # ϕ at centers, ν and Δzᶠ at faces, row spacing Δzᶜ
+                    a = ν(0, 0, zᶠ[k],   0) / (Δzᶜ[k] * Δzᶠ[k-1])
+                    b = ν(0, 0, zᶠ[k+1], 0) / (Δzᶜ[k] * Δzᶠ[k])
+                end
+                L̂[k, k-1] = a
+                L̂[k, k+1] = b
+                L̂[k, k]   = -(a + b)
+            end
+
+            rows = 2:Nz-1
+            return maximum(abs, L[rows, :] .- L̂[rows, :]) / maximum(abs, L̂[rows, :])
+        end
+
+        Nz, Lz = 32, 1000.0
+        uniform = (0, Lz)
+        stretched = [Lz * (k / Nz)^1.3 for k in 0:Nz]
+
+        for arch in archs,
+            (LX, LZ) in ((Face, Center), (Center, Face)),
+            z in (uniform, stretched)
+
+            grid_kind = z isa Tuple ? "uniform" : "stretched"
+            @info "    Testing implicit diffusion operator [$arch, ($LX, Center, $LZ), $grid_kind]..."
+            @test implicit_operator_rows(arch, LX, LZ, Nz, z, Lz) < 1e-12
+        end
+    end
+
     @testset "Closure tuples" begin
         @info "  Testing time-stepping with a tuple of closures..."
-        for arch in archs
-            for FT in float_types
-                @test time_step_with_tupled_closure(FT, arch)
+        for arch in archs, FT in float_types
+            @test time_step_with_tupled_closure(FT, arch)
+            # Test up to 6 closures in a tuple
+            additional_closures = (VerticalScalarDiffusivity(κ=1e-6), VerticalScalarDiffusivity(κ=2e-5), ScalarDiffusivity(ν=1e-5), HorizontalScalarDiffusivity(κ=1e-5))
+            @test time_step_with_tupled_closure(FT, arch, additional_closures...)
+        end
+    end
+
+    @testset "IsopycnalSkewSymmetricDiffusivity" begin
+        @info "  Testing time-stepping with IsopycnalSkewSymmetricDiffusivity..."
+        time_discretizations = [ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization()]
+        skew_flux_formulations = [DiffusiveFormulation(), AdvectiveFormulation()]
+        for arch in archs, FT in float_types
+            for time_discretization in time_discretizations, skew_flux_formulation in skew_flux_formulations
+                td = typeof(time_discretization).name.name
+                ff = typeof(skew_flux_formulation).name.name
+                @info "    Time-stepping IsopycnalSkewSymmetricDiffusivity with $td and $ff [$arch, $FT]..."
+                @test time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
             end
         end
     end

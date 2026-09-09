@@ -73,7 +73,7 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+    solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
 
 Solve the "generalized" Poisson equation,
 
@@ -101,9 +101,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     ϕc = solver.storage
 
     # Transform b *in-place* to eigenfunction space
-    for transform! in solver.transforms.forward
-        transform!(b, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.forward, b, solver.buffer)
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
     @. ϕc = - b / (λx + λy + λz - m)
@@ -114,9 +112,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     m === 0 && @allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    for transform! in solver.transforms.backward
-        transform!(ϕc, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.backward, ϕc, solver.buffer)
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
 

@@ -1,32 +1,10 @@
-abstract type AbstractTimeDiscretization end
+using Oceananigans.TimeSteppers: TimeSteppers,
+                                 AbstractTimeDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 VerticallyImplicitTimeDiscretization
 
-"""
-    struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
-
-A fully-explicit time-discretization of a `TurbulenceClosure`.
-"""
-struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
-
-Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
-
-"""
-    struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
-
-A vertically-implicit time-discretization of a `TurbulenceClosure`.
-
-This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is
-time-discretized as
-
-```julia
-[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
-```
-"""
-struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
-
-Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
-
-@inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
-@inline time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
+@inline TimeSteppers.time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
+@inline TimeSteppers.time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
 
 #####
 ##### Explicit: move along, nothing to worry about here (use fallbacks).

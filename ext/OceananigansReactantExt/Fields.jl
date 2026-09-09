@@ -4,7 +4,7 @@ using Reactant
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, interior
+using Oceananigans.Fields: Field, interior, interpolate!, copyable_fields
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
@@ -39,8 +39,32 @@ function set_to_function!(u::ReactantField, f)
     return nothing
 end
 
-# keepin it simple
-set_to_field!(u::ReactantField, v::ReactantField) = interior(u) .= interior(v)
+# When `v` may be copied into `u` we broadcast interiors, which traces. Otherwise we fall
+# back to interpolation on the CPU, since interpolate!'s KA kernel does not
+# currently trace under Reactant (see Reactant.jl#2364). This mirrors how
+# set_to_function! hops to the CPU. Note that the CPU fallback only works
+# outside of tracing: traced data cannot be materialized on the CPU mid-trace,
+# so under `@compile`/`@jit` only the copy path is available.
+#
+# `copyable_fields` is Oceananigans' own copy-versus-interpolate policy; we differ from
+# `copy_to_field!` only in mechanism, copying interiors alone rather than attempting halos
+# through a `try`/`catch` that cannot be traced.
+function set_to_field!(u::ReactantField, v::ReactantField)
+    if copyable_fields(u, v)
+        interior(u) .= interior(v)
+    else
+        cpu_grid_u = on_architecture(CPU(), u.grid)
+        cpu_grid_v = on_architecture(CPU(), v.grid)
+        cpu_u = Field(Oceananigans.Fields.instantiated_location(u), cpu_grid_u;
+                      indices=Oceananigans.Fields.indices(u))
+        cpu_v = Field(Oceananigans.Fields.instantiated_location(v), cpu_grid_v;
+                      indices=Oceananigans.Fields.indices(v))
+        copyto!(interior(cpu_v), interior(v))
+        interpolate!(cpu_u, cpu_v)
+        copyto!(interior(u), interior(cpu_u))
+    end
+    return u
+end
 
 # No need to synchronize -> it should be implicit
 synchronize_communication!(::ShardedDistributedField) = nothing

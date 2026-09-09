@@ -13,7 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -102,6 +102,30 @@ function run_field_reduction_tests(grid)
 
         @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
         @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
+
+        # Index reductions locate extrema within `interior(ϕ)`, consistently with `nodes(ϕ)`,
+        # and must be blind to the halo regions, poisoned here on a copy
+        ψ = similar(ϕ)
+        parent(ψ) .= convert(eltype(ψ), 1e6)
+        interior(ψ) .= interior(ϕ)
+        interior_values = Array(interior(ψ))
+        @test argmax(ψ) == argmax(interior_values)
+        @test findmax(ψ) == findmax(interior_values)
+
+        parent(ψ) .= convert(eltype(ψ), -1e6)
+        interior(ψ) .= interior(ϕ)
+        @test argmin(ψ) == argmin(interior_values)
+        @test findmin(ψ) == findmin(interior_values)
+
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -270,6 +294,42 @@ function run_field_interpolation_tests(grid)
 
     interpolate!(f1, f4)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    # Interpolating at a cell center must return that cell's value however fine the grid is.
+    # On a grid whose coordinates are large compared with its spacing, recovering the spacing
+    # by differencing two adjacent nodes costs most of its significant digits in Float32, and
+    # the error is then multiplied by the cell index.
+    for FT in (Float32, Float64)
+        fine_λ_grid = LatitudeLongitudeGrid(arch, FT; size = (21600, 1, 1),
+                                            longitude = (-180, 180), latitude = (-1, 1), z = (0, 1))
+        fine_φ_grid = LatitudeLongitudeGrid(arch, FT; size = (1, 10800, 1),
+                                            longitude = (-1, 1), latitude = (-90, 90), z = (0, 1))
+
+        Δλ = 360 / size(fine_λ_grid, 1)
+        Δφ = 180 / size(fine_φ_grid, 2)
+
+        # Both locations: a regular grid has one spacing, so the index must be right at either.
+        for ℓ in (Center, Face)
+            λ_field = Field{ℓ, Center, Center}(fine_λ_grid)
+            φ_field = Field{Center, ℓ, Center}(fine_φ_grid)
+            set!(λ_field, (λ, φ, z) -> λ)
+            set!(φ_field, (λ, φ, z) -> φ)
+
+            @allowscalar begin
+                for i in (1, 5001, 11280, size(fine_λ_grid, 1))
+                    λi = λnodes(fine_λ_grid, ℓ())[i]
+                    ℑλ = interpolate((λi, 0, 0.5), λ_field, (ℓ(), Center(), Center()), fine_λ_grid)
+                    @test abs(ℑλ - λi) < Δλ / 10
+                end
+
+                for j in (1, 2501, 8130, size(fine_φ_grid, 2))
+                    φj = φnodes(fine_φ_grid, ℓ())[j]
+                    ℑφ = interpolate((0, φj, 0.5), φ_field, (Center(), ℓ(), Center()), fine_φ_grid)
+                    @test abs(ℑφ - φj) < Δφ / 10
+                end
+            end
+        end
+    end
 
     return nothing
 end
@@ -566,6 +626,134 @@ end
                 @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
             end
+
+            # set!(::Field, ::Field) should auto-interpolate when sizes or locations differ.
+            @info "  Testing field-to-field set! with differing sizes/locations..."
+
+            interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
+            f_linear = (x, y, z) -> x + 2y + 3z
+
+            # Different sizes, same location, same arch
+            coarse_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            fine_grid   = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+
+            coarse = CenterField(coarse_grid)
+            set!(coarse, f_linear)
+            fill_halo_regions!(coarse)
+
+            fine = CenterField(fine_grid)
+            set!(fine, coarse) # auto-interpolate
+
+            expected_fine = CenterField(fine_grid)
+            interpolate!(expected_fine, coarse)
+            @test Array(interior(fine)) == Array(interior(expected_fine))
+
+            # Same size, different location: route through interpolation rather than copying values
+            # across staggered locations.
+            same_size_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                             topology=(Periodic, Periodic, Bounded),
+                                             interp_domain...)
+            cf = CenterField(same_size_grid)
+            set!(cf, f_linear)
+            fill_halo_regions!(cf)
+
+            xf = XFaceField(same_size_grid)
+            set!(xf, cf)
+
+            expected_xf = XFaceField(same_size_grid)
+            interpolate!(expected_xf, cf)
+            @test Array(interior(xf)) == Array(interior(expected_xf))
+
+            # Cross-architecture interpolation: set! should migrate v to u's arch
+            if arch isa GPU
+                cpu_coarse_grid = RectilinearGrid(CPU(), FT; size=(4, 4, 4), interp_domain...)
+                cpu_coarse = CenterField(cpu_coarse_grid)
+                set!(cpu_coarse, f_linear)
+                fill_halo_regions!(cpu_coarse)
+
+                gpu_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+                gpu_fine = CenterField(gpu_fine_grid)
+                set!(gpu_fine, cpu_coarse) # CPU source, GPU target, differing sizes
+
+                gpu_coarse = CenterField(coarse_grid)
+                set!(gpu_coarse, cpu_coarse)
+                expected_gpu_fine = CenterField(gpu_fine_grid)
+                interpolate!(expected_gpu_fine, gpu_coarse)
+                @test Array(interior(gpu_fine)) == Array(interior(expected_gpu_fine))
+            end
+
+            # set!(::Field, ::ReducedField): the reduced direction should be
+            # broadcast across the destination's full extent.
+            reduced_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            f_xy = (x, y) -> x + 2y
+
+            reduced_xy = Field{Center, Center, Nothing}(reduced_grid)
+            set!(reduced_xy, f_xy)
+            fill_halo_regions!(reduced_xy)
+
+            full = CenterField(reduced_grid)
+            set!(full, reduced_xy)
+
+            # Every z-plane in `full` should match the reduced xy data.
+            full_cpu = Array(interior(full))
+            for k in 1:size(full, 3)
+                @test full_cpu[:, :, k] == full_cpu[:, :, 1]
+            end
+            # And that plane should match `reduced_xy` itself.
+            @test full_cpu[:, :, 1] == Array(interior(reduced_xy))[:, :, 1]
+
+            # Same idea for a z-column reduced field on the other axis.
+            reduced_z = Field{Nothing, Nothing, Center}(reduced_grid)
+            set!(reduced_z, z -> 3z)
+            fill_halo_regions!(reduced_z)
+
+            full_from_z = CenterField(reduced_grid)
+            set!(full_from_z, reduced_z)
+            full_from_z_cpu = Array(interior(full_from_z))
+            for i in 1:size(full_from_z, 1), j in 1:size(full_from_z, 2)
+                @test full_from_z_cpu[i, j, :] == full_from_z_cpu[1, 1, :]
+            end
+            @test full_from_z_cpu[1, 1, :] == Array(interior(reduced_z))[1, 1, :]
+
+            # set!(::Field, ::Field) when the source grid covers a strict
+            # subset of the destination's domain. Inside the overlap the
+            # destination should match interpolate!; outside, interpolate!
+            # currently writes whatever is in the source's halo memory
+            # (see https://github.com/CliMA/Oceananigans.jl/pull/5586 discussion).
+            # Once that is fixed to leave outside-source-domain values
+            # untouched, the @test_broken below should pass and we will
+            # promote it to @test.
+            big_grid = RectilinearGrid(arch, FT; size=(8, 8, 8),
+                                       x=(0, 1), y=(0, 1), z=(0, 1))
+            sub_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                       x=(FT(0.25), FT(0.75)),
+                                       y=(FT(0.25), FT(0.75)),
+                                       z=(FT(0.25), FT(0.75)))
+
+            sub_field = CenterField(sub_grid)
+            set!(sub_field, f_linear)
+            fill_halo_regions!(sub_field)
+
+            big_field = CenterField(big_grid)
+            sentinel = FT(-9999)
+            fill!(parent(big_field), sentinel)
+            set!(big_field, sub_field)
+
+            # Inside the overlap (z in (0.25, 0.75) i.e. k in 3:6 and similarly
+            # for x and y): destination values should reflect the source.
+            big_cpu = Array(interior(big_field))
+
+            # Sanity check: the value at the center of the overlap should match
+            # the linear function within interpolation tolerance.
+            xs, ys, zs = nodes(big_field)
+            mid_i, mid_j, mid_k = 5, 5, 5  # near domain center
+            expected_mid = f_linear(xs[mid_i], ys[mid_j], zs[mid_k])
+            @test isapprox(big_cpu[mid_i, mid_j, mid_k], expected_mid; atol=sqrt(eps(FT)))
+
+            # Outside the overlap, the user-visible expectation (from the PR
+            # discussion) is that values stay untouched. interpolate! does
+            # not currently honor this, so we mark it broken.
+            @test_broken big_cpu[1, 1, 1] == sentinel
         end
     end
 
@@ -623,6 +811,17 @@ end
                                  (:variably_spaced_grid => variably_spaced_grid)]
                 @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
+            end
+
+            @testset "Index reductions on an immersed grid [$(typeof(arch)), $FT]" begin
+                immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(0))
+                c = CenterField(immersed_grid)
+                set!(c, (x, y, z) -> -z) # the raw extremum hides in the immersed region
+                values = Array(interior(c))
+                @test argmax(values) != argmax(c)
+                @test values[argmax(c)] == maximum(c)
+                @test values[argmin(c)] == minimum(c)
+                @test findmax(c) == (maximum(c), argmax(c))
             end
         end
 
@@ -788,6 +987,41 @@ end
             interpolate!(column, source_3d)
             expected = [x_col + 2y_col + 3z for z in znodes(column)]
             @test all(Array(interior(column))[1, 1, :] .≈ expected)
+
+            grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
+            for ℓ in (nothing, Center(), Face())
+                fi = FractionalIndices((), grid, ℓ, ℓ, ℓ)
+                @test fi.i === nothing
+                @test fi.j === nothing
+                @test fi.k === nothing
+            end
+        end
+    end
+
+    @testset "Fractional longitude index on regional grids" begin
+        @info "  Testing fractional longitude indices on regional grids..."
+
+        # A `Bounded` grid covers only part of the globe, so a longitude just west of its
+        # western edge must index just west of the grid rather than folding to λ ≈ 360.
+        regional = LatitudeLongitudeGrid(size = (2, 1, 1), longitude = (0, 20),
+                                         latitude = (0, 10), z = (-1, 0),
+                                         topology = (Bounded, Bounded, Bounded))
+
+        for (λ, expected) in ((-15.0, -1), (-5.0, 0), (5.0, 1), (15.0, 2), (25.0, 3))
+            fi = FractionalIndices((λ, 5.0, 0.0), regional, Center(), Center(), Center())
+            @test fi.i ≈ expected
+        end
+
+        # A grid spanning the full globe is unaffected, whether `Bounded` or `Periodic`.
+        for TX in (Bounded, Periodic)
+            global_grid = LatitudeLongitudeGrid(size = (36, 18, 1), longitude = (0, 360),
+                                                latitude = (-80, 80), z = (-1, 0),
+                                                topology = (TX, Bounded, Bounded))
+
+            for (λ, expected) in ((5.0, 1), (180.0, 18.5), (350.0, 35.5), (357.0, 36.2))
+                fi = FractionalIndices((λ, 0.0, 0.0), global_grid, Center(), Center(), Center())
+                @test fi.i ≈ expected
+            end
         end
     end
 
@@ -967,6 +1201,26 @@ end
             mask_immersed_field!(f_full, 0.0)
             @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
             @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "mask_immersed_field_xy! with an active cells map" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field_xy! with an active cells map [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+            # The western half of the domain is dry from top to bottom, so those columns hold no active cell
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> ifelse(x < 0.5, 0, -1));
+                                        active_cells_map = true)
+
+            f = CenterField(grid)
+            set!(f, 1)
+            mask_immersed_field_xy!(f, 0; k=Nz)
+
+            @test all(interior(f, 1:2, :, Nz) .== 0)
+            @test all(interior(f, 3:4, :, Nz) .== 1)
         end
     end
 

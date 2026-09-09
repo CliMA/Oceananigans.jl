@@ -3,7 +3,7 @@ using Oceananigans.Fields: AbstractField
 @inline zeroforcing(args...) = 0
 
 """
-    materialize_forcing(forcing, field, field_name, model_field_names)
+$(TYPEDSIGNATURES)
 
 "Regularizes" or "adds information" to user-defined forcing objects that are passed to
 model constructors. `materialize_forcing` is called inside `model_forcing`.
@@ -16,7 +16,7 @@ dependency to a special forcing object, as for `Relxation`.
 materialize_forcing(forcing, field, field_name, model_field_names) = forcing # fallback
 
 """
-    materialize_forcing(forcing::Function, field, field_name, model_field_names)
+$(TYPEDSIGNATURES)
 
 Wrap `forcing` in a `ContinuousForcing` at the location of `field`.
 """

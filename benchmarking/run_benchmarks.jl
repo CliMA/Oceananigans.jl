@@ -8,6 +8,7 @@
 #####   - benchmark: Quick performance benchmarks (default)
 #####   - simulate: Full runs with output for validation
 #####   - io: IO-heavy benchmarks measuring 3D output performance
+#####   - read: Benchmark reading a previously-written store (across jld2 / netcdf / zarr)
 #####
 ##### Usage (benchmark mode):
 #####   julia --project run_benchmarks.jl                                    # Default: 360x180x50, GPU, Float32
@@ -21,12 +22,24 @@
 ##### Usage (io mode):
 #####   julia --project run_benchmarks.jl --mode=io --size=360x180x50 --output_iteration_interval=1
 #####   julia --project run_benchmarks.jl --mode=io --device=CPU --size=90x45x10 --time_steps=10 --output_iteration_interval=2
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=auto
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=45x45x10
+#####
+##### Usage (read mode):
+#####   julia --project run_benchmarks.jl --mode=read --format=zarr --size=90x45x10 --time_steps=10
+#####   julia --project run_benchmarks.jl --mode=read --format=jld2
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
+using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation,
+    run_io_benchmark, run_read_benchmark,
+    BenchmarkResult, SimulationResult, IOBenchmarkResult, ReadBenchmarkResult
 using JSON: JSON
 using Oceananigans
+using Oceananigans.DistributedComputations: Distributed, Partition, @root, @onrank, @handshake, mpi_rank, mpi_size
+
+using CUDA
+
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
     IsopycnalSkewSymmetricDiffusivity, HorizontalScalarBiharmonicDiffusivity
 
@@ -46,7 +59,7 @@ function parse_commandline()
 
     @add_arg_table! s begin
         "--mode"
-            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks"
+            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks, 'read' for read-performance benchmarks"
             arg_type = String
             default = "benchmark"
 
@@ -60,6 +73,15 @@ function parse_commandline()
             help = "Device to run on: CPU or GPU"
             arg_type = String
             default = "GPU"
+
+        "--distributed"
+            help = "Use distributed architecture."
+            action = :store_true
+
+        "--partition"
+            help = "Partition for distributed architecture as Rx x Ry x Rz (e.g., 2x2x1). Ignored unless --distributed is set."
+            arg_type = String
+            default = "2x2x1"
 
         "--case"
             help = "Benchmark case: earth_ocean"
@@ -149,9 +171,25 @@ function parse_commandline()
             default = 1
 
         "--output_format"
-            help = "Output file format for IO benchmark mode: jld2 or netcdf"
+            help = "Output file format for IO benchmark mode: jld2, netcdf, or zarr"
             arg_type = String
             default = "jld2"
+
+        "--format"
+            help = "File format for read benchmark mode: jld2, netcdf, or zarr"
+            arg_type = String
+            default = "zarr"
+
+        "--zarr_chunks"
+            help = "Spatial chunk shape for ZarrWriter when output_format=zarr. " *
+                   "Either 'auto' (default; let the writer choose) or 'NxxNyxNz' (e.g. '64x64x16')."
+            arg_type = String
+            default = "auto"
+
+        "--read_variable"
+            help = "Variable name to construct as FieldTimeSeries in read mode"
+            arg_type = String
+            default = "T"
 
         "--tracers"
             help = "Tracer names as comma-separated list (e.g., T,S or T,S,C1,C2,C3)"
@@ -196,6 +234,17 @@ function parse_size(size_str)
     return Tuple(parse(Int, p) for p in parts)
 end
 
+"""
+    parse_zarr_chunks(chunks_str)
+
+Parse a Zarr chunk-shape string into either `nothing` (auto) or a tuple `(Nx, Ny, Nz)`.
+Accepts `"auto"` or `"NxxNyxNz"` (e.g., `"64x64x16"`).
+"""
+function parse_zarr_chunks(chunks_str::AbstractString)
+    lowercase(strip(chunks_str)) == "auto" && return nothing
+    return parse_size(chunks_str)
+end
+
 #####
 ##### Factory functions to create schemes from names
 #####
@@ -236,8 +285,8 @@ function make_closure(name, FT)
     name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(),
                                           HorizontalScalarBiharmonicDiffusivity(ν=1e12))
     name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                             IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
-                                             HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+                                              IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
+                                              HorizontalScalarBiharmonicDiffusivity(ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
@@ -249,7 +298,19 @@ make_timestepper(name) = Symbol(name)
 
 function run_benchmarks(args)
     mode = args["mode"]
-    arch = make_architecture(args["device"])
+
+
+    distributed_enabled = args["distributed"]
+    partition_ranks = parse_size(args["partition"])
+
+    if distributed_enabled
+        arch = Distributed(make_architecture(args["device"]), partition = Partition(partition_ranks...))
+        ranks = mpi_size(arch.communicator)
+        @root @info "Distributed run: $ranks ranks (x=$(partition_ranks[1]), y=$(partition_ranks[2]), z=$(partition_ranks[3]))"
+    else
+        arch = make_architecture(args["device"])
+    end
+
     case = args["case"]
 
     # Parse lists from arguments
@@ -282,6 +343,9 @@ function run_benchmarks(args)
     output_dir = args["output_dir"]
     output_iteration_interval = args["output_iteration_interval"]
     output_format = args["output_format"]
+    read_format = args["format"]
+    zarr_chunks = parse_zarr_chunks(args["zarr_chunks"])
+    read_variable = args["read_variable"]
 
     # Default to 1440 time steps for IO mode when the user hasn't explicitly set it
     if mode == "io" && time_steps == 100
@@ -290,35 +354,52 @@ function run_benchmarks(args)
 
     results = []
 
-    println("=" ^ 95)
-    println("Oceananigans Benchmark Suite")
-    println("=" ^ 95)
-    println("Date: ", now(UTC))
-    println("Mode: ", mode)
-    println("Case: ", case)
-    println("Grid types: ", grid_types)
-    println("Architecture: ", arch)
-    println("Sizes: ", sizes)
-    println("Float types: ", float_types)
-    println("Momentum advection: ", momentum_advections)
-    println("Tracer advection: ", tracer_advections)
-    println("Closures: ", closures)
-    println("Tracers: ", tracers)
-    println("Timestepper: ", timestepper)
-    if mode == "benchmark"
-        println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
-    elseif mode == "io"
-        println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
-        println("Output format: ", output_format)
-        println("Output iteration interval: ", output_iteration_interval)
-        println("Output fields: u, v, w, T, S (full 3D)")
-    else
-        println("Stop time: ", args["stop_time"], " hours")
-        println("Output interval: ", args["output_interval"], " hours")
+    @root begin
+        println("=" ^ 95)
+        println("Oceananigans Benchmark Suite")
+        println("=" ^ 95)
+        println("Date: ", now(UTC))
+        println("Mode: ", mode)
+        println("Case: ", case)
+        println("Grid types: ", grid_types)
+        println("Architecture: ", arch)
+        println("Distributed: ", distributed_enabled ? "true" : "false")
+        if distributed_enabled
+            println("Partition: ", partition_ranks, " (", ranks, " ranks)")
+        end
+        println("Sizes: ", sizes)
+        println("Float types: ", float_types)
+        println("Momentum advection: ", momentum_advections)
+        println("Tracer advection: ", tracer_advections)
+        println("Closures: ", closures)
+        println("Tracers: ", tracers)
+        println("Timestepper: ", timestepper)
+        if mode == "benchmark"
+            println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+        elseif mode == "io"
+            println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Output format: ", output_format)
+            println("Output iteration interval: ", output_iteration_interval)
+            println("Output fields: u, v, w, T, S (full 3D)")
+            if output_format == "zarr"
+                println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+            end
+        elseif mode == "read"
+            println("Time steps to write: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Read format: ", read_format)
+            println("Output iteration interval: ", output_iteration_interval)
+            println("Read variable: ", read_variable)
+            if read_format == "zarr"
+                println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+            end
+        else
+            println("Stop time: ", args["stop_time"], " hours")
+            println("Output interval: ", args["output_interval"], " hours")
+        end
+        println("Δt: ", Δt, " s")
+        println("=" ^ 95)
+        println()
     end
-    println("Δt: ", Δt, " s")
-    println("=" ^ 95)
-    println()
 
     # Loop over all combinations using Iterators.product
     # Advection pairs are zipped (not crossed) when both lists have the same length
@@ -332,9 +413,11 @@ function run_benchmarks(args)
         n_tracers = length(tracers)
         name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
 
-        println("\n", "-" ^ 70)
-        println("Running: $name")
-        println("-" ^ 70)
+        @root begin
+            println("\n", "-" ^ 70)
+            println("Running: $name")
+            println("-" ^ 70)
+        end
 
         # Create schemes
         momentum_advection = make_momentum_advection(mom_adv_name, FT)
@@ -358,22 +441,31 @@ function run_benchmarks(args)
             error("Unknown case: $case")
         end
 
+        # Verbose only for root/rank 0
+        is_rank_0 = false
+        @root is_rank_0 = true
         # Run based on mode
         result = if mode == "benchmark"
-            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=true)
+            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=is_rank_0)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
-                stop_time, Δt, output_interval, output_dir, name, group, verbose=true)
+                stop_time, Δt, output_interval, output_dir, name, group, verbose=is_rank_0)
         elseif mode == "io"
             run_io_benchmark(model;
-                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, group, verbose=true)
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format,
+                output_dir, name, group, zarr_chunks, verbose=is_rank_0)
+        elseif mode == "read"
+            run_read_benchmark(model;
+                time_steps, Δt, warmup_steps, output_iteration_interval, format=read_format,
+                output_dir, name, group, zarr_chunks, read_variable, verbose=is_rank_0)
         else
-            error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
+            error("Unknown mode: $mode. Use 'benchmark', 'simulate', 'io', or 'read'.")
         end
+
         push!(results, result)
     end
 
-    return results
+    return results, arch
 end
 
 #####
@@ -382,33 +474,54 @@ end
 
 function main()
     args = parse_commandline()
-    results = run_benchmarks(args)
+    results, arch = run_benchmarks(args)
+    distributed_enabled = args["distributed"]
 
     #####
     ##### Summary table
     #####
 
-    println("\n", "=" ^ 105)
-    println("BENCHMARK SUMMARY")
-    println("=" ^ 105)
-    println()
+    @root begin
+        println("\n", "=" ^ 135)
+        println("BENCHMARK SUMMARY")
+        println("=" ^ 135)
+        println()
 
-    @printf("%-55s %8s %12s %12s %10s %15s\n", "Benchmark", "Float", "Grid", "Time/Step", "Steps/s", "Points/s")
-    println("-" ^ 105)
+        @printf("%-55s %8s %12s %14s %10s %15s %10s %16s\n",
+                "Benchmark", "Float", "Grid", "Time/unit (ms)", "Units/s", "Points/s", "Size", "Chunks")
+        println("-" ^ 135)
 
-    for r in results
-        grid_str = "$(r.grid_size[1])×$(r.grid_size[2])×$(r.grid_size[3])"
-        @printf("%-55s %8s %12s %10.4f ms %10.2f %15.2e\n",
-            r.name,
-            r.float_type,
-            grid_str,
-            r.time_per_step_seconds * 1000,
-            r.steps_per_second,
-            r.grid_points_per_second
-        )
+        for r in results
+            grid_str = "$(r.grid_size[1])×$(r.grid_size[2])×$(r.grid_size[3])"
+            time_per_unit, units_per_second, grid_points_per_second, size_bytes, chunks =
+                if r isa ReadBenchmarkResult
+                    (r.time_per_snapshot_seconds, r.snapshots_per_second, r.grid_points_per_second,
+                     r.file_size_bytes, r.chunk_shape)
+                elseif r isa IOBenchmarkResult
+                    (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                     r.total_output_size_bytes, r.chunk_shape)
+                else
+                    (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                     0, nothing)
+                end
+
+            size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+            chunks_str = isnothing(chunks) ? "—" : string(Tuple(chunks))
+
+            @printf("%-55s %8s %12s %14.4f %10.2f %15.2e %10s %16s\n",
+                r.name,
+                r.float_type,
+                grid_str,
+                time_per_unit * 1000,
+                units_per_second,
+                grid_points_per_second,
+                size_str,
+                chunks_str,
+            )
+        end
+
+        println("=" ^ 135)
     end
-
-    println("=" ^ 105)
 
     #####
     ##### Save results to JSON
@@ -417,33 +530,49 @@ function main()
     if !isempty(results)
         output_file = args["output"]
         clear_file = args["clear"]
+        json_entries = JSON.parse(JSON.json(results))
 
-        # Load existing results or start fresh
-        all_entries = if clear_file || !isfile(output_file)
+        if distributed_enabled
+            comm = arch.communicator
+            ranks = mpi_size(comm)
+
+            # Tag each entry with its MPI rank
+            for entry in json_entries
+                entry["rank"] = mpi_rank(comm)
+            end
+        end
+
+        # Rank 0 clears the file before anyone writes
+        @root begin
             if clear_file && isfile(output_file)
+                rm(output_file)
                 println("\nCleared existing results file: $output_file")
             end
-            results
-        else
-            existing_data = JSON.parse(read(output_file))
-            println("\nAppending to existing results file: $output_file")
-            vcat(existing_data, results)
         end
 
-        # Write all results to JSON
-        open(output_file, "w") do io
-            JSON.json(io, all_entries; pretty=true)
+        # Rank-ordered sequential writes: each rank reads, appends, and writes back
+        @handshake begin
+            all_entries = if isfile(output_file)
+                              vcat(JSON.parse(read(output_file)), json_entries)
+                          else
+                              json_entries
+                          end
+            open(output_file, "w") do io
+                JSON.json(io, all_entries; pretty=true)
+            end
         end
 
-        println("Results saved to: $output_file ($(length(results)) new, $(length(all_entries)) total)")
-
-        # Generate markdown report from the full JSON data
-        md_file = replace(output_file, ".json" => ".md")
-        generate_markdown_report(md_file, JSON.parse(read(output_file)))
-        println("Markdown report saved to: $md_file")
+        # Rank 0 generates the markdown report once all ranks have written
+        @root begin
+            println("Results saved to: $output_file")
+            stem, _ = splitext(output_file)
+            md_file = "$(stem).md"
+            generate_markdown_report(md_file, JSON.parse(read(output_file)))
+            println("Markdown report saved to: $md_file")
+        end
     end
 
-    println("Benchmarks completed at ", now(UTC), "Z")
+    @root println("Benchmarks completed at ", now(UTC), "Z")
 end
 
 """
@@ -476,21 +605,37 @@ function generate_markdown_report(filename, entries)
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Float | Grid | Time/Step (ms) | Steps/s | Points/s | Timestamp |")
-        println(io, "|-----------|-------|------|----------------|---------|----------|-----------|")
+        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------------|-------|------|----------------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
             grid_str = "$(grid[1])×$(grid[2])×$(grid[3])"
             timestamp = entry["metadata"]["timestamp"]
+            distributed_str = haskey(entry, "rank") ? "rank $(entry["rank"])" : "false"
 
-            @printf(io, "| `%s` | %s | %s | %.2f | %.2f | %.2e | %s |\n",
+            time_per_unit_seconds, units_per_second = if haskey(entry, "time_per_snapshot_seconds")
+                (entry["time_per_snapshot_seconds"], entry["snapshots_per_second"])
+            else
+                (entry["time_per_step_seconds"], entry["steps_per_second"])
+            end
+
+            size_bytes = get(entry, "total_output_size_bytes", get(entry, "file_size_bytes", 0))
+            size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+
+            chunks_raw = get(entry, "chunk_shape", nothing)
+            chunks_str = isnothing(chunks_raw) ? "—" : string(Tuple(Int.(chunks_raw)))
+
+            @printf(io, "| `%s` | %s | %s | %s | %.2f | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
+                    distributed_str,
                     entry["float_type"],
                     grid_str,
-                    entry["time_per_step_seconds"] * 1000,
-                    entry["steps_per_second"],
+                    time_per_unit_seconds * 1000,
+                    units_per_second,
                     entry["grid_points_per_second"],
+                    size_str,
+                    chunks_str,
                     timestamp)
         end
     end

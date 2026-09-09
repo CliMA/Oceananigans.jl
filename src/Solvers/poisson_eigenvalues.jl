@@ -1,5 +1,5 @@
 """
-    poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Periodic)
+$(TYPEDSIGNATURES)
 
 Return the eigenvalues satisfying the discrete form of Poisson's equation
 with periodic boundary conditions along the dimension `dim` with `N` grid
@@ -11,7 +11,7 @@ function poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Periodic)
 end
 
 """
-    poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Bounded)
+$(TYPEDSIGNATURES)
 
 Return the eigenvalues satisfying the discrete form of Poisson's equation
 with staggered Neumann boundary conditions along the dimension `dim` with
@@ -23,7 +23,7 @@ function poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Bounded)
 end
 
 """
-    poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Flat)
+$(TYPEDSIGNATURES)
 
 Return N-element array of `0.0` reshaped to three-dimensions.
 This is also the first `poisson_eigenvalue` for `Bounded` and `Periodic`

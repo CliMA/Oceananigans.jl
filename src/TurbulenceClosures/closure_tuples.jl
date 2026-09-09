@@ -62,7 +62,7 @@ for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
 
         @inline $outer_f(i, j, k, grid, closures::Tuple, Ks, args...) = (
                     $inner_f(i, j, k, grid, closures[1], Ks[1], args...)
-                  + $f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
+                  + $outer_f(i, j, k, grid, closures[2:end], Ks[2:end], args...))
     end
 end
 
@@ -73,18 +73,19 @@ end
 
 Utils.with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
+compute_closure_fields!(::Tuple{}, ::Tuple{}, args...; kwargs...) = nothing
+
 function compute_closure_fields!(closure_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
-    for (α, closure) in enumerate(closure_tuple)
-        closure_fields = closure_fields_tuple[α]
-        compute_closure_fields!(closure_fields, closure, args...; kwargs...)
-    end
+    compute_closure_fields!(first(closure_fields_tuple), first(closure_tuple), args...; kwargs...)
+    compute_closure_fields!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple), args...; kwargs...)
     return nothing
 end
 
+step_closure_prognostics!(::Tuple{}, ::Tuple{}, args...) = nothing
+
 function step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, args...)
-    for (α, closure) in enumerate(closure_tuple)
-        step_closure_prognostics!(closure_fields_tuple[α], closure, args...)
-    end
+    step_closure_prognostics!(first(closure_fields_tuple), first(closure_tuple), args...)
+    step_closure_prognostics!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple), args...)
     return nothing
 end
 
@@ -116,4 +117,4 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline combine_time_discretizations(d1, d2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(d1, d2), other_discs...)
 
-@inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)
+@inline TimeSteppers.time_discretization(closures::Tuple) = combine_time_discretizations(TimeSteppers.time_discretization.(closures)...)

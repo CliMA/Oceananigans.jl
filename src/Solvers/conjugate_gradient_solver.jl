@@ -36,11 +36,12 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 """
     ConjugateGradientSolver(linear_operation;
                             template_field,
-                            maxiter = size(template_field.grid),
+                            maxiter = prod(size(template_field)),
                             reltol = sqrt(eps(template_field.grid)),
                             abstol = 0,
                             preconditioner = nothing,
-                            enforce_gauge_condition! = no_gauge_enforcement!)
+                            enforce_gauge_condition! = no_gauge_enforcement!,
+                            residual_norm = norm)
 
 Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
 using a iterative conjugate gradient method with optional preconditioning.
@@ -80,6 +81,8 @@ Arguments
                               gradient iteration to ensure that the solution remains consistent
                               with the gauge condition.
                               The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
+
+* `residual_norm`: Function used to compute the norm of the residual for convergence checks. Default: `norm`.
 
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
@@ -123,7 +126,7 @@ function ConjugateGradientSolver(linear_operation;
 end
 
 """
-    solve!(x, solver::ConjugateGradientSolver, b, args...)
+$(TYPEDSIGNATURES)
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`

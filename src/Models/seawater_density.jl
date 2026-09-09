@@ -36,9 +36,10 @@ model_salinity(b::ConstantSalinitySB, model)       = b.constant_salinity
                      geopotential_height = model_geopotential_height(model)
 
 Return a `KernelFunctionOperation` that computes the in-situ density of seawater
-with (gridded) `temperature`, `salinity`, and at `geopotential_height`. To compute the
-in-situ density, the 55-term polynomial approximation to the equation of state from
-[Roquet et al. (2015)](@cite Roquet15TEOS) is used. By default, the `seawater_density`
+with (gridded) `temperature`, `salinity`, and at `geopotential_height`. The in-situ
+density is computed from the model's `BoussinesqEquationOfState` (for example a
+`TEOS10EquationOfState` or a Roquet-polynomial approximation such as
+[Roquet et al. (2015)](@cite Roquet15TEOS)). By default, the `seawater_density`
 extracts the geopotential height from the `model` to compute the in-situ density.
 To compute a potential density at some user-chosen reference geopotential height,
 set `geopotential_height` to a constant for the density computation,
@@ -48,9 +49,10 @@ geopotential_height = 0 # sea-surface height
 σ₀ = seawater_density(model; geopotential_height)
 ```
 
-**Note:** `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
-density. See the [relevant documentation section](@ref idealized_nonlinear_eos)
-for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
+!!! note "Equation of state"
+    `seawater_density` must be passed a `BoussinesqEquationOfState` to compute the
+    density. See the [relevant documentation section](@ref idealized_nonlinear_eos)
+    for how to set `SeawaterBuoyancy` using a `BoussinesqEquationOfState`.
 
 Example
 =======
@@ -85,7 +87,10 @@ julia> model = NonhydrostaticModel(grid; buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   ├── momentum: Centered(order=2)
+│   ├── T: Centered(order=2)
+│   └── S: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()

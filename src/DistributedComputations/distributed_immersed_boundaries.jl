@@ -2,7 +2,10 @@ using Oceananigans.Utils: getnamewrapper
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
+    GridFittedBottom,
+    PartialCellBottom,
     GridFittedBoundary,
+    bottom_height_interior,
     compute_mask,
     has_active_cells_map,
     has_active_z_columns,
@@ -25,8 +28,27 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     arch      = grid.architecture
     local_ib  = grid.immersed_boundary
     global_ug = reconstruct_global_grid(grid.underlying_grid)
-    global_ib = getnamewrapper(local_ib)(construct_global_array(local_ib.bottom_height, arch, size(grid)))
+    global_ib = reconstruct_global_immersed_boundary(local_ib, arch, grid)
     return ImmersedBoundaryGrid(global_ug, global_ib; active_cells_map, active_z_columns)
+end
+
+function reconstruct_global_immersed_boundary(ib::GridFittedBottom, arch, grid)
+    Nx, Ny, _ = size(grid)
+    bottom_interior = bottom_height_interior(ib.bottom_height)
+    global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
+    return GridFittedBottom(global_bottom_height, ib.immersed_condition)
+end
+
+function reconstruct_global_immersed_boundary(ib::PartialCellBottom, arch, grid)
+    Nx, Ny, _ = size(grid)
+    bottom_interior = bottom_height_interior(ib.bottom_height)
+    global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
+    return PartialCellBottom(global_bottom_height, ib.minimum_fractional_cell_height)
+end
+
+function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
+    global_mask = construct_global_array(ib.mask, arch, size(grid))
+    return GridFittedBoundary(global_mask)
 end
 
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
@@ -36,8 +58,7 @@ function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     underlying_grid       = grid.underlying_grid
     new_underlying_grid   = with_halo(new_halo, underlying_grid)
     new_immersed_boundary = resize_immersed_boundary(immersed_boundary, new_underlying_grid)
-    return ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary;
-                                active_cells_map, active_z_columns)
+    return ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary; active_cells_map, active_z_columns)
 end
 
 function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distributed, local_size)
@@ -48,8 +69,9 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
 
     local_ug = scatter_local_grids(ug, arch, local_size)
 
-    # Kinda hacky
-    local_bottom_height = partition(ib.bottom_height, arch, local_size)
+    nx, ny, _ = local_size
+    bottom_interior = bottom_height_interior(ib.bottom_height)
+    local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
     ImmersedBoundaryConstructor = getnamewrapper(ib)
     local_ib = ImmersedBoundaryConstructor(local_bottom_height)
 
@@ -88,19 +110,16 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    bottom_heigth_size = (Nx, Ny) .+ 2 .* (Hx, Hy)
+    bottom_height_size = (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
 
-    # Check that the size of a bottom field are
-    # consistent with the size of the grid
-    if any(size(ib.bottom_height) .!= bottom_heigth_size)
-        @warn "Resizing the bottom field to match the grids' halos"
+    # Check that the size of the bottom height is consistent with the grid's halos
+    if any(size(ib.bottom_height) .!= bottom_height_size)
+        @warn "Resizing the bottom height to match the grid's halos"
         bottom_field = Field{Center, Center, Nothing}(grid)
-        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny]
+        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny, :]
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
-        offset_bottom_array = dropdims(bottom_field.data, dims=3)
-
-        return getnamewrapper(ib)(offset_bottom_array)
+        return getnamewrapper(ib)(bottom_field.data)
     end
 
     return ib

@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -21,8 +21,9 @@ function test_immersed_boundary_grid_construction(FT, arch, boundary_type)
     @test halo_size(ibg) == halo_size(underlying_grid)
     @test topology(ibg) == topology(underlying_grid)
 
-    # Test that immersed boundary was materialized
-    @test ibg.immersed_boundary.bottom_height isa Field
+    # Test that immersed boundary was materialized as a bare array (not a Field)
+    @test ibg.immersed_boundary.bottom_height isa AbstractArray
+    @test !(ibg.immersed_boundary.bottom_height isa Field)
     @test eltype(ibg.immersed_boundary.bottom_height) === FT
 
     # Test summary function
@@ -36,15 +37,22 @@ function test_immersed_boundary_grid_with_array_bottom(FT, arch, boundary_type)
     underlying_grid = RectilinearGrid(arch, FT, size=(3, 3, 4), extent=(1, 1, 1))
 
     Nx, Ny = size(underlying_grid)[1:2]
-    bottom_array = zeros(FT, Nx, Ny) .+ 0.3
-    bottom_array = on_architecture(arch, bottom_array)
+    host_bottom_array = zeros(FT, Nx, Ny) .- 0.3
+    device_bottom_array = on_architecture(arch, host_bottom_array)
 
-    ib = boundary_type(bottom_array)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+    # A host array must work as bottom height even when the grid lives on a GPU
+    bottom_heights = map((host_bottom_array, device_bottom_array)) do bottom_array
+        ib = boundary_type(bottom_array)
+        ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
-    @test architecture(ibg) === arch
-    @test eltype(ibg) === FT
-    @test size(ibg) == size(underlying_grid)
+        @test architecture(ibg) === arch
+        @test eltype(ibg) === FT
+        @test size(ibg) == size(underlying_grid)
+
+        return Array(interior(bottom_height_field(ibg)))
+    end
+
+    @test bottom_heights[1] == bottom_heights[2]
 
     return nothing
 end
@@ -136,7 +144,7 @@ function test_bottom_height_field_consistency(FT, arch, boundary_type)
 
     ib = boundary_type(bottom_function)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
-    bottom_height = interior(ibg.immersed_boundary.bottom_height)
+    bottom_height = bottom_height_interior(ibg.immersed_boundary.bottom_height)
     if boundary_type === GridFittedBottom
         # For GridFittedBottom, the bottom should be snapped to grid faces
         zfaces = znodes(ibg, Face())

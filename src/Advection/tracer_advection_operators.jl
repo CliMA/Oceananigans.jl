@@ -1,8 +1,8 @@
 using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 
-@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, U, c)
-@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, V, c)
-@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, c) = advective_tracer_flux_z(i, j, k, grid, scheme, W, c)
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, TimeSteppers.time_discretization(scheme), U, c)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, TimeSteppers.time_discretization(scheme), V, c)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, c) = advective_tracer_flux_z(i, j, k, grid, scheme, TimeSteppers.time_discretization(scheme), W, c)
 
 #####
 ##### Fallback tracer fluxes!
@@ -18,7 +18,7 @@ using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 #####
 
 """
-    div_uc(i, j, k, grid, advection, U, c)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
 a velocity field, ``𝛁⋅(𝐯 c)``,

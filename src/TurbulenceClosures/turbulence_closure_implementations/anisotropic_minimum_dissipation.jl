@@ -1,6 +1,6 @@
+using Adapt: Adapt, adapt
 using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
-using Adapt: Adapt, adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -203,6 +203,20 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
+@inline function compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                                            ::Val{tracer_index}, ::Val{N}) where {tracer_index, N}
+    tracer_index > N && return nothing
+
+    @inbounds κₑ = κₑs[tracer_index]
+    @inbounds tracer = tracers[tracer_index]
+    launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
+            κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+
+    compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                               Val(tracer_index + 1), Val(N))
+    return nothing
+end
+
 function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
@@ -213,15 +227,11 @@ function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDiss
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
-        @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
-                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
-    end
+    compute_AMD_diffusivities!(closure_fields.κₑ, tracers, arch, grid, parameters, closure, velocities,
+                               Val(1), Val(length(closure_fields.κₑ)))
 
     return nothing
 end
-
 
 #####
 ##### Filter width at various locations

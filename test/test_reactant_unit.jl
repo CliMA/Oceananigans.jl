@@ -101,6 +101,14 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                                     latitude = [0, 1, 2, 3, 4],
                                     z = (0, 1))
 
+        @info "  Testing RectilinearGrid eltype..."
+        RFT = @jit eltype(sgrid)
+        @test RFT == Reactant.TracedRNumber{FT}
+
+        @info "  Testing LatitudeLongitudeGrid eltype..."
+        RFT = @jit eltype(llg)
+        @test RFT == Reactant.TracedRNumber{FT}
+
         @test architecture(llg) isa ReactantState
 
         for name in propertynames(llg)
@@ -233,6 +241,59 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         @test minimum(c) ≈ -950.0
         @test maximum(c) ≈ -50.0
+    end
+
+    @testset "AbstractOperation on LatitudeLongitudeGrid under trace" begin
+        grid = LatitudeLongitudeGrid(arch;
+                                     size = (4, 4, 4),
+                                     longitude = (0, 360),
+                                     latitude = (-60, 60),
+                                     z = (0, 1))
+
+        # The Reactant LatitudeLongitudeGrid `==` must return a plain `Bool`. The
+        # generic grid `==` compares node values, which under Reactant trace to a
+        # `TracedRNumber{Bool}` that cannot drive the `||` in validate_grid.
+        @test (grid == grid) isa Bool
+        @test grid == grid
+
+        value_c = 2
+        c  = CenterField(grid); set!(c, value_c)
+        value_d = 3
+        d  = CenterField(grid); set!(d, value_d)
+        cd = CenterField(grid)
+
+        # `c * d` builds a BinaryOperation -> validate_grid(c, d) -> (c.grid == d.grid).
+        # Compiling the assignment exercises the Reactant grid `==` while materializing
+        # into the preallocated `cd` (so we avoid the reduction allocation path).
+        multiply!(cd, c, d) = (cd .= c * d; nothing)
+        compiled_multiply! = @compile sync=true multiply!(cd, c, d)
+        compiled_multiply!(cd, c, d)
+        @test all(≈(value_c * value_d), Array(interior(cd)))
+    end
+
+    @testset "set! from a reduced field under trace" begin
+        grid = LatitudeLongitudeGrid(arch;
+                                     size = (4, 4, 4),
+                                     longitude = (0, 360),
+                                     latitude = (-60, 60),
+                                     z = (0, 1))
+
+        # A reduced column field (as used for reference states) must broadcast into
+        # a full 3D field inside a compiled function: the interpolation fallback in
+        # `set_to_field!` hops the grid to the CPU with `on_architecture(CPU(), grid)`,
+        # which cannot work on a traced grid (its validating reconstruction drives
+        # `||` with a `TracedRNumber{Bool}`, and traced data cannot be materialized
+        # on the CPU mid-trace).
+        u = CenterField(grid)
+        v = Field{Nothing, Nothing, Center}(grid)
+        column = reshape([1.0, 2.0, 3.0, 4.0], 1, 1, 4)
+        set!(v, column)
+
+        set_column!(u, v) = (set!(u, v); nothing)
+        compiled_set_column! = @compile sync=true set_column!(u, v)
+        compiled_set_column!(u, v)
+
+        @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
     @testset "Field reductions on RectilinearGrid" begin

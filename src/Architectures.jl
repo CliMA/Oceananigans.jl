@@ -1,16 +1,17 @@
 module Architectures
 
-export AbstractArchitecture, AbstractSerialArchitecture
-export CPU, GPU, ReactantState
-export device, device!, ndevices, synchronize, architecture, unified_array, device_copy_to!
-export array_type, on_architecture
-export child_architecture
+export
+    AbstractArchitecture, AbstractSerialArchitecture,
+    CPU, GPU, ReactantState,
+    device, device!, ndevices, synchronize, device_copy_to!,
+    array_type, unified_array,
+    architecture, child_architecture, on_architecture
 
-using Adapt
-using OffsetArrays
-using SparseArrays
-
-import KernelAbstractions as KA
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: KernelAbstractions as KA
+using OffsetArrays: OffsetArrays, OffsetArray
+using SparseArrays: SparseArrays, SparseMatrixCSC
 
 """
     AbstractArchitecture
@@ -38,7 +39,7 @@ struct CPU <: AbstractSerialArchitecture end
     GPU(device)
 
 Return a GPU architecture using `device`.
-`device` defauls to CUDA.CUDABackend(always_inline=true)
+`device` defauls to `CUDA.CUDABackend(always_inline=true)`
 if CUDA is loaded.
 """
 struct GPU{D} <: AbstractSerialArchitecture
@@ -81,7 +82,7 @@ architecture(::Type{Array}) = CPU()
 @inline sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 
 """
-    child_architecture(arch)
+$(TYPEDSIGNATURES)
 
 Return `arch`itecture of child processes.
 On single-process, non-distributed systems, return `arch`.

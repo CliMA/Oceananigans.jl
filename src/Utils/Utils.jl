@@ -6,6 +6,7 @@ export tupleit, parenttuple, datatuple, datatuples
 export ordered_dict_show
 export instantiate
 export with_tracers
+export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
@@ -15,6 +16,8 @@ export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Misc. small utils
@@ -31,6 +34,7 @@ function get_active_cells_map end
 ##### Include utils
 #####
 
+include("time_discretizations.jl")
 include("prettysummary.jl")
 include("kernel_launching.jl")
 include("prettytime.jl")

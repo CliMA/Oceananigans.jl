@@ -11,7 +11,7 @@ struct AdvectiveForcing{U, V, W}
 end
 
 """
-    AdvectiveForcing(u=ZeroField(), v=ZeroField(), w=ZeroField())
+    AdvectiveForcing(; u=ZeroField(), v=ZeroField(), w=ZeroField())
 
 Build a forcing term representing advection by the velocity field `u, v, w`.
 

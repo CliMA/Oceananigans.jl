@@ -92,6 +92,8 @@ simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration 
 # `simulation` will run for 1000 iterations with a time-step that resolves the time-scale
 # at which our temperature field diffuses. All that's left is to
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualizing the results

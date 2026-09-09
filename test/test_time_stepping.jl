@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
@@ -350,6 +351,49 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         # Significantly different time => not approx
         clock7 = Clock(time=2.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
         @test !(clock1 ≈ clock7)
+    end
+
+    @testset "Clock(grid) accumulates in Float64 and adapts to grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
+            @test eltype(grid) == FT
+            @test clock isa Clock{Float64}
+            @test Oceananigans.TimeSteppers.kernel_time_type(clock) == FT
+
+            kernel_clock = Adapt.adapt(nothing, clock)
+            @test kernel_clock.time isa FT
+            @test propertynames(kernel_clock) == (:time, :last_Δt, :last_stage_Δt, :iteration, :stage)
+        end
+
+        explicit_clock = Clock(time=0.0f0)
+        @test explicit_clock isa Clock{Float32}
+        @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
+    end
+
+    @testset "Clock last_Δt tracks the most recent time step" begin
+        @info "  Testing that clock.last_Δt is updated by every time stepper..."
+
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                model = NonhydrostaticModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+                model = HydrostaticFreeSurfaceModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+        end
     end
 
     for arch in archs, FT in float_types

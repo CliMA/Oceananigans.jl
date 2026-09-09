@@ -23,7 +23,7 @@ end
 end
 
 """
-    ∇²ᶜᶜᶜ(i, j, k, grid, c)
+$(TYPEDSIGNATURES)
 
 Calculate the Laplacian of ``c`` via
 

@@ -162,8 +162,7 @@ set!(model, u=noise, w=noise)
 # conservatively, based on the smallest grid size of our domain and either an advective
 # or diffusive time scaling, depending on which is shorter.
 
-Δt₀ = 0.5 * minimum([Oceananigans.Advection.cell_advection_timescale(model),
-                     Oceananigans.Diagnostics.cell_diffusion_timescale(model)])
+Δt₀ = 0.5 * minimum_xspacing(grid) / V∞
 simulation = Simulation(model, Δt = Δt₀, stop_time = 1day)
 
 # We use a `TimeStepWizard` to adapt our time-step,
@@ -208,6 +207,8 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
 
 # Now we just run it!
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results

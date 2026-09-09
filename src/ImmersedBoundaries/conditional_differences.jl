@@ -60,11 +60,12 @@ for (d, ξ) in enumerate((:x, :y, :z))
         end
 
         # `other_locs` contains locations in the two "other" directions not being differenced
-        other_locs = []
-        for l in 1:3
-            if l != d
-                push!(other_locs, loc[l])
-            end
+        other_locs = if d == 1
+            (loc[2], loc[3])
+        elseif d == 2
+            (loc[1], loc[3])
+        else
+            (loc[1], loc[2])
         end
 
         @eval begin

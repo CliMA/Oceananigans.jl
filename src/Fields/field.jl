@@ -1,10 +1,11 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
+    BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -54,7 +55,7 @@ end
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
 
-const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+const ValidFaceBCS = Union{NFBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
@@ -238,7 +239,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, data_indices, loc, grid, view_indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -264,7 +265,7 @@ end
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
 """
-    view(f::Field, indices...)
+$(TYPEDSIGNATURES)
 
 Returns a `Field` with `indices`, whose `data` is
 a view into `f`, offset to preserve index meaning.
@@ -407,7 +408,7 @@ function interior(a::OffsetArray,
 end
 
 """
-    interior(f::Field)
+$(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
@@ -513,14 +514,14 @@ struct FixedTime{T}
 end
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
 """
 compute_at!(field, time) = compute!(field)
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` if `time != field.status.time`.
 """
@@ -590,6 +591,71 @@ const ReducedField = Union{XReducedField,
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
+
+#####
+##### Fields windowed to a single plane act as boundary conditions on the parallel boundary
+#####
+
+# A field windowed with `indices` stores its data offset to the window (for example the k-axis of
+# `Field(op, indices=(:, :, Nz))` is `Nz:Nz`), so the boundary-normal index of a boundary condition
+# is the window's own slot rather than 1 (which is what reduced fields and plain 2D arrays use).
+# The locations are restricted to `Face`/`Center` so these do not overlap with the reduced fields above.
+const FaceOrCenter = Union{Face, Center}
+const XPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{<:AbstractRange, Colon, Colon}}
+const YPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, <:AbstractRange, Colon}}
+const ZPlaneField = Field{<:FaceOrCenter, <:FaceOrCenter, <:FaceOrCenter, <:Any, <:Any, <:Tuple{Colon, Colon, <:AbstractRange}}
+
+const PlaneField = Union{XPlaneField, YPlaneField, ZPlaneField}
+
+@inline BoundaryConditions.getbc(condition::XPlaneField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[first(condition.indices[1]), j, k]
+@inline BoundaryConditions.getbc(condition::YPlaneField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, first(condition.indices[2]), k]
+@inline BoundaryConditions.getbc(condition::ZPlaneField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, first(condition.indices[3])]
+
+function Adapt.adapt_structure(to, bc::BoundaryCondition{<:AbstractBoundaryConditionClassification, <:PlaneField})
+    plane_field = bc.condition
+    LX, LY, LZ = location(plane_field)
+    condition = Field{LX, LY, LZ}(nothing,
+                                  adapt(to, plane_field.data),
+                                  nothing,
+                                  plane_field.indices,
+                                  nothing,
+                                  nothing,
+                                  nothing)
+    return BoundaryCondition(adapt(to, bc.classification), condition)
+end
+
+# A `Field` used as a boundary condition on dimension `dim` is indexed directly with the tangential
+# indices of the boundary (`getbc(condition, j, k, grid)` for the west and east boundaries, and so on),
+# so it must span the whole boundary: it may not be windowed along the tangential dimensions. Along
+# the boundary-normal dimension `dim` it may be reduced, windowed to a single plane (the `getbc`
+# methods above read it there), or neither, in which case it is windowed to its plane on (`Face`) or
+# adjacent to (`Center`) the boundary.
+function BoundaryConditions.regularize_boundary_condition(condition::Field, grid, loc, dim, side, args...)
+    indices = condition.indices
+    tangential_dims = filter(!=(dim), (1, 2, 3))
+
+    all(indices[d] isa Colon for d in tangential_dims) ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must span the whole boundary, " *
+                            "so it may not be windowed along dimensions $tangential_dims, but has indices $indices."))
+
+    location(condition)[dim] === Nothing || indices[dim] isa Colon || length(indices[dim]) == 1 ||
+        throw(ArgumentError("A Field used as a boundary condition on dimension $dim must be reduced along dimension $dim, " *
+                            "or windowed along it to a single plane if at all, but has location $(location(condition)) " *
+                            "and indices $indices."))
+
+    return window_to_boundary(condition, dim, side)
+end
+
+boundary_plane(::Type{LeftBoundary},  condition, dim) = 1
+boundary_plane(::Type{RightBoundary}, condition, dim) = size(condition, dim)
+
+function window_to_boundary(condition, dim, side)
+    windowed = !(condition.indices[dim] isa Colon)
+    reduced = location(condition)[dim] === Nothing
+    (windowed || reduced) && return condition
+    window = ntuple(d -> d == dim ? boundary_plane(side, condition, dim) : Colon(), 3)
+    return view(condition, window...)
+end
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -696,7 +762,7 @@ get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
 """
-    condition_operand(f::Function, op::AbstractField, condition, mask)
+$(TYPEDSIGNATURES)
 
 Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
 
@@ -784,6 +850,55 @@ end
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
+# Index reductions: locate extrema over `interior(c)`, returning indices in the field's own
+# axes so that `c[argmax(c)] == maximum(c)` — which for default fields coincide with positional
+# interior (and `nodes`) indices. The generic fallbacks scalar-index on the GPU and are blind
+# to immersed boundaries.
+# The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
+# on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
+# the one-element destination — so neither the operand nor the pairs are materialized.
+function locate_extremum(better, c::AbstractField, condition, mask)
+    mask = convert(eltype(c), mask)
+    operand = condition_operand(c, condition, mask)
+
+    # Ties resolve to the smaller linear index, matching Base
+    tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
+                               isequal(x, y) ? (x, min(i, j)) : (x, i)
+
+    # Everything is 1-based from here: a windowed interior is a 1-based view and a
+    # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
+    values = operand === c ? interior(c) : operand
+
+    value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
+    positional = CartesianIndices(size(values))[i]
+
+    # Shift into the field's own axes so that `c[argmax(c)] == maximum(c)` holds for
+    # windowed fields too; for default fields the shift vanishes
+    return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
+end
+
+function fold_pairs(::Architectures.CPU, tiebreak, values, init)
+    result = init
+    linear = 0
+    @inbounds for I in CartesianIndices(size(values))
+        linear += 1
+        result = tiebreak(result, (values[I], linear))
+    end
+    return result
+end
+
+function fold_pairs(arch, tiebreak, values, init)
+    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, values, LinearIndices(size(values))))
+    result = on_architecture(arch, fill(init, 1, 1, 1))
+    Base.mapreducedim!(identity, tiebreak, result, pairs)
+    return first(Array(result))
+end
+
+Base.findmax(c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    c, condition, mask)
+Base.findmin(c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, c, condition, mask)
+Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
+Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
+
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     mask = convert(eltype(c), mask)
     operator = condition_operand(f, c, condition, mask)
@@ -859,12 +974,17 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 ##### Checkpointing
 #####
 
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = prognostic_state(field.data))
+    return (; data = on_architecture(CPU(), parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
     return restored
 end
 

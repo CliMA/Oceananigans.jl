@@ -13,6 +13,7 @@ env:
   BENCHMARK_SCRIPT: "benchmarking/run_benchmarks.jl"
   OUTPUT_FILE: "benchmark_results.json"
   OUTPUT_FILE_GPU2: "benchmark_results_gpu2.json"
+  JULIA_CUDA_USE_COMPAT: false
 
 steps:
   - label: "🏕️ Initialize tartarus environment"

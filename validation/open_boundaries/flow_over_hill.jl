@@ -1,10 +1,11 @@
 using Oceananigans
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Models: boundary_total_area
 using CairoMakie
 using Printf
 
-function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
-                                     arch = CPU(),
+function flow_over_hill_simulation(; arch = CPU(),
+                                     scheme_type = PerturbationAdvection,
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
                                      hill_height = 1,
@@ -37,11 +38,16 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
-    # Model kwargs
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = OpenBoundaryCondition(U; scheme))
+    # Both boundaries are targeted PerturbationAdvection sharing one transport Q, so inflow
+    # (west) balances outflow (east) exactly — the net-zero solvability condition for the
+    # pressure Poisson problem. Separate Q_west/Q_east would differ because the hill makes the
+    # two boundary areas unequal, leaving a residual with no pool boundary to absorb it.
+    Q = U * boundary_total_area(:west, grid)
+    u_boundaries = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q)),
+        east = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q)))
     boundary_conditions = (u = u_boundaries,)
-    advection = WENO(; order=5, minimum_buffer_upwind_order=1)
+    advection = WENO(; order=5)
 
     model_kwargs = (; boundary_conditions)
 

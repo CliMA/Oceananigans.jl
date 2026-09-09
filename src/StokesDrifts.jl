@@ -10,14 +10,11 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
-using Adapt: adapt
-
-using Oceananigans.Fields
-using Oceananigans.Operators
-using Oceananigans.Grids: AbstractGrid, node
+using Adapt: Adapt, adapt
+using Oceananigans.Fields: Field
+using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ, ℑzᵃᵃᶜ
 using Oceananigans.Utils: prettysummary
-
-import Adapt: adapt_structure
 
 #####
 ##### Functions for "no surface waves"
@@ -43,11 +40,11 @@ struct UniformStokesDrift{P, UZ, VZ, UT, VT}
     parameters :: P
 end
 
-adapt_structure(to, sd::UniformStokesDrift) = UniformStokesDrift(adapt(to, sd.∂z_uˢ),
-                                                                 adapt(to, sd.∂z_vˢ),
-                                                                 adapt(to, sd.∂t_uˢ),
-                                                                 adapt(to, sd.∂t_vˢ),
-                                                                 adapt(to, sd.parameters))
+Adapt.adapt_structure(to, sd::UniformStokesDrift) = UniformStokesDrift(adapt(to, sd.∂z_uˢ),
+                                                                       adapt(to, sd.∂z_vˢ),
+                                                                       adapt(to, sd.∂t_uˢ),
+                                                                       adapt(to, sd.∂t_vˢ),
+                                                                       adapt(to, sd.parameters))
 
 Base.summary(::UniformStokesDrift{Nothing}) = "UniformStokesDrift{Nothing}"
 
@@ -189,16 +186,16 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     parameters :: P
 end
 
-adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.∂x_vˢ),
-                                                   adapt(to, sd.∂x_wˢ),
-                                                   adapt(to, sd.∂y_uˢ),
-                                                   adapt(to, sd.∂y_wˢ),
-                                                   adapt(to, sd.∂z_uˢ),
-                                                   adapt(to, sd.∂z_vˢ),
-                                                   adapt(to, sd.∂t_uˢ),
-                                                   adapt(to, sd.∂t_vˢ),
-                                                   adapt(to, sd.∂t_wˢ),
-                                                   adapt(to, sd.parameters))
+Adapt.adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.∂x_vˢ),
+                                                         adapt(to, sd.∂x_wˢ),
+                                                         adapt(to, sd.∂y_uˢ),
+                                                         adapt(to, sd.∂y_wˢ),
+                                                         adapt(to, sd.∂z_uˢ),
+                                                         adapt(to, sd.∂z_vˢ),
+                                                         adapt(to, sd.∂t_uˢ),
+                                                         adapt(to, sd.∂t_vˢ),
+                                                         adapt(to, sd.∂t_wˢ),
+                                                         adapt(to, sd.parameters))
 
 Base.summary(::StokesDrift{Nothing}) = "StokesDrift{Nothing}"
 
@@ -230,7 +227,7 @@ corresponding to a surface gravity wave field with an envelope that (potentially
 in the horizontal directions.
 
 To resolve the evolution of the Lagrangian-mean momentum, we require all the components
-of the "psuedovorticity",
+of the "pseudovorticity",
 
 ```math
 𝛁 × 𝐯ˢ = \\hat{\\boldsymbol{x}} (∂_y wˢ - ∂_z vˢ) + \\hat{\\boldsymbol{y}} (∂_z uˢ - ∂_x wˢ) + \\hat{\\boldsymbol{z}} (∂_x vˢ - ∂_y uˢ)
@@ -238,12 +235,12 @@ of the "psuedovorticity",
 
 as well as the time-derivatives of ``uˢ``, ``vˢ``, and ``wˢ``.
 
-Note that each function (e.g., `∂z_uˢ`) is generally a function of depth, horizontal coordinates,
-and time.Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
+Note that each function (e.g., `∂z_uˢ`) generally depends on depth, horizontal coordinates,
+and time. Thus, the correct function signature depends on the grid, since `Flat` horizontal directions
 are omitted.
 
-For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`),
-then, e.g., `∂z_uˢ` is callable via `∂z_uˢ(x, z, t)`. When `!isnothing(parameters)`, then
+For example, on a grid with `topology = (Periodic, Flat, Bounded)` (and `parameters=nothing`)
+`∂z_uˢ` is callable via `∂z_uˢ(x, z, t)`. When `!isnothing(parameters)`, then
 `∂z_uˢ` is callable via `∂z_uˢ(x, z, t, parameters)`. Similarly, on a grid with
 `topology = (Periodic, Periodic, Bounded)` and `parameters=nothing`, `∂z_uˢ` is called
 via `∂z_uˢ(x, y, z, t)`.
@@ -336,7 +333,7 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline ∂t_vˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time)
 @inline ∂t_wˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time)
 
-@inline parameters_tuple(sw::SDnoP) = tuple()
+@inline parameters_tuple(::SDnoP) = tuple()
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)

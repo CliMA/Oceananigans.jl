@@ -5,7 +5,7 @@ using Oceananigans.TimeSteppers: _rk3_substep_field!
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
-    rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single RK3 substep for `ShallowWaterModel`.
 
@@ -18,10 +18,11 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
+    kernel_Δt = convert(eltype(grid), Δt)
 
     launch!(architecture(grid), grid, :xyz, _rk_substep_solution!,
             model.solution,
-            Δt, γⁿ, ζⁿ,
+            kernel_Δt, γⁿ, ζⁿ,
             model.timestepper.Gⁿ,
             model.timestepper.G⁻)
 
@@ -32,7 +33,7 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
         @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
         @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
 
-        _tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
+        _tracer_kernel!(c, kernel_Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
 
     return nothing

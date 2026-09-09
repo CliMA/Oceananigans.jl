@@ -78,7 +78,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
+                                  scratch = zeros(architecture(grid), eltype(grid), worksize(grid)...),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 
@@ -87,7 +87,7 @@ function BatchedTridiagonalSolver(grid;
 end
 
 """
-    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
+$(TYPEDSIGNATURES)
 
 Solve the batched tridiagonal system of linear equations with right hand side
 `rhs` and lower diagonal, diagonal, and upper diagonal coefficients described by the

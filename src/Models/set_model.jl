@@ -9,7 +9,7 @@ import Oceananigans.Fields: set!
 #####
 
 """
-    set!(model::OceananigansModels, filepath::AbstractString)
+$(TYPEDSIGNATURES)
 
 Set data in `model.velocities`, `model.tracers` and the timestepper tendencies `model.timestepper.Gⁿ` and
 `model.timestepper.G⁻` (for non-self starting timesteppers) to the checkpointed data stored at `filepath`.
