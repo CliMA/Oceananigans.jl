@@ -1,10 +1,11 @@
 using Adapt
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, AbstractCurvilinearGrid
 using Oceananigans.Grids: xnode, ynode, znode, λnode, φnode, rnode
-using Oceananigans.Fields: AbstractField, default_indices, location
+using Oceananigans.Fields: AbstractField, Field, default_indices, instantiated_location, location
 using Oceananigans.Operators: Δx, Δy, Δz, Δr, Ax, Δλ, Δφ, Ay, Az, volume
 using Oceananigans.Operators: Operators, XNode, YNode, ZNode, ΛNode, ΦNode, RNode
 
+import Oceananigans.Grids: xnodes, ynodes, znodes, rnodes, λnodes, φnodes
 import Oceananigans.Grids: xspacings, yspacings, zspacings, rspacings, λspacings, φspacings
 
 const GridMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode,
@@ -90,6 +91,59 @@ function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid)
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
 end
+
+#####
+##### Nodes
+#####
+
+# The source field is deliberately an argument of these kernels even though its data are not
+# used. `KernelFunctionOperation.indices` intersects the indices of its arguments, so carrying
+# the field here makes windowing propagate naturally to the node operation.
+@inline xnode_for_field(i, j, k, grid, field) = xnode(i, j, k, grid, instantiated_location(field)...)
+@inline ynode_for_field(i, j, k, grid, field) = ynode(i, j, k, grid, instantiated_location(field)...)
+@inline znode_for_field(i, j, k, grid, field) = znode(i, j, k, grid, instantiated_location(field)...)
+@inline rnode_for_field(i, j, k, grid, field) = rnode(i, j, k, grid, instantiated_location(field)...)
+@inline λnode_for_field(i, j, k, grid, field) = λnode(i, j, k, grid, instantiated_location(field)...)
+@inline φnode_for_field(i, j, k, grid, field) = φnode(i, j, k, grid, instantiated_location(field)...)
+
+@inline function node_operation(kernel, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ}
+    return KernelFunctionOperation{LX, LY, LZ}(kernel, field.grid, field)
+end
+
+# No-keyword calls mirror `xspacings(field)` and return lazy operations. Explicit coordinate
+# keywords retain the raw-coordinate behavior for compatibility (for example,
+# `xnodes(field; with_halos=true)`). `with_halos=nothing` lets us distinguish omission from an
+# explicit `false` because keyword arguments do not participate in Julia method dispatch.
+@inline function xnodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(xnode_for_field, field)
+    with_halos = something(with_halos, false)
+    return xnodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[1], kwargs...)
+end
+
+@inline function ynodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(ynode_for_field, field)
+    with_halos = something(with_halos, false)
+    return ynodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[2], kwargs...)
+end
+
+@inline function znodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(znode_for_field, field)
+    with_halos = something(with_halos, false)
+    return znodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[3], kwargs...)
+end
+
+@inline function rnodes(field::Field{LX, LY, LZ, O, G}; with_halos=nothing, kwargs...) where {LX, LY, LZ, O, G<:AbstractGrid}
+    isnothing(with_halos) && isempty(kwargs) && return node_operation(rnode_for_field, field)
+    with_halos = something(with_halos, false)
+    return rnodes(field.grid, instantiated_location(field)...;
+                  with_halos, indices=Oceananigans.Fields.indices(field)[3], kwargs...)
+end
+
+@inline λnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(λnode_for_field, field)
+@inline φnodes(field::Field{LX, LY, LZ, O, G}) where {LX, LY, LZ, O, G<:AbstractCurvilinearGrid} = node_operation(φnode_for_field, field)
 
 #####
 ##### Spacings
