@@ -117,7 +117,7 @@ function time_step!(model, timestepper::PressureProjectionRungeKutta3TimeStepper
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and prepare at iteration 0, in case run! is not used:
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     # The FPJ predictor needs both φⁿ and φⁿ⁻¹ in the timestepper. Run
     # iteration 0 with vanilla RK3 (three real Poisson solves) to harvest an
@@ -186,6 +186,18 @@ end
 
 time_step!(model::AbstractModel{<:PressureProjectionRungeKutta3TimeStepper}, Δt; callbacks=[]) =
     time_step!(model, model.timestepper, Δt; callbacks=callbacks)
+
+# Make sure the clock knows about the first stage Δt
+function maybe_prepare_first_time_step!(model::AbstractModel{<:PressureProjectionRungeKutta3TimeStepper}, Δt, callbacks)
+    if model.clock.iteration == 0
+        γ¹ = model.timestepper.γ¹
+        model.clock.last_Δt = Δt
+        model.clock.last_stage_Δt = stage_Δt(Δt, γ¹, nothing)
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 """
     pressure_projection_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks, ::Val{stage})

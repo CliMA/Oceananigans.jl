@@ -141,30 +141,20 @@ end
 
 function pressure_projection_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks,
                                           stage::Union{Val{1}, Val{2}})
-    Δτ   = stage_Δt(Δt, γⁿ, ζⁿ)
-    grid = model.grid
+    grid      = model.grid
+    FT        = eltype(grid)
+    kernel_Δt = convert(FT, Δt)
+    Δτ        = convert(FT, stage_Δt(Δt, γⁿ, ζⁿ))
 
     compute_flux_bc_tendencies!(model)
     # apply_divergence_correction!(model)  # disabled: at ν=1e-3 stress test it
                                             # preserved order but slightly raised
                                             # constant (esp. on tracer error)
-    model_fields = prognostic_fields(model)
 
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, u, kernel_Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, c, kernel_Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
 
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       Val(i-3),
-                       model.clock,
-                       fields(model),
-                       Δτ)
-    end
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δτ)
 
     apply_fpj_pressure_correction!(model, Δτ, stage, Δt)
 
@@ -172,30 +162,20 @@ function pressure_projection_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ
 end
 
 function pressure_projection_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks, stage::Val{3})
-    Δτ   = stage_Δt(Δt, γⁿ, ζⁿ)
-    grid = model.grid
+    grid      = model.grid
+    FT        = eltype(grid)
+    kernel_Δt = convert(FT, Δt)
+    Δτ        = convert(FT, stage_Δt(Δt, γⁿ, ζⁿ))
 
     compute_flux_bc_tendencies!(model)
 
     # TODO: test whether the divergence correction is needed at substage 3.
     # apply_divergence_correction!(model)
-    model_fields = prognostic_fields(model)
 
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, u, kernel_Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, c, kernel_Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
 
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       Val(i-3),
-                       model.clock,
-                       fields(model),
-                       Δτ)
-    end
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δτ)
 
     # Single full Poisson at substage 3 (Capuano 2016 Eq. 7 / De Michele 2020
     # Eqs. 19-21). Substages 1 and 2 used the FPJ-α/β predictor; substage 3
