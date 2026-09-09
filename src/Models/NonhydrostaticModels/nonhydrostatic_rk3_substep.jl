@@ -33,29 +33,12 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     Δτ = stage_Δt(Δt, γⁿ, ζⁿ)
 
     compute_flux_bc_tendencies!(model)
-    model_fields = prognostic_fields(model)
 
     # Prognostic variables stepping
-    advecting_velocities = implicit_advecting_velocities(model)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, u, Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, c, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
 
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        field_advection = exclude_periphery ? model.advection.momentum : model.advection[name]
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
-                       model.clock,
-                       fields(model),
-                       Δτ,
-                       field_advection,
-                       advecting_velocities)
-    end
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δτ)
 
     compute_pressure_correction!(model, Δτ)
     make_pressure_correction!(model, Δτ)
