@@ -394,25 +394,25 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
                         fold_topology = fold_topology(grid.conformal_mapping))
 end
 
-function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
+function halo_filling_grid(new_halo, grid::MPITripolarGrid)
 
-    arch = old_grid.architecture
+    arch = grid.architecture
 
-    n  = size(old_grid)
+    n  = size(grid)
     N  = map(sum, concatenate_local_sizes(n, arch))
-    z  = cpu_face_constructor_z(old_grid)
+    z  = cpu_face_constructor_z(grid)
 
-    north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
-    first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
-    southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
-    return TripolarGrid(arch, eltype(old_grid);
+    north_poles_latitude = grid.conformal_mapping.north_poles_latitude
+    first_pole_longitude = grid.conformal_mapping.first_pole_longitude
+    southernmost_latitude = grid.conformal_mapping.southernmost_latitude
+    return TripolarGrid(arch, eltype(grid);
                         halo = new_halo,
                         size = N,
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(old_grid.conformal_mapping))
+                        fold_topology = fold_topology(grid.conformal_mapping))
 end
 
 #####
