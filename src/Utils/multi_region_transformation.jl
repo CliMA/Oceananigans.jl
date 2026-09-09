@@ -93,7 +93,7 @@ end
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     for r in R
-        regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_func!(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
 
     return nothing
@@ -105,7 +105,7 @@ end
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
     R = regions(regional_func!)
     for r in R
-        getregion(regional_func!, r)((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        getregion(regional_func!, r)(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
     return nothing
 end
@@ -132,8 +132,7 @@ end
     # return values
     regional_return_values = Vector(undef, length(R))
     for r in R
-        regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
-                                                  (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_return_values[r] = regional_func(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
 
     if Nreturns == 1
