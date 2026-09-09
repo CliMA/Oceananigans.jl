@@ -372,6 +372,30 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
+    @testset "Clock last_Δt tracks the most recent time step" begin
+        @info "  Testing that clock.last_Δt is updated by every time stepper..."
+
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                model = NonhydrostaticModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+                model = HydrostaticFreeSurfaceModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+        end
+    end
+
     for arch in archs, FT in float_types
         A = typeof(arch)
         Oceananigans.defaults.FloatType = FT
