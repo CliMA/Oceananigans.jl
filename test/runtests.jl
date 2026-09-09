@@ -61,6 +61,7 @@ CUDA.allowscalar() do
             include("test_bounds_preserving_advection.jl")
             include("test_adaptive_implicit_vertical_advection.jl")
             include("test_weno_smoothness.jl")
+            include("test_load_balancing.jl")
         end
     end
 

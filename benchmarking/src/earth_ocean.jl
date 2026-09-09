@@ -7,6 +7,8 @@
 
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
+using Oceananigans.DistributedComputations: SimplifiedGeneralisedBlockDistribution, create_weight_map, create_balanced_partition
+
 """
     earth_ocean(arch = CPU();
                 float_type = Float32,
@@ -17,7 +19,8 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 zstar_coordinate = false,
                 closure = CATKEVerticalDiffusivity(),
                 timestepper = :SplitRungeKutta3,
-                tracers = (:T, :S))
+                tracers = (:T, :S),
+                load_balancing = false)
 
 Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case
 with realistic Earth bathymetry.
@@ -35,6 +38,7 @@ with realistic Earth bathymetry.
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
 - `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
 - `tracers`: Tuple of tracer names (default: `(:T, :S)`)
+- `load_balancing`: Whether to create a load balanced partition
 """
 function earth_ocean(arch = CPU();
                      float_type = Float32,
@@ -45,30 +49,18 @@ function earth_ocean(arch = CPU();
                      tracer_advection = WENO(order=7),
                      closure = CATKEVerticalDiffusivity(),
                      timestepper = :SplitRungeKutta3,
-                     tracers = (:T, :S))
+                     tracers = (:T, :S),
+                     load_balancing = false)
+
+    Oceananigans.defaults.FloatType = float_type
 
     grid_type in ("tripolar", "lat_lon", "immersed_lat_lon") ||
         error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"immersed_lat_lon\".")
 
-    Oceananigans.defaults.FloatType = float_type
-
-    depth = 5000  # meters
-    z = ExponentialDiscretization(Nz, -depth, 0; scale=depth/4, mutable=zstar_coordinate)
-
-    if grid_type == "tripolar"
-        underlying_grid = TripolarGrid(arch;
-            size = (Nx, Ny, Nz),
-            halo = (7, 7, 7),
-            z
-        )
-    else # lat_lon or immersed_lat_lon
-        underlying_grid = LatitudeLongitudeGrid(arch;
-            size = (Nx, Ny, Nz),
-            halo = (7, 7, 7),
-            longitude = (0, 360),
-            latitude = (-80, 85),
-            z
-        )
+    if load_balancing
+        underlying_grid = create_underlying_grid(arch.child_architecture, grid_type, (Nx, Ny, Nz), zstar_coordinate)
+    else
+        underlying_grid = create_underlying_grid(arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
     end
 
     if grid_type == "lat_lon"
@@ -82,9 +74,22 @@ function earth_ocean(arch = CPU();
             ndims(bh) == 3 ? dropdims(bh, dims=3) : bh
         end
 
-        grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
-            active_cells_map = true
-        )
+        if load_balancing
+            ib = PartialCellBottom(bottom_height)
+            partition = arch.partition
+            weight_map = create_weight_map(underlying_grid, ib)
+            new_partition = create_balanced_partition(SimplifiedGeneralisedBlockDistribution(), partition, weight_map)
+            new_arch = Distributed(arch.child_architecture; partition=new_partition)
+            new_grid = create_underlying_grid(new_arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
+            grid = ImmersedBoundaryGrid(new_grid, ib;
+                active_cells_map = true
+            )
+
+        else
+            grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
+                active_cells_map = true
+            )
+        end
     end
 
     free_surface = SplitExplicitFreeSurface(; substeps=30)
@@ -114,4 +119,26 @@ function earth_ocean(arch = CPU();
     set!(model; ic...)
 
     return model
+end
+
+function create_underlying_grid(arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
+
+    depth = 5000  # meters
+    z = ExponentialDiscretization(Nz, -depth, 0; scale=depth/4, mutable=zstar_coordinate)
+
+    if grid_type == "tripolar"
+        underlying_grid = TripolarGrid(arch;
+            size = (Nx, Ny, Nz),
+            halo = (7, 7, 7),
+            z
+        )
+    else # lat_lon or immersed_lat_lon
+        underlying_grid = LatitudeLongitudeGrid(arch;
+            size = (Nx, Ny, Nz),
+            halo = (7, 7, 7),
+            longitude = (0, 360),
+            latitude = (-80, 85),
+            z
+        )
+    end
 end

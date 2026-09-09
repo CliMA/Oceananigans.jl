@@ -6,7 +6,8 @@ export
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
-    @root, @onrank, @distribute, @handshake
+    @root, @onrank, @distribute, @handshake,
+    SimplifiedGeneralisedBlockDistribution, create_weight_map, create_balanced_partition
 
 using MPI
 
@@ -37,6 +38,7 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+include("load_balancing.jl")
 
 function NCCLDistributed end
 

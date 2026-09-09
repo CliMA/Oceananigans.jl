@@ -50,6 +50,7 @@ function test_architectures()
                     Distributed(child_arch; synchronized_communication=false, partition=Partition(x = Fractional(1, 2, 3, 4))),
                     Distributed(child_arch; synchronized_communication=false, partition=Partition(y = Fractional(1, 2, 3, 4))),
                     Distributed(child_arch; synchronized_communication=false, partition=Partition(x = Fractional(1, 2), y = Equal())))
+                    Distributed(child_arch; synchronized_communication=false, partition=Partition(x = Fractional(1, 2), y = Fractional(1, 2)))
         else
             return throw("The MPI partitioning is not correctly configured.")
         end
