@@ -17,7 +17,7 @@ using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attribu
 defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
+Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
                 array_type=Array{eltype(fd)},
                 time_dependent=false,
                 with_halos=false,
@@ -368,7 +368,7 @@ function define_output_variable!(model, dataset, output, output_name; array_type
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
+Base.@nospecializeinfer function define_output_variable!(@nospecialize(model), dataset, @nospecialize(output::AbstractField), output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
