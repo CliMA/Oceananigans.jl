@@ -186,9 +186,10 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         # Step closure prognostics
         step_closure_prognostics!(model, Δτ)
 
-        # Tick the clock if we ended the stages
+        # Tick the clock and record the full time step if we ended the stages
         if stage == model.timestepper.Nstages
             tick_time!(model.clock, Δt)
+            model.clock.last_Δt = Δt
         end
 
         # Update the state
