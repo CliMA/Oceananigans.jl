@@ -22,6 +22,7 @@ export
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     FluxTapering,
+    RotatedFluxTapering,
 
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,

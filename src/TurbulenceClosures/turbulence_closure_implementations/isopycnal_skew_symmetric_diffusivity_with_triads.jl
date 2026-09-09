@@ -179,6 +179,57 @@ end
 @inline ϵy⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁻⁺(i, j, k, grid, b, C), sl)
 @inline ϵy⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁻⁻(i, j, k, grid, b, C), sl)
 
+"""
+    RotatedFluxTapering(slope_limiter=FluxTapering(1e-2); horizontal_diffusivity_ratio=1)
+
+Slope limiter that rotates the symmetric (Redi) flux toward horizontal as `slope_limiter` tapers it off, instead
+of switching it off entirely. Each triad then carries
+
+```
+K = ϵ κˢ (isoneutral)  +  (1 - ϵ) r κˢ (horizontal)
+```
+
+with `ϵ` the tapering factor of the wrapped `slope_limiter` and `r` the `horizontal_diffusivity_ratio`. Where the taper engages,
+the closure mixes across isopycnals at `r κˢ`, following the boundary layer treatment of Large et al. (1997) and Danabasoglu et al. (2008).
+The rotation also applies where the column is not stably stratified, so a convecting layer mixes horizontally at `r κˢ` rather than not at all.
+Use a bare `FluxTapering` for a closure that is adiabatic everywhere.
+
+References
+==========
+* Large, W. G., G. Danabasoglu, S. C. Doney, and J. C. McWilliams (1997) Sensitivity to surface forcing and boundary layer mixing in a global ocean model. 
+  J. Phys. Oceanogr._, **27**, 2418–2447.
+* Danabasoglu, G., R. Ferrari, and J. C. McWilliams (2008) Sensitivity of an ocean general circulation model to a parameterization of near-surface eddy fluxes. 
+  J. Climate_, **21**, 1192–1208.
+"""
+struct RotatedFluxTapering{L, FT}
+                   slope_limiter :: L
+    horizontal_diffusivity_ratio :: FT
+end
+
+RotatedFluxTapering(slope_limiter=FluxTapering(1e-2); horizontal_diffusivity_ratio=1) =
+    RotatedFluxTapering(slope_limiter, horizontal_diffusivity_ratio)
+
+Adapt.adapt_structure(to, tapering::RotatedFluxTapering) =
+    RotatedFluxTapering(Adapt.adapt(to, tapering.slope_limiter),
+                        Adapt.adapt(to, tapering.horizontal_diffusivity_ratio))
+
+@inline tapering_factor(Sx, Sy, tapering::RotatedFluxTapering) = tapering_factor(Sx, Sy, tapering.slope_limiter)
+
+# Multiplier for a triad's ∂ₓc term. Equal to ϵ unless the limiter rotates the tapered-off flux into a horizontal
+# one, which raises the horizontal coefficient back toward r while leaving every slope-carrying term at ϵ.
+@inline horizontal_taper(ϵ, slope_limiter) = ϵ
+@inline horizontal_taper(ϵ, tapering::RotatedFluxTapering) = ϵ + (1 - ϵ) * tapering.horizontal_diffusivity_ratio
+
+@inline ϵhx⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * horizontal_taper(stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(Sx⁺⁺(i, j, k, grid, b, C), zero(grid), sl), sl)
+@inline ϵhx⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * horizontal_taper(stably_stratified(i, j, k,   grid, b, C) * tapering_factor(Sx⁺⁻(i, j, k, grid, b, C), zero(grid), sl), sl)
+@inline ϵhx⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * horizontal_taper(stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(Sx⁻⁺(i, j, k, grid, b, C), zero(grid), sl), sl)
+@inline ϵhx⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * horizontal_taper(stably_stratified(i, j, k,   grid, b, C) * tapering_factor(Sx⁻⁻(i, j, k, grid, b, C), zero(grid), sl), sl)
+
+@inline ϵhy⁺⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * horizontal_taper(stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁺⁺(i, j, k, grid, b, C), sl), sl)
+@inline ϵhy⁺⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * horizontal_taper(stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁺⁻(i, j, k, grid, b, C), sl), sl)
+@inline ϵhy⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * horizontal_taper(stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁻⁺(i, j, k, grid, b, C), sl), sl)
+@inline ϵhy⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * horizontal_taper(stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁻⁻(i, j, k, grid, b, C), sl), sl)
+
 @inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure, clock, C) =
     (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C),
      κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_skew,      clock, C))
@@ -218,10 +269,15 @@ end
     #           |      |
     # k   ------|------|
 
-    Fx = (ϵ⁺⁺ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
-          ϵ⁺⁻ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
-          ϵ⁻⁺ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
-          ϵ⁻⁻ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
+    ϵh⁺⁺ = ϵhx⁺⁺(i-1, j, k, grid, sl, b, C)
+    ϵh⁺⁻ = ϵhx⁺⁻(i-1, j, k, grid, sl, b, C)
+    ϵh⁻⁺ = ϵhx⁻⁺(i,   j, k, grid, sl, b, C)
+    ϵh⁻⁻ = ϵhx⁻⁻(i,   j, k, grid, sl, b, C)
+
+    Fx = (ϵh⁺⁺ * κˢ⁺ * ∂x_c + ϵ⁺⁺ * (κˢ⁺ - κᴬ⁺) * Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c) +
+          ϵh⁺⁻ * κˢ⁺ * ∂x_c + ϵ⁺⁻ * (κˢ⁺ - κᴬ⁺) * Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c) +
+          ϵh⁻⁺ * κˢ⁻ * ∂x_c + ϵ⁻⁺ * (κˢ⁻ - κᴬ⁻) * Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c) +
+          ϵh⁻⁻ * κˢ⁻ * ∂x_c + ϵ⁻⁻ * (κˢ⁻ - κᴬ⁻) * Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c)) / 4
 
     return - Fx
 end
@@ -244,10 +300,15 @@ end
 
     ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
-    Fy = (ϵ⁺⁺ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
-          ϵ⁺⁻ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
-          ϵ⁻⁺ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
-          ϵ⁻⁻ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c))) / 4
+    ϵh⁺⁺ = ϵhy⁺⁺(i, j-1, k, grid, sl, b, C)
+    ϵh⁺⁻ = ϵhy⁺⁻(i, j-1, k, grid, sl, b, C)
+    ϵh⁻⁺ = ϵhy⁻⁺(i, j,   k, grid, sl, b, C)
+    ϵh⁻⁻ = ϵhy⁻⁻(i, j,   k, grid, sl, b, C)
+
+    Fy = (ϵh⁺⁺ * κˢ⁺ * ∂y_c + ϵ⁺⁺ * (κˢ⁺ - κᴬ⁺) * Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c) +
+          ϵh⁺⁻ * κˢ⁺ * ∂y_c + ϵ⁺⁻ * (κˢ⁺ - κᴬ⁺) * Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c) +
+          ϵh⁻⁺ * κˢ⁻ * ∂y_c + ϵ⁻⁺ * (κˢ⁻ - κᴬ⁻) * Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c) +
+          ϵh⁻⁻ * κˢ⁻ * ∂y_c + ϵ⁻⁻ * (κˢ⁻ - κᴬ⁻) * Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c)) / 4
 
     return - Fy
 end
