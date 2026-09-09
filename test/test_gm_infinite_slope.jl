@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Units
+
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, DiffusiveFormulation, AdvectiveFormulation
 
 function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_direction)
@@ -10,14 +12,18 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     ny = 16
     nz = 16
 
-    z_faces = ExponentialDiscretization(nz, -1, 0)
+    # Unstratified, so the isopycnal slope is infinite. The domain is ocean-scale because the closure
+    # then reduces to explicit horizontal diffusion, whose Courant condition sets the time step.
+    Lh = 100kilometers
+    M² = convert(FT, 1e-8)
+    z_faces = ExponentialDiscretization(nz, -1000, 0)
 
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
         # Slope in x-direction (Flat in y)
         grid = RectilinearGrid(arch, FT;
                                size = (nx, nz),
-                               x = (0, 1),
+                               x = (0, Lh),
                                z = z_faces,
                                topology = (Bounded, Flat, Bounded))
 
@@ -26,13 +32,13 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                             closure = eddy_closure,
                                             tracers = :b)
 
-        set!(model, b = (x, z) -> x / 10000)
+        set!(model, b = (x, z) -> M² * x)
 
     elseif horizontal_direction == :y
         # Slope in y-direction (Flat in x)
         grid = RectilinearGrid(arch, FT;
                                size = (ny, nz),
-                               y = (0, 1),
+                               y = (0, Lh),
                                z = z_faces,
                                topology = (Flat, Bounded, Bounded))
 
@@ -41,14 +47,14 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                             closure = eddy_closure,
                                             tracers = :b)
 
-        set!(model, b = (y, z) -> y / 10000)
+        set!(model, b = (y, z) -> M² * y)
 
     else # :xy - full 3D
         # Slope in both x and y directions
         grid = RectilinearGrid(arch, FT;
                                size = (nx, ny, nz),
-                               x = (0, 1),
-                               y = (0, 1),
+                               x = (0, Lh),
+                               y = (0, Lh),
                                z = z_faces,
                                topology = (Bounded, Bounded, Bounded))
 
@@ -57,7 +63,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                             closure = eddy_closure,
                                             tracers = :b)
 
-        set!(model, b = (x, y, z) -> (x + y) / 10000)
+        set!(model, b = (x, y, z) -> M² * (x + y))
     end
 
     # Time step the model 10 times

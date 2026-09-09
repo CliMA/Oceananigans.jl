@@ -311,6 +311,7 @@ julia> IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
 IsopycnalSkewSymmetricDiffusivity:
 ├── κ_skew: 1000.0
 ├── κ_symmetric: 1000.0
+├── skew_flux_formulation: Oceananigans.TurbulenceClosures.DiffusiveFormulation
 ├── isopycnal_tensor: Oceananigans.TurbulenceClosures.SmallSlopeIsopycnalTensor{Float64}
 └── slope_limiter: FluxTapering{Float64}
 ```
