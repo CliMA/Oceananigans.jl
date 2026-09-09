@@ -15,6 +15,8 @@ end
 
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
+Oceananigans.prognostic_state(::TimeStepWizard) = nothing
+
 Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                                 "cfl=",           prettysummary(wizard.cfl),
                                               ", max_Δt=",        prettysummary(wizard.max_Δt),

@@ -7,7 +7,7 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
+using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
@@ -339,20 +339,26 @@ function materialize_model_advection(advection, grid)
     return NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
 end
 
-function inflate_grid_halo_size(grid, tendency_terms...)
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
+Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(user_halo..., grid, tendency_terms...)
+    needs_inflation = any(map(<, user_halo, required_halo))
+    return inflate_grid_halo_size(needs_inflation, grid, required_halo)
+end
 
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+# `needs_inflation` folds to a compile-time constant when the halo sizes do, so the grid type is
+# known to the compiler whenever the user grid already has sufficient halos
+@inline inflate_grid_halo_size(needs_inflation::Bool, grid, required_halo) =
+    needs_inflation ? with_inflated_halo(grid, required_halo) : grid
 
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
+@noinline function with_inflated_halo(grid, required_halo)
+    Hx, Hy, Hz = required_halo
+    @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+          "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid. " *
+          "The model grid will be different from the input grid. To avoid this warning, " *
+          "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
 
-    return grid
+    return with_halo((Hx, Hy, Hz), grid)
 end
 
 # return the total advective velocities
