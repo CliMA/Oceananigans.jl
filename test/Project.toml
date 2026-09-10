@@ -37,7 +37,7 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
-KernelAbstractions = {url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git", rev = "0534c7336ea0ef7a178836cbb6268b1250ff65b2"}
+KernelAbstractions = {url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git", rev = "901cd0ea3172c601304cf97e3f00bd50aea5bf10"}
 Oceananigans = {path = ".."}
 
 [compat]
