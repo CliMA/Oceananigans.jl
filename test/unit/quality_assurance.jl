@@ -74,7 +74,6 @@ end
 # Loaded only after the Aqua tests, which would otherwise report ambiguities between these packages and Oceananigans
 using AMDGPU: AMDGPU
 using CairoMakie: CairoMakie
-using ConservativeRegridding: ConservativeRegridding
 using CUDA: CUDA
 using Enzyme: Enzyme
 using Metal: Metal
