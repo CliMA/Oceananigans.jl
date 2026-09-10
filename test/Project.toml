@@ -43,6 +43,7 @@ CUDATools = {rev = "intrinsics", subdir = "CUDATools", url = "https://github.com
 KernelAbstractions = {rev = "901cd0ea3172c601304cf97e3f00bd50aea5bf10", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
 Metal = {rev = "kaintr", url = "https://github.com/JuliaGPU/Metal.jl.git"}
 Oceananigans = {path = ".."}
+StructArrays = {rev = "mg/ka-0.10", url = "https://github.com/JuliaArrays/StructArrays.jl.git"}
 cuBLAS = {rev = "intrinsics", subdir = "lib/cublas", url = "https://github.com/christiangnrd/CUDA.jl.git"}
 cuSPARSE = {rev = "intrinsics", subdir = "lib/cusparse", url = "https://github.com/christiangnrd/CUDA.jl.git"}
 
