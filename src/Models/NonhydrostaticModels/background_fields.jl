@@ -15,14 +15,11 @@ function background_velocity_fields(fields, grid, clock)
     return (; u, v, w)
 end
 
-function background_tracer_fields(bg, tracer_names, grid, clock)
-    tracer_fields =
-        Tuple(c ∈ keys(bg) ?
-              regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
-              ZeroField()
-              for c in tracer_names)
-
-    return NamedTuple{tracer_names}(tracer_fields)
+Base.@constprop :aggressive function background_tracer_fields(bg, tracer_names, grid, clock)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        c ∈ keys(bg) ? regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) : ZeroField()
+    end
 end
 
 #####
@@ -51,13 +48,13 @@ function BackgroundFields(; background_closure_fluxes=false, fields...)
     return BackgroundFields{background_closure_fluxes}(velocities, tracers)
 end
 
-function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
+Base.@constprop :aggressive function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
     velocities = background_velocity_fields(background_fields.velocities, grid, clock)
     tracers = background_tracer_fields(background_fields.tracers, tracer_names, grid, clock)
     return BackgroundFields{Q}(velocities, tracers)
 end
 
-function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
+Base.@constprop :aggressive function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
     velocities = background_velocity_fields(background_fields, grid, clock)
     tracers = background_tracer_fields(background_fields, tracer_names, grid, clock)
     return BackgroundFields{false}(velocities, tracers)

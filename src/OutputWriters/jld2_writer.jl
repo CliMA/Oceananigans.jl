@@ -212,6 +212,18 @@ function JLD2Writer(model, outputs; filename, schedule,
                       including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
 end
 
+# Inferring this for a concrete model type means inferring `serializeproperty!` for the
+# union of all the model's property types, which takes seconds and is never needed
+Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including)
+    saveproperties!(file, model, including)
+
+    for property in including
+        serializeproperty!(file, "serialized/$property", getproperty(model, property))
+    end
+
+    return nothing
+end
+
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
@@ -223,12 +235,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
-            saveproperties!(file, model, including)
-
-            # Serialize properties in `including`.
-            for property in including
-                serializeproperty!(file, "serialized/$property", getproperty(model, property))
-            end
+            save_and_serialize_properties!(file, model, including)
         end
     catch err
         @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""

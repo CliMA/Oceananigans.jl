@@ -8,6 +8,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans.Fields: field, location
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
+using Oceananigans.Utils: named_tuple
 using Oceananigans.Architectures: Architectures, on_architecture
 
 include("multiple_forcings.jl")
