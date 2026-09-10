@@ -36,7 +36,7 @@ end
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
     # When ambiguities are resolved, update the cap accordingly.
-    @test number_of_ambiguities == 314
+    @test number_of_ambiguities == 269
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -84,7 +84,6 @@ end
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
         pirate_modules = (
             Oceananigans.AbstractOperations,
-            Oceananigans.BoundaryConditions,
             Oceananigans.BuoyancyFormulations,
             Oceananigans.Grids,
             Oceananigans.Models,

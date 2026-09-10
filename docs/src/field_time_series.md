@@ -70,7 +70,7 @@ fts[4, 4, 4, 4]
 0.269
 ```
 
-```jldoctest field_time_series; filter = r"[0-9\.e-…\s]+"
+```jldoctest field_time_series; filter = r"[0-9\.e…\s-]+"
 interior(fts, :, 1, 1, :) # x-t array
 
 # output

@@ -17,7 +17,7 @@ using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attribu
 defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
+Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospecialize(fd::AbstractField);
                 array_type=Array{eltype(fd)},
                 time_dependent=false,
                 with_halos=false,
@@ -184,22 +184,23 @@ end
 ##### NetCDF file initialization
 #####
 
-function initialize_nc_file(model,
-                            grids,
-                            output_grid_map,
-                            filepath,
-                            outputs,
-                            array_type,
-                            indices,
-                            global_attributes,
-                            output_attributes,
-                            dimensions,
-                            with_halos,
-                            include_grid_metrics,
-                            overwrite_files,
-                            deflatelevel,
-                            dimension_name_generator,
-                            dimension_type)
+# Runs once per file: not specializing on the model saves seconds of inference per model type
+Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
+                                                    @nospecialize(grids),
+                                                    output_grid_map,
+                                                    filepath,
+                                                    @nospecialize(outputs),
+                                                    array_type,
+                                                    indices,
+                                                    global_attributes,
+                                                    output_attributes,
+                                                    dimensions,
+                                                    with_halos,
+                                                    include_grid_metrics,
+                                                    overwrite_files,
+                                                    deflatelevel,
+                                                    dimension_name_generator,
+                                                    dimension_type)
 
     mode = (overwrite_files || !isfile(filepath)) ? "c" : "a"
 
@@ -369,7 +370,7 @@ function define_output_variable!(model, dataset, output, output_name; array_type
 end
 
 """ Defines empty field variable. """
-function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
+Base.@nospecializeinfer function define_output_variable!(@nospecialize(model), dataset, @nospecialize(output::AbstractField), output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
