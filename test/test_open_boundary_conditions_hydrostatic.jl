@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: ObliqueRadiation, raymond_kuo_radiation, orlanski_radiation
 using Test
 
 #####
@@ -496,6 +497,100 @@ function test_gravity_wave_pairing()
     return auto_paired && user_respected && no_pairing
 end
 
+#####
+##### Test: ObliqueRadiation
+#####
+# Raymond & Kuo (1984) splits the phase speed between the boundary-normal and
+# boundary-tangential directions, dividing by |∇φ|² = (∂ₙφ)² + (∂_t̂φ)². The
+# defining property is that when the tangential gradient vanishes it must collapse
+# EXACTLY onto Orlanski: |∇φ|² → (∂ₙφ)², cₙ → −∂ₜφ/∂ₙφ, and cₜ → 0. If that fails
+# the scheme is not a generalisation of NormalRadiation, it is a different scheme.
+
+function test_oblique_reduces_to_normal()
+    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    Δt, Cᵃ = 10.0, 0.05
+
+    ok = true
+    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6)
+        # all four tangential differences zero ⇒ ∂_t̂φ = 0
+        o = raymond_kuo_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, 0.0, Δt, obl, true, Cᵃ)
+        n = orlanski_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, Δt, nrm, true, Cᵃ)
+        # algebraically identical; the two expressions differ only in rounding
+        ok &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
+    end
+    return ok
+end
+
+# ... and the tangential term must actually do something when the gradient is there,
+# otherwise the scheme is NormalRadiation wearing a different name.
+function test_oblique_tangential_term_is_active()
+    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    Δt, Cᵃ = 10.0, 0.05
+    φᵇ, φ₁, φ₂, φ₁ⁿ = 0.5, 0.8, 0.3, 0.6
+
+    flat = raymond_kuo_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, 0.0, Δt, obl, true, Cᵃ)
+    tilt = raymond_kuo_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.2, 0.1, 0.25, 0.15, 0.0, Δt, obl, true, Cᵃ)
+    base = orlanski_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, Δt, nrm, true, Cᵃ)
+
+    return isapprox(flat, base; rtol = 1e-12) && !isapprox(tilt, base; rtol = 1e-6)
+end
+
+# On inflow both phase-speed components are switched off and the boundary relaxes to
+# the exterior value on `inflow_timescale`; with τ_in = 0 that is an exact clamp.
+function test_oblique_inflow_clamps()
+    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    φᵉˣᵗ = -0.37
+    v = raymond_kuo_radiation(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15,
+                              φᵉˣᵗ, 10.0, obl, false, 0.05)
+    return v == φᵉˣᵗ
+end
+
+# End-to-end: the scheme materialises its storage, writes only halo cells, and does
+# not blow up on a hydrostatic model.
+function test_oblique_radiation_hydrostatic()
+    Nx, Ny, Nz = 32, 8, 1
+    Lx = 1000.0
+    U = 1.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, 250.0),
+                           z = (-100.0, 0), topology = (Bounded, Periodic, Bounded))
+
+    scheme = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme),
+                                    west = NormalFlowBoundaryCondition(0; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        velocities = PrescribedVelocityFields(u = U),
+        tracer_advection = UpwindBiased(order = 1),
+        buoyancy = nothing, tracers = :c,
+        boundary_conditions = (; c = FieldBoundaryConditions(
+            east = ValueBoundaryCondition(0; scheme),
+            west = ValueBoundaryCondition(0; scheme))))
+
+    east_bc = model.tracers.c.boundary_conditions.east
+    storage_materialized = east_bc.classification.scheme.φ₁ isa AbstractArray &&
+                           size(east_bc.classification.scheme.φ₁) == (Ny, Nz)
+
+    σ = Lx / 16
+    set!(model, c = (x, y, z) -> exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    c = model.tracers.c
+    interior_before = copy(Array(interior(c)))
+    fill_halo_regions!(c, model.clock, Oceananigans.fields(model))
+    interior_untouched = Array(interior(c)) == interior_before
+
+    Δt = 0.5 * (Lx / Nx) / U
+    for _ in 1:round(Int, Lx / (U * Δt))
+        time_step!(model, Δt)
+    end
+
+    cf = Array(interior(c))
+    return storage_materialized && interior_untouched &&
+           !any(isnan, cf) && all(cf .>= -1e-12) && all(cf .<= 1 + 1e-12)
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -531,5 +626,21 @@ end
 
     @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin
         @test test_gravity_wave_pairing()
+    end
+
+    @testset "ObliqueRadiation reduces to NormalRadiation at normal incidence" begin
+        @test test_oblique_reduces_to_normal()
+    end
+
+    @testset "ObliqueRadiation tangential term is active" begin
+        @test test_oblique_tangential_term_is_active()
+    end
+
+    @testset "ObliqueRadiation clamps to the exterior on inflow" begin
+        @test test_oblique_inflow_clamps()
+    end
+
+    @testset "ObliqueRadiation on a HydrostaticFreeSurfaceModel" begin
+        @test test_oblique_radiation_hydrostatic()
     end
 end
