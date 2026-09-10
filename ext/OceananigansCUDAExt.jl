@@ -149,7 +149,12 @@ end
   return event
 end
 
-@inline DC.sync_event(event::CUDA.CuEvent) = CUDA.synchronize(event)
+function @inline DC.sync_event(event::CUDA.CuEvent)
+  event_complete = CUDA.isdone(event)
+  while !event_complete
+    event_complete = CUDA.isdone(event)
+  end
+end
 
 # Use faster versions of `newton_div` on Nvidia GPUs
 CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)

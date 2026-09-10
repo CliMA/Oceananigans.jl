@@ -236,7 +236,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     if arch isa AsynchronousDistributed
       Threads.@spawn begin
-        synchronize(fill_event)
+        sync_event(fill_event)
 
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
         complete_fill_event!(c)
