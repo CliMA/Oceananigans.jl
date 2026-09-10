@@ -182,6 +182,12 @@ If the documentation built is successful, you can open `docs/build/index.html` i
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 
+## Compiler annotations
+
+In the source code we sometimes use compiler annotations like `@inline`/`@noinline`, or `@nospecialize` and `Base.@nospecializeinfer`, or `Base.@constprop`.
+These should be used sparingly and with a clear understanding of what they do, and only when it is demonstrated that they give substantial compile-time, or run-time, speedup with no other significant drawbacks.
+For example, it may be possible that the compiler spends a very long time trying to specialise for certain arguments of a function, for no runtime benefit, in that case `Base.@nospecializeinfer` + `@nospecialize` may be beneficial if benchmarks show that there are no regressions.
+
 ## Pre-commit hook
 
 This project uses [pre-commit](https://pre-commit.com/) for ensuring some minimal formatting consistency in the codebase, in particular related to whitespace.
