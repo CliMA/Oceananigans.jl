@@ -116,17 +116,10 @@ end
     return nothing
 end
 
-@inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
+@inline function complete_comm!(c, arch, grid, buffers, requests, async, side)
 
     # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
     if isnothing(requests)
-        return nothing
-    end
-
-    # Overlapping communication and computation, store requests in a `MPI.Request`
-    # pool to be waited upon later on when halos are required.
-    if async || (arch isa AsynchronousDistributed)
-        push!(arch.mpi_requests, requests...)
         return nothing
     end
 
@@ -177,7 +170,7 @@ function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffe
   !isnothing(reqnw) && push!(requests, reqnw...)
   !isnothing(reqne) && push!(requests, reqne...)
 
-  pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, false, Val(:corners))
+  complete_comm!(c, arch, grid, buffers, requests, false, Val(:corners))
 
 end
 
@@ -246,7 +239,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
       synchronize(fill_event)
 
       requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-      pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+      complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     end
 
     return nothing
