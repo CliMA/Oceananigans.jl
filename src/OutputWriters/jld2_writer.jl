@@ -1,5 +1,5 @@
 using Printf: @sprintf
-using JLD2: JLD2, jldopen
+using JLD2: JLD2, jldopen, ZstdFilter
 
 using Oceananigans: initialize!
 using Oceananigans.Fields: indices
@@ -38,7 +38,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                including = default_included_properties(model),
                verbose = false,
                part = 1,
-               compress = true,
+               compress = ZstdFilter(),
                jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
@@ -108,9 +108,11 @@ Keyword arguments
           Default: 1.
 
 - `compress`: Determines whether and how to compress data when writing to the file, forwarded
-              to `JLD2.jldopen`. Can be a `Bool` or any compressor supported by JLD2.jl; see the
+              to `JLD2.jldopen`. Can be a `Bool` (`true` uses the `Deflate` filter) or any
+              compression filter supported by JLD2.jl; see the
               [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/)
-              for the available options. Default: `true` (compression enabled, using the `Deflate` filter).
+              for the available options. Default: `JLD2.ZstdFilter()` (compression with the
+              Zstandard algorithm).
 
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
              A `:compress` entry here takes precedence over the `compress` keyword argument.
@@ -184,7 +186,7 @@ function JLD2Writer(model, outputs; filename, schedule,
                     including = default_included_properties(model),
                     verbose = false,
                     part = 1,
-                    compress = true,
+                    compress = ZstdFilter(),
                     jld2_kw = Dict{Symbol, Any}())
 
     jld2_kw = Dict{Symbol, Any}(pairs(jld2_kw))
