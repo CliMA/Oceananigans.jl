@@ -125,7 +125,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon later on when halos are required.
-    if async && (arch isa AsynchronousDistributed)
+    if async || (arch isa AsynchronousDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -154,7 +154,7 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
 
-    if async && (arch isa AsynchronousDistributed)
+    if async || (arch isa AsynchronousDistributed)
       async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
     else
       sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
