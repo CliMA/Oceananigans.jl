@@ -1,80 +1,26 @@
 #####
-##### TracerReservoir open boundary scheme (after MOM6's OBC tracer reservoirs)
+##### TracerReservoir open boundary scheme
 #####
 
 """
     TracerReservoir(; inflow_length_scale = 0, outflow_length_scale = 0)
 
-A tracer open boundary condition with memory, following the tracer reservoirs of MOM6
-(`MOM_open_boundary.F90`).
+Open boundary condition for tracers that carries a reservoir value `cʳ` just outside each
+boundary point, after the tracer reservoirs of MOM6. Each step the flow advects a distance
+`d = |uₙ| Δt` across the boundary face, and the reservoir relaxes toward the upstream value
+over a length scale `L`:
 
-A prescribed-value open boundary has no memory: the instant the flow reverses, water
-re-entering the domain carries the exterior value `cᵉˣᵗ`, no matter what just left. Across a
-tidal cycle, an eddy brushing the boundary, or any oscillating flow, that manufactures a
-spurious tracer flux — the domain exports its own water and imports someone else's.
+    cʳ ← (cʳ + a c★) / (1 + a),    a = d / L
 
-A reservoir fixes this by carrying one extra value per boundary point, `cʳ`, which is the
-concentration of the water sitting just outside the boundary. It is not relaxed in time but
-in *distance advected*: each step the flow moves a distance `d = |uₙ| Δt` across the
-boundary face, and `cʳ` is relaxed over a length scale `L` toward whichever reservoir the
-flow is filling,
+On outflow `c★` is the adjacent interior value and `L = outflow_length_scale`; on inflow `c★`
+is the exterior value `cᵉˣᵗ` and `L = inflow_length_scale`. The boundary halo value is set to
+`cʳ`, the advecting velocity is taken at the boundary face, and the reservoir starts at `cᵉˣᵗ`.
 
-    cʳ ← (cʳ + a c★) / (1 + a) ,    a = d / L
+`L = 0` sets `cʳ = c★` every step, `L = Inf` freezes the reservoir, and a finite `L` relaxes
+it. With both length scales `0`, the default, the condition is a memoryless
+`ValueBoundaryCondition`: zero-gradient on outflow and `cᵉˣᵗ` on inflow.
 
-taken as a backward-Euler step so it is unconditionally stable for any `Δt`. The target
-`c★` and the length scale `L` depend on the direction of the flow:
-
-  - **Outflow** (`uₙ` leaving the domain): `c★ = cᴵ`, the adjacent interior value, and
-    `L = outflow_length_scale`. The reservoir fills with the water the domain is exporting.
-  - **Inflow** (`uₙ` entering): `c★ = cᵉˣᵗ`, the prescribed exterior value, and
-    `L = inflow_length_scale`. The reservoir is flushed toward the external state.
-
-The boundary halo value is then set to `cʳ`. So on inflow the domain re-imports the water it
-recently exported, and only converges to `cᵉˣᵗ` after a length `inflow_length_scale` of
-sustained inflow.
-
-Each length scale has three regimes, matching MOM6:
-
-  - `L = 0` — **instant**: `cʳ = c★` every step. On outflow this is a zero-gradient
-    (upwind) outflow condition; on inflow it snaps to `cᵉˣᵗ`. This is the memoryless
-    behaviour of a plain `ValueBoundaryCondition`.
-  - `0 < L < Inf` — **finite**: relaxation over the distance `L`, as above.
-  - `L = Inf` — **frozen**: `cʳ` never changes in that flow direction.
-
-Both length scales default to `0`, MOM6's own default, so that `TracerReservoir()` reproduces
-the memoryless behaviour exactly and the reservoir is opt-in. There is no universal value to
-default to: the useful `inflow_length_scale` is a property of the flow at the boundary, not of
-the scheme.
-
-Choosing `inflow_length_scale`. Note first that the benefit is not monotone — freezing the
-reservoir is not the best choice, and can be much worse than a finite length scale. A reservoir
-holds *one number* per boundary point. During outflow it tracks the boundary concentration; at
-the reversal it holds whatever value was there at that instant, and then feeds that *constant*
-back in. The water that actually returns has a declining profile, being the far tail of what
-left, so a frozen reservoir over-feeds. Relaxing toward `cᵉˣᵗ` during inflow mimics that decline,
-and the length scale at which it matches is set by the distance water travels across the
-boundary during a reversal — the parcel excursion `D` (for an oscillation of amplitude `U` and
-frequency `ω`, `D = 2U/ω`). Scanning a translating-patch problem over two patch widths and two
-excursions puts the optimum at
-
-    inflow_length_scale ≈ 0.3 D
-
-with the error there some 8× smaller than memoryless. The scaling is with `D` and not with the
-width of the tracer structure, as it must be for a scheme that relaxes over a distance advected.
-It degrades when nearly all of the tracer leaves the domain (`D` ≳ 4× the structure width),
-where no single-valued reservoir can help and the optimum is ill-defined.
-
-`outflow_length_scale = 0` is almost always right: the domain should record the water it exports
-immediately, and this makes the outflow condition zero-gradient, the standard choice.
-
-`TracerReservoir` is a `Value` scheme for `Center`-located fields — tracers. It carries no
-condition on the velocities, so it is used alongside a scheme for the boundary-normal
-velocity ([`NormalRadiation`](@ref), [`ObliqueRadiation`](@ref) or
-[`PerturbationAdvection`](@ref)) and the barotropic pair.
-
-The reservoir slab is allocated automatically during boundary condition regularization; it is
-one two-dimensional array over the boundary face, per tracer, per boundary. It is initialized
-to `cᵉˣᵗ` on the first halo fill.
+`TracerReservoir` is a `Value` scheme for `Center`-located fields.
 
 References
 ==========
@@ -127,7 +73,6 @@ function Base.show(io::IO, r::TracerReservoir)
     print(io, "└── outflow_length_scale: ", prettysummary(r.outflow_length_scale))
 end
 
-# The reservoir is a tracer condition: Value classification, Center-located fields.
 const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 
 #####
@@ -163,38 +108,17 @@ end
 ##### The reservoir update
 #####
 
-# Backward-Euler relaxation of the reservoir toward the upstream value, over a distance.
-#
-#   cʳ ← (cʳ + a c★) / (1 + a),   a = |uₙ| Δt / L
-#
-# with (c★, L) = (cᴵ, L_out) on outflow and (cᵉˣᵗ, L_in) on inflow. `L = 0` is the instant
-# limit `cʳ = c★`, handled explicitly so that no Inf or NaN is ever formed; `L = Inf` gives
-# `a = 0` and leaves the reservoir frozen, which needs no special case.
-#
-# This is the length-scale form of MOM6's `update_segment_tracer_reservoirs`, written with a
-# single branch instead of the mask-and-sentinel arithmetic that Fortran needs. The two
-# implementations agree term by term: MOM6's `L_out` and `-L_in` are both `a` here, and its
-# `a_out`/`a_in` switches are the `L == 0` branch.
+# Backward-Euler relaxation of the reservoir toward the upstream value c★ over the length scale L.
 @inline function reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, outflow, reservoir)
     L  = ifelse(outflow, reservoir.outflow_length_scale, reservoir.inflow_length_scale)
     c★ = ifelse(outflow, cᴵ, cᵉˣᵗ)
-
-    instant = L == 0
-    Lˢ = ifelse(instant, one(L), L)  # avoid dividing by zero in the unselected branch
-    a  = d / Lˢ
-
-    cʳ⁺ = (cʳ + a * c★) / (1 + a)
-
-    return ifelse(instant, c★, cʳ⁺)
+    a  = d / L
+    return ifelse(L == 0, c★, (cʳ + a * c★) / (1 + a))
 end
 
-# The reservoir is advanced once per timestep from an anchor, following the same
-# anchor/latest convention as NormalRadiation: at an anchored fill (stage ≤ 1) the value from
-# the end of the previous step is promoted to the anchor; later stages of a multi-stage
-# stepper re-step from that same anchor rather than compounding.
-#
-# On the very first fill there is no clock (or no completed stage), so Δt is infinite; the
-# reservoir is then initialized to the exterior value, matching MOM6's `tres = t`.
+# The reservoir is advanced once per time step from an anchor: an anchored fill (stage ≤ 1)
+# promotes the latest value to the anchor, and later stages re-step from it. The first fill
+# (Δt = Inf) starts the reservoir at the exterior value.
 @inline function reservoir_halo!(cᵇ, cᴵ, l, m, grid, c, bc, uₙ, outflow, closed, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
@@ -222,10 +146,6 @@ end
 #####
 ##### Halo filling — Center-located fields on the six boundaries
 #####
-
-# The advecting velocity is taken at the boundary FACE, not one cell into the interior: it is
-# the flux through that face that carries tracer across the boundary, and it is what MOM6's
-# reservoir uses (`uhr` at the segment face).
 
 @inline function _fill_east_halo!(j, k, grid, c, bc::TRVBC, loc::CAA, clock, model_fields)
     ℓx, ℓy, ℓz = loc
