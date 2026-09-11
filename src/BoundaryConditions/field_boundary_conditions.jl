@@ -235,29 +235,29 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
     return nothing
 end
 
-  regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
-  regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
- regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
- regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
-regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
-   regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline   regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline   regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline  regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline  regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+@inline    regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
 
 # regularize default boundary conditions
-function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
+@inline function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
     default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim], default)
     return regularize_boundary_condition(default_bc, grid, loc, dim, args...)
 end
 
-function regularize_boundary_condition(bc::BoundaryCondition, grid, loc, dim, args...)
+@inline function regularize_boundary_condition(bc::BoundaryCondition, grid, loc, dim, args...)
     regularized = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
     return BoundaryCondition(bc.classification, regularized)
 end
 
 # Convert all `Number` boundary conditions to `eltype(grid)`
-regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
-regularize_boundary_condition(condition, grid, args...) = condition # fallback
+@inline regularize_boundary_condition(condition::Number, grid, args...) = convert(eltype(grid), condition)
+@inline regularize_boundary_condition(condition, grid, args...) = condition # fallback
 
-function regularize_boundary_condition(mc::MixedCondition, grid, args...)
+@inline function regularize_boundary_condition(mc::MixedCondition, grid, args...)
     coefficient = regularize_boundary_condition(mc.coefficient, grid, args...)
     inhomogeneity = regularize_boundary_condition(mc.inhomogeneity, grid, args...)
     return MixedCondition(coefficient, inhomogeneity)
@@ -276,20 +276,20 @@ boundary conditions for prognostic model field boundary conditions.
     `ContinuousBoundaryFunction` is not supported on immersed boundaries.
     We therefore do not regularize the immersed boundary condition.
 """
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::AbstractGrid,
-                                              field_name::Symbol,
-                                              prognostic_names=nothing)
+@inline function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                                      grid::AbstractGrid,
+                                                      field_name::Symbol,
+                                                      prognostic_names=nothing)
 
     loc = assumed_field_location(field_name)
     return regularize_field_boundary_conditions(bcs, grid, loc, prognostic_names, field_name)
 end
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::AbstractGrid,
-                                              loc::Tuple,
-                                              prognostic_names=nothing,
-                                              field_name=nothing)
+@inline function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                                      grid::AbstractGrid,
+                                                      loc::Tuple,
+                                                      prognostic_names=nothing,
+                                                      field_name=nothing)
 
     west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
@@ -309,8 +309,10 @@ function regularize_field_boundary_conditions(boundary_conditions::NamedTuple,
                                               group_name::Symbol,
                                               prognostic_names=nothing)
 
-    return NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_names)
-                      for (field_name, field_bcs) in pairs(boundary_conditions))
+    return named_tuple(keys(boundary_conditions)) do field_name
+        Base.@constprop :aggressive
+        regularize_field_boundary_conditions(boundary_conditions[field_name], grid, field_name, prognostic_names)
+    end
 end
 
 regularize_field_boundary_conditions(::Missing,
@@ -325,8 +327,10 @@ needs_implicit_solver(bcs::FieldBoundaryConditions) = needs_implicit_solver(bcs.
 #####
 
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_names::Tuple) =
-    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_names)
-               for (field_name, field_bcs) in pairs(boundary_conditions))
+    named_tuple(keys(boundary_conditions)) do field_name
+        Base.@constprop :aggressive
+        regularize_field_boundary_conditions(boundary_conditions[field_name], grid, field_name, prognostic_names)
+    end
 
 #####
 ##### Special behavior for LatitudeLongitudeGrid
@@ -334,10 +338,10 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 
 # TODO: these may be incorrect because we have not defined behavior for prognostic fields (which are
 # treated by `regularize`).
-regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
+@inline regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:north), loc, bc), grid, loc, args...)
 
-regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
+@inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
