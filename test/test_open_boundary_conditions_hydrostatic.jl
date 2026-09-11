@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
-using Oceananigans.BoundaryConditions: ObliqueRadiation, raymond_kuo_radiation, orlanski_radiation
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
 using Test
 
 #####
@@ -501,7 +501,7 @@ end
 ##### Test: ObliqueRadiation
 #####
 
-# With zero tangential differences the Raymond & Kuo update equals the Orlanski update.
+# With zero tangential differences the oblique update equals the normal update.
 function test_oblique_reduces_to_normal()
     obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
     nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
@@ -509,13 +509,13 @@ function test_oblique_reduces_to_normal()
 
     reduces = true
     for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6), outflow in (true, false)
-        o = raymond_kuo_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
-        n = orlanski_radiation(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
+        o = oblique_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
+        n = normal_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
         reduces &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
     end
 
-    tilted = raymond_kuo_radiation(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
-    normal = orlanski_radiation(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
+    tilted = oblique_radiation_update(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
+    normal = normal_radiation_update(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
 
     return reduces && !isapprox(tilted, normal; rtol = 1e-6)
 end

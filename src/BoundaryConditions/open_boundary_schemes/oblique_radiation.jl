@@ -95,7 +95,7 @@ radiation_buffers(::ObliqueRadiation, arch, FT, tangential_size) =
     return φ₀ - φ₋, φ₊ - φ₀
 end
 
-@inline function raymond_kuo_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+@inline function oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
     ∂t_φ = φ₁ⁿ⁺¹ - φ₁ⁿ
     ∂ξ_φ = φ₁ⁿ⁺¹ - φ₂ⁿ⁺¹
     ∂η_φ = ifelse(-∂t_φ * (δ₁₋ + δ₁₊) > 0, δ₁₋, δ₁₊)
@@ -119,7 +119,7 @@ end
     r = 3 - w
     δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary, t, k, r)
     δ₁₋, δ₁₊ = tangential_differences(radiation.previous_interior, t, k, r)
-    φᵇⁿ⁺¹ = raymond_kuo_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+    φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
     @inbounds begin
         radiation.previous_boundary[t, k, w] = φᵇⁿ⁺¹

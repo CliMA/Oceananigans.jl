@@ -165,7 +165,7 @@ end
 # convention; the diagnosed Cₙ, clamped to [0, 1], is kept as the radiation weight so
 # that wave signals can still exit faster than the advecting flow.
 
-@inline function orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+@inline function normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
     # Diagnose phase speed Courant number (Orlanski 1976)
     ∂t_φ = φ₁ⁿ⁺¹ - φ₁ⁿ
     ∂ξ_φ = φ₁ⁿ⁺¹ - φ₂ⁿ⁺¹
@@ -187,7 +187,7 @@ end
 end
 
 @inline radiation_update(radiation::NormalRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
-    orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+    normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
 # The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
 # (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
@@ -343,7 +343,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, j, grid.Nz, grid, ℓx, ℓy, Center())
         c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
@@ -375,7 +375,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
         c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
