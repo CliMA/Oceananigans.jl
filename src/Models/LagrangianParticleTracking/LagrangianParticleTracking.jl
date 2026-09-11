@@ -130,7 +130,7 @@ end
 @inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
 @inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
 
-include("update_lagrangian_particle_properties.jl")
+include("update_lagrangian_particle_state.jl")
 include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
 
