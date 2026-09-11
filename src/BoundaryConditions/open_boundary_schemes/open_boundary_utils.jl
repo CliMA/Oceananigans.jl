@@ -1,5 +1,6 @@
 using Oceananigans: defaults
 using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ, immersed_peripheral_node
+using Oceananigans.Utils: getnamewrapper
 
 #####
 ##### Shared utilities for the open boundary schemes below

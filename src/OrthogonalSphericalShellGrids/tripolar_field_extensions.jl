@@ -47,7 +47,6 @@ BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::Se
 
 # Only to solve the ambiguities (this method should never be used)
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
-BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.ORBC, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
 
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,

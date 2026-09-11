@@ -2,6 +2,9 @@
 ##### NormalRadiation (based on Orlanski 1976) open boundary scheme
 #####
 
+# Subtypes have the fields (outflow_timescale, inflow_timescale, use_boundary_velocity, φᵇ, φ₁, φ₁ˡ), in that order.
+abstract type AbstractRadiationScheme{FT} end
+
 """
     NormalRadiation(; inflow_timescale = 0, outflow_timescale = Inf, use_boundary_velocity = false)
 
@@ -48,7 +51,7 @@ NormalRadiation{Float64}
 └── use_boundary_velocity: false
 ```
 """
-struct NormalRadiation{FT, S}
+struct NormalRadiation{FT, S} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
@@ -67,34 +70,34 @@ function NormalRadiation(FT = defaults.FloatType;
     return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing)
 end
 
-Adapt.adapt_structure(to, r::NormalRadiation) =
-    NormalRadiation(adapt(to, r.outflow_timescale),
-              adapt(to, r.inflow_timescale),
-              r.use_boundary_velocity,
-              adapt(to, r.φᵇ),
-              adapt(to, r.φ₁),
-              adapt(to, r.φ₁ˡ))
+Adapt.adapt_structure(to, r::AbstractRadiationScheme) =
+    getnamewrapper(r)(adapt(to, r.outflow_timescale),
+                      adapt(to, r.inflow_timescale),
+                      r.use_boundary_velocity,
+                      adapt(to, r.φᵇ),
+                      adapt(to, r.φ₁),
+                      adapt(to, r.φ₁ˡ))
 
-Base.summary(::NormalRadiation{FT}) where FT = "NormalRadiation{$FT}"
+Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(getnamewrapper(r), "{$FT}")
 
-function Base.show(io::IO, r::NormalRadiation)
+function Base.show(io::IO, r::AbstractRadiationScheme)
     print(io, summary(r), '\n')
     print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
     print(io, "├── outflow_timescale: ", prettysummary(r.outflow_timescale), '\n')
     print(io, "└── use_boundary_velocity: ", r.use_boundary_velocity)
 end
 
-const RVBC  = BoundaryCondition{<:Value{<:NormalRadiation}}
-const RNFBC = BoundaryCondition{<:NormalFlow{<:NormalRadiation}}
+const RVBC  = BoundaryCondition{<:Value{<:AbstractRadiationScheme}}
+const RNFBC = BoundaryCondition{<:NormalFlow{<:AbstractRadiationScheme}}
 const RBC   = Union{RVBC, RNFBC}
 
 #####
-##### NormalRadiation storage allocation during BC regularization
+##### Radiation storage allocation during BC regularization
 #####
 
 # Allocate the 2D storage array holding the previous-timestep interior value φ₁ⁿ
 # needed by the Orlanski phase-speed diagnosis.
-function materialize_radiation_storage(radiation::NormalRadiation, grid, loc, dim)
+function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     arch = architecture(grid)
@@ -107,16 +110,16 @@ function materialize_radiation_storage(radiation::NormalRadiation, grid, loc, di
     φ₁  = on_architecture(arch, zeros(FT, tangential_size...))
     φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
 
-    return NormalRadiation(radiation.outflow_timescale,
-                     radiation.inflow_timescale,
-                     radiation.use_boundary_velocity,
-                     φᵇ, φ₁, φ₁ˡ)
+    return getnamewrapper(radiation)(radiation.outflow_timescale,
+                                     radiation.inflow_timescale,
+                                     radiation.use_boundary_velocity,
+                                     φᵇ, φ₁, φ₁ˡ)
 end
 
 rebuild_classification(::Value, scheme) = Value(scheme)
 rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
 
-# Hook into the regularization pipeline to allocate NormalRadiation storage
+# Hook into the regularization pipeline to allocate radiation storage
 function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
     regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
     radiation = bc.classification.scheme
@@ -180,6 +183,9 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
+@inline radiation_update(radiation::NormalRadiation, t, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
+    orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+
 # The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
 # (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
 # The update is a convex combination of previous boundary, interior, and exterior values, so it is bounded.
@@ -205,7 +211,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
@@ -237,7 +243,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
@@ -269,7 +275,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
@@ -301,7 +307,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
@@ -312,6 +318,7 @@ end
     return nothing
 end
 
+# Top and bottom boundaries use the normal-incidence update for every radiation scheme.
 @inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
