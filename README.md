@@ -214,7 +214,7 @@ Cause we're all in this together.
 
 If you'd like to work on a new feature, or if you're new to open source and want to crowd-source neat projects that fit your interests, you should [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?) right away.
 
-For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
+For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/developer_docs/contributing).
 
 ## Movies
 
