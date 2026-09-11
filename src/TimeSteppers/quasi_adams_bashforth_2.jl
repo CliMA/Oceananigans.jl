@@ -110,14 +110,14 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_timestepper.χ = χ
 
     ab2_step!(model, Δt, callbacks)
+    step_lagrangian_particles!(model, Δt)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
     step_closure_prognostics!(model, Δt)
     update_state!(model, callbacks)
-
-    step_lagrangian_particles!(model, Δt)
+    update_lagrangian_particle_state!(model)
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀

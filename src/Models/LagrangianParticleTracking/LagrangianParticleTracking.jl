@@ -20,7 +20,7 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
 abstract type AbstractParticle end
@@ -79,7 +79,8 @@ and can contain custom fields. The coefficient of restitution for particle-wall 
 
 A number of `tracked_fields` may be passed in as a `NamedTuple` of fields. Each particle will track the value of each
 field. Each tracked field must have a corresponding particle property. So if `T` is a tracked field, then `T` must also
-be a custom particle property.
+be a custom particle property. Tracked fields are sampled before `dynamics` and refreshed after advection
+and boundary handling, so properties match the final particle positions.
 
 `dynamics` is a function of `(lagrangian_particles, model, Δt)` that is called prior to advecting particles.
 `parameters` can be accessed inside the `dynamics` function.
@@ -129,21 +130,16 @@ end
 @inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
 @inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
 
-include("update_lagrangian_particle_properties.jl")
+include("update_lagrangian_particle_state.jl")
 include("lagrangian_particle_advection.jl")
 include("drogued_dynamics.jl")
 
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
 function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
-    # Update the properties of the Lagrangian particles
-    update_lagrangian_particle_properties!(particles, model, Δt)
-
-    # Compute dynamics
     particles.dynamics(particles, model, Δt)
-
-    # Advect particles
     advect_lagrangian_particles!(particles, model, Δt)
+    return nothing
 end
 
 ####
