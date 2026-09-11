@@ -10,6 +10,8 @@ end
 NaNChecker(fields) = NaNChecker(fields, false, false) # default
 default_nan_checker(model) = nothing
 
+Oceananigans.prognostic_state(::NaNChecker) = nothing
+
 function Base.summary(nc::NaNChecker)
     fieldnames = prettykeys(nc.fields)
     if nc.erroring

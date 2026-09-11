@@ -28,7 +28,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     communication_buffers :: F
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
+    Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
         @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
         return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
@@ -98,7 +98,7 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
+Base.@constprop :aggressive function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
@@ -112,7 +112,7 @@ communication_buffers(grid, data, bcs) = nothing
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
-                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
+                      ::Type{T}=eltype(grid); kw...) where {LX, LY, LZ, T}
 
 Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
 Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
@@ -168,21 +168,21 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
     └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
-function Field{LX, LY, LZ}(grid::AbstractGrid,
-                           T::DataType=eltype(grid);
-                           kw...) where {LX, LY, LZ}
+Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::AbstractGrid,
+                                                       ::Type{T}=eltype(grid);
+                                                       kw...) where {LX, LY, LZ, T}
 
     return Field((LX(), LY(), LZ()), grid, T; kw...)
 end
 
-function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
-               grid::AbstractGrid,
-               T::DataType = eltype(grid);
-               indices = default_indices(3),
-               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
-               operand = nothing,
-               status = nothing)
+Base.@constprop :aggressive function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
+                                           grid::AbstractGrid,
+                                           ::Type{T} = eltype(grid);
+                                           indices = default_indices(3),
+                                           data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+                                           boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                                           operand = nothing,
+                                           status = nothing) where T
 
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
@@ -196,7 +196,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Center()), grid, T; kw...)
+CenterField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Center()), grid, T; kw...)
 
 """
     XFaceField(grid, T=eltype(grid); kw...)
@@ -204,7 +204,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(), Center(), Center()), grid, T; kw...)
+XFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Face(), Center(), Center()), grid, T; kw...)
 
 """
     YFaceField(grid, T=eltype(grid); kw...)
@@ -212,7 +212,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(),
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Face(), Center()), grid, T; kw...)
+YFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Face(), Center()), grid, T; kw...)
 
 """
     ZFaceField(grid, T=eltype(grid); kw...)
@@ -220,7 +220,7 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Face()), grid, T; kw...)
+ZFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Face()), grid, T; kw...)
 
 #####
 ##### Field utils
@@ -849,6 +849,55 @@ end
 # Improve me! We can should both the extrema in one single reduction instead of two
 Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; kwargs...))
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
+
+# Index reductions: locate extrema over `interior(c)`, returning indices in the field's own
+# axes so that `c[argmax(c)] == maximum(c)` — which for default fields coincide with positional
+# interior (and `nodes`) indices. The generic fallbacks scalar-index on the GPU and are blind
+# to immersed boundaries.
+# The search is fused: a lazy broadcast of (value, linear index) pairs is folded in place
+# on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
+# the one-element destination — so neither the operand nor the pairs are materialized.
+function locate_extremum(better, c::AbstractField, condition, mask)
+    mask = convert(eltype(c), mask)
+    operand = condition_operand(c, condition, mask)
+
+    # Ties resolve to the smaller linear index, matching Base
+    tiebreak((x, i), (y, j)) = better(x, y) ? (y, j) :
+                               isequal(x, y) ? (x, min(i, j)) : (x, i)
+
+    # Everything is 1-based from here: a windowed interior is a 1-based view and a
+    # `ConditionalOperation` has 1-based axes, so no offset axes enter the search
+    values = operand === c ? interior(c) : operand
+
+    value, i = fold_pairs(architecture(c), tiebreak, values, (mask, 1))
+    positional = CartesianIndices(size(values))[i]
+
+    # Shift into the field's own axes so that `c[argmax(c)] == maximum(c)` holds for
+    # windowed fields too; for default fields the shift vanishes
+    return value, CartesianIndex(Tuple(positional) .+ first.(axes(c)) .- 1)
+end
+
+function fold_pairs(::Architectures.CPU, tiebreak, values, init)
+    result = init
+    linear = 0
+    @inbounds for I in CartesianIndices(size(values))
+        linear += 1
+        result = tiebreak(result, (values[I], linear))
+    end
+    return result
+end
+
+function fold_pairs(arch, tiebreak, values, init)
+    pairs = Broadcast.instantiate(Broadcast.broadcasted(tuple, values, LinearIndices(size(values))))
+    result = on_architecture(arch, fill(init, 1, 1, 1))
+    Base.mapreducedim!(identity, tiebreak, result, pairs)
+    return first(Array(result))
+end
+
+Base.findmax(c::AbstractField; condition = nothing, mask = -Inf) = locate_extremum(Base.isless,    c, condition, mask)
+Base.findmin(c::AbstractField; condition = nothing, mask = Inf)  = locate_extremum(Base.isgreater, c, condition, mask)
+Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
+Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     mask = convert(eltype(c), mask)

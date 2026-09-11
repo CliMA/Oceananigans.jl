@@ -99,18 +99,15 @@ end
     @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
 end
 
-function update_advection!(scheme::BoundsPreservingWENO, model, tracer)
-    isnothing(tracer) && return nothing # the `momentum` entry has no tracer to limit
-    compute_bounds_preserving_limiter!(scheme, model.grid, tracer)
-    return nothing
-end
+update_bounds_preserving_limiter!(scheme, grid, c) = nothing
 
 """
 $(TYPEDSIGNATURES)
 
 Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
 """
-function compute_bounds_preserving_limiter!(scheme, grid, c)
+function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+    isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.limiter
     launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
     fill_halo_regions!(θ)

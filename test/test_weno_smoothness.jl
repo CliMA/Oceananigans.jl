@@ -15,22 +15,15 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
         S_f64 = ntuple(i -> 300.0 + 0.1 * sinpi(2 * (i - 1) / n_stencil), n_stencil)
         S_f32 = ntuple(i -> Float32(S_f64[i]), n_stencil)
 
-        # Build sub-stencils (left-bias ordering, matching S₀ₙ … S₍ₙ₋₁₎ₙ)
-        ψ_f64 = ntuple(Val(buffer)) do k
-            start = buffer - k + 1
-            ntuple(j -> S_f64[start + j - 1], Val(buffer))
-        end
-
-        ψ_f32 = ntuple(Val(buffer)) do k
-            start = buffer - k + 1
-            ntuple(j -> S_f32[start + j - 1], Val(buffer))
-        end
+        # First differences of the left-bias-ordered stencil, which is S[1] … S[2buffer - 1]
+        δ_f64 = ntuple(i -> S_f64[i+1] - S_f64[i], Val(2buffer - 2))
+        δ_f32 = ntuple(i -> S_f32[i+1] - S_f32[i], Val(2buffer - 2))
 
         scheme_f64 = WENO(Float64; order, weight_computation=Oceananigans.Utils.NormalDivision)
         scheme_f32 = WENO(Float32; order, weight_computation=Oceananigans.Utils.NormalDivision)
 
-        β_f64 = beta_loop(scheme_f64, ψ_f64)
-        β_f32 = beta_loop(scheme_f32, ψ_f32)
+        β_f64 = beta_loop(scheme_f64, δ_f64)
+        β_f32 = beta_loop(scheme_f32, δ_f32)
 
         @info "WENO order $order β (Float64): $β_f64"
         @info "WENO order $order β (Float32): $β_f32"
@@ -50,8 +43,8 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
             end
 
             # Weights must sum to 1 and match Float64 reference
-            ω_f64 = biased_weno_weights(ψ_f64, nothing, scheme_f64)
-            ω_f32 = biased_weno_weights(ψ_f32, nothing, scheme_f32)
+            ω_f64 = biased_weno_weights(δ_f64, nothing, scheme_f64)
+            ω_f32 = biased_weno_weights(δ_f32, nothing, scheme_f32)
 
             @test sum(ω_f64) ≈ 1
             @test sum(ω_f32) ≈ 1
