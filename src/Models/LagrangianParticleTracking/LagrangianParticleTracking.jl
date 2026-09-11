@@ -137,10 +137,8 @@ include("drogued_dynamics.jl")
 step_lagrangian_particles!(::Nothing, model, Δt) = nothing
 
 function step_lagrangian_particles!(particles::LagrangianParticles, model, Δt)
-    update_lagrangian_particle_properties!(particles, model, Δt)
     particles.dynamics(particles, model, Δt)
     advect_lagrangian_particles!(particles, model, Δt)
-    update_lagrangian_particle_properties!(particles, model, Δt)
     return nothing
 end
 
