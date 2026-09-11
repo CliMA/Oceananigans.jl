@@ -43,8 +43,11 @@ function set!(dst::NamedFieldTuple, src::NamedTuple)
 end
 
 # This interface helps us do things like set distributed fields
-set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+# Note: `args...` (eg `clock, model_fields` from the generic model-level `set!`) is accepted
+# but ignored here --- function-based initial conditions are always called as `f(x, y, z)`,
+# never `f(x, y, z, t)`.
+set!(u::Field, f::Function, args...) = set_to_function!(u, f)
+set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
 
 """
 $(TYPEDSIGNATURES)
@@ -59,20 +62,25 @@ architectures.
 
 Note that the interpolation path samples `v` pointwise; for conservative
 remapping, call [`regrid!`](@ref) explicitly.
-"""
-set!(u::Field, v::Field) = set_to_field!(u, v)
 
-function set!(u::Field, a::Number)
+When `u` is set from a model's `set!(model; kwargs...)`, `args...` (eg `clock, model_fields`)
+carries the model's simulation context through to the halo fill of `v`, so that `v`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`). Different
+models pass different `args` into `fill_halo_regions!`, so this is kept generic.
+"""
+set!(u::Field, v::Field, args...) = set_to_field!(u, v, args...)
+
+function set!(u::Field, a::Number, args...)
     fill!(interior(u), a) # note all other set! only change interior
     return u # return u, not parent(u), for type-stability
 end
 
-function set!(u::Field, v)
+function set!(u::Field, v, args...)
     u .= v # fallback
     return u
 end
 
-set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+set!(u::Field, z::ZeroField, args...) = set!(u, zero(eltype(u)))
 
 #####
 ##### Setting to specific things
@@ -146,16 +154,14 @@ function set_to_array!(u, a)
     return u
 end
 
-function set_to_field!(u, v)
+function set_to_field!(u, v, args...)
     if copyable_fields(u, v)
         copy_to_field!(u, v)
     else
-        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
-        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
-        # boundary conditions, mismatching fill_halo_regions! dispatch.
-        fill_halo_regions!(v)
-        v_on_u = on_architecture(child_architecture(u), v)
-        interpolate!(u, v_on_u)
+        fill_halo_regions!(v, args...)
+        # Avoid reconstructing immersed grids when architectures already match.
+        v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
+        interpolate!(u, v_on_u, args...)
     end
 
     return u

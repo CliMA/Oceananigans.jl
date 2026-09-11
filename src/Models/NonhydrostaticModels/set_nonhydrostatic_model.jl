@@ -51,7 +51,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
-        set!(ϕ, value)
+        set!(ϕ, value, model.clock, fields(model))
 
         fill_halo_regions!(ϕ, model.clock, fields(model))
     end
