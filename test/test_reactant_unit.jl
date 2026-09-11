@@ -302,10 +302,6 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         z = collect(range(-1, 0, length = Nz + 1))
         grid = RectilinearGrid(arch; size = (2, 2, Nz), x = (0, 1), y = (0, 1), z)
 
-        # An array-valued coordinate traces to a `TracedRArray`, which promotes the grid's float type
-        # parameter and hence the operation's eltype to a `TracedRNumber`. That makes the operation an
-        # `AnyTracedRArray`, whose `getindex` is ambiguous with the operation's own, so the
-        # `_compute!` kernel failed to compile.
         value_c = 2
         c = CenterField(grid); set!(c, value_c)
         value_d = 3
@@ -340,6 +336,37 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
             ∫cd = Field(Integral(c * d, dims = 3))
             @test all(≈(cd), Array(interior(∫cd)))
+        end 
+    end 
+      
+    @testset "set! from a function under trace" begin
+        grid = RectilinearGrid(arch;
+                               size = (4, 4, 4),
+                               halo = (3, 3, 3),
+                               extent = (1, 1, 1),
+                               topology = (Periodic, Periodic, Bounded))
+
+        # `set_to_function!` evaluates the function into a CPU twin of the field and then moves
+        # the data in. That move has to broadcast: `copyto!(::SubArray{TracedRArray},
+        # ::SubArray{Array})` has no specialized method, so Base walks it elementwise and hits
+        # scalar `setindex!`, which makes the whole function uncompilable. Shapes agree by
+        # construction, since the twin carries the field's own location and indices.
+        #
+        # A staggered location is included because that is where this first showed up in
+        # practice, setting a model's velocities from a function.
+        profile(x, y, z) = z
+
+        for FieldType in (CenterField, XFaceField)
+            u = FieldType(grid)
+            set_from_function!(u) = (set!(u, profile); nothing)
+            compiled_set! = @compile sync=true set_from_function!(u)
+            compiled_set!(u)
+
+            # Eager `set!` takes the same path without tracing, so it is the reference.
+            reference = FieldType(grid)
+            set!(reference, profile)
+
+            @test Array(interior(u)) == Array(interior(reference))
         end
     end
 
