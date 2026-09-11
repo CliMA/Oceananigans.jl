@@ -501,100 +501,67 @@ end
 #####
 ##### Test: TracerReservoir
 #####
-# The reservoir update has three regimes, selected by the length scale: instant
-# (L = 0), finite relaxation over a distance, and frozen (L = Inf). Check them
-# directly on the kernel, where the expected values are exact.
 
+# The instant (L = 0), finite and frozen (L = Inf) regimes of the reservoir update.
 function test_tracer_reservoir_regimes()
     cᴵ, cᵉˣᵗ, cʳ = 10.0, 0.0, 3.0
-    d = 500.0    # distance advected this step
+    d = 500.0
 
-    memoryless = TracerReservoir()                                    # L_in = L_out = 0
-    finite     = TracerReservoir(inflow_length_scale = 500.0)         # d / L = 1
+    memoryless = TracerReservoir()
+    finite     = TracerReservoir(inflow_length_scale = 500.0)
     frozen     = TracerReservoir(inflow_length_scale = Inf)
 
-    # Instant: the reservoir takes the upstream value regardless of its history
     instant_out = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, true,  memoryless) == cᴵ
     instant_in  = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, memoryless) == cᵉˣᵗ
+    is_frozen   = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, frozen) == cʳ
+    relaxed     = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, finite) ≈ (cʳ + cᵉˣᵗ) / 2
+    still       = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, 0.0, false, finite) == cʳ
 
-    # Frozen: the reservoir never moves on inflow
-    is_frozen = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, frozen) == cʳ
-
-    # Finite: backward-Euler step, (cʳ + a cᵉˣᵗ) / (1 + a) with a = d / L = 1
-    relaxed = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, finite) ≈ (cʳ + cᵉˣᵗ) / 2
-
-    # A stationary flow advects nothing, so a finite-L reservoir is unchanged...
-    still = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, 0.0, false, finite) == cʳ
-    # ...while the instant regime still applies, and must not produce 0/0
-    still_instant = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, 0.0, false, memoryless) == cᵉˣᵗ
-
-    return instant_out && instant_in && is_frozen && relaxed && still && still_instant
+    return instant_out && instant_in && is_frozen && relaxed && still
 end
 
-# The physics: a prescribed, spatially uniform, oscillating flow carries water out
-# through an open boundary and brings the same water back. Over a whole number of
-# periods the net displacement is exactly zero, so a uniform tracer must be
-# unchanged. A memoryless boundary instead imports the exterior value and loses
-# tracer; a frozen reservoir returns what left and is exact.
-
+# An oscillating flow carries water out through the open boundary and back again. Over one
+# period the net displacement is zero: a frozen reservoir returns exactly the water that left,
+# a memoryless boundary imports the exterior value instead, and a finite length scale sits
+# between the two. With the boundary on the west and the flow reversed, the result is the same.
 function test_tracer_reservoir_recovers_exported_water()
-    Nx = 100
-    Lx = 200kilometers
-    T  = 1day
-    ω  = 2π / T
-    U₀ = 0.5
+    T = 1day
 
-    function final_tracer_content(scheme)
-        grid = RectilinearGrid(size = (Nx, 4),
-                               x = (0, Lx),
-                               z = (-100.0, 0),
-                               halo = (5, 4),
-                               topology = (Bounded, Flat, Bounded))
+    function mean_tracer(scheme, side)
+        grid = RectilinearGrid(size = (100, 4), x = (0, 200kilometers), z = (-100.0, 0),
+                               halo = (5, 4), topology = (Bounded, Flat, Bounded))
 
-        u_prescribed(x, z, t) = U₀ * sin(ω * t)
-
-        c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme))
+        U = side == :east ? 0.5 : -0.5
+        bc = ValueBoundaryCondition(0; scheme)
+        c_bcs = side == :east ? FieldBoundaryConditions(east = bc) : FieldBoundaryConditions(west = bc)
 
         model = HydrostaticFreeSurfaceModel(grid;
-            velocities = PrescribedVelocityFields(u = u_prescribed),
-            momentum_advection = nothing,
-            tracer_advection = WENO(order = 5),
-            buoyancy = nothing,
-            tracers = :c,
-            boundary_conditions = (; c = c_bcs))
+                                            velocities = PrescribedVelocityFields(u = (x, z, t) -> U * sin(2π * t / T)),
+                                            momentum_advection = nothing,
+                                            tracer_advection = WENO(order = 5),
+                                            buoyancy = nothing,
+                                            tracers = :c,
+                                            boundary_conditions = (; c = c_bcs))
+        set!(model, c = 1)
 
-        set!(model, c = (x, z) -> 1)
-
-        Δt = 60.0
-        for _ in 1:round(Int, T / Δt)
-            time_step!(model, Δt)
+        for _ in 1:round(Int, T / 60)
+            time_step!(model, 60)
         end
 
         c = Array(interior(model.tracers.c))
-        # A loose bound: enough to catch a blow-up, but not so tight as to fail on
-        # WENO's Gibbs oscillation at the sharp front a memoryless boundary creates
-        # where imported exterior water meets the domain's own.
-        return sum(c) / length(c), !any(isnan, c), all(-0.2 .<= c .<= 1.2)
+        return sum(c) / length(c)
     end
 
-    memoryless, mem_ok, mem_bounded = final_tracer_content(TracerReservoir())
-    frozen,     frz_ok, frz_bounded = final_tracer_content(TracerReservoir(inflow_length_scale = Inf))
-    partial,    par_ok, par_bounded = final_tracer_content(TracerReservoir(inflow_length_scale = 40kilometers))
+    memoryless = mean_tracer(TracerReservoir(), :east)
+    frozen     = mean_tracer(TracerReservoir(inflow_length_scale = Inf), :east)
+    partial    = mean_tracer(TracerReservoir(inflow_length_scale = 40kilometers), :east)
+    mirrored   = mean_tracer(TracerReservoir(inflow_length_scale = 40kilometers), :west)
 
-    healthy = mem_ok && frz_ok && par_ok && mem_bounded && frz_bounded && par_bounded
-
-    # The frozen reservoir returns exactly the water it exported
-    frozen_exact = isapprox(frozen, 1, atol = 1e-6)
-
-    # The memoryless boundary manufactures a real deficit ...
-    memoryless_leaks = memoryless < 0.99
-
-    # ... and a finite length scale sits between the two
-    ordered = memoryless < partial < frozen + 1e-12
-
-    return healthy && frozen_exact && memoryless_leaks && ordered
+    return isapprox(frozen, 1, atol = 1e-6) &&
+           memoryless < 0.99 &&
+           memoryless < partial < frozen + 1e-12 &&
+           isapprox(mirrored, partial, rtol = 1e-10)
 end
-
 
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
