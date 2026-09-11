@@ -290,8 +290,12 @@ end
             @testset "Divergence-free solution on [$(typeof(arch)), $float_type]" begin
                 @info "  Testing divergence-free solution [$(typeof(arch)), $float_type]..."
                 test_divergence_free_solution(arch, float_type, topos)
-                test_divergence_free_solution_on_rectangular_grids(arch, topos_3d)
             end
+        end
+
+        @testset "Divergence-free solution on rectangular grids [$(typeof(arch))]" begin
+            @info "  Testing divergence-free solution on rectangular grids [$(typeof(arch))]..."
+            test_divergence_free_solution_on_rectangular_grids(arch, topos_3d)
         end
 
         # Test more than one underlying_grid

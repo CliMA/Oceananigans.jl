@@ -2,7 +2,7 @@ module Utils
 
 export configure_kernel, launch!, KernelParameters
 export prettytime, pretty_filesize
-export tupleit, parenttuple, datatuple, datatuples
+export tupleit, parenttuple, datatuple, datatuples, named_tuple
 export ordered_dict_show
 export instantiate
 export with_tracers

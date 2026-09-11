@@ -4,7 +4,7 @@ export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: fields, AbstractDiagnostic
+using Oceananigans: Oceananigans, fields, AbstractDiagnostic
 
 import Oceananigans: run_diagnostic!
 

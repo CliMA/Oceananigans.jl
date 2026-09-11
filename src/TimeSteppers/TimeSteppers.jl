@@ -94,9 +94,12 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...)
+const SplitRungeKuttaName = Union{Val{:SplitRungeKutta2}, Val{:SplitRungeKutta3}, Val{:SplitRungeKutta4}, Val{:SplitRungeKutta5}}
+
 for stages in 2:5
+    coefficients = Tuple(stages:-1:1)
     @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
-              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+              SplitRungeKuttaTimeStepper(args...; coefficients=$coefficients, kwargs...)
 end
 
 TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =

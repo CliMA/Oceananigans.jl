@@ -255,7 +255,7 @@ function validate_existing_zarr_store(writer::ZarrWriter)
     return nothing
 end
 
-function initialize_zarr_store!(writer::ZarrWriter, model)
+Base.@nospecializeinfer function initialize_zarr_store!(@nospecialize(writer::ZarrWriter), @nospecialize(model))
     arch = architecture(model)
     distributed = arch isa Distributed
     is_root = !distributed || mpi_rank(global_communicator()) == 0
@@ -354,7 +354,7 @@ zarr_compressor(compressor, store) = compressor
 zarr_compressor(::Nothing, store) = Zarr.BloscCompressor()
 zarr_compressor(::Nothing, ::Zarr.DirectoryStore) = Zarr.NoCompressor()
 
-function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractField, name, model)
+Base.@nospecializeinfer function define_zarr_output_variable!(g, @nospecialize(writer::ZarrWriter), @nospecialize(output::AbstractField), name, @nospecialize(model))
     arch = architecture(output.grid)
     distributed = arch isa Distributed
 
