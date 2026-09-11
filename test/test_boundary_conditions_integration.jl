@@ -4,7 +4,8 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
-using Oceananigans.Models: possible_field_time_series
+using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport
+using Oceananigans.Models: possible_field_time_series, boundary_total_area
 using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.Units: Time
@@ -172,14 +173,43 @@ targeted_flux_grid(arch, FT; N = 4) =
 make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions) =
     NonhydrostaticModel(grid; boundary_conditions, timestepper=:RungeKutta3)
 
-function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
+function test_target_transport_interface(arch, FT, Scheme; N = 4)
+    grid = targeted_flux_grid(arch, FT; N)
+
+    @test !has_target_transport(Scheme())
+    @test has_target_transport(Scheme(; target_transport = 1))
+
+    fixed = Scheme(FT; target_transport = 2)
+    @test fixed.target_transport isa FT
+    @test get_target_transport(fixed, grid) == 2
+
+    # A callable target is evaluated on the grid.
+    west_area(grid) = boundary_total_area(:west, grid)
+    @test get_target_transport(Scheme(; target_transport = west_area), grid) == west_area(grid)
+
+    # Regularization must carry the target into the model, which then tracks only the targeted side.
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; target_transport = 2)),
+                                    east = NormalFlowBoundaryCondition(FT(1); scheme = Scheme()))
+
+    nonhydrostatic = NonhydrostaticModel(grid; boundary_conditions = (; u = u_bcs))
+    @test has_target_transport(nonhydrostatic.velocities.u.boundary_conditions.west.classification.scheme)
+    @test !has_target_transport(nonhydrostatic.velocities.u.boundary_conditions.east.classification.scheme)
+    @test nonhydrostatic.boundary_transport.total_area_pool_boundaries ≈ boundary_total_area(:east, grid)
+
+    hydrostatic = HydrostaticFreeSurfaceModel(grid; boundary_conditions = (; u = u_bcs), buoyancy = nothing, tracers = ())
+    @test has_target_transport(hydrostatic.velocities.u.boundary_conditions.west.classification.scheme)
+    @test haskey(hydrostatic.boundary_transport, :west_transport)
+    @test !haskey(hydrostatic.boundary_transport, :east_transport)
+end
+
+function test_targeted_transport_achieved(arch, FT, ModelType, Scheme; N = 4)
     grid = targeted_flux_grid(arch, FT; N)
 
     # West boundary with a prescribed target flux; east boundary is in the pool.
     Q_target = FT(0.5)
     u_bcs = FieldBoundaryConditions(
-        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
-        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+        west = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q_target)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1))
     )
     model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
@@ -193,14 +223,14 @@ function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
     @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
-function test_targeted_transport_conservation(arch, FT, ModelType; N = 4)
+function test_targeted_transport_conservation(arch, FT, ModelType, Scheme; N = 4)
     grid = targeted_flux_grid(arch, FT; N)
 
     # Both boundaries targeted with equal fluxes — net inflow is zero, no pool needed.
     Q = FT(0.5)
     u_bcs = FieldBoundaryConditions(
-        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q)),
-        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q))
+        west = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q))
     )
     model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
@@ -271,7 +301,7 @@ function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 
     @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
 end
 
-function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
+function test_targeted_south_transport_achieved(arch, FT, ModelType, Scheme; N = 4)
     # v.south = targeted OBC, v.north = pool OBC
     # Exercises: apply_targeted_left_boundary_correction! for south,
     #            targeted boundary skipped in pool step for south,
@@ -279,8 +309,8 @@ function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
     grid = targeted_flux_grid(arch, FT; N)
     Q_target = FT(0.5)
     v_bcs = FieldBoundaryConditions(
-        south = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
-        north = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+        south = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q_target)),
+        north = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1))
     )
     model = make_targeted_flux_model(ModelType, grid, (; v=v_bcs))
     set!(model, v = (x, y, z) -> 1 + 1e-2 * rand())
@@ -294,15 +324,15 @@ function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
     @test Array(interior(south_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
-function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
+function test_targeted_east_with_west_pool(arch, FT, ModelType, Scheme; N = 4)
     # u.west = pool OBC, u.east = targeted OBC
     # Exercises: targeted boundary skipped in pool correction for east,
     #            pool correction applied to west OBC
     grid = targeted_flux_grid(arch, FT; N)
     Q_target = FT(0.5)
     u_bcs = FieldBoundaryConditions(
-        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
-        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target))
+        west = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q_target))
     )
     model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
@@ -749,10 +779,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                             east = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
-            test_targeted_transport_achieved(arch, FT, NonhydrostaticModel)
-            test_targeted_transport_conservation(arch, FT, NonhydrostaticModel)
-            test_targeted_south_transport_achieved(arch, FT, NonhydrostaticModel)
-            test_targeted_east_with_west_pool(arch, FT, NonhydrostaticModel)
+
+            for Scheme in (PerturbationAdvection, NormalRadiation)
+                @info "  Testing targeted open boundary transport with $Scheme [$A, $FT]..."
+                test_target_transport_interface(arch, FT, Scheme)
+                test_targeted_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
+                test_targeted_transport_conservation(arch, FT, NonhydrostaticModel, Scheme)
+                test_targeted_south_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
+                test_targeted_east_with_west_pool(arch, FT, NonhydrostaticModel, Scheme)
+            end
+
             test_zero_inflow_open_boundary_conserves_mass(arch, FT)
             test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
         end

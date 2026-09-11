@@ -3,7 +3,10 @@
 #####
 
 """
-    NormalRadiation(; inflow_timescale = 0, outflow_timescale = Inf, use_boundary_velocity = false)
+    NormalRadiation(; inflow_timescale = 0,
+                      outflow_timescale = Inf,
+                      use_boundary_velocity = false,
+                      target_transport = nothing)
 
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
 and adaptive nudging (Marchesiello et al. 2001):
@@ -19,6 +22,14 @@ MITgcm `obcs` implementation). `τ = τ_in` and `cₙ = 0` on inflow, `τ = τ_o
 
 `use_boundary_velocity` only affects `Value` boundary conditions (tracers, tangential velocities). It is
 ignored for a `NormalFlowBoundaryCondition`, which radiates the normal velocity using its own boundary value.
+
+`target_transport` pins the net volume transport through the boundary, the integral of the boundary-normal
+velocity over the boundary area `∮u·dA` [m³ s⁻¹] taken positive in the positive coordinate direction, to a
+prescribed value. It may be a number or a callable of the grid and only applies to a `NormalFlowBoundaryCondition`.
+Each time step the boundary-normal velocity is shifted uniformly so that its transport matches the target; in a
+`NonhydrostaticModel` the remaining net imbalance is then distributed over the open boundaries without a target.
+The default `nothing` leaves the boundary in that global pool correction. See also [`PerturbationAdvection`](@ref),
+which accepts the same keyword.
 
 `NormalRadiation` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) for `Center`-located
 fields such as tracers — where it updates the halo cell adjacent to the boundary — or of a
@@ -45,26 +56,30 @@ NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
 NormalRadiation{Float64}
 ├── inflow_timescale: 86400.0
 ├── outflow_timescale: 3.1104e7
-└── use_boundary_velocity: false
+├── use_boundary_velocity: false
+└── target_transport: Nothing
 ```
 """
-struct NormalRadiation{FT, S}
+struct NormalRadiation{FT, S, TF}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool # advect Value fields with the boundary-face velocity instead of one cell in
     φᵇ  :: S  # anchor boundary value (2D array or nothing)
     φ₁  :: S  # anchor interior value (2D array or nothing)
     φ₁ˡ :: S  # latest interior value (2D array or nothing)
+    target_transport :: TF # prescribed net transport through the boundary (number, callable of the grid, or nothing)
 end
 
 function NormalRadiation(FT = defaults.FloatType;
                    inflow_timescale = 0,
                    outflow_timescale = Inf,
-                   use_boundary_velocity = false)
+                   use_boundary_velocity = false,
+                   target_transport = nothing)
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
-    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing)
+    target_transport = convert_target_transport(FT, target_transport)
+    return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::NormalRadiation) =
@@ -73,7 +88,8 @@ Adapt.adapt_structure(to, r::NormalRadiation) =
               r.use_boundary_velocity,
               adapt(to, r.φᵇ),
               adapt(to, r.φ₁),
-              adapt(to, r.φ₁ˡ))
+              adapt(to, r.φ₁ˡ),
+              adapt(to, r.target_transport))
 
 Base.summary(::NormalRadiation{FT}) where FT = "NormalRadiation{$FT}"
 
@@ -81,8 +97,15 @@ function Base.show(io::IO, r::NormalRadiation)
     print(io, summary(r), '\n')
     print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
     print(io, "├── outflow_timescale: ", prettysummary(r.outflow_timescale), '\n')
-    print(io, "└── use_boundary_velocity: ", r.use_boundary_velocity)
+    print(io, "├── use_boundary_velocity: ", r.use_boundary_velocity, '\n')
+    print(io, "└── target_transport: ", prettysummary(r.target_transport))
 end
+
+has_target_transport(::NormalRadiation{<:Any, <:Any, <:Nothing}) = false
+has_target_transport(::NormalRadiation) = true
+
+get_target_transport(scheme::NormalRadiation, grid) = _eval_tt(scheme.target_transport, grid)
+get_target_transport(scheme::NormalRadiation) = scheme.target_transport
 
 const RVBC  = BoundaryCondition{<:Value{<:NormalRadiation}}
 const RNFBC = BoundaryCondition{<:NormalFlow{<:NormalRadiation}}
@@ -110,7 +133,8 @@ function materialize_radiation_storage(radiation::NormalRadiation, grid, loc, di
     return NormalRadiation(radiation.outflow_timescale,
                      radiation.inflow_timescale,
                      radiation.use_boundary_velocity,
-                     φᵇ, φ₁, φ₁ˡ)
+                     φᵇ, φ₁, φ₁ˡ,
+                     radiation.target_transport)
 end
 
 rebuild_classification(::Value, scheme) = Value(scheme)
