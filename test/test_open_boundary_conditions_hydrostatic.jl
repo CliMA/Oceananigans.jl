@@ -520,35 +520,30 @@ function test_oblique_reduces_to_normal()
     return reduces && !isapprox(tilted, normal; rtol = 1e-6)
 end
 
-# A tracer blob advected through an open boundary leaves the domain.
-function test_oblique_radiation_outflow()
-    Nx, Ny, Nz = 32, 8, 1
-    Lx, Ly = 1000.0, 250.0
-    U = 1.0
+# Mirroring the initial tracer and the tangential velocity mirrors the solution.
+function test_oblique_radiation_mirror_symmetry()
+    grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
+                           topology = (Bounded, Periodic, Bounded))
 
-    grid = RectilinearGrid(size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly),
-                           z = (-100.0, 0), topology = (Bounded, Periodic, Bounded))
-
-    scheme = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
-    c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme),
-                                    west = ValueBoundaryCondition(0; scheme))
-
-    model = HydrostaticFreeSurfaceModel(grid;
-                                        velocities = PrescribedVelocityFields(u = U),
-                                        tracer_advection = UpwindBiased(order = 1),
-                                        buoyancy = nothing, tracers = :c,
-                                        boundary_conditions = (; c = c_bcs))
-
-    σ = Lx / 16
-    set!(model, c = (x, y, z) -> exp(-((x - Lx/2)^2 + (y - Ly/2)^2) / (2σ^2)))
-
-    Δt = 0.5 * (Lx / Nx) / U
-    for _ in 1:round(Int, Lx / (U * Δt))
-        time_step!(model, Δt)
+    function tracer_after_outflow(v, c₀)
+        bc = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            velocities = PrescribedVelocityFields(u = 1, v = v),
+                                            tracer_advection = Centered(),
+                                            buoyancy = nothing, tracers = :c,
+                                            boundary_conditions = (; c = FieldBoundaryConditions(east = bc, west = bc)))
+        set!(model, c = c₀)
+        for _ in 1:40
+            time_step!(model, 0.01)
+        end
+        return Array(interior(model.tracers.c, :, :, 1))
     end
 
-    c = Array(interior(model.tracers.c))
-    return minimum(c) > -1e-12 && maximum(c) < 1e-2
+    c₀(x, y, z) = exp(-((x - 0.6)^2 + (y - 0.3)^2) / 0.02)
+    c = tracer_after_outflow(0.5, c₀)
+    c_mirrored = tracer_after_outflow(-0.5, (x, y, z) -> c₀(x, 1 - y, z))
+
+    return c ≈ reverse(c_mirrored, dims = 2)
 end
 
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
@@ -592,7 +587,7 @@ end
         @test test_oblique_reduces_to_normal()
     end
 
-    @testset "ObliqueRadiation lets a tracer out of the domain" begin
-        @test test_oblique_radiation_outflow()
+    @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
+        @test test_oblique_radiation_mirror_symmetry()
     end
 end

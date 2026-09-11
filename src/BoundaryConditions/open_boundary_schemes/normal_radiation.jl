@@ -2,7 +2,7 @@
 ##### NormalRadiation (based on Orlanski 1976) open boundary scheme
 #####
 
-# Subtypes have the fields (outflow_timescale, inflow_timescale, use_boundary_velocity, φᵇ, φ₁, φ₁ˡ), in that order.
+# Subtypes begin with the fields (outflow_timescale, inflow_timescale, use_boundary_velocity, φᵇ, φ₁, φ₁ˡ), in that order.
 abstract type AbstractRadiationScheme{FT} end
 
 """
@@ -70,13 +70,13 @@ function NormalRadiation(FT = defaults.FloatType;
     return NormalRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity, nothing, nothing, nothing)
 end
 
-Adapt.adapt_structure(to, r::AbstractRadiationScheme) =
-    getnamewrapper(r)(adapt(to, r.outflow_timescale),
-                      adapt(to, r.inflow_timescale),
-                      r.use_boundary_velocity,
-                      adapt(to, r.φᵇ),
-                      adapt(to, r.φ₁),
-                      adapt(to, r.φ₁ˡ))
+Adapt.adapt_structure(to, r::NormalRadiation) =
+    NormalRadiation(adapt(to, r.outflow_timescale),
+              adapt(to, r.inflow_timescale),
+              r.use_boundary_velocity,
+              adapt(to, r.φᵇ),
+              adapt(to, r.φ₁),
+              adapt(to, r.φ₁ˡ))
 
 Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(getnamewrapper(r), "{$FT}")
 
@@ -109,12 +109,15 @@ function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid,
     φᵇ  = on_architecture(arch, zeros(FT, tangential_size...))
     φ₁  = on_architecture(arch, zeros(FT, tangential_size...))
     φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
+    buffers = radiation_buffers(radiation, arch, FT, tangential_size)
 
     return getnamewrapper(radiation)(radiation.outflow_timescale,
                                      radiation.inflow_timescale,
                                      radiation.use_boundary_velocity,
-                                     φᵇ, φ₁, φ₁ˡ)
+                                     φᵇ, φ₁, φ₁ˡ, buffers...)
 end
+
+radiation_buffers(radiation, arch, FT, tangential_size) = ()
 
 rebuild_classification(::Value, scheme) = Value(scheme)
 rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
@@ -183,7 +186,7 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline radiation_update(radiation::NormalRadiation, t, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
+@inline radiation_update(radiation::NormalRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
     orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
 # The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
@@ -211,7 +214,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
@@ -243,7 +246,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
@@ -275,7 +278,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
@@ -307,7 +310,7 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+        φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
         closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
