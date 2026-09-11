@@ -83,6 +83,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         compute_momentum_tendencies!(model, callbacks)
     end
 
+    update_lagrangian_particle_state!(model.particles, model)
+
     return nothing
 end
 

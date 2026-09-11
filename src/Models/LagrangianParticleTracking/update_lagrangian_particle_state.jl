@@ -14,7 +14,7 @@
     end
 end
 
-function update_lagrangian_particle_state!(particles, model, Δt)
+function update_lagrangian_particle_state!(particles, model)
     grid = model.grid
     arch = architecture(grid)
     workgroup = min(length(particles), 256)

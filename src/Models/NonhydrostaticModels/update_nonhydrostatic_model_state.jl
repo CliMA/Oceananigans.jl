@@ -57,6 +57,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     update_advection_timestep!(model.advection, model.timestepper, model.clock)
     update_biogeochemical_state!(model.biogeochemistry, model)
     compute_tendencies!(model, callbacks)
+    update_lagrangian_particle_state!(model.particles, model)
 
     return nothing
 end
