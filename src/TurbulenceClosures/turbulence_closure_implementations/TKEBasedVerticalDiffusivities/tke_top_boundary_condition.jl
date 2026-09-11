@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, getbc
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}
@@ -45,10 +45,14 @@ See the implementation in catke_equation.jl.
 #####
 
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
-function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
-    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for c in tracer_names)
+Base.@constprop :aggressive function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
+    default_tracer_bcs = named_tuple(c -> FieldBoundaryConditions(grid, (Center(), Center(), Center())), tracer_names)
     bcs = merge(default_tracer_bcs, user_bcs)
-    return NamedTuple(c => bcs[c].top for c in tracer_names)
+
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        bcs[c].top
+    end
 end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
@@ -65,8 +69,9 @@ end
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
-    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields)
-    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields)
+    Nz = size(grid, 3)
+    τx = total_boundary_flux(velocity_bcs.u, i, j, Nz, grid, clock, fields, fields.u)
+    τy = total_boundary_flux(velocity_bcs.v, i, j, Nz, grid, clock, fields, fields.v)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 

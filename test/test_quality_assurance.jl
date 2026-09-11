@@ -36,12 +36,12 @@ end
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
     # When ambiguities are resolved, update the cap accordingly.
-    @test number_of_ambiguities == 318
+    @test number_of_ambiguities == 269
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
         # Oceananigans.AbstractOperations,
-        # Oceananigans.Advection,
+        Oceananigans.Advection,
         Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
         # Oceananigans.BoundaryConditions,
@@ -55,16 +55,20 @@ end
         # Oceananigans.ImmersedBoundaries,
         Oceananigans.Logger,
         # Oceananigans.Models,
+        Oceananigans.Models.BulkDragBoundaryConditions,
+        Oceananigans.Models.ShallowWaterModels,
+        Oceananigans.Models.VarianceDissipationComputations,
         # Oceananigans.MultiRegion,
         # Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         Oceananigans.OutputReaders,
-        # Oceananigans.OutputWriters,
+        Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         # Oceananigans.Solvers,
         Oceananigans.StokesDrifts,
         Oceananigans.TimeSteppers,
         # Oceananigans.TurbulenceClosures,
+        Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities,
         Oceananigans.Units,
         Oceananigans.Utils,
     )
@@ -80,7 +84,6 @@ end
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
         pirate_modules = (
             Oceananigans.AbstractOperations,
-            Oceananigans.BoundaryConditions,
             Oceananigans.BuoyancyFormulations,
             Oceananigans.Grids,
             Oceananigans.Models,
@@ -95,9 +98,9 @@ end
     modules = (
         Oceananigans.AbstractOperations,
         Oceananigans.Advection,
-        # Oceananigans.Architectures,
+        Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
-        # Oceananigans.BoundaryConditions,
+        Oceananigans.BoundaryConditions,
         Oceananigans.BuoyancyFormulations,
         Oceananigans.Coriolis,
         Oceananigans.Diagnostics,
@@ -106,17 +109,17 @@ end
         Oceananigans.Forcings,
         Oceananigans.Grids,
         Oceananigans.ImmersedBoundaries,
-        # Oceananigans.Logger,
+        Oceananigans.Logger,
         # Oceananigans.Models,
         Oceananigans.Models.HydrostaticFreeSurfaceModels,
         Oceananigans.MultiRegion,
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
-        # Oceananigans.OutputReaders,
-        # Oceananigans.OutputWriters,
-        # Oceananigans.Simulations,
+        Oceananigans.OutputReaders,
+        Oceananigans.OutputWriters,
+        Oceananigans.Simulations,
         Oceananigans.Solvers,
-        # Oceananigans.StokesDrifts,
+        Oceananigans.StokesDrifts,
         Oceananigans.TimeSteppers,
         Oceananigans.TurbulenceClosures,
         Oceananigans.Units,

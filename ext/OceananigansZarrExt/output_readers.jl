@@ -5,10 +5,9 @@
 using Oceananigans.Architectures: on_architecture, cpu_architecture, architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.Fields: instantiated_location, set!, location, indices, interior
-using Oceananigans.Grids: offset_data
 using Oceananigans.OutputReaders:
     InMemoryFTS,
-    InMemory, OnDisk, Linear, UnspecifiedBoundaryConditions,
+    InMemory, Linear, UnspecifiedBoundaryConditions,
     new_data, time_indices, time_indices_length, ZarrPath
 
 import Oceananigans.OutputReaders: set_from_zarr!, FieldTimeSeries
@@ -135,9 +134,7 @@ end
 
 # Load a single timestep from a Zarr array into a Field. The on-disk data may have been
 # saved with halos (`with_halos=true`) or interior-only (`with_halos=false`). Distinguish
-# by shape: if `raw` matches the halo-extended parent shape, use `offset_data`;
-# otherwise it should match the interior, in which case we allocate a fresh Field and
-# copy the interior in.
+# by shape and copy into either the parent array or interior view.
 function Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
                grid,
                architecture = CPU(),
@@ -147,18 +144,20 @@ function Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
     nd = ndims(arr)
     time_slice = (ntuple(_ -> :, nd - 1)..., time_index)
     raw = arr[time_slice...]
+    raw = inflate_reduced_dimensions(raw, loc, grid)
 
     grid_arch = on_architecture(architecture, grid)
     raw_arch  = on_architecture(architecture, raw)
 
     fld = Oceananigans.Fields.Field(loc, grid_arch; boundary_conditions, indices)
-    parent_size = size(parent(fld))
-    if size(raw_arch) == parent_size[1:length(size(raw_arch))]
-        # raw matches halo-extended parent — copy parent-to-parent.
+    if length(raw_arch) == length(parent(fld))
         copyto!(parent(fld), raw_arch)
+    elseif length(raw_arch) == length(interior(fld))
+        interior(fld) .= reshape(raw_arch, size(interior(fld)))
     else
-        # raw matches the interior — copy into the interior view.
-        interior(fld) .= raw_arch
+        msg = "Zarr slice for $name has length $(length(raw_arch)); expected " *
+              "interior length $(length(interior(fld))) or parent length $(length(parent(fld)))."
+        throw(DimensionMismatch(msg))
     end
     return fld
 end

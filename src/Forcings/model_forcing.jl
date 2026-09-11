@@ -53,15 +53,11 @@ function model_forcing(user_forcings, model_fields, prognostic_fields=model_fiel
 
     model_field_names = keys(model_fields)
 
-    materialized = Tuple(
+    return named_tuple(keys(prognostic_fields)) do name
+        Base.@constprop :aggressive
+        field = prognostic_fields[name]
         name in keys(user_forcings) ?
             materialize_forcing(user_forcings[name], field, name, model_field_names) :
             Returns(zero(eltype(field)))
-            for (name, field) in pairs(prognostic_fields)
-    )
-
-    prognostic_names = keys(prognostic_fields)
-    forcings = NamedTuple{prognostic_names}(materialized)
-
-    return forcings
+    end
 end

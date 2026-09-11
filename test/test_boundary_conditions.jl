@@ -413,4 +413,133 @@ end
         @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
         @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
     end
+
+    @testset "Windowed Field boundary conditions [$(typeof(arch))]" for arch in archs
+        @info "  Testing windowed Field boundary conditions [$(typeof(arch))]..."
+
+        Nx, Ny, Nz = 3, 4, 5
+        Lx, Ly, Lz = 1, 2, 3
+        grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Bounded, Bounded, Bounded))
+        Δx, Δy, Δz = Lx / Nx, Ly / Ny, Lz / Nz
+
+        ρ = CenterField(grid)
+        set!(ρ, (x, y, z) -> 1 + x + 2y + 3z)
+        fill_halo_regions!(ρ)
+
+        # Computed fields windowed to the bottom and top planes, and views of `ρ` windowed to the
+        # west, east, south, and north planes. All of them store their data offset to the window
+        # (e.g. the k-axis of `∂z_cᵗ` is Nz:Nz), and must be read at their own plane.
+        ∂z_cᵇ = Field(-2ρ, indices=(:, :, 1))
+        ∂z_cᵗ = Field(-2ρ, indices=(:, :, Nz))
+        compute!(∂z_cᵇ)
+        compute!(∂z_cᵗ)
+
+        ρʷ = view(ρ, 1,  :, :)
+        ρᵉ = view(ρ, Nx, :, :)
+        ρˢ = view(ρ, :, 1,  :)
+        ρⁿ = view(ρ, :, Ny, :)
+
+        loc = (Center(), Center(), Center())
+        bcs = FieldBoundaryConditions(grid, loc;
+                                      west   = ValueBoundaryCondition(ρʷ),
+                                      east   = ValueBoundaryCondition(ρᵉ),
+                                      south  = ValueBoundaryCondition(ρˢ),
+                                      north  = ValueBoundaryCondition(ρⁿ),
+                                      bottom = GradientBoundaryCondition(∂z_cᵇ),
+                                      top    = GradientBoundaryCondition(∂z_cᵗ))
+
+        # The boundary conditions are read at the plane the fields are windowed to
+        @allowscalar begin
+            @test all(getbc(bcs.west,   j, k, grid) == ρ[1,  j, k]      for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(bcs.east,   j, k, grid) == ρ[Nx, j, k]      for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(bcs.south,  i, k, grid) == ρ[i, 1,  k]      for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(bcs.north,  i, k, grid) == ρ[i, Ny, k]      for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(bcs.bottom, i, j, grid) == -2 * ρ[i, j, 1]  for i in 1:Nx, j in 1:Ny)
+            @test all(getbc(bcs.top,    i, j, grid) == -2 * ρ[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+        end
+
+        # ... also when filling halos
+        c = CenterField(grid; boundary_conditions=bcs)
+        set!(c, (x, y, z) -> x * y * z)
+        fill_halo_regions!(c)
+
+        @allowscalar begin
+            @test all(c[0,    j, k] ≈ 2 * ρ[1,  j, k] - c[1,  j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[Nx+1, j, k] ≈ 2 * ρ[Nx, j, k] - c[Nx, j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[i, 0,    k] ≈ 2 * ρ[i, 1,  k] - c[i, 1,  k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, Ny+1, k] ≈ 2 * ρ[i, Ny, k] - c[i, Ny, k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, j, 0]    ≈ c[i, j, 1]  + 2 * ρ[i, j, 1]  * Δz for i in 1:Nx, j in 1:Ny)
+            @test all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2 * ρ[i, j, Nz] * Δz for i in 1:Nx, j in 1:Ny)
+        end
+
+        # A field neither reduced nor windowed along the boundary-normal direction is windowed, when
+        # the boundary conditions are regularized, to its plane adjacent to (Center) or on (Face)
+        # the boundary
+        w = ZFaceField(grid)
+        set!(w, (x, y, z) -> x - y + 4z)
+        full_bcs = FieldBoundaryConditions(grid, loc;
+                                           west   = ValueBoundaryCondition(ρ),
+                                           east   = ValueBoundaryCondition(ρ),
+                                           south  = ValueBoundaryCondition(ρ),
+                                           north  = ValueBoundaryCondition(ρ),
+                                           bottom = ValueBoundaryCondition(w),
+                                           top    = ValueBoundaryCondition(w))
+
+        @test full_bcs.west.condition.indices   == (1:1,   Colon(), Colon())
+        @test full_bcs.east.condition.indices   == (Nx:Nx, Colon(), Colon())
+        @test full_bcs.south.condition.indices  == (Colon(), 1:1,   Colon())
+        @test full_bcs.north.condition.indices  == (Colon(), Ny:Ny, Colon())
+        @test full_bcs.bottom.condition.indices == (Colon(), Colon(), 1:1)
+        @test full_bcs.top.condition.indices    == (Colon(), Colon(), Nz+1:Nz+1)
+
+        @allowscalar begin
+            @test all(getbc(full_bcs.west,   j, k, grid) == ρ[1,  j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.east,   j, k, grid) == ρ[Nx, j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.south,  i, k, grid) == ρ[i, 1,  k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.north,  i, k, grid) == ρ[i, Ny, k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.bottom, i, j, grid) == w[i, j, 1]     for i in 1:Nx, j in 1:Ny)
+            @test all(getbc(full_bcs.top,    i, j, grid) == w[i, j, Nz+1]  for i in 1:Nx, j in 1:Ny)
+        end
+
+        # ... and it shares its data with the original field
+        c_full = CenterField(grid; boundary_conditions=full_bcs)
+        set!(w, 7)
+        fill_halo_regions!(c_full)
+        @test @allowscalar all(c_full[i, j, Nz+1] ≈ 14 - c_full[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+
+        # Updating the windowed computed field updates the boundary condition in place
+        set!(ρ, 1)
+        compute!(∂z_cᵗ)
+        fill_halo_regions!(c)
+        @test @allowscalar all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2Δz for i in 1:Nx, j in 1:Ny)
+
+        # The window is preserved when the boundary condition is adapted for kernels, but the
+        # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
+        # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
+        # other model fields, so that the tuple of model fields stays homogeneous)
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        adapted_top = Adapt.adapt(Array, bcs.top)
+        @test adapted_top.condition isa Field
+        @test adapted_top.condition.indices == ∂z_cᵗ.indices
+        @test location(adapted_top.condition) == location(∂z_cᵗ)
+
+        # Fields reduced along the boundary-normal direction are still supported
+        cᵗ = Field{Center, Center, Nothing}(grid)
+        set!(cᵗ, (x, y) -> x + y)
+        reduced_bcs = FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(cᵗ))
+        @test @allowscalar all(getbc(reduced_bcs.top, i, j, grid) == cᵗ[i, j, 1] for i in 1:Nx, j in 1:Ny)
+
+        # A Field windowed to more than one plane along the boundary-normal direction is ambiguous...
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, :, :, 2:3)))
+
+        # ... and a Field windowed along a tangential direction is rejected too, whether or not it is
+        # also windowed to a single plane (or reduced) along the boundary-normal direction: the
+        # tangential indices of the boundary index the condition directly, so it would be read
+        # outside its window (`condition[i, j, 1]` for the last three) or at the wrong plane.
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1, :, :)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; west=ValueBoundaryCondition(∂z_cᵗ))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1:2, :, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 2, 2:3, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(view(cᵗ, 1:2, :, :)))
+    end
 end

@@ -15,10 +15,10 @@ using OffsetArrays: OffsetArray
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid,
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid, Periodic,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
-using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator
+using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator, named_tuple
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
@@ -57,7 +57,7 @@ Build a field from array `a` at `loc` and on `grid`.
     return f
 end
 
-# Build a field off of the current data
+# Construct a field from the supplied data
 @inline function field(loc, a::OffsetArray, grid)
     loc = instantiate(loc)
     a = on_architecture(architecture(grid), a)
@@ -71,10 +71,10 @@ end
 
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
-    loc === instantiated_location(f) && grid === f.grid && return f
+    loc === instantiated_location(f) && grid == f.grid && return f
 
     msg = """
-    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+    Cannot reconstruct field, originally located at $(instantiated_location(f)), at $loc.
 
     Destination grid:
     $grid

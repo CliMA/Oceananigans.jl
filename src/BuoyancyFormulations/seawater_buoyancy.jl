@@ -249,8 +249,9 @@ end
     T, S = get_temperature_and_salinity(b, fields)
     T_flux_bc, S_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
 
-    T_flux = getbc(T_flux_bc, i, j, grid, clock, fields)
-    S_flux = getbc(S_flux_bc, i, j, grid, clock, fields)
+    kc = clamp(k, 1, size(grid, 3))   # boundary cell adjacent to face k (top: Nz, bottom: 1)
+    T_flux = total_boundary_flux(T_flux_bc, i, j, kc, grid, clock, fields, T)
+    S_flux = total_boundary_flux(S_flux_bc, i, j, kc, grid, clock, fields, S)
 
     return b.gravitational_acceleration * (
               thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * T_flux

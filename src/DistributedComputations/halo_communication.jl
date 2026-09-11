@@ -84,14 +84,21 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...)
+# Sometimes we want to fill halo using `adapted` arguments, where the grid has
+# been stripped from the architecture. For this reason we pass it explicitly
+maybe_distributed_fill_halo_regions!(arch, args...; kwargs...) = fill_halo_regions!(args...; kwargs...)
+maybe_distributed_fill_halo_regions!(arch::Distributed, args...; kwargs...) = distributed_fill_halo_regions!(arch, args...; kwargs...)
 
-    arch = architecture(grid)
+# Otherwise we recover the architecture from the (still distributed) grid.
+fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...) =
+    distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+
+function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
     outstanding_requests = length(arch.mpi_requests)
 
-    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args...; kwargs...)
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, args...; kwargs...)
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
@@ -105,11 +112,11 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
-@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
+@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, arch, grid, args...; kwargs...) = nothing
 
-@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
-    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, grid, args...; kwargs...)
-    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, grid, args...; kwargs...)
+@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, arch, grid, args...; kwargs...)
+    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, arch, grid, args...; kwargs...)
+    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, arch, grid, args...; kwargs...)
     return nothing
 end
 
@@ -174,19 +181,17 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
-distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) =
-    fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
+distributed_fill_halo_event!(c, kernel!, bcs, loc, arch, grid, buffers, args...; kwargs...) = fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, buffers, args...;
+function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args...;
                                       async = false, only_local_halos = false, kwargs...)
 
     only_local_halos && return nothing # No need to do anything here
 
     buffer_side = kernel!.side
-    arch = architecture(grid)
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
     sync_device!(arch) # We need to synchronize the device before we start the communication

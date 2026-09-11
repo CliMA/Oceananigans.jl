@@ -41,7 +41,7 @@ Random.seed!(1337) # for reproducible results
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as [Wagner2021](@citet),
+# We use a modest resolution and the same total extent as in the paper by [Wagner2021](@citet),
 
 grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 

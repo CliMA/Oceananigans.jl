@@ -118,8 +118,12 @@ booleans that indicates whether a cell is immersed or not.
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+
+    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
+
     return GridFittedBottom(bottom_field.data, ib.immersed_condition)
 end
 

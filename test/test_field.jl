@@ -13,7 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -102,6 +102,30 @@ function run_field_reduction_tests(grid)
 
         @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
         @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
+
+        # Index reductions locate extrema within `interior(ϕ)`, consistently with `nodes(ϕ)`,
+        # and must be blind to the halo regions, poisoned here on a copy
+        ψ = similar(ϕ)
+        parent(ψ) .= convert(eltype(ψ), 1e6)
+        interior(ψ) .= interior(ϕ)
+        interior_values = Array(interior(ψ))
+        @test argmax(ψ) == argmax(interior_values)
+        @test findmax(ψ) == findmax(interior_values)
+
+        parent(ψ) .= convert(eltype(ψ), -1e6)
+        interior(ψ) .= interior(ϕ)
+        @test argmin(ψ) == argmin(interior_values)
+        @test findmin(ψ) == findmin(interior_values)
+
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -788,6 +812,17 @@ end
                 @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
             end
+
+            @testset "Index reductions on an immersed grid [$(typeof(arch)), $FT]" begin
+                immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(0))
+                c = CenterField(immersed_grid)
+                set!(c, (x, y, z) -> -z) # the raw extremum hides in the immersed region
+                values = Array(interior(c))
+                @test argmax(values) != argmax(c)
+                @test values[argmax(c)] == maximum(c)
+                @test values[argmin(c)] == minimum(c)
+                @test findmax(c) == (maximum(c), argmax(c))
+            end
         end
 
         for arch in archs, FT in float_types
@@ -959,6 +994,33 @@ end
                 @test fi.i === nothing
                 @test fi.j === nothing
                 @test fi.k === nothing
+            end
+        end
+    end
+
+    @testset "Fractional longitude index on regional grids" begin
+        @info "  Testing fractional longitude indices on regional grids..."
+
+        # A `Bounded` grid covers only part of the globe, so a longitude just west of its
+        # western edge must index just west of the grid rather than folding to λ ≈ 360.
+        regional = LatitudeLongitudeGrid(size = (2, 1, 1), longitude = (0, 20),
+                                         latitude = (0, 10), z = (-1, 0),
+                                         topology = (Bounded, Bounded, Bounded))
+
+        for (λ, expected) in ((-15.0, -1), (-5.0, 0), (5.0, 1), (15.0, 2), (25.0, 3))
+            fi = FractionalIndices((λ, 5.0, 0.0), regional, Center(), Center(), Center())
+            @test fi.i ≈ expected
+        end
+
+        # A grid spanning the full globe is unaffected, whether `Bounded` or `Periodic`.
+        for TX in (Bounded, Periodic)
+            global_grid = LatitudeLongitudeGrid(size = (36, 18, 1), longitude = (0, 360),
+                                                latitude = (-80, 80), z = (-1, 0),
+                                                topology = (TX, Bounded, Bounded))
+
+            for (λ, expected) in ((5.0, 1), (180.0, 18.5), (350.0, 35.5), (357.0, 36.2))
+                fi = FractionalIndices((λ, 0.0, 0.0), global_grid, Center(), Center(), Center())
+                @test fi.i ≈ expected
             end
         end
     end
@@ -1139,6 +1201,26 @@ end
             mask_immersed_field!(f_full, 0.0)
             @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
             @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "mask_immersed_field_xy! with an active cells map" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field_xy! with an active cells map [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+            # The western half of the domain is dry from top to bottom, so those columns hold no active cell
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> ifelse(x < 0.5, 0, -1));
+                                        active_cells_map = true)
+
+            f = CenterField(grid)
+            set!(f, 1)
+            mask_immersed_field_xy!(f, 0; k=Nz)
+
+            @test all(interior(f, 1:2, :, Nz) .== 0)
+            @test all(interior(f, 3:4, :, Nz) .== 1)
         end
     end
 

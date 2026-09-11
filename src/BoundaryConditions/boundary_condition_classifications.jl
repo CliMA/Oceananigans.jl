@@ -30,8 +30,16 @@ domain; for example, a positive, upwards flux of heat at the top of the domain a
 the interior of the domain. Conversely, a positive flux applied to the bottom boundary leads
 to an increase of the quantity in the interior of the domain. The same logic holds for east,
 west, north, and south boundaries.
+
+The type parameter `TD` records the `time_discretization` of the flux: `ExplicitTimeDiscretization`
+for an ordinary flux, or `IMEXFluxTimeDiscretization` for an affine flux whose linear part
+is integrated implicitly by the vertical solver.
 """
-struct Flux <: AbstractBoundaryConditionClassification end
+struct Flux{TD} <: AbstractBoundaryConditionClassification
+    time_discretization :: TD
+end
+
+Flux() = Flux(ExplicitTimeDiscretization())
 
 """
     struct Gradient <: AbstractBoundaryConditionClassification

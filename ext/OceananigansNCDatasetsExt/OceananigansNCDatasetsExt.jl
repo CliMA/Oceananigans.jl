@@ -11,8 +11,8 @@ Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigan
 """
 module OceananigansNCDatasetsExt
 
-using NCDatasets
-using NCDatasets: AbstractDataset
+import NCDatasets
+using NCDatasets: AbstractDataset, NCDataset, defDim, defGroup, dimnames, name, sync
 
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
@@ -21,42 +21,28 @@ using Statistics: mean
 
 import Oceananigans
 
-using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
-using Oceananigans.Architectures: CPU, GPU, on_architecture
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields
-using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
+using Oceananigans: prettytime, pretty_filesize, AbstractModel
+using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
+import Oceananigans.Fields
+using Oceananigans.Fields: Fields, AbstractField, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Center, Face, Flat, Periodic, Bounded,
-    RightCenterFolded, RightFaceFolded,
-    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid,
-    StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
-    grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-    λnodes, φnodes,
-    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node, inactive_node,
-    constructor_arguments, architecture,
-    generate_coordinate, total_length, interior_indices
-
-# Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
-# different function (5-arg, for FieldTimeSeries data allocation).
-import Oceananigans.Grids: new_data as allocate_grid_data
+    Center, Face, grid, nodes, constructor_arguments,
+    generate_coordinate
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
-    ConformalCubedSpherePanelGrid, Tripolar, LatitudeLongitudeRotation,
+    Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
 using Oceananigans.Grids: OrthogonalSphericalShellGrid
 
-using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
-    ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
-    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid, bottom_height_field
+    ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, PartialCellBottom,
+    CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
     InMemoryFTS,
     time_indices,
     InMemory,
-    OnDisk,
     Linear,
     time_indices_length,
     new_data,
@@ -66,23 +52,31 @@ using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
     show_averaging_schedule,
-    AveragedTimeInterval,
     WindowedTimeAverage,
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,
     time_average_outputs,
-    restrict_to_interior,
     fetch_output,
     convert_output,
     fetch_and_convert_output,
-    show_array_type
+    show_array_type,
+    default_dimension_attributes,
+    gather_dimensions,
+    gather_grid_metrics,
+    gather_immersed_boundary,
+    field_dimensions,
+    field_auxiliary_coordinates,
+    squeeze_reduced_dimensions,
+    inflate_reduced_dimensions,
+    materialize_serialized_output,
+    construct_ossg_halo_padded_array,
+    halo_fill_2d_metric
 using Oceananigans.Utils:
-    TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
-    versioninfo_with_gpu, oceananigans_versioninfo, prettykeys, add_time_interval
+    materialize_schedule, versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
 import NCDatasets: defVar
-import Oceananigans: write_output!
+import Oceananigans: initialize!, write_output!
 import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
 import Oceananigans.OutputWriters:
     NetCDFWriter,
@@ -91,9 +85,7 @@ import Oceananigans.OutputWriters:
     materialize_from_netcdf,
     reconstruct_grid,
     trilocation_dim_name,
-    add_grid_suffix,
-    dimension_name_generator_free_surface,
-    vertical_coordinate_name
+    dimension_name_generator_free_surface
 
 const c = Center()
 const f = Face()

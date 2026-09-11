@@ -60,75 +60,6 @@ end
 
 iterations_from_file(file::NCDataset) = 1:length(keys(file["time"][:]))
 
-"""
-    inflate_nothing_dimensions(data, location, grid)
-
-Add singleton dimensions to `data` where `location` is `nothing` or topology is `Flat`.
-This is the inverse operation of `squeeze_nothing_dimensions` and it is done for compatibility
-with Oceananigans' internal representation of fields.
-
-For example, if `location = (Center(), Center(), nothing)`, the data will have a singleton
-dimension added in the third (z) direction, transforming data of size `(Nx, Ny)` to
-size `(Nx, Ny, 1)`.
-
-# Arguments
-- `data`: Array data read from NetCDF file (may be 1D, 2D, or 3D)
-- `location`: Field's grid location tuple, as instantiated locations (e.g., `(Center(), Face(), nothing)`)
-- `grid`: Grid object to check topology
-
-# Returns
-Reshaped array with singleton dimensions added where needed. Always returns 3D spatial array.
-
-# Example
-```julia
-# Field with location (Center(), Center(), nothing) on 100×200×1 grid
-data_from_file = rand(100, 200)  # NetCDF squeezed out z-dimension
-location = (Center(), Center(), nothing)
-inflated = inflate_nothing_dimensions(data_from_file, location, grid)
-size(inflated)  # (100, 200, 1) - z-dimension restored
-```
-"""
-function inflate_nothing_dimensions(data, location, grid)
-    # Determine which dimensions need to be inflated
-    # A dimension is inflated if:
-    # 1. Location is Nothing (e.g., reduced dimension like 2D field in 3D grid), OR
-    # 2. Grid topology is Flat (e.g., 2D simulation with no variation in that direction)
-    inflated_dims = []
-    for (i, loc) in enumerate(location)
-        # `loc` may be a type (`Nothing`) or an instance (`nothing`) depending on the caller,
-        # so test for both — `nothing == Nothing` is `false`.
-        if loc === Nothing || loc === nothing || topology(grid, i) == Flat
-            push!(inflated_dims, i)
-        end
-    end
-
-    # If no dimensions need inflating, return original data unchanged
-    isempty(inflated_dims) && return data
-
-    # Build new shape by inserting size-1 at positions that were squeezed
-    # Example: data size (100, 200), inflated_dims = [3]
-    #          → new_shape = [100, 200, 1]
-    original_shape = collect(size(data))
-    new_shape = Int[]
-    original_dim_idx = 1
-
-    for i in 1:3
-        if i ∈ inflated_dims
-            # This dimension was squeezed, insert singleton dimension
-            push!(new_shape, 1)
-        else
-            # This dimension exists in data, copy its size
-            if original_dim_idx <= length(original_shape)
-                push!(new_shape, original_shape[original_dim_idx])
-                original_dim_idx += 1
-            end
-        end
-    end
-
-    # Reshape adds singleton dimensions in the correct positions
-    return reshape(data, new_shape...)
-end
-
 function find_time_index(t, file_times, Δt)
     # Find the index in file_times that is closest to t
     for (i, file_time) in enumerate(file_times)
@@ -216,7 +147,7 @@ function Field(location, file::NCDataset, name::String, iter;
     variable_dimensions = dimnames(file[name])
     time_slice = (ntuple(_ -> :, length(variable_dimensions)-1)..., iter)
     raw_data = file[name][time_slice...]
-    raw_inflated_data = inflate_nothing_dimensions(raw_data, location, grid)
+    raw_inflated_data = inflate_reduced_dimensions(raw_data, location, grid)
 
     # Change grid to specified architecture?
     grid = on_architecture(architecture, grid)

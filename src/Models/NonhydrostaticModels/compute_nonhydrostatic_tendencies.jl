@@ -1,4 +1,4 @@
-using Oceananigans: fields, TendencyCallsite
+using Oceananigans: fields, prognostic_fields, TendencyCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
@@ -45,10 +45,9 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
     grid                 = model.grid
-    advection            = model.advection
+    advection            = model.advection.momentum
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
-    biogeochemistry      = model.biogeochemistry
     stokes_drift         = model.stokes_drift
     closure              = model.closure
     background_fields    = model.background_fields
@@ -82,19 +81,31 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
             active_cells_map, exclude_periphery)
 
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index + 3]
-        @inbounds forcing = forcings[tracer_index + 3]
-        @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds tracer_name = keys(tracers)[tracer_index]
+    launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, Val(1), Val(propertynames(tracers)))
 
-        launch!(arch, grid, kernel_parameters, compute_Gc!,
-                c_tendency, grid,
-                Val(tracer_index), Val(tracer_name), advection, closure, c_immersed_bc, buoyancy,
-                biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, closure_fields,
-                clock, forcing;
-                active_cells_map)
-    end
+    return nothing
+end
+
+@inline launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
+
+@inline function launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_names}) where {tracer_index, tracer_names}
+    tracer_name = first(tracer_names)
+    arch = model.architecture
+    grid = model.grid
+
+    @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+    @inbounds c_advection   = model.advection[tracer_name]
+    @inbounds forcing       = model.forcing[tracer_name]
+    @inbounds c_immersed_bc = model.tracers[tracer_name].boundary_conditions.immersed
+
+    launch!(arch, grid, kernel_parameters, compute_Gc!,
+            c_tendency, grid,
+            Val(tracer_index), Val(tracer_name), c_advection, model.closure, c_immersed_bc, model.buoyancy,
+            model.biogeochemistry, model.background_fields, model.velocities, model.tracers, model.auxiliary_fields,
+            model.closure_fields, model.clock, forcing;
+            active_cells_map)
+
+    launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end
@@ -159,17 +170,21 @@ $(TYPEDSIGNATURES)
 Apply boundary conditions by adding flux divergences to the right-hand-side.
 """
 function Oceananigans.TimeSteppers.compute_flux_bc_tendencies!(model::NonhydrostaticModel)
+    names = Val(keys(prognostic_fields(model)))
+    compute_flux_bcs!(compute_x_bcs!, model, names)
+    compute_flux_bcs!(compute_y_bcs!, model, names)
+    compute_flux_bcs!(compute_z_bcs!, model, names)
+    return nothing
+end
 
-    Gⁿ    = model.timestepper.Gⁿ
-    arch  = model.architecture
-    clock = model.clock
+@inline compute_flux_bcs!(compute_bcs!, model, ::Val{()}) = nothing
 
-    model_fields = fields(model)
-    prognostic_fields = merge(model.velocities, model.tracers)
-
-    foreach(i -> compute_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
-    foreach(i -> compute_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
-    foreach(i -> compute_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields), 1:length(prognostic_fields))
-
+# `fields(model)` is rebuilt at every level: passing the merged tuple down the recursion allocates
+@inline function compute_flux_bcs!(compute_bcs!, model, ::Val{names}) where names
+    name = first(names)
+    Gc = model.timestepper.Gⁿ[name]
+    c = prognostic_fields(model)[name]
+    compute_bcs!(Gc, c, model.architecture, model.clock, fields(model))
+    compute_flux_bcs!(compute_bcs!, model, Val(Base.tail(names)))
     return nothing
 end
