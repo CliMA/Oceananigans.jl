@@ -297,6 +297,37 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "set! from a function under trace" begin
+        grid = RectilinearGrid(arch;
+                               size = (4, 4, 4),
+                               halo = (3, 3, 3),
+                               extent = (1, 1, 1),
+                               topology = (Periodic, Periodic, Bounded))
+
+        # `set_to_function!` evaluates the function into a CPU twin of the field and then moves
+        # the data in. That move has to broadcast: `copyto!(::SubArray{TracedRArray},
+        # ::SubArray{Array})` has no specialized method, so Base walks it elementwise and hits
+        # scalar `setindex!`, which makes the whole function uncompilable. Shapes agree by
+        # construction, since the twin carries the field's own location and indices.
+        #
+        # A staggered location is included because that is where this first showed up in
+        # practice, setting a model's velocities from a function.
+        profile(x, y, z) = z
+
+        for FieldType in (CenterField, XFaceField)
+            u = FieldType(grid)
+            set_from_function!(u) = (set!(u, profile); nothing)
+            compiled_set! = @compile sync=true set_from_function!(u)
+            compiled_set!(u)
+
+            # Eager `set!` takes the same path without tracing, so it is the reference.
+            reference = FieldType(grid)
+            set!(reference, profile)
+
+            @test Array(interior(u)) == Array(interior(reference))
+        end
+    end
+
     @testset "Field reductions on RectilinearGrid" begin
         grid = RectilinearGrid(arch;
                                size = (10, 10, 10),
