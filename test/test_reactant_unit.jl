@@ -336,9 +336,9 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
             ∫cd = Field(Integral(c * d, dims = 3))
             @test all(≈(cd), Array(interior(∫cd)))
-        end 
-    end 
-      
+        end
+    end
+
     @testset "set! from a function under trace" begin
         grid = RectilinearGrid(arch;
                                size = (4, 4, 4),
