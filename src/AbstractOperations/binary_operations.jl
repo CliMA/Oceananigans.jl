@@ -228,7 +228,7 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
                                 Adapt.adapt(to, binary.grid),
-                                eltype(binary))
+                                unwrapped_eltype(eltype(binary)))
 
 
 Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
