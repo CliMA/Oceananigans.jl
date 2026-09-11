@@ -69,6 +69,33 @@ end
             @test maximum(abs, u .- 1) < 1e-12
         end
 
+        @testset "Steady drag balance feels the free surface [$(typeof(arch))]" begin
+            # One level, periodic: continuity holds u uniform, so the steady balance r u = F(x) - g ∂ₓη
+            # sets u from the mean forcing and the free-surface tilt from the rest.
+            Nx, Lx, H, Δt, Cᴰ = 16, 1e4, 10.0, 20.0, 0.5
+            F₀ = F₁ = 1e-4
+            kx = 2π / Lx
+
+            grid = RectilinearGrid(arch, size=(Nx, 1), x=(0, Lx), z=(-H, 0), topology=(Periodic, Flat, Bounded))
+            m = HydrostaticFreeSurfaceModel(grid;
+                    free_surface = SplitExplicitFreeSurface(grid; substeps=30),
+                    momentum_advection = nothing, tracer_advection = nothing,
+                    tracers = (), buoyancy = nothing, coriolis = nothing, closure = nothing,
+                    boundary_conditions = (u = FieldBoundaryConditions(bottom = IMEXFluxBoundaryCondition(0, -Cᴰ)),),
+                    forcing = (u = Forcing((x, z, t) -> F₀ + F₁ * sin(kx * x)),))
+
+            for _ in 1:2000; time_step!(m, Δt); end
+
+            g  = m.free_surface.gravitational_acceleration
+            xu = xnodes(m.velocities.u)
+            η  = Array(interior(m.free_surface.displacement))[:, 1, 1]
+            u  = Array(interior(m.velocities.u))[:, 1, 1]
+            δxη = (η .- circshift(η, 1)) ./ (Lx / Nx)
+
+            @test u ≈ fill(F₀ * H / Cᴰ, Nx) rtol=1e-6
+            @test -g .* δxη ≈ -F₁ .* sin.(kx .* xu) rtol=1e-6
+        end
+
         @testset "Implicit free surface needs no correction [$(typeof(arch))]" begin
             Δt = 3600
             zfaces = collect(range(-1000, 0, length = 21))

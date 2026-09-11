@@ -42,14 +42,16 @@ model = NonhydrostaticModel(grid; buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   ├── momentum: Centered(order=2)
+│   └── b: Centered(order=2)
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = (0.0, -0.707107, -0.707107)
 └── coriolis: Nothing
 ```
 """
-function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
+Base.@constprop :aggressive function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
     if materialize_gradients

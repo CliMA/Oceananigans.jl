@@ -91,7 +91,7 @@ end
 # TODO: This code belongs in the Models module
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
-has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
+@inline has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
 
 # Tuples of length 0-2 cannot contain velocity fields
 has_velocities(::Tuple{}) = false
@@ -100,7 +100,7 @@ has_velocities(::Tuple{X, Y}) where {X, Y} = false
 
 tracernames(::Nothing) = ()
 tracernames(name::Symbol) = tuple(name)
-tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
+@inline tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 #####
@@ -168,10 +168,14 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Boundary conditions `user_bcs`
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, grid, user_bcs)
-    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for name in tracer_names)
+Base.@constprop :aggressive function TracerFields(tracer_names, grid, user_bcs)
+    default_bcs = named_tuple(name -> FieldBoundaryConditions(grid, (Center(), Center(), Center())), tracer_names)
     bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
-    return NamedTuple(c => CenterField(grid, boundary_conditions=bcs[c]) for c in tracer_names)
+
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs[c])
+    end
 end
 
 """
@@ -181,8 +185,12 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
 for each field.
 """
-TracerFields(tracer_names, grid; kwargs...) =
-    NamedTuple(c => c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid) for c in tracer_names)
+Base.@constprop :aggressive function TracerFields(tracer_names, grid; kwargs...)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid)
+    end
+end
 
 # 'Nothing', or empty tracer fields
 TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
@@ -224,7 +232,9 @@ function TracerFields(proposed_tracers::NamedTuple, grid, bcs)
     validate_field_tuple_grid("tracers", proposed_tracers, grid)
 
     tracer_names = propertynames(proposed_tracers)
-    tracer_fields = Tuple(CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data) for c in tracer_names)
 
-    return NamedTuple{tracer_names}(tracer_fields)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data)
+    end
 end

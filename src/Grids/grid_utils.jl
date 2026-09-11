@@ -71,17 +71,17 @@ one dimension of `topo`logy with `N` centered cells and
 `H` halo cells. If `ind` is provided the total_length
 is restricted by `length(ind)`.
 """
-total_length(::Face,    ::AT,              N, H=0) = N + 2H
-total_length(::Center,  ::AT,              N, H=0) = N + 2H
-total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
-total_length(::Nothing, ::AT,              N, H=0) = 1
-total_length(::Nothing, ::Flat,            N, H=0) = N
-total_length(::Face,    ::Flat,            N, H=0) = N
-total_length(::Center,  ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::AT,              N, H=0) = N + 2H
+@inline total_length(::Center,  ::AT,              N, H=0) = N + 2H
+@inline total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
+@inline total_length(::Nothing, ::AT,              N, H=0) = 1
+@inline total_length(::Nothing, ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::Flat,            N, H=0) = N
+@inline total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
-total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+@inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
+@inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
 @inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
@@ -106,7 +106,7 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
+@inline function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     N = ntuple(Val(D)) do d
         Base.@_inline_meta
@@ -115,7 +115,7 @@ function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(l
     return N
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
+@inline total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """

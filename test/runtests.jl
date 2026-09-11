@@ -58,8 +58,10 @@ CUDA.allowscalar() do
             include("test_schedules.jl")
             include("test_newton_div.jl")
             include("test_materialize_advection.jl")
+            include("test_bounds_preserving_advection.jl")
             include("test_adaptive_implicit_vertical_advection.jl")
             include("test_weno_smoothness.jl")
+            include("test_weno_smoothness_reference.jl")
         end
     end
 
