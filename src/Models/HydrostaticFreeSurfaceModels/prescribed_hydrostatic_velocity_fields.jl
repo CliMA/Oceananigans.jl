@@ -157,8 +157,9 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
+    update_lagrangian_particle_state!(model)
+    step_lagrangian_particles!(model, Δt)
 end
 
 update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =

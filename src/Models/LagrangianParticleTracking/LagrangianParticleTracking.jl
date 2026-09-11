@@ -20,7 +20,7 @@ using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
 abstract type AbstractParticle end
