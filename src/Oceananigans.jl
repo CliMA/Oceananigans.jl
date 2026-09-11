@@ -132,14 +132,6 @@ export
 using DocStringExtensions
 
 function __init__()
-    if VERSION >= v"1.14.0"
-        @warn """You are using Julia v1.14 or later!"
-                 Oceananigans is currently tested on Julia v1.13."
-                 If you find issues with Julia v1.14 or later,"
-                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
-
-    end
-
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
