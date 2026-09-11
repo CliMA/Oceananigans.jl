@@ -149,7 +149,7 @@ end
   return event
 end
 
-function @inline DC.sync_event(event::CUDA.CuEvent)
+function DC.sync_event(event::CUDA.CuEvent)
   event_complete = CUDA.isdone(event)
   while !event_complete
     event_complete = CUDA.isdone(event)
