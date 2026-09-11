@@ -112,7 +112,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.13.0'
         os:
           - ubuntu-latest
         arch:
@@ -147,7 +147,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.13.0'
         os:
           - ubuntu-latest
         arch:
@@ -182,7 +182,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.13.0'
         os:
           - ubuntu-latest
         arch:
@@ -367,7 +367,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.13.0'
         os:
           - macos-latest
         arch:
