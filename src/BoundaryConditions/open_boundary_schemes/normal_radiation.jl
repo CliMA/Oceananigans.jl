@@ -2,7 +2,6 @@
 ##### NormalRadiation (based on Orlanski 1976) open boundary scheme
 #####
 
-# Subtypes begin with the fields (outflow_timescale, inflow_timescale, use_boundary_velocity, φᵇ, φ₁, φ₁ˡ), in that order.
 abstract type AbstractRadiationScheme{FT} end
 
 """
@@ -78,7 +77,7 @@ Adapt.adapt_structure(to, r::NormalRadiation) =
               adapt(to, r.φ₁),
               adapt(to, r.φ₁ˡ))
 
-Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(getnamewrapper(r), "{$FT}")
+Base.summary(r::AbstractRadiationScheme{FT}) where FT = string(nameof(typeof(r)), "{$FT}")
 
 function Base.show(io::IO, r::AbstractRadiationScheme)
     print(io, summary(r), '\n')
@@ -321,7 +320,6 @@ end
     return nothing
 end
 
-# Top and bottom boundaries use the normal-incidence update for every radiation scheme.
 @inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
