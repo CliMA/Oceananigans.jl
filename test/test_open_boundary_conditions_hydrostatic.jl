@@ -1,5 +1,7 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
+using Dates: DateTime
+using Statistics: mean
 using Test
 
 #####
@@ -496,6 +498,81 @@ function test_gravity_wave_pairing()
     return auto_paired && user_respected && no_pairing
 end
 
+#####
+##### Test: tidal forcing and boundary conditions
+#####
+
+# NOAA CO-OPS published angular speeds [° per hour], an independent source for the frequencies that
+# `TidalHarmonics` builds out of the constituents' astronomical arguments.
+const noaa_speeds = (M2 = 28.9841042, S2 = 30.0,       N2 = 28.4397295, K2 = 30.0821373,
+                     K1 = 15.0410686, O1 = 13.9430356, P1 = 14.9589314, Q1 = 13.3986609,
+                     Mf =  1.0980331, Mm =  0.5443747)
+
+function test_tidal_astronomy()
+    harmonics = TidalHarmonics(DateTime(2019, 4, 1))
+
+    speeds = rad2deg.(harmonics.frequencies) .* 3600
+    speeds_match = all(isapprox(speed, noaa_speeds[name]; rtol = 1e-7)
+                       for (name, speed) in zip(harmonics.constituents, speeds))
+
+    # The phases are the equilibrium arguments at the reference date, so they must advance with the
+    # frequencies: this is what keeps the body force and the boundary tide in phase with each other.
+    later = TidalHarmonics(DateTime(2019, 4, 1, 6))
+    drift = @. mod(later.phases - harmonics.phases - harmonics.frequencies * 6 * 3600, 2π)
+    phases_advance = all(@. min(drift, 2π - drift) < 1e-4)
+
+    return speeds_match && phases_advance
+end
+
+function test_tidal_body_force()
+    grid = LatitudeLongitudeGrid(size = (20, 12, 1),
+                                 longitude = (-78, -68),
+                                 latitude = (35, 41),
+                                 z = (-4000, 0),
+                                 topology = (Bounded, Bounded, Bounded))
+
+    period = 2π / first(TidalHarmonics(DateTime(2019, 4, 1); constituents = (:M2,)).frequencies)
+    harmonics = TidalHarmonics(DateTime(2019, 4, 1); constituents = (:M2,), ramp_time = period)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        forcing = tidal_forcing(harmonics),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 30),
+                                        coriolis = HydrostaticSphericalCoriolis(),
+                                        momentum_advection = nothing,
+                                        tracer_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = (),
+                                        closure = nothing)
+
+    simulation = Simulation(model; Δt = 120, stop_time = 5period)
+
+    times = Float64[]
+    elevation = Matrix{Float64}[]
+    function sample!(sim)
+        push!(times, sim.model.clock.time)
+        push!(elevation, Array(interior(sim.model.free_surface.displacement, :, :, 1)))
+    end
+    add_callback!(simulation, sample!, TimeInterval(period / 24))
+
+    run!(simulation)
+
+    # The equilibrium tide of one semidiurnal constituent, written out from its own harmonic
+    # constants: η = f A cos²φ cos(ω t + Θ + 2λ).
+    ω, f, A, Θ = (first(harmonics.frequencies), first(harmonics.nodal_factors),
+                  first(harmonics.equilibrium_amplitudes), first(harmonics.phases))
+    λ, φ = λnodes(grid, Center()), φnodes(grid, Center())
+    equilibrium(t) = [f * A * cosd(φⱼ)^2 * cos(ω * t + Θ + 2 * deg2rad(λᵢ)) for λᵢ in λ, φⱼ in φ]
+
+    anomaly(field) = field .- mean(field)
+    analyzed = findall(t -> t > 3period, times)
+    modeled = [anomaly(elevation[n]) for n in analyzed]
+    expected = [anomaly(equilibrium(times[n])) for n in analyzed]
+
+    # A basin this small responds statically, so it fills to the equilibrium tide itself.
+    gain = sum(sum(m .* e) for (m, e) in zip(modeled, expected)) / sum(sum(abs2, e) for e in expected)
+    return 0.9 < gain < 1.15
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -531,5 +608,13 @@ end
 
     @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin
         @test test_gravity_wave_pairing()
+    end
+
+    @testset "Tidal astronomy" begin
+        @test test_tidal_astronomy()
+    end
+
+    @testset "Equilibrium tidal body force" begin
+        @test test_tidal_body_force()
     end
 end
