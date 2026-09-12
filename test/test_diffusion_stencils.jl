@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: MutableVerticalDiscretization, required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate, surface_kernel_parameters
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: _update_zstar_scaling!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: with_tracers,
                                        IsopycnalSkewSymmetricDiffusivity,
                                        TriadIsopycnalSkewSymmetricDiffusivity,
@@ -179,7 +179,7 @@ function horizontal_diffusion_variance(arch)
     set!(η, η₀)
     fill_halo_regions!(η)
 
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, η, grid)
+    update_zstar_scaling!(grid, η)
 
     c₀ = [0.0168  -0.1936  -0.177   0.5344;
           0.0423  -0.1258  -0.4813  0.2036;
