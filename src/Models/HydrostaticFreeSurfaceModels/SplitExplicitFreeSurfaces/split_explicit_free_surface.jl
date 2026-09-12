@@ -293,8 +293,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     barotropic_velocities = (U = U, V = V)
 
     kernel_parameters = if strategy isa CompleteHaloFilling
-        Wx, Wy, _ = worksize(grid)
-        KernelParameters((Wx, Wy), (0, 0)) # concretely typed parameters
+        Val(:xy)
     else
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
@@ -422,10 +421,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stage
     end
 end
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize)
-    Wx, Wy, _ = worksize(grid)
-    return KernelParameters((Wx, Wy), (0, 0))
-end
+# `Val(:xy)` spans the interior, which is what the `:xy` active-cells map enumerates, so the substep
+# kernels skip the dry columns whenever the window does not reach past it.
+maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = Val(:xy)
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
@@ -433,7 +431,7 @@ function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
 
     kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
 
-    return KernelParameters(kernel_sizes...)
+    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : KernelParameters(kernel_sizes...)
 end
 
 @inline split_explicit_kernel_size(topo, N, H)                   =    1:N

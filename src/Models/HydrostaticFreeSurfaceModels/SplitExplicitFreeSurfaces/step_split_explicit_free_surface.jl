@@ -273,8 +273,10 @@ function barotropic_substepper(timestepper::ForwardBackwardScheme, free_surface,
 
     filled_halos = substep_filled_halos(free_surface)
 
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
+
+    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, cells_map)
+    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, cells_map)
 
     U_args = (grid, filled_halos, Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁᶜ, Gⱽᶜ, w, g, U̅, V̅, timestepper)
     η_args = (grid, filled_halos, Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
@@ -288,8 +290,7 @@ function barotropic_substepper(timestepper::ForwardBackwardScheme, free_surface,
     velocity_halos     = barotropic_halo_arguments(free_surface, arch, grid, substep_clock, barotropic_model_fields, (U, V))
     free_surface_halos = barotropic_halo_arguments(free_surface, arch, grid, substep_clock, barotropic_model_fields, (η, ))
 
-    return (; free_surface_kernel!, velocity_kernel!, η_args = converted_η_args, U_args = converted_U_args,
-              velocity_halos, free_surface_halos)
+    return (; free_surface_kernel!, velocity_kernel!, η_args = converted_η_args, U_args = converted_U_args, velocity_halos, free_surface_halos)
 end
 
 function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arch, grid, parameters, substep_arguments)
@@ -304,9 +305,11 @@ function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arc
 
     filled_halos = substep_filled_halos(free_surface)
 
-    @apply_regionally first_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _first_barotropic_stage!)
-    @apply_regionally stage_kernel!, _       = configure_kernel(arch, grid, parameters, _barotropic_stage!)
-    @apply_regionally final_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _final_barotropic_stage!)
+    cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
+
+    @apply_regionally first_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _first_barotropic_stage!, cells_map)
+    @apply_regionally stage_kernel!, _       = configure_kernel(arch, grid, parameters, _barotropic_stage!, cells_map)
+    @apply_regionally final_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _final_barotropic_stage!, cells_map)
 
     stages_Δτ = stage_parameters(timestepper, Δτᴮ)
     Nstages   = length(stages_Δτ)
