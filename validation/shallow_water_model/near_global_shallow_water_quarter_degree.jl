@@ -227,7 +227,7 @@ save_interval = 1days
 simulation.output_writers[:surface_fields] = JLD2Writer(model, (; u, v, h, ζ),
                                                         schedule = TimeInterval(save_interval),
                                                         filename = output_prefix * "_surface",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
 # Let's go!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

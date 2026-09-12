@@ -120,7 +120,7 @@ function rectilinear_mpi_script(config, filename)
                                                   merge(model.velocities, model.tracers, (; zflat));
                                                   filename = "$filename",
                                                   schedule = IterationInterval($output_interval),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 
@@ -154,7 +154,7 @@ function run_serial_rectilinear(config, filename)
                                                   merge(model.velocities, model.tracers, (; zflat));
                                                   filename = filename,
                                                   schedule = IterationInterval(config.output_interval),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 end
@@ -210,7 +210,7 @@ function lat_lon_mpi_script(config, filename)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
                                                   filename = "$filename",
                                                   schedule = IterationInterval($(config.output_interval)),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 
@@ -237,7 +237,7 @@ function run_serial_lat_lon(config, filename)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
                                                   filename = filename,
                                                   schedule = IterationInterval(config.output_interval),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 end
@@ -292,7 +292,7 @@ function tripolar_mpi_script(config, filename)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
                                                   filename = "$filename",
                                                   schedule = IterationInterval($(config.output_interval)),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 
@@ -319,7 +319,7 @@ function run_serial_tripolar(config, filename)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.tracers;
                                                   filename = filename,
                                                   schedule = IterationInterval(config.output_interval),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
     run!(simulation)
 end

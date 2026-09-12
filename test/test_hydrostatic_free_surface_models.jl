@@ -401,7 +401,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             simulation.output_writers[:fields] = JLD2Writer(model, (; u=model.velocities.u);
                                                            schedule=TimeInterval(0.1),
                                                            filename=test_filename,
-                                                           overwrite_existing=true)
+                                                           overwrite_files=true)
 
             run!(simulation)
 

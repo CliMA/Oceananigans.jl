@@ -118,7 +118,7 @@ simulation.output_writers[:fields] = JLD2Writer(model,
     (; η, U, η_exact, U_exact);
     schedule           = IterationInterval(10),
     filename           = outfile,
-    overwrite_existing = true)
+    overwrite_files = true)
 
 run!(simulation)
 

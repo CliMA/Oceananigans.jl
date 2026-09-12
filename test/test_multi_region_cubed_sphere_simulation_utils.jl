@@ -47,7 +47,7 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = TimeInterval(checkpointer_interval),
                                                             prefix = filename_checkpointer,
-                                                            overwrite_existing = true)
+                                                            overwrite_files = true)
 
     b = buoyancy_field(model)
     outputs = merge(fields(model), (; b))
@@ -55,7 +55,7 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
                                                     schedule = TimeInterval(save_fields_interval),
                                                     filename = filename_output_writer,
                                                     verbose = false,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation)
 
@@ -125,7 +125,7 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = TimeInterval(checkpointer_interval),
                                                             prefix = filename_checkpointer,
-                                                            overwrite_existing = true)
+                                                            overwrite_files = true)
 
     b = buoyancy_field(model)
     outputs = merge(fields(model), (; b))
@@ -133,7 +133,7 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
                                                     schedule = TimeInterval(save_fields_interval),
                                                     filename = filename_output_writer,
                                                     verbose = false,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation, pickup = 4)
 

@@ -112,7 +112,7 @@ function field_time_series_round_trips(grid_name, grid, writer_spec, arch)
     sim.output_writers[:writer] = writer_spec.Writer(model, (; c=model.tracers.c);
                                                       filename=writer_spec.filename(base),
                                                       schedule=IterationInterval(1),
-                                                      overwrite_existing=true)
+                                                      overwrite_files=true)
     run!(sim)
 
     fts = FieldTimeSeries(path, "c"; architecture=arch)

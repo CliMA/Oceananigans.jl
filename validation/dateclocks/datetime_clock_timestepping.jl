@@ -20,7 +20,7 @@ simulation = Simulation(model, Δt=60, stop_time=stop_time)
 
 ow = JLD2Writer(model, model.tracers,
                 filename = "datetime_clock_timestepping.jld2",
-                overwrite_existing = true,
+                overwrite_files = true,
                 schedule = IterationInterval(1))
 
 simulation.output_writers[:jld2] = ow

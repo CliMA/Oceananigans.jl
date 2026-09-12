@@ -99,7 +99,7 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
                                                filename="one_d_simulation_$(dim).jld2",
                                                schedule, # Make sure it is the same schedule as the one where we compute the dissipation
-                                               overwrite_existing=true,
+                                               overwrite_files=true,
                                                array_type = Array{Float64})
 
     sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))

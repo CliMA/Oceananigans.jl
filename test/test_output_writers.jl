@@ -72,7 +72,7 @@ function test_dependency_adding(model)
                                     schedule = TimeInterval(4),
                                     dir = ".",
                                     filename = "test.jld2",
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
@@ -103,16 +103,16 @@ function test_creating_and_appending(model, output_writer)
     simulation.output_writers[:writer] = writer = output_writer(model, output,
                                                                 filename = filename,
                                                                 schedule = IterationInterval(1),
-                                                                overwrite_existing = true, verbose=true)
+                                                                overwrite_files = true, verbose=true)
     run!(simulation)
 
     # Test if file was crated
     filepath = writer.filepath
     @test isfile(filepath)
 
-    # Extend simulation and run it with `overwrite_existing = false`
+    # Extend simulation and run it with `overwrite_files = false`
     simulation.stop_iteration = 10
-    simulation.output_writers[:writer].overwrite_existing = false
+    simulation.output_writers[:writer].overwrite_files = false
     run!(simulation)
 
     # Test that length is what we expected
@@ -146,7 +146,7 @@ function test_windowed_time_averaging_simulation(model)
     jld2_output_writer = JLD2Writer(model, model.velocities,
                                     schedule = AveragedTimeInterval(π, window=1),
                                     filename = jld_filename1,
-                                    overwrite_existing = true)
+                                    overwrite_files = true)
 
     # https://github.com/JuliaGeo/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
@@ -196,7 +196,7 @@ function test_windowed_time_averaging_simulation(model)
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
                                                   schedule = AveragedTimeInterval(π, window=π),
                                                   filename = jld_filename2,
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))

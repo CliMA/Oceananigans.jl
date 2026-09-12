@@ -146,7 +146,7 @@ simulation.output_writers[:output_writer] = JLD2Writer(
     output_fields,
     filename = "vortex_sheet",
     schedule = TimeInterval(Δt * 50),
-    overwrite_existing = true,
+    overwrite_files = true,
 )
 
 run!(simulation)

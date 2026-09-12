@@ -167,13 +167,13 @@ function cylinder_model(open_boundaries;
     simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
                                                   schedule = TimeInterval(0.2),
                                                   filename = prefix * "_fields.jld2",
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true)
 
     simulation.output_writers[:drag] = JLD2Writer(model, (; drag_force),
                                                   schedule = TimeInterval(0.2),
                                                   filename = prefix * "_drag.jld2",
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = true,
                                                   indices = (1, 1, 1))
 

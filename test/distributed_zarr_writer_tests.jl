@@ -55,7 +55,7 @@ writer = ZarrWriter(model, (u=model.velocities.u, c=model.tracers.c);
                     filename = out_path,
                     dir = ".",
                     schedule = IterationInterval(1),
-                    overwrite_existing = true,
+                    overwrite_files = true,
                     with_halos = false)
 
 Oceananigans.initialize!(writer, model)

@@ -54,7 +54,7 @@ for name in keys(models)
     simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
                                                     schedule = IterationInterval(6),
                                                     filename = "splash_$name",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Run simulation..."
     run!(simulation)

@@ -44,7 +44,7 @@ simulation = Simulation(model, Δt=1.0, stop_iteration=3)
 simulation.output_writers[:s3] = ZarrWriter(model, (; u=model.velocities.u);
                                             store = store,
                                             schedule = IterationInterval(1),
-                                            overwrite_existing = true)
+                                            overwrite_files = true)
 run!(simulation)
 
 g = Zarr.zopen(store)
