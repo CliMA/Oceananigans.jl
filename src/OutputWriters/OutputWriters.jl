@@ -5,7 +5,8 @@ export
     Checkpointer, checkpoint,
     written_names,
     WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    LowPassFilter
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
@@ -56,6 +57,7 @@ include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
+include("low_pass_filter.jl")
 include("output_attributes.jl")
 include("dimension_names.jl")
 include("output_serialization.jl")

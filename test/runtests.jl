@@ -118,6 +118,7 @@ CUDA.allowscalar() do
             include("test_output_readers.jl")
             include("test_field_time_series_round_trip.jl")
             include("test_averaged_specified_times.jl")
+            include("test_low_pass_filter.jl")
             include("test_set_field_time_series.jl")
         end
     end
