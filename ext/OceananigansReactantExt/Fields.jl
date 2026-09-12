@@ -3,8 +3,9 @@ module Fields
 using Reactant
 
 using Oceananigans: Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, CPU
-using Oceananigans.Fields: Field, interior, interpolate!, copyable_fields
+using Oceananigans.Fields: Field, ReducedAbstractField, interior, interpolate!, copyable_fields
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
@@ -15,6 +16,7 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+const ReactantOperation{LX, LY, LZ} = AbstractOperation{LX, LY, LZ, <:ReactantGrid}
 
 reconstruct_global_field(field::ShardedDistributedField) = field
 
@@ -64,6 +66,27 @@ function set_to_field!(u::ReactantField, v::ReactantField)
         copyto!(interior(u), interior(cpu_u))
     end
     return u
+end
+
+# Reactant reduces its own arrays natively, but has currently no path for a lazy `AbstractOperation`.
+# We materialize the Field here: this isn't ideal but works until we have a better solution in Reactant
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+        Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction!)(r::ReducedAbstractField, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(r, Field(a); kwargs...)
+
+        Base.$(reduction!)(f, r::AbstractArray, a::ReactantOperation; kwargs...) =
+            Base.$(reduction!)(f, r, Field(a); kwargs...)
+
+        Base.$(reduction)(f::Function, a::ReactantOperation; kwargs...) =
+            Base.$(reduction)(f, Field(a); kwargs...)
+    end
 end
 
 # No need to synchronize -> it should be implicit
