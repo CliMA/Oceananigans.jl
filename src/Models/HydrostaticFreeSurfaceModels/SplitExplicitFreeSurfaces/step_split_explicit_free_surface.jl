@@ -60,12 +60,15 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     # ∂τ(U) = - ∇η + G, using ∂xᵣT/∂yᵣT (derivatives at constant r) since η lives on the surface and has
     # no vertical structure.
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁˢ)
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽˢ)
+        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁˢ)
+        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽˢ)
+
+        U[i, j, 1] = Uᵐ⁺¹
+        V[i, j, 1] = Vᵐ⁺¹
 
         # Time-averaging the barotropic velocity
-        U̅[i, j, 1] += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1] += averaging_weight * V[i, j, 1]
+        U̅[i, j, 1] += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1] += averaging_weight * Vᵐ⁺¹
     end
 end
 
@@ -82,10 +85,11 @@ end
             δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, V★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
-        η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+        ηᵐ⁺¹ = η[i, j, k_top] + Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+        η[i, j, k_top] = ηᵐ⁺¹
 
         # Time-averaging η and the transport U★/V★ that advanced it, which is what constancy needs.
-        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
+        η̅[i, j, k_top] += averaging_weight * ηᵐ⁺¹
         Ũ[i, j, 1]     += transport_weight * U★(i, j, 1, grid, timestepper, U)
         Ṽ[i, j, 1]     += transport_weight * V★(i, j, 1, grid, timestepper, V)
     end
@@ -98,20 +102,19 @@ end
 ##### velocity commute within a stage, since both depend only on the previous-stage state, so one kernel does
 ##### both; the previous stage needs its own buffer to keep the δx stencil from racing on the live fields.
 ##### The averages (η̅, U̅, V̅, Ũ, Ṽ) accumulate only on the final stage, which is what preserves constancy.
+#####
+##### One kernel per position in the stage sequence, so that each reads and writes exactly what it needs: the
+##### opening stage reads the substep-start state as its previous stage, the closing stage writes back into it
+##### and carries the averages, and the stages in between carry neither.
 
 # The state triples travel as tuples: `isregional` recurses element by element over the argument list and
 # stops inferring on a long one.
-@kernel function _barotropic_stage!(averaging_weight, transport_weight, sᵐ, Δτ, grid, filled_halos,
-                                    substep_state, previous_state, stage_state, slow_forcings, g, F, clock, averages)
 
-    i, j = @index(Global, NTuple)
+# ∂τ(U) = - gH ∇η + G and ∂τ(η) = - ∇⋅U, both evaluated at `previous_state` and applied from `substep_state`.
+@inline function barotropic_stage_tendencies(i, j, grid, filled_halos, ηᵖ, Uᵖ, Vᵖ, slow_forcings, g, F, clock, sᵐ)
     k_top = grid.Nz + 1
 
-    ηⁿ, Uⁿ, Vⁿ = substep_state
-    ηᵖ, Uᵖ, Vᵖ = previous_state
-    η,  U,  V  = stage_state
     Gᵁ, Gⱽ, Gᵁᶜ, Gⱽᶜ, w = slow_forcings
-    η̅, U̅, V̅, Ũ, Ṽ = averages
 
     Hᶠᶜ = x_column_depth(i, j, k_top, grid, filled_halos, ηᵖ)
     Hᶜᶠ = y_column_depth(i, j, k_top, grid, filled_halos, ηᵖ)
@@ -126,14 +129,74 @@ end
 
     δh_U = (δx(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, Uᵖ) + δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, Vᵖ)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
-    @inbounds begin
-        η[i, j, k_top] = ηⁿ[i, j, k_top] + Δτ * (F(i, j, k_top, grid, clock, (; η = ηᵖ, U = Uᵖ, V = Vᵖ)) - δh_U)
-        U[i, j, 1]     = Uⁿ[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, ηᵖ) + Gᵁˢ)
-        V[i, j, 1]     = Vⁿ[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, ηᵖ) + Gⱽˢ)
+    Gη = F(i, j, k_top, grid, clock, (; η = ηᵖ, U = Uᵖ, V = Vᵖ)) - δh_U
+    GU = - g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, ηᵖ) + Gᵁˢ
+    GV = - g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, ηᵖ) + Gⱽˢ
 
-        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+    return Gη, GU, GV
+end
+
+# Opening stage: the previous stage *is* the substep-start state, so one state triple travels instead of two.
+@kernel function _first_barotropic_stage!(sᵐ, Δτ, grid, filled_halos, substep_state, stage_state, slow_forcings, g, F, clock)
+
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    ηⁿ, Uⁿ, Vⁿ = substep_state
+    η,  U,  V  = stage_state
+
+    Gη, GU, GV = barotropic_stage_tendencies(i, j, grid, filled_halos, ηⁿ, Uⁿ, Vⁿ, slow_forcings, g, F, clock, sᵐ)
+
+    @inbounds begin
+        η[i, j, k_top] = ηⁿ[i, j, k_top] + Δτ * Gη
+        U[i, j, 1]     = Uⁿ[i, j, 1]     + Δτ * GU
+        V[i, j, 1]     = Vⁿ[i, j, 1]     + Δτ * GV
+    end
+end
+
+# Intermediate stages: no average accumulates here, so the filtered state does not travel.
+@kernel function _barotropic_stage!(sᵐ, Δτ, grid, filled_halos, substep_state, previous_state, stage_state, slow_forcings, g, F, clock)
+
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    ηⁿ, Uⁿ, Vⁿ = substep_state
+    ηᵖ, Uᵖ, Vᵖ = previous_state
+    η,  U,  V  = stage_state
+
+    Gη, GU, GV = barotropic_stage_tendencies(i, j, grid, filled_halos, ηᵖ, Uᵖ, Vᵖ, slow_forcings, g, F, clock, sᵐ)
+
+    @inbounds begin
+        η[i, j, k_top] = ηⁿ[i, j, k_top] + Δτ * Gη
+        U[i, j, 1]     = Uⁿ[i, j, 1]     + Δτ * GU
+        V[i, j, 1]     = Vⁿ[i, j, 1]     + Δτ * GV
+    end
+end
+
+# Closing stage: it writes back into the substep-start state, and it alone feeds the time averages.
+@kernel function _final_barotropic_stage!(averaging_weight, transport_weight, sᵐ, Δτ, grid, filled_halos, substep_state, previous_state, slow_forcings, g, F, clock, averages)
+
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+
+    η, U, V = substep_state
+    ηᵖ, Uᵖ, Vᵖ = previous_state
+    η̅, U̅, V̅, Ũ, Ṽ = averages
+
+    Gη, GU, GV = barotropic_stage_tendencies(i, j, grid, filled_halos, ηᵖ, Uᵖ, Vᵖ, slow_forcings, g, F, clock, sᵐ)
+
+    @inbounds begin
+        ηⁿ⁺¹ = η[i, j, k_top] + Δτ * Gη
+        Uⁿ⁺¹ = U[i, j, 1]     + Δτ * GU
+        Vⁿ⁺¹ = V[i, j, 1]     + Δτ * GV
+
+        η[i, j, k_top] = ηⁿ⁺¹
+        U[i, j, 1]     = Uⁿ⁺¹
+        V[i, j, 1]     = Vⁿ⁺¹
+
+        η̅[i, j, k_top] += averaging_weight * ηⁿ⁺¹
+        U̅[i, j, 1]     += averaging_weight * Uⁿ⁺¹
+        V̅[i, j, 1]     += averaging_weight * Vⁿ⁺¹
 
         # The transport in the tracer-continuity average is the flux that advanced η, i.e. the previous stage.
         Ũ[i, j, 1] += transport_weight * Uᵖ[i, j, 1]
@@ -194,6 +257,7 @@ end
 
 # One method per leading-scalar count: a `weights...` vararg splats through a dynamic call and boxes the
 # whole argument list on every launch.
+@inline apply_barotropic_kernel!(kernel, args, w₁)         = kernel(w₁, args...)
 @inline apply_barotropic_kernel!(kernel, args, w₁, w₂)     = kernel(w₁, w₂, args...)
 @inline apply_barotropic_kernel!(kernel, args, w₁, w₂, w₃) = kernel(w₁, w₂, w₃, args...)
 
@@ -240,30 +304,46 @@ function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arc
 
     filled_halos = substep_filled_halos(free_surface)
 
-    @apply_regionally stage_kernel!, _ = configure_kernel(arch, grid, parameters, _barotropic_stage!)
+    @apply_regionally first_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _first_barotropic_stage!)
+    @apply_regionally stage_kernel!, _       = configure_kernel(arch, grid, parameters, _barotropic_stage!)
+    @apply_regionally final_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _final_barotropic_stage!)
 
     stages_Δτ = stage_parameters(timestepper, Δτᴮ)
+    Nstages   = length(stages_Δτ)
 
-    # The buffers rotate in the three stages
-    previous_state = ((η, U, V), (timestepper.η¹, timestepper.U¹, timestepper.V¹), (timestepper.η², timestepper.U², timestepper.V²))
-    stage_state    = ((timestepper.η¹, timestepper.U¹, timestepper.V¹), (timestepper.η², timestepper.U², timestepper.V²), (η, U, V))
+    substep_state = (η, U, V)
+    first_buffer  = (timestepper.η¹, timestepper.U¹, timestepper.V¹)
+    second_buffer = (timestepper.η², timestepper.U², timestepper.V²)
+
+    # The buffers rotate in the three stages, the last one writing back into the substep-start state.
+    previous_state = (substep_state, first_buffer, second_buffer)
+    stage_state    = (first_buffer, second_buffer, substep_state)
+
+    slow_forcings = (GUⁿ, GVⁿ, Gᵁᶜ, Gⱽᶜ, w)
+    averages      = (η̅, U̅, V̅, Ũ, Ṽ)
 
     substep_clock = barotropic_substep_clock(clock, Δτᴮ)
 
-    stage_args = ntuple(Val(length(stages_Δτ))) do stage
-        args = (stages_Δτ[stage], grid, filled_halos, (η, U, V), previous_state[stage], stage_state[stage],
-                (GUⁿ, GVⁿ, Gᵁᶜ, Gⱽᶜ, w), g, F, clock, (η̅, U̅, V̅, Ũ, Ṽ))
+    # `ntuple` over a `Val` splices `stage` in as a literal, so each branch is resolved at compile time.
+    stage_args = ntuple(Val(Nstages)) do stage
+        args = if stage == 1
+            (stages_Δτ[stage], grid, filled_halos, substep_state, stage_state[stage], slow_forcings, g, F, clock)
+        elseif stage == Nstages
+            (stages_Δτ[stage], grid, filled_halos, substep_state, previous_state[stage], slow_forcings, g, F, clock, averages)
+        else
+            (stages_Δτ[stage], grid, filled_halos, substep_state, previous_state[stage], stage_state[stage], slow_forcings, g, F, clock)
+        end
 
         @apply_regionally converted_args = convert_to_device(arch, args)
         converted_args
     end
 
-    stage_halos = ntuple(Val(length(stages_Δτ))) do stage
+    stage_halos = ntuple(Val(Nstages)) do stage
         ηᵖ, Uᵖ, Vᵖ = previous_state[stage]
         barotropic_halo_arguments(free_surface, arch, grid, substep_clock, (; U = Uᵖ, V = Vᵖ, η = ηᵖ), (Uᵖ, Vᵖ, ηᵖ))
     end
 
-    return (; stage_kernel!, stage_args, stage_halos)
+    return (; first_stage_kernel!, stage_kernel!, final_stage_kernel!, stage_args, stage_halos)
 end
 
 function barotropic_substep!(::ForwardBackwardScheme, substepper, free_surface, arch, averaging_weight, transport_weight, sᵐ)
@@ -277,22 +357,34 @@ function barotropic_substep!(::ForwardBackwardScheme, substepper, free_surface, 
     return nothing
 end
 
+# The stages recurse over their argument tuples rather than indexing them with a running counter: the tuples
+# are heterogeneous, one entry per position in the sequence, and recursion keeps every index a literal.
+@inline function barotropic_stages!(substepper, free_surface, arch, args::Tuple{Any}, halos::Tuple{Any},
+                                    averaging_weight, transport_weight, sᵐ)
+
+    fill_barotropic_halos!(free_surface, arch, first(halos))
+    @apply_regionally apply_barotropic_kernel!(substepper.final_stage_kernel!, first(args), averaging_weight, transport_weight, sᵐ)
+    return nothing
+end
+
+@inline function barotropic_stages!(substepper, free_surface, arch, args::Tuple, halos::Tuple,
+                                    averaging_weight, transport_weight, sᵐ)
+
+    fill_barotropic_halos!(free_surface, arch, first(halos))
+    @apply_regionally apply_barotropic_kernel!(substepper.stage_kernel!, first(args), sᵐ)
+
+    return barotropic_stages!(substepper, free_surface, arch, Base.tail(args), Base.tail(halos), averaging_weight, transport_weight, sᵐ)
+end
+
 @noinline function barotropic_substep!(::RungeKutta3Scheme, substepper, free_surface, arch, averaging_weight, transport_weight, sᵐ)
 
-    stage_args = substepper.stage_args
-    final_stage = lastindex(stage_args)
+    stage_args  = substepper.stage_args
+    stage_halos = substepper.stage_halos
 
-    @unroll for stage in eachindex(stage_args)
-        # Only the stage that ends the substep contributes to the time averages.
-        final = stage == final_stage
-        aw = ifelse(final, averaging_weight, zero(averaging_weight))
-        tw = ifelse(final, transport_weight, zero(transport_weight))
+    fill_barotropic_halos!(free_surface, arch, first(stage_halos))
+    @apply_regionally apply_barotropic_kernel!(substepper.first_stage_kernel!, first(stage_args), sᵐ)
 
-        fill_barotropic_halos!(free_surface, arch, substepper.stage_halos[stage])
-        @apply_regionally apply_barotropic_kernel!(substepper.stage_kernel!, stage_args[stage], aw, tw, sᵐ)
-    end
-
-    return nothing
+    return barotropic_stages!(substepper, free_surface, arch, Base.tail(stage_args), Base.tail(stage_halos), averaging_weight, transport_weight, sᵐ)
 end
 
 # `Δt` is the baroclinic step and `Δτᴮ` the barotropic substep.
