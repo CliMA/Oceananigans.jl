@@ -5,6 +5,7 @@
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel,
+                          KernelAbstractions as KA,
                           ndrange, workgroupsize,
                           __iterspace, __groupindex, __dynamic_checkbounds,
                           CompilerMetadata
@@ -134,6 +135,22 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Return the workgroup for a kernel launched over `launch_size` on the device `dev`.
+`grid_size` is the size of the grid (with reduced dimensions flattened), which
+the GPU heuristic uses regardless of the dimensions the kernel spans.
+"""
+@inline workgroup_layout(dev, grid_size, launch_size) = heuristic_workgroup(grid_size...)
+
+# The KernelAbstractions CPU backend runs each block as a loop over `CartesianIndices(workgroup)`,
+# so a workgroup spanning the first dimension of `launch_size` yields a single contiguous inner loop.
+@inline workgroup_layout(::KA.CPU, grid_size, launch_size) = cpu_workgroup(launch_size...)
+
+@inline cpu_workgroup(W1::Int) = W1
+@inline cpu_workgroup(W1::Int, W2::Int, Wz...) = W1 == 1 ? (1, W2) : (W1, 1)
+
 # To be extended in the `Grids` modules for non-trivial peripheries,
 # for all other cases, `periphery_offset` is zero.
 periphery_offset(loc, grid, side) = 0
@@ -157,7 +174,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 @inline select_dims(::Val{:xz},  x, y, z) = (x, z)
 @inline select_dims(::Val{:yz},  x, y, z) = (y, z)
 
-@inline function interior_work_layout(grid, workdims::Val, (ℓx, ℓy, ℓz))
+@inline function interior_work_layout(dev, grid, workdims::Val, (ℓx, ℓy, ℓz))
     Fx, Fy, Fz = worksize(grid)
 
     ox = periphery_offset(ℓx, grid, Val(1))
@@ -165,9 +182,10 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     oz = periphery_offset(ℓz, grid, Val(3))
 
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
-    workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup_layout(dev, (Wx, Wy, Wz), launch_size))
 
-    range = contiguousrange(select_dims(workdims, Wx, Wy, Wz), select_dims(workdims, ox, oy, oz))
+    range = contiguousrange(launch_size, select_dims(workdims, ox, oy, oz))
 
     return workgroup, OffsetStaticSize(range)
 end
@@ -181,23 +199,24 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function work_layout(grid, workdims::Val, reduced_dimensions)
+@inline function work_layout(dev, grid, workdims::Val, reduced_dimensions)
     Fx, Fy, Fz = worksize(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
-    workgroup  = heuristic_workgroup(Wx, Wy, Wz)
-    return StaticSize(workgroup), StaticSize(select_dims(workdims, Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = workgroup_layout(dev, (Wx, Wy, Wz), launch_size)
+    return StaticSize(workgroup), StaticSize(launch_size)
 end
 
-@inline work_layout(grid, workdims::Symbol, reduced_dimensions) = work_layout(grid, Val(workdims), reduced_dimensions)
-@inline interior_work_layout(grid, workdims::Symbol, location) = interior_work_layout(grid, Val(workdims), location)
+@inline work_layout(dev, grid, workdims::Symbol, reduced_dimensions) = work_layout(dev, grid, Val(workdims), reduced_dimensions)
+@inline interior_work_layout(dev, grid, workdims::Symbol, location) = interior_work_layout(dev, grid, Val(workdims), location)
 
-@inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
-    workgroup = heuristic_workgroup(worksize...)
+@inline function work_layout(dev, grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
+    workgroup = workgroup_layout(dev, worksize, worksize)
     return StaticSize(workgroup), StaticSize(worksize)
 end
 
-@inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
-    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
+@inline function offset_work_layout(dev, grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+    workgroup, worksize = work_layout(dev, grid, spec, reduced_dimensions)
     range = contiguousrange(worksize, offsets)
     return  workgroup, OffsetStaticSize(range)
 end
@@ -248,8 +267,8 @@ end
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
     dev  = Architectures.device(arch)
+    workgroup, worksize = work_layout(dev, grid, workspec, reduced_dimensions)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::StaticSize
@@ -260,8 +279,8 @@ end
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    workgroup, worksize = interior_work_layout(grid, workspec, location)
     dev  = Architectures.device(arch)
+    workgroup, worksize = interior_work_layout(dev, grid, workspec, location)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::OffsetStaticSize
@@ -271,8 +290,8 @@ end
 @inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...;
                                   reduced_dimensions = (), kwargs...)
 
-    workgroup, worksize = offset_work_layout(grid, workspec, reduced_dimensions)
     dev  = Architectures.device(arch)
+    workgroup, worksize = offset_work_layout(dev, grid, workspec, reduced_dimensions)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::OffsetStaticSize

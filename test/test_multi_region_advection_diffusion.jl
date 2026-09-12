@@ -11,10 +11,10 @@ end
 
 function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
-    if grid isa RectilinearGrid
-        L = 0.1
+    L = if grid isa RectilinearGrid
+        0.1
     else
-        L = 24 # degrees
+        24.0 # degrees
     end
 
     # Tracer patch parameters
