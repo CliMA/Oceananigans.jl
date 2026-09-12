@@ -53,6 +53,7 @@ using Oceananigans.OutputWriters:
     output_averaging_schedule,
     show_averaging_schedule,
     WindowedTimeAverage,
+    TimeDerivative,
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,

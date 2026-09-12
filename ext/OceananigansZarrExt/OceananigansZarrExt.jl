@@ -46,6 +46,7 @@ using Oceananigans.OutputWriters:
     trilocation_dim_name,
     fetch_and_convert_output,
     WindowedTimeAverage,
+    TimeDerivative,
     add_grid_suffix,
     add_schedule_metadata!,
     default_output_attributes,

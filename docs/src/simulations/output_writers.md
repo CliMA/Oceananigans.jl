@@ -262,3 +262,75 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "even_more_averaged_velocity_data.jld2",
                                                     schedule = AveragedTimeInterval(4days, window=1day, stride=2))
 ```
+
+## Time-derivative output
+
+[`TimeDerivative`](@ref) computes the time derivative of an output while a simulation runs, which
+makes it possible to, for example, close a budget online instead of differencing two saved snapshots afterwards.
+The derivative is a backward difference,
+
+```math
+\partial_t a \approx \frac{a^n - a^{n-1}}{t^n - t^{n-1}} \, ,
+```
+
+where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times the derivative
+was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
+A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
+start of a simulation is zero.
+
+Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily: the
+difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
+updating it is the job of a [`TimeDerivativeCallback`](@ref) (which a writer can add to
+`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs).
+
+### Example
+
+Writing the rate of change of tracer variance alongside the other terms of its budget,
+
+```@example time_derivative
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+model = NonhydrostaticModel(grid, tracers=:c)
+
+simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+∂ₜ∫c² = TimeDerivative(Integral(model.tracers.c^2))
+
+simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜ∫c²),
+                                                filename = "tracer_variance_budget.jld2",
+                                                schedule = TimeInterval(1))
+```
+
+Output derivatives are differenced across consecutive time steps, which is what is needed when the
+other terms of a budget are evaluated every step. To difference over a longer interval, construct the
+updating callback yourself with a coarser `schedule`.
+
+### Use without an output writer
+
+An output writer is not required. A [`TimeDerivativeCallback`](@ref) added to `simulation.callbacks`
+keeps its `TimeDerivative` up to date on its own schedule, and the derivative can be read at any
+point during the run,
+
+```@example time_derivative
+∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
+
+simulation.callbacks[:∂ₜc] = ∂ₜc
+
+derivative = ∂ₜc.func
+
+progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, derivative))"
+
+add_callback!(simulation, progress, IterationInterval(5))
+
+run!(simulation)
+```
+
+Field operations are forwarded to the `Field` that the derivative computes (`derivative.result`), so `interior`, `maximum`,
+indexing and other operations apply to the derivative itself.
+
+Callback ordering works in your favor here: callbacks run after the time step and before output
+writers, so a callback that reads the derivative always sees it across the step that just finished.
+Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before any
+callback that reads it.
