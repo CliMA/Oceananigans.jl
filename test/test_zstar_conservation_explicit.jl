@@ -35,7 +35,9 @@ include("zstar_conservation_test_utils.jl")
                                                             buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStarCoordinate())
 
-                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+                        Lx = grid.Lx
+
+                        bᵢ(x, y, z) = x < Lx / 2 ? 0.06 : 0.01
 
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
