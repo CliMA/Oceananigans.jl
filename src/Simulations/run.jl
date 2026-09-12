@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, LowPassFilteredOutput, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: schedule_aligned_time_step
 
@@ -278,6 +278,13 @@ function add_dependency!(diags, wta::WindowedTimeAverage)
     if wta ∉ values(diags)
         num_diags_plus_1 = length(diags) + 1
         diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+    end
+end
+
+function add_dependency!(diags, output::LowPassFilteredOutput)
+    if output ∉ values(diags)
+        num_diags_plus_1 = length(diags) + 1
+        diags[Symbol("LowPassFilteredOutput$num_diags_plus_1")] = output
     end
 end
 
