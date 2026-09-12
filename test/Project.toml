@@ -40,7 +40,7 @@ cuSPARSE = "b26da814-b3bc-49ef-b0ee-c816305aa060"
 [sources]
 CUDACore = {rev = "intrinsics", subdir = "CUDACore", url = "https://github.com/christiangnrd/CUDA.jl.git"}
 CUDATools = {rev = "intrinsics", subdir = "CUDATools", url = "https://github.com/christiangnrd/CUDA.jl.git"}
-KernelAbstractions = {rev = "901cd0ea3172c601304cf97e3f00bd50aea5bf10", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
+KernelAbstractions = {rev = "1fc10604b3a81044a59edf0b28aba137e7227bc0", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
 Metal = {rev = "kaintr", url = "https://github.com/JuliaGPU/Metal.jl.git"}
 Oceananigans = {path = ".."}
 StructArrays = {rev = "mg/ka-0.10", url = "https://github.com/JuliaArrays/StructArrays.jl.git"}
