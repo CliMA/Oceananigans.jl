@@ -235,7 +235,42 @@ that can be used, for example, to specify cooling, heating, evaporation, or wind
     Conversely, a positive flux at a _bottom_ boundary acts to increase the interior
     values of a quantity.
 
-### 3. Spatially- and temporally-varying flux
+### 3. Implicit `Flux` boundary condition
+
+A flux that depends on the boundary-cell value of its field, like a bottom drag or a surface relaxation, limits
+the time step when integrated explicitly: with ``J = \lambda \phi_b`` the explicit step is unstable for
+``\lambda \Delta t / \Delta z > 2`` in the boundary-adjacent cell. Passing [`IMEXFluxTimeDiscretization`](@ref)
+to [`FluxBoundaryCondition`](@ref) integrates the part of the flux that is linear in ``\phi_b`` with the vertical
+tridiagonal solver instead, which the model builds automatically:
+
+```jldoctest
+julia> @inline linear_drag(i, j, grid, clock, fields, r) = @inbounds r * fields.u[i, j, grid.Nz];
+
+julia> drag_bc = FluxBoundaryCondition(linear_drag; discrete_form=true, parameters=1e-3,
+                                       time_discretization=IMEXFluxTimeDiscretization())
+IMEXFluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 0.001
+```
+
+Any flux condition, whether a number, an array, a `Field`, or a function, may be integrated this way. The flux is
+split at the boundary cell into ``J \approx F_e + \lambda \phi_b`` by the Patankar rule, ``\lambda = J / \phi_b``,
+keeping only the part of ``\lambda`` that damps ``\phi_b``. A flux proportional to ``\phi_b`` is thereby fully
+implicit, while a source, such as a wind stress, is integrated explicitly. Because the rule only sees the value
+of the flux, it cannot tell a relaxation toward a nonzero target from a source. For such a flux, or whenever the
+split is known, pass the explicit part as the flux and the linear coefficient to the discretization:
+
+```jldoctest
+julia> c★, k = 20.0, 1e-4;  # relaxation target and rate
+
+julia> relaxation_bc = FluxBoundaryCondition(-k * c★; time_discretization=IMEXFluxTimeDiscretization(k))
+IMEXFluxBoundaryCondition: -0.002 + 0.0001 φᵦ
+```
+
+which represents ``J = k (c_b - c^\star)``. [`IMEXFluxBoundaryCondition`](@ref)`(-k * c★, k)` is a shorthand.
+An implicit flux is supported only on the `bottom` and `top` boundaries and on the `bottom` and `top` facets of
+an [`ImmersedBoundaryCondition`](@ref). See also [`BulkDrag`](@ref), whose drag is split exactly rather than
+by the Patankar rule.
+
+### 4. Spatially- and temporally-varying flux
 
 Boundary conditions may be specified by functions,
 
@@ -258,7 +293,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction surface_flux at (Nothing, Noth
     Alternative function signatures are specified by keyword arguments to
     `BoundaryCondition`, as illustrated in subsequent examples.
 
-### 4. Spatially- and temporally-varying flux with parameters
+### 5. Spatially- and temporally-varying flux with parameters
 
 Boundary condition functions may be 'parameterized',
 
@@ -275,7 +310,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction wind_stress at (Nothing, Nothi
     However, relatively simple objects such as floating point numbers or `NamedTuple`s must be used
     when running on the GPU.
 
-### 5. 'Field-dependent' boundary conditions
+### 6. 'Field-dependent' boundary conditions
 
 Boundary conditions may also depend on model fields. For example, a linear drag boundary condition
 is implemented with
@@ -290,7 +325,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 
 `field_dependencies` specifies the name of the dependent fields either with a `Symbol` or `Tuple` of `Symbol`s.
 
-### 6. 'Field-dependent' boundary conditions with parameters
+### 7. 'Field-dependent' boundary conditions with parameters
 
 When boundary conditions depends on fields _and_ parameters, their functions take the form
 
@@ -305,7 +340,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction quadratic_drag at (Nothing, No
 Put differently, `ξ, η, t` come first in the function signature, followed by field dependencies,
 followed by `parameters` is `!isnothing(parameters)`.
 
-### 7. Discrete-form boundary condition with parameters
+### 8. Discrete-form boundary condition with parameters
 
 Discrete field data may also be accessed directly from boundary condition functions
 using the `discrete_form`. For example:
@@ -333,7 +368,7 @@ FluxBoundaryCondition: DiscreteBoundaryFunction with filtered_drag
     The signature is similar for ``x`` and ``y`` boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-### 8. Discrete-form boundary condition with parameters
+### 9. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2; # drag coefficient
@@ -351,7 +386,7 @@ FluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 0.2
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
+### 10. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
@@ -384,7 +419,7 @@ julia> p_top_bc = GradientBoundaryCondition(∂z_p)
 GradientBoundaryCondition: 4×4×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
-### 10. Open boundary condition with matching scheme
+### 11. Open boundary condition with matching scheme
 
 As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often necessary to specify a matching scheme
 on open boundaries to approximate the behavior of the boundary nodes given the interior state
@@ -408,7 +443,7 @@ NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
 The boundary value and timescales need to be carefully chosen to allow information to enter/
 exit the domain in each specific problem.
 
-### 11. Open boundary condition with a target transport
+### 12. Open boundary condition with a target transport
 
 A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
 through the boundary — the integral of the normal velocity over the boundary area,
@@ -708,6 +743,51 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 redirect_stderr(original_stderr)
 ```
 
+## Implicit flux boundary conditions
+
+An explicit dissipative flux, such as a drag or a relaxation, limits the time step to
+``\lambda \Delta t / \Delta z < 2`` in the boundary-adjacent cell, where ``\lambda`` is the flux per unit
+of the boundary value. Passing `time_discretization=IMEXFluxTimeDiscretization()` to
+[`FluxBoundaryCondition`](@ref) integrates the linear part of the flux with the vertical tridiagonal solver
+instead, which the model builds automatically. At the boundary cell the flux is split as
+``J(\phi_b) \approx F_e + \lambda \phi_b``: ``F_e`` goes through the tendency and ``\lambda \phi_b`` through the solver.
+
+How the split is found depends on the condition. A number, an array, a `Field`, or a function is split by the
+Patankar rule: ``\lambda`` is the dissipative part of ``J / \phi_b`` and the remainder ``J - \lambda \phi_b`` is
+integrated explicitly. Any dissipative flux proportional to ``\phi_b`` becomes implicit with no other change,
+here a linear drag on `u` given as a discrete function:
+
+```jldoctest
+using Oceananigans
+
+linear_drag(i, j, grid, clock, fields, r) = @inbounds - r * fields.u[i, j, 1]
+drag = FluxBoundaryCondition(linear_drag; discrete_form=true, parameters=2e-3,
+                             time_discretization=IMEXFluxTimeDiscretization())
+
+# output
+IMEXFluxBoundaryCondition: DiscreteBoundaryFunction with parameters 0.002
+```
+
+The Patankar rule estimates the slope of the flux from its value, so it only sees the part of the flux
+that vanishes with ``\phi_b``. A flux with a known linear part that does not, such as a relaxation
+``\lambda (\phi_b - \phi_\star)``, is written with its split instead, passing the explicit part ``F_e = -\lambda \phi_\star``
+as the flux and ``\lambda`` through `IMEXFluxTimeDiscretization(λ)`, or through the shorthand
+[`IMEXFluxBoundaryCondition`](@ref):
+
+```jldoctest
+using Oceananigans
+
+λ, c★ = 1e-4, 20.0
+relaxation = IMEXFluxBoundaryCondition(-λ * c★, λ)
+
+# output
+IMEXFluxBoundaryCondition: -0.002 + 0.0001 φᵦ
+```
+
+Conditions that know their own split, such as [`BulkDrag`](@ref), supply it directly. An implicit flux
+is supported only on the `bottom` and `top` boundaries and on the `bottom` and `top` facets of an
+[`ImmersedBoundaryCondition`](@ref).
+
 ## Bulk drag boundary conditions
 
 [`BulkDrag`](@ref) is a convenient constructor for velocity-flux boundary conditions
@@ -806,3 +886,35 @@ The tuple `(U∞, V∞, W∞)` is added to the prognostic velocities when comput
 speed `|U|` and the drag flux. Without this, the drag would only see the resolved
 perturbation velocity and underestimate the stress in the presence of a strong background
 current.
+
+### Implicit-explicit bottom drag
+
+An explicit drag flux limits the time step to ``C^D |\boldsymbol{U}| \Delta t / \Delta z < 2`` in the
+boundary-adjacent cell, which can be restrictive with thin bottom cells or strong near-bottom flow.
+Since the drag ``\tau = \lambda (u + U_\infty)`` with ``\lambda = -C^D |\boldsymbol{U}|`` is affine in the
+tangential velocity, its linear part can be integrated by the vertical tridiagonal solver instead.
+Pass `time_discretization=IMEXFluxTimeDiscretization()` to [`BulkDrag`](@ref):
+
+```jldoctest
+using Oceananigans
+
+drag = BulkDrag(coefficient=2e-3, time_discretization=IMEXFluxTimeDiscretization())
+u_bcs = FieldBoundaryConditions(bottom=drag)
+v_bcs = FieldBoundaryConditions(bottom=drag)
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs))
+
+model.velocities.u.boundary_conditions.bottom
+
+# output
+IMEXFluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.002)
+```
+
+The explicit part ``\lambda U_\infty`` is integrated through the tendency, and the linear part
+``\lambda u`` is embedded in the boundary-cell diagonal of the implicit vertical solver, which the model
+builds automatically. For the quadratic formulation the speed ``|\boldsymbol{U}|`` is evaluated from the
+current velocities when the implicit solve is built, so the drag is linearized about the current speed.
+Like every [`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` domain
+boundaries and on the `bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref); lateral facets
+must keep the explicit drag.

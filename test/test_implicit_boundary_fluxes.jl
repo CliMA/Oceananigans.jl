@@ -2,6 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans
 using Oceananigans: PrescribedVelocityFields
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.BoundaryConditions: needs_implicit_solver
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
 
 #####
@@ -16,14 +18,24 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CAT
 @inline drag_explicit_part(i, j, grid, clock, fields, p) = -p.λ * p.c★
 @inline drag_coefficient(i, j, grid, clock, fields, p)   =  p.λ
 
-drag_bc(implicit, λ, c★) = implicit ?
-    FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★)) :
-    FluxBoundaryCondition(drag_flux; discrete_form=true, parameters=(; λ, c★))
+# Continuous form of the same split, exercising the regularization of both parts.
+@inline continuous_drag_explicit_part(x, y, t, p) = -p.λ * p.c★
+@inline continuous_drag_coefficient(x, y, t, p)   =  p.λ
+
+function drag_bc(implicit, λ, c★; continuous=false)
+    if implicit && continuous
+        return FluxBoundaryCondition(continuous_drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(continuous_drag_coefficient), parameters=(; λ, c★))
+    elseif implicit
+        return FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★))
+    else
+        return FluxBoundaryCondition(drag_flux; discrete_form=true, parameters=(; λ, c★))
+    end
+end
 
 # `closure = :auto` builds a zero-diffusivity vertically-implicit closure for the implicit BC, none otherwise.
-function relaxed_column(arch, Δt, nsteps; implicit, closure=:auto, λ=0.05, c★=1.0, c₀=0.0)
+function relaxed_column(arch, Δt, nsteps; implicit, closure=:auto, continuous=false, λ=0.05, c★=1.0, c₀=0.0)
     grid = RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
-    top = drag_bc(implicit, λ, c★)
+    top = drag_bc(implicit, λ, c★; continuous)
 
     actual_closure = closure !== :auto ? closure :
                      implicit ? VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ=0) : nothing
@@ -107,11 +119,53 @@ end
             @test isfinite(implicit_no_closure.cmax)
             @test isapprox(implicit_no_closure.csurf, c★; atol=1e-3)
 
+            # Both parts of a continuous-form implicit-explicit flux are regularized.
+            implicit_continuous = relaxed_column(arch, 100.0, 8; implicit=true, continuous=true)
+            @test implicit_continuous.csurf ≈ implicit_highΔt.csurf
+
             # An implicit-explicit flux BC is only valid on vertical boundaries.
             @test_throws ErrorException HydrostaticFreeSurfaceModel(
                 RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4), topology=(Bounded, Periodic, Bounded));
                 tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields(),
                 boundary_conditions=(; c=FieldBoundaryConditions(east=drag_bc(true, λ, c★))))
+        end
+
+        @testset "Patankar split of a generic flux [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; size=4, z=(-4, 0), topology=(Flat, Flat, Bounded))
+            λ, Δt = 0.05, 100.0   # Δz = 1 ⇒ β = λ Δt / Δz = 5
+
+            function momentum_column(top; nsteps=1, u₀=1.0)
+                model = HydrostaticFreeSurfaceModel(grid; closure=nothing, momentum_advection=nothing, tracers=(),
+                                                    buoyancy=nothing, coriolis=nothing,
+                                                    boundary_conditions=(; u=FieldBoundaryConditions(; top)))
+                set!(model, u=u₀)
+                for _ in 1:nsteps
+                    time_step!(model, Δt)
+                end
+                return Array(interior(model.velocities.u))[1, 1, :]
+            end
+
+            # A drag toward zero given as a plain flux function: the Patankar rule recovers λ = J / u exactly,
+            # so the result matches the explicit split with the same coefficient.
+            patankar = FluxBoundaryCondition(mom_drag_u; discrete_form=true, parameters=(; λ), time_discretization=IMEXFluxTimeDiscretization())
+            split    = IMEXFluxBoundaryCondition(0.0, λ)
+            @test momentum_column(patankar; nsteps=8) ≈ momentum_column(split; nsteps=8)
+            @test momentum_column(patankar; nsteps=8)[end] < 1
+
+            # An array holding the flux J = λ u₀: one implicit step gives u¹ = u₀ / (1 + β)
+            u₀ = 1.0
+            J = on_architecture(arch, fill(λ * u₀, 1, 1, 1))
+            array_drag = FluxBoundaryCondition(J; time_discretization=IMEXFluxTimeDiscretization())
+            u = momentum_column(array_drag; u₀)
+            @test u[end] ≈ u₀ / (1 + λ * Δt)
+            @test u[1] ≈ u₀
+
+            # A source (a stress accelerating the flow) has no dissipative part and is integrated explicitly
+            τ = 1e-3
+            stress = FluxBoundaryCondition(on_architecture(arch, fill(-τ, 1, 1, 1)); time_discretization=IMEXFluxTimeDiscretization())
+            u = momentum_column(stress; u₀)
+            @test u[end] ≈ u₀ + Δt * τ
+            @test needs_implicit_solver(stress)
         end
 
         @testset "CATKE momentum drag [$(typeof(arch))]" begin

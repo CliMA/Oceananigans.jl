@@ -263,6 +263,12 @@ end
     return MixedCondition(coefficient, inhomogeneity)
 end
 
+function regularize_boundary_condition(c::IMEXFlux, grid, args...)
+    explicit_flux = regularize_boundary_condition(c.explicit_flux, grid, args...)
+    implicit_coefficient = regularize_boundary_condition(c.implicit_coefficient, grid, args...)
+    return IMEXFlux(explicit_flux, implicit_coefficient)
+end
+
 """
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                          grid::AbstractGrid,

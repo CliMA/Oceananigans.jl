@@ -121,20 +121,21 @@ Return a `Flux` `BoundaryCondition` with `flux`.
 With the default `ExplicitTimeDiscretization`, `flux` is an ordinary flux boundary condition integrated
 through the tendency.
 
-With an [`IMEXFluxTimeDiscretization`](@ref) carrying a linear coefficient `λ`, the boundary condition
-represents the affine flux `J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The
-explicit part `flux` is integrated through the tendency, while the linear part `λ φ_b` is integrated
-implicitly by the vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit
-flux imposes and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b`
-is a sink:
+With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux that is linear in the boundary-cell
+field value `φ_b` is integrated implicitly by the vertical tridiagonal solver. This removes the `Δz`-dependent
+CFL limit that an explicit flux imposes and is unconditionally stable for dissipative fluxes such as a drag
+or a sink. The flux is split at the boundary cell as `J(φ_b) ≈ Fₑ + λ φ_b`, in one of two ways:
 
 ```julia
-FluxBoundaryCondition(flux; time_discretization = IMEXFluxTimeDiscretization(λ))
+FluxBoundaryCondition(J;  time_discretization = IMEXFluxTimeDiscretization())   # J split by the Patankar rule
+FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ))  # J = Fₑ + λ φ_b
 ```
 
-`flux` and the `implicit_coefficient` follow the same conventions as any other function boundary condition;
-`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both. See also
-[`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
+Without a coefficient, `J` is any flux condition (a number, an array, a `Field`, or a function) and is split by
+the Patankar rule, `λ = J / φ_b`, restricted to its dissipative part. With a coefficient `λ`, `flux` is the explicit
+part `Fₑ` and `λ` follows the same conventions as any other function boundary condition; `kwargs` (`parameters`,
+`discrete_form`, `field_dependencies`) are applied to both. See [`implicit_flux_coefficient`](@ref) for the split
+and [`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
 
 !!! warning "Vertical boundaries only"
     The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
