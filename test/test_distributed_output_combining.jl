@@ -200,7 +200,7 @@ function lat_lon_mpi_script(config, filename)
                                  z = ($z1, $z2),
                                  halo = ($Hλ, $Hφ, $Hz))
 
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface(), closure=CATKEVerticalDiffusivity())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -227,7 +227,7 @@ function run_serial_lat_lon(config, filename)
                                  z = config.z,
                                  halo = config.halo)
 
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface(), closure=CATKEVerticalDiffusivity())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
