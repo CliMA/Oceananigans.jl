@@ -825,6 +825,44 @@ end
             end
         end
 
+        @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
+            @info "  Testing Boolean field reductions [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch; size=(4, 5, 3), extent=(1, 1, 1))
+            pattern = [(i + j + k) % 3 == 0 for i in 1:4, j in 1:5, k in 1:3]
+            b = CenterField(grid, Bool)
+            interior(b) .= on_architecture(arch, pattern)
+
+            @test any(b) == any(pattern)
+            @test all(b) == all(pattern)
+            for dims in (1, 2, 3, (1, 2), (1, 2, 3))
+                @test Array(interior(any(b; dims))) == any(pattern; dims)
+                @test Array(interior(all(b; dims))) == all(pattern; dims)
+            end
+
+            r = Field{Nothing, Center, Center}(grid, Bool)
+            any!(r, b)
+            @test Array(interior(r)) == any(pattern; dims=1)
+            all!(r, b)
+            @test Array(interior(r)) == all(pattern; dims=1)
+
+            # A `condition` and immersed cells wrap the operand in a `ConditionalOperation`
+            condition = (i, j, k, grid, b) -> i > 2
+            @test any(b; condition) == any(pattern[3:end, :, :])
+            @test all(b; condition) == all(pattern[3:end, :, :])
+            @test Array(interior(all(b; condition, dims=1))) == all(pattern[3:end, :, :]; dims=1)
+
+            # Immersed cells (k = 1 here) count as the neutral element of the reduction
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.6))
+            bᵢ = CenterField(immersed_grid, Bool)
+            interior(bᵢ) .= on_architecture(arch, pattern)
+            @test any(bᵢ) == any(pattern[:, :, 2:3])
+            @test all(bᵢ) == all(pattern[:, :, 2:3])
+            @test Array(interior(all(bᵢ; dims=3))) == all(pattern[:, :, 2:3]; dims=3)
+            wet_pattern = copy(pattern)
+            wet_pattern[:, :, 1] .= false
+            @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
+        end
+
         for arch in archs, FT in float_types
             @info "    Test reductions on WindowedFields [$(typeof(arch)), $FT]..."
 
