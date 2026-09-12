@@ -109,7 +109,7 @@ export
     # Output writers
     NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
-    SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    SpecifiedTimes, OffsetActuation, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,

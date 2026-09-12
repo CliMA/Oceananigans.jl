@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations, OffsetActuation
 using Oceananigans.Utils: schedule_aligned_time_step, next_actuation_time
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -126,6 +126,39 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     @test ti_plus_one(fake_model_at_iter_4)
     @test !(ti_plus_one(fake_model_at_iter_5))
 
+    # OffsetActuation with a positive offset: actuates with the parent and again `offset` later
+    ii_then_later = OffsetActuation(IterationInterval(3), 0.5)
+    @test !(ii_then_later(fake_model_at_iter_2))
+    @test ii_then_later(fake_model_at_iter_3) # parent actuates at t = 1
+    @test 0.5 ≈ schedule_aligned_time_step(ii_then_later, fake_model_at_iter_3.clock, Inf)
+    @test !(ii_then_later((; clock=Clock(time=1.2, iteration=4))))
+    @test ii_then_later((; clock=Clock(time=1.5, iteration=5))) # offset actuation at t = 1.5
+    @test !(ii_then_later((; clock=Clock(time=1.7, iteration=5))))
+    @test Inf == schedule_aligned_time_step(ii_then_later, Clock(time=1.7, iteration=5), Inf)
+
+    # OffsetActuation with a negative offset: actuates `|offset|` before the parent, and with the parent
+    ti_and_before = OffsetActuation(TimeInterval(2), -0.5)
+    @test initialize!(ti_and_before, fake_model_at_iter_0)
+    @test !(ti_and_before((; clock=Clock(time=1.0, iteration=1))))
+    @test 0.5 ≈ schedule_aligned_time_step(ti_and_before, Clock(time=1.0, iteration=1), Inf)
+    @test ti_and_before((; clock=Clock(time=1.5, iteration=2))) # offset actuation at t = 1.5
+    @test !(ti_and_before((; clock=Clock(time=1.7, iteration=3))))
+    @test 0.3 ≈ schedule_aligned_time_step(ti_and_before, Clock(time=1.7, iteration=3), Inf) # aligned with the parent
+    @test ti_and_before(fake_model_at_time_2) # parent actuation at t = 2
+    @test !(ti_and_before(fake_model_at_time_3))
+    @test 0.5 ≈ schedule_aligned_time_step(ti_and_before, Clock(time=3.0, iteration=3), Inf)
+    @test ti_and_before((; clock=Clock(time=3.5, iteration=4))) # offset actuation at t = 3.5
+
+    restored_ti_and_before = OffsetActuation(TimeInterval(2), -0.5)
+    restore_prognostic_state!(restored_ti_and_before, prognostic_state(ti_and_before))
+    @test restored_ti_and_before.offset_actuated == ti_and_before.offset_actuated
+    @test restored_ti_and_before.parent.actuations == ti_and_before.parent.actuations
+    @test summary(ti_and_before) == "OffsetActuation(TimeInterval(2 seconds), -500 ms)"
+
+    @test_throws ArgumentError OffsetActuation(IterationInterval(3), -0.5)
+    @test_throws ArgumentError OffsetActuation(TimeInterval(2), -2)
+    @test_throws ArgumentError OffsetActuation(TimeInterval(2), 3)
+
     # WallTimeInterval
     wti = WallTimeInterval(1e-9)
 
@@ -155,4 +188,23 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     fake_clock = (; time=2.1)
     st = SpecifiedTimes(2.5)
     @test 0.4 ≈ schedule_aligned_time_step(st, fake_clock, Inf)
+end
+
+@testset "OffsetActuation time step alignment" begin
+    @info "Testing OffsetActuation time step alignment..."
+
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+    for (offset, expected_times) in [(-0.2, [0.0, 0.8, 1.0, 1.8, 2.0]),
+                                     (+0.3, [0.0, 0.3, 1.0, 1.3, 2.0])]
+        model = NonhydrostaticModel(grid)
+        simulation = Simulation(model; Δt=0.3, stop_time=2, verbose=false)
+
+        actuation_times = Float64[]
+        record_time(sim) = push!(actuation_times, time(sim))
+        add_callback!(simulation, record_time, OffsetActuation(TimeInterval(1), offset))
+        run!(simulation)
+
+        @test actuation_times ≈ expected_times
+    end
 end
