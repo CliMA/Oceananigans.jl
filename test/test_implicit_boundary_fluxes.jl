@@ -147,7 +147,7 @@ end
 
             # A drag toward zero given as a plain flux function: the Patankar rule recovers λ = J / u exactly,
             # so the result matches the explicit split with the same coefficient.
-            patankar = FluxBoundaryCondition(mom_drag_u; discrete_form=true, parameters=(; λ), time_discretization=IMEXFluxTimeDiscretization())
+            patankar = IMEXFluxBoundaryCondition(mom_drag_u; discrete_form=true, parameters=(; λ))
             split    = IMEXFluxBoundaryCondition(0.0, λ)
             @test momentum_column(patankar; nsteps=8) ≈ momentum_column(split; nsteps=8)
             @test momentum_column(patankar; nsteps=8)[end] < 1
@@ -155,14 +155,14 @@ end
             # An array holding the flux J = λ u₀: one implicit step gives u¹ = u₀ / (1 + β)
             u₀ = 1.0
             J = on_architecture(arch, fill(λ * u₀, 1, 1, 1))
-            array_drag = FluxBoundaryCondition(J; time_discretization=IMEXFluxTimeDiscretization())
+            array_drag = IMEXFluxBoundaryCondition(J)
             u = momentum_column(array_drag; u₀)
             @test u[end] ≈ u₀ / (1 + λ * Δt)
             @test u[1] ≈ u₀
 
             # A source (a stress accelerating the flow) has no dissipative part and is integrated explicitly
             τ = 1e-3
-            stress = FluxBoundaryCondition(on_architecture(arch, fill(-τ, 1, 1, 1)); time_discretization=IMEXFluxTimeDiscretization())
+            stress = IMEXFluxBoundaryCondition(on_architecture(arch, fill(-τ, 1, 1, 1)))
             u = momentum_column(stress; u₀)
             @test u[end] ≈ u₀ + Δt * τ
             @test needs_implicit_solver(stress)

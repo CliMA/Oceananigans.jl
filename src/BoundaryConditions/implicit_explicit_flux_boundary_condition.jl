@@ -65,15 +65,24 @@ function materialize_flux_boundary_condition(flux, time_discretization::IMEXFlux
 end
 
 """
+    IMEXFluxBoundaryCondition(flux; kwargs...)
     IMEXFluxBoundaryCondition(explicit_flux, implicit_coefficient; kwargs...)
 
-Return a `Flux` boundary condition with the affine flux `J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`.
-Shorthand for
+Return a `Flux` boundary condition whose linear part is integrated implicitly. With one argument, `flux` is
+the total flux `J` and is split at the boundary cell according to its condition (by the Patankar rule unless
+the condition supplies its own split). With two arguments, the boundary condition represents the affine flux
+`J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`. Shorthands for
 
 ```julia
+FluxBoundaryCondition(flux;          time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
 FluxBoundaryCondition(explicit_flux; time_discretization = IMEXFluxTimeDiscretization(implicit_coefficient), kwargs...)
 ```
+
+See [`IMEXFluxTimeDiscretization`](@ref).
 """
+IMEXFluxBoundaryCondition(J; kwargs...) =
+    FluxBoundaryCondition(J; time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
+
 IMEXFluxBoundaryCondition(Fₑ, λ; kwargs...) =
     FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ), kwargs...)
 

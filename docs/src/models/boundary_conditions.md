@@ -246,10 +246,12 @@ tridiagonal solver instead, which the model builds automatically:
 ```jldoctest
 julia> @inline linear_drag(i, j, grid, clock, fields, r) = @inbounds r * fields.u[i, j, grid.Nz];
 
-julia> drag_bc = FluxBoundaryCondition(linear_drag; discrete_form=true, parameters=1e-3,
-                                       time_discretization=IMEXFluxTimeDiscretization())
+julia> drag_bc = IMEXFluxBoundaryCondition(linear_drag; discrete_form=true, parameters=1e-3)
 IMEXFluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 0.001
 ```
+
+[`IMEXFluxBoundaryCondition`](@ref)`(flux; kwargs...)` is shorthand for
+`FluxBoundaryCondition(flux; time_discretization=IMEXFluxTimeDiscretization(), kwargs...)`.
 
 Any flux condition, whether a number, an array, a `Field`, or a function, may be integrated this way. The flux is
 split at the boundary cell into ``J \approx F_e + \lambda \phi_b`` by the Patankar rule, ``\lambda = J / \phi_b``,
@@ -261,11 +263,11 @@ split is known, pass the explicit part as the flux and the linear coefficient to
 ```jldoctest
 julia> c★, k = 20.0, 1e-4;  # relaxation target and rate
 
-julia> relaxation_bc = FluxBoundaryCondition(-k * c★; time_discretization=IMEXFluxTimeDiscretization(k))
+julia> relaxation_bc = IMEXFluxBoundaryCondition(-k * c★, k)
 IMEXFluxBoundaryCondition: -0.002 + 0.0001 φᵦ
 ```
 
-which represents ``J = k (c_b - c^\star)``. [`IMEXFluxBoundaryCondition`](@ref)`(-k * c★, k)` is a shorthand.
+which represents ``J = k (c_b - c^\star)``.
 An implicit flux is supported only on the `bottom` and `top` boundaries and on the `bottom` and `top` facets of
 an [`ImmersedBoundaryCondition`](@ref). See also [`BulkDrag`](@ref), whose drag is split exactly rather than
 by the Patankar rule.
@@ -742,51 +744,6 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 # Restore original stderr
 redirect_stderr(original_stderr)
 ```
-
-## Implicit flux boundary conditions
-
-An explicit dissipative flux, such as a drag or a relaxation, limits the time step to
-``\lambda \Delta t / \Delta z < 2`` in the boundary-adjacent cell, where ``\lambda`` is the flux per unit
-of the boundary value. Passing `time_discretization=IMEXFluxTimeDiscretization()` to
-[`FluxBoundaryCondition`](@ref) integrates the linear part of the flux with the vertical tridiagonal solver
-instead, which the model builds automatically. At the boundary cell the flux is split as
-``J(\phi_b) \approx F_e + \lambda \phi_b``: ``F_e`` goes through the tendency and ``\lambda \phi_b`` through the solver.
-
-How the split is found depends on the condition. A number, an array, a `Field`, or a function is split by the
-Patankar rule: ``\lambda`` is the dissipative part of ``J / \phi_b`` and the remainder ``J - \lambda \phi_b`` is
-integrated explicitly. Any dissipative flux proportional to ``\phi_b`` becomes implicit with no other change,
-here a linear drag on `u` given as a discrete function:
-
-```jldoctest
-using Oceananigans
-
-linear_drag(i, j, grid, clock, fields, r) = @inbounds - r * fields.u[i, j, 1]
-drag = FluxBoundaryCondition(linear_drag; discrete_form=true, parameters=2e-3,
-                             time_discretization=IMEXFluxTimeDiscretization())
-
-# output
-IMEXFluxBoundaryCondition: DiscreteBoundaryFunction with parameters 0.002
-```
-
-The Patankar rule estimates the slope of the flux from its value, so it only sees the part of the flux
-that vanishes with ``\phi_b``. A flux with a known linear part that does not, such as a relaxation
-``\lambda (\phi_b - \phi_\star)``, is written with its split instead, passing the explicit part ``F_e = -\lambda \phi_\star``
-as the flux and ``\lambda`` through `IMEXFluxTimeDiscretization(λ)`, or through the shorthand
-[`IMEXFluxBoundaryCondition`](@ref):
-
-```jldoctest
-using Oceananigans
-
-λ, c★ = 1e-4, 20.0
-relaxation = IMEXFluxBoundaryCondition(-λ * c★, λ)
-
-# output
-IMEXFluxBoundaryCondition: -0.002 + 0.0001 φᵦ
-```
-
-Conditions that know their own split, such as [`BulkDrag`](@ref), supply it directly. An implicit flux
-is supported only on the `bottom` and `top` boundaries and on the `bottom` and `top` facets of an
-[`ImmersedBoundaryCondition`](@ref).
 
 ## Bulk drag boundary conditions
 
