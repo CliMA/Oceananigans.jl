@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
-using Oceananigans.BoundaryConditions: getbc
+using Oceananigans.BoundaryConditions: getbc, explicit_flux, ImmersedFacet
 using Oceananigans.BoundaryConditions: FBC, ZFBC
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
@@ -55,7 +55,7 @@ for side in (:west, :south, :bottom)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
         @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
-        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = + getbc(bc, i, j, k, ibg, args...)
+        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = + explicit_flux(bc, ImmersedFacet(), i, j, k, ibg, c, args...)
     end
 end
 
@@ -63,7 +63,7 @@ for side in (:east, :north, :top)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
         @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
-        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = - getbc(bc, i, j, k, ibg, args...)
+        @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = - explicit_flux(bc, ImmersedFacet(), i, j, k, ibg, c, args...)
     end
 end
 
