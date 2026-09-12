@@ -14,6 +14,7 @@ GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+KernelInterface = "4ee993da-d684-4d17-a7dd-4e58e78d92bf"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
@@ -40,7 +41,8 @@ cuSPARSE = "b26da814-b3bc-49ef-b0ee-c816305aa060"
 [sources]
 CUDACore = {rev = "intrinsics", subdir = "CUDACore", url = "https://github.com/christiangnrd/CUDA.jl.git"}
 CUDATools = {rev = "intrinsics", subdir = "CUDATools", url = "https://github.com/christiangnrd/CUDA.jl.git"}
-KernelAbstractions = {rev = "1fc10604b3a81044a59edf0b28aba137e7227bc0", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
+KernelAbstractions = {rev = "41a7b238193687e6ea36d5f58bff0ee87823ce27", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
+KernelInterface = {rev = "41a7b238193687e6ea36d5f58bff0ee87823ce27", subdir = "lib/KernelInterface", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
 Metal = {rev = "kaintr", url = "https://github.com/JuliaGPU/Metal.jl.git"}
 Oceananigans = {path = ".."}
 StructArrays = {rev = "mg/ka-0.10", url = "https://github.com/JuliaArrays/StructArrays.jl.git"}
