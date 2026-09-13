@@ -93,10 +93,6 @@ include("show_abstract_operations.jl")
 @binary Base.atand
 @binary Base.mod
 
-# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
-Base.:<(::AbstractField, ::Missing) = missing
-Base.:<(::Missing, ::AbstractField) = missing
-
 @multiary +
 
 # For unknown reasons, the operator definition macros @binary and @multiary fail to work

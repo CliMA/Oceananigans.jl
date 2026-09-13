@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: ConditionalOperation
+using Oceananigans.AbstractOperations: ConditionalOperation, BinaryOperation, Δz
+using Oceananigans.Grids: node
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -145,6 +146,18 @@ for arch in archs
             @test ConstantField(1) - 1 == ConstantField(0)
             @test ConstantField(1) * 2 == ConstantField(2)
             @test ConstantField(1) / 2 == ConstantField(1/2)
+
+            # Numbers, functions, grid metrics and fields are lazy operands; raw arrays are not
+            set!(c, 2)
+            for (ψ, ϕ) in ((c, 3), (3, c), (c, generic_function), (generic_function, c), (c, Δz), (Δz, c), (c, c)),
+                op in (+, -, *, /)
+                @test op(ψ, ϕ) isa BinaryOperation
+            end
+            @test @allowscalar Field(c * 3)[2, 2, 2] == 6
+            @test @allowscalar Field(c * Δz)[2, 2, 2] == 2
+            @test @allowscalar Field(c * generic_function)[2, 2, 2] == 2 * sum(node(2, 2, 2, c))
+            @test_throws MethodError c * on_architecture(arch, ones(size(c)))
+            @test_throws MethodError on_architecture(arch, ones(size(c))) / c
         end
 
         @testset "Comparison operations [$A]" begin
