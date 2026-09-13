@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
 using Test
 
 #####
@@ -496,6 +497,55 @@ function test_gravity_wave_pairing()
     return auto_paired && user_respected && no_pairing
 end
 
+#####
+##### Test: ObliqueRadiation
+#####
+
+# With zero tangential differences the oblique update equals the normal update.
+function test_oblique_reduces_to_normal()
+    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    Δt, Cᵃ, φᵉˣᵗ = 10.0, 0.05, -0.37
+
+    reduces = true
+    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6), outflow in (true, false)
+        o = oblique_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
+        n = normal_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
+        reduces &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
+    end
+
+    tilted = oblique_radiation_update(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
+    normal = normal_radiation_update(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
+
+    return reduces && !isapprox(tilted, normal; rtol = 1e-6)
+end
+
+# Mirroring the initial tracer and the tangential velocity mirrors the solution.
+function test_oblique_radiation_mirror_symmetry()
+    grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
+                           topology = (Bounded, Periodic, Bounded))
+
+    function tracer_after_outflow(v, c₀)
+        bc = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            velocities = PrescribedVelocityFields(u = 1, v = v),
+                                            tracer_advection = Centered(),
+                                            buoyancy = nothing, tracers = :c,
+                                            boundary_conditions = (; c = FieldBoundaryConditions(east = bc, west = bc)))
+        set!(model, c = c₀)
+        for _ in 1:40
+            time_step!(model, 0.01)
+        end
+        return Array(interior(model.tracers.c, :, :, 1))
+    end
+
+    c₀(x, y, z) = exp(-((x - 0.6)^2 + (y - 0.3)^2) / 0.02)
+    c = tracer_after_outflow(0.5, c₀)
+    c_mirrored = tracer_after_outflow(-0.5, (x, y, z) -> c₀(x, 1 - y, z))
+
+    return c ≈ reverse(c_mirrored, dims = 2)
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -531,5 +581,13 @@ end
 
     @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin
         @test test_gravity_wave_pairing()
+    end
+
+    @testset "ObliqueRadiation reduces to NormalRadiation at normal incidence" begin
+        @test test_oblique_reduces_to_normal()
+    end
+
+    @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
+        @test test_oblique_radiation_mirror_symmetry()
     end
 end
