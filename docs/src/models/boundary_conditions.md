@@ -410,7 +410,7 @@ exit the domain in each specific problem.
 
 ### 11. Open boundary condition with a target transport
 
-A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
+A [`PerturbationAdvection`](@ref) or [`NormalRadiation`](@ref) scheme can additionally pin the *net volume transport*
 through the boundary — the integral of the normal velocity over the boundary area,
 ``\oint \mathbf{u} \cdot \mathrm{d} \mathbf{A}`` (units m³ s⁻¹) — to a prescribed value
 through the `target_transport` keyword:
@@ -428,6 +428,22 @@ PerturbationAdvection{Float64}
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+```
+
+The same keyword is accepted by [`NormalRadiation`](@ref):
+
+```jldoctest
+julia> using Oceananigans
+
+julia> scheme = NormalRadiation(; inflow_timescale=1, outflow_timescale=10, target_transport=2)
+NormalRadiation{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── use_boundary_velocity: false
+└── target_transport: 2.0
+
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{NormalRadiation{Float64, Nothing, Float64}}: 1
 ```
 
 At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
