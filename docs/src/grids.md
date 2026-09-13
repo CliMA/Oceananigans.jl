@@ -233,7 +233,12 @@ above underlying grids with a type of immersed boundary. The immersed boundaries
    of the domain is above the bottom height.
 1. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref),
    except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
-3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
+1. [`ShavedCellBottom`](@ref Oceananigans.ImmersedBoundaries.ShavedCellBottom), which also cuts the lateral faces of the bottommost
+   cell where the bottom crosses them, so that the bottom slopes through the cell rather than stepping between cells. Cell volumes
+   and face areas then describe one bilinear surface, and the cross-section left open to a flow running along a slope is the one
+   the topography actually leaves free, which [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom)
+   understates. See `validation/immersed_boundaries/overflow.jl` for a comparison of the three bottoms on a dense water overflow.
+4. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
 To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary
 into that underlying grid.

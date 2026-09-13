@@ -1,5 +1,5 @@
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ
-using Oceananigans.ImmersedBoundaries: PartialCellBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: PartialCellBottom, ShavedCellBottom, ImmersedBoundaryGrid
 using Oceananigans.Grids: topology
 
 """
@@ -25,15 +25,15 @@ update_hydrostatic_pressure!(::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model;
 update_hydrostatic_pressure!(grid, model; kwargs...) =
     update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers; kwargs...)
 
-# Partial cell "algorithm"
-const PCB = PartialCellBottom
-const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
+# Partial and shaved cell "algorithm"
+const PartialOrShavedCellBottom = Union{PartialCellBottom, ShavedCellBottom}
+const PSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialOrShavedCellBottom}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(ibg.underlying_grid)) =
+update_hydrostatic_pressure!(pHY′, arch, ibg::PSCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(ibg.underlying_grid)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
 update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = surface_kernel_parameters(grid)) =
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
 update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
-update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothing
+update_hydrostatic_pressure!(::Nothing, arch, ::PSCBIBG, args...; kw...) = nothing

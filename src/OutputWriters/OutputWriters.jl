@@ -27,9 +27,9 @@ using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongi
                           interior_indices
 import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
-                                        GridFittedBottom, PartialCellBottom,
+                                        GridFittedBottom, PartialCellBottom, ShavedCellBottom,
                                         CenterImmersedCondition, InterfaceImmersedCondition,
-                                        GFBIBG, PCBIBG, bottom_height_field
+                                        GFBIBG, PCBIBG, SCBIBG, bottom_height_field
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                    ConformalCubedSpherePanelGrid,

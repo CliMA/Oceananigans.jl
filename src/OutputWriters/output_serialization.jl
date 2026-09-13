@@ -40,6 +40,7 @@ const serialized_output_values = Dict{Symbol, Any}(
     :GridFittedBoundary => GridFittedBoundary,
     :GridFittedBottom => GridFittedBottom,
     :PartialCellBottom => PartialCellBottom,
+    :ShavedCellBottom => ShavedCellBottom,
     :CenterImmersedCondition => CenterImmersedCondition,
     :InterfaceImmersedCondition => InterfaceImmersedCondition,
     :Tripolar => Tripolar,
