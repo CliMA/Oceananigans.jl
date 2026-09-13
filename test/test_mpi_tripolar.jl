@@ -13,6 +13,7 @@ tripolar_reconstructed_grid_script(fold_topology) = """
     include("distributed_tests_utils.jl")
 
     using Oceananigans.OrthogonalSphericalShellGrids: distribute_tripolar_grid
+    using Oceananigans.Grids: total_length
 
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
@@ -41,6 +42,20 @@ tripolar_reconstructed_grid_script(fold_topology) = """
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
+        end
+
+        # Each metric spans the extent of its own location: on the rank owning a `RightFaceFolded`
+        # fold a `Face`-in-y metric has one row more than a `Center`-in-y one.
+        Hy = halo_size(local_grid)[2]
+        TY = topology(local_grid, 2)()
+
+        for (var, ℓy) in [(:λᶜᶜᵃ, Center()), (:λᶠᶜᵃ, Center()), (:λᶜᶠᵃ, Face()), (:λᶠᶠᵃ, Face()),
+                          (:φᶜᶜᵃ, Center()), (:φᶠᶜᵃ, Center()), (:φᶜᶠᵃ, Face()), (:φᶠᶠᵃ, Face()),
+                          (:Δxᶜᶜᵃ, Center()), (:Δxᶠᶜᵃ, Center()), (:Δxᶜᶠᵃ, Face()), (:Δxᶠᶠᵃ, Face()),
+                          (:Δyᶜᶜᵃ, Center()), (:Δyᶠᶜᵃ, Center()), (:Δyᶜᶠᵃ, Face()), (:Δyᶠᶠᵃ, Face()),
+                          (:Azᶜᶜᵃ, Center()), (:Azᶠᶜᵃ, Center()), (:Azᶜᶠᵃ, Face()), (:Azᶠᶠᵃ, Face())]
+
+            @test size(parent(getproperty(local_grid, var)), 2) == total_length(ℓy, TY, ny, Hy)
         end
     end
 """
@@ -86,6 +101,74 @@ tripolar_reconstructed_field_script(fold_topology) = """
     end
 """
 
+tripolar_metric_halo_script(fold_topology) = """
+    using MPI
+    MPI.Init()
+    using Test
+
+    include("distributed_tests_utils.jl")
+
+    using Oceananigans.Grids: with_halo, topology
+    using Oceananigans.BoundaryConditions: fill_halo_regions!, NoFluxBoundaryCondition, PeriodicBoundaryCondition
+    using Oceananigans.OrthogonalSphericalShellGrids: north_fold_boundary_condition
+
+    arch = Distributed(CPU(), partition = Partition(2, 2))
+
+    global_grid = TripolarGrid(size = (20, 20, 2), z = (-1000, 0), halo = (4, 4, 4), fold_topology = $fold_topology)
+    local_grid  = TripolarGrid(arch; size = (20, 20, 2), z = (-1000, 0), halo = (4, 4, 4), fold_topology = $fold_topology)
+
+    nx, ny, _ = size(local_grid)
+    rx, ry, _ = arch.local_index
+    i₀, j₀ = (rx - 1) * nx, (ry - 1) * ny
+
+    Hx, Hy, _ = halo_size(local_grid)
+    TX, TY, _ = topology(local_grid)
+
+    Njg = Base.length(Face(), topology(global_grid, 2)(), size(global_grid, 2))
+    Njl = Base.length(Face(), TY(), ny)
+
+    fold_bcs(sign) = FieldBoundaryConditions(north  = north_fold_boundary_condition($fold_topology)(sign),
+                                             south  = NoFluxBoundaryCondition(),
+                                             west   = PeriodicBoundaryCondition(),
+                                             east   = PeriodicBoundaryCondition(),
+                                             top = nothing, bottom = nothing)
+
+    # The fold is applied once to raw data on both grids, rather than seeded already folded: it flips
+    # the sign at its two fixed points, so folding twice is not the identity.
+    for sign in (1, -1)
+        reference = Field{Face, Face, Nothing}(global_grid; boundary_conditions = fold_bcs(sign))
+        for j in 1:Njg, i in 1:size(global_grid, 1)
+            reference[i, j] = i + 100j
+        end
+        fill_halo_regions!(reference)
+
+        local_field = Field{Face, Face, Nothing}(local_grid; boundary_conditions = fold_bcs(sign))
+        for j in 1:Njl, i in 1:nx
+            local_field[i, j] = i₀ + i + 100 * (j₀ + j)
+        end
+        fill_halo_regions!(local_field)
+
+        @test all(local_field[i, j] == reference[i₀ + i, j₀ + j] for j in 1-Hy:Njl+Hy, i in 1-Hx:nx+Hx)
+    end
+
+    # A mesh read from a file is not the analytic one, so scaling the metrics distinguishes a
+    # `with_halo` that transfers them from one that regenerates them.
+    for name in (:φᶜᶜᵃ, :φᶠᶜᵃ, :φᶜᶠᵃ, :φᶠᶠᵃ,
+                 :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                 :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+        parent(getproperty(local_grid, name)) .*= 2
+    end
+
+    rehaloed = with_halo((4, 6, 4), local_grid)
+
+    for (name, ℓx, ℓy) in ((:φᶜᶜᵃ, Center(), Center()), (:Δyᶠᶜᵃ, Face(), Center()),
+                           (:Δxᶜᶠᵃ, Center(), Face()),  (:Azᶠᶠᵃ, Face(), Face()))
+        Ni = Base.length(ℓx, TX(), nx)
+        Nj = Base.length(ℓy, TY(), ny)
+        @test getproperty(rehaloed, name)[1:Ni, 1:Nj] == getproperty(local_grid, name)[1:Ni, 1:Nj]
+    end
+"""
+
 @testset "Test distributed TripolarGrid $fold_topology..." for fold_topology in fold_topologies
     write("distributed_tripolar_grid_$fold_topology.jl", tripolar_reconstructed_grid_script(fold_topology))
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_tripolar_grid_$fold_topology.jl")`)
@@ -94,6 +177,10 @@ tripolar_reconstructed_field_script(fold_topology) = """
     write("distributed_tripolar_field_$fold_topology.jl", tripolar_reconstructed_field_script(fold_topology))
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_tripolar_field_$fold_topology.jl")`)
     rm("distributed_tripolar_field_$fold_topology.jl")
+
+    write("distributed_tripolar_metric_halo_$fold_topology.jl", tripolar_metric_halo_script(fold_topology))
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_tripolar_metric_halo_$fold_topology.jl")`)
+    rm("distributed_tripolar_metric_halo_$fold_topology.jl")
 end
 
 tripolar_boundary_conditions_script(fold_topology) = """

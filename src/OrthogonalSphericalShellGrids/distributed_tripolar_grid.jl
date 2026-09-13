@@ -99,34 +99,37 @@ function distribute_tripolar_grid(arch::Distributed, global_grid)
     jend = yrank == workers[2] - 1 ? Ny : sum(nylocal[1:yrank+1])
     jrange = jstart-Hy:jend+Hy
 
+    extra_fold_row = (yrank == workers[2] - 1) && (topology(global_grid, 2) === RightFaceFolded)
+    face_jrange = jstart-Hy:jend+Hy+extra_fold_row
+
     # The i-range
     istart = 1 + sum(nxlocal[1:xrank])
     iend = xrank == workers[1] - 1 ? Nx : sum(nxlocal[1:xrank+1])
     irange = istart-Hx:iend+Hx
 
     # Partitioning the Coordinates
-    λᶠᶠᵃ = partition_tripolar_metric(global_grid, :λᶠᶠᵃ, irange, jrange)
-    φᶠᶠᵃ = partition_tripolar_metric(global_grid, :φᶠᶠᵃ, irange, jrange)
+    λᶠᶠᵃ = partition_tripolar_metric(global_grid, :λᶠᶠᵃ, irange, face_jrange)
+    φᶠᶠᵃ = partition_tripolar_metric(global_grid, :φᶠᶠᵃ, irange, face_jrange)
     λᶠᶜᵃ = partition_tripolar_metric(global_grid, :λᶠᶜᵃ, irange, jrange)
     φᶠᶜᵃ = partition_tripolar_metric(global_grid, :φᶠᶜᵃ, irange, jrange)
-    λᶜᶠᵃ = partition_tripolar_metric(global_grid, :λᶜᶠᵃ, irange, jrange)
-    φᶜᶠᵃ = partition_tripolar_metric(global_grid, :φᶜᶠᵃ, irange, jrange)
+    λᶜᶠᵃ = partition_tripolar_metric(global_grid, :λᶜᶠᵃ, irange, face_jrange)
+    φᶜᶠᵃ = partition_tripolar_metric(global_grid, :φᶜᶠᵃ, irange, face_jrange)
     λᶜᶜᵃ = partition_tripolar_metric(global_grid, :λᶜᶜᵃ, irange, jrange)
     φᶜᶜᵃ = partition_tripolar_metric(global_grid, :φᶜᶜᵃ, irange, jrange)
 
     # Partitioning the Metrics
     Δxᶜᶜᵃ = partition_tripolar_metric(global_grid, :Δxᶜᶜᵃ, irange, jrange)
     Δxᶠᶜᵃ = partition_tripolar_metric(global_grid, :Δxᶠᶜᵃ, irange, jrange)
-    Δxᶜᶠᵃ = partition_tripolar_metric(global_grid, :Δxᶜᶠᵃ, irange, jrange)
-    Δxᶠᶠᵃ = partition_tripolar_metric(global_grid, :Δxᶠᶠᵃ, irange, jrange)
+    Δxᶜᶠᵃ = partition_tripolar_metric(global_grid, :Δxᶜᶠᵃ, irange, face_jrange)
+    Δxᶠᶠᵃ = partition_tripolar_metric(global_grid, :Δxᶠᶠᵃ, irange, face_jrange)
     Δyᶜᶜᵃ = partition_tripolar_metric(global_grid, :Δyᶜᶜᵃ, irange, jrange)
     Δyᶠᶜᵃ = partition_tripolar_metric(global_grid, :Δyᶠᶜᵃ, irange, jrange)
-    Δyᶜᶠᵃ = partition_tripolar_metric(global_grid, :Δyᶜᶠᵃ, irange, jrange)
-    Δyᶠᶠᵃ = partition_tripolar_metric(global_grid, :Δyᶠᶠᵃ, irange, jrange)
+    Δyᶜᶠᵃ = partition_tripolar_metric(global_grid, :Δyᶜᶠᵃ, irange, face_jrange)
+    Δyᶠᶠᵃ = partition_tripolar_metric(global_grid, :Δyᶠᶠᵃ, irange, face_jrange)
     Azᶜᶜᵃ = partition_tripolar_metric(global_grid, :Azᶜᶜᵃ, irange, jrange)
     Azᶠᶜᵃ = partition_tripolar_metric(global_grid, :Azᶠᶜᵃ, irange, jrange)
-    Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
-    Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
+    Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, face_jrange)
+    Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, face_jrange)
 
     LX = workers[1] == 1 ? Periodic : FullyConnected
 
@@ -391,25 +394,25 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
                         fold_topology = fold_topology(grid.conformal_mapping))
 end
 
-function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
+function halo_filling_grid(new_halo, grid::MPITripolarGrid)
 
-    arch = old_grid.architecture
+    arch = grid.architecture
 
-    n  = size(old_grid)
+    n  = size(grid)
     N  = map(sum, concatenate_local_sizes(n, arch))
-    z  = cpu_face_constructor_z(old_grid)
+    z  = cpu_face_constructor_z(grid)
 
-    north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
-    first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
-    southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
-    return TripolarGrid(arch, eltype(old_grid);
+    north_poles_latitude = grid.conformal_mapping.north_poles_latitude
+    first_pole_longitude = grid.conformal_mapping.first_pole_longitude
+    southernmost_latitude = grid.conformal_mapping.southernmost_latitude
+    return TripolarGrid(arch, eltype(grid);
                         halo = new_halo,
                         size = N,
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(old_grid.conformal_mapping))
+                        fold_topology = fold_topology(grid.conformal_mapping))
 end
 
 #####
