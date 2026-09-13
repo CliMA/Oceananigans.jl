@@ -12,7 +12,7 @@ using Base: @propagate_inbounds
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
-const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrids} where {LX, LY, LZ}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:Union{AbstractOperation, FunctionField}, <:MultiRegionGrids} where {LX, LY, LZ}
 const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrids} where {LX, LY, LZ, C, P, F}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
