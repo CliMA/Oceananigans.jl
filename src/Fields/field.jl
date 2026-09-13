@@ -724,8 +724,7 @@ reduction_init(::ProdReduction, T) = one(T)
 reduction_init(::AllReduction,  T) = true
 reduction_init(::AnyReduction,  T) = false
 
-initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) =
-    fill!(interior(r), reduction_init(reduction, eltype(r)))
+initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) = fill!(interior(r), reduction_init(reduction, eltype(r)))
 
 # `maximum` and `minimum` start from `f` of the operand's first slice along the reduced dimensions
 function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, f::F, r::ReducedAbstractField, c) where F
@@ -734,9 +733,8 @@ function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, 
 end
 
 # Axes of the first slice of `A` along the dimensions reduced in `R`, keeping the axis types
-first_slice(::Tuple{}, ::Tuple{}) = ()
-@inline first_slice(R::Tuple, A::Tuple) =
-    (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
+@inline first_slice(::Tuple{}, ::Tuple{}) = ()
+@inline first_slice(R::Tuple, A::Tuple) = (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
 
 first_index(::Base.OneTo) = Base.OneTo(1)
 first_index(ax::AbstractUnitRange) = first(ax):first(ax)
