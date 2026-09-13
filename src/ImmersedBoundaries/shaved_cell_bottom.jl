@@ -28,14 +28,8 @@ following Adcroft, Hill and Marshall (1997).
 The bottom is a piecewise-bilinear surface reconstructed from `bottom_height`, which may be a
 `Field`, `Array`, or function of `(x, y)`. Every lateral face of a bottom cell is cut by that
 surface at the horizontal position of the face itself, so the faces of one cell carry different
-heights and the bottom slopes continuously through the cell. The volume of the cell is the volume
-underneath the same surface, so that volumes and face areas describe a single bottom.
-
-This differs from [`PartialCellBottom`](@ref), which shrinks the vertical extent of a bottom cell
-but gives each lateral face the height of the shallower of the two cells adjoining it. That choice
-leaves a staircase in the face areas even where the cell volumes vary smoothly, and it throttles
-flow running along a slope. Shaved cells instead open each face to the cross-section that the
-topography actually leaves free.
+heights and the bottom slopes through the cell. The volume of the cell is the volume underneath the
+same surface.
 
 The height of a shaved cell, and of each of its lateral faces, is greater than
 
@@ -45,12 +39,7 @@ minimum_fractional_cell_height * Δz,
 
 where `Δz` is the original height of the bottom cell of the underlying grid.
 """
-function ShavedCellBottom(bottom_height, minimum_fractional_cell_height)
-    return ShavedCellBottom(bottom_height, nothing, nothing, nothing, minimum_fractional_cell_height)
-end
-
-ShavedCellBottom(bottom_height; minimum_fractional_cell_height=0.2) =
-    ShavedCellBottom(bottom_height, minimum_fractional_cell_height)
+ShavedCellBottom(bottom_height; minimum_fractional_cell_height=0.2) = ShavedCellBottom(bottom_height, nothing, nothing, nothing, minimum_fractional_cell_height)
 
 function Base.summary(ib::ShavedCellBottom)
     bottom_interior = bottom_height_interior(ib.bottom_height)
@@ -80,19 +69,10 @@ function Base.show(io::IO, ib::ShavedCellBottom)
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
-#####
-##### Neighboring indices that collapse in Flat directions
-#####
-
-@inline west_index(i, grid) = i - 1
-@inline east_index(i, grid) = i + 1
-@inline south_index(j, grid) = j - 1
-@inline north_index(j, grid) = j + 1
-
-@inline west_index(i, grid::XFlatGrid) = i
-@inline east_index(i, grid::XFlatGrid) = i
-@inline south_index(j, grid::YFlatGrid) = j
-@inline north_index(j, grid::YFlatGrid) = j
+@inline x_index(i, grid, offset) = i + offset
+@inline x_index(i, grid::XFlatGrid, offset) = i
+@inline y_index(j, grid, offset) = j + offset
+@inline y_index(j, grid::YFlatGrid, offset) = j
 
 #####
 ##### Materialization
@@ -101,15 +81,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return a `Field` at `(Face, Face, Nothing)` wrapping the corner bottom heights of `grid`, the
-piecewise-bilinear surface from which every shaved cell volume and face area is built. The returned
-`Field` shares its data with `grid`.
+Return a `Field` at `(Face, Face, Nothing)` sharing the corner bottom heights of `grid`, the
+bilinear surface every shaved cell volume and face area is built from.
 """
-corner_bottom_height_field(grid::IBG) = Field{Face, Face, Nothing}(grid.underlying_grid;
-                                                                  data = grid.immersed_boundary.corner_bottom_height)
+corner_bottom_height_field(grid::IBG) = Field{Face, Face, Nothing}(grid.underlying_grid; data = grid.immersed_boundary.corner_bottom_height)
 
-# Staggered fields carry a boundary point beyond the last cell in Bounded directions, which the
-# default `:xy` launch does not reach.
+# Staggered fields carry a boundary point beyond the last cell in Bounded directions.
 function staggered_bottom_parameters(grid)
     Nx, Ny, _ = size(grid)
     TX, TY, _ = topology(grid)
@@ -120,11 +97,9 @@ function staggered_bottom_parameters(grid)
     return KernelParameters(Ix, Iy)
 end
 
-# Functions and numbers are sampled at the corners directly, which keeps the reconstructed surface
-# faithful to the bathymetry that was handed in.
 set_corner_bottom_height!(corner_field, grid, bottom_height, parameters) = set_bottom_height!(corner_field, bottom_height)
 
-# Anything sampled at cell centers has to be interpolated to the corners first.
+# Anything sampled at cell centers is interpolated to the corners.
 function set_corner_bottom_height!(corner_field, grid, bottom_height::AbstractArray, parameters)
     center_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(center_field, bottom_height)
@@ -136,18 +111,14 @@ end
 set_corner_bottom_height!(corner_field, grid, bottom_height::Field{Face, Face, Nothing}, parameters) =
     set_bottom_height!(corner_field, bottom_height)
 
-# A materialized boundary carries the surface it was built from, so that rebuilding it -- on another
-# architecture, or with a different halo -- reproduces the same geometry.
-set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom{<:Any, <:AbstractArray}, parameters) =
-    set_bottom_height!(corner_field, ib.corner_bottom_height)
-
-set_corner_bottom_height!(corner_field, grid, ib::ShavedCellBottom, parameters) =
-    set_corner_bottom_height!(corner_field, grid, ib.bottom_height, parameters)
+# Rebuilding a materialized boundary reuses the surface it was built from, so that it is idempotent.
+@inline bottom_surface(ib::ShavedCellBottom{<:Any, <:AbstractArray}, grid) = Field{Face, Face, Nothing}(grid; data=ib.corner_bottom_height)
+@inline bottom_surface(ib::ShavedCellBottom, grid) = ib.bottom_height
 
 @kernel function _interpolate_bottom_height_to_corners!(corner_field, center_field, grid)
     i, j = @index(Global, NTuple)
-    iᵂ = west_index(i, grid)
-    jˢ = south_index(j, grid)
+    iᵂ = x_index(i, grid, -1)
+    jˢ = y_index(j, grid, -1)
     @inbounds corner_field[i, j, 1] = (center_field[iᵂ, jˢ, 1] + center_field[i, jˢ, 1] +
                                        center_field[iᵂ, j,  1] + center_field[i, j,  1]) / 4
 end
@@ -158,7 +129,7 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
     parameters = staggered_bottom_parameters(grid)
 
     corner_field = Field{Face, Face, Nothing}(grid)
-    @apply_regionally set_corner_bottom_height!(corner_field, grid, ib, parameters)
+    @apply_regionally set_corner_bottom_height!(corner_field, grid, bottom_surface(ib, grid), parameters)
     @apply_regionally launch!(arch, grid, parameters, _clamp_bottom_height_to_domain!, corner_field, grid)
     fill_halo_regions!(corner_field)
 
@@ -187,14 +158,12 @@ end
     @inbounds bottom_field[i, j, 1] = clamp(bottom_field[i, j, 1], rᵈ, rᵗ)
 end
 
-# The mean of a bilinear surface over a cell is the mean of the four corners. The ϵ-limiter is
-# applied afterwards, as for `PartialCellBottom`; where it bites, the cell volume is no longer the
-# exact volume underneath the reconstructed surface.
+# The mean of a bilinear surface over a cell is the mean of its four corners; the ϵ-limiter follows.
 @kernel function _average_corners_to_centers!(bottom_field, corner_field, grid, ϵ)
     i, j = @index(Global, NTuple)
 
-    iᴱ = east_index(i, grid)
-    jᴺ = north_index(j, grid)
+    iᴱ = x_index(i, grid, +1)
+    jᴺ = y_index(j, grid, +1)
 
     rˢ = @inbounds (corner_field[i, j,  1] + corner_field[iᴱ, j,  1]) / 2
     rᴺ = @inbounds (corner_field[i, jᴺ, 1] + corner_field[iᴱ, jᴺ, 1]) / 2
@@ -220,10 +189,8 @@ end
     return kᵇ
 end
 
-# Snap a face bottom height into the lowest level that the face leaves open, keeping the face height
-# within [ϵ Δr, Δr] of that level. Summing the face heights over the open levels then returns the
-# column depth at the face exactly, which the barotropic mode relies on. The floor is kept strictly
-# positive so that the bottom surface lies inside a level even for ϵ = 0.
+# Snap a face bottom height into the lowest level the face leaves open, keeping it within [ϵ Δr, Δr]
+# of that level. The floor stays positive so that the surface lies inside a level even for ϵ = 0.
 @inline function shaved_face_bottom_height(i, j, kᵇ, grid, rᵇ, ϵ)
     FT = eltype(grid)
     k  = min(kᵇ, grid.Nz)
@@ -233,18 +200,16 @@ end
     return clamp(rᵇ, r⁻, r⁺ - max(ϵ, sqrt(eps(FT))) * Δr)
 end
 
-# True when the bottom surface at height rᵇ cuts through level k. `bottommost_active_node` cannot
-# serve here: at a `Face` location it fires at the bottom-most level where *either* of the two
-# adjoining columns is wet, whereas a shaved face is cut where the surface crosses it.
+# True when the bottom surface at height rᵇ cuts through level k.
 @inline shaved_level(i, j, k, grid, rᵇ) = rnode(i, j, k, grid, c, c, f) ≤ rᵇ < rnode(i, j, k+1, grid, c, c, f)
 
 @kernel function _compute_shaved_face_bottom_heights!(west_field, south_field, corner_field, grid, ib)
     i, j = @index(Global, NTuple)
 
-    iᵂ = west_index(i, grid)
-    iᴱ = east_index(i, grid)
-    jˢ = south_index(j, grid)
-    jᴺ = north_index(j, grid)
+    iᵂ = x_index(i, grid, -1)
+    iᴱ = x_index(i, grid, +1)
+    jˢ = y_index(j, grid, -1)
+    jᴺ = y_index(j, grid, +1)
 
     ϵ = ib.minimum_fractional_cell_height
 
@@ -276,8 +241,8 @@ Architectures.on_architecture(to, ib::ShavedCellBottom) = ShavedCellBottom(on_ar
 #####
 
 """
-A shaved bottom cell, seen in the x-r plane. The bottom surface crosses the cell, so the two lateral
-faces are cut at different heights and the cell volume is the volume underneath the surface:
+A shaved bottom cell in the x-r plane: the surface crosses the cell, so its two lateral faces are cut
+at different heights and its volume is the volume underneath the surface.
 
            i-1/2           i+1/2
              |               |
@@ -290,10 +255,7 @@ faces are cut at different heights and the cell volume is the volume underneath 
 
     Δrᶠᶜᶜ = r⁺ - rᵇᵂ  at  i-1/2,   r⁺ - rᵇᴱ  at  i+1/2,   and   rᵇᶜᶜ = (rᵇᵂ + rᵇᴱ) / 2
 
-`PartialCellBottom` gives both of those faces `min(Δrᶜᶜᶜ(i-1), Δrᶜᶜᶜ(i))` and
-`min(Δrᶜᶜᶜ(i), Δrᶜᶜᶜ(i+1))` instead, which is a staircase.
-
-A cell is immersed when `rᵇᶜᶜ > r⁺ - ϵ Δr`, as for `PartialCellBottom`.
+A cell is immersed when `rᵇᶜᶜ > r⁺ - ϵ Δr`.
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::ShavedCellBottom)
     r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
@@ -304,9 +266,9 @@ A cell is immersed when `rᵇᶜᶜ > r⁺ - ϵ Δr`, as for `PartialCellBottom`
     return r★ < rᵇ
 end
 
-# A cell or a face keeps the full height of its level except in the level the bottom surface cuts,
-# where it keeps only the part above the surface. Levels below the surface keep the full height, as
-# for `PartialCellBottom`: they are masked, and a positive height keeps them out of denominators.
+# A cell or a face keeps the full height of its level except in the level the surface cuts, where it
+# keeps the part above the surface. Levels below keep the full height: they are masked, and a
+# positive height keeps them out of denominators.
 
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::SCBIBG)
     underlying_grid = ibg.underlying_grid
@@ -331,8 +293,7 @@ end
 
 @inline Δrᶠᶠᶜ(i, j, k, ibg::SCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
 
-# Spacings between cell centers. The center of a shaved cell sits half a shaved height below the
-# interface above it, so the spacing across the interface on top of the bottom cell is shortened.
+# The center of a shaved cell sits half a shaved height below the interface above it.
 @inline function shaved_center_spacing(i, j, k, underlying_grid, rᵇ, full_Δr)
     rᶜ = rnode(i, j, k, underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, underlying_grid, c, c, f)
@@ -389,8 +350,7 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 ##### Column depths
 #####
 
-# The staggered column depths follow the bottom surface at the face rather than the shallower of the
-# two adjacent columns, so that they match the sum of the shaved face heights.
+# The staggered column depths follow the surface at the face, matching the sum of the face heights.
 @inline staggered_column_depthᶠᶜᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.west_bottom_height[i, j, 1]
 @inline staggered_column_depthᶜᶠᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.south_bottom_height[i, j, 1]
 

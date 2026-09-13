@@ -169,9 +169,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
 
-# Staggered column depths are routed through the immersed boundary rather than specialized on the
-# grid, so that a boundary carrying its own staggered bottom heights can supply them without
-# colliding with the grid-specific methods that curvilinear grids define.
+# Staggered column depths dispatch on the immersed boundary, which may carry its own.
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = staggered_column_depthᶜᶠᵃ(i, j, ibg, ibg.immersed_boundary)
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = staggered_column_depthᶠᶜᵃ(i, j, ibg, ibg.immersed_boundary)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = staggered_column_depthᶠᶠᵃ(i, j, ibg, ibg.immersed_boundary)
