@@ -718,12 +718,26 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+# Neutral element the in-place reduction starts from (it runs with `init=false`)
+reduction_init(::SumReduction,  T) = zero(T)
+reduction_init(::ProdReduction, T) = one(T)
+reduction_init(::AllReduction,  T) = true
+reduction_init(::AnyReduction,  T) = false
+
+initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) = fill!(interior(r), reduction_init(reduction, eltype(r)))
+
+# `maximum` and `minimum` start from `f` of the operand's first slice along the reduced dimensions
+function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, f::F, r::ReducedAbstractField, c) where F
+    R, A = interior(r), interior(c)
+    return map!(f, R, view(A, first_slice(axes(R), axes(A))...))
+end
+
+# Axes of the first slice of `A` along the dimensions reduced in `R`, keeping the axis types
+@inline first_slice(::Tuple{}, ::Tuple{}) = ()
+@inline first_slice(R::Tuple, A::Tuple) = (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
+
+first_index(::Base.OneTo) = Base.OneTo(1)
+first_index(ax::AbstractUnitRange) = first(ax):first(ax)
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -754,7 +768,8 @@ function reduced_dimension(loc)
     return dims
 end
 
-get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::AllReduction) = true
+get_neutral_mask(::AnyReduction) = false
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
