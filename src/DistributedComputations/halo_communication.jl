@@ -96,8 +96,6 @@ fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::Dist
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
-    outstanding_requests = length(arch.mpi_requests)
-
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, args...; kwargs...)
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
@@ -105,9 +103,7 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
-    if length(arch.mpi_requests) > outstanding_requests
-        arch.mpi_tag[] += 1
-    end
+    arch.mpi_tag[] += 1
 
     return nothing
 end
@@ -120,17 +116,10 @@ end
     return nothing
 end
 
-@inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
+@inline function complete_comm!(c, arch, grid, buffers, requests, async, side)
 
     # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
     if isnothing(requests)
-        return nothing
-    end
-
-    # Overlapping communication and computation, store requests in a `MPI.Request`
-    # pool to be waited upon later on when halos are required.
-    if async && (arch isa AsynchronousDistributed)
-        push!(arch.mpi_requests, requests...)
         return nothing
     end
 
@@ -157,27 +146,68 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
-    sync_device!(arch)
 
-    requests = MPI.Request[]
+    if async || (arch isa AsynchronousDistributed)
+      async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+    else
+      sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+    end
+
+    return nothing
+end
+
+function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+  sync_device!(arch)
+  requests = MPI.Request[]
+
+  reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
+  reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
+  reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
+  reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
+
+  !isnothing(reqsw) && push!(requests, reqsw...)
+  !isnothing(reqse) && push!(requests, reqse...)
+  !isnothing(reqnw) && push!(requests, reqnw...)
+  !isnothing(reqne) && push!(requests, reqne...)
+
+  complete_comm!(c, arch, grid, buffers, requests, false, Val(:corners))
+
+end
+
+function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+  fill_event = record_event(arch)
+  add_fill_event!(c)
+
+  Threads.@spawn begin
+    # Need to lock the channel to show we are waiting on send buffers
+    sync_event(fill_event)
 
     reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
     reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
     reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
     reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
-    !isnothing(reqsw) && push!(requests, reqsw...)
-    !isnothing(reqse) && push!(requests, reqse...)
-    !isnothing(reqnw) && push!(requests, reqnw...)
-    !isnothing(reqne) && push!(requests, reqne...)
+    reqs = []
 
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, Val(:corners))
+    !isnothing(reqsw) && push!(reqs, reqsw...)
+    !isnothing(reqse) && push!(reqs, reqse...)
+    !isnothing(reqnw) && push!(reqs, reqnw...)
+    !isnothing(reqne) && push!(reqs, reqne...)
 
-    return nothing
+    complete_fill_event!(c)
+    add_comm_requests!(c, reqs)
+
+  end
+
 end
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
+function cooperative_waitall!(request_channel::Channel{MPI.Request})
+  for req in request_channel
+    cooperative_wait(req)
+  end
+end
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
@@ -194,10 +224,23 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     buffer_side = kernel!.side
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
-    sync_device!(arch) # We need to synchronize the device before we start the communication
+    fill_event = record_event(arch)
+    add_fill_event!(c)
 
-    requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-    pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+    if arch isa AsynchronousDistributed
+      Threads.@spawn begin
+        sync_event(fill_event)
+
+        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+        complete_fill_event!(c)
+        add_comm_requests!(c, requests)
+      end
+    else
+      synchronize(fill_event)
+
+      requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+      complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+    end
 
     return nothing
 end
