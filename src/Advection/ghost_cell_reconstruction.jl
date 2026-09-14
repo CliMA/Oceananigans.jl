@@ -31,12 +31,15 @@ Base.summary(scheme::GhostCells) = string("GhostCells(curvature_weight=", scheme
 
 const GhostCellWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells}
 
-@inline function extension_weight(c₀, c₁, c₂, w)
+@inline function extension_weight(WCT, c₀, c₁, c₂, w)
     δ = c₁ - c₀
     κ = c₂ - 2c₁ + c₀
-    δ⁴ = δ^4
-    Σ = δ⁴ + w * κ^4
-    return δ, κ, ifelse(Σ > 0, δ⁴ / Σ, zero(Σ))
+    δ² = δ * δ
+    κ² = κ * κ
+    δ⁴ = δ² * δ²
+    Σ = δ⁴ + w * κ² * κ²
+    # Σ vanishes only with δ⁴, so dividing by one there gives θ = 0 without a NaN
+    return δ, κ, newton_div(WCT, δ⁴, ifelse(Σ > 0, Σ, one(Σ)))
 end
 
 # `m` cells beyond the end `c₀` of the active run, whose `m`-th cell inwards is `mirror`
@@ -49,25 +52,27 @@ function active_run_length(from, step, last)
 end
 
 for N in advection_buffers[2:end]
-    substencils = Tuple(Symbol(:S, Char(0x2080 + r), Char(0x2080 + N)) for r in 0:N-1)
+    left  = Expr(:tuple, (:(G[$q]) for q in 1:2N-1)...)
+    right = Expr(:tuple, (:(G[$q]) for q in 2N:-1:2)...)
 
     completed = map(1:2N) do q
         :(ifelse($q < a, ghost_value(S[clamp(2a - $q - 1, a, b)], S[a], δᵃ, κᵃ, θᵃ, a - $q),
           ifelse($q > b, ghost_value(S[clamp(2b - $q + 1, a, b)], S[b], δᵇ, κᵇ, θᵇ, $q - b), S[$q])))
     end
 
-    @eval @inline function ghost_cell_reconstruction(scheme::GhostCells{<:WENO{$N}}, bias, S, A)
+    @eval @inline function ghost_cell_reconstruction(scheme::GhostCells{<:WENO{$N, <:Any, WCT}}, bias, S, A) where WCT
         w = scheme.curvature_weight
         a = ifelse(bias == LeftBias, $N - $(active_run_length(N, -1, 1)),  $(N + 1) - $(active_run_length(N + 1, -1, 1)))
         b = ifelse(bias == LeftBias, $N + $(active_run_length(N, +1, 2N)), $(N + 1) + $(active_run_length(N + 1, +1, 2N)))
 
-        δᵃ, κᵃ, θᵃ = @inbounds extension_weight(S[a], S[min(a + 1, b)], S[min(a + 2, b)], w)
-        δᵇ, κᵇ, θᵇ = @inbounds extension_weight(S[b], S[max(b - 1, a)], S[max(b - 2, a)], w)
+        δᵃ, κᵃ, θᵃ = @inbounds extension_weight(WCT, S[a], S[min(a + 1, b)], S[min(a + 2, b)], w)
+        δᵇ, κᵇ, θᵇ = @inbounds extension_weight(WCT, S[b], S[max(b - 1, a)], S[max(b - 2, a)], w)
 
         G = @inbounds $(Expr(:tuple, completed...))
-        ψ = $(Expr(:tuple, (:($s(G, bias)) for s in substencils)...))
-        ω = biased_weno_weights(ψ, nothing, scheme.scheme, bias)
-        ψ̂ = weno_reconstruction(scheme.scheme, bias, ψ, ω)
+        B = @inbounds ifelse(bias == LeftBias, $left, $right)
+        δ = weno_differences(scheme.scheme, B)
+        ω = biased_weno_weights(δ, nothing, scheme.scheme, bias)
+        ψ̂ = weno_reconstruction(scheme.scheme, weno_anchor(scheme.scheme, B), δ, ω)
 
         U  = @inbounds ifelse(bias == LeftBias, G[$N],       G[$(N + 1)])
         D  = @inbounds ifelse(bias == LeftBias, G[$(N + 1)], G[$N])
