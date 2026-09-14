@@ -61,7 +61,7 @@ function ZarrWriter(model::AbstractModel, outputs;
     update_file_splitting_schedule!(file_splitting, filepath)
 
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
-                            for name in keys(outputs))
+                            for name in output_names(outputs))
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
     # Detect unique grids across all outputs. Outputs without a grid (functions,
