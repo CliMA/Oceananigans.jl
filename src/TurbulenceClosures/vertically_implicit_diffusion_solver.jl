@@ -244,6 +244,23 @@ end
 
 is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
+# The closures (and their fields) that are stepped implicitly: a closure tuple is filtered
+# by recursion so that the result is a tuple whose length is known at compile time.
+@inline vertically_implicit_closures(::Nothing, closure_fields) = nothing, nothing
+@inline vertically_implicit_closures(closure, closure_fields) =
+    is_vertically_implicit(closure) ? (closure, closure_fields) : (nothing, nothing)
+
+@inline vertically_implicit_closures(::Tuple{}, ::Tuple{}) = (), ()
+
+@inline function vertically_implicit_closures(closures::Tuple, closure_fields::Tuple)
+    first_closures, first_fields = vertically_implicit_closure_tuple(first(closures), first(closure_fields))
+    other_closures, other_fields = vertically_implicit_closures(Base.tail(closures), Base.tail(closure_fields))
+    return (first_closures..., other_closures...), (first_fields..., other_fields...)
+end
+
+@inline vertically_implicit_closure_tuple(closure, closure_fields) =
+    is_vertically_implicit(closure) ? ((closure,), (closure_fields,)) : ((), ())
+
 """
 $(TYPEDSIGNATURES)
 
@@ -262,17 +279,7 @@ function implicit_step!(field::Field,
                         clock, fields, Δt,
                         advection=nothing, velocities=nothing, density=nothing)
 
-    if closure isa Tuple
-        N = length(closure)
-        vi_closure        = Tuple(closure[n]        for n = 1:N if is_vertically_implicit(closure[n]))
-        vi_closure_fields = Tuple(closure_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
-    elseif closure isa Nothing || !is_vertically_implicit(closure)
-        vi_closure = nothing
-        vi_closure_fields = nothing
-    else
-        vi_closure = closure
-        vi_closure_fields = closure_fields
-    end
+    vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 
     bcs = field.boundary_conditions
     isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing

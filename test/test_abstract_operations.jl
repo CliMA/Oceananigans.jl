@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: ConditionalOperation
+using Oceananigans.AbstractOperations: ConditionalOperation, BinaryOperation, Δz
+using Oceananigans.Grids: node
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -145,6 +146,40 @@ for arch in archs
             @test ConstantField(1) - 1 == ConstantField(0)
             @test ConstantField(1) * 2 == ConstantField(2)
             @test ConstantField(1) / 2 == ConstantField(1/2)
+
+            # Numbers, functions, grid metrics and fields are lazy operands; raw arrays are not
+            set!(c, 2)
+            for (ψ, ϕ) in ((c, 3), (3, c), (c, generic_function), (generic_function, c), (c, Δz), (Δz, c), (c, c)),
+                op in (+, -, *, /)
+                @test op(ψ, ϕ) isa BinaryOperation
+            end
+            @test @allowscalar Field(c * 3)[2, 2, 2] == 6
+            @test @allowscalar Field(c * Δz)[2, 2, 2] == 2
+            @test @allowscalar Field(c * generic_function)[2, 2, 2] == 2 * sum(node(2, 2, 2, c))
+            @test_throws MethodError c * on_architecture(arch, ones(size(c)))
+            @test_throws MethodError on_architecture(arch, ones(size(c))) / c
+
+            # Powers with the exponent types Base reserves for matrix powers
+            for p in (2, 2.5, 1//2)
+                @test c^p isa BinaryOperation
+                @test @allowscalar Field(c^p)[2, 2, 2] ≈ 2^p
+            end
+            @test ℯ^c isa BinaryOperation
+            @test @allowscalar Field(ℯ^c)[2, 2, 2] ≈ ℯ^2
+            @test ConstantField(2)^3 == ConstantField(8)
+            @test ConstantField(4)^0.5 == ConstantField(2.0)
+            @test ℯ^ConstantField(0) == ConstantField(1.0)
+
+            @test ZeroField() + ConstantField(2) == ConstantField(2)
+            @test ConstantField(2) + ZeroField() == ConstantField(2)
+            @test ZeroField() - ConstantField(2) == ConstantField(-2)
+            @test ConstantField(2) - ZeroField() == ConstantField(2)
+            @test ZeroField() * ConstantField(2) == ZeroField()
+            @test ConstantField(2) * ZeroField() == ZeroField()
+            @test ZeroField() / ConstantField(2) == ZeroField()
+            @test ConstantField(2.0) / ZeroField() == ConstantField(Inf)
+            @test ConstantField(-2.0) / ZeroField() == ConstantField(-Inf)
+            @test isnan((ZeroField() / ZeroField()).constant)
         end
 
         @testset "Comparison operations [$A]" begin

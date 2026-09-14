@@ -81,11 +81,11 @@ end
 function Base.show(io::IO, fds::FieldDataset)
     s = "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries:\n"
 
-    n_fields = length(fds.fields)
+    names = sort!(collect(keys(fds.fields)); by = string)
 
-    for (i, (name, fts)) in enumerate(pairs(fds.fields))
-        prefix = i == n_fields ? "└── " : "├── "
-        s *= prefix * "$name: " * summary(fts) * '\n'
+    for (i, name) in enumerate(names)
+        prefix = i == length(names) ? "└── " : "├── "
+        s *= prefix * "$name: " * summary(fds.fields[name]) * '\n'
     end
 
     return print(io, s)

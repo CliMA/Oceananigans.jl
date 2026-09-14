@@ -203,7 +203,7 @@ using NCDatasets
 simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
                                                   filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
                                                   schedule = TimeInterval(20minutes),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 # Now we just run it!
 

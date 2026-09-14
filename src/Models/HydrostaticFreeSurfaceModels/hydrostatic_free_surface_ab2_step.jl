@@ -202,8 +202,8 @@ end
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
-hasclosure(closure, ClosureType) = closure isa ClosureType
-hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
+@inline hasclosure(closure, ::Type{ClosureType}) where ClosureType = closure isa ClosureType
+@inline hasclosure(closure_tuple::Tuple, ::Type{ClosureType}) where ClosureType = any(map(c -> hasclosure(c, ClosureType), closure_tuple))
 
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 

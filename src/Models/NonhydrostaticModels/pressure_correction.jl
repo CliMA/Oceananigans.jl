@@ -1,3 +1,5 @@
+using Oceananigans.Utils: KernelParameters
+
 """
 $(TYPEDSIGNATURES)
 
@@ -6,7 +8,7 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
-    foreach(mask_immersed_field!, model.velocities)
+    mask_immersed_field!(model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
     enforce_net_zero_transport!(model.velocities, model.boundary_transport)
 
@@ -100,7 +102,13 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
-    model.pressures.pNHS ./= Δt⁺
+    pNHS = model.pressures.pNHS
+    launch!(arch, grid, KernelParameters(size(pNHS), (0, 0, 0)), _divide_by!, pNHS, Δt⁺)
 
     return nothing
+end
+
+@kernel function _divide_by!(p, a)
+    i, j, k = @index(Global, NTuple)
+    @inbounds p[i, j, k] /= a
 end
