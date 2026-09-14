@@ -128,9 +128,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     barotropic_model_fields = (; U, V, η)
 
-    # Boundary conditions on U, V and η are time-dependent, so each substep needs its own clock;
-    # built fresh every iteration below and spliced in just before `barotropic_model_fields`, which
-    # is always the last element regardless of grid type (see `build_halo_fill_args`).
+    # Builds also a separate "sub-stepping" clock to account for time dependent forcing and boundary conditions
     @apply_regionally U_halo_args = build_halo_fill_args(U, grid, barotropic_model_fields)
     @apply_regionally V_halo_args = build_halo_fill_args(V, grid, barotropic_model_fields)
     @apply_regionally η_halo_args = build_halo_fill_args(η, grid, barotropic_model_fields)
