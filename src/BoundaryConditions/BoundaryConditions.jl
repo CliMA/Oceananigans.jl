@@ -6,7 +6,7 @@ export
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    implicit_flux_coefficient,
+    implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
     GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
@@ -41,6 +41,7 @@ struct South end
 struct North end
 struct Bottom end
 struct Top end
+struct ImmersedFacet end
 
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")

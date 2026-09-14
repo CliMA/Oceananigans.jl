@@ -245,18 +245,18 @@ end
 @inline get_temperature_and_salinity_flux(::TemperatureSeawaterBuoyancy, bcs) = bcs.T, NoFluxBoundaryCondition()
 @inline get_temperature_and_salinity_flux(::SalinitySeawaterBuoyancy, bcs) = NoFluxBoundaryCondition(), bcs.S
 
-@inline function top_bottom_buoyancy_flux(i, j, k, grid, b::SeawaterBuoyancy, top_bottom_tracer_bcs, clock, fields)
+@inline function top_bottom_buoyancy_flux(i, j, k, grid, boundary, b::SeawaterBuoyancy, top_bottom_tracer_bcs, clock, fields)
     T, S = get_temperature_and_salinity(b, fields)
     T_flux_bc, S_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
 
     kc = clamp(k, 1, size(grid, 3))   # boundary cell adjacent to face k (top: Nz, bottom: 1)
-    T_flux = total_boundary_flux(T_flux_bc, i, j, kc, grid, clock, fields, T)
-    S_flux = total_boundary_flux(S_flux_bc, i, j, kc, grid, clock, fields, S)
+    T_flux = total_boundary_flux(T_flux_bc, boundary, i, j, kc, grid, T, clock, fields)
+    S_flux = total_boundary_flux(S_flux_bc, boundary, i, j, kc, grid, S, clock, fields)
 
     return b.gravitational_acceleration * (
               thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
            - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
 end
 
-@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz+1, grid, b, args...)
-@inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
+@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz+1, grid, Top(),    b, args...)
+@inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1,         grid, Bottom(), b, args...)

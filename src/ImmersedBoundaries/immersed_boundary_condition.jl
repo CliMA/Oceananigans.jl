@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux,
+                                       VBC, GBC, FBC, IEFBC, Flux,
                                        needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
@@ -65,6 +65,13 @@ function ImmersedBoundaryCondition(; west = nothing,
 end
 
 BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs_implicit_solver(ibc.bottom) | needs_implicit_solver(ibc.top)
+
+function BoundaryConditions.validate_immersed_implicit_explicit_flux(ibc::ImmersedBoundaryCondition)
+    for facet in (ibc.west, ibc.east, ibc.south, ibc.north)
+        facet isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on the bottom and top facets of an ImmersedBoundaryCondition")
+    end
+    return nothing
+end
 
 #####
 ##### Boundary condition "regularization"
