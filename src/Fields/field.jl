@@ -18,7 +18,7 @@ using Statistics: Statistics
 ##### The bees knees
 #####
 
-struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F, CS} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
@@ -26,12 +26,18 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     operand :: O
     status :: S
     communication_buffers :: F
+    comm_state :: CS
 
     # Inner constructor that does not validate _anything_!
     Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
         @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F, Nothing}(grid, data, local_bcs, indices, op, status, buffers, nothing)
+    end
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F, comm_state::CS) where {LX, LY, LZ, G, D, B, O, S, I, F, CS}
+        T = eltype(data)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F, CS}(grid, data, local_bcs, indices, op, status, buffers, comm_state)
     end
 end
 

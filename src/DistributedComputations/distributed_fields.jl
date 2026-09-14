@@ -20,6 +20,66 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
 
+const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
+
+# State of communications for MPI
+# The requests Channel exists for threads to add MPI requests to, in a thread safe way,
+# for the main thread to then wait on.
+# The fill_events value keeps track of how many events to fill the send buffer
+# are being waited on, to gate skipping past communication sync when the channel is empty
+# because the requests have not been added yet. The counter should be incremented by the main
+# thread, and decremented by the thread that is spawned for that event _after_ the MPI comms
+# are performed
+struct CommState
+  comm_requests::Channel
+  fill_events::Base.Lockable{UInt64}
+end
+
+# Default contstructor for convenience
+CommState() = CommState(Channel(Inf), Base.Lockable(UInt64(0)))
+
+add_fill_event!(f) = nothing
+add_fill_event!(f::DistributedField) = _add_fill_event!(f.comm_state)
+
+function _add_fill_event!(cs::CommState)
+  lock(cs.fill_events)
+  cs.fill_events += 1
+  unlock(cs.fill_events)
+end
+
+complete_fill_event!(f) = nothing
+complete_fill_event!(f::DistributedField) = _complete_fill_event!(f.comm_state)
+
+function _complete_fill_event!(cs::CommState)
+  lock(cs.fill_events)
+  cs.fill_events -= 1
+  unlock(cs.fill_events)
+end
+
+add_comm_requests!(_, _) = nothing
+add_comm_requests!(f::DistributedField, reqs) = _add_comm_requests!(f.comm_state, reqs)
+
+function _add_comm_requests!(cs::CommState, reqs)
+  put!(cs.comm_requests, reqs)
+end
+
+wait_for_comms!(_) = nothing
+wait_for_comms!(f::DistributedField) = _wait_for_comms!(f.comm_state)
+
+function _wait_for_comms!(cs::CommState)
+  # Wait for fill_events == 0
+  fill_finished = false
+  while !fill_finished
+    lock(cs.fill_events)
+    fill_finished = (cs.fill_events == 0)
+    unlock(cs.fill_events)
+  end
+  # Wait for MPI comms to complete
+  cooperative_waitall!(cs.comm_requests)
+end
+
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
@@ -30,12 +90,10 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
     local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, rank, arch.connectivity, topology(grid))
     buffers = communication_buffers(grid, data, local_bcs)
 
-    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
-end
+    comm_state = CommState()
 
-const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
-const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers, comm_state)
+end
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
@@ -93,22 +151,12 @@ $(TYPEDSIGNATURES)
 complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
-    arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
+  wait_for_comms!(field)
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+  recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
-    end
-
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
-    return nothing
+  return nothing
 end
 
 # Fallback
