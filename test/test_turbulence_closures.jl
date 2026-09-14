@@ -4,6 +4,7 @@ using Random
 
 using Oceananigans.Grids: znode
 using Oceananigans.Grids: ZDirection
+using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Solvers: get_coefficient
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
@@ -684,6 +685,52 @@ end
             grid_kind = z isa Tuple ? "uniform" : "stretched"
             @info "    Testing implicit diffusion operator [$arch, ($LX, Center, $LZ), $grid_kind]..."
             @test implicit_operator_rows(arch, LX, LZ, Nz, z, Lz) < 1e-12
+        end
+    end
+
+    @testset "Vertically-implicit diffusion beneath an immersed bottom" begin
+        @info "  Testing that vertically-implicit diffusion is isolated from the cells beneath an immersed bottom..."
+
+        # Non-finite values in every immersed cell, as left there by a forcing or an auxiliary field
+        # that is evaluated beneath the bottom
+        nan_in_immersed_cells(i, j, k, grid, clock, fields) =
+            ifelse(immersed_cell(i, j, k, grid), convert(eltype(grid), NaN), zero(grid))
+
+        no_forcing(i, j, k, grid, clock, fields) = zero(grid)
+
+        function implicitly_diffused_tracer(grid, forcing)
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=0.3)
+            model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, buoyancy=nothing,
+                                                forcing=(; c=Forcing(forcing, discrete_form=true)))
+            set!(model, c=(x, y, z) -> z)
+            for _ in 1:3
+                time_step!(model, 0.5)
+            end
+            return Array(interior(model.tracers.c))
+        end
+
+        for arch in archs
+            Nx, Ny, Nz = 3, 2, 8
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Nx), y=(0, Ny), z=(-Nz, 0),
+                                              topology=(Periodic, Periodic, Bounded))
+
+            # Columns without immersed cells, with their lower halves immersed, and entirely immersed
+            bottom(x, y) = ifelse(x < 1, -Nz - 1, ifelse(x < 2, -Nz / 2, 0))
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+            wet = @allowscalar [!immersed_cell(i, j, k, grid) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
+            @test sum(wet) == Ny * (Nz + Nz ÷ 2)
+
+            c_nan = implicitly_diffused_tracer(grid, nan_in_immersed_cells)
+            c_ref = implicitly_diffused_tracer(grid, no_forcing)
+            @test all(isfinite, c_nan[wet])
+            @test c_nan[wet] == c_ref[wet]
+
+            # The half-immersed column sees the same diffusion problem as a grid whose bottom lies at its immersed bottom
+            half_grid = RectilinearGrid(arch, size=(1, 1, Nz ÷ 2), x=(0, 1), y=(0, 1), z=(-Nz / 2, 0),
+                                        topology=(Periodic, Periodic, Bounded))
+            c_half = implicitly_diffused_tracer(half_grid, no_forcing)
+            @test c_ref[2, 1, Nz÷2+1:Nz] ≈ c_half[1, 1, :]
         end
     end
 

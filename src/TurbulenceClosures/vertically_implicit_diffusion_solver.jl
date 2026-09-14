@@ -3,12 +3,12 @@ using Oceananigans.Advection: implicit_advection_upper_diagonal,
                               implicit_advection_diagonal
 using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient, needs_implicit_solver
 using Oceananigans.Fields: location
-using Oceananigans.Grids: Periodic, ZDirection, topology
+using Oceananigans.Grids: Periodic, ZDirection, topology, inactive_cell
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
-import Oceananigans.Solvers: get_coefficient
+import Oceananigans.Solvers: get_coefficient, first_row
 import Oceananigans.TimeSteppers: implicit_step!
 
 const IBG = ImmersedBoundaryGrid
@@ -194,6 +194,10 @@ and
 
 where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
+
+On an `ImmersedBoundaryGrid`, each column is solved from its lowest active cell upward: the
+inactive cells beneath the immersed bottom are neither read nor written by the solve, and a
+column with no active cells is skipped.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -237,6 +241,25 @@ end
     dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
     return dκ + dw + dbc
 end
+
+# The index of the lowest active cell in column `(i, j)`, or `Nz + 1` when the column is entirely inactive
+@inline function first_active_cell(i, j, grid)
+    Nz = size(grid, 3)
+    k = 1
+    while k ≤ Nz && inactive_cell(i, j, k, grid)
+        k += 1
+    end
+    return k
+end
+
+# The off-diagonals vanish across the immersed bottom (see `ivd_lower_diagonal` and `ivd_upper_diagonal`),
+# so the rows in the inactive cells beneath it are decoupled from the active part of the column and
+# the solve starts at the lowest active cell. Skipping those rows does more than save work: a decoupled
+# row still passes a non-finite value to its neighbor, since `0 * NaN = NaN`, so garbage beneath the
+# bottom (say a forcing or auxiliary field that is evaluated in immersed cells) would otherwise
+# contaminate every active cell in the column.
+@inline first_row(i, j, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, args...) =
+    first_active_cell(i, j, grid)
 
 #####
 ##### Implicit step functions

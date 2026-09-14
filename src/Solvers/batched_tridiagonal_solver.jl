@@ -72,7 +72,9 @@ other implementations where, e.g., `aⁱʲ²` may appear at the second row, inst
 
 2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
-Other coefficient types can be implemented by extending `get_coefficient`.
+Other coefficient types can be implemented by extending `get_coefficient`. Coefficient types
+whose systems do not span the whole column can also extend `first_row` to solve only the rows
+`k = first_row(i, j, ...), ..., N` of each column.
 """
 function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
@@ -94,7 +96,8 @@ Solve the batched tridiagonal system of linear equations with right hand side
 `BatchedTridiagonalSolver` `solver`. `BatchedTridiagonalSolver` uses a modified
 TriDiagonal Matrix Algorithm (TDMA).
 
-The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
+The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`. A solve in the
+`ZDirection` covers the rows `first_row(i, j, ...):grid.Nz` of each column; see `first_row`.
 
 Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
 Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
@@ -134,6 +137,18 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::YDirection,          args...) = @inbounds a[j]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the index of the first row of the tridiagonal system in column `(i, j)` of a solve in the
+`ZDirection`. The rows beneath it are neither read nor written by the solve, and a column whose
+first row lies above `size(grid, 3)` is skipped altogether. The default of `1` solves the whole
+column; coefficient types whose systems leave the rows in the inactive cells beneath an immersed
+bottom decoupled from the rest of the column can extend this method for their `diagonal` to skip
+those rows. The trailing arguments are the ones passed to `solve!`.
+"""
+@inline first_row(i, j, grid, diagonal, p, ::ZDirection, args...) = 1
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
@@ -215,12 +230,17 @@ end
 end
 
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-    @inbounds begin
-        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, j, 1] = f₁ / β
+    k₁ = first_row(i, j, grid, b, p, tridiagonal_direction, args...)
 
-        for k = 2:Nz
+    # There is nothing to solve in a column without rows, e.g. an entirely immersed one
+    k₁ > Nz && return nothing
+
+    @inbounds begin
+        β  = get_coefficient(i, j, k₁, grid, b, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(i, j, k₁, grid, f, p, tridiagonal_direction, args...)
+        ϕ[i, j, k₁] = f₁ / β
+
+        for k = k₁+1:Nz
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
@@ -236,8 +256,10 @@ end
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
-        for k = Nz-1:-1:1
+        for k = Nz-1:-1:k₁
             ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
+
+    return nothing
 end
