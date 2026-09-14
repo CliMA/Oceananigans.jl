@@ -133,13 +133,16 @@ end
 @inline z_boundary_node(i, j, k, grid::YFlatGrid,  ℓx, ℓy) = tuple(ξnode(i, j, k, grid, ℓx, nothing, Face()))
 @inline z_boundary_node(i, j, k, grid::XYFlatGrid, ℓx, ℓy) = tuple()
 
-const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryAdjacent, LY, LZ, S} where {LY, LZ, S}
-const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryAdjacent, LZ, S} where {LX, LZ, S}
-const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryAdjacent, S} where {LX, LY, S}
+# Locations of the two boundary-tangential directions
+const TangentialLocation = Union{Nothing, Center, Face}
+
+const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryAdjacent, LY, LZ, S} where {LY <: TangentialLocation, LZ <: TangentialLocation, S}
+const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryAdjacent, LZ, S} where {LX <: TangentialLocation, LZ <: TangentialLocation, S}
+const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryAdjacent, S} where {LX <: TangentialLocation, LY <: TangentialLocation, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY <: TangentialLocation, LZ <: TangentialLocation, S}
 
     i, i′ = domain_boundary_indices(S(), grid.Nx)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -150,7 +153,7 @@ end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: TangentialLocation, LZ <: TangentialLocation, S}
 
     j, j′ = domain_boundary_indices(S(), grid.Ny)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -161,7 +164,7 @@ end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: TangentialLocation, LY <: TangentialLocation, S}
 
     k, k′ = domain_boundary_indices(S(), grid.Nz)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -176,7 +179,7 @@ end
 
 # Return ContinuousBoundaryFunction on the east or west interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LY, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LY <: TangentialLocation, LZ <: TangentialLocation, S}
 
     i′ = cell_boundary_index(S(), i)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -187,7 +190,7 @@ end
 
 # Return ContinuousBoundaryFunction on the south or north interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::YBoundaryFunction{LX, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LZ, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: TangentialLocation, LZ <: TangentialLocation, S}
 
     j′ = cell_boundary_index(S(), j)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
@@ -198,7 +201,7 @@ end
 
 # Return ContinuousBoundaryFunction on the bottom or top interface of a cell adjacent to an immersed boundary
 @inline function getbc(cbf::ZBoundaryFunction{LX, LY, S}, i::Integer, j::Integer, k::Integer,
-                       grid::AbstractGrid, clock, model_fields, args...) where {LX, LY, S}
+                       grid::AbstractGrid, clock, model_fields, args...) where {LX <: TangentialLocation, LY <: TangentialLocation, S}
 
     k′ = cell_boundary_index(S(), k)
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
