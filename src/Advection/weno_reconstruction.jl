@@ -38,7 +38,8 @@ Keyword arguments
 - `order`: The order of the WENO advection scheme. Default: 5.
 - `boundary_scheme`: The reconstruction the buffer chain terminates in, used in a cell whose stencil no longer
                      fits, i.e. against a boundary. The chain steps the order down by two until third order and
-                     then reaches for it. Default: `nothing`, which selects `Centered(FT; order=2)`.
+                     then reaches for it. A [`GhostCells`](@ref) instead keeps the full order and completes the
+                     stencil with ghost values. Default: `nothing`, which selects `Centered(FT; order=2)`.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
                            Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
                            mean so that the advective update stays within `bounds`. One rescaling factor is
@@ -125,13 +126,16 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         return UpwindBiased(FT; order=1)
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
+        N = Int((order + 1) ÷ 2)
 
-        if isnothing(buffer_scheme)
+        if isnothing(buffer_scheme) && boundary_scheme isa GhostCells
+            unbuffered = WENO{N, FT, weight_computation}(nothing, nothing, advecting_velocity_scheme, time_discretization)
+            buffer_scheme = GhostCells(unbuffered, convert(FT, boundary_scheme.curvature_weight), boundary_scheme.monotone)
+        elseif isnothing(buffer_scheme)
             boundary_scheme = something(boundary_scheme, Centered(FT; order=2))
             buffer_scheme = order ≤ 3 ? boundary_scheme : WENO(FT; order=order-2, bounds, weight_computation, boundary_scheme)
         end
 
-        N = Int((order + 1) ÷ 2)
         preserved_bounds = isnothing(bounds) ? nothing :
             BoundsPreservation(convert(FT, bounds.minimum_value), convert(FT, bounds.maximum_value),
                                convert(FT, bounds.maximum_courant_number), nothing)

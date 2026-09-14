@@ -137,12 +137,16 @@ end
 
 validate_schedule(func, schedule) = schedule
 
+Oceananigans.prognostic_state(::Function) = nothing
+
 function Oceananigans.prognostic_state(callback::Callback)
-    return (; schedule = prognostic_state(callback.schedule))
+    return (; schedule = prognostic_state(callback.schedule),
+              func = prognostic_state(callback.func))
 end
 
 function Oceananigans.restore_prognostic_state!(restored::Callback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
+    restore_prognostic_state!(restored.func, from.func)
     return restored
 end
 
