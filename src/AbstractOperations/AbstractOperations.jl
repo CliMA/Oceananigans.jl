@@ -93,9 +93,14 @@ include("show_abstract_operations.jl")
 @binary Base.atand
 @binary Base.mod
 
-# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
-Base.:<(::AbstractField, ::Missing) = missing
-Base.:<(::Missing, ::AbstractField) = missing
+# Base defines matrix powers `^(::AbstractMatrix, ::Integer)`, `^(::AbstractMatrix, ::Real)` and
+# `^(::Irrational{:ℯ}, ::AbstractMatrix)`, which two-dimensional fields also match
+for P in (:Integer, :Real)
+    @eval Base.:^(a::AbstractField, b::$P) = ^(instantiated_location(a), a, b)
+    @eval Base.:^(a::ConstantField, b::$P) = ConstantField(a.constant ^ b)
+end
+Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
+Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
 @multiary +
 
