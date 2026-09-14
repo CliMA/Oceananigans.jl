@@ -105,7 +105,6 @@ for bias in (:symmetric, :biased)
 
             b = bias == :biased ? (:bias,) : ()
 
-
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
