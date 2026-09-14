@@ -308,7 +308,7 @@ save_interval = 5days
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1year),
                                                         prefix = output_prefix * "_checkpoint",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"

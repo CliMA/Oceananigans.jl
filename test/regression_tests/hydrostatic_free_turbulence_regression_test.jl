@@ -101,7 +101,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                                                         schedule = IterationInterval(stop_iteration),
                                                         filename = output_filename,
                                                         with_halos = true,
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
     end
 
     # Let's gooooooo!
