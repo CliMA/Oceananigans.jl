@@ -159,7 +159,7 @@ save_interval = 2minutes
 simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, N²);
                                                 filename = filename,
                                                 schedule = TimeInterval(save_interval),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 # ## Run Simulation
 

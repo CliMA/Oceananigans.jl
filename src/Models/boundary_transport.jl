@@ -110,8 +110,8 @@ function initialize_boundary_transport(velocities::NamedTuple)
     w_bcs = w.boundary_conditions
 
     boundary_transports = NamedTuple()
-    right_scheme_boundaries = Symbol[]
-    left_scheme_boundaries = Symbol[]
+    right_scheme_boundaries = ()
+    left_scheme_boundaries = ()
     total_area_scheme_boundaries = zero(eltype(u))
     total_area_pool_boundaries = zero(eltype(u))
 
@@ -119,7 +119,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     west_transport_and_area = initialize_side_transport(u, u_bcs.west, Val(:west))
     boundary_transports = merge(boundary_transports, west_transport_and_area)
     if needs_transport_correction(u_bcs.west)
-        push!(left_scheme_boundaries, :west)
+        left_scheme_boundaries = (left_scheme_boundaries..., :west)
         total_area_scheme_boundaries += boundary_transports.west_area
         needs_pool_correction(u_bcs.west) && (total_area_pool_boundaries += boundary_transports.west_area)
     end
@@ -128,7 +128,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     east_transport_and_area = initialize_side_transport(u, u_bcs.east, Val(:east))
     boundary_transports = merge(boundary_transports, east_transport_and_area)
     if needs_transport_correction(u_bcs.east)
-        push!(right_scheme_boundaries, :east)
+        right_scheme_boundaries = (right_scheme_boundaries..., :east)
         total_area_scheme_boundaries += boundary_transports.east_area
         needs_pool_correction(u_bcs.east) && (total_area_pool_boundaries += boundary_transports.east_area)
     end
@@ -137,7 +137,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     south_transport_and_area = initialize_side_transport(v, v_bcs.south, Val(:south))
     boundary_transports = merge(boundary_transports, south_transport_and_area)
     if needs_transport_correction(v_bcs.south)
-        push!(left_scheme_boundaries, :south)
+        left_scheme_boundaries = (left_scheme_boundaries..., :south)
         total_area_scheme_boundaries += boundary_transports.south_area
         needs_pool_correction(v_bcs.south) && (total_area_pool_boundaries += boundary_transports.south_area)
     end
@@ -146,7 +146,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     north_transport_and_area = initialize_side_transport(v, v_bcs.north, Val(:north))
     boundary_transports = merge(boundary_transports, north_transport_and_area)
     if needs_transport_correction(v_bcs.north)
-        push!(right_scheme_boundaries, :north)
+        right_scheme_boundaries = (right_scheme_boundaries..., :north)
         total_area_scheme_boundaries += boundary_transports.north_area
         needs_pool_correction(v_bcs.north) && (total_area_pool_boundaries += boundary_transports.north_area)
     end
@@ -155,7 +155,7 @@ function initialize_boundary_transport(velocities::NamedTuple)
     bottom_transport_and_area = initialize_side_transport(w, w_bcs.bottom, Val(:bottom))
     boundary_transports = merge(boundary_transports, bottom_transport_and_area)
     if needs_transport_correction(w_bcs.bottom)
-        push!(left_scheme_boundaries, :bottom)
+        left_scheme_boundaries = (left_scheme_boundaries..., :bottom)
         total_area_scheme_boundaries += boundary_transports.bottom_area
         needs_pool_correction(w_bcs.bottom) && (total_area_pool_boundaries += boundary_transports.bottom_area)
     end
@@ -164,13 +164,13 @@ function initialize_boundary_transport(velocities::NamedTuple)
     top_transport_and_area = initialize_side_transport(w, w_bcs.top, Val(:top))
     boundary_transports = merge(boundary_transports, top_transport_and_area)
     if needs_transport_correction(w_bcs.top)
-        push!(right_scheme_boundaries, :top)
+        right_scheme_boundaries = (right_scheme_boundaries..., :top)
         total_area_scheme_boundaries += boundary_transports.top_area
         needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
     end
 
-    boundary_transports = merge(boundary_transports, (; left_scheme_boundaries = Tuple(left_scheme_boundaries),
-                                                        right_scheme_boundaries = Tuple(right_scheme_boundaries),
+    boundary_transports = merge(boundary_transports, (; left_scheme_boundaries,
+                                                        right_scheme_boundaries,
                                                         total_area_scheme_boundaries,
                                                         total_area_pool_boundaries))
 

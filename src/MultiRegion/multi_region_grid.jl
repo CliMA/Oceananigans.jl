@@ -226,7 +226,7 @@ multi_region_object_from_array(a::AbstractArray, grid) = on_architecture(archite
 #### Utilities for MultiRegionGrid
 ####
 
-Grids.new_data(FT::DataType, mrg::MultiRegionGrids, args...) = construct_regionally(new_data, FT, mrg, args...)
+Grids.new_data(::Type{FT}, mrg::MultiRegionGrids, args...) where FT = construct_regionally(new_data, FT, mrg, args...)
 
 # This is kind of annoying but it is necessary to have compatible MultiRegion and Distributed
 function Grids.with_halo(new_halo, mrg::MultiRegionGrid)

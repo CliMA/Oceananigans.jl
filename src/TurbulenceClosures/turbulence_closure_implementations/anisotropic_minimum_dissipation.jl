@@ -148,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -371,16 +371,19 @@ end
 ##### build_closure_fields
 #####
 
-function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
-    default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
+    default_κₑ_bcs = named_tuple(c -> default_diffusivity_bcs, tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 
     bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
 
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
-    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
+    κₑ = named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs.κₑ[c])
+    end
 
     return (; νₑ, κₑ)
 end
