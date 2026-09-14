@@ -11,6 +11,10 @@ using Oceananigans.OutputReaders: auto_extension
 ##### Output writer utilities
 #####
 
+# Names of the requested outputs; dictionaries have no fixed iteration order, so their keys are sorted
+output_names(outputs) = keys(outputs)
+output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)
+
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
