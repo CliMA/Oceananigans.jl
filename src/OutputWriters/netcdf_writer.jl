@@ -253,7 +253,7 @@ simulation.output_writers[:things] =
 NetCDFWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
 ├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
-├── 3 outputs: (profile, slice, scalar)
+├── 3 outputs: (profile, scalar, slice)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
 └── file size: (file not yet created)

@@ -129,12 +129,12 @@ function reconstruct_grid(ds; grid_index=1, architecture=nothing)
     prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
     prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""
 
-    # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> Dict
-    if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
-        underlying_grid_reconstruction_args["architecture"] = architecture
+    # Read back the grid reconstruction metadata. The positional arguments are splatted into the
+    # grid constructor, so they are kept in the order they were written, which `Dict` would not preserve.
+    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    if !isnothing(architecture)
+        underlying_grid_reconstruction_args[:architecture] = architecture
     end
-    underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["$(prefix)underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
     grid_reconstruction_metadata          = ds.group["$(prefix)grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
