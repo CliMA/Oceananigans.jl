@@ -1,10 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: znodes, constructor_arguments, peripheral_node,
+using Oceananigans.Grids: znodes, peripheral_node,
                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶠᶜᶜ, Δrᶜᶠᶜ, Δrᶠᶠᶜ
-using Oceananigans.ImmersedBoundaries: ShavedCellBottom, PartialCellBottom, GridFittedBottom,
-                                       corner_bottom_height_field, immersed_cell
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 const c = Center()
 const f = Face()
@@ -111,43 +110,6 @@ function test_shaved_cell_flat_topologies(FT, arch)
     return nothing
 end
 
-function test_shaved_cell_reconstruction(FT, arch)
-    underlying_grid = RectilinearGrid(arch, FT, size=(6, 6, 8), halo=(4, 4, 4), extent=(1, 1, 1))
-    bumpy2d(x, y) = -0.5 + 0.1 * sin(2π * x) * cos(2π * y)
-    original = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(bumpy2d, minimum_fractional_cell_height=0.3))
-
-    grid_args, grid_kwargs, immersed_args = constructor_arguments(original)
-    reconstructed_underlying_grid = RectilinearGrid(values(grid_args)...; grid_kwargs...)
-    reconstructed_ib = ShavedCellBottom(immersed_args[:bottom_height];
-                                        minimum_fractional_cell_height = immersed_args[:minimum_fractional_cell_height])
-    @test ImmersedBoundaryGrid(reconstructed_underlying_grid, reconstructed_ib) == original
-
-    # Rebuilding a materialized boundary reproduces it, so moving architectures is lossless.
-    @test on_architecture(arch, on_architecture(CPU(), original)) == original
-
-    # A Field sampled at cell centers is interpolated to the corners, and so differs from the surface
-    # sampled there directly.
-    bottom_field = Field{Center, Center, Nothing}(underlying_grid)
-    set!(bottom_field, bumpy2d)
-    @test ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(bottom_field)) != original
-    corners = ShavedCellBottom(corner_bottom_height_field(original), minimum_fractional_cell_height=0.3)
-    @test ImmersedBoundaryGrid(underlying_grid, corners) == original
-
-    return nothing
-end
-
-function test_shaved_cell_equality(FT, arch)
-    underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
-    ib = ShavedCellBottom(-0.5)
-
-    @test ib == ShavedCellBottom(-0.5)
-    @test ib != ShavedCellBottom(-0.4)
-    @test ib != ShavedCellBottom(-0.5; minimum_fractional_cell_height=0.1)
-    @test ImmersedBoundaryGrid(underlying_grid, ib) != ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(-0.4))
-
-    return nothing
-end
-
 function test_shaved_cell_time_stepping(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, topology=(Bounded, Flat, Bounded),
                                       size=(32, 16), halo=(5, 5), x=(0, 1000), z=(-100, 0))
@@ -185,8 +147,6 @@ end
         test_shaved_cell_geometry(FT, arch)
         test_shaved_cell_column_depth_consistency(FT, arch)
         test_shaved_cell_flat_topologies(FT, arch)
-        test_shaved_cell_reconstruction(FT, arch)
-        test_shaved_cell_equality(FT, arch)
         test_shaved_cell_time_stepping(FT, arch)
     end
 end

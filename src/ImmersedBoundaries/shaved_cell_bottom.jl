@@ -78,14 +78,6 @@ end
 ##### Materialization
 #####
 
-"""
-$(TYPEDSIGNATURES)
-
-Return a `Field` at `(Face, Face, Nothing)` sharing the corner bottom heights of `grid`, the
-bilinear surface every shaved cell volume and face area is built from.
-"""
-corner_bottom_height_field(grid::IBG) = Field{Face, Face, Nothing}(grid.underlying_grid; data = grid.immersed_boundary.corner_bottom_height)
-
 # Staggered fields carry a boundary point beyond the last cell in Bounded directions.
 function staggered_bottom_parameters(grid)
     Nx, Ny, _ = size(grid)
@@ -350,9 +342,10 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 ##### Column depths
 #####
 
-# The staggered column depths follow the surface at the face, matching the sum of the face heights.
-@inline staggered_column_depthᶠᶜᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.west_bottom_height[i, j, 1]
-@inline staggered_column_depthᶜᶠᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.south_bottom_height[i, j, 1]
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::SCBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.west_bottom_height[i, j, 1]
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::SCBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.south_bottom_height[i, j, 1]
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatSCBIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatSCBIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 
 #####
 ##### Reconstruction and comparison
@@ -360,7 +353,7 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 
 function Grids.constructor_arguments(grid::SCBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
-    shaved_cell_bottom_args = Dict(:bottom_height => corner_bottom_height_field(grid),
+    shaved_cell_bottom_args = Dict(:bottom_height => Field{Face, Face, Nothing}(grid.underlying_grid; data=grid.immersed_boundary.corner_bottom_height),
                                    :minimum_fractional_cell_height => grid.immersed_boundary.minimum_fractional_cell_height)
     return underlying_grid_args, underlying_grid_kwargs, shaved_cell_bottom_args
 end
