@@ -292,17 +292,41 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        z)
 end
 
+function insert_flat_topology(topology, x, y, z)
+    topology = tupleit(topology)
+    Nt = length(topology)
+
+    if Nt == 3
+        return topology
+    end
+
+    active_directions = map(!isnothing, (x, y, z))
+    Na = sum(active_directions)
+
+    if Nt != Na
+        throw(ArgumentError("topology=$topology has $Nt element(s) but $Na of x, y, z are specified. " *
+                            "Directions with a `nothing` coordinate are Flat, so these numbers must match."))
+    end
+
+    full = [Flat, Flat, Flat]
+    full[collect(active_directions)] .= topology
+    Tuple(full)
+end
+
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
-    TX, TY, TZ = topology = validate_topology(topology)
+    topology = validate_topology(topology)
+    (TX, TY, TZ) = insert_flat_topology(topology, x, y, z)
+
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, size, halo)
 
     # Validate the rectilinear domain
     x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
-    return topology, size, halo, x, y, z
+    return (TX, TY, TZ), size, halo, x, y, z
 end
+
 
 #####
 ##### Showing grids
