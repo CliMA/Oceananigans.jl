@@ -227,7 +227,7 @@ ZFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((C
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=f.grid)
+function Base.similar(f::Field, grid::AbstractGrid=f.grid)
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
@@ -436,8 +436,8 @@ Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O,
 Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
-Base.:(==)(f::Field, a) = interior(f) == a
-Base.:(==)(a, f::Field) = a == interior(f)
+Base.:(==)(f::Field, a::AbstractArray) = interior(f) == a
+Base.:(==)(a::AbstractArray, f::Field) = a == interior(f)
 
 function Base.:(==)(a::Field, b::Field)
     if architecture(a) == architecture(b)
@@ -587,7 +587,10 @@ const ReducedField = Union{XReducedField,
 @inline BoundaryConditions.getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
 @inline BoundaryConditions.getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
-# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+# Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
+@inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
+@inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
+# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
