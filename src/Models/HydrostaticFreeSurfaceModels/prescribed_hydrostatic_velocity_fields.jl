@@ -93,7 +93,7 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     end
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
+Base.@constprop :aggressive hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -129,12 +129,13 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing

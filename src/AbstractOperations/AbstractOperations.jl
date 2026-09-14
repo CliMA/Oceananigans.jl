@@ -1,9 +1,11 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, CumulativeIntegral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
+export RegriddedOperation
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
@@ -12,7 +14,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.Fields: AbstractField, instantiated_location
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -43,15 +45,29 @@ Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
+"""
+$(TYPEDSIGNATURES)
+
+Validate that `a` may be an operand of an `AbstractOperation`, returning `a`.
+
+The fallback validates everything. Four-dimensional fields like `FieldTimeSeries`
+extend `validate_operand` to throw an error, since `AbstractOperation`s are
+three-dimensional and would silently drop the time dimension of their operands.
+"""
+@inline validate_operand(a) = a
+
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")
+include("integral_operators.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 include("constant_field_abstract_operations.jl")
 include("kernel_function_operation.jl")
+include("regridded_operation.jl")
+include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")
@@ -77,9 +93,14 @@ include("show_abstract_operations.jl")
 @binary Base.atand
 @binary Base.mod
 
-# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
-Base.:<(::AbstractField, ::Missing) = missing
-Base.:<(::Missing, ::AbstractField) = missing
+# Base defines matrix powers `^(::AbstractMatrix, ::Integer)`, `^(::AbstractMatrix, ::Real)` and
+# `^(::Irrational{:ℯ}, ::AbstractMatrix)`, which two-dimensional fields also match
+for P in (:Integer, :Real)
+    @eval Base.:^(a::AbstractField, b::$P) = ^(instantiated_location(a), a, b)
+    @eval Base.:^(a::ConstantField, b::$P) = ConstantField(a.constant ^ b)
+end
+Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
+Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
 @multiary +
 

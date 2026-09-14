@@ -13,7 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -102,6 +102,30 @@ function run_field_reduction_tests(grid)
 
         @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
         @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
+
+        # Index reductions locate extrema within `interior(ϕ)`, consistently with `nodes(ϕ)`,
+        # and must be blind to the halo regions, poisoned here on a copy
+        ψ = similar(ϕ)
+        parent(ψ) .= convert(eltype(ψ), 1e6)
+        interior(ψ) .= interior(ϕ)
+        interior_values = Array(interior(ψ))
+        @test argmax(ψ) == argmax(interior_values)
+        @test findmax(ψ) == findmax(interior_values)
+
+        parent(ψ) .= convert(eltype(ψ), -1e6)
+        interior(ψ) .= interior(ϕ)
+        @test argmin(ψ) == argmin(interior_values)
+        @test findmin(ψ) == findmin(interior_values)
+
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -270,6 +294,42 @@ function run_field_interpolation_tests(grid)
 
     interpolate!(f1, f4)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    # Interpolating at a cell center must return that cell's value however fine the grid is.
+    # On a grid whose coordinates are large compared with its spacing, recovering the spacing
+    # by differencing two adjacent nodes costs most of its significant digits in Float32, and
+    # the error is then multiplied by the cell index.
+    for FT in (Float32, Float64)
+        fine_λ_grid = LatitudeLongitudeGrid(arch, FT; size = (21600, 1, 1),
+                                            longitude = (-180, 180), latitude = (-1, 1), z = (0, 1))
+        fine_φ_grid = LatitudeLongitudeGrid(arch, FT; size = (1, 10800, 1),
+                                            longitude = (-1, 1), latitude = (-90, 90), z = (0, 1))
+
+        Δλ = 360 / size(fine_λ_grid, 1)
+        Δφ = 180 / size(fine_φ_grid, 2)
+
+        # Both locations: a regular grid has one spacing, so the index must be right at either.
+        for ℓ in (Center, Face)
+            λ_field = Field{ℓ, Center, Center}(fine_λ_grid)
+            φ_field = Field{Center, ℓ, Center}(fine_φ_grid)
+            set!(λ_field, (λ, φ, z) -> λ)
+            set!(φ_field, (λ, φ, z) -> φ)
+
+            @allowscalar begin
+                for i in (1, 5001, 11280, size(fine_λ_grid, 1))
+                    λi = λnodes(fine_λ_grid, ℓ())[i]
+                    ℑλ = interpolate((λi, 0, 0.5), λ_field, (ℓ(), Center(), Center()), fine_λ_grid)
+                    @test abs(ℑλ - λi) < Δλ / 10
+                end
+
+                for j in (1, 2501, 8130, size(fine_φ_grid, 2))
+                    φj = φnodes(fine_φ_grid, ℓ())[j]
+                    ℑφ = interpolate((0, φj, 0.5), φ_field, (Center(), ℓ(), Center()), fine_φ_grid)
+                    @test abs(ℑφ - φj) < Δφ / 10
+                end
+            end
+        end
+    end
 
     return nothing
 end
@@ -752,6 +812,55 @@ end
                 @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
             end
+
+            @testset "Index reductions on an immersed grid [$(typeof(arch)), $FT]" begin
+                immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(0))
+                c = CenterField(immersed_grid)
+                set!(c, (x, y, z) -> -z) # the raw extremum hides in the immersed region
+                values = Array(interior(c))
+                @test argmax(values) != argmax(c)
+                @test values[argmax(c)] == maximum(c)
+                @test values[argmin(c)] == minimum(c)
+                @test findmax(c) == (maximum(c), argmax(c))
+            end
+        end
+
+        @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
+            @info "  Testing Boolean field reductions [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch; size=(4, 5, 3), extent=(1, 1, 1))
+            pattern = [(i + j + k) % 3 == 0 for i in 1:4, j in 1:5, k in 1:3]
+            b = CenterField(grid, Bool)
+            interior(b) .= on_architecture(arch, pattern)
+
+            @test any(b) == any(pattern)
+            @test all(b) == all(pattern)
+            for dims in (1, 2, 3, (1, 2), (1, 2, 3))
+                @test Array(interior(any(b; dims))) == any(pattern; dims)
+                @test Array(interior(all(b; dims))) == all(pattern; dims)
+            end
+
+            r = Field{Nothing, Center, Center}(grid, Bool)
+            any!(r, b)
+            @test Array(interior(r)) == any(pattern; dims=1)
+            all!(r, b)
+            @test Array(interior(r)) == all(pattern; dims=1)
+
+            # A `condition` and immersed cells wrap the operand in a `ConditionalOperation`
+            condition = (i, j, k, grid, b) -> i > 2
+            @test any(b; condition) == any(pattern[3:end, :, :])
+            @test all(b; condition) == all(pattern[3:end, :, :])
+            @test Array(interior(all(b; condition, dims=1))) == all(pattern[3:end, :, :]; dims=1)
+
+            # Immersed cells (k = 1 here) count as the neutral element of the reduction
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.6))
+            bᵢ = CenterField(immersed_grid, Bool)
+            interior(bᵢ) .= on_architecture(arch, pattern)
+            @test any(bᵢ) == any(pattern[:, :, 2:3])
+            @test all(bᵢ) == all(pattern[:, :, 2:3])
+            @test Array(interior(all(bᵢ; dims=3))) == all(pattern[:, :, 2:3]; dims=3)
+            wet_pattern = copy(pattern)
+            wet_pattern[:, :, 1] .= false
+            @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
         end
 
         for arch in archs, FT in float_types
@@ -923,6 +1032,33 @@ end
                 @test fi.i === nothing
                 @test fi.j === nothing
                 @test fi.k === nothing
+            end
+        end
+    end
+
+    @testset "Fractional longitude index on regional grids" begin
+        @info "  Testing fractional longitude indices on regional grids..."
+
+        # A `Bounded` grid covers only part of the globe, so a longitude just west of its
+        # western edge must index just west of the grid rather than folding to λ ≈ 360.
+        regional = LatitudeLongitudeGrid(size = (2, 1, 1), longitude = (0, 20),
+                                         latitude = (0, 10), z = (-1, 0),
+                                         topology = (Bounded, Bounded, Bounded))
+
+        for (λ, expected) in ((-15.0, -1), (-5.0, 0), (5.0, 1), (15.0, 2), (25.0, 3))
+            fi = FractionalIndices((λ, 5.0, 0.0), regional, Center(), Center(), Center())
+            @test fi.i ≈ expected
+        end
+
+        # A grid spanning the full globe is unaffected, whether `Bounded` or `Periodic`.
+        for TX in (Bounded, Periodic)
+            global_grid = LatitudeLongitudeGrid(size = (36, 18, 1), longitude = (0, 360),
+                                                latitude = (-80, 80), z = (-1, 0),
+                                                topology = (TX, Bounded, Bounded))
+
+            for (λ, expected) in ((5.0, 1), (180.0, 18.5), (350.0, 35.5), (357.0, 36.2))
+                fi = FractionalIndices((λ, 0.0, 0.0), global_grid, Center(), Center(), Center())
+                @test fi.i ≈ expected
             end
         end
     end
@@ -1103,6 +1239,26 @@ end
             mask_immersed_field!(f_full, 0.0)
             @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
             @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "mask_immersed_field_xy! with an active cells map" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field_xy! with an active cells map [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+            # The western half of the domain is dry from top to bottom, so those columns hold no active cell
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> ifelse(x < 0.5, 0, -1));
+                                        active_cells_map = true)
+
+            f = CenterField(grid)
+            set!(f, 1)
+            mask_immersed_field_xy!(f, 0; k=Nz)
+
+            @test all(interior(f, 1:2, :, Nz) .== 0)
+            @test all(interior(f, 3:4, :, Nz) .== 1)
         end
     end
 

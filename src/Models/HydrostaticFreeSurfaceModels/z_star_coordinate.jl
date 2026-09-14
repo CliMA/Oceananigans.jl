@@ -33,7 +33,7 @@ The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
@@ -47,14 +47,32 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 """
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
-# Update η in the grid
-@kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
+"""
+$(TYPEDSIGNATURES)
+
+Store the free surface displacement `η` in `grid.z.ηⁿ` and recompute the grid
+stretching factors `σ` at all staggered locations from it.
+"""
+function update_zstar_scaling!(grid, η)
+    arch = architecture(grid)
+    parameters = surface_kernel_parameters(grid)
+    launch!(arch, grid, parameters, _update_grid_free_surface!, grid, η)
+    # the face scalings read `ηⁿ` in neighbouring columns, so they are computed in a second pass
+    launch!(arch, grid, parameters, _update_grid_scaling!, grid)
+    return nothing
+end
+
+@kernel function _update_grid_free_surface!(grid, η)
     i, j = @index(Global, NTuple)
-    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
+    @inbounds grid.z.ηⁿ[i, j, 1] = η[i, j, grid.Nz+1]
+end
+
+@kernel function _update_grid_scaling!(grid)
+    i, j = @index(Global, NTuple)
     update_grid_scaling!(grid.z, i, j, grid)
 end
 
@@ -111,15 +129,16 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
 
     u, v, _ = velocities
     ∂t_σ    = grid.z.∂t_σ
+    Fη      = model.forcing.η
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos through the parameters
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v, Fη, model.clock, fields(model))
 
     return nothing
 end
 
-@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
+@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -130,8 +149,9 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
-    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), (- δh_U + fη) / hᶜᶜ)
 end
 
 #####
@@ -151,13 +171,16 @@ This function scales tendencies after they are computed so that the time-steppin
 advances `σ * c` correctly.
 """
 function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(propertynames(tracers)))
+    return nothing
+end
 
-    # Multiply the Gⁿ tendencies by the grid scaling
-    for i in propertynames(tracers)
-        @inbounds G = Gⁿ[i]
-        launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, G, grid)
-    end
+@inline scale_by_stretching_factor!(Gⁿ, grid, ::Val{()}) = nothing
 
+@inline function scale_by_stretching_factor!(Gⁿ, grid, ::Val{names}) where names
+    name = first(names)
+    launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, Gⁿ[name], grid)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(Base.tail(names)))
     return nothing
 end
 
@@ -182,7 +205,7 @@ free surface height (we assume that `∂t_σ = 0`).
 reconcile_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
 function reconcile_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
 end

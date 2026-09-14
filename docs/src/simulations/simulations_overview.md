@@ -264,4 +264,4 @@ simulation.output_writers[:snapshots] = JLD2Writer(simulation.model, simulation.
 run!(simulation)
 ```
 
-For more recipes continue with the page on [schedules](@ref schedules).
+For more recipes continue with the page on [schedules](@ref callback_schedules).

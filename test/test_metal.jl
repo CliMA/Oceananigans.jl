@@ -142,6 +142,8 @@ end
     @test eltype(grid) == Float32
 
     model = NonhydrostaticModel(grid)
+    @test model.pressure_solver isa FFTBasedPoissonSolver
+
     sim = Simulation(model, Δt=5, stop_iteration=2)
     run!(sim)
     @test time(sim) == 10seconds
@@ -149,4 +151,24 @@ end
     topo = (TX, TY, TZ) =  topology(grid)
     λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
     @test eltype(λx) == eltype(grid)
+end
+
+@testset "MetalGPU: FFT-based Poisson solver" begin
+    arch = GPU(Metal.MetalBackend())
+
+    topologies = [(Periodic, Periodic, Periodic),
+                  (Periodic, Periodic, Bounded),
+                  (Periodic, Bounded, Bounded),
+                  (Bounded, Bounded, Bounded)]
+
+    for topo in topologies
+        grid = RectilinearGrid(arch; topology=topo, size=(8, 8, 8), extent=(1, 1, 1))
+        @test divergence_free_poisson_solution(grid)
+    end
+end
+
+@testset "MetalGPU: Fourier-tridiagonal Poisson solver" begin
+    arch = GPU(Metal.MetalBackend())
+    faces = collect(0:8) .^ 1.2
+    @test stretched_poisson_solver_correct_answer(Float32, arch, (Periodic, Periodic, Bounded), 8, 8, faces)
 end

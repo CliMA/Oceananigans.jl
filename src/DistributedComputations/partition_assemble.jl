@@ -182,7 +182,7 @@ end
 $(TYPEDSIGNATURES)
 
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
-Usefull for boundary arrays, forcings and initial conditions.
+Useful for boundary arrays, forcings, and initial conditions.
 """
 construct_global_array(c_local::AbstractArray, arch, n) = c_local
 construct_global_array(c_local::Function, arch,  N)     = c_local

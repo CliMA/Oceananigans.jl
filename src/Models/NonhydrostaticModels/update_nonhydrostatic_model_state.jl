@@ -1,11 +1,12 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection_timestep!
+using Oceananigans.Advection: update_advection!
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -21,12 +22,13 @@ they are called in the end.
 function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
-    foreach(model.tracers) do tracer
-        mask_immersed_field!(tracer)
-    end
+    mask_immersed_field!(model.tracers)
 
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
+
+    # Refresh transformed forcings (e.g. Relaxation targets carrying a lazy Field)
+    compute_forcing!(model.forcing)
 
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
@@ -52,15 +54,15 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock)
-    compute_tendencies!(model, callbacks)
+    update_advection!(model.advection, model)
     update_biogeochemical_state!(model.biogeochemistry, model)
+    compute_tendencies!(model, callbacks)
 
     return nothing
 end
 
 function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface_kernel_parameters(model.grid),
-                                                          κ_parameters = :xyz)
+                                                          κ_parameters = Val(:xyz))
 
     grid = model.grid
     closure = model.closure

@@ -45,6 +45,16 @@ for arch in archs
             end
         end
     end
+
+    @testset "FieldTimeSeries set! with a number" begin
+        for grid in (zero_d_grid, one_d_grid, two_d_grid, three_d_grid)
+            times = 0:1.0:4
+            fts = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+            set!(fts, 3.2)
+            data = on_architecture(CPU(), view(fts, 1, 1, 1, :))
+            @test all(data .== 3.2)
+        end
+    end
 end
 
 @testset "Output writing with set!(FieldTimeSeries{OnDisk})" begin

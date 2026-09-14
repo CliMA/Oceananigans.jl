@@ -62,15 +62,19 @@ Positional Arguments
 Keyword Arguments
 =================
 
-- `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
+- `size`: The number of cells in the (longitude, latitude, vertical) dimensions. The vertical
+          entry is optional when `z = nothing` (a 2D grid); then a 2-tuple `(Nx, Ny)` suffices.
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
+          As with `size`, the vertical entry is optional when `z = nothing`.
 - `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
 - `z`: The vertical ``z``-coordinate range of the grid. Could either be:
        (i) 2-tuple that specifies the end points of the coordinate,
        (ii) an array with the ``z`` interfaces, or
        (iii) a function of `k` index that returns the locations of cell interfaces
-             in ``z``-direction. Default: (0, 1).
+             in ``z``-direction, or
+       (iv) `nothing`, which builds a purely horizontal (2D) grid with a `Flat` vertical
+            (e.g. for surface forcing). Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
                           Default: 70.
@@ -162,8 +166,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
                       fold_topology = RightCenterFolded)
 
-    # Set the topology
-    topology = (Periodic, fold_topology, Bounded)
+    # Set the topology: passing `z = nothing` builds a purely horizontal (2D) tripolar grid with a
+    # `Flat` vertical (e.g. for surface forcing); otherwise the vertical is `Bounded`.
+    TZ = isnothing(z) ? Flat : Bounded
+    topology = (Periodic, fold_topology, TZ)
 
     # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
@@ -174,15 +180,19 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
-    Nx, Ny, Nz = size
-    Hx, Hy, Hz = halo
+    # The vertical entry of `size` and `halo` is optional for a `Flat` (2D) grid.
+    Nx, Ny = size[1], size[2]
+    Hx, Hy = halo[1], halo[2]
+    Nz = TZ === Flat ? 1 : size[3]
+    Hz = TZ === Flat ? 0 : halo[3]
+    size = (Nx, Ny, Nz)
+    halo = (Hx, Hy, Hz)
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
 
     # Generate coordinates
-    TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())

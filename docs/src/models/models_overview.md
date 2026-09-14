@@ -17,13 +17,14 @@ The [NonhydrostaticModel](@ref) integrates the Boussinesq equations _without_ ma
 and therefore possessing a prognostic vertical momentum equation. The NonhydrostaticModel is useful for simulations
 that resolve three-dimensional turbulence, such as large eddy simulations on [RectilinearGrid](@ref) with grid
 spacings of O(1 m), as well as direct numerical simulation. The NonhydrostaticModel may also be used for
-idealized classroom problems, as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
+idealized classroom problems, as in the [two-dimensional turbulence example](@ref two_dimensional_turbulence).
 
 The [HydrostaticFreeSurfaceModel](@ref) integrates the hydrostatic or "primitive" Boussinesq equations
 with a free surface on its top boundary. The hydrostatic approximation allows the HydrostaticFreeSurfaceModel
 to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
 simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
-and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
+and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
+and [LambertConformalConicGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid).
 Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser
 grid spacings of O(30 m) up to O(100 km). Such coarse-grained simulations are usually paired with more elaborate
 turbulence closures or "parameterizations" than small-scale simulations with NonhydrostaticModel, such as the

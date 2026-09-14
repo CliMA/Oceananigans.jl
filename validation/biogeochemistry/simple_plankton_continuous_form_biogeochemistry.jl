@@ -175,6 +175,6 @@ filename = "simple_plankton_continuous_form_biogeochemistry"
 
 simulation.output_writers[:simple_output] = JLD2Writer(model, outputs; filename,
                                                        schedule = TimeInterval(20minutes),
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
 
 run!(simulation)

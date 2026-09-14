@@ -56,7 +56,6 @@ end
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ::F) = bottom_up_znode(i, j, k, grid, Δzᶠᶠᶜ, static_column_depthᶠᶠᵃ(i, j, grid))
 
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::C) = znode(i, j, k, grid, F(), C(), F()) + Δzᶠᶜᶜ(i, j, k, grid) / 2
-@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::C) = znode(i, j, k, grid, F(), C(), F()) + Δzᶠᶜᶜ(i, j, k, grid) / 2
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::F, ::C) = znode(i, j, k, grid, C(), F(), F()) + Δzᶜᶠᶜ(i, j, k, grid) / 2
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ::C) = znode(i, j, k, grid, F(), F(), F()) + Δzᶠᶠᶜ(i, j, k, grid) / 2
 

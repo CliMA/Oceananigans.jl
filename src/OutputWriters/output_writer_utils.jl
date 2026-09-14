@@ -1,7 +1,6 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid, Partition
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
@@ -12,11 +11,15 @@ using Oceananigans.OutputReaders: auto_extension
 ##### Output writer utilities
 #####
 
+# Names of the requested outputs; dictionaries have no fixed iteration order, so their keys are sorted
+output_names(outputs) = keys(outputs)
+output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)
+
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-initialize!(::NoFileSplitting, model) = nothing
+Oceananigans.initialize!(::NoFileSplitting, model) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
@@ -31,6 +34,13 @@ the `size_limit`.
 
 The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
+
+The `size_limit` applies to the on-disk size of the file, which includes
+the metadata the output writer stores in every part file upon initialization.
+Compression typically shrinks the output data much more than the metadata,
+so choose a `size_limit` comfortably larger than the metadata overhead:
+otherwise every part file exceeds the limit and contains a single output,
+and the total output size can end up much larger than without splitting.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
@@ -51,6 +61,8 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
 end
+
+validate_file_splitting(schedule, args...) = nothing
 
 """
 $(TYPEDSIGNATURES)

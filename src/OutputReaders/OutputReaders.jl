@@ -1,14 +1,16 @@
 module OutputReaders
 
-export FieldDataset
-export FieldTimeSeries
-export TimeSeriesInterpolation
-export InMemory, OnDisk
-export Cyclical, Linear, Clamp
+export
+    FieldDataset,
+    FieldTimeSeries,
+    TimeSeriesInterpolation,
+    InMemory, OnDisk,
+    Cyclical, Linear, Clamp,
+    time_average
 
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: boundary_conditions
+using Oceananigans: Oceananigans, boundary_conditions
 using Oceananigans.Utils: @apply_regionally
 
 struct JLD2Path
@@ -41,6 +43,7 @@ include("field_time_series_indexing.jl")
 include("time_series_interpolated_field.jl")
 include("set_field_time_series.jl")
 include("field_time_series_reductions.jl")
+include("time_average.jl")
 include("show_field_time_series.jl")
 include("extract_field_time_series.jl")
 include("combining_field_time_series.jl")

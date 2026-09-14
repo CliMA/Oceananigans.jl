@@ -7,7 +7,7 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch, Nothing}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
@@ -70,12 +70,14 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
 end
 
 function with_halo(halo, ibg::ImmersedBoundaryGrid)
-    active_cells_map = has_active_cells_map(ibg)
-    active_z_columns = has_active_z_columns(ibg)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
-    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
-                                active_cells_map,
-                                active_z_columns)
+    materialized_ib = materialize_immersed_boundary(underlying_grid, ibg.immersed_boundary)
+    TX, TY, TZ = topology(underlying_grid)
+    # The active cells maps hold interior indices, which do not depend on the halo
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
+                                            materialized_ib,
+                                            ibg.interior_active_cells,
+                                            ibg.active_z_columns)
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -88,6 +90,9 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+
+@inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
+@inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
 
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
@@ -115,6 +120,8 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 # (which requires checking `Center` nodes at N + H and N + H + 1)
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
+
+Grids.has_static_discretization(grid::IBG) = Grids.has_static_discretization(grid.underlying_grid)
 
 # Defining the bottom
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
