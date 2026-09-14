@@ -24,12 +24,14 @@ struct GhostCells{S, FT}
     monotone :: Bool
 end
 
-GhostCells(FT::DataType = Oceananigans.defaults.FloatType; curvature_weight = 100, monotone = true) =
-    GhostCells(nothing, convert(FT, curvature_weight), monotone)
+GhostCells(FT::DataType = Oceananigans.defaults.FloatType; curvature_weight = 100, monotone = true) = GhostCells(nothing, convert(FT, curvature_weight), monotone)
 
 Base.summary(scheme::GhostCells) = string("GhostCells(curvature_weight=", scheme.curvature_weight, ", monotone=", scheme.monotone, ")")
 
 const GhostCellWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells}
+
+Adapt.adapt_structure(to, scheme::GhostCells) = GhostCells(Adapt.adapt(to, scheme.scheme), scheme.curvature_weight, scheme.monotone)
+Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) = GhostCells(on_architecture(to, scheme.scheme), scheme.curvature_weight, scheme.monotone)
 
 @inline function extension_weight(WCT, c₀, c₁, c₂, w)
     δ = c₁ - c₀

@@ -163,8 +163,9 @@ end
                 for immersed in (:flat, :immersed, :active_immersed)
                     grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
 
-                    @test (@inferred work_layout(grid, Val(:xyz), ())) isa Tuple
-                    @test (@inferred interior_work_layout(grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
+                    dev = Oceananigans.Architectures.device(arch)
+                    @test (@inferred work_layout(dev, grid, Val(:xyz), ())) isa Tuple
+                    @test (@inferred interior_work_layout(dev, grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
 
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
