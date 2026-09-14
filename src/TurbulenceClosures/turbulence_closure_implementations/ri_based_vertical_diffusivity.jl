@@ -207,7 +207,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
     velocities = model.velocities
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    top_tracer_bcs = map(c -> c.boundary_conditions.top, tracers)
     Δt = update_previous_compute_time!(closure_fields, model)
 
     # Skip recomputation if Δt == 0 (e.g., after restoring from a checkpoint).

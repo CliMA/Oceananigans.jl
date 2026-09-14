@@ -137,8 +137,20 @@ function advect(grid, U, scheme; Δt, Nsteps, snapshot_interval = 0)
 
     snapshots = Matrix{Float64}[]
     snapshot_times = Float64[]
-    take_snapshot(n) = (push!(snapshots, [c[i, 1, k] for i in 1:Nx, k in 1:Nz]);
-                        push!(snapshot_times, n * Δt))
+    snapshot_variance_lost = Float64[]
+    snapshot_min = Float64[]
+    snapshot_max = Float64[]
+
+    function take_snapshot(n)
+        field = [c[i, 1, k] for i in 1:Nx, k in 1:Nz]
+        wet_values = [field[i, k] for i in 1:Nx, k in 1:Nz if wet[i, k]]
+        push!(snapshots, field)
+        push!(snapshot_times, n * Δt)
+        push!(snapshot_variance_lost, 1 - moment(c, 2) / var₀)
+        push!(snapshot_min, minimum(wet_values))
+        push!(snapshot_max, maximum(wet_values))
+    end
+
     snapshot_interval > 0 && take_snapshot(0)
 
     for n in 1:Nsteps
@@ -154,10 +166,30 @@ function advect(grid, U, scheme; Δt, Nsteps, snapshot_interval = 0)
     return (min = lo, max = hi,
             variance_lost = 1 - moment(c, 2) / var₀,
             mass_drift = (moment(c, 1) - mass₀) / mass₀,
-            snapshots = snapshots, snapshot_times = snapshot_times, wet = wet)
+            snapshots = snapshots, snapshot_times = snapshot_times,
+            snapshot_variance_lost = snapshot_variance_lost,
+            snapshot_min = snapshot_min, snapshot_max = snapshot_max, wet = wet)
+end
+
+"""
+    boundary_scheme_comparison(FT = Float64; order = 7, reference_variation = 0.01)
+
+The reconstruction each buffer chain terminates in, all else held equal: the second-order centered average that
+is the default, the donor cell, the third-order inward CWENOZ blend, and the same blend told that variations
+below `reference_variation` are noise.
+"""
+function boundary_scheme_comparison(FT = Float64; order = 7, reference_variation = 0.01)
+    weno(boundary_scheme) = WENO(FT; order, weight_computation = NormalDivision, boundary_scheme)
+    cwenoz(; kw...) = CWENOZ(FT; weight_computation = NormalDivision, kw...)
+
+    return ["Centered(order=2)"     => weno(Centered(FT; order = 2)),
+            "UpwindBiased(order=1)" => weno(UpwindBiased(FT; order = 1)),
+            "CWENOZ"                => weno(cwenoz()),
+            "CWENOZ threshold"      => weno(cwenoz(; reference_variation))]
 end
 
 function run_hat_advection(; Nx = 128, Nz = 64, courant = 0.2, Nsteps = 3000,
+                             schemes = boundary_scheme_comparison(),
                              save_prefix = nothing, snapshot_interval = 20)
     grid = staircase_grid(; Nx, Nz)
     U = tangent_flow(grid)
@@ -166,9 +198,6 @@ function run_hat_advection(; Nx = 128, Nz = 64, courant = 0.2, Nsteps = 3000,
 
     Δt = courant / (maximum(abs, interior(U.u)) / (Lx / Nx) + maximum(abs, interior(U.w)) / (Lz / Nz))
     @printf("Courant %.2f, Δt = %.3e, %d steps\n\n", courant, Δt, Nsteps)
-
-    schemes = ["WENO(order=7)"             => WENO(order = 7, weight_computation = NormalDivision),
-               "WENO(order=5)"             => WENO(order = 5, weight_computation = NormalDivision)]
 
     interval = isnothing(save_prefix) ? 0 : snapshot_interval
 
@@ -194,6 +223,9 @@ function run_hat_advection(; Nx = 128, Nz = 64, courant = 0.2, Nsteps = 3000,
                 f[g * "/min"]       = r.min
                 f[g * "/max"]       = r.max
                 f[g * "/variance_lost"] = r.variance_lost
+                f[g * "/snapshot_variance_lost"] = r.snapshot_variance_lost
+                f[g * "/snapshot_min"] = r.snapshot_min
+                f[g * "/snapshot_max"] = r.snapshot_max
             end
         end
         println("\nwrote $file  ($(length(first(values(results)).snapshots)) snapshots per scheme)")
@@ -203,5 +235,5 @@ function run_hat_advection(; Nx = 128, Nz = 64, courant = 0.2, Nsteps = 3000,
 end
 
 # `julia immersed_hat_advection.jl` prints the table only.
-# `julia immersed_hat_advection.jl mylabel` also dumps snapshots to mylabel.jld2 for the movie script.
+# `julia immersed_hat_advection.jl mylabel` also dumps snapshots to mylabel.jld2 for `hat_advection_movie.jl`.
 run_hat_advection(; save_prefix = isempty(ARGS) ? nothing : ARGS[1])
