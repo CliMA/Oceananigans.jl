@@ -216,7 +216,7 @@ end
              IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
                                                skew_flux_formulation=DiffusiveFormulation())),
             ("ISSD AdvectiveFormulation",
-             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
+             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000, κ_symmetric=1000,
                                                skew_flux_formulation=AdvectiveFormulation())),
         ]
 

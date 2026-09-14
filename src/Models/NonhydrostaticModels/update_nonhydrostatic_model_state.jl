@@ -62,7 +62,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
 end
 
 function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface_kernel_parameters(model.grid),
-                                                          κ_parameters = :xyz)
+                                                          κ_parameters = Val(:xyz))
 
     grid = model.grid
     closure = model.closure

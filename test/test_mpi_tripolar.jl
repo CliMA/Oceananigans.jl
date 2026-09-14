@@ -12,6 +12,8 @@ tripolar_reconstructed_grid_script(fold_topology) = """
 
     include("distributed_tests_utils.jl")
 
+    using Oceananigans.OrthogonalSphericalShellGrids: distribute_tripolar_grid
+
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
 
@@ -22,6 +24,9 @@ tripolar_reconstructed_grid_script(fold_topology) = """
         reconstruct_grid = reconstruct_global_grid(local_grid)
 
         @test reconstruct_grid == global_grid
+
+        # A caller that assembles its own global grid must get the slice the constructor would build.
+        @test distribute_tripolar_grid(arch, global_grid) == local_grid
 
         nx, ny, _ = size(local_grid)
         rx, ry, _ = arch.local_index .- 1
