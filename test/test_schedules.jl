@@ -4,6 +4,7 @@ using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, Spe
 using Oceananigans.Utils: schedule_aligned_time_step, next_actuation_time
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
+using Dates: Second, Minute
 
 @testset "Schedules" begin
     @info "Testing schedules..."
@@ -152,12 +153,64 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     restored_ti_and_before = OffsetActuation(TimeInterval(2), -0.5)
     restore_prognostic_state!(restored_ti_and_before, prognostic_state(ti_and_before))
     @test restored_ti_and_before.offset_actuated == ti_and_before.offset_actuated
+    @test restored_ti_and_before.parent_actuation_time == ti_and_before.parent_actuation_time
     @test restored_ti_and_before.parent.actuations == ti_and_before.parent.actuations
+    @test isnothing(restore_prognostic_state!(restored_ti_and_before, nothing))
     @test summary(ti_and_before) == "OffsetActuation(TimeInterval(2 seconds), -500 ms)"
 
     @test_throws ArgumentError OffsetActuation(IterationInterval(3), -0.5)
     @test_throws ArgumentError OffsetActuation(TimeInterval(2), -2)
     @test_throws ArgumentError OffsetActuation(TimeInterval(2), 3)
+
+    # A positive offset is pending only after the parent actuates, and a new parent actuation resets it
+    st_then_later = OffsetActuation(SpecifiedTimes(1.0, 1.2), 0.5)
+    @test !(initialize!(st_then_later, fake_model_at_iter_0))
+    @test !(st_then_later((; clock=Clock(time=0.5, iteration=1))))
+    @test 0.5 ≈ schedule_aligned_time_step(st_then_later, Clock(time=0.5, iteration=1), Inf)
+    @test st_then_later((; clock=Clock(time=1.0, iteration=2))) # parent actuation at t = 1
+    @test 0.2 ≈ schedule_aligned_time_step(st_then_later, Clock(time=1.0, iteration=2), Inf)
+    @test st_then_later((; clock=Clock(time=1.2, iteration=3))) # parent actuation at t = 1.2 moves the offset to t = 1.7
+    @test !(st_then_later((; clock=Clock(time=1.5, iteration=4))))
+    @test 0.2 ≈ schedule_aligned_time_step(st_then_later, Clock(time=1.5, iteration=4), Inf)
+    @test st_then_later((; clock=Clock(time=1.7, iteration=5))) # offset actuation at t = 1.7
+    @test !(st_then_later((; clock=Clock(time=2.0, iteration=6))))
+    @test Inf == schedule_aligned_time_step(st_then_later, Clock(time=2.0, iteration=6), Inf)
+
+    # A negative offset stops actuating once the parent runs out of actuation times
+    st_and_before = OffsetActuation(SpecifiedTimes(1.0, 2.0), -0.5)
+    @test !(initialize!(st_and_before, fake_model_at_iter_0))
+    @test st_and_before((; clock=Clock(time=0.5, iteration=1)))
+    @test st_and_before((; clock=Clock(time=1.0, iteration=2)))
+    @test st_and_before((; clock=Clock(time=1.5, iteration=3)))
+    @test st_and_before((; clock=Clock(time=2.0, iteration=4)))
+    @test !(st_and_before((; clock=Clock(time=2.5, iteration=5))))
+    @test Inf == schedule_aligned_time_step(st_and_before, Clock(time=2.5, iteration=5), Inf)
+
+    # Function parents work with positive offsets
+    at_one(model) = model.clock.time == 1
+    func_then_later = OffsetActuation(at_one, 0.5)
+    @test !(initialize!(func_then_later, fake_model_at_iter_0))
+    @test !(func_then_later((; clock=Clock(time=0.5, iteration=1))))
+    @test func_then_later((; clock=Clock(time=1.0, iteration=2)))
+    @test !(func_then_later((; clock=Clock(time=1.2, iteration=3))))
+    @test 0.3 ≈ schedule_aligned_time_step(func_then_later, Clock(time=1.2, iteration=3), Inf)
+    @test func_then_later((; clock=Clock(time=1.5, iteration=4)))
+    @test !(func_then_later((; clock=Clock(time=1.7, iteration=5))))
+
+    # DateTime clocks with Dates.Period offsets
+    start_time = DateTime(2025, 1, 1)
+    datetime_model(seconds) = (; clock=Clock(time=start_time + Second(seconds), iteration=0))
+    minute_and_before = OffsetActuation(TimeInterval(Minute(1)), Second(-10))
+    @test initialize!(minute_and_before, datetime_model(0))
+    @test !(minute_and_before(datetime_model(30)))
+    @test 20 ≈ schedule_aligned_time_step(minute_and_before, datetime_model(30).clock, Inf)
+    @test minute_and_before(datetime_model(50)) # offset actuation
+    @test 10 ≈ schedule_aligned_time_step(minute_and_before, datetime_model(50).clock, Inf)
+    @test minute_and_before(datetime_model(60)) # parent actuation
+    @test !(minute_and_before(datetime_model(90)))
+    @test minute_and_before(datetime_model(110))
+    @test summary(minute_and_before) == "OffsetActuation(TimeInterval(1 minute), -10 seconds)"
+    @test_throws ArgumentError initialize!(OffsetActuation(TimeInterval(Minute(1)), -10), datetime_model(0))
 
     # WallTimeInterval
     wti = WallTimeInterval(1e-9)
@@ -203,8 +256,14 @@ end
         actuation_times = Float64[]
         record_time(sim) = push!(actuation_times, time(sim))
         add_callback!(simulation, record_time, OffsetActuation(TimeInterval(1), offset))
+
+        dir = mktempdir()
+        filename = "offset_actuation.jld2"
+        simulation.output_writers[:u] = JLD2Writer(model, (; u=model.velocities.u); dir, filename,
+                                                   schedule=OffsetActuation(TimeInterval(1), offset))
         run!(simulation)
 
         @test actuation_times ≈ expected_times
+        @test FieldTimeSeries(joinpath(dir, filename), "u").times ≈ expected_times
     end
 end
