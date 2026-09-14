@@ -365,8 +365,7 @@ and once more at a time `offset` away from it. A positive `offset` places the ex
 `offset` after each actuation of `parent_schedule`. A negative `offset` places it `|offset|` before
 the next actuation of `parent_schedule`, which must then have a finite `next_actuation_time`
 (as `TimeInterval` and `SpecifiedTimes` do). The magnitude of `offset` must be smaller than the
-interval between actuations of `parent_schedule`. The time step is aligned so that the model
-lands exactly on the offset time.
+interval between actuations of `parent_schedule`.
 
 `offset` is measured in units of `model.clock.time`, or is a `Dates.Period` when the clock
 keeps a `DateTime`.
