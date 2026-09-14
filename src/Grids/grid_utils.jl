@@ -209,12 +209,15 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::Flat, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::AT, halo) = Colon()
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Colon, args...) = Colon()
 
 parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)
