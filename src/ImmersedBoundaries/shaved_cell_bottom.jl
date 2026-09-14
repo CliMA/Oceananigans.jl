@@ -100,8 +100,7 @@ function set_corner_bottom_height!(corner_field, grid, bottom_height::AbstractAr
     return corner_field
 end
 
-set_corner_bottom_height!(corner_field, grid, bottom_height::Field{Face, Face, Nothing}, parameters) =
-    set_bottom_height!(corner_field, bottom_height)
+set_corner_bottom_height!(corner_field, grid, bottom_height::Field{Face, Face, Nothing}, parameters) = set_bottom_height!(corner_field, bottom_height)
 
 # Rebuilding a materialized boundary reuses the surface it was built from, so that it is idempotent.
 @inline bottom_surface(ib::ShavedCellBottom{<:Any, <:AbstractArray}, grid) = Field{Face, Face, Nothing}(grid; data=ib.corner_bottom_height)
@@ -342,10 +341,8 @@ VSSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 ##### Column depths
 #####
 
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::SCBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.west_bottom_height[i, j, 1]
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::SCBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.south_bottom_height[i, j, 1]
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatSCBIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatSCBIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline staggered_column_depthᶠᶜᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.west_bottom_height[i, j, 1]
+@inline staggered_column_depthᶜᶠᵃ(i, j, ibg, ib::ShavedCellBottom) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ib.south_bottom_height[i, j, 1]
 
 #####
 ##### Reconstruction and comparison
