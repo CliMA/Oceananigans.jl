@@ -37,8 +37,11 @@ function prettysummary(nt::NamedTuple, args...)
     return string(str, ")")
 end
 
-function prettykeys(t)
-    names = collect(keys(t))
+# Dictionaries have no fixed iteration order, so their keys are listed sorted
+prettykeys(t) = prettykeys(collect(keys(t)))
+prettykeys(t::AbstractDict) = prettykeys(sort!(collect(keys(t)); by = string))
+
+function prettykeys(names::AbstractVector)
     length(names) == 0 && return "()"
     length(names) == 1 && return string(first(names))
     return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")
