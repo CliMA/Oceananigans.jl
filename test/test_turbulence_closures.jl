@@ -134,8 +134,9 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
 
     cloh = HorizontalScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                        κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+
     for clo in (clov, cloh)
-        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
         model = NonhydrostaticModel(grid, closure=clo)
         time_step!(model, 1)
     end
