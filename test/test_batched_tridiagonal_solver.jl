@@ -4,20 +4,6 @@ using LinearAlgebra
 using Oceananigans.Architectures: array_type
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
-import Adapt: adapt_structure
-import Oceananigans.Solvers: get_coefficient, first_row
-
-# A diagonal whose system spans only the rows `first_rows[i, j]:Nz` of each column
-struct PartialColumnDiagonal{B, K}
-    b :: B
-    first_rows :: K
-end
-
-adapt_structure(to, d::PartialColumnDiagonal) = PartialColumnDiagonal(adapt(to, d.b), adapt(to, d.first_rows))
-
-@inline get_coefficient(i, j, k, grid, d::PartialColumnDiagonal, p, ::ZDirection, args...) = @inbounds d.b[k]
-@inline first_row(i, j, grid, d::PartialColumnDiagonal, p, ::ZDirection, args...) = @inbounds d.first_rows[i, j]
-
 function can_solve_single_tridiagonal_system(arch, N; tridiagonal_direction=ZDirection())
     ArrayType = array_type(arch)
 
@@ -106,44 +92,53 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
     return Array(ϕ) ≈ ϕ_correct
 end
 
-function can_solve_partial_columns(arch, Nx, Ny, Nz)
+# Garbage rows have non-finite diagonals and right-hand sides but vanishing couplings, like inactive
+# cells across an immersed boundary; the remaining rows must still solve their own, smaller system.
+function can_isolate_decoupled_rows(arch, Nx, Ny, Nz; garbage_end = :bottom)
     ArrayType = array_type(arch)
 
-    a = rand(Nz-1)
-    b = 3 .+ rand(Nz) # +3 to ensure diagonal dominance.
-    c = rand(Nz-1)
+    a = rand(Nx, Ny, Nz-1)
+    b = 3 .+ rand(Nx, Ny, Nz) # +3 to ensure diagonal dominance.
+    c = rand(Nx, Ny, Nz-1)
     f = rand(Nx, Ny, Nz)
 
-    # Every column starts at a different row, including columns that are skipped altogether
-    first_rows = [mod(i - 1 + Nx * (j - 1), Nz + 1) + 1 for i in 1:Nx, j in 1:Ny]
-
-    # The rows beneath the first one are neither read nor written: they hold non-finite right-hand sides
-    # that must not reach the solved rows, and their solution keeps the sentinel value it is initialized with.
-    sentinel = -1.0
-    ϕ_correct = fill(sentinel, Nx, Ny, Nz)
+    expected_solution = zeros(Nx, Ny, Nz)
+    remaining = falses(Nx, Ny, Nz)
 
     for i = 1:Nx, j = 1:Ny
-        k₁ = first_rows[i, j]
-        f[i, j, 1:k₁-1] .= NaN
-        k₁ > Nz && continue
-        M = Tridiagonal(a[k₁:Nz-1], b[k₁:Nz], c[k₁:Nz-1])
-        ϕ_correct[i, j, k₁:Nz] .= M \ f[i, j, k₁:Nz]
+        # Every column has a different number of garbage rows, from none to all of them
+        m = mod(i - 1 + Nx * (j - 1), Nz + 1)
+        garbage_rows   = garbage_end == :bottom ? (1:m) : (Nz-m+1:Nz)
+        remaining_rows = garbage_end == :bottom ? (m+1:Nz) : (1:Nz-m)
+
+        for k in garbage_rows
+            b[i, j, k] = NaN
+            f[i, j, k] = NaN
+            k > 1  && (a[i, j, k-1] = 0; c[i, j, k-1] = 0) # couplings between rows k-1 and k
+            k < Nz && (a[i, j, k]   = 0; c[i, j, k]   = 0) # couplings between rows k and k+1
+        end
+
+        isempty(remaining_rows) && continue
+        M = Tridiagonal(a[i, j, remaining_rows[1:end-1]], b[i, j, remaining_rows], c[i, j, remaining_rows[1:end-1]])
+        expected_solution[i, j, remaining_rows] .= M \ f[i, j, remaining_rows]
+        remaining[i, j, remaining_rows] .= true
     end
 
     # Convert to CuArray if needed.
-    a, b, c, f, first_rows = ArrayType.([a, b, c, f, first_rows])
+    a, b, c, f = ArrayType.([a, b, c, f])
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
-                                        diagonal = PartialColumnDiagonal(b, first_rows),
+                                        diagonal = b,
                                         upper_diagonal = c)
 
-    ϕ = fill(sentinel, Nx, Ny, Nz) |> ArrayType
+    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
 
     solve!(ϕ, btsolver, f)
+    ϕ = Array(ϕ)
 
-    return all(Array(ϕ) .≈ ϕ_correct)
+    return all(isfinite, ϕ[remaining]) && all(ϕ[remaining] .≈ expected_solution[remaining])
 end
 
 @testset "Batched tridiagonal solvers" begin
@@ -164,8 +159,8 @@ end
                 end
             end
 
-            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
-                @test can_solve_partial_columns(arch, Nx, Ny, Nz)
+            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
+                @test can_isolate_decoupled_rows(arch, Nx, Ny, Nz; garbage_end)
             end
         end
     end

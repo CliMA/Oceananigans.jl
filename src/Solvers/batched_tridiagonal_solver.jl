@@ -72,9 +72,7 @@ other implementations where, e.g., `aⁱʲ²` may appear at the second row, inst
 
 2. A 3D array means, e.g., that `aⁱʲᵏ = a[i, j, k]`.
 
-Other coefficient types can be implemented by extending `get_coefficient`. Coefficient types
-whose systems do not span the whole column can also extend `first_row` to solve only the rows
-`k = first_row(i, j, ...), ..., N` of each column.
+Other coefficient types can be implemented by extending `get_coefficient`.
 """
 function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
@@ -96,8 +94,11 @@ Solve the batched tridiagonal system of linear equations with right hand side
 `BatchedTridiagonalSolver` `solver`. `BatchedTridiagonalSolver` uses a modified
 TriDiagonal Matrix Algorithm (TDMA).
 
-The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`. A solve in the
-`ZDirection` covers the rows `first_row(i, j, ...):grid.Nz` of each column; see `first_row`.
+The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
+
+In the `ZDirection`, rows whose couplings to their neighbors vanish (such as the inactive cells
+of an immersed column) are kept from contaminating the rest of the column with non-finite values:
+the sweep masks products with a vanishing coefficient, so that `0 * NaN` counts as `0`.
 
 Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
 Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
@@ -141,14 +142,25 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return the index of the first row of the tridiagonal system in column `(i, j)` of a solve in the
-`ZDirection`. The rows beneath it are neither read nor written by the solve, and a column whose
-first row lies above `size(grid, 3)` is skipped altogether. The default of `1` solves the whole
-column; coefficient types whose systems leave the rows in the inactive cells beneath an immersed
-bottom decoupled from the rest of the column can extend this method for their `diagonal` to skip
-those rows. The trailing arguments are the ones passed to `solve!`.
+Return `x * y`, except that a vanishing `x` masks `y` altogether, so that `0 * NaN` is `0` rather
+than `NaN`. The vertical sweep uses it for its products with the off-diagonals and with `t`, which
+vanish across an immersed boundary, so that rows decoupled from the rest of the column (inactive
+cells, whose right-hand side or diagonal holds whatever was evaluated beneath the bottom) cannot
+contaminate it with non-finite values. `ifelse` keeps the sweep free of branches.
+
+```jldoctest
+using Oceananigans.Solvers: masked_multiply
+
+masked_multiply(0.0, NaN), masked_multiply(2.0, NaN)
+
+# output
+(0.0, NaN)
+```
 """
-@inline first_row(i, j, grid, diagonal, p, ::ZDirection, args...) = 1
+@inline function masked_multiply(x, y)
+    xy = x * y
+    return ifelse(x == 0, zero(xy), xy)
+end
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
@@ -230,36 +242,29 @@ end
 end
 
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
-    k₁ = first_row(i, j, grid, b, p, tridiagonal_direction, args...)
-
-    # There is nothing to solve in a column without rows, e.g. an entirely immersed one
-    k₁ > Nz && return nothing
-
     @inbounds begin
-        β  = get_coefficient(i, j, k₁, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, j, k₁, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, j, k₁] = f₁ / β
+        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
+        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
+        ϕ[i, j, 1] = f₁ / β
 
-        for k = k₁+1:Nz
+        for k = 2:Nz
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
+            β = bᵏ - masked_multiply(aᵏ⁻¹, t[i, j, k])
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
-        for k = Nz-1:-1:k₁
-            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
+        for k = Nz-1:-1:1
+            ϕ[i, j, k] -= masked_multiply(t[i, j, k+1], ϕ[i, j, k+1])
         end
     end
-
-    return nothing
 end

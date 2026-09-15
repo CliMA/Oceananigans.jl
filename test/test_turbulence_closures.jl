@@ -691,8 +691,7 @@ end
     @testset "Vertically-implicit diffusion beneath an immersed bottom" begin
         @info "  Testing that vertically-implicit diffusion is isolated from the cells beneath an immersed bottom..."
 
-        # Non-finite values in every immersed cell, as left there by a forcing or an auxiliary field
-        # that is evaluated beneath the bottom
+        # As a forcing or auxiliary field evaluated beneath the bottom would leave there
         nan_in_immersed_cells(i, j, k, grid, clock, fields) =
             ifelse(immersed_cell(i, j, k, grid), convert(eltype(grid), NaN), zero(grid))
 
@@ -718,7 +717,8 @@ end
             bottom(x, y) = ifelse(x < 1, -Nz - 1, ifelse(x < 2, -Nz / 2, 0))
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
-            wet = @allowscalar [!immersed_cell(i, j, k, grid) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
+            immersed = compute!(Field(KernelFunctionOperation{Center, Center, Center}(immersed_cell, grid)))
+            wet = Array(interior(immersed)) .== 0
             @test sum(wet) == Ny * (Nz + Nz ÷ 2)
 
             c_nan = implicitly_diffused_tracer(grid, nan_in_immersed_cells)
