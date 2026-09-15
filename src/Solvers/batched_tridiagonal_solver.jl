@@ -96,9 +96,10 @@ TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
-In the `ZDirection`, rows whose couplings to their neighbors vanish (such as the inactive cells
-of an immersed column) are kept from contaminating the rest of the column with non-finite values:
-the sweep masks products with a vanishing coefficient, so that `0 * NaN` counts as `0`.
+The `ZDirection` sweep masks products with a zero off-diagonal, so that `0 * NaN` gives `0`
+rather than `NaN`. A `NaN` in an inactive cell of an immersed column therefore stays there
+instead of spreading through the column. The `XDirection` and `YDirection` sweeps do not
+mask, as they are not used on immersed grids.
 
 Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
 Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
