@@ -8,13 +8,15 @@ using Oceananigans.Grids: AbstractUnderlyingGrid,
 
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
-const AGXR = AbstractUnderlyingGrid{FT, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}} where FT
+const AGXR = AbstractUnderlyingGrid{FT, RightConnected} where FT
 const AGXL = AbstractUnderlyingGrid{FT, LeftConnected} where FT
 
-const AGYB = AbstractUnderlyingGrid{FT, <:Any, Bounded} where FT
-const AGYP = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
-const AGYR = AbstractUnderlyingGrid{FT, <:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}} where FT
-const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
+const AGYB  = AbstractUnderlyingGrid{FT, <:Any, Bounded} where FT
+const AGYP  = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
+const AGYR  = AbstractUnderlyingGrid{FT, <:Any, RightConnected} where FT
+const AGYL  = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
+const AGYCF = AbstractUnderlyingGrid{FT, <:Any, RightCenterFolded} where FT
+const AGYFF = AbstractUnderlyingGrid{FT, <:Any, RightFaceFolded} where FT
 
 # Topology-aware Operators with the following convention:
 #
@@ -80,6 +82,42 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXR, u::AbstractArray) = @inbounds ifelse(i == 1, u[2, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, v::AbstractArray) = @inbounds ifelse(j == 1, v[i, 2, k], δyᵃᶜᵃ(i, j, k, grid, v))
+
+# Enforce the north fold of a serial tripolar grid.
+@inline north_fold_index(i, grid) = grid.Nx - i + 1
+
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYCF{FT}, f, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYCF{FT}, c::AbstractArray) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, c))
+
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYCF, f, args...) =
+    ifelse(j == grid.Ny, -f(north_fold_index(i, grid), grid.Ny, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
+    ifelse(j == 1,        f(i, 2, k, grid, args...),
+                          δyᵃᶜᵃ(i, j, k, grid, f, args...)))
+
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYCF, v::AbstractArray) =
+    @inbounds ifelse(j == grid.Ny, -v[north_fold_index(i, grid), grid.Ny, k] - v[i, grid.Ny, k],
+              ifelse(j == 1,        v[i, 2, k],
+                                    δyᵃᶜᵃ(i, j, k, grid, v)))
+
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT}, f, args...) where FT =
+    ifelse(j == grid.Ny + 1, f(north_fold_index(i, grid), grid.Ny, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
+    ifelse(j == 1,           zero(FT),
+                             δyᵃᶠᵃ(i, j, k, grid, f, args...)))
+
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT}, c::AbstractArray) where FT =
+    @inbounds ifelse(j == grid.Ny + 1, c[north_fold_index(i, grid), grid.Ny, k] - c[i, grid.Ny, k],
+              ifelse(j == 1,           zero(FT),
+                                       δyᵃᶠᵃ(i, j, k, grid, c)))
+
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYFF, f, args...) =
+    ifelse(j == grid.Ny + 1, -f(north_fold_index(i, grid), grid.Ny, k, grid, args...) - f(i, grid.Ny + 1, k, grid, args...),
+    ifelse(j == 1,            f(i, 2, k, grid, args...),
+                              δyᵃᶜᵃ(i, j, k, grid, f, args...)))
+
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYFF, v::AbstractArray) =
+    @inbounds ifelse(j == grid.Ny + 1, -v[north_fold_index(i, grid), grid.Ny, k] - v[i, grid.Ny + 1, k],
+              ifelse(j == 1,            v[i, 2, k],
+                                        δyᵃᶜᵃ(i, j, k, grid, v)))
 
 # Derivative operators
 @inline ∂xTᶠᶜᶠ(i, j, k, grid, f, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)

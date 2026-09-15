@@ -117,6 +117,42 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
 end
 
 """
+    ModifiedRungeKutta4TimeStepper(; a = 0.22)
+
+Return the four-stage `SplitRungeKuttaTimeStepper` of Silvestri et al. (2026), with stage fractions
+`γ = a Δt, Δt/3, Δt/2, Δt`, that is `β = (1/a, 3, 2, 1)`.
+
+The composition is third order for every `a`, which sets the free quartic coefficient `c₄ = a/6` of the
+stability function `R(z) = 1 + z + z²/2 + z³/6 + c₄ z⁴`. `a = 1/4` recovers the classical fourth-order
+polynomial; smaller `a` trades that order, which the split-explicit coupling caps at two anyway, for the
+quartic dissipation `|R(iθ)| ≈ 1 - (1/24 - c₄) θ⁴` that absorbs the perturbation the barotropic sub-cycle
+injects into the first baroclinic mode. The band closes when `1/24 - c₄ ≥ σ₀`, i.e. `a ≤ 1/4 - 6 σ₀`, with
+`σ₀` the injection measured on the configuration at hand.
+
+Must be paired with [`ProgressiveSlowForcing`](@ref).
+
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans.TimeSteppers
+
+julia> ModifiedRungeKutta4TimeStepper()
+SplitRungeKuttaTimeStepper
+├── stages: 4
+├── β: (4.545454545454546, 3, 2, 1)
+└── implicit_solver: nothing
+```
+
+References
+==========
+
+* Silvestri, S., Campin, J.-M., Wagner, G. L., Constantinou, N. C., Lee, X. K., and Ferrari, R. (2026).
+    A low-storage Runge-Kutta framework for nonlinear free-surface ocean models. J. Adv. Model. Earth Sy.
+"""
+ModifiedRungeKutta4TimeStepper(; a = 0.22) = SplitRungeKuttaTimeStepper(coefficients = (1/a, 3, 2, 1))
+
+"""
 $(TYPEDSIGNATURES)
 
 Convert spectral Runge-Kutta coefficients `c` to low-storage coefficients `β` for use

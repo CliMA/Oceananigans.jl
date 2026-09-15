@@ -2,7 +2,8 @@ using Oceananigans: fields
 using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper,
+                                 SSPRungeKuttaTimeStepper
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -149,6 +150,96 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                        fields(model),
                        Δτ)
     end
+
+    return nothing
+end
+
+#####
+##### Strong-stability-preserving stages
+#####
+##### `e` carries the Shu-Osher blend the other tracers get, `(σe)ᵐ = a (σe)ⁿ + b [(σe)ᵐ⁻¹ + Δt Gᵉ]`.
+##### The stage advance is over the full `Δt` from `eᵐ⁻¹`, so the inner substeps are all Euler increments
+##### and the blend with `(σe)ⁿ` is applied once, after them: splitting `b` across the substeps would
+##### weight only the first increment.
+#####
+
+function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper, Δt)
+
+    # TODO: properly handle closure tuples
+    if model.closure isa Tuple
+        closure = first(model.closure)
+        closure_fields = first(model.closure_fields)
+    else
+        closure = model.closure
+        closure_fields = model.closure_fields
+    end
+
+    e = model.tracers.e
+    arch = model.architecture
+    grid = model.grid
+    Gⁿ  = timestepper.Gⁿ.e
+    σe⁻ = timestepper.Ψ⁻.e
+
+    κe = closure_fields.κe
+    Le = closure_fields.Le
+    previous_velocities = closure_fields.previous_velocities
+    tracer_index = findfirst(k -> k == :e, keys(model.tracers))
+    implicit_solver = timestepper.implicit_solver
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
+
+    FT = eltype(grid)
+    a, b = timestepper.coefficients[model.clock.stage]
+
+    Δτ = get_time_step(closure)
+
+    if isnothing(Δτ)
+        Δτ = Δt
+        M = 1
+    else
+        M = ceil(Int, Δt / Δτ) # number of substeps
+        Δτ = Δt / M
+    end
+
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
+
+    for m = 1:M
+        # Compute the linear implicit component of the RHS (closure_fields, L)...
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, tracers, buoyancy, closure_fields;
+                active_cells_map)
+
+        if m == 1
+            # The first substep carries the thickness rescaling σᵐ⁻¹/σᵐ that the others do not need.
+            launch!(arch, grid, :xyz,
+                    _ssp_substep_turbulent_kinetic_energy!,
+                    Le, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ;
+                    active_cells_map)
+        else
+            launch!(arch, grid, :xyz,
+                    _rk_euler_substep_turbulent_kinetic_energy!,
+                    Le, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ;
+                    active_cells_map)
+        end
+
+        implicit_step!(e, implicit_solver, closure,
+                       closure_fields, Val(tracer_index),
+                       model.clock,
+                       fields(model),
+                       Δτ)
+    end
+
+    launch!(arch, grid, :xyz,
+            _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b);
+            active_cells_map)
 
     return nothing
 end
@@ -316,6 +407,40 @@ end
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
         e[i, j, k] += Δτ * total_Gⁿ * active / σᶜᶜⁿ
     end
+end
+
+@kernel function _ssp_substep_turbulent_kinetic_energy!(Le, grid, closure,
+                                                        next_velocities, previous_velocities,
+                                                        tracers, buoyancy, closure_fields,
+                                                        Δτ, slow_Gⁿe)
+
+    i, j, k = @index(Global, NTuple)
+
+    e = tracers.e
+
+    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                 next_velocities, previous_velocities,
+                                 tracers, buoyancy, closure_fields)
+
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    active = !inactive_cell(i, j, k, grid)
+
+    FT = eltype(grid)
+    Δτ = convert(FT, Δτ)
+
+    @inbounds begin
+        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
+        e[i, j, k] = (σᶜᶜ⁻ * e[i, j, k] + Δτ * total_Gⁿ * active) / σᶜᶜⁿ
+    end
+end
+
+# `e` now holds the stage's Euler advance from eᵐ⁻¹, thickness-weighted by σᵐ. Fold in the cached
+# start-of-step state to complete `(σe)ᵐ = a (σe)ⁿ + b [(σe)ᵐ⁻¹ + Δt Gᵉ]`.
+@kernel function _blend_turbulent_kinetic_energy!(e, σe⁻, grid, a, b)
+    i, j, k = @index(Global, NTuple)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    @inbounds e[i, j, k] = a * σe⁻[i, j, k] / σᶜᶜⁿ + b * e[i, j, k]
 end
 
 @inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
