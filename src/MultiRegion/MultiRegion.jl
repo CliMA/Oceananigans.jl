@@ -10,7 +10,7 @@ using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU, architecture
+using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast,
     fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations
