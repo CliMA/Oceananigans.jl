@@ -1,5 +1,6 @@
 module Architectures
 
+using Adapt: Adapt
 using Reactant
 using Oceananigans
 using Oceananigans.DistributedComputations: Distributed
@@ -29,7 +30,6 @@ array_type(::ReactantState) = ConcreteRArray
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
-using Adapt: Adapt
 using OffsetArrays: OffsetArray
 const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
 on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
@@ -100,17 +100,17 @@ Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Re
 
 
 # Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray.
-# An `Adapt` adaptor: `Adapt.adapt` recurses through any struct with an `adapt_structure` method,
-# so every vertical coordinate (Oceananigans' own and ones defined downstream) is rebuilt with its
-# arrays materialized, without a method per coordinate type here. Numbers pass through.
+# `Adapt.adapt` recurses through any struct with an `adapt_structure` method, so every vertical
+# coordinate, including those defined by downstream packages, is rebuilt with its arrays materialized.
 struct ToReactant end
 
 Adapt.adapt_storage(::ToReactant, a::AbstractArray) = Reactant.to_rarray(collect(a))
 
-# Adapt rebuilds ranges from their endpoints; the grid wants them materialized like any other array.
-for R in (StepRangeLen, UnitRange, StepRange, LinRange)
-    @eval Adapt.adapt_structure(::ToReactant, r::$R) = Reactant.to_rarray(collect(r))
-end
+# Adapt rebuilds ranges from their endpoints; here they are materialized like any other array.
+Adapt.adapt_structure(::ToReactant, r::StepRangeLen) = Reactant.to_rarray(collect(r))
+Adapt.adapt_structure(::ToReactant, r::UnitRange)    = Reactant.to_rarray(collect(r))
+Adapt.adapt_structure(::ToReactant, r::StepRange)    = Reactant.to_rarray(collect(r))
+Adapt.adapt_structure(::ToReactant, r::LinRange)     = Reactant.to_rarray(collect(r))
 
 _to_reactant(x) = Adapt.adapt(ToReactant(), x)
 
