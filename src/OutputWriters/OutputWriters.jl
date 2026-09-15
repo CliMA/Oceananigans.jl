@@ -9,6 +9,7 @@ export
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
+using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
