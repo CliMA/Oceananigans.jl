@@ -1,11 +1,12 @@
 include("dependencies_for_runtests.jl")
 
 using Random
+
 using Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, DiscreteBoundaryFunction
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
-using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, DiscreteBoundaryFunction
 
 #####
 ##### Boundary / halo handling of the SplitExplicitFreeSurface barotropic corrector.
