@@ -147,10 +147,7 @@ end
 @inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ³ + ts.ζ³
 
 # `RungeKutta3TimeStepper` ticks the clock *before* `update_state!`, so here `clock.stage` is the stage
-# about to be taken and `clock.last_stage_Δt` is the Δt of the stage that just finished. Before stages 2
-# and 3 the Δt of the step in progress follows from the finished stage. Before stage 1 the upcoming step's
-# Δt is not known yet (stage 3 of the previous step just finished, or this is the first `update_state!` of
-# the run), so as for `QuasiAdamsBashforth2` we assume it equals the previous step's `clock.last_Δt`.
+# about to be taken and `clock.last_stage_Δt` is the Δt of the stage that just finished.
 @inline function adaptive_advection_timestep(timestepper::RungeKutta3TimeStepper, clock)
     stage = clock.stage
 
