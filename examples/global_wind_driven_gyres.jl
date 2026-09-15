@@ -1,10 +1,9 @@
 # # Global wind-driven gyres on a tripolar grid
 #
 # This example is a stripped-down version of the global ocean configurations used for
-# OMIP-style simulations: a [`TripolarGrid`](@ref) with realistic coastlines,
+# OMIP-style simulations: a [`TripolarGrid`](@ref) with realistic bathymetry,
 # a ``z^\star`` vertical coordinate, and a [`SplitExplicitFreeSurface`](@ref).
-# To keep it cheap enough for a laptop GPU, the ocean is a single 1-km-thick layer,
-# which makes the model a nonlinear shallow water model on a sphere with continents.
+# To keep it cheap enough for a laptop GPU, the grid is 1° with four layers.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
 # currents, the Gulf Stream and the Kuroshio, that close the wind-driven gyres.
@@ -17,7 +16,8 @@
 #
 # and the western boundary current returns that transport back across the basin.
 # Its strength should therefore scale with ``1 / \Omega``, which we check by running
-# the simulation with three planetary rotation rates.
+# the simulation with three planetary rotation rates. A fourth run with a constant
+# Coriolis parameter shows that the gyres owe their western intensification to ``β``.
 #
 # ## Install dependencies
 #
@@ -30,6 +30,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: φnode
 using NCDatasets
 using Downloads
 using Printf
@@ -43,23 +44,25 @@ arch = GPU()
 FT = Float64
 Oceananigans.defaults.FloatType = FT
 
-# ## A single-layer tripolar grid
+# ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: ½° runs in under an hour on a laptop GPU, ¼° takes about eight times longer,
-# and 1° or 2° are quick enough for a CPU. The vertical direction has a single layer of
-# depth `H`. We build it with a `MutableVerticalDiscretization` so that the layer
-# thickness can follow the free surface, which is what the ``z^\star`` coordinate does.
+# parameter: the four 1° runs below take about 20 minutes on a laptop GPU, ½° takes
+# about eight times longer, and 2° is quick enough for a CPU. The four layers thicken with depth, from 100 m at the
+# surface to 2.5 km at the bottom. We build the vertical coordinate with a
+# `MutableVerticalDiscretization` so that the layers can stretch with the free surface,
+# which is what the ``z^\star`` coordinate does.
 
-resolution = 1/2 # degrees
+resolution = 1 # degrees
 Nx = round(Int, 360 / resolution)
 Ny = Nx ÷ 2
-H = 1000 # layer depth [m]
-z = MutableVerticalDiscretization((-H, 0))
+z_faces = [-4000, -1500, -500, -100, 0]
+Nz = length(z_faces) - 1
+z = MutableVerticalDiscretization(z_faces)
 
-underlying_grid = TripolarGrid(arch; size=(Nx, Ny, 1), z, halo=(5, 5, 5))
+underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 
-# ## Realistic coastlines from ETOPO1
+# ## Bathymetry from ETOPO1
 #
 # NOAA's ERDDAP server can subsample the 1-arc-minute ETOPO1 relief on the fly,
 # so we download only every `stride`-th point: a map of the world at our resolution
@@ -77,7 +80,9 @@ elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_filename) do datase
     nomissing(dataset["altitude"][:, :]), dataset["longitude"][:], dataset["latitude"][:]
 end
 
-# We put the elevation on a `LatitudeLongitudeGrid` and interpolate it onto the tripolar grid,
+# We put the elevation on a `LatitudeLongitudeGrid`, interpolate it onto the tripolar
+# grid, and use it as the bottom height of a `GridFittedBottom`. Every cell whose center
+# lies below the sea floor is land, so the ocean is 100, 500, 1500, or 4000 m deep.
 
 etopo_grid = LatitudeLongitudeGrid(arch; size = size(elevation),
                                    longitude = (-180, 180),
@@ -87,18 +92,34 @@ etopo_grid = LatitudeLongitudeGrid(arch; size = size(elevation),
 etopo_elevation = CenterField(etopo_grid)
 set!(etopo_elevation, elevation)
 
-tripolar_elevation = Field{Center, Center, Nothing}(underlying_grid)
-interpolate!(tripolar_elevation, etopo_elevation)
-
-# and use it as a land mask: cells above sea level are land, everything else is
-# a flat `H`-deep ocean. A single layer over the real bathymetry would be a shallow
-# water model with depth steps of several kilometers between neighboring cells, so
-# we keep the bottom flat and let the coastlines set the shape of the gyres.
-
 bottom_height = Field{Center, Center, Nothing}(underlying_grid)
-set!(bottom_height, ifelse.(interior(tripolar_elevation) .< 0, -H, 0))
+interpolate!(bottom_height, etopo_elevation)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+
+# The tripolar grid is curvilinear, so we draw maps with `surface!` on the grid's own
+# longitudes and latitudes, which run from 70°E eastward around the globe, and hide the land.
+
+λ = Array(λnodes(underlying_grid, Center(), Center(), Center()))
+φ = Array(φnodes(underlying_grid, Center(), Center(), Center()))
+depth = - Array(interior(bottom_height_field(grid), :, :, 1))
+land = depth .≤ 0
+
+longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
+
+function map_axis(figure_position; title="")
+    return Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
+                aspect=DataAspect(), limits=((70, 430), (-80, 70)), xticks=longitude_ticks)
+end
+
+fig = Figure(size=(900, 500))
+ax = map_axis(fig[1, 1]; title="Ocean depth")
+sf = surface!(ax, λ, φ, 0 * λ; color=ifelse.(land, NaN, depth), colormap=:deep,
+              shading=NoShading, nan_color=:gray)
+Colorbar(fig[1, 2], sf, label="Depth [m]")
+save("bathymetry.png", fig, px_per_unit=2) #hide
+
+# ![](bathymetry.png)
 
 # ## Wind stress and bottom drag
 #
@@ -131,28 +152,46 @@ R = Oceananigans.defaults.planet_radius
 wind_stress_curl(φ) = τ₀ / R * (2 * cosd(2φ) * sind(6φ) + 6 * sind(2φ) * cosd(6φ))
 sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρₒ * 2 * rotation_rate * cosd(φ) / R)
 
-φ = -80:0.5:80
+latitudes = -80:0.5:80
 
 fig = Figure(size=(800, 300))
 ax = Axis(fig[1, 1], xlabel="Latitude [°]", ylabel="Zonal wind stress [N m⁻²]")
-lines!(ax, φ, zonal_wind_stress.(φ, τ₀))
+lines!(ax, latitudes, zonal_wind_stress.(latitudes, τ₀))
 ax = Axis(fig[1, 2], xlabel="Latitude [°]", ylabel="Sverdrup transport [m² s⁻¹]")
-lines!(ax, φ[abs.(φ) .> 5], sverdrup_transport.(φ[abs.(φ) .> 5], Ω))
+lines!(ax, latitudes[abs.(latitudes) .> 5], sverdrup_transport.(latitudes[abs.(latitudes) .> 5], Ω))
 save("wind_stress.png", fig, px_per_unit=2) #hide
 
 # ![](wind_stress.png)
 
-# The wind stress enters through the top boundary condition on `u`, and a quadratic
-# [`BulkDrag`](@ref) acts on the bottom.
+# The wind stress enters through the top boundary condition on `u`. A quadratic
+# [`BulkDrag`](@ref) acts on the sea floor, which is the bottom of the domain in the
+# deep ocean and an immersed boundary everywhere else.
 
 wind_stress = FluxBoundaryCondition(zonal_momentum_flux, parameters=(; τ₀, ρₒ))
 drag = BulkDrag(coefficient=FT(2.5e-3))
-u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag)
-v_boundary_conditions = FieldBoundaryConditions(bottom=drag)
+u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+
+# ## Surface temperature restoring
+#
+# The surface layer is restored on a 30-day time scale to a temperature that is warm at
+# the equator and cold at the poles. The flux is written in discrete form so that it can
+# read the surface temperature at each column.
+
+surface_temperature(φ) = 30 * cosd(φ)^2
+
+@inline function temperature_flux(i, j, grid, clock, fields, parameters)
+    φ = φnode(i, j, grid.Nz, grid, Center(), Center(), Center())
+    return @inbounds parameters.rate * (fields.T[i, j, grid.Nz] - surface_temperature(φ))
+end
+
+restoring_rate = FT(100 / 30days) # surface layer thickness over the restoring time scale [m s⁻¹]
+temperature_restoring = FluxBoundaryCondition(temperature_flux; discrete_form=true, parameters=(; rate=restoring_rate))
+T_boundary_conditions = FieldBoundaryConditions(top=temperature_restoring)
 
 # ## Free surface and time stepping
 #
-# The barotropic gravity wave speed ``\sqrt{g H} ≈ 100`` m/s and the smallest ocean
+# The barotropic gravity wave speed ``\sqrt{g H} ≈ 200`` m/s and the smallest ocean
 # cell set the substep size of the split-explicit free surface.
 # Given the time step `Δt`, the free surface computes the number of substeps that keeps
 # the barotropic CFL number at 0.7.
@@ -162,38 +201,40 @@ free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 
 # ## The model
 #
-# We use WENO advection schemes for momentum and for the tracer, and no explicit
-# viscosity or diffusivity. The single layer has no vertical structure, so temperature
-# is a passive tracer that shows how the gyres stir the surface ocean. It starts warm
-# at the equator and cold at the poles.
+# We use WENO advection schemes for momentum and for temperature, and no explicit
+# viscosity or diffusivity apart from a convective adjustment that mixes statically
+# unstable columns. Temperature sets the buoyancy through a linear equation of state.
+# It starts from a horizontally uniform exponential thermocline with a 1 km scale:
+# a meridional density gradient across a basin comes with a depth-integrated thermal
+# wind of hundreds of Sverdrups that would swamp the wind-driven gyres and take years
+# to adjust away, so the equator-to-pole contrast enters only through the surface restoring.
 
 momentum_advection = WENOVectorInvariant(order=5)
 tracer_advection = WENO(order=7)
+buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2e-4), constant_salinity=35)
+closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, convective_νz=1)
 
-function build_model(grid, rotation_rate)
-    coriolis = HydrostaticSphericalCoriolis(; rotation_rate)
-
-    model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface,
+function build_model(grid, coriolis)
+    model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface, buoyancy, closure,
                                         momentum_advection, tracer_advection,
                                         tracers = :T,
-                                        buoyancy = nothing,
                                         timestepper = :SplitRungeKutta3,
                                         vertical_coordinate = ZStarCoordinate(),
-                                        boundary_conditions = (u=u_boundary_conditions, v=v_boundary_conditions))
+                                        boundary_conditions = (u=u_boundary_conditions, v=v_boundary_conditions, T=T_boundary_conditions))
 
-    set!(model, T = (λ, φ, z) -> 30 * cosd(φ)^2)
+    set!(model, T = (λ, φ, z) -> 10 * exp(z / 1000))
 
     return model
 end
 
 # ## Running with three rotation rates
 #
-# The simulation runner saves the temperature and the barotropic streamfunction ``ψ``,
-# defined by ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U``
-# northward from Antarctica, every couple of days.
+# The simulation runner saves the surface temperature and the barotropic streamfunction
+# ``ψ``, defined by ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating
+# ``U`` northward from Antarctica, every couple of days.
 
-function run_gyres(grid, rotation_rate; stop_time=120days, save_interval=2days)
-    model = build_model(grid, rotation_rate)
+function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
+    model = build_model(grid, coriolis)
     simulation = Simulation(model; Δt, stop_time)
 
     wall_clock = Ref(time_ns())
@@ -201,8 +242,8 @@ function run_gyres(grid, rotation_rate; stop_time=120days, save_interval=2days)
     function progress(sim)
         u, v, w = sim.model.velocities
         elapsed = 1e-9 * (time_ns() - wall_clock[])
-        @info @sprintf("Ω = %.2e s⁻¹, iter: %d, time: %s, max|u|: %.2f m/s, wall time: %s",
-                       rotation_rate, iteration(sim), prettytime(sim), maximum(abs, u), prettytime(elapsed))
+        @info @sprintf("%s, iter: %d, time: %s, max|u|: %.2f m/s, wall time: %s",
+                       name, iteration(sim), prettytime(sim), maximum(abs, u), prettytime(elapsed))
         wall_clock[] = time_ns()
         return nothing
     end
@@ -212,9 +253,9 @@ function run_gyres(grid, rotation_rate; stop_time=120days, save_interval=2days)
     u, v, w = model.velocities
     U = Field(Integral(u, dims=3))
     ψ = Field(CumulativeIntegral(-U, dims=2))
-    T = model.tracers.T
+    T = view(model.tracers.T, :, :, grid.Nz)
 
-    filename = @sprintf("global_wind_driven_gyres_%.2e.jld2", rotation_rate)
+    filename = "global_wind_driven_gyres_$name.jld2"
 
     simulation.output_writers[:surface] = JLD2Writer(model, (; T, ψ); filename,
                                                      schedule = TimeInterval(save_interval),
@@ -228,20 +269,18 @@ function run_gyres(grid, rotation_rate; stop_time=120days, save_interval=2days)
 end
 
 rotation_rates = (Ω / 2, Ω, 2Ω)
-filenames = Dict(rotation_rate => run_gyres(grid, rotation_rate) for rotation_rate in rotation_rates)
+filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate), @sprintf("omega_%.1f", rotation_rate / Ω))
+                 for rotation_rate in rotation_rates)
 
 # ## Gyre transports
 #
 # The transport of a gyre is the difference between the streamfunction at the gyre
 # center and on the coast, so we measure it as the range of ``ψ`` over a box that
 # contains the center of the subtropical gyre and the western boundary. The Gulf Stream
-# and the Kuroshio carry that transport northward along the coast. The tripolar grid's
-# longitude runs from 70°E eastward around the globe, so we wrap it to ``[0, 360)``.
+# and the Kuroshio carry that transport northward along the coast.
 
 ψt = FieldTimeSeries(filenames[Ω], "ψ")
 times = ψt.times
-λ = λnodes(ψt.grid, Face(), Center(), Center())
-φ = φnodes(ψt.grid, Face(), Center(), Center())
 
 function gyre_transport(ψ, box)
     inside = @. (box.longitude[1] < mod(λ, 360) < box.longitude[2]) & (box.latitude[1] < φ < box.latitude[2])
@@ -305,44 +344,42 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 #
 # ## The gyres
 #
-# Finally we plot the streamfunction at the end of each simulation. The Antarctic
+# Next we plot the streamfunction at the end of each simulation. The Antarctic
 # Circumpolar Current puts a large offset between ``ψ`` on Antarctica and everywhere
-# else, so we set ``ψ = 0`` on North America. The tripolar grid is curvilinear, so we
-# draw the fields with `surface!` on the grid's own longitudes and latitudes, and hide
-# the land.
+# else, so we set ``ψ = 0`` on North America.
 
-land = Array(interior(bottom_height, :, :, 1)) .≥ 0
 north_america = argmin(@. (mod(λ, 360) - 260)^2 + (φ - 40)^2)
-longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
-function map_axis(figure_position; title="")
-    return Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
-                aspect=DataAspect(), limits=((70, 430), (-80, 70)), xticks=longitude_ticks)
+function streamfunction_map!(fig, row, filename; title, colorrange=(-100, 100))
+    streamfunctions = FieldTimeSeries(filename, "ψ")
+    ψ_end = interior(streamfunctions[end], :, :, 1)
+    streamfunction = ifelse.(land, NaN, (ψ_end .- ψ_end[north_america]) / Sv)
+    axis = map_axis(fig[row, 1]; title)
+    sf = surface!(axis, λ, φ, 0 * λ; color=streamfunction, colormap=:balance, colorrange,
+                  shading=NoShading, nan_color=:gray)
+    Colorbar(fig[row, 2], sf, label="Streamfunction [Sv]")
+    return streamfunction
 end
 
 fig = Figure(size=(900, 1000))
 
 for (row, rotation_rate) in enumerate(rotation_rates)
-    streamfunctions = FieldTimeSeries(filenames[rotation_rate], "ψ")
-    ψ_end = interior(streamfunctions[end], :, :, 1)
-    streamfunction = ifelse.(land, NaN, (ψ_end .- ψ_end[north_america]) / Sv)
-    axis = map_axis(fig[row, 1]; title=@sprintf("Ω = %.1f Ω_Earth", rotation_rate / Ω))
-    sf = surface!(axis, λ, φ, 0 * λ; color=streamfunction, colormap=:balance, colorrange=(-100, 100),
-                  shading=NoShading, nan_color=:gray)
-    row == 1 && Colorbar(fig[1:length(rotation_rates), 2], sf, label="Streamfunction [Sv]")
+    title = @sprintf("Ω = %.1f Ω_Earth", rotation_rate / Ω)
+    streamfunction_map!(fig, row, filenames[rotation_rate]; title)
 end
 
 save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](global_wind_driven_gyres.png)
 #
-# The temperature tracer shows the gyres at work: the boundary currents carry warm
-# water poleward along the western coasts and the subpolar gyres bring cold water south.
+# The surface temperature relaxes toward its restoring profile while the circulation
+# stirs it: the boundary currents bend the isotherms poleward along the western coasts
+# and the subpolar gyres pull cold water south.
 
 Tt = FieldTimeSeries(filenames[Ω], "T")
 n = Observable(1)
 temperature = @lift ifelse.(land, NaN, interior(Tt[$n], :, :, 1))
-title = @lift "Temperature after " * prettytime(times[$n])
+title = @lift "Surface temperature after " * prettytime(times[$n])
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title)
@@ -356,3 +393,41 @@ end
 nothing #hide
 
 # ![](global_wind_driven_gyres.mp4)
+#
+# ## Western intensification needs β
+#
+# Both the Sverdrup balance and the western boundary currents that close it exist
+# because the Coriolis parameter changes with latitude. To see what happens without
+# ``β``, we run the model once more with an [`FPlane`](@ref) whose Coriolis parameter
+# has the value of 30°N everywhere. A constant ``f`` has the wrong sign in the Southern
+# Hemisphere, so we only look at the northern gyres.
+
+f_plane_filename = run_gyres(grid, FPlane(latitude=30), "f_plane")
+
+# We compare the streamfunction with the run at Earth's rotation rate, and follow both
+# along 30°N across the Pacific and the Atlantic. Note the ten times larger color range
+# of the f-plane map.
+
+fig = Figure(size=(900, 1000))
+ax = Axis(fig[3, 1], xlabel="Longitude", ylabel="Streamfunction along 30°N [Sv]", xticks=longitude_ticks)
+
+along_30N = @. abs(φ - 30) < resolution / 2
+eastward = sortperm(λ[along_30N])
+
+for (row, (filename, title, colorrange)) in enumerate(((filenames[Ω], "β-plane", (-100, 100)),
+                                                        (f_plane_filename, "f-plane", (-1000, 1000))))
+    streamfunction = streamfunction_map!(fig, row, filename; title, colorrange)
+    lines!(ax, λ[along_30N][eastward], streamfunction[along_30N][eastward]; label=title)
+end
+
+axislegend(ax)
+save("f_plane_gyres.png", fig, px_per_unit=2) #hide
+
+# ![](f_plane_gyres.png)
+#
+# On the β-plane the streamfunction climbs to the gyre maximum within a few degrees of
+# the western coast and decays slowly across the rest of the basin. On the f-plane the
+# gyres are symmetric about the middle of each basin and there is no western boundary
+# current. They are also ten times stronger and still growing after four months: without
+# ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
+# friction alone can remove the vorticity it puts in.
