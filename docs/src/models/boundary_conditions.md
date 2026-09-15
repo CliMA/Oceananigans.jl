@@ -430,7 +430,7 @@ julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
 ```
 
-The same keyword is accepted by [`NormalRadiation`](@ref):
+The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):
 
 ```jldoctest
 julia> using Oceananigans

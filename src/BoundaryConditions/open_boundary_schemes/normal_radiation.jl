@@ -99,13 +99,6 @@ function Base.show(io::IO, r::AbstractRadiationScheme)
     print(io, summary(r), '\n')
     print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
     print(io, "├── outflow_timescale: ", prettysummary(r.outflow_timescale), '\n')
-    print(io, "└── use_boundary_velocity: ", r.use_boundary_velocity)
-end
-
-function Base.show(io::IO, r::NormalRadiation)
-    print(io, summary(r), '\n')
-    print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
-    print(io, "├── outflow_timescale: ", prettysummary(r.outflow_timescale), '\n')
     print(io, "├── use_boundary_velocity: ", r.use_boundary_velocity, '\n')
     print(io, "└── target_transport: ", prettysummary(r.target_transport))
 end
@@ -113,8 +106,8 @@ end
 has_target_transport(::NormalRadiation{<:Any, <:Any, <:Nothing}) = false
 has_target_transport(::NormalRadiation) = true
 
-get_target_transport(scheme::NormalRadiation, grid) = _eval_tt(scheme.target_transport, grid)
-get_target_transport(scheme::NormalRadiation) = scheme.target_transport
+get_target_transport(scheme::AbstractRadiationScheme, grid) = _eval_tt(scheme.target_transport, grid)
+get_target_transport(scheme::AbstractRadiationScheme) = scheme.target_transport
 
 const RVBC  = BoundaryCondition{<:Value{<:AbstractRadiationScheme}}
 const RNFBC = BoundaryCondition{<:NormalFlow{<:AbstractRadiationScheme}}
@@ -140,19 +133,14 @@ function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid,
     φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
     buffers = radiation_buffers(radiation, arch, FT, tangential_size)
 
-    return radiation_with_storage(radiation, φᵇ, φ₁, φ₁ˡ, buffers)
+    # every radiation scheme ends with its scheme-specific buffers followed by `target_transport`
+    return getnamewrapper(radiation)(radiation.outflow_timescale,
+                                     radiation.inflow_timescale,
+                                     radiation.use_boundary_velocity,
+                                     φᵇ, φ₁, φ₁ˡ, buffers..., radiation.target_transport)
 end
 
 radiation_buffers(radiation, arch, FT, tangential_size) = ()
-
-# `ObliqueRadiation` appends its buffers to the six shared fields; `NormalRadiation` carries its target instead.
-radiation_with_storage(radiation, φᵇ, φ₁, φ₁ˡ, buffers) =
-    getnamewrapper(radiation)(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                              φᵇ, φ₁, φ₁ˡ, buffers...)
-
-radiation_with_storage(radiation::NormalRadiation, φᵇ, φ₁, φ₁ˡ, buffers) =
-    NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                    φᵇ, φ₁, φ₁ˡ, radiation.target_transport)
 
 rebuild_classification(::Value, scheme) = Value(scheme)
 rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)

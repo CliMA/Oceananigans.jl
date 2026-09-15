@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
-using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport
+using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation
 using Oceananigans.Models: possible_field_time_series, boundary_total_area
 using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
@@ -780,7 +780,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             boundary_conditions = (; u = u_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
 
-            for Scheme in (PerturbationAdvection, NormalRadiation)
+            for Scheme in (PerturbationAdvection, NormalRadiation, ObliqueRadiation)
                 @info "  Testing targeted open boundary transport with $Scheme [$A, $FT]..."
                 test_target_transport_interface(arch, FT, Scheme)
                 test_targeted_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
