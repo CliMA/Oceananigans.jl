@@ -359,13 +359,21 @@ end
 function transfer_horizontal_field(old_data, helper_grid, bcs, LX, LY)
     TX, TY, _ = topology(helper_grid)
     Nx, Ny, _ = size(helper_grid)
-    new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions = bcs)
+    new_field = Field{LX, LY, Nothing}(helper_grid; boundary_conditions = bcs)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
-    cpu_old_data = on_architecture(CPU(), old_data)
-    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+    new_field.data[1:Ni, 1:Nj, 1] .= on_architecture(architecture(helper_grid), old_data)[1:Ni, 1:Nj]
     fill_halo_regions!(new_field)
     return deepcopy(dropdims(new_field.data, dims=3))
+end
+
+# The grid the transferred metrics are filled on. Only its size, halo, topology and — when
+# distributed — its connectivity are read; its own metrics are never touched.
+function halo_filling_grid(new_halo, grid::TripolarGrid)
+    Nx, Ny, _ = size(grid)
+    TX, TY, _ = topology(grid)
+    Hx, Hy, _ = new_halo
+    return RectilinearGrid(; size = (Nx, Ny), halo = (Hx, Hy), x = (0, 1), y = (0, 1), topology = (TX, TY, Flat))
 end
 
 function Grids.with_halo(new_halo, old_grid::TripolarGrid)
@@ -375,21 +383,17 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
 
     Nx,  Ny,  Nz  = size(old_grid)
     TX,  TY,  TZ  = topology(old_grid)
-    Hxo, Hyo, Hzo = halo_size(old_grid)
     Hxn, Hyn, Hzn = new_halo
 
     # Reconstruct vertical coordinate with new halo
     z = cpu_face_constructor_z(old_grid)
     Lz, new_z = generate_coordinate(FT, topology(old_grid), (Nx, Ny, Nz), new_halo, z, :z, 3, CPU())
 
-    # Helper grid for halo filling (same approach as the TripolarGrid constructor)
-    helper_grid = RectilinearGrid(; size = (Nx, Ny),
-                                    halo = (Hxn, Hyn),
-                                    x = (0, 1), y = (0, 1),
-                                    topology = (TX, TY, Flat))
+    helper_grid = halo_filling_grid(new_halo, old_grid)
 
-    # Boundary conditions for halo filling (same as in the TripolarGrid constructor)
-    bcs = FieldBoundaryConditions(north  = north_fold_boundary_condition(TY)(),
+    # Boundary conditions for halo filling (same as in the TripolarGrid constructor). A distributed
+    # rank's own y-topology is `Connected`, so the conformal mapping names the fold.
+    bcs = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology(old_grid.conformal_mapping))(),
                                   south  = NoFluxBoundaryCondition(),
                                   west   = Oceananigans.PeriodicBoundaryCondition(),
                                   east   = Oceananigans.PeriodicBoundaryCondition(),
