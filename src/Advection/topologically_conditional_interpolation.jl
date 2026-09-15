@@ -98,7 +98,7 @@ for bias in (:symmetric, :biased)
             @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             if bias == :biased
-                @eval @inline $alt1_interp(i, j, k, grid::$((:AGX, :AGY, :AGZ)[d]), scheme::GhostCellWENO, bias, args...) = $interp(i, j, k, grid, scheme.buffer_scheme, bias, args...)
+                @eval @inline $alt1_interp(i, j, k, grid::$((:AGX, :AGY, :AGZ)[d]), scheme::GhostCellWENO, bias, ψ, args...) = $interp(i, j, k, grid, scheme.buffer_scheme, bias, ψ, args...)
             end
 
             outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)

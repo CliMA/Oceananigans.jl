@@ -441,7 +441,7 @@ end
 @inline smoothness_differences(i, j, k, grid, scheme, bias, e,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, stencil.func, args...))
 @inline smoothness_differences(i, j, k, grid, scheme, bias, e,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑyᵃᶠᵃ, u)),
                                                                                                         weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑxᶠᵃᵃ, v)))
-                                                                                                    
+
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)

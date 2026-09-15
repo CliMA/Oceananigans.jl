@@ -225,7 +225,7 @@ for bias in (:symmetric, :biased)
             end
 
             if bias == :biased
-                @eval @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::GhostCellWENO, bias, args...) = $interp(i, j, k, ibg, scheme.buffer_scheme, bias, args...)
+                @eval @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::GhostCellWENO, bias, ψ, args...) = $interp(i, j, k, ibg, scheme.buffer_scheme, bias, ψ, args...)
             end
         end
     end

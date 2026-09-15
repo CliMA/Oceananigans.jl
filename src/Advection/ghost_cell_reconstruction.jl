@@ -14,7 +14,7 @@ the quadratic extrapolation of its three cells closest to the boundary, `c₀, c
 so that smooth data are extrapolated, while jumps and data with vanishing gradient at the boundary are mirrored.
 
 - `curvature_weight`: the weight `w` of the curvature in `θ`.
-- `monotone`: where the reconstruction uses ghost values, bound it between the upwind and downwind cells and within twice the upwind gradient of the upwind cell, 
+- `monotone`: where the reconstruction uses ghost values, bound it between the upwind and downwind cells and within twice the upwind gradient of the upwind cell,
   as in [SureshHuynh97](@citet).
 """
 struct GhostCells{S, FT}
@@ -54,9 +54,9 @@ end
 @inline upwind_stencil_length(N) = max(2N - 1, N + 2)
 
 function clamped_to_run_start(N, q)
-    if q < 1 
+    if q < 1
         return clamped_to_run_start(N, 1)
-    elseif q ≥ N 
+    elseif q ≥ N
         return :(S[$q])
     else
         return :(ifelse(Aᵃ[$(N - q)], S[$q], $(clamped_to_run_start(N, q + 1))))
@@ -64,9 +64,9 @@ function clamped_to_run_start(N, q)
 end
 
 function clamped_to_run_end(N, q)
-    if q > upwind_stencil_length(N) 
+    if q > upwind_stencil_length(N)
         return clamped_to_run_end(N, upwind_stencil_length(N))
-    elseif q ≤ N 
+    elseif q ≤ N
         return :(S[$q])
     else
         return :(ifelse(Aᵇ[$(q - N)], S[$q], $(clamped_to_run_end(N, q - 1))))
@@ -92,7 +92,7 @@ end
 function completed_cell(N, q)
     q == N && return :(S[$N])
     A, g, depth = if q < N
-        (:Aᵃ, :gᵃ, N - q) 
+        (:Aᵃ, :gᵃ, N - q)
     else
         (:Aᵇ, :gᵇ, q - N)
     end
@@ -132,8 +132,8 @@ end
     return ifelse(scheme.monotone & ghosted, ψ̃, ψ̂)
 end
 
-# Stencils with ghost points do not obey the `VelocityStencil` and `FunctionStencil`, 
-# they always treat the weno reconstruction as if there was a `DefaultStencil` 
+# Stencils with ghost points do not obey the `VelocityStencil` and `FunctionStencil`,
+# they always treat the weno reconstruction as if there was a `DefaultStencil`
 @inline smoothness(ghosted, δ, ::Nothing) = δ
 @inline smoothness(ghosted, δ, δˢ::NTuple) = ifelse(ghosted, δ, δˢ)
 @inline smoothness(ghosted, δ, δˢ::Tuple{Tuple, Tuple}) = ifelse(ghosted, (δ, δ), δˢ)
