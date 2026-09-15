@@ -1,7 +1,10 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.Utils: NormalDivision
 using Oceananigans.Advection:
+        GhostCells,
+        ghost_cell_reconstruction,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -143,6 +146,54 @@ for arch in archs
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)
             end
+        end
+    end
+
+    @testset "GhostCells boundary reconstruction" begin
+        @info "Running GhostCells boundary reconstruction tests..."
+
+        ghost_cells(; kw...) = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells(; kw...)).buffer_scheme
+
+        function reconstruct(scheme, bias, values, activity)
+            upwind_values   = bias == LeftBias ? values   : reverse(values)
+            upwind_activity = bias == LeftBias ? activity : reverse(activity)
+            upstream_run    = accumulate(&, upwind_activity[3:-1:1])
+            downstream_run  = accumulate(&, upwind_activity[5:7])
+            return ghost_cell_reconstruction(scheme, bias, upwind_values[1:7], upstream_run, downstream_run, nothing)
+        end
+
+        active = ntuple(_ -> true, 8)
+        wall   = (false, false, true, true, true, true, true, true)
+        scheme = ghost_cells()
+
+        # the values in inactive cells never enter the reconstruction
+        linear = (1e3, 1e3, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+
+        for bias in (LeftBias, RightBias)
+            @test reconstruct(scheme, bias, ntuple(_ -> 3.0, 8), wall) == 3.0
+            @test reconstruct(scheme, bias, linear, wall) ≈ 4.5
+            @test reconstruct(scheme, bias, Tuple(1.0:8.0), active) == 4.5
+        end
+
+        pulse = (0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+
+        for bias in (LeftBias, RightBias)
+            @test 0 ≤ reconstruct(scheme, bias, pulse, wall) ≤ 1
+            @test reconstruct(ghost_cells(monotone=false), bias, pulse, wall) > 1
+        end
+
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+
+        c = CenterField(ibg)
+        set!(c, 1)
+        mask_immersed_field!(c, 1e3)
+        fill_halo_regions!(c)
+
+        weno = materialize_advection(WENO(order=7, boundary_scheme=GhostCells()), ibg)
+        for j in 6:19, i in 6:19, bias in (LeftBias, RightBias)
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, weno, bias, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, weno, bias, c) ≈ 1.0
         end
     end
 
