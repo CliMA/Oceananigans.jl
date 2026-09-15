@@ -128,11 +128,10 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     barotropic_model_fields = (; U, V, η)
 
-    # a substep clock with a smaller Δτ is needed for inter-step boundary conditions to be valid
-    substep_clock = (; time = clock.time, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
-    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, substep_clock, barotropic_model_fields)
-    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, substep_clock, barotropic_model_fields)
-    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, substep_clock, barotropic_model_fields)
+    # Builds also a separate "sub-stepping" clock to account for time dependent forcing and boundary conditions
+    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, barotropic_model_fields)
+    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, barotropic_model_fields)
+    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, barotropic_model_fields)
 
     only_local_halos = fill_only_local_halos(free_surface)
 
@@ -149,11 +148,13 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args...; only_local_halos)
+            substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+
+            maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args[1:end-1]..., substep_clock, converted_η_halo_args[end]; only_local_halos)
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
 
-            maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
-            maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
+            maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args[1:end-1]..., substep_clock, converted_U_halo_args[end]; only_local_halos)
+            maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args[1:end-1]..., substep_clock, converted_V_halo_args[end]; only_local_halos)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
