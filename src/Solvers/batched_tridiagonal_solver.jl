@@ -140,22 +140,7 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
 
 """
-$(TYPEDSIGNATURES)
-
-Return `x * y`, except that a vanishing `x` masks `y` altogether, so that `0 * NaN` is `0` rather
-than `NaN`. The vertical sweep uses it for its products with the off-diagonals and with `t`, which
-vanish across an immersed boundary, so that rows decoupled from the rest of the column (inactive
-cells, whose right-hand side or diagonal holds whatever was evaluated beneath the bottom) cannot
-contaminate it with non-finite values. `ifelse` keeps the sweep free of branches.
-
-```jldoctest
-using Oceananigans.Solvers: masked_multiply
-
-masked_multiply(0.0, NaN), masked_multiply(2.0, NaN)
-
-# output
-(0.0, NaN)
-```
+# `a * b` if `a != 0`, 0 otherwise (masks away NaNs in `b`)
 """
 @inline function masked_multiply(x, y)
     xy = x * y
