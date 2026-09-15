@@ -59,9 +59,9 @@ function set_to_field!(u::ReactantField, v::ReactantField)
                       indices=Oceananigans.Fields.indices(u))
         cpu_v = Field(Oceananigans.Fields.instantiated_location(v), cpu_grid_v;
                       indices=Oceananigans.Fields.indices(v))
-        copyto!(interior(cpu_v), interior(v))
+        interior(cpu_v) .= interior(v)
         interpolate!(cpu_u, cpu_v)
-        copyto!(interior(u), interior(cpu_u))
+        interior(u) .= interior(cpu_u)
     end
     return u
 end
