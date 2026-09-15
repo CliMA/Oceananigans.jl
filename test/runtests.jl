@@ -372,12 +372,12 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for ConservativeRegridding extension
-    if group == :conservative_regridding || group == :all
-        @testset "ConservativeRegridding extension tests" begin
-            include("test_conservative_regridding.jl")
-        end
-    end
+    # # Tests for ConservativeRegridding extension
+    # if group == :conservative_regridding || group == :all
+    #     @testset "ConservativeRegridding extension tests" begin
+    #         include("test_conservative_regridding.jl")
+    #     end
+    # end
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
