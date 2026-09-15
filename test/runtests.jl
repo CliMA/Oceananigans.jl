@@ -41,6 +41,7 @@ CUDA.allowscalar() do
             include("test_lambert_conformal_conic_grid.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
+            include("test_shaved_cell_bottom.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
