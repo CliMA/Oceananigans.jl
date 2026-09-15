@@ -82,12 +82,7 @@ end
 
     # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
-        pirate_modules = (
-            Oceananigans.AbstractOperations,
-            Oceananigans.BuoyancyFormulations,
-            Oceananigans.Grids,
-            Oceananigans.Models,
-        )
+        pirate_modules = (Oceananigans.AbstractOperations,)
         @info "Testing no type piracy for module $(mod)"
         Aqua.test_piracies(mod; broken=mod in pirate_modules)
     end

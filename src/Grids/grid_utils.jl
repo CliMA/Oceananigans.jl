@@ -83,14 +83,10 @@ is restricted by `length(ind)`.
 @inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 @inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
+@inline function Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc))))
+    topo = topology(grid)
+    sz = size(grid)
+    return ntuple(Val(length(loc))) do d
         Base.@_inline_meta
         length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
     end
