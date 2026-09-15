@@ -143,28 +143,29 @@ drag = BulkDrag(coefficient=FT(2.5e-3))
 u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag)
 v_boundary_conditions = FieldBoundaryConditions(bottom=drag)
 
-# ## Free surface and time stepping
+# ## Time stepping
 #
-# The barotropic gravity wave speed ``\sqrt{g H} ≈ 100`` m/s and the smallest ocean
-# cell set the substep size of the split-explicit free surface. Given the time step
-# `Δt`, the free surface computes the number of substeps that keeps the barotropic
-# CFL number at 0.7.
+# The time step has to resolve inertial oscillations, so we shrink it when the planet
+# spins faster and keep ``f Δt`` the same for every rotation rate.
 
-Δt = 30minutes
-free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
+time_step(rotation_rate) = 30minutes * Ω / rotation_rate
 
 # ## The model
 #
-# We use WENO advection schemes for momentum and for the tracer, and no explicit
-# viscosity or diffusivity. The single layer has no vertical structure, so temperature
-# is a passive tracer that shows how the gyres stir the surface ocean. It starts warm
-# at the equator and cold at the poles.
+# The barotropic gravity wave speed ``\sqrt{g H} ≈ 100`` m/s and the smallest ocean
+# cell set the substep size of the split-explicit free surface. Given the time step,
+# the free surface computes the number of substeps that keeps the barotropic CFL
+# number at 0.7. We use WENO advection schemes for momentum and for the tracer, and
+# no explicit viscosity or diffusivity. The single layer has no vertical structure, so
+# temperature is a passive tracer that shows how the gyres stir the surface ocean.
+# It starts warm at the equator and cold at the poles.
 
 momentum_advection = WENOVectorInvariant(order=5)
 tracer_advection = WENO(order=7)
 
-function build_model(grid, rotation_rate)
+function build_model(grid, rotation_rate, Δt)
     coriolis = HydrostaticSphericalCoriolis(; rotation_rate)
+    free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 
     model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface,
                                         momentum_advection, tracer_advection,
@@ -185,7 +186,8 @@ end
 # northward from Antarctica, every few days.
 
 function run_gyres(grid, rotation_rate; stop_time=120days, save_interval=5days)
-    model = build_model(grid, rotation_rate)
+    Δt = time_step(rotation_rate)
+    model = build_model(grid, rotation_rate, Δt)
     simulation = Simulation(model; Δt, stop_time)
 
     wall_clock = Ref(time_ns())
