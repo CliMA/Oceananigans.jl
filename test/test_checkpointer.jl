@@ -3,12 +3,52 @@ include("dependencies_for_runtests.jl")
 using Glob
 using NCDatasets
 
-using Oceananigans: restore_prognostic_state!, prognostic_fields
+using Oceananigans: prognostic_state, restore_prognostic_state!, prognostic_fields
 using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+
+"""
+    test_prognostic_state_equality(test_state, true_state; atol=0)
+
+Recursively test that two nested prognostic states, as returned by `prognostic_state`,
+are equal. Their leaves are host arrays or scalars.
+"""
+test_prognostic_state_equality(test_state, true_state; atol=0) = @test test_state == true_state
+
+function test_prognostic_state_equality(test_state::Union{Tuple, NamedTuple},
+                                        true_state::Union{Tuple, NamedTuple}; atol=0)
+    @test keys(test_state) == keys(true_state)
+    for (test_value, true_value) in zip(test_state, true_state)
+        test_prognostic_state_equality(test_value, true_value; atol)
+    end
+    return nothing
+end
+
+function test_prognostic_state_equality(test_state::AbstractArray, true_state::AbstractArray; atol=0)
+    @test size(test_state) == size(true_state)
+    # Closure fields can be NaN inside immersed regions, so matching NaNs count as equal.
+    @test all(isapprox.(test_state, true_state; atol) .| (isnan.(test_state) .& isnan.(true_state)))
+    return nothing
+end
+
+function test_prognostic_state_equality(test_state::Number, true_state::Number; atol=0)
+    @test isapprox(test_state, true_state; atol)
+    return nothing
+end
+
+"""
+    test_closure_fields_equality(test_model, true_model; atol=0)
+
+Test that the checkpointed state of `test_model.closure_fields` matches that of `true_model.closure_fields`.
+"""
+function test_closure_fields_equality(test_model, true_model; atol=0)
+    test_prognostic_state_equality(prognostic_state(test_model.closure_fields),
+                                   prognostic_state(true_model.closure_fields); atol)
+    return nothing
+end
 
 function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality
@@ -57,6 +97,11 @@ function test_model_equality(test_model, true_model; atol=0)
         for name in keys(test_model.auxiliary_fields)
             @test all(isapprox.(interior(test_model.auxiliary_fields[name]), interior(true_model.auxiliary_fields[name]); atol))
         end
+    end
+
+    # Test closure fields equality
+    if hasproperty(test_model, :closure_fields)
+        test_closure_fields_equality(test_model, true_model; atol)
     end
 
     return nothing
@@ -777,7 +822,7 @@ function test_checkpointing_auxiliary_fields(arch)
     return nothing
 end
 
-function test_checkpointing_closure_fields(arch)
+function test_checkpointing_closure_fields(arch, FT)
     N = 8
     L = 1
     Δt = 0.01
@@ -788,10 +833,10 @@ function test_checkpointing_closure_fields(arch)
     S₀(x, y, z) = 35
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(L, L, L))
         return NonhydrostaticModel(grid;
-                                   closure = SmagorinskyLilly(),
-                                   buoyancy = SeawaterBuoyancy(),
+                                   closure = SmagorinskyLilly(FT),
+                                   buoyancy = SeawaterBuoyancy(FT),
                                    tracers = (:T, :S))
     end
 
@@ -806,7 +851,7 @@ function test_checkpointing_closure_fields(arch)
     set!(model, u=u₀, v=v₀, T=T₀, S=S₀)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "closure_fields_checkpointing_$(typeof(arch))"
+    prefix = "closure_fields_checkpointing_$(typeof(arch))_$(FT)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -821,6 +866,10 @@ function test_checkpointing_closure_fields(arch)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -831,7 +880,7 @@ function test_checkpointing_closure_fields(arch)
     return nothing
 end
 
-function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, closure_name)
+function test_checkpointing_smagorinsky_closure(arch, FT, timestepper, closure, closure_name)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
     Δt = 0.1
@@ -839,9 +888,9 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
     u_init(x, y, z) = sin(2π * z / Lz)
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return NonhydrostaticModel(grid; timestepper, closure,
-                                   buoyancy = SeawaterBuoyancy(),
+                                   buoyancy = SeawaterBuoyancy(FT),
                                    tracers = (:T, :S))
     end
 
@@ -858,7 +907,7 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
     set!(model, T=20, S=35)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "$(closure_name)_checkpointing_$(typeof(arch))_$(timestepper)"
+    prefix = "$(closure_name)_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -873,6 +922,10 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify closure-specific fields
@@ -898,7 +951,7 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
     return nothing
 end
 
-function test_checkpointing_ri_based_closure(arch, timestepper)
+function test_checkpointing_ri_based_closure(arch, FT, timestepper)
     Nx, Ny, Nz = 8, 8, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 60
@@ -907,10 +960,10 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
     u_init(x, y, z) = 0.1 * z / Lz
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6),
-                                           buoyancy = SeawaterBuoyancy(),
+                                           closure = RiBasedVerticalDiffusivity(FT, Cᵃᵛ=0.6),
+                                           buoyancy = SeawaterBuoyancy(FT),
                                            tracers = (:T, :S))
     end
 
@@ -925,7 +978,7 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
     set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "ri_based_checkpointing_$(typeof(arch))_$(timestepper)"
+    prefix = "ri_based_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -940,6 +993,10 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify closure field state matches reference at iteration 10
@@ -954,7 +1011,7 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
     return nothing
 end
 
-function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVerticalDiffusivity())
+function test_checkpointing_catke_closure(arch, FT, timestepper, closure=CATKEVerticalDiffusivity(FT))
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 100, 100, 100
     Δt = 0.1
@@ -963,10 +1020,10 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
     u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return HydrostaticFreeSurfaceModel(grid; timestepper,
                                            closure,
-                                           buoyancy = SeawaterBuoyancy(),
+                                           buoyancy = SeawaterBuoyancy(FT),
                                            tracers = (:T, :S))
     end
 
@@ -986,7 +1043,7 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
                      (closure isa Tuple && any(x -> x isa CATKEVerticalDiffusivity, closure)) ? "catke_etal" :
                      "some_closure"
 
-    prefix = closure_prefix * "_checkpointing_$(typeof(arch))_$(timestepper)"
+    prefix = closure_prefix * "_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -1001,6 +1058,10 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -1014,7 +1075,7 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
     return nothing
 end
 
-function test_checkpointing_tke_dissipation_closure(arch, timestepper)
+function test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 100, 100, 100
     Δt = 60
@@ -1023,10 +1084,10 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = TKEDissipationVerticalDiffusivity(),
-                                           buoyancy = SeawaterBuoyancy(),
+                                           closure = TKEDissipationVerticalDiffusivity(FT),
+                                           buoyancy = SeawaterBuoyancy(FT),
                                            tracers = (:T, :S))
     end
 
@@ -1048,7 +1109,7 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "tke_dissipation_checkpointing_$(typeof(arch))_$(timestepper)"
+    prefix = "tke_dissipation_checkpointing_$(typeof(arch))_$(FT)_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -1063,6 +1124,10 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # Compare with the model that wrote the checkpoint, before time-stepping recomputes the closure fields
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify previous_velocities state matches reference at iteration 10
@@ -2263,45 +2328,47 @@ for arch in archs
         test_checkpointing_auxiliary_fields(arch)
     end
 
-    @testset "Closure fields checkpointing [$(typeof(arch))]" begin
-        @info "  Testing closure fields checkpointing [$(typeof(arch))]..."
-        test_checkpointing_closure_fields(arch)
-    end
-
-    smagorinsky_closures = [
-        (Smagorinsky(coefficient=0.16), "Smagorinsky"),
-        (SmagorinskyLilly(), "SmagorinskyLilly"),
-        (DynamicSmagorinsky(averaging=(1, 2)), "DirectionallyAveragedDynamicSmagorinsky"),
-        (DynamicSmagorinsky(), "LagrangianAveragedDynamicSmagorinsky"),
-    ]
-
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        for (closure, name) in smagorinsky_closures
-            @testset "$name closure checkpointing [$(typeof(arch)), $timestepper]" begin
-                @info "  Testing $name closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_smagorinsky_closure(arch, timestepper, closure, name)
-            end
-        end
-    end
-
-    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
-            test_checkpointing_ri_based_closure(arch, timestepper)
+    for FT in (Float64, Float32)
+        @testset "Closure fields checkpointing [$(typeof(arch)), $FT]" begin
+            @info "  Testing closure fields checkpointing [$(typeof(arch)), $FT]..."
+            test_checkpointing_closure_fields(arch, FT)
         end
 
-        if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
-            @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
-                @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_catke_closure(arch, timestepper, CATKEVerticalDiffusivity())
-                test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(),))
-                @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(), VerticalScalarDiffusivity(κ=1e-5)))
+        smagorinsky_closures = [
+            (Smagorinsky(FT, coefficient=0.16), "Smagorinsky"),
+            (SmagorinskyLilly(FT), "SmagorinskyLilly"),
+            (DynamicSmagorinsky(FT, averaging=(1, 2)), "DirectionallyAveragedDynamicSmagorinsky"),
+            (DynamicSmagorinsky(FT), "LagrangianAveragedDynamicSmagorinsky"),
+        ]
+
+        for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+            for (closure, name) in smagorinsky_closures
+                @testset "$name closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
+                    @info "  Testing $name closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                    test_checkpointing_smagorinsky_closure(arch, FT, timestepper, closure, name)
+                end
+            end
+        end
+
+        for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+            @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
+                @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                test_checkpointing_ri_based_closure(arch, FT, timestepper)
             end
 
-            @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
-                @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_tke_dissipation_closure(arch, timestepper)
+            if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
+                @testset "CATKE closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
+                    @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                    test_checkpointing_catke_closure(arch, FT, timestepper, CATKEVerticalDiffusivity(FT))
+                    test_checkpointing_catke_closure(arch, FT, timestepper, (CATKEVerticalDiffusivity(FT),))
+                    @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                    test_checkpointing_catke_closure(arch, FT, timestepper, (CATKEVerticalDiffusivity(FT), VerticalScalarDiffusivity(FT, κ=1e-5)))
+                end
+
+                @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
+                    @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                    test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
+                end
             end
         end
     end
