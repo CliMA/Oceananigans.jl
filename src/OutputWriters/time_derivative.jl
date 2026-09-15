@@ -22,14 +22,14 @@ mutable struct TimeDerivative{O, R, T, FT}
           operand :: O
          previous :: R
     previous_time :: T
-    safety_factor :: FT
+    maximum_time_step_growth :: FT
 end
 
 materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing; safety_factor=1.2)
+    TimeDerivative(operand, model=nothing; maximum_time_step_growth=1.2)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -46,7 +46,9 @@ reductions are materialized into a `Field` on construction. Δt is measured in s
 
 An output writer updates a `TimeDerivative` among its outputs through a
 [`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
-to use one without a writer. Field operations are forwarded to `result`, so `2 * ∂ₜc`
+to use one without a writer. The writer's next actuation is anticipated by assuming that the
+time step grows by at most a factor `maximum_time_step_growth` in one iteration, as described
+in [`PrecedingIterations`](@ref). Field operations are forwarded to `result`, so `2 * ∂ₜc`
 builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
 
 Example
@@ -87,7 +89,7 @@ JLD2Writer scheduled on TimeInterval(1 second):
 └── file size: 0 bytes (file not yet created)
 ```
 """
-function TimeDerivative(operand, model=nothing; safety_factor = 1.2)
+function TimeDerivative(operand, model=nothing; maximum_time_step_growth = 1.2)
     operand = materialize_operand(operand)
 
     result = similar_field(operand)
@@ -95,7 +97,7 @@ function TimeDerivative(operand, model=nothing; safety_factor = 1.2)
 
     previous_time = isnothing(model) ? zero(defaults.FloatType) : model.clock.time
 
-    derivative = TimeDerivative(result, operand, previous, previous_time, safety_factor)
+    derivative = TimeDerivative(result, operand, previous, previous_time, maximum_time_step_growth)
 
     isnothing(model) || initialize!(derivative, model)
 

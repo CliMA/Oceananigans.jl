@@ -352,11 +352,11 @@ restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 
 struct PrecedingIterations{S, FT} <: AbstractSchedule
     parent :: S
-    safety_factor :: FT
+    maximum_time_step_growth :: FT
 end
 
 """
-    PrecedingIterations(parent_schedule; safety_factor=1.2)
+    PrecedingIterations(parent_schedule; maximum_time_step_growth=1.2)
 
 Return a `schedule::PrecedingIterations` that actuates both when `parent_schedule` actuates,
 and at the iteration immediately preceding the actuation of `parent_schedule`. This is the
@@ -370,22 +370,22 @@ schedule actuates every iteration, which costs extra evaluations but never misse
 `parent_schedule` is copied, because actuating a schedule advances it: sharing one with an
 output writer would consume the writer's actuation before it fires.
 
-For a time-based `parent_schedule`, the next actuation is anticipated by comparing against
-`safety_factor * clock.last_Δt`, so `safety_factor` must exceed the factor by which an
-adaptive time step can grow in one iteration — `TimeStepWizard` limits this to `max_change`,
-which defaults to `1.1`, and the default `safety_factor = 1.2` exceeds it with margin for the
-floating point comparison. A larger `safety_factor` only costs extra actuations, whereas one
-that is too small widens the interval a difference is taken over.
+For a time-based `parent_schedule`, the next actuation is anticipated by assuming that the
+time step grows by at most a factor `maximum_time_step_growth` in one iteration: `TimeStepWizard`
+limits this growth to `max_change`, which defaults to `1.1`, and the default
+`maximum_time_step_growth = 1.2` exceeds it with margin for the floating point comparison.
+A larger value only costs extra actuations, whereas one that is too small widens the interval
+a difference is taken over.
 """
-function PrecedingIterations(parent_schedule::AbstractSchedule; safety_factor = 1.2)
+function PrecedingIterations(parent_schedule::AbstractSchedule; maximum_time_step_growth = 1.2)
     S = typeof(parent_schedule)
-    FT = typeof(safety_factor)
-    return PrecedingIterations{S, FT}(deepcopy(parent_schedule), safety_factor)
+    FT = typeof(maximum_time_step_growth)
+    return PrecedingIterations{S, FT}(deepcopy(parent_schedule), maximum_time_step_growth)
 end
 
 function (schedule::PrecedingIterations)(model)
     schedule.parent(model) && return true
-    return actuates_next_iteration(schedule.parent, model.clock, schedule.safety_factor)
+    return actuates_next_iteration(schedule.parent, model.clock, schedule.maximum_time_step_growth)
 end
 
 # Delegate so that the copied parent is initialized exactly as the schedule it was copied
@@ -395,16 +395,16 @@ initialize!(schedule::PrecedingIterations, model) = initialize!(schedule.parent,
 # Actuating more often than necessary is harmless, while missing the iteration before the
 # parent actuates silently widens the interval a difference is taken over. Schedules whose
 # next actuation cannot be anticipated therefore fall back to actuating every iteration.
-actuates_next_iteration(schedule, clock, safety_factor) = true
+actuates_next_iteration(schedule, clock, maximum_time_step_growth) = true
 
-actuates_next_iteration(schedule::IterationInterval, clock, safety_factor) =
+actuates_next_iteration(schedule::IterationInterval, clock, maximum_time_step_growth) =
     (clock.iteration + 1 - schedule.offset) % schedule.interval == 0
 
-function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, clock, safety_factor)
+function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, clock, maximum_time_step_growth)
     t★ = next_actuation_time(schedule)
     t★ === Inf && return false
 
-    return time_difference_seconds(t★, clock.time) <= safety_factor * clock.last_Δt
+    return time_difference_seconds(t★, clock.time) <= maximum_time_step_growth * clock.last_Δt
 end
 
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =

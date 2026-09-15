@@ -300,7 +300,7 @@ function add_dependency!(sim, derivative::TimeDerivative, schedule)
     callbacks = sim.callbacks
     if !any(cb -> cb.func === derivative, values(callbacks))
         name = next_dependency_name("TimeDerivative", keys(callbacks))
-        callbacks[name] = Callback(derivative, PrecedingIterations(schedule; derivative.safety_factor))
+        callbacks[name] = Callback(derivative, PrecedingIterations(schedule; derivative.maximum_time_step_growth))
     end
 end
 
