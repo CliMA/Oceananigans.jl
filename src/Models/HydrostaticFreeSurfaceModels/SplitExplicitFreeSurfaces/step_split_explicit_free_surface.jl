@@ -1,20 +1,18 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, GravityWaveRadiation, has_target_transport, get_target_transport
+using Oceananigans.BoundaryConditions: GWNFBC, has_target_transport, get_target_transport
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
 #####
 
-const FlatherBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
-
 # Multi-region fields carry a `MultiRegionObject` of conditions, which cannot hold a target.
 side_condition(bcs::FieldBoundaryConditions, side) = getproperty(bcs, side)
 side_condition(bcs, side) = nothing
 
 targeted_side(bc) = false
-targeted_side(bc::FlatherBC) = has_target_transport(bc.classification.scheme)
+targeted_side(bc::GWNFBC) = has_target_transport(bc.classification.scheme)
 
 has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
@@ -52,7 +50,7 @@ side_transports(U, V, grid) = (west  = side_transport(side_condition(U.boundary_
 
 side_transport(bc, field, grid, side) = nothing
 
-function side_transport(bc::FlatherBC, field, grid, side)
+function side_transport(bc::GWNFBC, field, grid, side)
     has_target_transport(bc.classification.scheme) || return nothing
     wet_length = face_wet_length(field, grid, side)
     wet_length > 0 || return nothing # a fully dry side carries no transport
