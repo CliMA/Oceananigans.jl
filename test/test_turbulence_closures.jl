@@ -698,7 +698,7 @@ end
         no_forcing(i, j, k, grid, clock, fields) = zero(grid)
 
         function implicitly_diffused_tracer(grid, forcing)
-            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=0.3)
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), eltype(grid); κ=0.3)
             model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, buoyancy=nothing,
                                                 forcing=(; c=Forcing(forcing, discrete_form=true)))
             set!(model, c=(x, y, z) -> z)
@@ -708,13 +708,14 @@ end
             return Array(interior(model.tracers.c))
         end
 
-        for arch in archs
+        for arch in archs, FT in float_types
+            @info "    Testing vertically-implicit diffusion beneath an immersed bottom [$arch, $FT]..."
             Nx, Ny, Nz = 3, 2, 8
-            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Nx), y=(0, Ny), z=(-Nz, 0),
+            underlying_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, Nx), y=(0, Ny), z=(-Nz, 0),
                                               topology=(Periodic, Periodic, Bounded))
 
             # Columns without immersed cells, with their lower halves immersed, and entirely immersed
-            bottom(x, y) = ifelse(x < 1, -Nz - 1, ifelse(x < 2, -Nz / 2, 0))
+            bottom(x, y) = ifelse(x < 1, -Nz - 1, ifelse(x < 2, -(Nz ÷ 2), 0))
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
 
             immersed = compute!(Field(KernelFunctionOperation{Center, Center, Center}(immersed_cell, grid)))
@@ -727,7 +728,7 @@ end
             @test c_nan[wet] == c_ref[wet]
 
             # The half-immersed column sees the same diffusion problem as a grid whose bottom lies at its immersed bottom
-            half_grid = RectilinearGrid(arch, size=(1, 1, Nz ÷ 2), x=(0, 1), y=(0, 1), z=(-Nz / 2, 0),
+            half_grid = RectilinearGrid(arch, FT, size=(1, 1, Nz ÷ 2), x=(0, 1), y=(0, 1), z=(-(Nz ÷ 2), 0),
                                         topology=(Periodic, Periodic, Bounded))
             c_half = implicitly_diffused_tracer(half_grid, no_forcing)
             @test c_ref[2, 1, Nz÷2+1:Nz] ≈ c_half[1, 1, :]

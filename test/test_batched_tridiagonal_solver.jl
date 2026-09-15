@@ -94,15 +94,15 @@ end
 
 # Garbage rows have non-finite diagonals and right-hand sides but vanishing couplings, like inactive
 # cells across an immersed boundary; the remaining rows must still solve their own, smaller system.
-function can_isolate_decoupled_rows(arch, Nx, Ny, Nz; garbage_end = :bottom)
+function can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end = :bottom)
     ArrayType = array_type(arch)
 
-    a = rand(Nx, Ny, Nz-1)
-    b = 3 .+ rand(Nx, Ny, Nz) # +3 to ensure diagonal dominance.
-    c = rand(Nx, Ny, Nz-1)
-    f = rand(Nx, Ny, Nz)
+    a = rand(FT, Nx, Ny, Nz-1)
+    b = 3 .+ rand(FT, Nx, Ny, Nz) # +3 to ensure diagonal dominance.
+    c = rand(FT, Nx, Ny, Nz-1)
+    f = rand(FT, Nx, Ny, Nz)
 
-    expected_solution = zeros(Nx, Ny, Nz)
+    expected_solution = zeros(FT, Nx, Ny, Nz)
     remaining = falses(Nx, Ny, Nz)
 
     for i = 1:Nx, j = 1:Ny
@@ -127,18 +127,18 @@ function can_isolate_decoupled_rows(arch, Nx, Ny, Nz; garbage_end = :bottom)
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
                                         upper_diagonal = c)
 
-    ϕ = zeros(Nx, Ny, Nz) |> ArrayType
+    ϕ = zeros(FT, Nx, Ny, Nz) |> ArrayType
 
     solve!(ϕ, btsolver, f)
     ϕ = Array(ϕ)
 
-    return all(isfinite, ϕ[remaining]) && all(ϕ[remaining] .≈ expected_solution[remaining])
+    return all(isfinite, ϕ[remaining]) && ϕ[remaining] ≈ expected_solution[remaining]
 end
 
 @testset "Batched tridiagonal solvers" begin
@@ -159,8 +159,8 @@ end
                 end
             end
 
-            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
-                @test can_isolate_decoupled_rows(arch, Nx, Ny, Nz; garbage_end)
+            for FT in float_types, Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
+                @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
             end
         end
     end
