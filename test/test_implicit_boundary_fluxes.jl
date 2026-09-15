@@ -2,7 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans
 using Oceananigans: PrescribedVelocityFields
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity,
+    immersed_bottom_facet, immersed_top_facet
+using Oceananigans.Grids: Center, Face
 
 #####
 ##### A single column relaxed by a surface drag flux J = λ (cᵦ − c★), with β = λ Δt / Δz. An explicit
@@ -98,6 +100,12 @@ function stepped_bottom_drag(arch, Δt; implicit, μ=0.1)
     return Array(interior(model.velocities.u))
 end
 
+# A single column whose two topmost cells are solid, so the fluid meets an immersed ceiling.
+function ceiling_column(arch)
+    underlying_grid = RectilinearGrid(arch; size=6, z=(0, 6), topology=(Flat, Flat, Bounded))
+    return ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(z -> z > 4))
+end
+
 @testset "Implicit-explicit flux boundary conditions" begin
     for arch in archs
         @testset "Tracer drag [$(typeof(arch))]" begin
@@ -158,6 +166,23 @@ end
             explicit = stepped_bottom_drag(arch, 1e-3; implicit=false)
             implicit = stepped_bottom_drag(arch, 1e-3; implicit=true)
             @test isapprox(implicit, explicit; atol=1e-7)  # μ Δt = 1e-4, so the schemes differ by O(1e-8)
+        end
+
+        @testset "Immersed facets follow the vertical location [$(typeof(arch))]" begin
+            grid = ceiling_column(arch)
+            c, f = Center(), Face()
+
+            # Cells 1-4 are fluid: the ceiling is face 5 for centers and center 5 for the w-face control volume.
+            @test [immersed_top_facet(1, 1, k, grid, c, c, c) for k in 1:4] == [false, false, false, true]
+            @test [immersed_top_facet(1, 1, k, grid, c, c, f) for k in 1:5] == [false, false, false, false, true]
+            @test !any(immersed_bottom_facet(1, 1, k, grid, c, c, c) for k in 1:4)
+            @test !any(immersed_bottom_facet(1, 1, k, grid, c, c, f) for k in 1:5)
+        end
+
+        @testset "Implicit-explicit flux on a z-face field [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4))
+            @test_throws ArgumentError NonhydrostaticModel(grid;
+                boundary_conditions=(; w=FieldBoundaryConditions(top=IMEXFluxBoundaryCondition(0.0, 0.1))))
         end
     end
 end
