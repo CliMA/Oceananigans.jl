@@ -19,7 +19,7 @@ using Dates: value
                                filename = "test_zarr_nt",
                                schedule = TimeInterval(1),
                                dir = ".",
-                               overwrite_existing = true)
+                               overwrite_files = true)
         @test writer_nt isa ZarrWriter
         @test length(writer_nt.outputs) == 3
 
@@ -29,7 +29,7 @@ using Dates: value
                                  filename = "test_zarr_dict",
                                  schedule = IterationInterval(1),
                                  dir = ".",
-                                 overwrite_existing = true)
+                                 overwrite_files = true)
         @test writer_dict isa ZarrWriter
         @test length(writer_dict.outputs) == 2
 
@@ -41,7 +41,7 @@ using Dates: value
                                  indices = (:, :, 1),
                                  with_halos = false,
                                  array_type = Array{Float64},
-                                 overwrite_existing = true,
+                                 overwrite_files = true,
                                  verbose = true,
                                  part = 1,
                                  chunks = (4, 4, 1, 1),
@@ -57,7 +57,7 @@ using Dates: value
         writer_dict_store = ZarrWriter(model, (; u=model.velocities.u);
                                        store = dict_store,
                                        schedule = TimeInterval(1),
-                                       overwrite_existing = true)
+                                       overwrite_files = true)
         @test writer_dict_store isa ZarrWriter
         @test writer_dict_store.store === dict_store
 
@@ -115,7 +115,7 @@ end
                                                        filename = "test_zarr_roundtrip",
                                                        dir = ".",
                                                        schedule = IterationInterval(1),
-                                                       overwrite_existing = true,
+                                                       overwrite_files = true,
                                                        with_halos = false,
                                                        global_attributes = Dict("title" => "CF interoperability test"),
                                                        output_attributes = Dict("c" => Dict("standard_name" => "test_tracer")))
@@ -183,7 +183,7 @@ end
             ZarrWriter(model, (; c=model.tracers.c);
                        filename=filepath,
                        schedule=IterationInterval(1),
-                       overwrite_existing=true,
+                       overwrite_files=true,
                        include_grid_metrics=false)
         run!(simulation)
 
@@ -247,7 +247,7 @@ end
                        filename = "test_zarr_ops",
                        dir = ".",
                        schedule = IterationInterval(1),
-                       overwrite_existing = true,
+                       overwrite_files = true,
                        with_halos = false,
                        dimensions = Dict("scalar_f" => (), "profile_f" => ("z_aac",)))
 
@@ -256,7 +256,7 @@ end
                        filename = "test_zarr_wta",
                        dir = ".",
                        schedule = AveragedTimeInterval(1.0, window=1.0),
-                       overwrite_existing = true,
+                       overwrite_files = true,
                        with_halos = false)
 
         run!(simulation)
@@ -318,7 +318,7 @@ end
                        filename = "test_zarr_bad",
                        dir = ".",
                        schedule = IterationInterval(1),
-                       overwrite_existing = true)
+                       overwrite_files = true)
         @test_throws ArgumentError run!(simulation2)
 
         rm(zarrpath; recursive=true, force=true)
@@ -354,7 +354,7 @@ using Oceananigans.Fields: Field
                                                        filename = "test_zarr_grid",
                                                        dir = ".",
                                                        schedule = IterationInterval(1),
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
         run!(simulation)
 
         # `grid/` subgroup exists for single-grid writer (no suffix)
@@ -395,7 +395,7 @@ using Oceananigans.Fields: Field
                                                        filename = "test_zarr_multigrid",
                                                        dir = ".",
                                                        schedule = IterationInterval(1),
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
         run!(simulation2)
 
         gm = Zarr.zopen(multi_path)
@@ -446,7 +446,7 @@ end
                                                        filename = "test_zarr_fts",
                                                        dir = ".",
                                                        schedule = IterationInterval(1),
-                                                       overwrite_existing = true,
+                                                       overwrite_files = true,
                                                        with_halos = false)
         run!(simulation)
 
@@ -503,7 +503,7 @@ end
                                                   filename = "test_zarr_append",
                                                   dir = ".",
                                                   schedule = IterationInterval(1),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   with_halos = false)
         run!(sim1)
         @test isdir(zarrpath)
@@ -517,7 +517,7 @@ end
                                                   filename = "test_zarr_append",
                                                   dir = ".",
                                                   schedule = IterationInterval(1),
-                                                  overwrite_existing = false,        # APPEND
+                                                  overwrite_files = false,        # APPEND
                                                   with_halos = false)
         run!(sim2)
 
@@ -539,7 +539,7 @@ end
                                 filename = "test_zarr_append",
                                 dir = ".",
                                 schedule = IterationInterval(1),
-                                overwrite_existing = false,
+                                overwrite_files = false,
                                 array_type = Array{Float64})
         @test_throws ArgumentError Oceananigans.initialize!(bad_writer, bad_model)
 
@@ -566,7 +566,7 @@ end
         sim.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u);
                                                  store = dict_store,
                                                  schedule = IterationInterval(1),
-                                                 overwrite_existing = false)
+                                                 overwrite_files = false)
         run!(sim)
         g_dict = Zarr.zopen(dict_store)
         @test "time" in keys(g_dict.arrays)
@@ -587,7 +587,7 @@ end
                                                   filename = "test_zarr_zip",
                                                   dir = ".",
                                                   schedule = IterationInterval(1),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
         run!(sim2)
         open(zippath, "w") do io
             Zarr.writezip(io, sim2.output_writers[:fields].store)
@@ -653,7 +653,7 @@ function zarr_round_trip(grid; tag::String, with_halos = false)
                        filename,
                        dir=tmp,
                        schedule=IterationInterval(1),
-                       overwrite_existing=true,
+                       overwrite_files=true,
                        with_halos)
         run!(simulation)
         field_time_series = FieldTimeSeries(path, "T"; architecture=architecture(grid))
@@ -778,7 +778,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
                                                         filename = "test_zarr_tripolar",
                                                         dir = ".",
                                                         schedule = IterationInterval(1),
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         with_halos = false)
         run!(simulation)
 
@@ -866,7 +866,7 @@ guarding_scalar_indexing(f, arch) = f()
                                                       dir = directory,
                                                       schedule = IterationInterval(1),
                                                       with_halos,
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
 
         guarding_scalar_indexing(arch) do
             run!(simulation)
