@@ -84,6 +84,14 @@ function times_x_derivative(a, b, location, i, j, k, answer)
     return @allowscalar b∇a[i, j, k] == answer
 end
 
+# Operators with a location tuple must not capture calls without Oceananigans operands
+# (https://github.com/CliMA/Oceananigans.jl/issues/5601).
+@testset "No dispatch on Base Tuple operators" begin
+    @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
+    @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
+    @test_throws MethodError Base.:+((Center(), Center(), Center()), 1, 2)
+end
+
 for arch in archs
     A = typeof(arch)
     @testset "Abstract operations [$A]" begin

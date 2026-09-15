@@ -85,14 +85,6 @@ end
         @info "Testing no type piracy for module $(mod)"
         Aqua.test_piracies(mod)
     end
-
-    # Operators with a location tuple must not capture calls without Oceananigans operands
-    # (https://github.com/CliMA/Oceananigans.jl/issues/5601).
-    @testset "No dispatch on Base Tuple operators" begin
-        @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
-        @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
-        @test_throws MethodError Base.:+((Center(), Center(), Center()), 1, 2)
-    end
 end
 
 @testset "ExplicitImports" begin
