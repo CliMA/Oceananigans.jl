@@ -4,7 +4,9 @@ using Statistics
 using NCDatasets
 
 using Dates: Millisecond
+using OrderedCollections: OrderedDict
 using Oceananigans: write_output!
+using Oceananigans.OutputWriters: time_average_outputs
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
@@ -217,6 +219,36 @@ function test_windowed_time_averaging_simulation(model)
     return nothing
 end
 
+function test_time_average_outputs_containers(model)
+    u, v, w = model.velocities
+    schedule = AveragedTimeInterval(4, window=2)
+
+    named_tuple_outputs = (; w, u)
+    dict_outputs = Dict("w" => w, "u" => u)
+    ordered_outputs = OrderedDict("w" => w, "u" => u)
+
+    for outputs in (named_tuple_outputs, dict_outputs, ordered_outputs)
+        averaged_schedule, averaged_outputs = time_average_outputs(schedule, outputs, model)
+        @test averaged_schedule isa TimeInterval
+        @test averaged_schedule.interval == 4
+        @test Set(keys(averaged_outputs)) == Set(keys(outputs))
+        @test all(output isa WindowedTimeAverage for output in values(averaged_outputs))
+    end
+
+    _, averaged_ordered_outputs = time_average_outputs(schedule, ordered_outputs, model)
+    @test collect(keys(averaged_ordered_outputs)) == ["w", "u"]
+
+    ordered_writer = NetCDFWriter(model, ordered_outputs,
+                                  filename = "ordered_time_average_test.nc",
+                                  schedule = AveragedTimeInterval(4, window=2))
+
+    @test ordered_writer.schedule isa TimeInterval
+    @test collect(keys(ordered_writer.outputs)) == ["w", "u"]
+    @test all(output isa WindowedTimeAverage for output in values(ordered_writer.outputs))
+
+    return nothing
+end
+
 #####
 ##### Run output writer tests!
 #####
@@ -268,6 +300,7 @@ end
         @testset "Time averaging of output [$(typeof(arch))]" begin
             @info "    Testing time averaging of output [$(typeof(arch))]..."
             test_windowed_time_averaging_simulation(model)
+            test_time_average_outputs_containers(model)
         end
     end
 end

@@ -6,23 +6,5 @@
 @inline _fill_bottom_halo!(i, j, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
 @inline    _fill_top_halo!(i, j, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
-@inline function fill_halo_event!(c, kernel!, bcs::Tuple{<:NFBC, <:NFBC}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fill_normal_flow_bcs
-        return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
-    end
-    return nothing
-end
-
-@inline function fill_halo_event!(c, kernel!, bcs::Tuple{<:NFBC}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fill_normal_flow_bcs
-        return kernel!(c, bcs[1], loc, grid, Tuple(args))
-    end
-    return nothing
-end
-
-@inline function fill_halo_event!(c, kernel!, bc::NFBC, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
-    if fill_normal_flow_bcs
-        return kernel!(c, bc, loc, grid, Tuple(args))
-    end
-    return nothing
-end
+# Normal-flow halos are skipped when `fill_normal_flow_bcs=false`
+@inline fills_halo(::NFBC, fill_normal_flow_bcs) = fill_normal_flow_bcs

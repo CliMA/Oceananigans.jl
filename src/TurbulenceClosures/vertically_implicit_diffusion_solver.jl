@@ -4,7 +4,7 @@ using Oceananigans.Advection: implicit_advection_upper_diagonal,
 using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient, needs_implicit_solver
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
@@ -157,10 +157,10 @@ end
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     active = !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
-    # `immersed_inactive_node` is false outside the domain, so a column wet to `k = 1` or `k = Nz`
+    # `immersed_peripheral_node` is false on the domain boundary, so a column wet to `k = 1` or `k = Nz`
     # sees no immersed face there and the domain boundary condition is counted once.
-    on_bottom = active & immersed_inactive_node(i, j, k-1, grid, ℓx, ℓy, ℓz)
-    on_top    = active & immersed_inactive_node(i, j, k+1, grid, ℓx, ℓy, ℓz)
+    on_bottom = active & immersed_peripheral_node(i, j, k,   grid, ℓx, ℓy, f)
+    on_top    = active & immersed_peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 
     λᵇ = immersed_implicit_flux_coefficient(immersed_bc.bottom, i, j, k, grid, clk, fields)
     λᵗ = immersed_implicit_flux_coefficient(immersed_bc.top,    i, j, k, grid, clk, fields)

@@ -217,6 +217,7 @@ pages = [
         "Quick Start" => "quick_start.md",
         "Units" => "units.md",
         "Grids" => "grids.md",
+        "Immersed boundaries" => "immersed_boundaries.md",
         "Fields" => "fields.md",
         "Operations" => "operations.md",
         "Simulation Tips" => "simulation_tips.md",

@@ -225,7 +225,7 @@ end
 
 gather_grid_metrics(grid::ImmersedBoundaryGrid, args...; kw...) = gather_grid_metrics(grid.underlying_grid, args...; kw...)
 
-const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
+const PCBorGFBIBG = Union{GFBIBG, PCBIBG, SCBIBG}
 
 # `peripheral_node` and `inactive_node` masks, at the four locations of the C-grid variables.
 function immersed_node_fields(grid, indices)
