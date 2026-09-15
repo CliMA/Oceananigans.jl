@@ -1,7 +1,7 @@
-using Oceananigans: Oceananigans
+using Oceananigans: Oceananigans, Center
 using Aqua: Aqua
 using ExplicitImports: ExplicitImports
-using Test: @testset, @test, detect_ambiguities
+using Test: @testset, @test, @test_throws, detect_ambiguities
 
 # Helper function to get all the submodules of a given module.
 function walk_submodules!(result, visited, mod::Module)
@@ -82,9 +82,16 @@ end
 
     # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
-        pirate_modules = (Oceananigans.AbstractOperations,)
         @info "Testing no type piracy for module $(mod)"
-        Aqua.test_piracies(mod; broken=mod in pirate_modules)
+        Aqua.test_piracies(mod)
+    end
+
+    # Operators with a location tuple must not capture calls without Oceananigans operands
+    # (https://github.com/CliMA/Oceananigans.jl/issues/5601).
+    @testset "No dispatch on Base Tuple operators" begin
+        @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
+        @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
+        @test_throws MethodError Base.:+((Center(), Center(), Center()), 1, 2)
     end
 end
 
