@@ -62,7 +62,7 @@ function test_model_equality(test_model, true_model; atol=0)
     return nothing
 end
 
-function test_minimal_restore(arch, FT, pickup_method, model_type)
+function test_minimal_restore(arch, FT, model_type)
     N = 16
     L = 50
 
@@ -101,42 +101,48 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     simulation = nothing
     checkpointer = nothing
 
-    new_grid = RectilinearGrid(arch, FT,
-                               size = (N, N, N),
-                               topology = (Periodic, Bounded, Bounded),
-                               extent = (L, L, L))
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
+            @info "  Testing minimal restore [$model_type, $pickup_method] [$(typeof(arch))]..."
 
-    if model_type == :nonhydrostatic
-        new_model = NonhydrostaticModel(new_grid)
-    elseif model_type == :hydrostatic
-        new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+            new_grid = RectilinearGrid(arch, FT,
+                                       size = (N, N, N),
+                                       topology = (Periodic, Bounded, Bounded),
+                                       extent = (L, L, L))
+
+            if model_type == :nonhydrostatic
+                new_model = NonhydrostaticModel(new_grid)
+            elseif model_type == :hydrostatic
+                new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+            end
+
+            new_stop_time = 4.0
+            new_checkpoint_interval = 0.5
+            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
+
+            new_checkpointer = Checkpointer(new_model;
+                                            schedule = TimeInterval(new_checkpoint_interval),
+                                            prefix = prefix,
+                                            cleanup = false,
+                                            verbose = true)
+
+            new_simulation.output_writers[:checkpointer] = new_checkpointer
+
+            if pickup_method == :boolean
+                @test_nowarn set!(new_simulation; checkpoint=:latest)
+            elseif pickup_method == :iteration
+                @test_nowarn set!(new_simulation; iteration=3)
+            elseif pickup_method == :filepath
+                @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+            end
+
+            @test iteration(new_simulation) == 3
+            @test time(new_simulation) == 3.0
+
+            @test new_simulation.stop_time == new_stop_time
+            @test new_checkpointer.schedule.interval == new_checkpoint_interval
+        end
     end
-
-    new_stop_time = 4.0
-    new_checkpoint_interval = 0.5
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
-
-    new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(new_checkpoint_interval),
-                                    prefix = prefix,
-                                    cleanup = false,
-                                    verbose = true)
-
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
-
-    if pickup_method == :boolean
-        @test_nowarn set!(new_simulation; checkpoint=:latest)
-    elseif pickup_method == :iteration
-        @test_nowarn set!(new_simulation; iteration=3)
-    elseif pickup_method == :filepath
-        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
-    end
-
-    @test iteration(new_simulation) == 3
-    @test time(new_simulation) == 3.0
-
-    @test new_simulation.stop_time == new_stop_time
-    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -222,7 +228,7 @@ function test_thermal_bubble_checkpointing(arch, timestepper, model_type::Symbol
     return nothing
 end
 
-function test_minimal_restore_shallow_water(arch, FT, pickup_method)
+function test_minimal_restore_shallow_water(arch, FT)
     N = 16
     L = 50
 
@@ -257,37 +263,43 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
     simulation = nothing
     checkpointer = nothing
 
-    new_grid = RectilinearGrid(arch, FT,
-                               size = (N, N),
-                               topology = (Periodic, Periodic, Flat),
-                               extent = (L, L))
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Minimal restore shallow water [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing minimal restore shallow water [$(typeof(arch)), $(pickup_method)]..."
 
-    new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
-    new_stop_time = 4.0
-    new_checkpoint_interval = 0.5
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
+            new_grid = RectilinearGrid(arch, FT,
+                                       size = (N, N),
+                                       topology = (Periodic, Periodic, Flat),
+                                       extent = (L, L))
 
-    new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(new_checkpoint_interval),
-                                    prefix = prefix,
-                                    cleanup = false,
-                                    verbose = true)
+            new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
+            new_stop_time = 4.0
+            new_checkpoint_interval = 0.5
+            new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
+            new_checkpointer = Checkpointer(new_model;
+                                            schedule = TimeInterval(new_checkpoint_interval),
+                                            prefix = prefix,
+                                            cleanup = false,
+                                            verbose = true)
 
-    if pickup_method == :boolean
-        @test_nowarn set!(new_simulation; checkpoint=:latest)
-    elseif pickup_method == :iteration
-        @test_nowarn set!(new_simulation; iteration=3)
-    elseif pickup_method == :filepath
-        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+            new_simulation.output_writers[:checkpointer] = new_checkpointer
+
+            if pickup_method == :boolean
+                @test_nowarn set!(new_simulation; checkpoint=:latest)
+            elseif pickup_method == :iteration
+                @test_nowarn set!(new_simulation; iteration=3)
+            elseif pickup_method == :filepath
+                @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+            end
+
+            @test iteration(new_simulation) == 3
+            @test time(new_simulation) == 3.0
+
+            @test new_simulation.stop_time == new_stop_time
+            @test new_checkpointer.schedule.interval == new_checkpoint_interval
+        end
     end
-
-    @test iteration(new_simulation) == 3
-    @test time(new_simulation) == 3.0
-
-    @test new_simulation.stop_time == new_stop_time
-    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -2171,12 +2183,7 @@ end
 
 for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
-        for pickup_method in (:boolean, :iteration, :filepath)
-            @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
-                @info "  Testing minimal restore [$model_type, $pickup_method] [$(typeof(arch))]..."
-                test_minimal_restore(arch, Float64, pickup_method, model_type)
-            end
-        end
+        test_minimal_restore(arch, Float64, model_type)
     end
 
     @testset "Checkpointer cleanup [$(typeof(arch))]" begin
@@ -2197,12 +2204,7 @@ for arch in archs
         end
     end
 
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore shallow water [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore shallow water [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_shallow_water(arch, Float64, pickup_method)
-        end
-    end
+    test_minimal_restore_shallow_water(arch, Float64)
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
