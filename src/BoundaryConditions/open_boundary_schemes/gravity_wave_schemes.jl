@@ -31,7 +31,8 @@ free surface displacement).
 positive coordinate direction, to a prescribed value: after the Flather fill of every barotropic substep
 the face transport is shifted uniformly so that its integral along the boundary matches the target, so
 only the shape of the Flather profile survives and the free surface sees exactly the prescribed transport.
-It may be a number or a callable of the grid, and is supported on single-region, non-distributed grids. The
+It may be a number or a callable of the grid, and is supported on single-region, non-distributed grids. On an
+immersed grid only the wet columns of the side carry the target, and a fully dry side is left untouched. The
 default `nothing` leaves the transport to the Flather condition, which then adds `√(gH)` times the free-surface
 mismatch to `Uᵉˣᵗ`.
 

@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
 using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
+using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 using Test
 
 #####
@@ -598,7 +599,32 @@ function test_gravity_wave_target_transport()
     inert = interior(with_nothing.free_surface.barotropic_velocities.V) == interior(plain.free_surface.barotropic_velocities.V) &&
             interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U)
 
-    return pinned && flat && drift && inert
+    # on an immersed grid the target goes through the wet columns only; the southern half of every face is land
+    underlying_grid = RectilinearGrid(size = (Nx, Ny, 1), halo = (3, 3, 2), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                                      topology = (Bounded, Bounded, Bounded))
+    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < Ly / 2 ? 0 : -H))
+    boundary_conditions = (U = FieldBoundaryConditions(west = flather(Q), east = flather(Q)),
+                           V = FieldBoundaryConditions(south = flather(0), north = flather(0)))
+    immersed = HydrostaticFreeSurfaceModel(immersed_grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(immersed_grid; substeps = 4),
+                                           buoyancy = nothing, tracers = ())
+    for _ in 1:steps
+        time_step!(immersed, Δt)
+    end
+    west_face = collect(interior(immersed.free_surface.barotropic_velocities.U, 1, :, 1))
+    dry, wet = 1:Ny÷2, Ny÷2+1:Ny
+    wet_only = all(iszero, west_face[dry]) && isapprox(sum(west_face[wet]) * Δy, Q; rtol = 1e-12)
+
+    # the face integral is region-local, so a target on a multi-region grid is refused at construction
+    multi_region_grid = MultiRegionGrid(grid; partition = XPartition(2))
+    rejected = try
+        HydrostaticFreeSurfaceModel(multi_region_grid; boundary_conditions = (; U = FieldBoundaryConditions(west = flather(Q))),
+                                    free_surface = SplitExplicitFreeSurface(multi_region_grid; substeps = 4), buoyancy = nothing, tracers = ())
+        false
+    catch error
+        error isa ArgumentError
+    end
+
+    return pinned && flat && drift && inert && wet_only && rejected
 end
 
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin

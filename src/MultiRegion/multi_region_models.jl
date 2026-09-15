@@ -186,3 +186,12 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
 
     return nothing
 end
+
+# The barotropic face integral behind `target_transport` is region-local, so targets are refused here.
+function HydrostaticFreeSurfaceModels.validate_free_surface_boundary_conditions(::SplitExplicitFreeSurfaces.SplitExplicitFreeSurface, boundary_conditions, ::MultiRegionGrids)
+    U_bcs, V_bcs = get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing)
+    if SplitExplicitFreeSurfaces.has_targeted_barotropic_sides(U_bcs, V_bcs)
+        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is not supported on multi-region grids."))
+    end
+    return nothing
+end

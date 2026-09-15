@@ -1,7 +1,6 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
 using Oceananigans.Architectures: device
-using Oceananigans.Utils: MultiRegionObject, getregion
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, GravityWaveRadiation, has_target_transport, get_target_transport
 using Oceananigans.Operators: Δyᶠᶜᶜ, Δxᶜᶠᶜ
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -16,6 +15,9 @@ const FlatherBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
 side_condition(bcs::FieldBoundaryConditions, side) = getproperty(bcs, side)
 side_condition(bcs, side) = nothing
 
+targeted_side(bc) = false
+targeted_side(bc::FlatherBC) = has_target_transport(bc.classification.scheme)
+
 barotropic_transport_target(bc, grid) = nothing
 barotropic_transport_target(bc::FlatherBC, grid) =
     has_target_transport(bc.classification.scheme) ? get_target_transport(bc.classification.scheme, grid) : nothing
@@ -27,56 +29,105 @@ side_targets(U_bcs, V_bcs, grid) = (west  = barotropic_transport_target(side_con
 
 barotropic_transport_targets(U, V, grid) = side_targets(U.boundary_conditions, V.boundary_conditions, grid)
 
-# The face integral is taken over the local grid of a single region, so targets are refused elsewhere.
-function validate_barotropic_transport_targets(U, V, grid)
-    targets = side_targets(getregion(U.boundary_conditions, 1), getregion(V.boundary_conditions, 1), grid)
-    any(!isnothing, targets) || return nothing
-    if U.boundary_conditions isa MultiRegionObject || grid isa DistributedGrid
-        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is only supported " *
-                            "on single-region, non-distributed grids."))
+has_targeted_barotropic_sides(U_bcs, V_bcs) =
+    targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
+    targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
+
+# Checked on the conditions the user passed to the model, before they are split into ranks or regions,
+# so every rank reaches the same verdict. The face integral below is rank-local, hence the restriction;
+# multi-region grids add their own method.
+function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
+    targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
+    if targeted && grid isa DistributedGrid
+        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is not supported on distributed grids."))
     end
     return nothing
 end
 
-# One work item integrates the face transport and then shifts the whole face, so no value is read after
-# another work item writes it and no scratch storage is needed.
-@kernel function _pin_barotropic_face!(U, grid, i, target, ::Val{:x})
-    n = @index(Global, Linear)
-    FT = eltype(U)
-    Q = zero(FT)
-    L = zero(FT)
-    for j in 1:grid.Ny
-        Δy = Δyᶠᶜᶜ(i, j, 1, grid)
-        @inbounds Q += U[i, j, 1] * Δy
-        L += Δy
+const face_workgroup = 256
+
+# One workgroup strides along the face: each work item accumulates the transport and wet length of its
+# faces, one work item sums the partials into the shift, and all of them apply it. Dry columns of an
+# immersed grid are neither counted nor shifted, so a fully dry side is left untouched.
+@kernel function _pin_barotropic_face!(U, grid, i, target, ::Val{:x}, ::Val{W}) where W
+    partial_transport = @localmem eltype(U) W
+    partial_length    = @localmem eltype(U) W
+
+    t = @index(Local, Linear)
+    Q = zero(eltype(U))
+    L = zero(eltype(U))
+    for j in t:W:grid.Ny
+        wet = column_depthᶠᶜᵃ(i, j, grid) > 0
+        Δy  = Δyᶠᶜᶜ(i, j, 1, grid)
+        @inbounds Q += ifelse(wet, U[i, j, 1] * Δy, zero(Δy))
+        L += ifelse(wet, Δy, zero(Δy))
     end
-    shift = convert(FT, (Q - target) / L)
-    for j in 1:grid.Ny
-        @inbounds U[i, j, 1] -= shift
+    @inbounds partial_transport[t] = Q
+    @inbounds partial_length[t]    = L
+
+    @synchronize
+
+    if t == 1
+        Q = zero(eltype(U))
+        L = zero(eltype(U))
+        for k in 1:W
+            @inbounds Q += partial_transport[k]
+            @inbounds L += partial_length[k]
+        end
+        @inbounds partial_transport[1] = ifelse(L > 0, (Q - target) / L, zero(Q))
+    end
+
+    @synchronize
+
+    @inbounds shift = partial_transport[1]
+    for j in t:W:grid.Ny
+        wet = column_depthᶠᶜᵃ(i, j, grid) > 0
+        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
     end
 end
 
-@kernel function _pin_barotropic_face!(V, grid, j, target, ::Val{:y})
-    n = @index(Global, Linear)
-    FT = eltype(V)
-    Q = zero(FT)
-    L = zero(FT)
-    for i in 1:grid.Nx
-        Δx = Δxᶜᶠᶜ(i, j, 1, grid)
-        @inbounds Q += V[i, j, 1] * Δx
-        L += Δx
+@kernel function _pin_barotropic_face!(V, grid, j, target, ::Val{:y}, ::Val{W}) where W
+    partial_transport = @localmem eltype(V) W
+    partial_length    = @localmem eltype(V) W
+
+    t = @index(Local, Linear)
+    Q = zero(eltype(V))
+    L = zero(eltype(V))
+    for i in t:W:grid.Nx
+        wet = column_depthᶜᶠᵃ(i, j, grid) > 0
+        Δx  = Δxᶜᶠᶜ(i, j, 1, grid)
+        @inbounds Q += ifelse(wet, V[i, j, 1] * Δx, zero(Δx))
+        L += ifelse(wet, Δx, zero(Δx))
     end
-    shift = convert(FT, (Q - target) / L)
-    for i in 1:grid.Nx
-        @inbounds V[i, j, 1] -= shift
+    @inbounds partial_transport[t] = Q
+    @inbounds partial_length[t]    = L
+
+    @synchronize
+
+    if t == 1
+        Q = zero(eltype(V))
+        L = zero(eltype(V))
+        for k in 1:W
+            @inbounds Q += partial_transport[k]
+            @inbounds L += partial_length[k]
+        end
+        @inbounds partial_transport[1] = ifelse(L > 0, (Q - target) / L, zero(Q))
+    end
+
+    @synchronize
+
+    @inbounds shift = partial_transport[1]
+    for i in t:W:grid.Nx
+        wet = column_depthᶜᶠᵃ(i, j, grid) > 0
+        @inbounds V[i, j, 1] -= ifelse(wet, shift, zero(shift))
     end
 end
 
 pin_barotropic_face!(arch, grid, field, index, ::Nothing, direction) = nothing
 
-# Launched through KernelAbstractions directly: `launch!` only indexes its offset ranges in two and three dimensions.
+# Launched with exactly one workgroup of `face_workgroup` work items, which `launch!` does not expose.
 pin_barotropic_face!(arch, grid, field, index, target, direction) =
-    _pin_barotropic_face!(device(arch), 1)(field, grid, index, target, direction; ndrange = 1)
+    _pin_barotropic_face!(device(arch), face_workgroup)(field, grid, index, target, direction, Val(face_workgroup); ndrange = face_workgroup)
 
 function enforce_barotropic_transport_targets!(arch, grid, U, V, targets)
     pin_barotropic_face!(arch, grid, U, 1,           targets.west,  Val(:x))
