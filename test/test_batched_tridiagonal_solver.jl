@@ -99,9 +99,10 @@ end
         @testset "Batched tridiagonal solver [$arch]" begin
             for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
                 @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
-                for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
-                    @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
-                end
+            end
+
+            for Nz in [8, 11], tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
+                @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
             end
 
             for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]

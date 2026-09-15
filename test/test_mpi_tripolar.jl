@@ -17,9 +17,10 @@ tripolar_reconstructed_grid_script(fold_topology) = """
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
 
+    global_grid = TripolarGrid(size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = $fold_topology)
+
     for arch in archs
-        local_grid  = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = $fold_topology)
-        global_grid = TripolarGrid(size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = $fold_topology)
+        local_grid = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = $fold_topology)
 
         reconstruct_grid = reconstruct_global_grid(local_grid)
 
@@ -39,8 +40,6 @@ tripolar_reconstructed_grid_script(fold_topology) = """
                     :Azᶠᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ]
 
             @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
-            @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
-            @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
         end
     end
 """
@@ -59,6 +58,16 @@ tripolar_reconstructed_field_script(fold_topology) = """
     v = [i + 10 * j for i in 1:40, j in 1:$(fold_topology == RightCenterFolded ? 40 : 41)]
     c = [i + 10 * j for i in 1:40, j in 1:40]
 
+    global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology)
+
+    us = XFaceField(global_grid)
+    vs = YFaceField(global_grid)
+    cs = CenterField(global_grid)
+
+    set!(us, u)
+    set!(vs, v)
+    set!(cs, c)
+
     for arch in archs
         local_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology)
 
@@ -69,16 +78,6 @@ tripolar_reconstructed_field_script(fold_topology) = """
         set!(up, u)
         set!(vp, v)
         set!(cp, c)
-
-        global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology)
-
-        us = XFaceField(global_grid)
-        vs = YFaceField(global_grid)
-        cs = CenterField(global_grid)
-
-        set!(us, u)
-        set!(vs, v)
-        set!(cs, c)
 
         @test us == reconstruct_global_field(up)
         @test vs == reconstruct_global_field(vp)

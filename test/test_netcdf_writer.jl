@@ -179,7 +179,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test eltype(ds_mh["time"]) == Float64 # All dimensions should be Float64 by default
 
     dims = ("x_faa", "x_caa", "y_afa", "y_aca", "z_aaf", "z_aac")
-    metrics = ("Δx_faa", "Δx_caa", "Δy_afa", "Δy_aca", "Δy_afa", "Δy_aca")
+    metrics = ("Δx_faa", "Δx_caa", "Δy_afa", "Δy_aca")
     vars = ("u", "v", "w", "T", "S")
 
     for var in (metrics..., vars...)
