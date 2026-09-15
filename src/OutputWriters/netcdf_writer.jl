@@ -183,7 +183,7 @@ simulation.output_writers[:field_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(17), z_aac(16)
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -199,7 +199,7 @@ simulation.output_writers[:surface_slice_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(1), z_aac(1)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(1), z_aac(1)
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -216,7 +216,7 @@ simulation.output_writers[:averaged_profile_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
-├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(17), z_aac(16)
+├── dimensions: time(0), x_faa(1), x_caa(1), y_afa(1), y_aca(1), z_aaf(17), z_aac(16)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -267,7 +267,7 @@ simulation.output_writers[:things] =
 
 NetCDFWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(17), z_aac(16)
 ├── 3 outputs: (profile, scalar, slice)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -297,7 +297,7 @@ output_writer = NetCDFWriter(model, outputs;
 
 NetCDFWriter scheduled on IterationInterval(1):
 ├── filepath: coarse_u.nc
-├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(5), z_aac(4)
+├── dimensions: time(0), x_faa(1), x_caa(1), y_afa(1), y_aca(1), z_aaf(5), z_aac(4)
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting

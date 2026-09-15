@@ -56,6 +56,7 @@ using Oceananigans.OutputWriters:
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,
+    output_names,
     time_average_outputs,
     fetch_output,
     convert_output,

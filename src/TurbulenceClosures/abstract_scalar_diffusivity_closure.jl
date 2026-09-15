@@ -327,17 +327,17 @@ end
 
 # Number
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
+@inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::Number, clk, fields) = ν
+@inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::Number, clk, fields) = ν
+@inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::Number, clk, fields) = ν
+@inline νᶠᶠᶜ(i, j, k, grid, loc::Tuple, ν::Number, clk, fields) = ν
 
-@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
-@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
-@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
+@inline κᶜᶜᶜ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
+@inline κᶠᶜᶜ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
+@inline κᶜᶠᶜ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
+@inline κᶜᶜᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
+@inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
+@inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
@@ -370,27 +370,27 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::Function, clk, fields) = ν(node(i, j, k, grid, c, c, c)..., clk.time)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::Function, clk, fields) = ν(node(i, j, k, grid, f, c, f)..., clk.time)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Function, clk, fields) = ν(node(i, j, k, grid, c, f, f)..., clk.time)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Function, clk, fields) = ν(node(i, j, k, grid, f, f, c)..., clk.time)
+@inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::Function, clk, fields) = ν(node(i, j, k, grid, c, c, c)..., clk.time)
+@inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::Function, clk, fields) = ν(node(i, j, k, grid, f, c, f)..., clk.time)
+@inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::Function, clk, fields) = ν(node(i, j, k, grid, c, f, f)..., clk.time)
+@inline νᶠᶠᶜ(i, j, k, grid, loc::Tuple, ν::Function, clk, fields) = ν(node(i, j, k, grid, f, f, c)..., clk.time)
 
-@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, c, c)..., clk.time)
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, f, c, c)..., clk.time)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, f, c)..., clk.time)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, c, f)..., clk.time)
-@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, f, c, f)..., clk.time)
-@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, f, f)..., clk.time)
+@inline κᶜᶜᶜ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, c, c)..., clk.time)
+@inline κᶠᶜᶜ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, f, c, c)..., clk.time)
+@inline κᶜᶠᶜ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, f, c)..., clk.time)
+@inline κᶜᶜᶠ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, c, f)..., clk.time)
+@inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, f, c, f)..., clk.time)
+@inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Function, clk, fields) = κ(node(i, j, k, grid, c, f, f)..., clk.time)
 
 # "DiscreteDiffusionFunction"
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clk, fields)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (f, c, f), clk, fields)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (c, f, f), clk, fields)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (f, f, c), clk, fields)
+@inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clk, fields)
+@inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (f, c, f), clk, fields)
+@inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (c, f, f), clk, fields)
+@inline νᶠᶠᶜ(i, j, k, grid, loc::Tuple, ν::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(ν, i, j, k, grid, (f, f, c), clk, fields)
 
-@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, c), clk, fields)
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, c), clk, fields)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, c), clk, fields)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, f), clk, fields)
-@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, f), clk, fields)
-@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, f), clk, fields)
+@inline κᶜᶜᶜ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, c), clk, fields)
+@inline κᶠᶜᶜ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, c), clk, fields)
+@inline κᶜᶠᶜ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, c), clk, fields)
+@inline κᶜᶜᶠ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, f), clk, fields)
+@inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, f), clk, fields)
+@inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::DiscreteDiffusionFunction, clk, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, f), clk, fields)
