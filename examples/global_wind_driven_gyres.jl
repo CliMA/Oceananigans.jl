@@ -350,7 +350,7 @@ sf = surface!(ax, λ, φ, 0 * λ; color=temperature, colormap=:thermal, colorran
               shading=NoShading, nan_color=:gray)
 Colorbar(fig[1, 2], sf, label="Temperature [°C]")
 
-record(fig, "global_wind_driven_gyres.mp4", 1:length(times), framerate=12) do frame
+CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:length(times), framerate=12) do frame
     n[] = frame
 end
 nothing #hide
