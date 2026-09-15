@@ -12,7 +12,9 @@ using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, 
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
-using Oceananigans.Fields: Field, instantiated_location
+using Oceananigans.Fields: Field, instantiated_location, location, set!, compute!
+using Oceananigans.AbstractOperations: Integral
+using GPUArraysCore: @allowscalar
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                           LeftConnected, RightConnected, FullyConnected,
                           RightCenterFolded, RightFaceFolded,
@@ -29,6 +31,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
                                                          default_free_surface_boundary_conditions,
+                                                         validate_free_surface_boundary_conditions,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          compute_transport_velocities!,
@@ -40,6 +43,7 @@ include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("initialize_split_explicit_substepping.jl")
 include("compute_slow_tendencies.jl")
+include("barotropic_targeted_transport.jl")
 include("step_split_explicit_free_surface.jl")
 include("barotropic_split_explicit_corrector.jl")
 

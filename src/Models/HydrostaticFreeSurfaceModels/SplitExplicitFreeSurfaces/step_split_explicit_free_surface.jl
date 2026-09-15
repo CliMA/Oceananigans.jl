@@ -136,6 +136,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     only_local_halos = fill_only_local_halos(free_surface)
 
+    boundary_transport = barotropic_sides(free_surface.boundary_transport)
+
     GC.@preserve U_args η_args U_halo_args V_halo_args η_halo_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
@@ -154,6 +156,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
+            enforce_barotropic_transport_targets!(arch, grid, U, V, boundary_transport)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
@@ -271,6 +274,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
     fill_barotropic_state_halos!((U, V), free_surface, model)
     fill_barotropic_state_halos!(η, free_surface, model)
+    enforce_barotropic_transport_targets!(free_surface, free_surface_grid)
 
     return nothing
 end
