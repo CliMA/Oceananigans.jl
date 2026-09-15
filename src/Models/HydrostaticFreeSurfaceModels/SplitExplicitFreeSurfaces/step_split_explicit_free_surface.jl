@@ -1,8 +1,6 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using Oceananigans.Architectures: device
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, GravityWaveRadiation, has_target_transport, get_target_transport
-using Oceananigans.Operators: Δyᶠᶜᶜ, Δxᶜᶠᶜ
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 #####
@@ -18,23 +16,12 @@ side_condition(bcs, side) = nothing
 targeted_side(bc) = false
 targeted_side(bc::FlatherBC) = has_target_transport(bc.classification.scheme)
 
-barotropic_transport_target(bc, grid) = nothing
-barotropic_transport_target(bc::FlatherBC, grid) =
-    has_target_transport(bc.classification.scheme) ? get_target_transport(bc.classification.scheme, grid) : nothing
-
-side_targets(U_bcs, V_bcs, grid) = (west  = barotropic_transport_target(side_condition(U_bcs, :west),  grid),
-                                    east  = barotropic_transport_target(side_condition(U_bcs, :east),  grid),
-                                    south = barotropic_transport_target(side_condition(V_bcs, :south), grid),
-                                    north = barotropic_transport_target(side_condition(V_bcs, :north), grid))
-
-barotropic_transport_targets(U, V, grid) = side_targets(U.boundary_conditions, V.boundary_conditions, grid)
-
 has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
 # Checked on the conditions the user passed to the model, before they are split into ranks or regions,
-# so every rank reaches the same verdict. The face integral below is rank-local, hence the restriction;
+# so every rank reaches the same verdict. The face integrals below are rank-local, hence the restriction;
 # multi-region grids add their own method.
 function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
     targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
@@ -44,108 +31,93 @@ function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, b
     return nothing
 end
 
-const face_workgroup = 256
-
-# One workgroup strides along the face: each work item accumulates the transport and wet length of its
-# faces, one work item sums the partials into the shift, and all of them apply it. Dry columns of an
-# immersed grid are neither counted nor shifted, so a fully dry side is left untouched.
-@kernel function _pin_barotropic_face!(U, grid, i, target, ::Val{:x}, ::Val{W}) where W
-    partial_transport = @localmem eltype(U) W
-    partial_length    = @localmem eltype(U) W
-
-    t = @index(Local, Linear)
-    Q = zero(eltype(U))
-    L = zero(eltype(U))
-    for j in t:W:grid.Ny
-        wet = column_depthᶠᶜᵃ(i, j, grid) > 0
-        Δy  = Δyᶠᶜᶜ(i, j, 1, grid)
-        @inbounds Q += ifelse(wet, U[i, j, 1] * Δy, zero(Δy))
-        L += ifelse(wet, Δy, zero(Δy))
-    end
-    @inbounds partial_transport[t] = Q
-    @inbounds partial_length[t]    = L
-
-    @synchronize
-
-    if t == 1
-        Q = zero(eltype(U))
-        L = zero(eltype(U))
-        for k in 1:W
-            @inbounds Q += partial_transport[k]
-            @inbounds L += partial_length[k]
-        end
-        @inbounds partial_transport[1] = ifelse(L > 0, (Q - target) / L, zero(Q))
-    end
-
-    @synchronize
-
-    @inbounds shift = partial_transport[1]
-    for j in t:W:grid.Ny
-        wet = column_depthᶠᶜᵃ(i, j, grid) > 0
-        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
-    end
+# Every targeted side stores its target, the wet length of its face and a reduced `Field` holding the face
+# integral of the transport, computed on the device each substep like the fields in `Models.boundary_transport`.
+# One group of sides pins `U` and `V` within the substeps, the other the filtered `Ũ` and `Ṽ` afterwards.
+function materialize_barotropic_boundary_transport(U, V, Ũ, Ṽ, grid)
+    has_targeted_barotropic_sides(U.boundary_conditions, V.boundary_conditions) || return nothing
+    return (; barotropic = side_transports(U, V, grid), filtered = side_transports(Ũ, Ṽ, grid))
 end
 
-@kernel function _pin_barotropic_face!(V, grid, j, target, ::Val{:y}, ::Val{W}) where W
-    partial_transport = @localmem eltype(V) W
-    partial_length    = @localmem eltype(V) W
+barotropic_sides(::Nothing) = nothing
+barotropic_sides(boundary_transport) = boundary_transport.barotropic
 
-    t = @index(Local, Linear)
-    Q = zero(eltype(V))
-    L = zero(eltype(V))
-    for i in t:W:grid.Nx
-        wet = column_depthᶜᶠᵃ(i, j, grid) > 0
-        Δx  = Δxᶜᶠᶜ(i, j, 1, grid)
-        @inbounds Q += ifelse(wet, V[i, j, 1] * Δx, zero(Δx))
-        L += ifelse(wet, Δx, zero(Δx))
-    end
-    @inbounds partial_transport[t] = Q
-    @inbounds partial_length[t]    = L
+filtered_sides(::Nothing) = nothing
+filtered_sides(boundary_transport) = boundary_transport.filtered
 
-    @synchronize
+side_transports(U, V, grid) = (west  = side_transport(side_condition(U.boundary_conditions, :west),  U, grid, Val(:west)),
+                               east  = side_transport(side_condition(U.boundary_conditions, :east),  U, grid, Val(:east)),
+                               south = side_transport(side_condition(V.boundary_conditions, :south), V, grid, Val(:south)),
+                               north = side_transport(side_condition(V.boundary_conditions, :north), V, grid, Val(:north)))
 
-    if t == 1
-        Q = zero(eltype(V))
-        L = zero(eltype(V))
-        for k in 1:W
-            @inbounds Q += partial_transport[k]
-            @inbounds L += partial_length[k]
-        end
-        @inbounds partial_transport[1] = ifelse(L > 0, (Q - target) / L, zero(Q))
-    end
+side_transport(bc, field, grid, side) = nothing
 
-    @synchronize
-
-    @inbounds shift = partial_transport[1]
-    for i in t:W:grid.Nx
-        wet = column_depthᶜᶠᵃ(i, j, grid) > 0
-        @inbounds V[i, j, 1] -= ifelse(wet, shift, zero(shift))
-    end
+function side_transport(bc::FlatherBC, field, grid, side)
+    has_target_transport(bc.classification.scheme) || return nothing
+    wet_length = face_wet_length(field, grid, side)
+    wet_length > 0 || return nothing # a fully dry side carries no transport
+    target = get_target_transport(bc.classification.scheme, grid)
+    return (; target, wet_length, integral = face_integral(field, grid, side))
 end
+
+# Reductions over immersed grids skip dry columns, so the integrals only see the wet part of the face
+face_integral(U, grid, ::Val{:west})  = Field(Integral(view(U, 1, :, :), dims = 2))
+face_integral(U, grid, ::Val{:east})  = Field(Integral(view(U, grid.Nx + 1, :, :), dims = 2))
+face_integral(V, grid, ::Val{:south}) = Field(Integral(view(V, :, 1, :), dims = 1))
+face_integral(V, grid, ::Val{:north}) = Field(Integral(view(V, :, grid.Ny + 1, :), dims = 1))
+
+function face_wet_length(field, grid, side)
+    LX, LY, LZ = location(field)
+    ones = Field{LX, LY, LZ}(grid)
+    set!(ones, 1)
+    return @allowscalar compute!(face_integral(ones, grid, side))[]
+end
+
+# The face is shifted uniformly over its wet columns so that its integral matches the target
+@kernel function _pin_barotropic_face!(U, grid, i, ∫U, target, wet_length, ::Val{:x})
+    j = @index(Global, Linear)
+    @inbounds shift = (∫U[i, 1, 1] - target) / wet_length
+    wet = column_depthᶠᶜᵃ(i, j, grid) > 0
+    @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
+end
+
+@kernel function _pin_barotropic_face!(V, grid, j, ∫V, target, wet_length, ::Val{:y})
+    i = @index(Global, Linear)
+    @inbounds shift = (∫V[1, j, 1] - target) / wet_length
+    wet = column_depthᶜᶠᵃ(i, j, grid) > 0
+    @inbounds V[i, j, 1] -= ifelse(wet, shift, zero(shift))
+end
+
+face_parameters(grid, ::Val{:x}) = KernelParameters(1:grid.Ny)
+face_parameters(grid, ::Val{:y}) = KernelParameters(1:grid.Nx)
 
 pin_barotropic_face!(arch, grid, field, index, ::Nothing, direction) = nothing
 
-# Launched with exactly one workgroup of `face_workgroup` work items, which `launch!` does not expose.
-pin_barotropic_face!(arch, grid, field, index, target, direction) =
-    _pin_barotropic_face!(device(arch), face_workgroup)(field, grid, index, target, direction, Val(face_workgroup); ndrange = face_workgroup)
+function pin_barotropic_face!(arch, grid, field, index, side, direction)
+    compute!(side.integral)
+    launch!(arch, grid, face_parameters(grid, direction), _pin_barotropic_face!,
+            field, grid, index, side.integral, side.target, side.wet_length, direction)
+    return nothing
+end
 
-function enforce_barotropic_transport_targets!(arch, grid, U, V, targets)
-    pin_barotropic_face!(arch, grid, U, 1,           targets.west,  Val(:x))
-    pin_barotropic_face!(arch, grid, U, grid.Nx + 1, targets.east,  Val(:x))
-    pin_barotropic_face!(arch, grid, V, 1,           targets.south, Val(:y))
-    pin_barotropic_face!(arch, grid, V, grid.Ny + 1, targets.north, Val(:y))
+enforce_barotropic_transport_targets!(arch, grid, U, V, ::Nothing) = nothing
+
+function enforce_barotropic_transport_targets!(arch, grid, U, V, sides)
+    pin_barotropic_face!(arch, grid, U, 1,           sides.west,  Val(:x))
+    pin_barotropic_face!(arch, grid, U, grid.Nx + 1, sides.east,  Val(:x))
+    pin_barotropic_face!(arch, grid, V, 1,           sides.south, Val(:y))
+    pin_barotropic_face!(arch, grid, V, grid.Ny + 1, sides.north, Val(:y))
     return nothing
 end
 
 # Re-pin the transports after the end-of-step Flather refills, so the barotropic corrector and any
 # diagnostics see the same face transports the substeps used.
 function enforce_barotropic_transport_targets!(free_surface, grid)
+    arch = architecture(grid)
     U, V = free_surface.barotropic_velocities
     Ũ, Ṽ = free_surface.filtered_state.Ũ, free_surface.filtered_state.Ṽ
-    targets = barotropic_transport_targets(U, V, grid)
-    arch = architecture(grid)
-    enforce_barotropic_transport_targets!(arch, grid, U, V, targets)
-    enforce_barotropic_transport_targets!(arch, grid, Ũ, Ṽ, targets)
+    enforce_barotropic_transport_targets!(arch, grid, U, V, barotropic_sides(free_surface.boundary_transport))
+    enforce_barotropic_transport_targets!(arch, grid, Ũ, Ṽ, filtered_sides(free_surface.boundary_transport))
     return nothing
 end
 
@@ -283,7 +255,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     only_local_halos = fill_only_local_halos(free_surface)
 
-    barotropic_targets = barotropic_transport_targets(U, V, grid)
+    boundary_transport = barotropic_sides(free_surface.boundary_transport)
 
     GC.@preserve U_args η_args U_halo_args V_halo_args η_halo_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -303,7 +275,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
-            enforce_barotropic_transport_targets!(arch, grid, U, V, barotropic_targets)
+            enforce_barotropic_transport_targets!(arch, grid, U, V, boundary_transport)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end

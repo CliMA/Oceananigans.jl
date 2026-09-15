@@ -596,8 +596,10 @@ function test_gravity_wave_target_transport()
     # `nothing` is the default, so these two models must be identical
     with_nothing = run_model(Q, Q, flather(nothing), flather(nothing))
     plain = run_model(Q, Q, GravityWaveRadiationBoundaryCondition((0, 0)), GravityWaveRadiationBoundaryCondition((0, 0)))
+    untargeted = HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 4), buoyancy = nothing, tracers = ())
     inert = interior(with_nothing.free_surface.barotropic_velocities.V) == interior(plain.free_surface.barotropic_velocities.V) &&
-            interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U)
+            interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U) &&
+            isnothing(untargeted.free_surface.boundary_transport)
 
     # on an immersed grid the target goes through the wet columns only; the southern half of every face is land
     underlying_grid = RectilinearGrid(size = (Nx, Ny, 1), halo = (3, 3, 2), x = (0, Lx), y = (0, Ly), z = (-H, 0),
