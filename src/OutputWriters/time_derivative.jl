@@ -17,18 +17,19 @@ Container that holds the state required to compute the time derivative of an `op
 as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
 recently computed `result`. Both are `Field`s at `location(operand)`.
 """
-mutable struct TimeDerivative{O, R, T}
+mutable struct TimeDerivative{O, R, T, FT}
            result :: R
           operand :: O
          previous :: R
     previous_time :: T
+    expected_max_time_step_growth :: FT
 end
 
 materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    TimeDerivative(operand, model=nothing)
+    TimeDerivative(operand, model=nothing; expected_max_time_step_growth=1.2)
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 
@@ -45,8 +46,10 @@ reductions are materialized into a `Field` on construction. Δt is measured in s
 
 An output writer updates a `TimeDerivative` among its outputs through a
 [`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
-to use one without a writer. Field operations are forwarded to `result`, so `2 * ∂ₜc`
-builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
+to use one without a writer. The writer's next actuation is anticipated by assuming that the
+time step grows by at most a factor `expected_max_time_step_growth` in one iteration, as
+described in [`PrecedingIterations`](@ref). Field operations are forwarded to `result`, so
+`2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
 
 Example
 =======
@@ -86,7 +89,7 @@ JLD2Writer scheduled on TimeInterval(1 second):
 └── file size: 0 bytes (file not yet created)
 ```
 """
-function TimeDerivative(operand, model=nothing)
+function TimeDerivative(operand, model=nothing; expected_max_time_step_growth = 1.2)
     operand = materialize_operand(operand)
 
     result = similar_field(operand)
@@ -94,7 +97,7 @@ function TimeDerivative(operand, model=nothing)
 
     previous_time = isnothing(model) ? zero(defaults.FloatType) : model.clock.time
 
-    derivative = TimeDerivative(result, operand, previous, previous_time)
+    derivative = TimeDerivative(result, operand, previous, previous_time, expected_max_time_step_growth)
 
     isnothing(model) || initialize!(derivative, model)
 
@@ -160,6 +163,7 @@ $(TYPEDSIGNATURES)
 Record `derivative.operand` and the current time for the next update to difference against.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
+    println("    [TimeDerivative] SEED   at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt)")  # TEMPORARY
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         throw(ArgumentError("TimeDerivative must be constructed with the model when the clock keeps $T time"))
@@ -180,6 +184,7 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
+    println("    [TimeDerivative] UPDATE at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt), differencing Δt = $(time_difference_seconds(model.clock.time, derivative.previous_time))")  # TEMPORARY
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
