@@ -22,16 +22,18 @@ const SCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:Sha
 """
     ShavedCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
 
-Return a `ShavedCellBottom` representing an immersed boundary with "shaved" bottom cells,
-following Adcroft, Hill and Marshall (1997).
+Return a `ShavedCellBottom` representing an immersed boundary with "shaved" bottom cells, inspired by
+the shaved cells of [Adcroft et al. (1997)](@cite AdcroftHillMarshall1997).
 
 The bottom is a piecewise-bilinear surface reconstructed from `bottom_height`, which may be a
 `Field`, `Array`, or function of `(x, y)`. Every lateral face of a bottom cell is cut by that
 surface at the horizontal position of the face itself, so the faces of one cell carry different
-heights and the bottom slopes through the cell. The volume of the cell is the volume underneath the
-same surface.
+heights and the bottom slopes through the cell. The height of the cell is the mean of the heights of
+its lateral faces, so that the faces bound the cell volume.
 
-The height of a shaved cell, and of each of its lateral faces, is greater than
+The surface shaves a single level in each column and in each lateral face: the lowest level that is not
+immersed. A slope steeper than one level per cell is therefore represented by a staircase of shaved cells.
+The height of a shaved cell, and of each of its open lateral faces, is greater than
 
 ```
 minimum_fractional_cell_height * Δz,
@@ -115,7 +117,9 @@ set_corner_bottom_height!(corner_field, grid, bottom_height::Field{Face, Face, N
 end
 
 function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
-    ϵ = convert(eltype(grid), ib.minimum_fractional_cell_height)
+    FT = eltype(grid)
+    # A positive floor keeps the surface inside a level even for ϵ = 0.
+    ϵ = max(convert(FT, ib.minimum_fractional_cell_height), sqrt(eps(FT)))
     arch = architecture(grid)
     parameters = staggered_bottom_parameters(grid)
 
@@ -130,14 +134,29 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
 
     west_field = Field{Face, Center, Nothing}(grid)
     south_field = Field{Center, Face, Nothing}(grid)
+    previous_bottom_field = Field{Center, Center, Nothing}(grid)
 
     compute_ib = ShavedCellBottom(bottom_field, nothing, nothing, nothing, ϵ)
 
-    @apply_regionally launch!(arch, grid, parameters, _compute_shaved_face_bottom_heights!,
-                              west_field, south_field, corner_field, grid, compute_ib)
+    TX, TY, _ = topology(grid)
+    wˣ = TX === Flat && TY !== Flat ? 0 : 1
+    wʸ = TY === Flat && TX !== Flat ? 0 : 1
 
-    fill_halo_regions!(west_field)
-    fill_halo_regions!(south_field)
+    # Immersing a cell can close the faces of its neighbors, so faces and cells are recomputed until no level changes.
+    converged = false
+    while !converged
+        set!(previous_bottom_field, bottom_field)
+
+        @apply_regionally launch!(arch, grid, parameters, _compute_shaved_face_bottom_heights!, west_field, south_field, corner_field, grid, compute_ib)
+
+        fill_halo_regions!(west_field)
+        fill_halo_regions!(south_field)
+
+        @apply_regionally launch!(arch, grid, :xy, _average_faces_to_centers!, bottom_field, west_field, south_field, grid, compute_ib, wˣ, wʸ)
+
+        fill_halo_regions!(bottom_field)
+        converged = maximum(abs, bottom_field - previous_bottom_field) == 0
+    end
 
     return ShavedCellBottom(bottom_field.data, west_field.data, south_field.data, corner_field.data, ϵ)
 end
@@ -181,14 +200,13 @@ end
 end
 
 # Snap a face bottom height into the lowest level the face leaves open, keeping it within [ϵ Δr, Δr]
-# of that level. The floor stays positive so that the surface lies inside a level even for ϵ = 0.
+# of that level.
 @inline function shaved_face_bottom_height(i, j, kᵇ, grid, rᵇ, ϵ)
-    FT = eltype(grid)
     k  = min(kᵇ, grid.Nz)
     r⁻ = rnode(i, j, k,   grid, c, c, f)
     r⁺ = rnode(i, j, k+1, grid, c, c, f)
     Δr = Δrᶜᶜᶜ(i, j, k, grid)
-    return clamp(rᵇ, r⁻, r⁺ - max(ϵ, sqrt(eps(FT))) * Δr)
+    return clamp(rᵇ, r⁻, r⁺ - ϵ * Δr)
 end
 
 # True when the bottom surface at height rᵇ cuts through level k.
@@ -215,6 +233,25 @@ end
     @inbounds south_field[i, j, 1] = shaved_face_bottom_height(i, j, max(kˢ, kᶜ), grid, rᶜᶠ, ϵ)
 end
 
+# A face shaved in a higher level is closed in this one, so clipping the faces into the level of the cell makes them bound its volume.
+@kernel function _average_faces_to_centers!(bottom_field, west_field, south_field, grid, ib, wˣ, wʸ)
+    i, j = @index(Global, NTuple)
+
+    iᴱ = x_index(i, grid, +1)
+    jᴺ = y_index(j, grid, +1)
+
+    kᶜ = bottom_active_index(i, j, grid, ib)
+    k  = min(kᶜ, grid.Nz)
+    r⁻ = rnode(i, j, k,   grid, c, c, f)
+    r⁺ = rnode(i, j, k+1, grid, c, c, f)
+
+    rˣ = @inbounds (clamp(west_field[i, j, 1],  r⁻, r⁺) + clamp(west_field[iᴱ, j, 1],  r⁻, r⁺)) / 2
+    rʸ = @inbounds (clamp(south_field[i, j, 1], r⁻, r⁺) + clamp(south_field[i, jᴺ, 1], r⁻, r⁺)) / 2
+    rᵇ = (wˣ * rˣ + wʸ * rʸ) / (wˣ + wʸ)
+
+    @inbounds bottom_field[i, j, 1] = ifelse(kᶜ > grid.Nz, bottom_field[i, j, 1], rᵇ)
+end
+
 Adapt.adapt_structure(to, ib::ShavedCellBottom) = ShavedCellBottom(adapt(to, ib.bottom_height),
                                                                   adapt(to, ib.west_bottom_height),
                                                                   adapt(to, ib.south_bottom_height),
@@ -231,23 +268,6 @@ Architectures.on_architecture(to, ib::ShavedCellBottom) = ShavedCellBottom(on_ar
 ##### Immersed cells and grid spacings
 #####
 
-"""
-A shaved bottom cell in the x-r plane: the surface crosses the cell, so its two lateral faces are cut
-at different heights and its volume is the volume underneath the surface.
-
-           i-1/2           i+1/2
-             |               |
-     r⁺  ----+---------------+----     ↑
-             | ╲             |         |
-        rᵇᵂ  +   ╲     ∘     |         | Δrᶜᶜᶜ = r⁺ - rᵇᶜᶜ
-             |     ╲         + rᵇᴱ     |
-     r⁻  ----+-------╲-------+----     ↓
-             ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-
-    Δrᶠᶜᶜ = r⁺ - rᵇᵂ  at  i-1/2,   r⁺ - rᵇᴱ  at  i+1/2,   and   rᵇᶜᶜ = (rᵇᵂ + rᵇᴱ) / 2
-
-A cell is immersed when `rᵇᶜᶜ > r⁺ - ϵ Δr`.
-"""
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::ShavedCellBottom)
     r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
@@ -316,6 +336,10 @@ end
 XFlatSCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:ShavedCellBottom}
 YFlatSCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:ShavedCellBottom}
 
+@inline Δrᶠᶜᶜ(i, j, k, ibg::XFlatSCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Δrᶠᶜᶠ(i, j, k, ibg::XFlatSCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
+@inline Δrᶜᶠᶜ(i, j, k, ibg::YFlatSCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
+@inline Δrᶜᶠᶠ(i, j, k, ibg::YFlatSCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XFlatSCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::YFlatSCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶠ(i, j, k, ibg::XFlatSCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)

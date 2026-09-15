@@ -36,19 +36,13 @@ function test_shaved_cell_geometry(FT, arch)
     underlying_grid = slice_grid(FT, arch; Nx, Nz)
     Δz = Lz / Nz
 
-    # A linear bottom, whose cell means are exactly its values at the cell centers.
     slope(x) = -Lz + Lz/2 * x + Lz/8
     ibg = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(slope, minimum_fractional_cell_height=0))
 
-    xᶜ = xnodes(underlying_grid, c)
     xᶠ = xnodes(underlying_grid, f)
     zᶠ = znodes(underlying_grid, f)
 
     @allowscalar begin
-        for i in 2:Nx-1
-            @test static_column_depthᶜᶜᵃ(i, 1, ibg) ≈ -slope(xᶜ[i])
-        end
-
         # A lateral face is cut where the bottom crosses it, not where the neighboring cell ends.
         for i in 2:Nx, k in 1:Nz
             peripheral_node(i, 1, k, ibg, f, c, c) && continue
@@ -59,6 +53,24 @@ function test_shaved_cell_geometry(FT, arch)
         partial = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(slope, minimum_fractional_cell_height=0))
         throat(grid) = sum(Δrᶠᶜᶜ(i, 1, k, grid) for i in 2:Nx, k in 1:Nz if !peripheral_node(i, 1, k, grid, f, c, c))
         @test throat(ibg) > throat(partial)
+    end
+
+    return nothing
+end
+
+function test_shaved_cells_are_bounded_by_their_faces(FT, arch)
+    Nx, Nz, Lz = 16, 8, 1
+    Δz = Lz / Nz
+    ϵ = 0.2
+    ibg = ImmersedBoundaryGrid(slice_grid(FT, arch; Nx, Nz), ShavedCellBottom(bumpy, minimum_fractional_cell_height=ϵ))
+
+    opening(i, k) = peripheral_node(i, 1, k, ibg, f, c, c) ? zero(FT) : Δrᶠᶜᶜ(i, 1, k, ibg)
+
+    @allowscalar for i in 2:Nx-1
+        kᵇ = findfirst(k -> !immersed_cell(i, 1, k, ibg), 1:Nz)
+        isnothing(kᵇ) && continue
+        @test Δrᶜᶜᶜ(i, 1, kᵇ, ibg) ≈ (opening(i, kᵇ) + opening(i+1, kᵇ)) / 2
+        @test Δrᶜᶜᶜ(i, 1, kᵇ, ibg) ≥ ϵ * Δz - 10eps(FT)
     end
 
     return nothing
@@ -145,6 +157,7 @@ end
         @info "  Testing ShavedCellBottom [$FT, $(typeof(arch))]..."
         test_shaved_cell_reduces_to_partial_cells(FT, arch)
         test_shaved_cell_geometry(FT, arch)
+        test_shaved_cells_are_bounded_by_their_faces(FT, arch)
         test_shaved_cell_column_depth_consistency(FT, arch)
         test_shaved_cell_flat_topologies(FT, arch)
         test_shaved_cell_time_stepping(FT, arch)
