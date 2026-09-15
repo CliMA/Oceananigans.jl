@@ -29,6 +29,7 @@ array_type(::ReactantState) = ConcreteRArray
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 
+using Adapt: Adapt
 using OffsetArrays: OffsetArray
 const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
 on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
@@ -98,16 +99,20 @@ Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Re
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
 
-# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray
-_to_reactant(a::Number) = a
-_to_reactant(::Nothing) = nothing
-_to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
-_to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
+# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray.
+# An `Adapt` adaptor: `Adapt.adapt` recurses through any struct with an `adapt_structure` method,
+# so every vertical coordinate (Oceananigans' own and ones defined downstream) is rebuilt with its
+# arrays materialized, without a method per coordinate type here. Numbers pass through.
+struct ToReactant end
 
-function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
-    return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+Adapt.adapt_storage(::ToReactant, a::AbstractArray) = Reactant.to_rarray(collect(a))
+
+# Adapt rebuilds ranges from their endpoints; the grid wants them materialized like any other array.
+for R in (StepRangeLen, UnitRange, StepRange, LinRange)
+    @eval Adapt.adapt_structure(::ToReactant, r::$R) = Reactant.to_rarray(collect(r))
 end
+
+_to_reactant(x) = Adapt.adapt(ToReactant(), x)
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
 # then transfer the materialized arrays to Reactant. This avoids Float64 leakage from

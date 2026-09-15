@@ -1,5 +1,6 @@
 include("reactant_test_utils.jl")
 
+using Adapt: Adapt
 using CUDA
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices
@@ -7,6 +8,17 @@ using Oceananigans.OutputReaders: cpu_interpolating_time_indices
 arch = ReactantState()
 
 ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+
+# A stand-in for a vertical coordinate defined outside Oceananigans (eg a terrain-following
+# coordinate). Downstream packages provide `Adapt.adapt_structure` for GPU kernels; moving a
+# LatitudeLongitudeGrid to ReactantState reuses it rather than requiring a method per coordinate type.
+struct DownstreamVerticalCoordinate{C, T} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    terrain :: T
+end
+
+Adapt.adapt_structure(to, z::DownstreamVerticalCoordinate) =
+    DownstreamVerticalCoordinate(Adapt.adapt(to, z.cᵃᵃᶠ), Adapt.adapt(to, z.terrain))
 
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
@@ -295,6 +307,37 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         compiled_set_column!(u, v)
 
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
+    end
+
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
+
+        @info "  Testing a downstream vertical coordinate through _to_reactant..."
+        Nz, Hz = 4, 2
+        cpu_faces = OffsetArray(range(0, 1, length = Nz + 2Hz + 1), -Hz)
+        cpu_terrain = OffsetArray(zeros(8, 8), -2, -2)
+        z = DownstreamVerticalCoordinate(cpu_faces, cpu_terrain)
+        rz = OceananigansReactantExt.Architectures._to_reactant(z)
+
+        @test rz isa DownstreamVerticalCoordinate
+        @test rz.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}   # range materialized
+        @test rz.terrain isa OffsetArray{Float64, 2, <:Reactant.AbstractConcreteArray}
+        @test axes(rz.cᵃᵃᶠ) == axes(cpu_faces)
+        @test axes(rz.terrain) == axes(cpu_terrain)
+        @test Array(parent(rz.cᵃᵃᶠ)) == collect(parent(cpu_faces))
     end
 
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
