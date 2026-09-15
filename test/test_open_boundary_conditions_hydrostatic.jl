@@ -550,10 +550,8 @@ end
 #####
 ##### Test: GravityWaveRadiation with a target transport
 #####
-# With every side pinned, the Flather faces carry exactly the prescribed transports after a step, on the
-# barotropic transport and on its filtered counterpart, so balanced targets keep the mean free surface at
-# zero and unbalanced ones move it by exactly the net inflow per step. Faces given `target_transport = nothing`
-# behave as plain Flather faces.
+# With every side pinned, `U`, `V` and their filtered counterparts carry exactly the prescribed transports, so
+# balanced targets keep the mean free surface flat and unbalanced ones move it by the net inflow per step.
 
 function test_gravity_wave_target_transport()
     Nx, Ny, H = 8, 8, 10.0
@@ -601,7 +599,7 @@ function test_gravity_wave_target_transport()
             interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U) &&
             isnothing(untargeted.free_surface.boundary_transport)
 
-    # on an immersed grid the target goes through the wet columns only; the southern half of every face is land
+    # on an immersed grid only the wet columns carry the target; here the southern half of every face is land
     underlying_grid = RectilinearGrid(size = (Nx, Ny, 1), halo = (3, 3, 2), x = (0, Lx), y = (0, Ly), z = (-H, 0),
                                       topology = (Bounded, Bounded, Bounded))
     immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < Ly / 2 ? 0 : -H))

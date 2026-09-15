@@ -69,7 +69,7 @@ struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     φᵇ  :: S  # anchor boundary value (2D array or nothing)
     φ₁  :: S  # anchor interior value (2D array or nothing)
     φ₁ˡ :: S  # latest interior value (2D array or nothing)
-    target_transport :: TF # prescribed net transport through the boundary (number, callable of the grid, or nothing)
+    target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
 function NormalRadiation(FT = defaults.FloatType;

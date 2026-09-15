@@ -1,12 +1,6 @@
-# Hydrostatic 2D (xy) flows driven by `target_transport` on Flather (`GravityWaveRadiation`) open boundaries:
-# the barotropic counterpart of `targeted_transport_xy_nonhydrostatic.jl`.
-#
-# Every side is open, with Flather on the barotropic transport towards an exterior at rest, Chapman on η and
-# a radiating `NormalRadiation` on the baroclinic velocity, and the model starts from rest. A side given a
-# number has that net transport pinned through `target_transport` on the Flather condition (positive in the
-# positive coordinate direction); a side given `nothing` is left to the Flather condition alone, which lets
-# any net imbalance in or out as the free surface adjusts. In the unbalanced case the south and north sides
-# therefore each supply half of the missing inflow, as the pool sides do in the nonhydrostatic model.
+# Hydrostatic 2D (xy) flows driven by `target_transport` on Flather (`GravityWaveRadiation`) open boundaries, the
+# barotropic counterpart of `targeted_transport_xy_nonhydrostatic.jl`. Every side is open towards an exterior at rest
+# and the model starts from rest. A side given a number has that net transport pinned; `nothing` leaves it to Flather.
 
 using Oceananigans
 using Oceananigans.Units

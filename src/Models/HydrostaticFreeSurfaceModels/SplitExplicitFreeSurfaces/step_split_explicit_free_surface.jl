@@ -18,9 +18,8 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
-# Checked on the conditions the user passed to the model, before they are split into ranks or regions,
-# so every rank reaches the same verdict. The face integrals below are rank-local, hence the restriction;
-# multi-region grids add their own method.
+# Checked on the boundary conditions the user passed, so every rank reaches the same verdict. The face
+# integrals below are rank-local, hence the restriction; multi-region grids add their own method.
 function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
     targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
     if targeted && grid isa DistributedGrid
@@ -29,9 +28,8 @@ function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, b
     return nothing
 end
 
-# Every targeted side stores its target, the wet length of its face and a reduced `Field` holding the face
-# integral of the transport, computed on the device each substep like the fields in `Models.boundary_transport`.
-# One group of sides pins `U` and `V` within the substeps, the other the filtered `Ũ` and `Ṽ` afterwards.
+# Each targeted side stores its target, the wet length of its face and a reduced `Field` with the face integral
+# of the transport, recomputed every substep. One group pins `U` and `V`, the other the filtered `Ũ` and `Ṽ`.
 function materialize_barotropic_boundary_transport(U, V, Ũ, Ṽ, grid)
     has_targeted_barotropic_sides(U.boundary_conditions, V.boundary_conditions) || return nothing
     return (; barotropic = side_transports(U, V, grid), filtered = side_transports(Ũ, Ṽ, grid))
@@ -108,8 +106,7 @@ function enforce_barotropic_transport_targets!(arch, grid, U, V, sides)
     return nothing
 end
 
-# Re-pin the transports after the end-of-step Flather refills, so the barotropic corrector and any
-# diagnostics see the same face transports the substeps used.
+# The end-of-step Flather refills undo the pin, so the faces are re-pinned before the barotropic corrector reads them
 function enforce_barotropic_transport_targets!(free_surface, grid)
     arch = architecture(grid)
     U, V = free_surface.barotropic_velocities

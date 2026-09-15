@@ -58,7 +58,7 @@ struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
     φ₁ˡ :: S
     previous_boundary :: B # boundary values written during the previous iteration, double-buffered by iteration parity
     previous_interior :: B # first-interior values, likewise
-    target_transport :: TF # prescribed net transport through the boundary (number, callable of the grid, or nothing)
+    target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
 function ObliqueRadiation(FT = defaults.FloatType;

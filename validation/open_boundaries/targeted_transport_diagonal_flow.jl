@@ -1,15 +1,6 @@
-# Uniform diagonal flow through four targeted open boundaries: NormalRadiation vs PerturbationAdvection.
-#
-# All four sides carry `NormalFlowBoundaryCondition(0; scheme)` with `target_transport = Q`, and the
-# model starts from rest, so the exact solution is the uniform diagonal flow u = v = U with a flat
-# pressure. `PerturbationAdvection` reproduces it to round-off. `NormalRadiation` under the RK3
-# stepper does not: it diagnoses its phase speed from the interior normal gradient, which vanishes for
-# this flow, so the diagnosed Courant number flips between its clamp values from point to point along
-# the outflow faces, and on RK3 stages 2 and 3 the scheme restarts from the face value anchored before
-# the targeted correction, so those random weights become a non-uniform outflow profile that the
-# mean-preserving correction cannot repair and the pressure solve imprints on the interior. The
-# artefact is seeded by round-off within the first step and decays only through viscosity. With
-# `timestepper = :QuasiAdamsBashforth2` (single stage) `NormalRadiation` is uniform too.
+# Uniform diagonal flow through four targeted open boundaries, `NormalRadiation` vs `PerturbationAdvection`. The exact
+# solution is u = v = U with a flat pressure. Under RK3 `NormalRadiation` misses it: lacking an interior normal gradient,
+# its phase speed flips along the outflow faces and the stage anchoring imprints a non-uniform profile. AB2 is uniform.
 
 using Oceananigans
 using Oceananigans.Units

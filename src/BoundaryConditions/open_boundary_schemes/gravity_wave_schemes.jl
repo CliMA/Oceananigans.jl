@@ -55,7 +55,7 @@ GravityWaveRadiation{Float64}
 """
 struct GravityWaveRadiation{FT, TF}
     gravitational_acceleration :: FT
-    target_transport :: TF # prescribed net transport through the boundary (number, callable of the grid, or nothing)
+    target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
 function GravityWaveRadiation(FT = defaults.FloatType;
