@@ -274,6 +274,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
+    validate_barotropic_transport_targets(U, V, maybe_extended_grid)
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
     V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
     Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)

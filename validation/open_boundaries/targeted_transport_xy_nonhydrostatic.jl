@@ -1,6 +1,6 @@
 # Nonhydrostatic 2D (xy) flows driven by `target_transport` on open boundaries, one figure per scheme
 # (`PerturbationAdvection`, `NormalRadiation`, `ObliqueRadiation`): the counterpart of the hydrostatic Flather
-# version in `targeted_transport_xy_hydrostatic_flather.jl`.
+# version in `targeted_transport_xy_hydrostatic.jl`.
 #
 # Every side is open, the exterior is at rest and the model starts from rest. A side given a number has
 # that net transport pinned (per unit depth, positive in the positive coordinate direction); a side given

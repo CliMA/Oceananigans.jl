@@ -546,7 +546,66 @@ function test_oblique_radiation_mirror_symmetry()
     return c ≈ reverse(c_mirrored, dims = 2)
 end
 
+#####
+##### Test: GravityWaveRadiation with a target transport
+#####
+# With every side pinned, the Flather faces carry exactly the prescribed transports after a step, on the
+# barotropic transport and on its filtered counterpart, so balanced targets keep the mean free surface at
+# zero and unbalanced ones move it by exactly the net inflow per step. Faces given `target_transport = nothing`
+# behave as plain Flather faces.
+
+function test_gravity_wave_target_transport()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Bounded, Bounded, Bounded))
+    Δx, Δy = Lx / Nx, Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 10
+
+    flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+
+    function run_model(west, east, south, north)
+        boundary_conditions = (U = FieldBoundaryConditions(west = flather(west), east = flather(east)),
+                               V = FieldBoundaryConditions(south = south, north = north))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    x_transport(F, i) = sum(interior(F, i, :, 1)) * Δy
+    y_transport(F, j) = sum(interior(F, :, j, 1)) * Δx
+    mean_η(model) = sum(interior(model.free_surface.displacement)) / (Nx * Ny)
+
+    balanced = run_model(Q, Q, flather(0), flather(0))
+    U, V = balanced.free_surface.barotropic_velocities
+    Ũ, Ṽ = balanced.free_surface.filtered_state.Ũ, balanced.free_surface.filtered_state.Ṽ
+    pinned = all(isapprox(x_transport(F, i), Q; rtol = 1e-12) for F in (U, Ũ), i in (1, Nx + 1)) &&
+             all(abs(y_transport(F, j)) < 1e-12 * Q for F in (V, Ṽ), j in (1, Ny + 1))
+    flat = abs(mean_η(balanced)) < 1e-12
+
+    unbalanced = run_model(Q, 2Q, flather(0), flather(0))
+    η_before = mean_η(unbalanced)
+    time_step!(unbalanced, Δt)
+    drift = isapprox(mean_η(unbalanced) - η_before, - Q * Δt / (Lx * Ly); rtol = 1e-8)
+
+    # `nothing` is the default, so these two models must be identical
+    with_nothing = run_model(Q, Q, flather(nothing), flather(nothing))
+    plain = run_model(Q, Q, GravityWaveRadiationBoundaryCondition((0, 0)), GravityWaveRadiationBoundaryCondition((0, 0)))
+    inert = interior(with_nothing.free_surface.barotropic_velocities.V) == interior(plain.free_surface.barotropic_velocities.V) &&
+            interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U)
+
+    return pinned && flat && drift && inert
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
+    @testset "GravityWaveRadiation with target_transport" begin
+        @test test_gravity_wave_target_transport()
+    end
+
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
     end

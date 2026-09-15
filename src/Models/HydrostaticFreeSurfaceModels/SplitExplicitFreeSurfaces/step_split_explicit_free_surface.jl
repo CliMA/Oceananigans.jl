@@ -1,6 +1,7 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
-using Oceananigans.Architectures: on_architecture, device
+using Oceananigans.Architectures: device
+using Oceananigans.Utils: MultiRegionObject, getregion
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, GravityWaveRadiation, has_target_transport, get_target_transport
 using Oceananigans.Operators: Δyᶠᶜᶜ, Δxᶜᶠᶜ
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -11,20 +12,37 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 const FlatherBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
 
+# Multi-region fields carry a `MultiRegionObject` of conditions, which cannot hold a target.
+side_condition(bcs::FieldBoundaryConditions, side) = getproperty(bcs, side)
+side_condition(bcs, side) = nothing
+
 barotropic_transport_target(bc, grid) = nothing
 barotropic_transport_target(bc::FlatherBC, grid) =
     has_target_transport(bc.classification.scheme) ? get_target_transport(bc.classification.scheme, grid) : nothing
 
-barotropic_transport_targets(U, V, grid) = (west  = barotropic_transport_target(U.boundary_conditions.west,  grid),
-                                            east  = barotropic_transport_target(U.boundary_conditions.east,  grid),
-                                            south = barotropic_transport_target(V.boundary_conditions.south, grid),
-                                            north = barotropic_transport_target(V.boundary_conditions.north, grid))
+side_targets(U_bcs, V_bcs, grid) = (west  = barotropic_transport_target(side_condition(U_bcs, :west),  grid),
+                                    east  = barotropic_transport_target(side_condition(U_bcs, :east),  grid),
+                                    south = barotropic_transport_target(side_condition(V_bcs, :south), grid),
+                                    north = barotropic_transport_target(side_condition(V_bcs, :north), grid))
 
-# The reduction runs on a single work item and the shift on the whole face, so no face value is read
-# while another work item writes it.
-@kernel function _barotropic_face_shift!(shift, U, grid, i, target, ::Val{:x})
-    n = @index(Global, Linear)   # a single work item does the reduction
-    FT = eltype(shift)
+barotropic_transport_targets(U, V, grid) = side_targets(U.boundary_conditions, V.boundary_conditions, grid)
+
+# The face integral is taken over the local grid of a single region, so targets are refused elsewhere.
+function validate_barotropic_transport_targets(U, V, grid)
+    targets = side_targets(getregion(U.boundary_conditions, 1), getregion(V.boundary_conditions, 1), grid)
+    any(!isnothing, targets) || return nothing
+    if U.boundary_conditions isa MultiRegionObject || grid isa DistributedGrid
+        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is only supported " *
+                            "on single-region, non-distributed grids."))
+    end
+    return nothing
+end
+
+# One work item integrates the face transport and then shifts the whole face, so no value is read after
+# another work item writes it and no scratch storage is needed.
+@kernel function _pin_barotropic_face!(U, grid, i, target, ::Val{:x})
+    n = @index(Global, Linear)
+    FT = eltype(U)
     Q = zero(FT)
     L = zero(FT)
     for j in 1:grid.Ny
@@ -32,12 +50,15 @@ barotropic_transport_targets(U, V, grid) = (west  = barotropic_transport_target(
         @inbounds Q += U[i, j, 1] * Δy
         L += Δy
     end
-    @inbounds shift[n] = (Q - target) / L
+    shift = convert(FT, (Q - target) / L)
+    for j in 1:grid.Ny
+        @inbounds U[i, j, 1] -= shift
+    end
 end
 
-@kernel function _barotropic_face_shift!(shift, V, grid, j, target, ::Val{:y})
-    n = @index(Global, Linear)   # a single work item does the reduction
-    FT = eltype(shift)
+@kernel function _pin_barotropic_face!(V, grid, j, target, ::Val{:y})
+    n = @index(Global, Linear)
+    FT = eltype(V)
     Q = zero(FT)
     L = zero(FT)
     for i in 1:grid.Nx
@@ -45,59 +66,35 @@ end
         @inbounds Q += V[i, j, 1] * Δx
         L += Δx
     end
-    @inbounds shift[n] = (Q - target) / L
+    shift = convert(FT, (Q - target) / L)
+    for i in 1:grid.Nx
+        @inbounds V[i, j, 1] -= shift
+    end
 end
 
-@kernel function _shift_barotropic_face!(U, i, shift, ::Val{:x})
-    j = @index(Global, Linear)
-    @inbounds U[i, j, 1] -= shift[1]
-end
+pin_barotropic_face!(arch, grid, field, index, ::Nothing, direction) = nothing
 
-@kernel function _shift_barotropic_face!(V, j, shift, ::Val{:y})
-    i = @index(Global, Linear)
-    @inbounds V[i, j, 1] -= shift[1]
-end
+# Launched through KernelAbstractions directly: `launch!` only indexes its offset ranges in two and three dimensions.
+pin_barotropic_face!(arch, grid, field, index, target, direction) =
+    _pin_barotropic_face!(device(arch), 1)(field, grid, index, target, direction; ndrange = 1)
 
-shift_barotropic_face!(arch, grid, field, index, ::Nothing, shift, ::Val{:x}) = nothing
-shift_barotropic_face!(arch, grid, field, index, ::Nothing, shift, ::Val{:y}) = nothing
-
-# Launched through KernelAbstractions directly: these are one-dimensional, and `launch!` only indexes its
-# offset ranges in two and three dimensions.
-function shift_barotropic_face!(arch, grid, field, index, target, shift, direction::Val{:x})
-    _barotropic_face_shift!(device(arch), 1)(shift, field, grid, index, target, direction; ndrange = 1)
-    _shift_barotropic_face!(device(arch), min(256, grid.Ny))(field, index, shift, direction; ndrange = grid.Ny)
+function enforce_barotropic_transport_targets!(arch, grid, U, V, targets)
+    pin_barotropic_face!(arch, grid, U, 1,           targets.west,  Val(:x))
+    pin_barotropic_face!(arch, grid, U, grid.Nx + 1, targets.east,  Val(:x))
+    pin_barotropic_face!(arch, grid, V, 1,           targets.south, Val(:y))
+    pin_barotropic_face!(arch, grid, V, grid.Ny + 1, targets.north, Val(:y))
     return nothing
 end
-
-function shift_barotropic_face!(arch, grid, field, index, target, shift, direction::Val{:y})
-    _barotropic_face_shift!(device(arch), 1)(shift, field, grid, index, target, direction; ndrange = 1)
-    _shift_barotropic_face!(device(arch), min(256, grid.Nx))(field, index, shift, direction; ndrange = grid.Nx)
-    return nothing
-end
-
-enforce_barotropic_transport_targets!(arch, grid, U, V, targets, ::Nothing) = nothing
-
-function enforce_barotropic_transport_targets!(arch, grid, U, V, targets, shift)
-    shift_barotropic_face!(arch, grid, U, 1,           targets.west,  shift, Val(:x))
-    shift_barotropic_face!(arch, grid, U, grid.Nx + 1, targets.east,  shift, Val(:x))
-    shift_barotropic_face!(arch, grid, V, 1,           targets.south, shift, Val(:y))
-    shift_barotropic_face!(arch, grid, V, grid.Ny + 1, targets.north, shift, Val(:y))
-    return nothing
-end
-
-barotropic_face_shift_buffer(arch, grid, targets) =
-    any(!isnothing, targets) ? on_architecture(arch, zeros(eltype(grid), 1)) : nothing
 
 # Re-pin the transports after the end-of-step Flather refills, so the barotropic corrector and any
 # diagnostics see the same face transports the substeps used.
 function enforce_barotropic_transport_targets!(free_surface, grid)
     U, V = free_surface.barotropic_velocities
     Ũ, Ṽ = free_surface.filtered_state.Ũ, free_surface.filtered_state.Ṽ
-    arch = architecture(grid)
     targets = barotropic_transport_targets(U, V, grid)
-    shift = barotropic_face_shift_buffer(arch, grid, targets)
-    enforce_barotropic_transport_targets!(arch, grid, U, V, targets, shift)
-    enforce_barotropic_transport_targets!(arch, grid, Ũ, Ṽ, targets, shift)
+    arch = architecture(grid)
+    enforce_barotropic_transport_targets!(arch, grid, U, V, targets)
+    enforce_barotropic_transport_targets!(arch, grid, Ũ, Ṽ, targets)
     return nothing
 end
 
@@ -236,7 +233,6 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     only_local_halos = fill_only_local_halos(free_surface)
 
     barotropic_targets = barotropic_transport_targets(U, V, grid)
-    face_shift = barotropic_face_shift_buffer(arch, grid, barotropic_targets)
 
     GC.@preserve U_args η_args U_halo_args V_halo_args η_halo_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -256,7 +252,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
             maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
-            enforce_barotropic_transport_targets!(arch, grid, U, V, barotropic_targets, face_shift)
+            enforce_barotropic_transport_targets!(arch, grid, U, V, barotropic_targets)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
