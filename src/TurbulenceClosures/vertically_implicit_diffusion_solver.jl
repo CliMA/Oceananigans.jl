@@ -194,6 +194,9 @@ and
 
 where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
+
+On an `ImmersedBoundaryGrid`, the off-diagonals vanish across the immersed boundary, so the
+rows of the inactive cells are decoupled from the active part of the column.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
