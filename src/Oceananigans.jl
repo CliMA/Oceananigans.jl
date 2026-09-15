@@ -32,7 +32,7 @@ export
     ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
-    Distributed, Partition,
+    Distributed, NCCLDistributed, Partition,
 
     # Advection schemes
     Centered, UpwindBiased, WENO,
