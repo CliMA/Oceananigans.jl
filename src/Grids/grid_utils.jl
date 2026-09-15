@@ -83,14 +83,10 @@ is restricted by `length(ind)`.
 @inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 @inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
+@inline function Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc))))
+    topo = topology(grid)
+    sz = size(grid)
+    return ntuple(Val(length(loc))) do d
         Base.@_inline_meta
         length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
     end
@@ -209,12 +205,15 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::Flat, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::AT, halo) = Colon()
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Colon, args...) = Colon()
 
 parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)

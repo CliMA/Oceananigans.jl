@@ -12,7 +12,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                     global_attributes = Dict(),
                     output_attributes = Dict(),
                     file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
+                    overwrite_files = false,
                     verbose = false,
                     part = 1,
                     store = nothing,
@@ -106,7 +106,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                       dimensions,
                       with_halos,
                       include_grid_metrics,
-                      overwrite_existing,
+                      overwrite_files,
                       verbose,
                       part,
                       file_splitting,
@@ -153,7 +153,7 @@ function initialize!(writer::ZarrWriter, model)
     end
 
     # Overwrite removes the existing directory (root only).
-    if writer.overwrite_existing && starting_fresh && writer.store isa Zarr.DirectoryStore
+    if writer.overwrite_files && starting_fresh && writer.store isa Zarr.DirectoryStore
         if is_root && !isempty(writer.filepath) && isdir(writer.filepath)
             rm(writer.filepath; recursive=true, force=true)
         end
@@ -249,7 +249,7 @@ function validate_existing_zarr_store(writer::ZarrWriter)
             throw(ArgumentError(
                 "Zarr array `$name_str` in $(writer.filepath) has dtype $arr_eltype " *
                 "but `array_type` requests $FT_requested. " *
-                "Re-use the original `array_type` or pass `overwrite_existing=true`."))
+                "Re-use the original `array_type` or pass `overwrite_files=true`."))
         end
     end
     return nothing
@@ -623,14 +623,14 @@ function start_next_file(model, writer::ZarrWriter)
         part1_path = replace(writer.filepath, r".zarr$" => "_part1.zarr")
         writer.verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
         if isdir(writer.filepath)
-            mv(writer.filepath, part1_path; force=writer.overwrite_existing)
+            mv(writer.filepath, part1_path; force=writer.overwrite_files)
         end
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.zarr$" => "part" * string(writer.part) * ".zarr")
-    if writer.overwrite_existing && isdir(writer.filepath)
+    if writer.overwrite_files && isdir(writer.filepath)
         rm(writer.filepath; recursive=true, force=true)
     end
     writer.store = Zarr.DirectoryStore(writer.filepath)

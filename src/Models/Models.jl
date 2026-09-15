@@ -20,7 +20,7 @@ using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Fields: Field, TracerFields
-using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
