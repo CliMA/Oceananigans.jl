@@ -1,11 +1,10 @@
 # # Global wind-driven gyres on a tripolar grid
 #
 # This example is a stripped-down version of the global ocean configurations used for
-# OMIP-style simulations: a [`TripolarGrid`](@ref) with realistic bathymetry,
+# OMIP-style simulations: a [`TripolarGrid`](@ref) with realistic coastlines,
 # a ``z^\star`` vertical coordinate, and a [`SplitExplicitFreeSurface`](@ref).
-# To keep it cheap enough for a laptop GPU, the ocean is a single layer whose thickness
-# follows the bathymetry, which makes the model a nonlinear shallow water model on a
-# sphere with continents and ocean basins of realistic depth.
+# To keep it cheap enough for a laptop GPU, the ocean is a single 1-km-thick layer,
+# which makes the model a nonlinear shallow water model on a sphere with continents.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
 # currents, the Gulf Stream and the Kuroshio, that close the wind-driven gyres.
@@ -47,21 +46,20 @@ Oceananigans.defaults.FloatType = FT
 # ## A single-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: ½° runs in about an hour on a laptop GPU, ¼° takes about eight times longer.
-# The vertical direction has a single layer that reaches down to `maximum_depth`.
-# We build it with a `MutableVerticalDiscretization` so that the layer thickness can
-# follow the free surface, which is what the ``z^\star`` coordinate does.
+# parameter: ½° runs in under an hour on a laptop GPU, ¼° takes about eight times longer,
+# and 1° or 2° are quick enough for a CPU. The vertical direction has a single layer of
+# depth `H`. We build it with a `MutableVerticalDiscretization` so that the layer
+# thickness can follow the free surface, which is what the ``z^\star`` coordinate does.
 
 resolution = 1/2 # degrees
 Nx = round(Int, 360 / resolution)
 Ny = Nx ÷ 2
-maximum_depth = 6000 # m
-minimum_depth = 60   # m
-z = MutableVerticalDiscretization((-maximum_depth, 0))
+H = 1000 # layer depth [m]
+z = MutableVerticalDiscretization((-H, 0))
 
 underlying_grid = TripolarGrid(arch; size=(Nx, Ny, 1), z, halo=(5, 5, 5))
 
-# ## Realistic bathymetry from ETOPO1
+# ## Realistic coastlines from ETOPO1
 #
 # NOAA's ERDDAP server can subsample the 1-arc-minute ETOPO1 relief on the fly,
 # so we download only every `stride`-th point: a map of the world at our resolution
@@ -92,15 +90,15 @@ set!(etopo_elevation, elevation)
 tripolar_elevation = Field{Center, Center, Nothing}(underlying_grid)
 interpolate!(tripolar_elevation, etopo_elevation)
 
-# and use it as the bottom of the single layer. [`PartialCellBottom`](@ref) cuts the cell
-# in every column down to the local bathymetry, so the layer is as deep as the real ocean
-# down to `maximum_depth`. Cells shallower than `minimum_depth`, and land, are immersed.
+# and use it as a land mask: cells above sea level are land, everything else is
+# a flat `H`-deep ocean. A single layer over the real bathymetry would be a shallow
+# water model with depth steps of several kilometers between neighboring cells, so
+# we keep the bottom flat and let the coastlines set the shape of the gyres.
 
 bottom_height = Field{Center, Center, Nothing}(underlying_grid)
-set!(bottom_height, clamp.(interior(tripolar_elevation), -maximum_depth, 0))
+set!(bottom_height, ifelse.(interior(tripolar_elevation) .< 0, -H, 0))
 
-bottom = PartialCellBottom(bottom_height; minimum_fractional_cell_height = minimum_depth / maximum_depth)
-grid = ImmersedBoundaryGrid(underlying_grid, bottom; active_cells_map=true)
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
 
 # ## Wind stress and bottom drag
 #
@@ -145,18 +143,17 @@ save("wind_stress.png", fig, px_per_unit=2) #hide
 # ![](wind_stress.png)
 
 # The wind stress enters through the top boundary condition on `u`, and a quadratic
-# [`BulkDrag`](@ref) acts on the bottom of every column, which is an immersed boundary.
+# [`BulkDrag`](@ref) acts on the bottom.
 
 wind_stress = FluxBoundaryCondition(zonal_momentum_flux, parameters=(; τ₀, ρₒ))
 drag = BulkDrag(coefficient=FT(2.5e-3))
-bottom_drag = ImmersedBoundaryCondition(bottom=drag)
-u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag, immersed=bottom_drag)
-v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=bottom_drag)
+u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag)
+v_boundary_conditions = FieldBoundaryConditions(bottom=drag)
 
 # ## Free surface and time stepping
 #
-# The barotropic gravity wave speed ``\sqrt{g \, \mathrm{maximum\_depth}} ≈ 240`` m/s
-# and the smallest ocean cell set the substep size of the split-explicit free surface.
+# The barotropic gravity wave speed ``\sqrt{g H} ≈ 100`` m/s and the smallest ocean
+# cell set the substep size of the split-explicit free surface.
 # Given the time step `Δt`, the free surface computes the number of substeps that keeps
 # the barotropic CFL number at 0.7.
 
@@ -255,11 +252,8 @@ end
 gulf_stream = (longitude = (275, 310), latitude = (20, 42))
 kuroshio = (longitude = (118, 160), latitude = (20, 42))
 
-# For a reference we use the flat-bottom Sverdrup prediction: we integrate the interior
-# transport across each basin on the ETOPO grid and take the largest value over the
-# latitudes of the gyre. Over real bathymetry the depth-averaged flow also feels the
-# bottom, so the simulated gyres can differ from this prediction; the scaling with
-# ``1 / Ω`` does not depend on the bathymetry.
+# For the Sverdrup prediction we integrate the interior transport across each basin
+# on the ETOPO grid and take the largest value over the latitudes of the gyre.
 
 etopo_ocean = elevation .< 0
 etopo_longitude = mod.(etopo_longitude, 360)
@@ -306,8 +300,8 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 # ![](western_boundary_current_transports.png)
 #
 # The solid lines are the gyre transports measured in the simulations and the dashed
-# lines the flat-bottom Sverdrup prediction. Doubling the rotation rate halves the
-# transport of both boundary currents.
+# lines the Sverdrup prediction. Doubling the rotation rate halves the transport of
+# both boundary currents.
 #
 # ## The gyres
 #
@@ -317,7 +311,7 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 # draw the fields with `surface!` on the grid's own longitudes and latitudes, and hide
 # the land.
 
-land = Array(interior(bottom_height, :, :, 1)) .> -minimum_depth
+land = Array(interior(bottom_height, :, :, 1)) .≥ 0
 north_america = argmin(@. (mod(λ, 360) - 260)^2 + (φ - 40)^2)
 longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
