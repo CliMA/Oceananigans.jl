@@ -2,7 +2,7 @@ using Dates: AbstractDateTime
 using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: AbstractField, Scan
-using Oceananigans.Utils: default_safety_factor, time_difference_seconds
+using Oceananigans.Utils: time_difference_seconds
 
 using Statistics: Statistics
 
@@ -87,7 +87,7 @@ JLD2Writer scheduled on TimeInterval(1 second):
 └── file size: 0 bytes (file not yet created)
 ```
 """
-function TimeDerivative(operand, model=nothing; safety_factor = default_safety_factor)
+function TimeDerivative(operand, model=nothing; safety_factor = 1.2)
     operand = materialize_operand(operand)
 
     result = similar_field(operand)

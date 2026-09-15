@@ -350,17 +350,13 @@ restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 ##### PrecedingIterations
 #####
 
-# Exceeds `TimeStepWizard`'s default `max_change = 1.1`, with margin for the floating point
-# comparison against it
-const default_safety_factor = 1.2
-
 struct PrecedingIterations{S, FT} <: AbstractSchedule
     parent :: S
     safety_factor :: FT
 end
 
 """
-    PrecedingIterations(parent_schedule)
+    PrecedingIterations(parent_schedule; safety_factor=1.2)
 
 Return a `schedule::PrecedingIterations` that actuates both when `parent_schedule` actuates,
 and at the iteration immediately preceding the actuation of `parent_schedule`. This is the
@@ -377,10 +373,11 @@ output writer would consume the writer's actuation before it fires.
 For a time-based `parent_schedule`, the next actuation is anticipated by comparing against
 `safety_factor * clock.last_Δt`, so `safety_factor` must exceed the factor by which an
 adaptive time step can grow in one iteration — `TimeStepWizard` limits this to `max_change`,
-which defaults to `1.1`. A larger `safety_factor` only costs extra actuations, whereas one
+which defaults to `1.1`, and the default `safety_factor = 1.2` exceeds it with margin for the
+floating point comparison. A larger `safety_factor` only costs extra actuations, whereas one
 that is too small widens the interval a difference is taken over.
 """
-function PrecedingIterations(parent_schedule::AbstractSchedule; safety_factor = default_safety_factor)
+function PrecedingIterations(parent_schedule::AbstractSchedule; safety_factor = 1.2)
     S = typeof(parent_schedule)
     FT = typeof(safety_factor)
     return PrecedingIterations{S, FT}(deepcopy(parent_schedule), safety_factor)
