@@ -6,8 +6,7 @@ The cells that lie inside the boundary are "immersed" and excluded from the comp
 
 1. [`GridFittedBottom`](@ref), which immerses every cell whose center lies below a bottom height, so that the bottom is a staircase of full cells.
 2. [`PartialCellBottom`](@ref), which also reduces the height of the bottommost cell of each column to fit the bottom height.
-3. [`ShavedCellBottom`](@ref), which also cuts the lateral faces of the bottommost cells where the bottom crosses them, so that the bottom
-   slopes through each cell.
+3. [`ShavedCellBottom`](@ref), which also cuts the lateral faces of the bottommost cells where the bottom crosses them, so that the bottom slopes through each cell.
 4. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
 ## Three ways to fit a slope
