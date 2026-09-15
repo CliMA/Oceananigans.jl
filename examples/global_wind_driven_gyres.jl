@@ -157,7 +157,7 @@ v_boundary_conditions = FieldBoundaryConditions(bottom=drag)
 # Given the time step `Δt`, the free surface computes the number of substeps that keeps
 # the barotropic CFL number at 0.7.
 
-Δt = 30minutes
+Δt = 1hour
 free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 
 # ## The model
