@@ -57,7 +57,8 @@ function test_time_derivative_evolution(arch)
     return nothing
 end
 
-function test_time_derivative_operators(arch)
+# A `TimeDerivative` is an `AbstractField` that reads as its `result`
+function test_time_derivative_field_interface(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     u = CenterField(grid)
     set!(u, 7)
@@ -65,30 +66,34 @@ function test_time_derivative_operators(arch)
     ∂ₜc = TimeDerivative(CenterField(grid))
     parent(∂ₜc.result) .= 1//2
 
-    # Each generated unary method must build the operation written on `result`
-    for op in (sqrt, sin, cos, exp, tanh, abs, log10, log, tan, sinh, cosh, -, +)
-        @test op(∂ₜc)[1, 1, 1] == op(∂ₜc.result)[1, 1, 1]
-    end
+    @test ∂ₜc isa AbstractField
+    @test location(∂ₜc) == (Center, Center, Center)
+    @test size(∂ₜc) == (1, 1, 1)
+    @test ∂ₜc[1, 1, 1] == 1//2
+    @test Array(interior(∂ₜc)) == Array(interior(∂ₜc.result))
+    @test Adapt.adapt(Array, ∂ₜc) == Adapt.adapt(Array, ∂ₜc.result)
 
-    # The three generated binary methods are identical across operators, so exercise every
-    # argument pairing for one of them and the scalar pairing for the rest
-    @test (∂ₜc * 2)[1, 1, 1]   == (∂ₜc.result * 2)[1, 1, 1]
-    @test (2 * ∂ₜc)[1, 1, 1]   == (2 * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc * ∂ₜc)[1, 1, 1] == (∂ₜc.result * ∂ₜc.result)[1, 1, 1]
-    @test (∂ₜc * u)[1, 1, 1]   == (∂ₜc.result * u)[1, 1, 1]
-    @test (u * ∂ₜc)[1, 1, 1]   == (u * ∂ₜc.result)[1, 1, 1]
+    # Operators take the derivative as an operand like any field
+    @test (-∂ₜc)[1, 1, 1] == -1//2
+    @test (2 * ∂ₜc)[1, 1, 1] == 1
+    @test (∂ₜc * u)[1, 1, 1] == 7//2
+    @test (∂ₜc * ∂ₜc)[1, 1, 1] == 1//4
 
-    for op in (+, -, /, ^, >, <, >=, <=, atan, atand, mod)
-        @test op(2, ∂ₜc)[1, 1, 1] == op(2, ∂ₜc.result)[1, 1, 1]
-    end
-
-    # Chained calls fold pairwise, and the result computes through a Field
+    # Chained calls fold pairwise, and the result computes through a Field, which launches a
+    # kernel with the derivative as an operand
     product = Field(2 * ∂ₜc * u)
     compute!(product)
     @test Array(interior(product))[1, 1, 1] == 7
 
-    # Reductions read the derivative directly
+    # Reductions and averages read the derivative directly
     @test maximum(abs, ∂ₜc) == 1//2
+    average = Field(Average(∂ₜc, dims=(1, 2, 3)))
+    compute!(average)
+    @test Array(interior(average))[1, 1, 1] == 1//2
+
+    # Computing a derivative does not advance it
+    compute!(∂ₜc)
+    @test ∂ₜc[1, 1, 1] == 1//2
 
     return nothing
 end
@@ -161,7 +166,7 @@ function test_time_derivative_output(arch, writer_type, path)
         writer_type(model, time_derivative_outputs(writer_type, model);
                     schedule = IterationInterval(1),
                     with_halos = false,
-                    overwrite_existing = true,
+                    overwrite_files = true,
                     output_writer_kwargs(writer_type, path)...)
     run!(simulation)
 
@@ -187,6 +192,37 @@ function test_time_derivative_output(arch, writer_type, path)
     return nothing
 end
 
+# Operations built from a derivative are computed from its `result` when written, so the
+# derivative is kept up to date by a callback rather than by the writer
+function test_time_derivative_composite_output(arch)
+    model = relaxing_tracer_model(arch)
+    Δt = 1e-3
+    filename = "test_composite_dcdt.jld2"
+
+    ∂ₜc = TimeDerivativeCallback(model.tracers.c)
+    simulation = Simulation(model; Δt, stop_iteration=2)
+    simulation.callbacks[:∂ₜc] = ∂ₜc
+
+    outputs = (; twice = 2 * ∂ₜc.func, mean = Average(∂ₜc.func, dims=(1, 2, 3)))
+    simulation.output_writers[:composite] = JLD2Writer(model, outputs; filename,
+                                                       schedule = IterationInterval(1),
+                                                       with_halos = false,
+                                                       overwrite_files = true)
+    run!(simulation)
+
+    derivative = Array(interior(∂ₜc.func))
+
+    jldopen(filename) do file
+        @test all(file["timeseries/twice/0"] .== 0)
+        @test all(file["timeseries/twice/2"] .≈ 2 .* derivative)
+        @test file["timeseries/mean/2"][1, 1, 1] ≈ mean(derivative)
+    end
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
 # The derivative only has to be evaluated at the output and on the iteration before it, which
 # is all a difference across one time step needs
 function test_time_derivative_output_schedule(arch)
@@ -199,7 +235,7 @@ function test_time_derivative_output_schedule(arch)
                                                         filename = "test_dcdt_schedule.jld2",
                                                         schedule = IterationInterval(10),
                                                         with_halos = false,
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
     run!(simulation)
 
     name = only(filter(key -> startswith(string(key), "TimeDerivative"), collect(keys(simulation.callbacks))))
@@ -239,7 +275,7 @@ function test_time_derivative_checkpointing(arch)
     simulation.output_writers[:derivative] = JLD2Writer(model, (; ∂ₜc),
                                                         filename = "$(prefix).jld2",
                                                         schedule = IterationInterval(1),
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
     run!(simulation)
 
     written = simulation.output_writers[:derivative].outputs.∂ₜc
@@ -259,7 +295,7 @@ function test_time_derivative_checkpointing(arch)
     restored_simulation.output_writers[:derivative] = JLD2Writer(restored_model, (; ∂ₜc=restored_∂ₜc),
                                                                  filename = "$(prefix)_restored.jld2",
                                                                  schedule = IterationInterval(1),
-                                                                 overwrite_existing = true)
+                                                                 overwrite_files = true)
 
     set!(restored_simulation; iteration=2)
 
@@ -288,7 +324,7 @@ end
 
         @testset "TimeDerivative evolution [$(typeof(arch))]" begin
             test_time_derivative_evolution(arch)
-            test_time_derivative_operators(arch)
+            test_time_derivative_field_interface(arch)
             test_time_derivative_initialization(arch)
         end
 
@@ -299,6 +335,7 @@ end
                 test_time_derivative_output(arch, writer_type, path)
             end
 
+            test_time_derivative_composite_output(arch)
             test_time_derivative_output_schedule(arch)
         end
 

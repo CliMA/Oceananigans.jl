@@ -327,8 +327,11 @@ add_callback!(simulation, progress, IterationInterval(5))
 run!(simulation)
 ```
 
-Field operations are forwarded to the `Field` that the derivative computes (`derivative.result`), so `interior`, `maximum`,
-indexing and other operations apply to the derivative itself.
+A `TimeDerivative` is an `AbstractField` that reads as the `Field` it computes (`derivative.result`), so `interior`,
+`maximum`, indexing, and operations such as `2 * derivative` or `Average(derivative)` apply to the derivative itself.
+Reading a derivative, including through `compute!`, does not advance it: an operation built from one sees whatever
+its callback last computed, so keep the `TimeDerivativeCallback` in `simulation.callbacks` when such operations
+are written by an output writer.
 
 Callback ordering works in your favor here: callbacks run after the time step and before output
 writers, so a callback that reads the derivative always sees it across the step that just finished.

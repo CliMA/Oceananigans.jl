@@ -1,28 +1,29 @@
+using Adapt: Adapt
+using Base: @propagate_inbounds
 using Dates: AbstractDateTime
 using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: AbstractField, Scan
 using Oceananigans.Utils: time_difference_seconds
 
-using Statistics: Statistics
-
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Grids: grid
-import Oceananigans.Fields: location, indices, interior
+import Oceananigans.Fields: indices, interior
 
 """
-    mutable struct TimeDerivative{O, R, T}
+    mutable struct TimeDerivative <: AbstractField
 
 Container that holds the state required to compute the time derivative of an `operand`
 as a simulation runs: the `operand` evaluated at the `previous_time`, and the most
-recently computed `result`. Both are `Field`s at `location(operand)`.
+recently computed `result`. Both are `Field`s at `location(operand)`, and the container
+reads as `result`.
 """
-mutable struct TimeDerivative{O, R, T, FT}
-           result :: R
-          operand :: O
-         previous :: R
-    previous_time :: T
+mutable struct TimeDerivative{LX, LY, LZ, G, T, O, R, TT, FT} <: AbstractField{LX, LY, LZ, G, T, 3}
+                           result :: R
+                          operand :: O
+                         previous :: R
+                    previous_time :: TT
     expected_max_time_step_growth :: FT
+                             grid :: G
 end
 
 materialize_operand(operand) = operand
@@ -48,8 +49,13 @@ An output writer updates a `TimeDerivative` among its outputs through a
 [`TimeDerivativeCallback`](@ref) that it registers itself; construct the callback directly
 to use one without a writer. The writer's next actuation is anticipated by assuming that the
 time step grows by at most a factor `expected_max_time_step_growth` in one iteration, as
-described in [`PrecedingIterations`](@ref). Field operations are forwarded to `result`, so
-`2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`.
+described in [`PrecedingIterations`](@ref).
+
+A `TimeDerivative` is an `AbstractField` that reads as its `result`, so it can be indexed,
+reduced, and composed into operations like any other field. Reading it, including through
+`compute!`, does not advance it: an operation built from a `TimeDerivative` sees whatever its
+callback last computed, so keep a [`TimeDerivativeCallback`](@ref) in `simulation.callbacks`
+when writing such operations.
 
 Example
 =======
@@ -77,7 +83,7 @@ simulation = Simulation(model, Δt=1, stop_iteration=10)
 simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜc²),
                                                 filename = "tracer_variance_budget.jld2",
                                                 schedule = TimeInterval(1),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 # output
 JLD2Writer scheduled on TimeInterval(1 second):
@@ -96,8 +102,13 @@ function TimeDerivative(operand, model=nothing; expected_max_time_step_growth = 
     previous = similar_field(operand)
 
     previous_time = isnothing(model) ? zero(defaults.FloatType) : model.clock.time
+    grid = operand.grid
+    LX, LY, LZ = location(operand)
+    G, T, O, R = typeof(grid), eltype(operand), typeof(operand), typeof(result)
+    TT, FT = typeof(previous_time), typeof(expected_max_time_step_growth)
 
-    derivative = TimeDerivative(result, operand, previous, previous_time, expected_max_time_step_growth)
+    derivative = TimeDerivative{LX, LY, LZ, G, T, O, R, TT, FT}(result, operand, previous, previous_time,
+                                                              expected_max_time_step_growth, grid)
 
     isnothing(model) || initialize!(derivative, model)
 
@@ -107,54 +118,23 @@ end
 similar_field(operand) = Field(instantiated_location(operand), operand.grid, eltype(operand),
                                indices = indices(operand))
 
-grid(derivative::TimeDerivative) = grid(derivative.operand)
-location(derivative::TimeDerivative) = location(derivative.operand)
-indices(derivative::TimeDerivative) = indices(derivative.operand)
-
 #####
 ##### Read a `TimeDerivative` like the `Field` it computes
 #####
 
 Base.parent(derivative::TimeDerivative) = parent(derivative.result)
-Base.size(derivative::TimeDerivative, args...) = size(derivative.result, args...)
-Base.eltype(derivative::TimeDerivative) = eltype(derivative.result)
-Base.getindex(derivative::TimeDerivative, args...) = getindex(derivative.result, args...)
+Base.size(derivative::TimeDerivative) = size(derivative.result)
 
-interior(derivative::TimeDerivative, args...) = interior(derivative.result, args...)
+@propagate_inbounds Base.getindex(derivative::TimeDerivative, inds...) = getindex(derivative.result, inds...)
 
-for reduction in (:sum, :maximum, :minimum, :all, :any, :prod, :extrema)
-    @eval begin
-        Base.$reduction(derivative::TimeDerivative; kw...) = Base.$reduction(derivative.result; kw...)
-        Base.$reduction(f::Function, derivative::TimeDerivative; kw...) = Base.$reduction(f, derivative.result; kw...)
-    end
-end
+indices(derivative::TimeDerivative) = indices(derivative.result)
+interior(derivative::TimeDerivative) = interior(derivative.result)
+interior(derivative::TimeDerivative, I...) = interior(derivative.result, I...)
 
-Statistics.mean(derivative::TimeDerivative; kw...) = Statistics.mean(derivative.result; kw...)
-Statistics.mean(f::Function, derivative::TimeDerivative; kw...) = Statistics.mean(f, derivative.result; kw...)
+"Inside kernels a `TimeDerivative` is its `result`."
+Adapt.adapt_structure(to, derivative::TimeDerivative) = Adapt.adapt(to, derivative.result)
 
-#####
-##### Substitute `result` into the operators registered by `AbstractOperations`, so that
-##### `2 * ∂ₜc` builds the same `AbstractOperation` as `2 * ∂ₜc.result`
-#####
-
-# Widening this union is ambiguous with the `op(::AbstractField, ::Any)` operator methods
-const ScalarOperand = Union{Function, Number}
-
-for op in (:sqrt, :sin, :cos, :exp, :tanh, :abs, :log10, :log, :tan, :sinh, :cosh, :-, :+)
-    @eval Base.$op(derivative::TimeDerivative) = Base.$op(derivative.result)
-end
-
-for op in (:+, :-, :*, :/, :^, :>, :<, :>=, :<=, :atan, :atand, :mod)
-    @eval begin
-        Base.$op(a::TimeDerivative, b::ScalarOperand) = Base.$op(a.result, b)
-        Base.$op(a::ScalarOperand, b::TimeDerivative) = Base.$op(a, b.result)
-        Base.$op(a::TimeDerivative, b::TimeDerivative) = Base.$op(a.result, b.result)
-    end
-end
-
-# Calling a `TimeDerivative` updates it; `fetch_output` reads it
-fetch_output(derivative::TimeDerivative, model) = parent(derivative.result)
-
+# Calling a `TimeDerivative` updates it; reading it, including through `compute!`, does not
 (derivative::TimeDerivative)(sim) = update_time_derivative!(derivative, sim.model)
 
 """
