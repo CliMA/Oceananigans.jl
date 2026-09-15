@@ -59,18 +59,18 @@ const serial_memory_cpu = Dict(
     (:hydrostatic,    :flat)            => 560,
     (:hydrostatic,    :immersed)        => 592,
     (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 5.8e5,
-    (:nonhydrostatic, :immersed)        => 6.1e5,
-    (:nonhydrostatic, :active_immersed) => 6.5e5,
+    (:nonhydrostatic, :flat)            => 1700,
+    (:nonhydrostatic, :immersed)        => 1800,
+    (:nonhydrostatic, :active_immersed) => 10500,
 )
 
 const serial_memory_gpu = Dict(
     (:hydrostatic,    :flat)            => 8.4e5,
     (:hydrostatic,    :immersed)        => 9.2e5,
     (:hydrostatic,    :active_immersed) => 9.3e5,
-    (:nonhydrostatic, :flat)            => 1.2e6,
-    (:nonhydrostatic, :immersed)        => 1.4e6,
-    (:nonhydrostatic, :active_immersed) => 1.4e6,
+    (:nonhydrostatic, :flat)            => 7.6e5,
+    (:nonhydrostatic, :immersed)        => 8.6e5,
+    (:nonhydrostatic, :active_immersed) => 8.7e5,
 )
 
 const distributed_memory_cpu = Dict(
@@ -163,8 +163,9 @@ end
                 for immersed in (:flat, :immersed, :active_immersed)
                     grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
 
-                    @test (@inferred work_layout(grid, Val(:xyz), ())) isa Tuple
-                    @test (@inferred interior_work_layout(grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
+                    dev = Oceananigans.Architectures.device(arch)
+                    @test (@inferred work_layout(dev, grid, Val(:xyz), ())) isa Tuple
+                    @test (@inferred interior_work_layout(dev, grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
 
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)

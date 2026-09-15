@@ -2,12 +2,11 @@ using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperatio
 using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
-using SeawaterPolynomials: BoussinesqEquationOfState
-import SeawaterPolynomials.ρ
+using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
 **note** `eos` must be `BoussinesqEquationOfState` because a reference density is needed for the computation."
-@inline ρ(i, j, k, grid, eos, T, S, Z) = @inbounds ρ(T[i, j, k], S[i, j, k], Z[i, j, k], eos)
+@inline SeawaterPolynomials.ρ(i, j, k, grid::AbstractGrid, eos, T, S, Z) = @inbounds ρ(T[i, j, k], S[i, j, k], Z[i, j, k], eos)
 
 "Return a `KernelFunctionOperation` to compute the in-situ `seawater_density`."
 seawater_density(grid, eos, temperature, salinity, geopotential_height) =
@@ -87,7 +86,10 @@ julia> model = NonhydrostaticModel(grid; buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   ├── momentum: Centered(order=2)
+│   ├── T: Centered(order=2)
+│   └── S: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()

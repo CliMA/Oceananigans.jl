@@ -12,7 +12,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                     global_attributes = Dict(),
                     output_attributes = Dict(),
                     file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
+                    overwrite_files = false,
                     verbose = false,
                     part = 1,
                     store = nothing,
@@ -61,7 +61,7 @@ function ZarrWriter(model::AbstractModel, outputs;
     update_file_splitting_schedule!(file_splitting, filepath)
 
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
-                            for name in keys(outputs))
+                            for name in output_names(outputs))
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
     # Detect unique grids across all outputs. Outputs without a grid (functions,
@@ -106,7 +106,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                       dimensions,
                       with_halos,
                       include_grid_metrics,
-                      overwrite_existing,
+                      overwrite_files,
                       verbose,
                       part,
                       file_splitting,
@@ -154,7 +154,7 @@ function initialize!(writer::ZarrWriter, model)
     end
 
     # Overwrite removes the existing directory (root only).
-    if writer.overwrite_existing && starting_fresh && writer.store isa Zarr.DirectoryStore
+    if writer.overwrite_files && starting_fresh && writer.store isa Zarr.DirectoryStore
         if is_root && !isempty(writer.filepath) && isdir(writer.filepath)
             rm(writer.filepath; recursive=true, force=true)
         end
@@ -250,13 +250,13 @@ function validate_existing_zarr_store(writer::ZarrWriter)
             throw(ArgumentError(
                 "Zarr array `$name_str` in $(writer.filepath) has dtype $arr_eltype " *
                 "but `array_type` requests $FT_requested. " *
-                "Re-use the original `array_type` or pass `overwrite_existing=true`."))
+                "Re-use the original `array_type` or pass `overwrite_files=true`."))
         end
     end
     return nothing
 end
 
-function initialize_zarr_store!(writer::ZarrWriter, model)
+Base.@nospecializeinfer function initialize_zarr_store!(@nospecialize(writer::ZarrWriter), @nospecialize(model))
     arch = architecture(model)
     distributed = arch isa Distributed
     is_root = !distributed || mpi_rank(global_communicator()) == 0
@@ -355,7 +355,7 @@ zarr_compressor(compressor, store) = compressor
 zarr_compressor(::Nothing, store) = Zarr.BloscCompressor()
 zarr_compressor(::Nothing, ::Zarr.DirectoryStore) = Zarr.NoCompressor()
 
-function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractField, name, model)
+Base.@nospecializeinfer function define_zarr_output_variable!(g, @nospecialize(writer::ZarrWriter), @nospecialize(output::AbstractField), name, @nospecialize(model))
     arch = architecture(output.grid)
     distributed = arch isa Distributed
 
@@ -628,14 +628,14 @@ function start_next_file(model, writer::ZarrWriter)
         part1_path = replace(writer.filepath, r".zarr$" => "_part1.zarr")
         writer.verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
         if isdir(writer.filepath)
-            mv(writer.filepath, part1_path; force=writer.overwrite_existing)
+            mv(writer.filepath, part1_path; force=writer.overwrite_files)
         end
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.zarr$" => "part" * string(writer.part) * ".zarr")
-    if writer.overwrite_existing && isdir(writer.filepath)
+    if writer.overwrite_files && isdir(writer.filepath)
         rm(writer.filepath; recursive=true, force=true)
     end
     writer.store = Zarr.DirectoryStore(writer.filepath)

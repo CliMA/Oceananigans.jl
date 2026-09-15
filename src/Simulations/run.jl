@@ -345,6 +345,10 @@ function Oceananigans.initialize!(sim::Simulation)
     # Output and diagnostics initialization
     [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
 
+    for writer in values(sim.output_writers)
+        initialize!(writer, model)
+    end
+
     # Things to do for fresh simulations (not after checkpoint restore)
     if model.clock.iteration == 0
         scheduled_activities = Iterators.flatten((values(sim.diagnostics),

@@ -13,7 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -102,6 +102,30 @@ function run_field_reduction_tests(grid)
 
         @test extrema(ϕ) == (minimum(ϕ), maximum(ϕ))
         @test extrema(∛, ϕ) == (minimum(∛, ϕ), maximum(∛, ϕ))
+
+        # Index reductions locate extrema within `interior(ϕ)`, consistently with `nodes(ϕ)`,
+        # and must be blind to the halo regions, poisoned here on a copy
+        ψ = similar(ϕ)
+        parent(ψ) .= convert(eltype(ψ), 1e6)
+        interior(ψ) .= interior(ϕ)
+        interior_values = Array(interior(ψ))
+        @test argmax(ψ) == argmax(interior_values)
+        @test findmax(ψ) == findmax(interior_values)
+
+        parent(ψ) .= convert(eltype(ψ), -1e6)
+        interior(ψ) .= interior(ϕ)
+        @test argmin(ψ) == argmin(interior_values)
+        @test findmin(ψ) == findmin(interior_values)
+
+        # Windowed fields return indices in their own axes, preserving w[argmax(w)] == maximum(w)
+        if size(ϕ, 3) > 1
+            w = view(ϕ, :, :, 2:size(ϕ, 3))
+            windowed_values = Array(interior(w))
+            value, index = findmax(w)
+            positional = argmax(windowed_values)
+            @test value == maximum(windowed_values)
+            @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+        end
 
         for dims in dims_to_test
             @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
@@ -788,6 +812,55 @@ end
                 @info "    Testing field reductions on $name..."
                 run_field_reduction_tests(grid)
             end
+
+            @testset "Index reductions on an immersed grid [$(typeof(arch)), $FT]" begin
+                immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(0))
+                c = CenterField(immersed_grid)
+                set!(c, (x, y, z) -> -z) # the raw extremum hides in the immersed region
+                values = Array(interior(c))
+                @test argmax(values) != argmax(c)
+                @test values[argmax(c)] == maximum(c)
+                @test values[argmin(c)] == minimum(c)
+                @test findmax(c) == (maximum(c), argmax(c))
+            end
+        end
+
+        @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
+            @info "  Testing Boolean field reductions [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch; size=(4, 5, 3), extent=(1, 1, 1))
+            pattern = [(i + j + k) % 3 == 0 for i in 1:4, j in 1:5, k in 1:3]
+            b = CenterField(grid, Bool)
+            interior(b) .= on_architecture(arch, pattern)
+
+            @test any(b) == any(pattern)
+            @test all(b) == all(pattern)
+            for dims in (1, 2, 3, (1, 2), (1, 2, 3))
+                @test Array(interior(any(b; dims))) == any(pattern; dims)
+                @test Array(interior(all(b; dims))) == all(pattern; dims)
+            end
+
+            r = Field{Nothing, Center, Center}(grid, Bool)
+            any!(r, b)
+            @test Array(interior(r)) == any(pattern; dims=1)
+            all!(r, b)
+            @test Array(interior(r)) == all(pattern; dims=1)
+
+            # A `condition` and immersed cells wrap the operand in a `ConditionalOperation`
+            condition = (i, j, k, grid, b) -> i > 2
+            @test any(b; condition) == any(pattern[3:end, :, :])
+            @test all(b; condition) == all(pattern[3:end, :, :])
+            @test Array(interior(all(b; condition, dims=1))) == all(pattern[3:end, :, :]; dims=1)
+
+            # Immersed cells (k = 1 here) count as the neutral element of the reduction
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.6))
+            bᵢ = CenterField(immersed_grid, Bool)
+            interior(bᵢ) .= on_architecture(arch, pattern)
+            @test any(bᵢ) == any(pattern[:, :, 2:3])
+            @test all(bᵢ) == all(pattern[:, :, 2:3])
+            @test Array(interior(all(bᵢ; dims=3))) == all(pattern[:, :, 2:3]; dims=3)
+            wet_pattern = copy(pattern)
+            wet_pattern[:, :, 1] .= false
+            @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
         end
 
         for arch in archs, FT in float_types
@@ -1166,6 +1239,26 @@ end
             mask_immersed_field!(f_full, 0.0)
             @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
             @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "mask_immersed_field_xy! with an active cells map" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field_xy! with an active cells map [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+            # The western half of the domain is dry from top to bottom, so those columns hold no active cell
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> ifelse(x < 0.5, 0, -1));
+                                        active_cells_map = true)
+
+            f = CenterField(grid)
+            set!(f, 1)
+            mask_immersed_field_xy!(f, 0; k=Nz)
+
+            @test all(interior(f, 1:2, :, Nz) .== 0)
+            @test all(interior(f, 3:4, :, Nz) .== 1)
         end
     end
 

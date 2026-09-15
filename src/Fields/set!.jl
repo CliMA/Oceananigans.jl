@@ -19,6 +19,7 @@ tuple_string(tup::Tuple{}) = ""
 #####
 
 set!(obj::AbstractField, ::Nothing) = nothing
+set!(obj::Field, ::Nothing) = nothing
 
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
@@ -247,7 +248,8 @@ function copy_to_field!(u, v)
     return u
 end
 
-Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{<:Base.Broadcast.DefaultArrayStyle}) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{0}}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))

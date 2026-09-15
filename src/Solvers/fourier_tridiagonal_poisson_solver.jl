@@ -23,6 +23,7 @@ Architectures.architecture(solver::FourierTridiagonalPoissonSolver) = architectu
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()
+stretched_direction(::XYZRegularRG) = ZDirection()
 
 dimension(::XDirection) = 1
 dimension(::YDirection) = 2
@@ -88,7 +89,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
 
     # Try to guess what direction should be tridiagonal
     if isnothing(tridiagonal_formulation)
-        tridiagonal_dir = grid isa XYZRegularRG ? ZDirection() : stretched_direction(grid)
+        tridiagonal_dir = stretched_direction(grid)
         tridiagonal_formulation = HomogeneousNeumannFormulation(tridiagonal_dir)
     else
         tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
@@ -232,18 +233,14 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     !isnothing(b) && set_source_term!(solver, b) # otherwise, assume source term is set correctly
 
     # Apply forward transforms in order
-    for transform! in solver.transforms.forward
-        transform!(solver.source_term, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.forward, solver.source_term, solver.buffer)
 
     # Solve tridiagonal system of linear equations at every column.
     ϕ = solver.storage
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
-    for transform! in solver.transforms.backward
-        transform!(ϕ, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
 
     # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean

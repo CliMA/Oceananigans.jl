@@ -118,8 +118,12 @@ booleans that indicates whether a cell is immersed or not.
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+
+    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
+
     return GridFittedBottom(bottom_field.data, ib.immersed_condition)
 end
 
@@ -169,13 +173,15 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
 # Make sure column_height works for horizontally-Flat topologies.
-XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
-YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
+const XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+const YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
+const XYFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+@inline static_column_depthᶠᶠᵃ(i, j, ibg::XYFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
 
 function Grids.constructor_arguments(grid::AGFBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)

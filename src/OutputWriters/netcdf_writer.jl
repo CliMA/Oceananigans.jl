@@ -15,7 +15,8 @@ mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     dimensions :: Dict
     with_halos :: Bool
     include_grid_metrics :: Bool
-    overwrite_existing :: Union{Nothing, Bool}
+    overwrite_files :: Union{Nothing, Bool}
+    overwrite_snapshots :: Bool
     verbose :: Bool
     deflatelevel :: Int
     part :: Int
@@ -38,7 +39,8 @@ end
                  dimensions = Dict(),
                  with_halos = false,
                  include_grid_metrics = true,
-                 overwrite_existing = nothing,
+                 overwrite_files = nothing,
+                 overwrite_snapshots = true,
                  verbose = false,
                  deflatelevel = 0,
                  part = 1,
@@ -115,12 +117,25 @@ Optional keyword arguments
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
-- `overwrite_existing`: If `false`, `NetCDFWriter` appends to an existing file. If `true`, it
-                        overwrites an existing file. Files that do not exist yet are created in
-                        either case. Default: `nothing`, which chooses between the two when the
-                        file is created, at the start of the run: a file that exists by then is
-                        appended to rather than overwritten, so output from an earlier run is
-                        never destroyed unless `overwrite_existing = true` is passed.
+- `overwrite_files`: If `false`, `NetCDFWriter` appends to an existing file. If `true`, it
+                     overwrites an existing file. Files that do not exist yet are created in
+                     either case. Default: `nothing`, which chooses between the two when the
+                     file is created, at the start of the run: a file that exists by then is
+                     appended to rather than overwritten, so output from an earlier run is
+                     never destroyed unless `overwrite_files = true` is passed.
+
+- `overwrite_snapshots`: Whether to overwrite a snapshot already written for the time being
+                         output, which happens after picking up from a checkpoint written before
+                         the last output. If `true`, those snapshots are rewritten with the output
+                         of the continued run, keeping the file consistent with the snapshots that
+                         follow. If `false`, the snapshots already in the file are kept and the
+                         writer warns. Either way the time axis stays sorted. Default: `true`.
+
+                         A run that picks up with a different time step writes times that do not
+                         line up with the snapshots already in the file. Because NetCDF cannot
+                         shorten the time dimension, `overwrite_snapshots = true` then rewrites the
+                         first snapshot at or after each new time and leaves any snapshots beyond
+                         the end of the continued run in place.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
@@ -169,7 +184,7 @@ simulation.output_writers[:field_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(17), z_aac(16)
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -185,7 +200,7 @@ simulation.output_writers[:surface_slice_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(1), z_aac(1)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(1), z_aac(1)
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -202,7 +217,7 @@ simulation.output_writers[:averaged_profile_writer] =
 
 NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
-├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(17), z_aac(16)
+├── dimensions: time(0), x_faa(1), x_caa(1), y_afa(1), y_aca(1), z_aaf(17), z_aac(16)
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
@@ -253,8 +268,8 @@ simulation.output_writers[:things] =
 
 NetCDFWriter scheduled on IterationInterval(1):
 ├── filepath: things.nc
-├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
-├── 3 outputs: (profile, slice, scalar)
+├── dimensions: time(0), x_faa(16), x_caa(16), y_afa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── 3 outputs: (profile, scalar, slice)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
 └── file size: (file not yet created)
@@ -283,7 +298,7 @@ output_writer = NetCDFWriter(model, outputs;
 
 NetCDFWriter scheduled on IterationInterval(1):
 ├── filepath: coarse_u.nc
-├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(5), z_aac(4)
+├── dimensions: time(0), x_faa(1), x_caa(1), y_afa(1), y_aca(1), z_aaf(5), z_aac(4)
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting

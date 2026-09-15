@@ -338,14 +338,9 @@ end
     return ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
 end
 
-@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalLowerDiagonal, p, ::ZDirection, args...) =
-    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
-
-@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalUpperDiagonal, p, ::ZDirection, args...) =
-    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
-
-@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalDiagonal, p, ::ZDirection, args...) =
-    columnwise_tridiagonal_diagonal(i, j, k, grid)
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalLowerDiagonal, p, ::ZDirection, args...) = columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalUpperDiagonal, p, ::ZDirection, args...) = columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalDiagonal, p, ::ZDirection,      args...) = columnwise_tridiagonal_diagonal(i, j, k, grid)
 
 """
     ColumnwiseTridiagonalPreconditioner(grid)

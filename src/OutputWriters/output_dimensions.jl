@@ -76,8 +76,8 @@ suffix_grid_entry(entry::NamedTuple, grid_index) =
     (array=entry.array, dims=Tuple(add_grid_suffix(name, grid_index) for name in entry.dims))
 
 suffix_grid_keys(dims, grid_index) =
-    Dict(add_grid_suffix(key, grid_index) => suffix_grid_entry(value, grid_index)
-         for (key, value) in dims)
+    OrderedDict{String, Any}(add_grid_suffix(key, grid_index) => suffix_grid_entry(value, grid_index)
+                             for (key, value) in dims)
 
 function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator; grid_index=nothing)
     z = vertical_coordinate_name(coordinate)
@@ -343,8 +343,8 @@ function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, 
     zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
 
-    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
-                zᵃᵃᶜ_name => zᵃᵃᶜ_data)
+    return OrderedDict{String, Any}(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
+                                   zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
 #####
@@ -363,7 +363,7 @@ function gather_dimensions(outputs, grid::OneDimensionalHorizontalCoordinateGrid
     x = string(ξname(grid))
     y = string(ηname(grid))
 
-    dims = Dict()
+    dims = OrderedDict{String, Any}()
 
     if TX != Flat
         for ℓx in (f, c)
@@ -433,7 +433,7 @@ function gather_dimensions(outputs, grid::OrthogonalSphericalShellGrid, indices,
     # OSSG horizontal axes cannot be flat.
     (TX == Flat || TY == Flat) && error("Flat horizontal topology is not supported on OrthogonalSphericalShellGrid output.")
 
-    dims = Dict()
+    dims = OrderedDict{String, Any}()
 
     # 2D auxiliary coordinate variables — one λ and one φ per Arakawa-C stagger location.
     for (lx, ly) in ((c, c), (f, c), (c, f), (f, f))

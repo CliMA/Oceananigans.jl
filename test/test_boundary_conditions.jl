@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper, ImpenetrableBoundaryCondition
 using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
@@ -412,6 +412,22 @@ end
 
         @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
         @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
+
+        # A polar boundary paired with an impenetrable one on the other side
+        one_pole_grid = LatitudeLongitudeGrid(size=(10, 10, 4), latitude=(-80, 90), longitude=(0, 360), z=(0, 1))
+        v_bcs = FieldBoundaryConditions(one_pole_grid, (Center(), Face(), Center()); south=ImpenetrableBoundaryCondition())
+        v = YFaceField(one_pole_grid; boundary_conditions=v_bcs)
+        @test v.boundary_conditions.south isa Oceananigans.BoundaryConditions.NFBC
+        @test v.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarNormalFlowBoundaryCondition
+
+        set!(v, (x, y, z) -> x)
+        fill_halo_regions!(v)
+        @test all(v.data[1:10, 1, 1:4] .== 0)
+        @test all(v.data[1:10, 11, 1:4] .== mean(v.data[1:10, 10, 1:4]))
+
+        model = HydrostaticFreeSurfaceModel(one_pole_grid; momentum_advection=nothing, tracer_advection=nothing, buoyancy=nothing)
+        time_step!(model, 1)
+        @test model.clock.iteration == 1
     end
 
     @testset "Windowed Field boundary conditions [$(typeof(arch))]" for arch in archs

@@ -19,7 +19,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWri
     dimensions :: Dict{String, Any}
     with_halos :: Bool
     include_grid_metrics :: Bool
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     part :: Int
     file_splitting :: FS
@@ -44,7 +44,7 @@ end
                file_splitting = NoFileSplitting(),
                dimension_name_generator = trilocation_dim_name,
                dimension_type = Float64,
-               overwrite_existing = false,
+               overwrite_files = false,
                verbose = false,
                part = 1,
                store = nothing,
@@ -121,9 +121,9 @@ Keyword arguments
                     include `NoFileSplitting()` (default), `FileSizeLimit(sz)`,
                     `TimeInterval(Δt)`.
 
-- `overwrite_existing`: Remove an existing store before writing. Default: `false`. When
-                        `false` and the store already exists, the writer appends new
-                        timesteps to the existing time axis.
+- `overwrite_files`: Remove an existing store before writing. Default: `false`. When
+                     `false` and the store already exists, the writer appends new
+                     timesteps to the existing time axis.
 
 ## Miscellaneous
 

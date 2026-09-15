@@ -82,7 +82,7 @@ end
 
 Smagorinsky(FT::DataType; kwargs...) = Smagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function Utils.with_tracers(tracers, closure::Smagorinsky{TD}) where TD
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::Smagorinsky{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
     return Smagorinsky{TD}(closure.coefficient, Pr)
 end
