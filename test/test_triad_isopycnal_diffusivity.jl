@@ -79,10 +79,12 @@ triad_closure(time_discretization; kw...) =
            end
         end
 
+        Lᵉ = tracer_operator_matrix(triad_closure(ExplicitTimeDiscretization()), arch, Δt=1)
+
         @testset "Triad operator is self-adjoint and negative semi-definite [$arch]" begin
             @info "  Testing that the triad operator is self-adjoint and negative semi-definite on $arch..."
 
-            L = tracer_operator_matrix(triad_closure(ExplicitTimeDiscretization()), arch)
+            L = Lᵉ
             λ = eigvals(Symmetric((L .+ L') ./ 2))
 
             @test maximum(abs, L .- L') < 1e-12 * maximum(abs, L)
@@ -94,7 +96,6 @@ triad_closure(time_discretization; kw...) =
 
             # The R₃₃ component of the Redi tensor is deferred to the implicit solver, which reaches
             # it through `κzᶜᶜᶠ`. A signature mismatch there silently drops the whole component.
-            Lᵉ = tracer_operator_matrix(triad_closure(ExplicitTimeDiscretization()), arch, Δt=1)
             Lⁱ = tracer_operator_matrix(triad_closure(VerticallyImplicitTimeDiscretization()), arch, Δt=1)
 
             @test maximum(abs, Lⁱ .- Lᵉ) < 1e-4 * maximum(abs, Lᵉ)
