@@ -577,7 +577,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
 
     dims = if file_exists
         NCDataset(ow.filepath, "r") do ds
-            show_dimensions(dim_name => length(ds[dim_name]) for dim_name in keys(ds.dim))
+            show_dimensions(ds.dim)
         end
     else
         show_dimensions(planned_dimensions(ow))

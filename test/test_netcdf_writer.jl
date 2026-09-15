@@ -3447,6 +3447,11 @@ function test_netcdf_tripolar_grid_output(arch)
                                                   include_grid_metrics = true)
     run!(simulation)
 
+    # `show` lists the file's dimensions, including the bare ones without a coordinate variable.
+    summary_string = sprint(show, simulation.output_writers[:nc])
+    @test occursin("i_caa(20)", summary_string)
+    @test occursin("time(3)", summary_string)
+
     ds = NCDataset(filepath)
 
     # Bare horizontal dimensions: i_*, j_* should exist as dims but have no coord variable.
