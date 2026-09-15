@@ -140,9 +140,7 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
 
-"""
 # `a * b` if `a != 0`, 0 otherwise (masks away NaNs in `b`)
-"""
 @inline function masked_multiply(x, y)
     xy = x * y
     return ifelse(x == 0, zero(xy), xy)
