@@ -23,6 +23,7 @@ Architectures.architecture(solver::FourierTridiagonalPoissonSolver) = architectu
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()
+stretched_direction(::XYZRegularRG) = ZDirection()
 
 dimension(::XDirection) = 1
 dimension(::YDirection) = 2
@@ -88,7 +89,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
 
     # Try to guess what direction should be tridiagonal
     if isnothing(tridiagonal_formulation)
-        tridiagonal_dir = grid isa XYZRegularRG ? ZDirection() : stretched_direction(grid)
+        tridiagonal_dir = stretched_direction(grid)
         tridiagonal_formulation = HomogeneousNeumannFormulation(tridiagonal_dir)
     else
         tridiagonal_dir = tridiagonal_direction(tridiagonal_formulation)
