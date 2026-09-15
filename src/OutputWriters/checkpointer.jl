@@ -281,9 +281,11 @@ function Oceananigans.restore_prognostic_state!(restored::NamedTuple, from)
     return restored
 end
 
-function Oceananigans.restore_prognostic_state!(t::Tuple, from::Tuple)
-    new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
-    return new_t
+function Oceananigans.restore_prognostic_state!(restored::Tuple, from::Tuple)
+    for (j, value) in pairs(from)
+        restore_prognostic_state!(restored[j], value)
+    end
+    return restored
 end
 
 function Oceananigans.restore_prognostic_state!(restored::StructArray, from)

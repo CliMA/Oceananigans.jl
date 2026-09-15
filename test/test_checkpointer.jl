@@ -3,12 +3,54 @@ include("dependencies_for_runtests.jl")
 using Glob
 using NCDatasets
 
-using Oceananigans: restore_prognostic_state!, prognostic_fields
+using Oceananigans: prognostic_state, restore_prognostic_state!, prognostic_fields
 using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
+
+"""
+    test_prognostic_state_equality(test_state, true_state; atol=0)
+
+Recursively test that two nested prognostic states, as returned by `prognostic_state`,
+are equal. Their leaves are host arrays or scalars.
+"""
+test_prognostic_state_equality(test_state, true_state; atol=0) = @test test_state == true_state
+
+function test_prognostic_state_equality(test_state::Union{Tuple, NamedTuple},
+                                        true_state::Union{Tuple, NamedTuple}; atol=0)
+    @test keys(test_state) == keys(true_state)
+    for (test_value, true_value) in zip(test_state, true_state)
+        test_prognostic_state_equality(test_value, true_value; atol)
+    end
+    return nothing
+end
+
+function test_prognostic_state_equality(test_state::AbstractArray, true_state::AbstractArray; atol=0)
+    @test size(test_state) == size(true_state)
+    # Closure fields can be NaN inside immersed regions, so matching NaNs count as equal.
+    @test all(isapprox.(test_state, true_state; atol) .| (isnan.(test_state) .& isnan.(true_state)))
+    return nothing
+end
+
+function test_prognostic_state_equality(test_state::Number, true_state::Number; atol=0)
+    @test isapprox(test_state, true_state; atol)
+    return nothing
+end
+
+"""
+    test_closure_fields_equality(test_model, true_model; atol=0)
+
+Test that the checkpointed state of `test_model.closure_fields` matches that of `true_model.closure_fields`.
+Used right after a restore, with `true_model` being the model that wrote the checkpoint, this verifies
+that every closure field was actually restored.
+"""
+function test_closure_fields_equality(test_model, true_model; atol=0)
+    test_prognostic_state_equality(prognostic_state(test_model.closure_fields),
+                                   prognostic_state(true_model.closure_fields); atol)
+    return nothing
+end
 
 function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality
@@ -57,6 +99,11 @@ function test_model_equality(test_model, true_model; atol=0)
         for name in keys(test_model.auxiliary_fields)
             @test all(isapprox.(interior(test_model.auxiliary_fields[name]), interior(true_model.auxiliary_fields[name]); atol))
         end
+    end
+
+    # Test closure fields equality
+    if hasproperty(test_model, :closure_fields)
+        test_closure_fields_equality(test_model, true_model; atol)
     end
 
     return nothing
@@ -821,6 +868,10 @@ function test_checkpointing_closure_fields(arch)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # The restored closure fields must match the checkpointed ones before any further time-stepping
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -873,6 +924,10 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # The restored closure fields must match the checkpointed ones before any further time-stepping
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify closure-specific fields
@@ -940,6 +995,10 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # The restored closure fields must match the checkpointed ones before any further time-stepping
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify closure field state matches reference at iteration 10
@@ -1001,6 +1060,12 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # The restored closure fields must match the checkpointed ones before any further time-stepping.
+    # This catches a restore that silently skips the closure fields (e.g. when `closure` is a tuple),
+    # which the continuation test below cannot see when the flow is nearly laminar.
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
@@ -1063,6 +1128,10 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+
+    # The restored closure fields must match the checkpointed ones before any further time-stepping
+    test_closure_fields_equality(new_model, model)
+
     @test_nowarn run!(new_simulation)
 
     # Verify previous_velocities state matches reference at iteration 10
