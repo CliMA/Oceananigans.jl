@@ -70,7 +70,7 @@ end
 function define_multiary_operator(op)
     return quote
         function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location},
-                     a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     a::Oceananigans.Fields.AbstractField,
                      b::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      c::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
@@ -87,7 +87,7 @@ function define_multiary_operator(op)
 
         # Instantiate location if types are passed
         $op(Lop::Tuple,
-            a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            a::Oceananigans.Fields.AbstractField,
             b::Union{Function, Number, Oceananigans.Fields.AbstractField},
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
@@ -108,7 +108,8 @@ into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations
 Note that a multiary operator:
   * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
   * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
-  * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
+  * requires its first argument to be an `AbstractField`, whose location is used
+    unless the "location" is passed explicitly as the first argument; see example.
 
 Example
 =======
