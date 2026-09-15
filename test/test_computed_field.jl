@@ -512,26 +512,6 @@ for arch in archs
                 @test operations_with_averaged_field(model)
             end
 
-            @testset "Compute! on faces along bounded dimensions" begin
-                @info "      Testing compute! on faces along bounded dimensions..."
-                @test computation_including_boundaries(arch)
-            end
-
-            EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState,
-                                SeawaterPolynomials.TEOS10EquationOfState)
-
-            buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(),
-                          (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
-
-            for buoyancy in buoyancies
-                @testset "Computations with buoyancy_fields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
-                    @info "      Testing computations with buoyancy_field " *
-                          "[$A, $G, $(typeof(buoyancy).name.wrapper)]..."
-
-                    @test computations_with_buoyancy_field(arch, buoyancy)
-                end
-            end
-
             @testset "Computations with Averaged Fields [$A, $G]" begin
                 @info "      Testing computations with Averaged Field [$A, $G]..."
 
@@ -631,6 +611,24 @@ for arch in archs
                 compute_at!(b, 2.0)
                 @test all(interior(uT) .== 8)
                 @test all(interior(b) .== g * α * 4)
+            end
+        end
+
+        @testset "Compute! on faces along bounded dimensions [$A]" begin
+            @info "      Testing compute! on faces along bounded dimensions [$A]..."
+            @test computation_including_boundaries(arch)
+        end
+
+        EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState,
+                            SeawaterPolynomials.TEOS10EquationOfState)
+
+        buoyancies = (BuoyancyTracer(), SeawaterBuoyancy(),
+                      (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
+
+        for buoyancy in buoyancies
+            @testset "Computations with buoyancy_fields [$A, $(typeof(buoyancy).name.wrapper)]" begin
+                @info "      Testing computations with buoyancy_field [$A, $(typeof(buoyancy).name.wrapper)]..."
+                @test computations_with_buoyancy_field(arch, buoyancy)
             end
         end
     end
