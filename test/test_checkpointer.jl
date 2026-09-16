@@ -1232,6 +1232,43 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     return nothing
 end
 
+mutable struct ActuationCounter <: Function
+    actuations :: Int
+end
+
+(counter::ActuationCounter)(sim) = counter.actuations += 1
+
+Oceananigans.prognostic_state(counter::ActuationCounter) = (; actuations = counter.actuations)
+
+function Oceananigans.restore_prognostic_state!(counter::ActuationCounter, state)
+    counter.actuations = state.actuations
+    return counter
+end
+
+function test_stateful_callback_checkpointing(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    simulation = Simulation(NonhydrostaticModel(grid), Δt=0.1, stop_iteration=10)
+
+    prefix = "stateful_callback_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(10), prefix=prefix)
+    simulation.callbacks[:counter] = Callback(ActuationCounter(0), IterationInterval(1))
+
+    run!(simulation)
+    checkpointed_actuations = simulation.callbacks[:counter].func.actuations
+    @test checkpointed_actuations > 0
+
+    new_simulation = Simulation(NonhydrostaticModel(RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))), Δt=0.1, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_simulation.model, schedule=IterationInterval(10), prefix=prefix)
+    new_simulation.callbacks[:counter] = Callback(ActuationCounter(0), IterationInterval(1))
+
+    set!(new_simulation; checkpoint=:latest)
+    @test new_simulation.callbacks[:counter].func.actuations == checkpointed_actuations
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_windowed_time_average_checkpointing(arch, WriterType)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -1264,7 +1301,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     simulation.output_writers[:averaged] = WriterType(model, model.velocities,
                                                       schedule = AveragedTimeInterval(1.0, window=0.5),
                                                       filename = "$(prefix)_averaged$(ext)",
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
 
     @test_nowarn run!(simulation)
 
@@ -1292,7 +1329,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     new_simulation.output_writers[:averaged] = WriterType(new_model, new_model.velocities,
                                                           schedule = AveragedTimeInterval(1.0, window=0.5),
                                                           filename = "$(prefix)_averaged_restored$(ext)",
-                                                          overwrite_existing = true)
+                                                          overwrite_files = true)
 
     # Restore from checkpoint at iteration 8
     @test_nowarn set!(new_simulation; iteration=8)
@@ -1372,7 +1409,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_A.output_writers[:averaged] = WriterType(model_A, model_A.velocities,
                                                        schedule = AveragedTimeInterval(1.0, window=0.5),
                                                        filename = "$(prefix_A)$(ext)",
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
 
     @test_nowarn run!(simulation_A)
 
@@ -1389,7 +1426,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B.output_writers[:averaged] = WriterType(model_B, model_B.velocities,
                                                         schedule = AveragedTimeInterval(1.0, window=0.5),
                                                         filename = "$(prefix_B)$(ext)",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
     @test_nowarn run!(simulation_B)
 
@@ -1409,7 +1446,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     simulation_B_new.output_writers[:averaged] = WriterType(model_B_new, model_B_new.velocities,
                                                             schedule = AveragedTimeInterval(1.0, window=0.5),
                                                             filename = "$(prefix_B)_restored$(ext)",
-                                                            overwrite_existing = true)
+                                                            overwrite_files = true)
 
     @test_nowarn set!(simulation_B_new; checkpoint=:latest)
     @test_nowarn run!(simulation_B_new)
@@ -1448,7 +1485,7 @@ function test_changed_averaged_time_interval(arch)
         JLD2Writer(partial_model, (; clock_time),
                    schedule = AveragedTimeInterval(1day),
                    filename = partial_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn run!(partial_simulation)
 
@@ -1465,7 +1502,7 @@ function test_changed_averaged_time_interval(arch)
         JLD2Writer(restored_model, (; clock_time),
                    schedule = AveragedTimeInterval(2days),
                    filename = restored_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration5.jld2")
     restored_cache = only(values(restored_simulation.output_writers[:averaged].outputs))
@@ -1509,7 +1546,7 @@ function test_inconsistent_averaged_time_interval_checkpoint(arch)
         JLD2Writer(partial_model, (; clock_time),
                    schedule = AveragedTimeInterval(1day),
                    filename = partial_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn run!(partial_simulation)
 
@@ -1532,7 +1569,7 @@ function test_inconsistent_averaged_time_interval_checkpoint(arch)
         JLD2Writer(restored_model, (; clock_time),
                    schedule = AveragedTimeInterval(5days),
                    filename = restored_file,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @test_nowarn set!(restored_simulation; checkpoint="$(prefix)_iteration30.jld2")
 
@@ -2000,13 +2037,13 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                                     dir = dir,
                                                     schedule = IterationInterval(1),
                                                     file_splitting = TimeInterval(3),
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                               schedule = IterationInterval(5),
                                                               dir = dir,
                                                               prefix = "checkpoint",
-                                                              overwrite_existing = true,
+                                                              overwrite_files = true,
                                                               cleanup = true)
     run!(simulation)
 
@@ -2024,13 +2061,13 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                               dir = dir,
                                               schedule = IterationInterval(1),
                                               file_splitting = TimeInterval(3),
-                                              overwrite_existing = false)
+                                              overwrite_files = false)
 
     sim2.output_writers[:checkpointer] = Checkpointer(model2;
                                                         schedule = IterationInterval(5),
                                                         dir = dir,
                                                         prefix = "checkpoint",
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         cleanup = true)
 
     run!(sim2, pickup=true)
@@ -2083,13 +2120,13 @@ function test_checkpointing_with_moved_parts(arch)
                                                      dir = dir,
                                                      schedule = IterationInterval(1),
                                                      file_splitting = TimeInterval(3),
-                                                     overwrite_existing = true)
+                                                     overwrite_files = true)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                               schedule = IterationInterval(10),
                                                               dir = dir,
                                                               prefix = "checkpoint",
-                                                              overwrite_existing = true,
+                                                              overwrite_files = true,
                                                               cleanup = true)
     run!(simulation)
 
@@ -2112,13 +2149,13 @@ function test_checkpointing_with_moved_parts(arch)
                                                dir = dir,
                                                schedule = IterationInterval(1),
                                                file_splitting = TimeInterval(3),
-                                               overwrite_existing = false)
+                                               overwrite_files = false)
 
     sim2.output_writers[:checkpointer] = Checkpointer(model2;
                                                         schedule = IterationInterval(10),
                                                         dir = dir,
                                                         prefix = "checkpoint",
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         cleanup = true)
 
     # Should not error — writer appends to existing part4
@@ -2281,6 +2318,11 @@ for arch in archs
             @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
             test_stateful_schedule_checkpointing(arch, schedule_type)
         end
+    end
+
+    @testset "Stateful callback checkpointing [$(typeof(arch))]" begin
+        @info "  Testing stateful callback checkpointing [$(typeof(arch))]..."
+        test_stateful_callback_checkpointing(arch)
     end
 
     for WriterType in (JLD2Writer, NetCDFWriter)

@@ -43,7 +43,7 @@ using CUDA
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
     IsopycnalSkewSymmetricDiffusivity, HorizontalScalarBiharmonicDiffusivity
 
-using Printf: @printf
+using Printf: @printf, @sprintf
 using Dates: DateTime, now, UTC
 
 #####
@@ -137,6 +137,11 @@ function parse_commandline()
 
         "--warmup_steps"
             help = "Number of warmup time steps (benchmark mode only)"
+            arg_type = Int
+            default = 5
+
+        "--samples"
+            help = "Number of timing windows of `time_steps` steps each; the minimum is reported (benchmark mode only)"
             arg_type = Int
             default = 5
 
@@ -338,6 +343,7 @@ function run_benchmarks(args)
     Δt = args["dt"]
     time_steps = args["time_steps"]
     warmup_steps = args["warmup_steps"]
+    samples = args["samples"]
     stop_time = args["stop_time"] * 3600  # Convert hours to seconds
     output_interval = args["output_interval"] * 3600  # Convert hours to seconds
     output_dir = args["output_dir"]
@@ -375,7 +381,7 @@ function run_benchmarks(args)
         println("Tracers: ", tracers)
         println("Timestepper: ", timestepper)
         if mode == "benchmark"
-            println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Time steps: ", time_steps, " × ", samples, " windows (warmup: ", warmup_steps, ")")
         elseif mode == "io"
             println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
             println("Output format: ", output_format)
@@ -446,7 +452,7 @@ function run_benchmarks(args)
         @root is_rank_0 = true
         # Run based on mode
         result = if mode == "benchmark"
-            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=is_rank_0)
+            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, samples, name, group, verbose=is_rank_0)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
                 stop_time, Δt, output_interval, output_dir, name, group, verbose=is_rank_0)
@@ -600,13 +606,16 @@ function generate_markdown_report(filename, entries)
                 println(io, "| CUDA | ", metadata["cuda_version"], " |")
             end
             println(io, "| Hostname | ", metadata["hostname"], " |")
+            for (name, version) in sort!(collect(get(metadata, "package_versions", Dict{String, Any}())))
+                println(io, "| ", name, " | ", version, " |")
+            end
             println(io)
         end
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Units/s | Points/s | Size | Chunks | Timestamp |")
-        println(io, "|-----------|-------------|-------|------|----------------|---------|----------|------|--------|-----------|")
+        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Spread | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------------|-------|------|----------------|--------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
@@ -626,12 +635,20 @@ function generate_markdown_report(filename, entries)
             chunks_raw = get(entry, "chunk_shape", nothing)
             chunks_str = isnothing(chunks_raw) ? "—" : string(Tuple(Int.(chunks_raw)))
 
-            @printf(io, "| `%s` | %s | %s | %s | %.2f | %.2f | %.2e | %s | %s | %s |\n",
+            # Spread of the timing windows relative to the reported minimum
+            spread_str = if haskey(entry, "time_per_step_max_seconds")
+                @sprintf("+%.1f%%", 100 * (entry["time_per_step_max_seconds"] / entry["time_per_step_seconds"] - 1))
+            else
+                "—"
+            end
+
+            @printf(io, "| `%s` | %s | %s | %s | %.2f | %s | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
                     distributed_str,
                     entry["float_type"],
                     grid_str,
                     time_per_unit_seconds * 1000,
+                    spread_str,
                     units_per_second,
                     entry["grid_points_per_second"],
                     size_str,

@@ -4,7 +4,7 @@ using Oceananigans.Advection: implicit_advection_upper_diagonal,
 using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient, needs_implicit_solver
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
 using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
@@ -151,16 +151,19 @@ end
 
 @inline immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc) = zero(grid)
 
+@inline immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k,   grid, ℓx, ℓy, f)
+@inline    immersed_top_facet(i, j, k, grid, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+@inline immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ::Face)   = immersed_peripheral_node(i, j, k-1, grid, ℓx, ℓy, c)
+@inline    immersed_top_facet(i, j, k, grid, ℓx, ℓy, ::Face)   = immersed_peripheral_node(i, j, k,   grid, ℓx, ℓy, c)
+
 # Immersed fluxes point along the inward-facing normal on every facet, so both immersed faces contribute
 # `+J/Δz` to the tendency, unlike the domain top which contributes `-J/Δz`.
 @inline function immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc::ImmersedBoundaryCondition)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     active = !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
-    # `immersed_inactive_node` is false outside the domain, so a column wet to `k = 1` or `k = Nz`
-    # sees no immersed face there and the domain boundary condition is counted once.
-    on_bottom = active & immersed_inactive_node(i, j, k-1, grid, ℓx, ℓy, ℓz)
-    on_top    = active & immersed_inactive_node(i, j, k+1, grid, ℓx, ℓy, ℓz)
+    on_bottom = active & immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ℓz)
+    on_top    = active &    immersed_top_facet(i, j, k, grid, ℓx, ℓy, ℓz)
 
     λᵇ = immersed_implicit_flux_coefficient(immersed_bc.bottom, i, j, k, grid, clk, fields)
     λᵗ = immersed_implicit_flux_coefficient(immersed_bc.top,    i, j, k, grid, clk, fields)
@@ -194,6 +197,9 @@ and
 
 where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
+
+On an `ImmersedBoundaryGrid`, the off-diagonals vanish across the immersed boundary, so the
+rows of the inactive cells are decoupled from the active part of the column.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -244,6 +250,23 @@ end
 
 is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
+# The closures (and their fields) that are stepped implicitly: a closure tuple is filtered
+# by recursion so that the result is a tuple whose length is known at compile time.
+@inline vertically_implicit_closures(::Nothing, closure_fields) = nothing, nothing
+@inline vertically_implicit_closures(closure, closure_fields) =
+    is_vertically_implicit(closure) ? (closure, closure_fields) : (nothing, nothing)
+
+@inline vertically_implicit_closures(::Tuple{}, ::Tuple{}) = (), ()
+
+@inline function vertically_implicit_closures(closures::Tuple, closure_fields::Tuple)
+    first_closures, first_fields = vertically_implicit_closure_tuple(first(closures), first(closure_fields))
+    other_closures, other_fields = vertically_implicit_closures(Base.tail(closures), Base.tail(closure_fields))
+    return (first_closures..., other_closures...), (first_fields..., other_fields...)
+end
+
+@inline vertically_implicit_closure_tuple(closure, closure_fields) =
+    is_vertically_implicit(closure) ? ((closure,), (closure_fields,)) : ((), ())
+
 """
 $(TYPEDSIGNATURES)
 
@@ -262,17 +285,7 @@ function implicit_step!(field::Field,
                         clock, fields, Δt,
                         advection=nothing, velocities=nothing, density=nothing)
 
-    if closure isa Tuple
-        N = length(closure)
-        vi_closure        = Tuple(closure[n]        for n = 1:N if is_vertically_implicit(closure[n]))
-        vi_closure_fields = Tuple(closure_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
-    elseif closure isa Nothing || !is_vertically_implicit(closure)
-        vi_closure = nothing
-        vi_closure_fields = nothing
-    else
-        vi_closure = closure
-        vi_closure_fields = closure_fields
-    end
+    vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 
     bcs = field.boundary_conditions
     isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing

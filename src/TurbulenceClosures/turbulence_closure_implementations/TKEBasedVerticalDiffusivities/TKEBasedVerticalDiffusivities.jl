@@ -23,7 +23,7 @@ using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization
-using Oceananigans.Utils: Utils, launch!, prettysummary, get_active_cells_map
+using Oceananigans.Utils: Utils, launch!, prettysummary, get_active_cells_map, named_tuple
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.TurbulenceClosures:

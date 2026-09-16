@@ -1,7 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Adapt: Adapt
+using Dates: Millisecond
 using TimesDates: TimeDate
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
@@ -16,6 +18,29 @@ function time_stepping_works_with_flat_dimensions(arch, topology)
     model = NonhydrostaticModel(grid)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
+end
+
+# ∂c/∂t = -c + t with c(0) = 0 has the exact solution c(t) = t - 1 + exp(-t).
+# The right-hand side is affine in (t, c), so an N-stage SplitRungeKutta scheme is
+# N-th order accurate on it provided every stage evaluates the forcing at its stage
+# time tⁿ + Δt/βᵐ. If the stages see tⁿ instead, the scheme degrades to first order.
+function time_dependent_forcing_error(arch, FT, timestepper, Δt; stop_time=2)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+
+    forcing = Forcing((i, j, k, grid, clock, fields) -> -fields.c[i, j, k] + clock.time, discrete_form=true)
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:c, forcing=(; c=forcing),
+                                        velocities=PrescribedVelocityFields())
+
+    for _ in 1:round(Int, stop_time / Δt)
+        time_step!(model, Δt)
+    end
+
+    t = model.clock.time
+    c_model = first(Array(interior(model.tracers.c)))
+    c_solution = (t - 1 + exp(-t))
+
+    return abs(c_model - c_solution)
 end
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
@@ -372,6 +397,94 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
+    @testset "Clock last_Δt tracks the most recent time step" begin
+        @info "  Testing that clock.last_Δt is updated by every time stepper..."
+
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+            for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+                model = NonhydrostaticModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+                model = HydrostaticFreeSurfaceModel(grid; timestepper)
+                time_step!(model, 1)
+                @test model.clock.last_Δt == 1
+                time_step!(model, 2)
+                @test model.clock.last_Δt == 2
+            end
+        end
+    end
+
+    @testset "SplitRungeKutta stages evaluate time-dependent forcing at the stage time" begin
+        @info "  Testing that SplitRungeKutta time steppers advance the clock to the stage times..."
+
+        split_runge_kutta_timesteppers = (:SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+
+            # ∂c/∂t = t is integrated exactly by every SplitRungeKutta scheme (the last stage is
+            # a midpoint rule) provided the stages see the stage times: c(t) = t² / 2.
+            # If every stage sees tⁿ instead, c(t) = t (t - Δt) / 2.
+            forcing = Forcing((x, y, z, t) -> t)
+
+            for timestepper in split_runge_kutta_timesteppers
+                model = HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:c, forcing=(; c=forcing),
+                                                    velocities=PrescribedVelocityFields())
+                for n in 1:3
+                    time_step!(model, 0.1)
+                    t = model.clock.time
+                    c = first(Array(interior(model.tracers.c)))
+                    @test c ≈ FT(t^2 / 2)
+                end
+            end
+
+            # ∂c/∂t = -c + t is affine in (t, c), so an N-stage scheme converges at N-th order
+            # only if every stage is evaluated at its stage time (and at first order otherwise).
+            # Float32 round-off (~1e-7) requires coarse steps to resolve the 4th- and 5th-order errors.
+            Δts = FT == Float32 ? (1.0, 0.5, 0.25) : (0.2, 0.1, 0.05)
+
+            for (timestepper, order) in zip(split_runge_kutta_timesteppers, (2, 3, 4, 5))
+                errors = [time_dependent_forcing_error(arch, FT, timestepper, Δt) for Δt in Δts]
+                observed_orders = [log2(errors[i] / errors[i+1]) for i in 1:length(Δts)-1]
+                @test all(observed_orders .> order - 0.3)
+            end
+
+            # Record the clock after every `update_state!`: once at initialization and once per stage,
+            # when it should read the stage time tⁿ + Δt / βᵐ, for numeric and calendar clocks.
+            Δt = 0.12 # so that every stage time is a whole number of milliseconds
+
+            for timestepper in split_runge_kutta_timesteppers
+                for (t⁰, tⁿ⁺¹) in ((0.0, Δt), (DateTime(2020), DateTime(2020) + Millisecond(120)))
+                    clock_times = []
+                    record_clock = Callback(model -> push!(clock_times, model.clock.time), callsite=UpdateStateCallsite())
+
+                    clock = Clock(time=t⁰)
+                    model = HydrostaticFreeSurfaceModel(grid; clock, timestepper, tracers=:c,
+                                                        velocities=PrescribedVelocityFields())
+                    time_step!(model, Δt; callbacks=[record_clock])
+
+                    β = model.timestepper.β
+                    Δτs = [Δt / β[m] for m in 1:length(β)-1]
+                    expected_clock_times = if t⁰ isa DateTime
+                        [t⁰; [t⁰ + Millisecond(round(Int, 1000Δτ)) for Δτ in Δτs]; tⁿ⁺¹]
+                    else
+                        [t⁰; [t⁰ + Δτ for Δτ in Δτs]; tⁿ⁺¹]
+                    end
+
+                    @test clock_times == expected_clock_times
+                    @test model.clock.time == tⁿ⁺¹
+                end
+            end
+        end
+    end
+
     for arch in archs, FT in float_types
         A = typeof(arch)
         Oceananigans.defaults.FloatType = FT
@@ -393,19 +506,22 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
 
             # Test HydrostaticFreeSurfaceModel
-            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
-                if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
+            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT)),
+                timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+
+                if closure isa TKEDissipationVerticalDiffusivity && (FT == Float32 || timestepper == :SplitRungeKutta3)
                     # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
+                    # and only supports :QuasiAdamsBashforth2
                 else
                     C = nameof(typeof(closure))
-                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C, $timestepper]"
 
                     tracers = (:b, :c)
                     clock = Clock(; time=DateTime(2020, 1, 1))
                     grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
                     @test eltype(grid) == FT
 
-                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
+                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, timestepper, buoyancy = BuoyancyTracer())
                     time_step!(model, 1)
                     @test model.clock.time == DateTime("2020-01-01T00:00:01")
                 end

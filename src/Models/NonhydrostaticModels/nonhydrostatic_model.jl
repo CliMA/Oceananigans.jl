@@ -5,11 +5,11 @@ using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_so
                                        regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField, ZFaceField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
+using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
@@ -226,10 +226,33 @@ function NonhydrostaticModel(grid;
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
+    !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
+
+    # Tracer and timestepper names become type parameters from here on, so that the
+    # containers built from them can be inferred. `invokelatest` keeps the compiler from
+    # inferring `materialize_nonhydrostatic_model` with the names unknown as well.
+    settings = (; clock, momentum_advection, tracer_advection, buoyancy, coriolis, stokes_drift, forcing, closure,
+                  free_surface, boundary_conditions, tracers, background_fields, particles, biogeochemistry,
+                  velocities, hydrostatic_pressure_anomaly, nonhydrostatic_pressure, closure_fields,
+                  pressure_solver, auxiliary_fields)
+
+    return Base.invokelatest(materialize_nonhydrostatic_model, grid, Val(tracernames(tracers)), timestepper_name(timestepper), settings)
+end
+
+
+function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper, settings) where tracer_names
+
+    (; clock, momentum_advection, tracer_advection, buoyancy, coriolis, stokes_drift, forcing, closure,
+       free_surface, boundary_conditions, tracers, background_fields, particles, biogeochemistry,
+       velocities, hydrostatic_pressure_anomaly, nonhydrostatic_pressure, closure_fields,
+       pressure_solver, auxiliary_fields) = settings
+
+    arch = architecture(grid)
+
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
     default_generator(name, tracer_advection) = default_tracer_advection
 
-    tracer_advection_tuple = with_tracers(tracernames(tracers), tracer_advection,
+    tracer_advection_tuple = with_tracers(tracer_names, tracer_advection,
                                           default_generator, with_velocities=false)
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
@@ -249,8 +272,8 @@ function NonhydrostaticModel(grid;
                                          extract_boundary_conditions(closure_fields))
 
     # Next, we form a list of default boundary conditions:
-    field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions() for name in field_names)
+    field_names = (:u, :v, :w, tracer_names..., keys(auxiliary_fields)...)
+    default_boundary_conditions = NamedTuple{field_names}(ntuple(_ -> FieldBoundaryConditions(), Val(length(field_names))))
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
@@ -272,7 +295,22 @@ function NonhydrostaticModel(grid;
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Ensure `closure` describes all tracers
-    closure = with_tracers(tracernames(tracers), closure)
+    closure = with_tracers(tracer_names, closure)
+
+    # Boundary conditions can depend on runtime values (for example, whether a latitude-longitude
+    # grid reaches a pole), so the fields are built behind a second barrier
+    return Base.invokelatest(build_nonhydrostatic_model, grid, Val(tracer_names), timestepper,
+                             advection, buoyancy, boundary_conditions, closure, settings)
+end
+
+function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
+                                    advection, buoyancy, boundary_conditions, closure, settings) where tracer_names
+
+    (; clock, coriolis, stokes_drift, forcing, free_surface, tracers, background_fields, particles, biogeochemistry,
+       velocities, hydrostatic_pressure_anomaly, nonhydrostatic_pressure, closure_fields, pressure_solver,
+       auxiliary_fields) = settings
+
+    arch = architecture(grid)
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
@@ -281,16 +319,16 @@ function NonhydrostaticModel(grid;
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
-    tracers            = TracerFields(tracers,      grid, boundary_conditions)
+    tracers            = materialize_tracers(tracers, tracer_names, grid, boundary_conditions)
     pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
-    closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
+    closure_fields = build_closure_fields(closure_fields, grid, clock, tracer_names, boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
     # Materialize background fields
-    background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
+    background_fields = BackgroundFields(background_fields, tracer_names, grid, clock)
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
@@ -298,7 +336,7 @@ function NonhydrostaticModel(grid;
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
+    bc_needs_solver = any(map(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields))
 
     if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
@@ -314,8 +352,6 @@ function NonhydrostaticModel(grid;
 
     # Initialize boundary transport container
     boundary_transport = initialize_boundary_transport(velocities)
-
-    !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
@@ -335,24 +371,30 @@ timestepper(model::NonhydrostaticModel) = model.timestepper
 # Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
 # `inflate_grid_halo_size` and would therefore be boxed.
 function materialize_model_advection(advection, grid)
-    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
-    return NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+    advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
+    return map(scheme -> materialize_advection(scheme, grid), advection)
 end
 
-function inflate_grid_halo_size(grid, tendency_terms...)
-    user_halo = grid.Hx, grid.Hy, grid.Hz
-    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., grid, tendency_terms...)
+Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(user_halo..., grid, tendency_terms...)
+    needs_inflation = any(map(<, user_halo, required_halo))
+    return inflate_grid_halo_size(needs_inflation, grid, required_halo)
+end
 
-    if any(user_halo .< required_halo) # Replace grid
-        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-              "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid."
-              "The model grid will be different from the input grid. To avoid this warning, " *
-              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+# `needs_inflation` folds to a compile-time constant when the halo sizes do, so the grid type is
+# known to the compiler whenever the user grid already has sufficient halos
+@inline inflate_grid_halo_size(needs_inflation::Bool, grid, required_halo) =
+    needs_inflation ? with_inflated_halo(grid, required_halo) : grid
 
-        grid = with_halo((Hx, Hy, Hz), grid)
-    end
+@noinline function with_inflated_halo(grid, required_halo)
+    Hx, Hy, Hz = required_halo
+    @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+          "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid. " *
+          "The model grid will be different from the input grid. To avoid this warning, " *
+          "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
 
-    return grid
+    return with_halo((Hx, Hy, Hz), grid)
 end
 
 # return the total advective velocities

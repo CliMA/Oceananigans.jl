@@ -29,7 +29,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F, CS} <: AbstractField{LX, LY, LZ
     comm_state :: CS
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
+    Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
         @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
         return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F, Nothing}(grid, data, local_bcs, indices, op, status, buffers, nothing)
@@ -104,7 +104,7 @@ validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
 #####
 
 # Common outer constructor for all field flavors that performs input validation
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
+Base.@constprop :aggressive function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::AbstractGrid, data, bcs, indices, op=nothing, status=nothing) where {LX, LY, LZ}
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
@@ -118,7 +118,7 @@ communication_buffers(grid, data, bcs) = nothing
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
-                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
+                      ::Type{T}=eltype(grid); kw...) where {LX, LY, LZ, T}
 
 Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
 Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
@@ -174,21 +174,21 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
     └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
-function Field{LX, LY, LZ}(grid::AbstractGrid,
-                           T::DataType=eltype(grid);
-                           kw...) where {LX, LY, LZ}
+Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::AbstractGrid,
+                                                       ::Type{T}=eltype(grid);
+                                                       kw...) where {LX, LY, LZ, T}
 
     return Field((LX(), LY(), LZ()), grid, T; kw...)
 end
 
-function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
-               grid::AbstractGrid,
-               T::DataType = eltype(grid);
-               indices = default_indices(3),
-               data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
-               boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
-               operand = nothing,
-               status = nothing)
+Base.@constprop :aggressive function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), Face(), nothing)
+                                           grid::AbstractGrid,
+                                           ::Type{T} = eltype(grid);
+                                           indices = default_indices(3),
+                                           data = new_data(T, grid, loc, validate_indices(indices, loc, grid)),
+                                           boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
+                                           operand = nothing,
+                                           status = nothing) where T
 
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
@@ -202,7 +202,7 @@ Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 Return a `Field{Center, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Center()), grid, T; kw...)
+CenterField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Center()), grid, T; kw...)
 
 """
     XFaceField(grid, T=eltype(grid); kw...)
@@ -210,7 +210,7 @@ CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center
 Return a `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(), Center(), Center()), grid, T; kw...)
+XFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Face(), Center(), Center()), grid, T; kw...)
 
 """
     YFaceField(grid, T=eltype(grid); kw...)
@@ -218,7 +218,7 @@ XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Face(),
 Return a `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Face(), Center()), grid, T; kw...)
+YFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Face(), Center()), grid, T; kw...)
 
 """
     ZFaceField(grid, T=eltype(grid); kw...)
@@ -226,14 +226,14 @@ YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 Return a `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(), Center(), Face()), grid, T; kw...)
+ZFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((Center(), Center(), Face()), grid, T; kw...)
 
 #####
 ##### Field utils
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=f.grid)
+function Base.similar(f::Field, grid::AbstractGrid=f.grid)
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
@@ -442,8 +442,8 @@ Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O,
 Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
-Base.:(==)(f::Field, a) = interior(f) == a
-Base.:(==)(a, f::Field) = a == interior(f)
+Base.:(==)(f::Field, a::AbstractArray) = interior(f) == a
+Base.:(==)(a::AbstractArray, f::Field) = a == interior(f)
 
 function Base.:(==)(a::Field, b::Field)
     if architecture(a) == architecture(b)
@@ -593,7 +593,10 @@ const ReducedField = Union{XReducedField,
 @inline BoundaryConditions.getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
 @inline BoundaryConditions.getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
-# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+# Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
+@inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
+@inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
+# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
@@ -724,12 +727,26 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+# Neutral element the in-place reduction starts from (it runs with `init=false`)
+reduction_init(::SumReduction,  T) = zero(T)
+reduction_init(::ProdReduction, T) = one(T)
+reduction_init(::AllReduction,  T) = true
+reduction_init(::AnyReduction,  T) = false
+
+initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) = fill!(interior(r), reduction_init(reduction, eltype(r)))
+
+# `maximum` and `minimum` start from `f` of the operand's first slice along the reduced dimensions
+function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, f::F, r::ReducedAbstractField, c) where F
+    R, A = interior(r), interior(c)
+    return map!(f, R, view(A, first_slice(axes(R), axes(A))...))
+end
+
+# Axes of the first slice of `A` along the dimensions reduced in `R`, keeping the axis types
+@inline first_slice(::Tuple{}, ::Tuple{}) = ()
+@inline first_slice(R::Tuple, A::Tuple) = (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
+
+first_index(::Base.OneTo) = Base.OneTo(1)
+first_index(ax::AbstractUnitRange) = first(ax):first(ax)
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -760,7 +777,8 @@ function reduced_dimension(loc)
     return dims
 end
 
-get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::AllReduction) = true
+get_neutral_mask(::AnyReduction) = false
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
