@@ -359,9 +359,8 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
     validate_boundary_conditions(loc, grid, global_bcs)
     local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, grid)
     buffers = communication_buffers(grid, data, local_bcs, (LX(), LY(), LZ()))
-    comm_state = DistributedComputations.CommState()
 
-    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers, comm_state)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 
 # Reconstruction the global tripolar grid for visualization purposes

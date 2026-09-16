@@ -178,7 +178,7 @@ end
 
 function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
   fill_event = record_event(arch)
-  add_fill_event!(c)
+  add_fill_event!(buffers)
 
   Threads.@spawn begin
     # Need to lock the channel to show we are waiting on send buffers
@@ -196,8 +196,8 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
     !isnothing(reqnw) && push!(reqs, reqnw...)
     !isnothing(reqne) && push!(reqs, reqne...)
 
-    add_comm_requests!(c, reqs)
-    complete_fill_event!(c)
+    add_comm_requests!(buffers, reqs)
+    complete_fill_event!(buffers)
 
   end
 
@@ -231,7 +231,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
     fill_event = record_event(arch)
-    add_fill_event!(c)
+    add_fill_event!(buffers)
 
     if arch isa AsynchronousDistributed
       Threads.@spawn begin
@@ -239,8 +239,8 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
         requests = MPI.Request[]
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        add_comm_requests!(c, requests)
-        complete_fill_event!(c)
+        add_comm_requests!(buffers, requests)
+        complete_fill_event!(buffers)
       end
     else
       synchronize(fill_event)

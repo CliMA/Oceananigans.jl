@@ -14,7 +14,7 @@ import Oceananigans.Fields: communication_buffers
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 
-struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
+struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE, CS}
     west :: W
     east :: E
    south :: S
@@ -23,6 +23,7 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    southeast :: SE
    northwest :: NW
    northeast :: NE
+   state :: CS
 end
 
 Adapt.adapt_structure(to, buff::CommunicationBuffers) =
@@ -33,7 +34,8 @@ Adapt.adapt_structure(to, buff::CommunicationBuffers) =
                          Adapt.adapt(to, buff.southwest),
                          Adapt.adapt(to, buff.southeast),
                          Adapt.adapt(to, buff.northwest),
-                         Adapt.adapt(to, buff.northeast))
+                         Adapt.adapt(to, buff.northeast),
+                         Adapt.adapt(to, buff.state))
 
 on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
@@ -43,7 +45,9 @@ on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.southwest),
                          on_architecture(arch, buff.southeast),
                          on_architecture(arch, buff.northwest),
-                         on_architecture(arch, buff.northeast))
+                         on_architecture(arch, buff.northeast),
+                         on_architecture(arch, buff.state))
+
 
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
@@ -85,7 +89,9 @@ function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryCond
     nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
+    state = communication_state(arch)
+
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end
 
 CommunicationBuffers(grid, data, ::Missing) = nothing
@@ -433,3 +439,9 @@ _recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:
 _recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
 _recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+
+# Pass throughs to communication state
+add_fill_event!(buff::CommunicationBuffers) = add_fill_event!(buff.state)
+complete_fill_event!(buff::CommunicationBuffers) = complete_fill_event!(buff.state)
+add_comm_requests!(buff::CommunicationBuffers) = add_comm_requests!(buff.state)
+wait_for_comms!(buff::CommunicationBuffers) = wait_for_comms!(buff.state)

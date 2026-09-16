@@ -24,55 +24,6 @@ const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:Distributed
 const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
-# State of communications for MPI
-# The requests Channel exists for threads to add MPI requests to, in a thread safe way,
-# for the main thread to then wait on.
-# The fill_events value keeps track of how many events to fill the send buffer
-# are being waited on, to gate skipping past communication sync when the channel is empty
-# because the requests have not been added yet. The counter should be incremented by the main
-# thread, and decremented by the thread that is spawned for that event _after_ the MPI comms
-# are performed
-struct CommState
-  comm_requests::Channel
-  fill_events::Threads.Atomic{UInt64}
-end
-
-# Default contstructor for convenience
-CommState() = CommState(Channel(Inf), Threads.Atomic{UInt64}(0))
-
-add_fill_event!(f) = nothing
-add_fill_event!(f::DistributedField) = _add_fill_event!(f.comm_state)
-
-function _add_fill_event!(cs::CommState)
-  Threads.atomic_add!(cs.fill_events, UInt64(1))
-end
-
-complete_fill_event!(f) = nothing
-complete_fill_event!(f::DistributedField) = _complete_fill_event!(f.comm_state)
-
-function _complete_fill_event!(cs::CommState)
-  Threads.atomic_sub!(cs.fill_events, UInt64(1))
-end
-
-add_comm_requests!(_, _) = nothing
-add_comm_requests!(f::DistributedField, reqs) = _add_comm_requests!(f.comm_state, reqs)
-
-function _add_comm_requests!(cs::CommState, reqs)
-  put!(cs.comm_requests, reqs)
-end
-
-wait_for_comms!(_) = nothing
-wait_for_comms!(f::DistributedField) = _wait_for_comms!(f.comm_state)
-
-function _wait_for_comms!(cs::CommState)
-  # Wait for fill_events == 0
-  fill_finished = false
-  while !fill_finished
-    fill_finished = (cs.fill_events[] == 0)
-  end
-  # Wait for MPI comms to complete
-  cooperative_waitall!(cs.comm_requests)
-end
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
@@ -84,9 +35,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
     local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, rank, arch.connectivity, topology(grid))
     buffers = communication_buffers(grid, data, local_bcs)
 
-    comm_state = CommState()
-
-    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers, comm_state)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
