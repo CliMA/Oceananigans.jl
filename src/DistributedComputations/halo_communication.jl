@@ -206,8 +206,12 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 function cooperative_waitall!(request_channel::Channel)
-  for req in request_channel
-    cooperative_wait(req)
+  # If there are no requests, skip the waitall
+  # For distributed fields, use wait_for_comms to ensure correct behaviour
+  if !isempty(request_channel)
+    for req in request_channel
+      cooperative_wait(req)
+    end
   end
 end
 
