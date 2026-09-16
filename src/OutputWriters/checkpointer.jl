@@ -443,6 +443,9 @@ function Oceananigans.restore_prognostic_state!(restored::Number, from::Number)
     return restored
 end
 
+# Immutable labels such as the open boundary side names in `boundary_transport`
+Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
+
 #####
 ##### Manual checkpointing
 #####
