@@ -390,6 +390,10 @@ end
 define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractField}, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
+""" Defines empty field variable for `TimeDerivative`s of fields. """
+define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
+    define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
+
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(model, dataset, output::LagrangianParticles, output_name; array_type,
                                  deflatelevel, kwargs...)
