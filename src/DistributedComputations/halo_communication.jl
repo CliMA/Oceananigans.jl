@@ -205,7 +205,7 @@ end
 
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
-function cooperative_waitall!(request_channel::Channel{MPI.Request})
+function cooperative_waitall!(request_channel::Channel)
   for req in request_channel
     cooperative_wait(req)
   end
