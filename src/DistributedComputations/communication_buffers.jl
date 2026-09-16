@@ -443,5 +443,5 @@ _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+
 # Pass throughs to communication state
 add_fill_event!(buff::CommunicationBuffers) = add_fill_event!(buff.state)
 complete_fill_event!(buff::CommunicationBuffers) = complete_fill_event!(buff.state)
-add_comm_requests!(buff::CommunicationBuffers) = add_comm_requests!(buff.state)
+add_comm_requests!(buff::CommunicationBuffers, reqs) = add_comm_requests!(buff.state, reqs)
 wait_for_comms!(buff::CommunicationBuffers) = wait_for_comms!(buff.state)
