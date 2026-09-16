@@ -5,7 +5,7 @@ using Oceananigans.Grids: AbstractGrid, topology,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
     LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
     PencilFoldedTopology
-using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer
+using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer, communication_state
 
 import Oceananigans.DistributedComputations:
     y_communication_buffer, corner_communication_buffer,
@@ -187,7 +187,9 @@ function communication_buffers(grid::MPITripolarGridOfSomeKind, data, bcs, loc)
     nw = northwest_tripolar_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = northeast_tripolar_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
+    state = communication_state(arch)
+
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end
 
 # Fallback: non-zipper north BC uses standard buffer
