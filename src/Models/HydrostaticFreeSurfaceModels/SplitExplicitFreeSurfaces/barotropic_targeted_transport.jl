@@ -15,8 +15,7 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
-# Checked on the boundary conditions the user passed, so every rank reaches the same verdict. The face
-# integrals below are rank-local, hence the restriction; multi-region grids add their own method.
+# TODO: add support for distributed grids
 function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
     targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
     if targeted && grid isa DistributedGrid
@@ -25,8 +24,7 @@ function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, b
     return nothing
 end
 
-# Each targeted side stores its target, the wet length of its face and a reduced `Field` with the face integral
-# of the transport, recomputed every substep. One group pins `U` and `V`, the other the filtered `Ũ` and `Ṽ`.
+# Apply target transport through substepping.
 function materialize_barotropic_boundary_transport(U, V, Ũ, Ṽ, grid)
     has_targeted_barotropic_sides(U.boundary_conditions, V.boundary_conditions) || return nothing
     return (; barotropic = side_transports(U, V, grid), filtered = side_transports(Ũ, Ṽ, grid))
@@ -53,7 +51,6 @@ function side_transport(bc::GWNFBC, field, grid, side)
     return (; target, wet_length, integral = face_integral(field, grid, side))
 end
 
-# Reductions over immersed grids skip dry columns, so the integrals only see the wet part of the face
 face_integral(U, grid, ::Val{:west})  = Field(Integral(view(U, 1, :, :), dims = 2))
 face_integral(U, grid, ::Val{:east})  = Field(Integral(view(U, grid.Nx + 1, :, :), dims = 2))
 face_integral(V, grid, ::Val{:south}) = Field(Integral(view(V, :, 1, :), dims = 1))
