@@ -10,7 +10,7 @@
 # Sverdrup theory says that the depth-integrated meridional transport of the interior is
 #
 # ```math
-# V = \frac{\boldsymbol{\hat z} \boldsymbol{\cdot} \boldsymbol{\nabla} \times \boldsymbol{\tau}}{\rho_o \beta} ,
+# V = \frac{\boldsymbol{\hat z} \boldsymbol{\cdot} (\boldsymbol{\nabla} \times \boldsymbol{\tau})}{\rho₀ \beta} ,
 # \qquad \beta = \frac{2 \Omega \cos \varphi}{R} ,
 # ```
 #
@@ -41,8 +41,7 @@ using CUDA # `using Metal` on Apple silicon
 # point type is a parameter that Metal users should set to `Float32`.
 
 arch = GPU()
-FT = Float64
-Oceananigans.defaults.FloatType = FT
+Oceananigans.defaults.FloatType = Float64
 
 # ## A four-layer tripolar grid
 #
@@ -107,10 +106,9 @@ land = depth .≤ 0
 
 longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
-function map_axis(figure_position; title="")
-    return Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
-                aspect=DataAspect(), limits=((70, 430), (-80, 70)), xticks=longitude_ticks)
-end
+map_axis(figure_position; title="") =
+    Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
+         aspect=DataAspect(), limits=((70, 430), (-80, 70)), xticks=longitude_ticks)
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title="Ocean depth")
@@ -126,7 +124,7 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 # The zonal wind stress
 #
 # ```math
-# τˣ(φ) = - τ₀ \sin 2φ \sin 6φ
+# τˣ(φ) = - τ₀ \, \sin 2φ \sin 6φ
 # ```
 #
 # has easterly trade winds peaking at ±15°, westerlies peaking at ±45°, and polar
@@ -134,13 +132,13 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 # anticyclonic subtropical gyres, whose western boundary currents are the Gulf Stream
 # and the Kuroshio. A positive flux boundary condition transports momentum out of the
 # domain, so the momentum flux from the wind is minus the wind stress divided by
-# the reference density `ρₒ`.
+# the reference density `ρ₀`.
 
-τ₀ = FT(0.15) # peak wind stress [N m⁻²]
-ρₒ = 1020     # reference density [kg m⁻³]
+τ₀ = 0.15   # peak wind stress [N m⁻²]
+ρ₀ = 1020   # reference density [kg m⁻³]
 
 zonal_wind_stress(φ, τ₀) = - τ₀ * sind(2φ) * sind(6φ)
-zonal_momentum_flux(λ, φ, t, parameters) = - zonal_wind_stress(φ, parameters.τ₀) / parameters.ρₒ
+zonal_momentum_flux(λ, φ, t, parameters) = - zonal_wind_stress(φ, parameters.τ₀) / parameters.ρ₀
 
 # We plot the wind stress together with the Sverdrup transport per unit zonal width
 # that it drives at Earth's rotation rate. The wind stress curl is
@@ -150,7 +148,7 @@ R = Oceananigans.defaults.planet_radius
 Ω = Oceananigans.defaults.planet_rotation_rate
 
 wind_stress_curl(φ) = τ₀ / R * (2 * cosd(2φ) * sind(6φ) + 6 * sind(2φ) * cosd(6φ))
-sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρₒ * 2 * rotation_rate * cosd(φ) / R)
+sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρ₀ * 2 * rotation_rate * cosd(φ) / R)
 
 latitudes = -80:0.5:80
 
@@ -167,8 +165,8 @@ save("wind_stress.png", fig, px_per_unit=2) #hide
 # [`BulkDrag`](@ref) acts on the sea floor, which is the bottom of the domain in the
 # deep ocean and an immersed boundary everywhere else.
 
-wind_stress = FluxBoundaryCondition(zonal_momentum_flux, parameters=(; τ₀, ρₒ))
-drag = BulkDrag(coefficient=FT(2.5e-3))
+wind_stress = FluxBoundaryCondition(zonal_momentum_flux, parameters=(; τ₀, ρ₀))
+drag = BulkDrag(coefficient=2.5e-3)
 u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 
@@ -185,7 +183,7 @@ surface_temperature(φ) = 30 * cosd(φ)^2
     return @inbounds parameters.rate * (fields.T[i, j, grid.Nz] - surface_temperature(φ))
 end
 
-restoring_rate = FT(100 / 30days) # surface layer thickness over the restoring time scale [m s⁻¹]
+restoring_rate = 100 / 30days # surface layer thickness over the restoring time scale [m s⁻¹]
 temperature_restoring = FluxBoundaryCondition(temperature_flux; discrete_form=true, parameters=(; rate=restoring_rate))
 T_boundary_conditions = FieldBoundaryConditions(top=temperature_restoring)
 
@@ -406,7 +404,7 @@ f_plane_filename = run_gyres(grid, FPlane(latitude=30), "f_plane")
 
 # We compare the streamfunction with the run at Earth's rotation rate, and follow both
 # along 30°N across the Pacific and the Atlantic. Note the ten times larger color range
-# of the f-plane map.
+# of the ``f``-plane map.
 
 fig = Figure(size=(900, 1000))
 ax = Axis(fig[3, 1], xlabel="Longitude", ylabel="Streamfunction along 30°N [Sv]", xticks=longitude_ticks)
@@ -425,8 +423,8 @@ save("f_plane_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](f_plane_gyres.png)
 #
-# On the β-plane the streamfunction climbs to the gyre maximum within a few degrees of
-# the western coast and decays slowly across the rest of the basin. On the f-plane the
+# On the ``β``-plane the streamfunction climbs to the gyre maximum within a few degrees of
+# the western coast and decays slowly across the rest of the basin. On the ``f``-plane the
 # gyres are symmetric about the middle of each basin and there is no western boundary
 # current. They are also ten times stronger and still growing after four months: without
 # ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
