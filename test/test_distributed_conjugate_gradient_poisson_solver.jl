@@ -74,11 +74,13 @@ function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, 
 
     # Using Δt = 1.
     solve_for_pressure!(ϕ, solver, nothing, U, 1)
+    synchronize_communication!(ϕ)
 
     # "Recompute" ∇²ϕ
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
+    synchronize_communication!(∇²ϕ)
 
-    return Array(interior(∇²ϕ)) ≈ Array(R)
+    @test Array(interior(∇²ϕ)) ≈ Array(R)
 end
 
 @testset "Distributed conjugate gradient Poisson solver" begin
@@ -88,9 +90,9 @@ end
                          (Bounded,  Bounded,  Bounded))
 
             @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (4, 1, 1) ranks..."
-            @test divergence_free_poisson_solution((16, 16, 8), (4, 1, 1), topology, child_arch, preconditioner_type)
+            divergence_free_poisson_solution((16, 16, 8), (4, 1, 1), topology, child_arch, preconditioner_type)
             @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (1, 4, 1) ranks..."
-            @test divergence_free_poisson_solution((16, 16, 8), (1, 4, 1), topology, child_arch, preconditioner_type)
+            divergence_free_poisson_solution((16, 16, 8), (1, 4, 1), topology, child_arch, preconditioner_type)
             @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (2, 2, 1) ranks..."
             @test divergence_free_poisson_solution((16, 16, 8), (2, 2, 1), topology, child_arch, preconditioner_type)
         end
