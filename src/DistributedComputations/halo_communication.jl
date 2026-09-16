@@ -196,8 +196,8 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
     !isnothing(reqnw) && push!(reqs, reqnw...)
     !isnothing(reqne) && push!(reqs, reqne...)
 
-    complete_fill_event!(c)
     add_comm_requests!(c, reqs)
+    complete_fill_event!(c)
 
   end
 
@@ -239,8 +239,8 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
         requests = MPI.Request[]
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        complete_fill_event!(c)
         add_comm_requests!(c, requests)
+        complete_fill_event!(c)
       end
     else
       synchronize(fill_event)
