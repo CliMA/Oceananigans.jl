@@ -187,7 +187,7 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
     reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
     reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
-    reqs = []
+    reqs = MPI.Request[]
 
     !isnothing(reqsw) && push!(reqs, reqsw...)
     !isnothing(reqse) && push!(reqs, reqse...)
@@ -231,6 +231,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
       Threads.@spawn begin
         sync_event(fill_event)
 
+        requests = MPI.Request[]
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
         complete_fill_event!(c)
         add_comm_requests!(c, requests)
@@ -238,6 +239,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     else
       synchronize(fill_event)
 
+      requests = MPI.Request[]
       requests = kernel!(c, bcs..., loc, grid, arch, buffers)
       complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     end
