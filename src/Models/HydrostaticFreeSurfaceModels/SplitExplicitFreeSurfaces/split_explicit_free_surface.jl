@@ -48,7 +48,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B} <: AbstractFreeSurfa
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
-    boundary_transport :: B # Transport fields for targeted `GravityWaveRadiation` boundaries (or `nothing`)
+    boundary_transport :: B # Target transports of the sides with a targeted `GravityWaveRadiation` condition (or `nothing`)
 
     function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, b::B) where {E, H, U, M, FT, K, S, T, B}
         return new{E, H, U, M, FT, K, S, T, B}(η, u, m, g, k, s, t, b)
@@ -111,9 +111,9 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
   contains no auxiliary fields).
 
-- `boundary_transport`: Storage for the sides whose `GravityWaveRadiation` boundary condition carries a
-  `target_transport`, or `nothing`: the target, the wet length of the face and reduced `Field`s holding the face
-  integrals of the barotropic transports, recomputed on the device every substep.
+- `boundary_transport`: `nothing`, or a `NamedTuple` `(; west, east, south, north)` holding the `target_transport` of each
+  side whose `GravityWaveRadiation` boundary condition carries one (`nothing` on the other sides). After every substep each
+  targeted face is integrated over its wet columns and shifted uniformly by a single kernel so its transport equals the target.
 
 Keyword Arguments
 =================
@@ -287,7 +287,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
-    boundary_transport = materialize_barotropic_boundary_transport(U, V, Ũ, Ṽ, maybe_extended_grid)
+    boundary_transport = materialize_barotropic_boundary_transport(U, V, maybe_extended_grid)
 
     kernel_parameters = if strategy isa CompleteHaloFilling
         Wx, Wy, _ = worksize(grid)

@@ -24,78 +24,102 @@ function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, b
     return nothing
 end
 
-# Apply target transport through substepping.
-function materialize_barotropic_boundary_transport(U, V, Ũ, Ṽ, grid)
+# The target of each side (or `nothing`); the same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
+function materialize_barotropic_boundary_transport(U, V, grid)
     has_targeted_barotropic_sides(U.boundary_conditions, V.boundary_conditions) || return nothing
-    return (; barotropic = side_transports(U, V, grid), filtered = side_transports(Ũ, Ṽ, grid))
+    return (west  = side_transport(side_condition(U.boundary_conditions, :west),  grid),
+            east  = side_transport(side_condition(U.boundary_conditions, :east),  grid),
+            south = side_transport(side_condition(V.boundary_conditions, :south), grid),
+            north = side_transport(side_condition(V.boundary_conditions, :north), grid))
 end
 
-barotropic_sides(::Nothing) = nothing
-barotropic_sides(boundary_transport) = boundary_transport.barotropic
+side_transport(bc, grid) = nothing
+side_transport(bc::GWNFBC, grid) =
+    has_target_transport(bc.classification.scheme) ? convert(eltype(grid), get_target_transport(bc.classification.scheme, grid)) : nothing
 
-filtered_sides(::Nothing) = nothing
-filtered_sides(boundary_transport) = boundary_transport.filtered
+#####
+##### Pinning a face: one pre-configured launch per targeted side and substep
+#####
 
-side_transports(U, V, grid) = (west  = side_transport(side_condition(U.boundary_conditions, :west),  U, grid, Val(:west)),
-                               east  = side_transport(side_condition(U.boundary_conditions, :east),  U, grid, Val(:east)),
-                               south = side_transport(side_condition(V.boundary_conditions, :south), V, grid, Val(:south)),
-                               north = side_transport(side_condition(V.boundary_conditions, :north), V, grid, Val(:north)))
+const FACE_WORKGROUP_SIZE = 256
 
-side_transport(bc, field, grid, side) = nothing
+@inline face_length(grid, ::Val{:x}) = grid.Ny
+@inline face_length(grid, ::Val{:y}) = grid.Nx
 
-function side_transport(bc::GWNFBC, field, grid, side)
-    has_target_transport(bc.classification.scheme) || return nothing
-    wet_length = face_wet_length(field, grid, side)
-    wet_length > 0 || return nothing # a fully dry side carries no transport
-    target = get_target_transport(bc.classification.scheme, grid)
-    return (; target, wet_length, integral = face_integral(field, grid, side))
+@inline face_column(n, index, ::Val{:x}) = (index, n)
+@inline face_column(n, index, ::Val{:y}) = (n, index)
+
+# Width of a column along the face, zero where the column is dry
+@inline wet_face_width(i, j, grid, ::Val{:x}) = ifelse(column_depthᶠᶜᵃ(i, j, grid) > 0, Δyᶠᶜᵃ(i, j, 1, grid), zero(grid))
+@inline wet_face_width(i, j, grid, ::Val{:y}) = ifelse(column_depthᶜᶠᵃ(i, j, grid) > 0, Δxᶜᶠᵃ(i, j, 1, grid), zero(grid))
+
+# A single workgroup strides along the face: the partial sums of the transport and of the wet length go through local
+# memory, work item 1 adds them in a fixed order (so the shift is deterministic) and every wet column is shifted by the
+# same amount, which lands the face integral exactly on the target.
+@kernel function _pin_barotropic_face!(U, grid, index, target, direction)
+    t = @index(Local, Linear)
+    Σ∫U = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
+    ΣL  = @localmem eltype(grid) (FACE_WORKGROUP_SIZE,)
+
+    ∫U = zero(grid)
+    L  = zero(grid)
+    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
+        i, j = face_column(n, index, direction)
+        Δl = wet_face_width(i, j, grid, direction)
+        @inbounds ∫U += U[i, j, 1] * Δl
+        L += Δl
+    end
+    @inbounds Σ∫U[t] = ∫U
+    @inbounds ΣL[t]  = L
+    @synchronize
+
+    if t == 1
+        ∫U = zero(grid)
+        L  = zero(grid)
+        for m in 1:FACE_WORKGROUP_SIZE
+            @inbounds ∫U += Σ∫U[m]
+            @inbounds L  += ΣL[m]
+        end
+        @inbounds Σ∫U[1] = ifelse(L > 0, (∫U - target) / L, zero(grid))
+    end
+    @synchronize
+
+    @inbounds shift = Σ∫U[1]
+    for n in t:FACE_WORKGROUP_SIZE:face_length(grid, direction)
+        i, j = face_column(n, index, direction)
+        wet = wet_face_width(i, j, grid, direction) > 0
+        @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
+    end
 end
 
-face_integral(U, grid, ::Val{:west})  = Field(Integral(view(U, 1, :, :), dims = 2))
-face_integral(U, grid, ::Val{:east})  = Field(Integral(view(U, grid.Nx + 1, :, :), dims = 2))
-face_integral(V, grid, ::Val{:south}) = Field(Integral(view(V, :, 1, :), dims = 1))
-face_integral(V, grid, ::Val{:north}) = Field(Integral(view(V, :, grid.Ny + 1, :), dims = 1))
+configure_face_pin(arch, grid, field, index, ::Nothing, direction) = nothing
 
-function face_wet_length(field, grid, side)
-    LX, LY, LZ = location(field)
-    ones = Field{LX, LY, LZ}(grid)
-    set!(ones, 1)
-    return @allowscalar compute!(face_integral(ones, grid, side))[]
+# Built once per barotropic step, like the other substep kernels: a single static workgroup and device-converted arguments
+function configure_face_pin(arch, grid, field, index, target, direction)
+    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
+    kernel! = _pin_barotropic_face!(device(arch), workgroup, workgroup)
+    args = convert_to_device(arch, (field, grid, index, target, direction))
+    return (; kernel!, args)
 end
 
-# The face is shifted uniformly over its wet columns so that its integral matches the target
-@kernel function _pin_barotropic_face!(U, grid, i, ∫U, target, wet_length, ::Val{:x})
-    j = @index(Global, Linear)
-    @inbounds shift = (∫U[i, 1, 1] - target) / wet_length
-    wet = column_depthᶠᶜᵃ(i, j, grid) > 0
-    @inbounds U[i, j, 1] -= ifelse(wet, shift, zero(shift))
-end
+configure_face_pins(arch, grid, U, V, ::Nothing) = nothing
+configure_face_pins(arch, grid, U, V, targets) =
+    (west  = configure_face_pin(arch, grid, U, 1,           targets.west,  Val(:x)),
+     east  = configure_face_pin(arch, grid, U, grid.Nx + 1, targets.east,  Val(:x)),
+     south = configure_face_pin(arch, grid, V, 1,           targets.south, Val(:y)),
+     north = configure_face_pin(arch, grid, V, grid.Ny + 1, targets.north, Val(:y)))
 
-@kernel function _pin_barotropic_face!(V, grid, j, ∫V, target, wet_length, ::Val{:y})
-    i = @index(Global, Linear)
-    @inbounds shift = (∫V[1, j, 1] - target) / wet_length
-    wet = column_depthᶜᶠᵃ(i, j, grid) > 0
-    @inbounds V[i, j, 1] -= ifelse(wet, shift, zero(shift))
-end
+@inline pin_barotropic_face!(::Nothing) = nothing
+@inline pin_barotropic_face!(pin) = pin.kernel!(pin.args...)
 
-face_parameters(grid, ::Val{:x}) = KernelParameters(1:grid.Ny)
-face_parameters(grid, ::Val{:y}) = KernelParameters(1:grid.Nx)
+@inline pin_barotropic_faces!(::Nothing) = nothing
 
-pin_barotropic_face!(arch, grid, field, index, ::Nothing, direction) = nothing
-
-function pin_barotropic_face!(arch, grid, field, index, side, direction)
-    compute!(side.integral)
-    launch!(arch, grid, face_parameters(grid, direction), _pin_barotropic_face!,
-            field, grid, index, side.integral, side.target, side.wet_length, direction)
+@inline function pin_barotropic_faces!(pins)
+    pin_barotropic_face!(pins.west)
+    pin_barotropic_face!(pins.east)
+    pin_barotropic_face!(pins.south)
+    pin_barotropic_face!(pins.north)
     return nothing
 end
 
-enforce_barotropic_transport_targets!(arch, grid, U, V, ::Nothing) = nothing
-
-function enforce_barotropic_transport_targets!(arch, grid, U, V, sides)
-    pin_barotropic_face!(arch, grid, U, 1,           sides.west,  Val(:x))
-    pin_barotropic_face!(arch, grid, U, grid.Nx + 1, sides.east,  Val(:x))
-    pin_barotropic_face!(arch, grid, V, 1,           sides.south, Val(:y))
-    pin_barotropic_face!(arch, grid, V, grid.Ny + 1, sides.north, Val(:y))
-    return nothing
-end
+enforce_barotropic_transport_targets!(arch, grid, U, V, targets) = pin_barotropic_faces!(configure_face_pins(arch, grid, U, V, targets))

@@ -4,17 +4,15 @@ export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
 using DocStringExtensions: TYPEDSIGNATURES
-using KernelAbstractions: @index, @kernel
+using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
-using Oceananigans.Architectures: convert_to_device, architecture
+using Oceananigans.Architectures: convert_to_device, architecture, device
 using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
-using Oceananigans.Fields: Field, instantiated_location, location, set!, compute!
-using Oceananigans.AbstractOperations: Integral
-using GPUArraysCore: @allowscalar
+using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                           LeftConnected, RightConnected, FullyConnected,
                           RightCenterFolded, RightFaceFolded,
