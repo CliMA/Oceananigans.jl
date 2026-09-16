@@ -34,28 +34,24 @@ const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:Distribute
 # are performed
 struct CommState
   comm_requests::Channel
-  fill_events::Base.Lockable{UInt64}
+  fill_events::Threads.Atomic{UInt64}
 end
 
 # Default contstructor for convenience
-CommState() = CommState(Channel(Inf), Base.Lockable(UInt64(0)))
+CommState() = CommState(Channel(Inf), Threads.Atomic{UInt64}(0))
 
 add_fill_event!(f) = nothing
 add_fill_event!(f::DistributedField) = _add_fill_event!(f.comm_state)
 
 function _add_fill_event!(cs::CommState)
-  lock(cs.fill_events)
-  cs.fill_events += 1
-  unlock(cs.fill_events)
+  Threads.atomic_add!(cs.fill_events, UInt64(1))
 end
 
 complete_fill_event!(f) = nothing
 complete_fill_event!(f::DistributedField) = _complete_fill_event!(f.comm_state)
 
 function _complete_fill_event!(cs::CommState)
-  lock(cs.fill_events)
-  cs.fill_events -= 1
-  unlock(cs.fill_events)
+  Threads.atomic_sub!(cs.fill_events, UInt64(1))
 end
 
 add_comm_requests!(_, _) = nothing
@@ -72,9 +68,7 @@ function _wait_for_comms!(cs::CommState)
   # Wait for fill_events == 0
   fill_finished = false
   while !fill_finished
-    lock(cs.fill_events)
-    fill_finished = (cs.fill_events == 0)
-    unlock(cs.fill_events)
+    fill_finished = (cs.fill_events[] == 0)
   end
   # Wait for MPI comms to complete
   cooperative_waitall!(cs.comm_requests)
