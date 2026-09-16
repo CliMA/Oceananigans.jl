@@ -365,14 +365,34 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
+# ZWENO α weights C★ᵣ (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ), rescaled by the largest ratio in the stencil.
+#
+# β and τ both scale with the square of the reconstructed field while ϵ is absolute, so a flat
+# sub-stencil beside a large jump drives τ / (βᵣ + ϵ) arbitrarily high, and in Float32 its square
+# overflows for jumps ≳ 1e5: α = Inf and the normalized weights are NaN. Writing dᵣ = βᵣ + ϵ,
+# dmin = minᵣ dᵣ and M = max(1, τ / dmin),
+#
+#     αᵣ / M² = C★ᵣ [(1/M)² + (τ / (M dᵣ))²] = C★ᵣ [a² + (b dmin / dᵣ)²]
+#
+# with a = min(1, dmin/τ) and b = min(1, τ/dmin). Every factor is at most one, so no term can
+# overflow at any input magnitude and no bound has to be chosen. `biased_weno_weights` normalizes
+# by Σα, so dividing every αᵣ by the common M² leaves the weights it returns unchanged.
+#
+# The limits are the intended ones: τ = 0 gives a = 1, b = 0 and αᵣ = C★ᵣ, while a τ that
+# overflows gives a = 0, b = 1 and C★ᵣ (dmin / dᵣ)², the ratio the weights tend to. dmin ≥ ϵ > 0,
+# so no denominator here can vanish.
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (a^2 + (b * newton_div(WCT, dmin, β[$stencil] + ϵ))^2))
     end
 
-    return :($(elem...),)
+    return quote
+        dmin = minimum(β) + ϵ
+        a = min(one(FT), newton_div(WCT, dmin, τ))
+        b = min(one(FT), newton_div(WCT, τ, dmin))
+        ($(elem...),)
+    end
 end
 
 for buffer in advection_buffers[2:end]

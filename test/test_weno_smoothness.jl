@@ -55,3 +55,30 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
         end
     end
 end
+
+@testset "Float32 WENO weights beside a large jump" begin
+    # β and τ scale with the square of the field while ϵ is absolute, so a flat sub-stencil beside
+    # a large jump drives τ / (βᵣ + ϵ) high enough that its square overflows Float32: here β ≈ 3e11
+    # against ϵ = 1e-8, so the ratio is ≈ 3e19 and α = Inf without the rescaling.
+    #
+    # The α weights are divided by the largest such ratio, which is a common factor and so leaves
+    # the normalized weights alone. The Float64 evaluation, where nothing overflows, is the
+    # reference for what they should be, and the tolerance is far below Float32 round-off because
+    # the rescaling introduces no error of its own.
+    for order in (5, 7, 9)
+        buffer = Int((order + 1) ÷ 2)
+        S = ntuple(i -> i < buffer + 1 ? 0f0 : 3f5 * (i - buffer), 2buffer - 1)
+        δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
+
+        for weight_computation in (Oceananigans.Utils.NormalDivision,
+                                   Oceananigans.Utils.BackendOptimizedDivision)
+            ω = biased_weno_weights(δ, nothing, WENO(Float32; order, weight_computation))
+            reference = biased_weno_weights(Float64.(δ), nothing,
+                                            WENO(Float64; order, weight_computation))
+
+            @test all(isfinite, ω)
+            @test sum(ω) ≈ 1
+            @test all(isapprox.(Float64.(ω), reference; atol = 1.0e-12))
+        end
+    end
+end
