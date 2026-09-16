@@ -61,11 +61,37 @@ function run_poisson_equation_test(grid)
     return nothing
 end
 
+function run_operator_count_test(grid)
+    arch = architecture(grid)
+    applications = Ref(0)
+
+    function counting_∇²!(∇²ϕ, ϕ, arch, grid)
+        applications[] += 1
+        return compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    end
+
+    ϕ_truth = CenterField(grid)
+    set!(ϕ_truth, (x, y, z) -> rand())
+    parent(ϕ_truth) .-= mean(ϕ_truth)
+    r = CenterField(grid)
+    compute_∇²!(r, ϕ_truth, arch, grid)
+
+    solver = ConjugateGradientSolver(counting_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
+    solve!(CenterField(grid), solver, r, arch, grid)
+
+    # one application per iteration plus one for the initial residual
+    @test solver.iteration > 1
+    @test applications[] == solver.iteration + 1
+
+    return nothing
+end
+
 @testset "ConjugateGradientSolver" begin
     for arch in archs
         @info "Testing ConjugateGradientSolver [$(typeof(arch))]..."
         grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
+        run_operator_count_test(grid)
     end
 end
