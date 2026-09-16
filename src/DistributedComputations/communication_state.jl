@@ -31,6 +31,8 @@ end
 add_comm_requests!(_, _) = nothing
 add_comm_requests!(f::Field, reqs) = add_comm_requests!(f.communication_buffers.state, reqs)
 
+add_comm_requests!(cs::CommState, reqs::Nothing) = nothing
+
 function add_comm_requests!(cs::CommState, reqs)
   put!(cs.comm_requests, reqs)
 end

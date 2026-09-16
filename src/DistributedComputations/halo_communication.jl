@@ -230,7 +230,6 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
       Threads.@spawn begin
         sync_event(fill_event)
 
-        requests = MPI.Request[]
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
         add_comm_requests!(buffers, requests)
         complete_fill_event!(buffers)
@@ -238,7 +237,6 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     else
       synchronize(fill_event)
 
-      requests = MPI.Request[]
       requests = kernel!(c, bcs..., loc, grid, arch, buffers)
       complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     end
