@@ -58,41 +58,47 @@ immersed_boundary_topology(grid_topology) = ifelse(grid_topology == Flat, Flat()
 """
 $(TYPEDSIGNATURES)
 
-Return a new particle position if the position `(x, y, z)` lies in an immersed cell by
-bouncing the particle off the immersed boundary with a coefficient or `restitution`.
+Return a new particle position if the position `(x, y, z)` lies in an immersed cell, by
+bouncing the particle off the immersed boundary with a coefficient of `restitution`.
+
+The particle is reflected back into the cell with indices `previous_particle_indices` that it
+occupied before it was advected, off the faces of that cell. The reflection is computed from the
+unwrapped position `(x̃, ỹ, z̃)` of the particle, i.e. its advected position before domain boundary
+conditions were applied.
 """
-@inline function bounce_immersed_particle((x, y, z), ibg, restitution, previous_particle_indices)
+@inline function bounce_immersed_particle((x, y, z), (x̃, ỹ, z̃), ibg, restitution, previous_particle_indices)
     X = flattened_node((x, y, z), ibg)
 
-    # Determine current particle cell from the interfaces
+    # Determine the cell the particle is in now from the interfaces
     fi = FractionalIndices(X, ibg.underlying_grid, f, f, f)
 
-    i, i⁺, _ = interpolator(fi.i)
-    j, j⁺, _ = interpolator(fi.j)
-    k, k⁺, _ = interpolator(fi.k)
+    i, _, _ = interpolator(fi.i)
+    j, _, _ = interpolator(fi.j)
+    k, _, _ = interpolator(fi.k)
 
-    # Determine whether particle was _previously_ in a non-immersed cell
+    immersed = immersed_cell(i, j, k, ibg)
+
+    # Indices of the cell the particle occupied _before_ it was advected
     i⁻, j⁻, k⁻ = previous_particle_indices
-
-    tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
-
-    # Right bounds of the previous cell
-    xᴿ = ξnode(i⁺, j,  k, ibg, f, f, f)
-    yᴿ = ηnode(i,  j⁺, k, ibg, f, f, f)
-    zᴿ = rnode(i,  j,  k⁺, ibg, f, f, f)
 
     # Left bounds of the previous cell
     xᴸ = ξnode(i⁻, j⁻, k⁻, ibg, f, f, f)
     yᴸ = ηnode(i⁻, j⁻, k⁻, ibg, f, f, f)
     zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
+    # Right bounds of the previous cell
+    xᴿ = ξnode(i⁻ + 1, j⁻,     k⁻,     ibg, f, f, f)
+    yᴿ = ηnode(i⁻,     j⁻ + 1, k⁻,     ibg, f, f, f)
+    zᴿ = rnode(i⁻,     j⁻,     k⁻ + 1, ibg, f, f, f)
+
+    # Reflect the particle back into the previous cell
+    tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
     Cʳ = restitution
 
-    xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
-    yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
-    zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
+    xb⁺ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, Cʳ)
+    yb⁺ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, Cʳ)
+    zb⁺ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, Cʳ)
 
-    immersed = immersed_cell(i⁺, j⁺, k⁺, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
     y⁺ = ifelse(immersed, yb⁺, y)
     z⁺ = ifelse(immersed, zb⁺, z)
@@ -121,9 +127,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     # Obtain current particle indices, looking at the interfaces
     fi = FractionalIndices(X, grid, f, f, f)
 
-    i, i⁺, _ = interpolator(fi.i)
-    j, j⁺, _ = interpolator(fi.j)
-    k, k⁺, _ = interpolator(fi.k)
+    i, _, _ = interpolator(fi.i)
+    j, _, _ = interpolator(fi.j)
+    k, _, _ = interpolator(fi.k)
 
     current_particle_indices = (i, j, k)
 
@@ -142,9 +148,10 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    x⁺ = x + ξ * up * Δt
-    y⁺ = y + η * vp * Δt
-    z⁺ = z +     wp * Δt
+    # Advected position, before boundary conditions are applied
+    x̃ = x + ξ * up * Δt
+    ỹ = y + η * vp * Δt
+    z̃ = z +     wp * Δt
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -165,13 +172,13 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     # Enforce boundary conditions for particles.
     Cʳ = restitution
-    x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
-    y⁺ = enforce_boundary_conditions(ty, y⁺, yᴸ, yᴿ, Cʳ)
-    z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
+    x⁺ = enforce_boundary_conditions(tx, x̃, xᴸ, xᴿ, Cʳ)
+    y⁺ = enforce_boundary_conditions(ty, ỹ, yᴸ, yᴿ, Cʳ)
+    z⁺ = enforce_boundary_conditions(tz, z̃, zᴸ, zᴿ, Cʳ)
 
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
-        (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
+        (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), (x̃, ỹ, z̃), grid, Cʳ, previous_particle_indices)
     end
 
     return (x⁺, y⁺, z⁺)
