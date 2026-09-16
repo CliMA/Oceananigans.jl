@@ -5,12 +5,23 @@ using MPI
 
 fold_topologies = (RightCenterFolded, RightFaceFolded)
 
+distributed_tests_utils = joinpath(@__DIR__, "distributed_tests_utils.jl")
+
+function run_mpi_script(script, nranks)
+    mktempdir() do dir
+        path = joinpath(dir, "script.jl")
+        write(path, script)
+        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $path`)
+    end
+    return nothing
+end
+
 tripolar_reconstructed_grid_script(fold_topology) = """
     using MPI
     MPI.Init()
     using Test
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
 
     using Oceananigans.OrthogonalSphericalShellGrids: distribute_tripolar_grid
 
@@ -50,7 +61,7 @@ tripolar_reconstructed_field_script(fold_topology) = """
     MPI.Init()
     using Test
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
 
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
@@ -87,20 +98,16 @@ tripolar_reconstructed_field_script(fold_topology) = """
 """
 
 @testset "Test distributed TripolarGrid $fold_topology..." for fold_topology in fold_topologies
-    write("distributed_tripolar_grid_$fold_topology.jl", tripolar_reconstructed_grid_script(fold_topology))
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_tripolar_grid_$fold_topology.jl")`)
-    rm("distributed_tripolar_grid_$fold_topology.jl")
+    run_mpi_script(tripolar_reconstructed_grid_script(fold_topology), 4)
 
-    write("distributed_tripolar_field_$fold_topology.jl", tripolar_reconstructed_field_script(fold_topology))
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_tripolar_field_$fold_topology.jl")`)
-    rm("distributed_tripolar_field_$fold_topology.jl")
+    run_mpi_script(tripolar_reconstructed_field_script(fold_topology), 4)
 end
 
 tripolar_boundary_conditions_script(fold_topology) = """
     using MPI
     MPI.Init()
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
 
     arch = Distributed(CPU(), partition = Partition(2, 2))
     grid = TripolarGrid(arch; size = (20, 20, 1), z = (-1000, 0), fold_topology = $fold_topology)
@@ -153,9 +160,7 @@ tripolar_boundary_conditions_script(fold_topology) = """
 
     fill_halo_regions!((v, c))
 
-    write("distributed_$(fold_topology)_boundary_tests.jl", tripolar_boundary_conditions_script(fold_topology))
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $("distributed_$(fold_topology)_boundary_tests.jl")`)
-    rm("distributed_$(fold_topology)_boundary_tests.jl")
+    run_mpi_script(tripolar_boundary_conditions_script(fold_topology), 4)
 
     # Retrieve Parallel quantities from rank 1 (the north-west rank)
     vp1 = jldopen("distributed_$(fold_topology)_boundary_conditions_1.jld2")["v"];
@@ -179,7 +184,7 @@ run_slab_distributed_grid(fold_topology) = """
     using MPI
     MPI.Init()
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(1, 4))
     run_distributed_tripolar_grid(arch, "distributed_$(fold_topology)_yslab_tripolar.jld2"; fold_topology = $fold_topology)
 """
@@ -188,7 +193,7 @@ run_pencil_distributed_grid(fold_topology) = """
     using MPI
     MPI.Init()
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(2, 2))
     run_distributed_tripolar_grid(arch, "distributed_$(fold_topology)_pencil_tripolar.jld2"; fold_topology = $fold_topology)
 """
@@ -197,7 +202,7 @@ run_large_pencil_distributed_grid(fold_topology) = """
     using MPI
     MPI.Init()
 
-    include("distributed_tests_utils.jl")
+    include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(4, 2))
     run_distributed_tripolar_grid(arch, "distributed_$(fold_topology)_large_pencil_tripolar.jld2"; fold_topology = $fold_topology)
 """
@@ -218,9 +223,7 @@ run_large_pencil_distributed_grid(fold_topology) = """
     cs = interior(cs, :, :, 1)
 
     # Run the distributed grid simulation with a slab configuration
-    write("distributed_slab_tests.jl", run_slab_distributed_grid(fold_topology))
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_slab_tests.jl`)
-    rm("distributed_slab_tests.jl")
+    run_mpi_script(run_slab_distributed_grid(fold_topology), 4)
 
     # Retrieve Parallel quantities
     up = jldopen("distributed_$(fold_topology)_yslab_tripolar.jld2")["u"]
@@ -237,9 +240,7 @@ run_large_pencil_distributed_grid(fold_topology) = """
     @test all(ηs .≈ ηp)
 
     # Run the distributed grid simulation with a pencil configuration
-    write("distributed_pencil_tests.jl", run_pencil_distributed_grid(fold_topology))
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_pencil_tests.jl`)
-    rm("distributed_pencil_tests.jl")
+    run_mpi_script(run_pencil_distributed_grid(fold_topology), 4)
 
     # Retrieve Parallel quantities
     up = jldopen("distributed_$(fold_topology)_pencil_tripolar.jld2")["u"]
@@ -257,9 +258,7 @@ run_large_pencil_distributed_grid(fold_topology) = """
     # We try now with more ranks in the x-direction. This is not a trivial
     # test as we are now splitting, not only where the singularities are, but
     # also in the middle of the north fold. This is a more challenging test
-    write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid(fold_topology))
-    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) -O0 distributed_large_pencil_tests.jl`)
-    rm("distributed_large_pencil_tests.jl")
+    run_mpi_script(run_large_pencil_distributed_grid(fold_topology), 8)
 
     # Retrieve Parallel quantities
     up = jldopen("distributed_$(fold_topology)_large_pencil_tripolar.jld2")["u"]
