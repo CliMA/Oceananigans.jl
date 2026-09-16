@@ -22,11 +22,6 @@ it. With both length scales `0`, the default, the condition is a memoryless
 
 `TracerReservoir` is a `Value` scheme for `Center`-located fields.
 
-References
-==========
-* Adcroft, A. et al. (2019). "The GFDL global ocean and sea ice model OM4.0."
-  Journal of Advances in Modeling Earth Systems, 11(10), 3167-3211.
-
 ```jldoctest
 using Oceananigans
 using Oceananigans.BoundaryConditions: TracerReservoir
