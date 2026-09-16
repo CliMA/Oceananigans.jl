@@ -102,13 +102,3 @@ function enforce_barotropic_transport_targets!(arch, grid, U, V, sides)
     pin_barotropic_face!(arch, grid, V, grid.Ny + 1, sides.north, Val(:y))
     return nothing
 end
-
-# The end-of-step Flather refills undo the pin, so the faces are re-pinned before the barotropic corrector reads them
-function enforce_barotropic_transport_targets!(free_surface, grid)
-    arch = architecture(grid)
-    U, V = free_surface.barotropic_velocities
-    Ũ, Ṽ = free_surface.filtered_state.Ũ, free_surface.filtered_state.Ṽ
-    enforce_barotropic_transport_targets!(arch, grid, U, V, barotropic_sides(free_surface.boundary_transport))
-    enforce_barotropic_transport_targets!(arch, grid, Ũ, Ṽ, filtered_sides(free_surface.boundary_transport))
-    return nothing
-end

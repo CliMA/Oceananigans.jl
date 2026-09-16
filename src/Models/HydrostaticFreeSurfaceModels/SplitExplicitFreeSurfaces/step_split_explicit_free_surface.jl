@@ -274,7 +274,12 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     fill_barotropic_state_halos!((filtered_state.Ũ, filtered_state.Ṽ), free_surface, model)
     fill_barotropic_state_halos!((U, V), free_surface, model)
     fill_barotropic_state_halos!(η, free_surface, model)
-    enforce_barotropic_transport_targets!(free_surface, free_surface_grid)
+
+    # The Flather refills above undo the pin, so re-pin the faces before the barotropic corrector reads them
+    arch = architecture(free_surface_grid)
+    boundary_transport = free_surface.boundary_transport
+    enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, barotropic_sides(boundary_transport))
+    enforce_barotropic_transport_targets!(arch, free_surface_grid, filtered_state.Ũ, filtered_state.Ṽ, filtered_sides(boundary_transport))
 
     return nothing
 end
