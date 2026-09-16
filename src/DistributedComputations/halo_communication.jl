@@ -227,23 +227,21 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     add_fill_event!(buffers)
 
     if arch isa AsynchronousDistributed
-      Threads.@spawn begin
-        sync_event(fill_event)
-
-        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        add_comm_requests!(buffers, requests)
-        complete_fill_event!(buffers)
-      end
+      Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
     else
-      synchronize(fill_event)
-
-      requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-      complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+      perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
     end
 
     return nothing
 end
 
+function perform_comms(fill_event, c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args...)
+        sync_event(fill_event)
+
+        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+        add_comm_requests!(buffers, requests)
+        complete_fill_event!(buffers)
+end
 #####
 ##### fill_$corner_halo! where corner = [:southwest, :southeast, :northwest, :northeast]
 #####
