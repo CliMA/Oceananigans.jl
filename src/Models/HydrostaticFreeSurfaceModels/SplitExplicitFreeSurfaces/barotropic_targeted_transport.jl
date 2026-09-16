@@ -15,8 +15,7 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(U_bcs, :west))  || targeted_side(side_condition(U_bcs, :east)) ||
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
-# Checked on the boundary conditions the user passed, so every rank reaches the same verdict. The face
-# integrals below are rank-local, hence the restriction; multi-region grids add their own method.
+# TODO: add support for distributed grids
 function validate_free_surface_boundary_conditions(::SplitExplicitFreeSurface, boundary_conditions, grid)
     targeted = has_targeted_barotropic_sides(get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing))
     if targeted && grid isa DistributedGrid
