@@ -180,7 +180,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     connectivity :: C
     communicator :: γ
     mpi_requests :: M
-    mpi_tag :: T
+    field_count :: T
     devices :: D
 
     Distributed{S}(child_architecture :: A,
@@ -191,7 +191,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                    connectivity :: C,
                    communicator :: γ,
                    mpi_requests :: M,
-                   mpi_tag :: T,
+                   field_count :: T,
                    devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
                    new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
                                                         partition,
@@ -201,7 +201,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                                                         connectivity,
                                                         communicator,
                                                         mpi_requests,
-                                                        mpi_tag,
+                                                        field_count,
                                                         devices)
 end
 
@@ -309,7 +309,7 @@ function Distributed(child_architecture = CPU();
                                                    local_connectivity,
                                                    communicator,
                                                    mpi_requests,
-                                                   Ref(0),
+                                                   Threads.Atomic{UInt64}(0),
                                                    devices)
 end
 
@@ -343,7 +343,7 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.connectivity,
                                                     arch.communicator,
                                                     arch.mpi_requests,
-                                                    arch.mpi_tag,
+                                                    arch.field_count,
                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
@@ -356,8 +356,13 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.connectivity,
                    arch.communicator,
                    arch.mpi_requests,
-                   arch.mpi_tag,
+                   arch.field_count,
                    nothing) # No devices on the CPU
+
+# Unique per-field tag
+function get_new_tag(arch::Distributed)
+  return Threads.atomic_add!(arch.field_count, UInt64(1))
+end
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index

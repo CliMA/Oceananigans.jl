@@ -42,10 +42,9 @@ for LX in (:Face, :Center, :Nothing)
     end
 end
 
-# Functions that return unique send and recv MPI tags for each side, field location
-# keeping into account the possibility of asynchronous communication.
+# Functions that return unique send and recv MPI tags for each field, side, field location
 # the MPI tag is an integer with:
-#   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
+#   digit 1-2: a unique integer for the field
 #   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
 #   digit 5: the side we send / receive from
 
@@ -54,15 +53,15 @@ for side in sides
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, grid, location)
-            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
+        function $send_tag_fn_name(arch, grid, field_tag, location)
+            field_id   = string(field_tag, pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_digit * side_digit)
         end
 
-        function $recv_tag_fn_name(arch, grid, location)
-            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
+        function $recv_tag_fn_name(arch, grid, field_tag, location)
+            field_id   = string(field_tag, pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, field_id * loc_digit * side_digit)
@@ -102,11 +101,6 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
-    # We increment the request counter only if we have actually initiated the MPI communication.
-    # This is the case only if at least one of the boundary conditions is a distributed communication
-    # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
-    arch.mpi_tag[] += 1
-
     return nothing
 end
 
@@ -128,8 +122,6 @@ end
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
 
-    # Reset MPI tag
-    arch.mpi_tag[] -= arch.mpi_tag[]
     recv_from_buffers!(c, buffers, grid, side)
 
     return nothing
@@ -362,7 +354,7 @@ for side in sides
     @eval begin
         function $send_side_halo(c, grid, arch, location, local_rank, rank_to_send_to, buffers)
             send_buffer = $get_side_send_buffer(c, grid, buffers, arch)
-            send_tag = $side_send_tag(arch, grid, location)
+            send_tag = $side_send_tag(arch, grid, get_comm_tag(buffers.state),  location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
@@ -388,7 +380,7 @@ for side in sides
     @eval begin
         function $recv_side_halo!(c, grid, arch, location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
-            recv_tag = $side_recv_tag(arch, grid, location)
+            recv_tag = $side_recv_tag(arch, grid, get_comm_tag(buffers.state), location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)

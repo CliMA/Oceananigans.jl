@@ -9,10 +9,11 @@
 struct CommState
   comm_requests::Channel
   fill_events::Threads.Atomic{UInt64}
+  tag::UInt64
 end
 
 communication_state(arch) = nothing
-communication_state(arch::Distributed) = CommState(Channel(Inf), Threads.Atomic{UInt64}(0))
+communication_state(arch::Distributed) = CommState(Channel(Inf), Threads.Atomic{UInt64}(0), get_new_tag(arch))
 
 add_fill_event!(f) = nothing
 add_fill_event!(f::Field) = add_fill_event!(f.communication_buffers.state)
@@ -46,3 +47,5 @@ function wait_for_comms!(cs::CommState)
   # Wait for MPI comms to complete
   cooperative_waitall!(cs.comm_requests)
 end
+
+get_comm_tag(cs::CommState) = cs.tag
