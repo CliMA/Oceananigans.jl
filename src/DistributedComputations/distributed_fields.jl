@@ -47,6 +47,9 @@ function _set!(u::DistributedField, V::VT) where {VT}
     NV = size(V)
     Nu = global_size(u)
 
+    synchronize_communication!(u)
+    synchronize_communication!(V)
+
     # Suppress singleton indices
     NV′ = filter(n -> n > 1, NV)
     Nu′ = filter(n -> n > 1, Nu)
@@ -61,6 +64,7 @@ function _set!(u::DistributedField, V::VT) where {VT}
 end
 
 function set!(u::DistributedField, V::Field)
+    synchronize_communication!(u)
     if size(V) == global_size(u)
         v = partition(V, u)
         return set_to_array!(u, v)
@@ -111,6 +115,7 @@ $(TYPEDSIGNATURES)
 Reconstruct a global field from a local field by combining the data from all processes.
 """
 function reconstruct_global_field(field::DistributedField)
+    synchronize_communication!(field)
     arch = architecture(field)
     field_indices = field.indices
 
@@ -152,8 +157,7 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
 
-    arch = architecture(f)
-    sync_device!(arch)
+    synchronize_communication!(f)
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
