@@ -79,7 +79,7 @@ filename = "surface_wave_induced_flow.jld2"
 outputs = model.velocities
 simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
                                               schedule = IterationInterval(10),
-                                              overwrite_existing = true)
+                                              overwrite_files = true)
 
 run!(simulation)
 

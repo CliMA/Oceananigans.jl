@@ -4,11 +4,12 @@ export
     JLD2Writer, NetCDFWriter, ZarrWriter,
     Checkpointer, checkpoint,
     written_names,
-    WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit,
+    WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
+using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
 using Oceananigans.AbstractOperations: KernelFunctionOperation
@@ -54,6 +55,7 @@ include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
+include("time_derivative.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")
