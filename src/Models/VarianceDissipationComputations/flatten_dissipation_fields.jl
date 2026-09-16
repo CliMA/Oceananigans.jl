@@ -1,5 +1,5 @@
 """
-    flatten_dissipation_fields(t::VarianceDissipation)
+$(TYPEDSIGNATURES)
 
 Flatten the dissipation fields of a `VarianceDissipation` object into a named tuple containing:
 

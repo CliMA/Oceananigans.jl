@@ -11,15 +11,18 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutt
 #                                     and reinitializes the timestepper auxiliaries from the previous filtered state.
 
 # `reconcile_free_surface!` computes the barotropic mode from velocity fields to ensure consistency.
-function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
+function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, clock, velocities)
     barotropic_velocities = sefs.barotropic_velocities
     u, v, w = velocities
     @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
                                                barotropic_velocities.V,
                                                grid, u, v)
 
-    fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
-    fill_halo_regions!(sefs.displacement)
+    η = sefs.displacement
+    U, V = barotropic_velocities.U, barotropic_velocities.V
+    barotropic_model_fields = (; U, V, η)
+    fill_halo_regions!((U, V), clock, barotropic_model_fields)
+    fill_halo_regions!(η, clock, barotropic_model_fields)
 
     return nothing
 end
@@ -33,9 +36,11 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
 
     return nothing
 end
@@ -57,9 +62,11 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
 
     initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
 
     return nothing
 end

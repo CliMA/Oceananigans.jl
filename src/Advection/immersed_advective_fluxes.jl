@@ -7,7 +7,7 @@ const c = Center()
 const f = Face()
 
 """
-    conditional_flux(i, j, k, ibg::IBG, ℓx, ℓy, ℓz, qᴮ, qᴵ, nc)
+$(TYPEDSIGNATURES)
 
 Return either
 

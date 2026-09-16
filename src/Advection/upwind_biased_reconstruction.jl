@@ -11,7 +11,7 @@ struct UpwindBiased{N, FT, TD, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N,
         new{N, FT, TD, CA, SI}(buffer_scheme, advecting_velocity_scheme, time_discretization)
 end
 
-function UpwindBiased(FT::DataType = Float64;
+function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
                       order = 3,
                       time_discretization = ExplicitTimeDiscretization(),
                       buffer_scheme = DecreasingOrderAdvectionScheme(),

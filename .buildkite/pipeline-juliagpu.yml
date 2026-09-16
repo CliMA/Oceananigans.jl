@@ -20,8 +20,7 @@ steps:
 
       TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
     agents:
-      queue: "juliagpu"
-      rocm: "*"
+      queue: "rocm"
     timeout_in_minutes: 30
     soft_fail:
       - exit_status: 3
@@ -42,8 +41,7 @@ steps:
 
       TEST_GROUP=oneapi julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
     agents:
-      queue: "juliagpu"
-      intel: "*"
+      queue: "oneapi"
     timeout_in_minutes: 30
     soft_fail:
       - exit_status: 3

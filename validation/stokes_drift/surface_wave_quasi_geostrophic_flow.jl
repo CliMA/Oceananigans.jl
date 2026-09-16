@@ -93,7 +93,7 @@ outputs = merge(outputs, (; e))
 
 simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
                                               schedule = IterationInterval(3),
-                                              overwrite_existing = true)
+                                              overwrite_files = true)
 
 run!(simulation)
 

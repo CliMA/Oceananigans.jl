@@ -42,7 +42,7 @@ end
 
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
 direction, ``u``, at grid point `i, j, k`.
@@ -105,7 +105,7 @@ pressure anomaly.
 end
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the horizontal velocity in the ``y``-direction, or the north-south
 direction, ``v``, at grid point `i, j, k`.
@@ -173,7 +173,7 @@ end
     z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 
@@ -233,7 +233,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 end
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for a tracer field with index `tracer_index`
 at grid point `i, j, k`.

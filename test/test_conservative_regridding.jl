@@ -25,13 +25,39 @@ using ConservativeRegridding
 
     # Test: field of 1's regrids to 1's (fine -> coarse)
     set!(fine_field, 1)
-    regrid!(coarse_field, regridder, fine_field)
+    ConservativeRegridding.regrid!(coarse_field, regridder, fine_field)
     @test all(interior(coarse_field) .≈ 1)
 
     # Test: field of 1's regrids to 1's (coarse -> fine)
     set!(coarse_field, 1)
-    regrid!(fine_field, transpose(regridder), coarse_field)
+    ConservativeRegridding.regrid!(fine_field, transpose(regridder), coarse_field)
     @test all(interior(fine_field) .≈ 1)
+
+    # A conservative regridded field remains connected to its source operation.
+    source_operation = Field(fine_field + 1)
+    regridded_operation = RegriddedOperation(coarse_field, regridder, source_operation)
+    regridded_field = Field(regridded_operation)
+
+    @test location(regridded_operation) == location(coarse_field)
+
+    set!(fine_field, 1)
+    compute!(regridded_field)
+    @test all(interior(regridded_field) .≈ 2)
+
+    set!(fine_field, 2)
+    compute!(regridded_field)
+    @test all(interior(regridded_field) .≈ 3)
+
+    # The high-level constructor allocates its destination and reuses a regridder
+    # built from the source and destination grids.
+    high_level_operation = RegriddedOperation(source_operation, coarse_grid)
+    high_level_field = Field(high_level_operation)
+
+    @test location(high_level_operation) == location(source_operation)
+
+    set!(fine_field, 3)
+    compute!(high_level_field)
+    @test all(interior(high_level_field) .≈ 4)
 
     # Test with RectilinearGrid
     @info "  Testing RectilinearGrid regridding..."
@@ -51,11 +77,11 @@ using ConservativeRegridding
 
     # Test: field of 1's regrids to 1's (fine -> coarse)
     set!(fine_rect, 1)
-    regrid!(coarse_rect, rect_regridder, fine_rect)
+    ConservativeRegridding.regrid!(coarse_rect, rect_regridder, fine_rect)
     @test all(interior(coarse_rect) .≈ 1)
 
     # Test: field of 1's regrids to 1's (coarse -> fine)
     set!(coarse_rect, 1)
-    regrid!(fine_rect, transpose(rect_regridder), coarse_rect)
+    ConservativeRegridding.regrid!(fine_rect, transpose(rect_regridder), coarse_rect)
     @test all(interior(fine_rect) .≈ 1)
 end

@@ -62,7 +62,7 @@ const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 @inline Utils.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north}) = grid.interior_active_cells.north_halo_dependent_cells
 
 """
-    linear_index_to_tuple(idx, map, grid)
+$(TYPEDSIGNATURES)
 
 Converts a linear index to a tuple of indices based on the given map and grid.
 
@@ -173,8 +173,7 @@ function findall_active_indices!(active_indices, active_cells_field, grid, Indic
     for k in 1:Wz
         interior_indices = findall(on_architecture(CPU(), view(active_cells_field.data, 1:Wx, 1:Wy, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
-        active_indices   = vcat(active_indices, interior_indices)
-        GC.gc()
+        append!(active_indices, interior_indices)
     end
     return active_indices
 end

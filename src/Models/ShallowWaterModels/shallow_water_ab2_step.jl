@@ -4,7 +4,7 @@ using Oceananigans.TimeSteppers: _ab2_step_field!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
-    ab2_step!(model::ShallowWaterModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single AB2 step for `ShallowWaterModel`.
 

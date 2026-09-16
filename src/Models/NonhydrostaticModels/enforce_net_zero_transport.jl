@@ -8,7 +8,7 @@ using ..Models: open_boundary_inflow_transport,
 enforce_net_zero_transport!(velocities, ::Nothing) = nothing
 
 """
-    enforce_net_zero_transport!(velocities, boundary_transport)
+$(TYPEDSIGNATURES)
 
 Correct boundary values in `velocities` so that the combined net transport through all
 `NormalFlowBoundaryCondition` boundaries with a radiation scheme vanishes — the

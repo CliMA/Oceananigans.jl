@@ -24,8 +24,7 @@ struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{Expli
 end
 
 """
-    ShallowWaterScalarDiffusivity([FT::DataType=Float64;]
-                                  ν=0, ξ=0, discrete_form=false)
+$(TYPEDSIGNATURES)
 
 Return a scalar diffusivity for the shallow water model.
 

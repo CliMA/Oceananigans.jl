@@ -87,7 +87,7 @@ function BatchedTridiagonalSolver(grid;
 end
 
 """
-    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
+$(TYPEDSIGNATURES)
 
 Solve the batched tridiagonal system of linear equations with right hand side
 `rhs` and lower diagonal, diagonal, and upper diagonal coefficients described by the
@@ -95,6 +95,11 @@ Solve the batched tridiagonal system of linear equations with right hand side
 TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
+
+The `ZDirection` sweep masks products with a zero off-diagonal, so that `0 * NaN` gives `0`
+rather than `NaN`. A `NaN` in an inactive cell of an immersed column therefore stays there
+instead of spreading through the column. The `XDirection` and `YDirection` sweeps do not
+mask, as they are not used on immersed grids.
 
 Implementation follows [Press1992](@citet); §2.4. Note that a slightly different notation from
 Press et al. is used for indexing the off-diagonal elements; see [`BatchedTridiagonalSolver`](@ref).
@@ -134,6 +139,12 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::YDirection,          args...) = @inbounds a[j]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
+
+# `a * b` if `a != 0`, 0 otherwise (masks away NaNs in `b`)
+@inline function masked_multiply(x, y)
+    xy = x * y
+    return ifelse(x == 0, zero(xy), xy)
+end
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
@@ -226,18 +237,18 @@ end
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
+            β = bᵏ - masked_multiply(aᵏ⁻¹, t[i, j, k])
             fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for k = Nz-1:-1:1
-            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
+            ϕ[i, j, k] -= masked_multiply(t[i, j, k+1], ϕ[i, j, k+1])
         end
     end
 end

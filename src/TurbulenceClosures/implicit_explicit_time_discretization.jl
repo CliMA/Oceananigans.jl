@@ -2,7 +2,6 @@ using Oceananigans.TimeSteppers: TimeSteppers,
                                  AbstractTimeDiscretization,
                                  ExplicitTimeDiscretization,
                                  VerticallyImplicitTimeDiscretization
-using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection
 
 @inline TimeSteppers.time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
 @inline TimeSteppers.time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing

@@ -32,17 +32,30 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 end
 
 """
-    stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+    stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
 
 Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 
 Positional Arguments
 ====================
 
+- `FT`: the floating-point type of the returned coefficients (e.g. `Float32` or `Float64`).
+- `i`: the index around which the reconstruction stencil is centered.
+- `r`: the stencil number.
+- `xr`: the opposite of the reconstruction location desired, i.e., if a reconstruction at
+  `Center`s is required xr is the face coordinate
 - `xi`: the locations of the reconstructing value, i.e. either the center coordinate,
   for centered quantities or face coordinate for staggered
-- `xr`: the opposite of the reconstruction location desired, i.e., if a recostruction at
-  `Center`s is required xr is the face coordinate
+
+Keyword Arguments
+=================
+
+- `shift`: offset added to the index `i` when locating the reconstruction point `xr[i+shift]`. Default: `0`.
+- `op`: operation combining `i` with the stencil offset to index `xi`/`xr` (e.g. `Base.:(-)` for a
+  left-biased stencil). Default: `Base.:(-)`.
+- `order`: order of the polynomial reconstruction, equal to the number of returned coefficients. Default: `3`.
+- `der`: quantity the coefficients reconstruct — `nothing` for the function value, or `FirstDerivative()`,
+  `SecondDerivative()`, or `Primitive()` (the integral). Default: `nothing`.
 
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
@@ -64,7 +77,7 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
 end
 
 """
-    uniform_reconstruction_coefficients(FT, Val(bias), buffer)
+$(TYPEDSIGNATURES)
 
 Returns coefficients for finite volume reconstruction used in linear advection schemes (`Centered` and `UpwindBiased`).
 `FT` is the floating type (e.g. `Float32`, `Float64`), `bias` is either `:symmetric`, `:left`, or `:right`,

@@ -9,6 +9,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   barotropic_split_explicit_corrector!,
                                                                                   initialize_free_surface_state!
 
+barotropic_boundary_conditions(grid) =
+    (U = FieldBoundaryConditions(grid, (Face(), Center(), nothing)),
+     V = FieldBoundaryConditions(grid, (Center(), Face(), nothing)))
+
 @testset "Barotropic Kernels" begin
 
     for arch in archs
@@ -21,7 +25,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         velocities = VelocityFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
-        sefs = materialize_free_surface(sefs, velocities, grid)
+        sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
         state = sefs.filtered_state
         barotropic_velocities = sefs.barotropic_velocities
@@ -119,7 +123,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             velocities = VelocityFields(grid)
 
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
-            sefs = materialize_free_surface(sefs, velocities, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid, barotropic_boundary_conditions(grid))
 
             U, V = sefs.barotropic_velocities
             u = velocities.u
@@ -141,7 +145,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(V, set_V̅)
             set!(v_corrected, set_v_corrected)
 
-            barotropic_split_explicit_corrector!(u, v, sefs, grid)
+            barotropic_split_explicit_corrector!(u, v, sefs, grid, 1)
             @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
             @test all(Array((interior(v) .- interior(v_corrected))) .< 1e-14)
         end

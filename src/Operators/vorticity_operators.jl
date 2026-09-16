@@ -2,7 +2,7 @@
 @inline Γᶠᶠᶜ(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, u)
 
 """
-    ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+$(TYPEDSIGNATURES)
 
 The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """

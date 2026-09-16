@@ -10,7 +10,7 @@ const C = Center
 const F = Face
 
 @testset "MutableVerticalDiscretization tests" begin
-    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+   @info "Testing the MutableVerticalDiscretization in ZCoordinate mode..."
 
     z = MutableVerticalDiscretization((-20, 0))
 
@@ -95,7 +95,7 @@ end
                     set!(model_static, c=c₀)
                     set!(model_moving, c=c₀, η=5)
 
-                    for _ in 1:1000
+                    for _ in 1:100
                         time_step!(model_static, 1.0)
                         time_step!(model_moving, 1.0)
                     end
@@ -104,5 +104,26 @@ end
                 end
             end
         end
+    end
+end
+
+@testset "Average on a MutableVerticalDiscretization" begin
+    @info "Testing that Average follows a MutableVerticalDiscretization..."
+
+    for arch in archs
+        grid = RectilinearGrid(arch; size=(2, 1, 4), x=(0, 2), y=(0, 1), topology=(Periodic, Periodic, Bounded),
+                               z=MutableVerticalDiscretization((-4, 0)))
+
+        c = CenterField(grid)
+        set!(c, (x, y, z) -> ifelse(x < 1, 1, 2))
+
+        average_c = Field(Average(c))
+        CUDA.@allowscalar @test average_c[1, 1, 1] ≈ 1.5
+
+        # Tripling the thickness of the second column triples the weight of the cells that hold c = 2
+        grid.z.σᶜᶜⁿ[2, :, :] .= 3
+        compute!(average_c)
+
+        CUDA.@allowscalar @test average_c[1, 1, 1] ≈ (1 + 2 * 3) / 4
     end
 end

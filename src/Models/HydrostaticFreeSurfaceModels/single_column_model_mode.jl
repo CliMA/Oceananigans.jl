@@ -1,7 +1,7 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
@@ -26,12 +26,13 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
 
 free_surface_names(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
 free_surface_names(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
@@ -53,16 +54,16 @@ validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
-compute_w_from_continuity!(velocities, ::SingleColumnGrid; kwargs...) = nothing
-compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid; kwargs...) = nothing
+compute_w_from_continuity!(velocities, ::SingleColumnGrid, args...; kwargs...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid, args...; kwargs...) = nothing
 
 #####
 ##### Time-step optimizations
 #####
 
 # Disambiguation
-compute_free_surface_tendency!(::SingleColumnGrid, model, ::ExplicitFreeSurface)      = nothing
-compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSurface) = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::ExplicitFreeSurface, Δt)      = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSurface, Δt) = nothing
 
 # Fast state update and halo filling
 
@@ -84,7 +85,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock)
+    update_advection!(model.advection, model)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing

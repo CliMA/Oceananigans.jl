@@ -48,7 +48,7 @@ on_architecture(arch, buff::CommunicationBuffers) =
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
-    CommunicationBuffers(grid, data, boundary_conditions)
+$(TYPEDSIGNATURES)
 
 Construct communication buffers for distributed halo exchange.
 
@@ -237,7 +237,7 @@ function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedg
 end
 
 """
-    fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing.
 """
@@ -311,7 +311,7 @@ end
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAndTop) = nothing
 
 """
-    recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred.
 """

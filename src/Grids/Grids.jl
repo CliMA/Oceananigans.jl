@@ -8,6 +8,7 @@ export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
+export slice
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
@@ -27,15 +28,17 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using Adapt: Adapt, adapt
+using Adapt: Adapt
+using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
-using DocStringExtensions: FIELDS
+using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
+                                  architecture, on_architecture
 using Oceananigans.Utils: Utils
-using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, architecture, on_architecture
 
 #####
 ##### Abstract types

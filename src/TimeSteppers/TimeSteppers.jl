@@ -14,8 +14,13 @@ export
     time_discretization
 
 using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
+
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
+                          AdaptiveVerticallyImplicitDiscretization
 
 """
     abstract type AbstractTimeStepper
@@ -30,7 +35,7 @@ function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
-step_closure_prognostics!(model, Δt) = nothing
+step_closure_prognostics!(model, Δt::Number) = nothing
 
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
@@ -63,7 +68,7 @@ include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
-    TimeStepper(name::Symbol, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 
@@ -88,9 +93,12 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...)
+const SplitRungeKuttaName = Union{Val{:SplitRungeKutta2}, Val{:SplitRungeKutta3}, Val{:SplitRungeKutta4}, Val{:SplitRungeKutta5}}
+
 for stages in 2:5
+    coefficients = Tuple(stages:-1:1)
     @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
-              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+              SplitRungeKuttaTimeStepper(args...; coefficients=$coefficients, kwargs...)
 end
 
 TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =

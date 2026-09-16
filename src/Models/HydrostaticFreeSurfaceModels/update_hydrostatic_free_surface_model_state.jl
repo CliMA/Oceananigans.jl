@@ -1,9 +1,10 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection_timestep!
+using Oceananigans.Advection: update_advection!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
@@ -44,8 +45,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        foreach(mask_immersed_field!, model.tracers)
+        mask_immersed_field!(model.tracers)
         update_model_field_time_series!(model, model.clock)
+        compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)
     end
 
@@ -77,7 +79,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     @apply_regionally begin
-        update_advection_timestep!(model.advection, model.timestepper, model.clock)
+        update_advection!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
     end
 
@@ -85,7 +87,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_horizontal_velocities!(velocities)
+$(TYPEDSIGNATURES)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
@@ -96,7 +98,7 @@ function mask_immersed_horizontal_velocities!(velocities)
 end
 
 """
-    diffusivity_kernel_parameters(grid)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing turbulent closure_fields including one extra cell
 in horizontal directions.
@@ -116,5 +118,5 @@ can be computed correctly at domain boundaries without requiring (possibly costl
     return KernelParameters(ii, jj, kk)
 end
 
-step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt) =
+step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

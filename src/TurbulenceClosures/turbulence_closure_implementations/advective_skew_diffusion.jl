@@ -1,6 +1,6 @@
+using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 
 # Fallback
 compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
@@ -24,7 +24,7 @@ function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, mo
 end
 
 """
-    tapering_factor(Sx, Sy, slope_limiter)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / S²)`, where `S² = Sx² + Sy²`
 that multiplies all components of the isopycnal slope tensor.

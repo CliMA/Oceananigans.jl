@@ -1,11 +1,134 @@
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Fields: CenterField
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Utils: launch!
+using KernelAbstractions: @index, @kernel
 
-const _ω̂₁ = 5/18
-const _ω̂ₙ = 5/18
+"""
+    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, limiter)
+
+The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, and the field
+`limiter` holding the cell-wise rescaling factor ``θ``. `limiter` is `nothing` until the scheme is materialized
+on a grid.
+"""
+struct BoundsPreservation{FT, L}
+    minimum_value :: FT
+    maximum_value :: FT
+    maximum_courant_number :: FT
+    limiter :: L
+end
+
+Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")
+
+Adapt.adapt_structure(to, bounds::BoundsPreservation) =
+    BoundsPreservation(Adapt.adapt(to, bounds.minimum_value),
+                       Adapt.adapt(to, bounds.maximum_value),
+                       Adapt.adapt(to, bounds.maximum_courant_number),
+                       Adapt.adapt(to, bounds.limiter))
+
+Architectures.on_architecture(to, bounds::BoundsPreservation) =
+    BoundsPreservation(on_architecture(to, bounds.minimum_value),
+                       on_architecture(to, bounds.maximum_value),
+                       on_architecture(to, bounds.maximum_courant_number),
+                       on_architecture(to, bounds.limiter))
+
 const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
-const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Tuple}
+const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservation}
+
+#####
+##### Cell-wise rescaling factor, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
+#####
+
+@inline function reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    c⁻ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, scheme, RightBias, c)
+    c⁺ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, LeftBias,  c)
+    cᵢ = @inbounds c[i, j, k]
+    p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
+
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+end
+
+@inline function reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    c⁻ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, scheme, RightBias, c)
+    c⁺ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, LeftBias,  c)
+    cᵢ = @inbounds c[i, j, k]
+    p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
+
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+end
+
+@inline function reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    c⁻ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, scheme, RightBias, c)
+    c⁺ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, LeftBias,  c)
+    cᵢ = @inbounds c[i, j, k]
+    p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
+
+    return min(m, p̃, c⁻, c⁺), max(M, p̃, c⁻, c⁺)
+end
+
+# Support for Flat directions
+@inline reconstruction_extrema_x(i, j, k, ::AbstractGrid{FT, Flat, TY, TZ}, scheme, c, m, M, ω̂₁) where {FT, TY, TZ} = (m, M)
+@inline reconstruction_extrema_y(i, j, k, ::AbstractGrid{FT, TX, Flat, TZ}, scheme, c, m, M, ω̂₁) where {FT, TX, TZ} = (m, M)
+@inline reconstruction_extrema_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, scheme, c, m, M, ω̂₁) where {FT, TX, TY} = (m, M)
+
+@inline function bounds_preserving_limiter(i, j, k, grid, scheme::BoundsPreservingWENO, c)
+    FT = eltype(c)
+    ε₂ = convert(FT, _ε₂)
+
+    cᵐⁱⁿ = scheme.bounds.minimum_value
+    cᵐᵃˣ = scheme.bounds.maximum_value
+    ω̂₁ = scheme.bounds.maximum_courant_number
+
+    cᵢ = @inbounds c[i, j, k]
+
+    m, M = cᵢ, cᵢ
+    m, M = reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    m, M = reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
+    m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
+
+    θᵐᵃˣ = abs((cᵐᵃˣ - cᵢ) / (M - cᵢ + ε₂))
+    θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ + ε₂))
+
+    return min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
+end
+
+@kernel function _compute_bounds_preserving_limiter!(θ, grid, scheme, c)
+    i, j, k = @index(Global, NTuple)
+    @inbounds θ[i, j, k] = bounds_preserving_limiter(i, j, k, grid, scheme, c)
+end
+
+update_bounds_preserving_limiter!(scheme, grid, c) = nothing
+
+"""
+$(TYPEDSIGNATURES)
+
+Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
+"""
+function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
+    isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
+    θ = scheme.bounds.limiter
+    launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
+    fill_halo_regions!(θ)
+    return nothing
+end
+
+@inline function rescaled_reconstruction(ĉ, i, j, k, grid, θ, c)
+    cᵢ = @inbounds c[i, j, k]
+    θᵢ = @inbounds θ[i, j, k]
+    return θᵢ * (ĉ - cᵢ) + cᵢ
+end
+
+@inline without_bounds_preservation(scheme) = scheme
+
+@inline function without_bounds_preservation(scheme::WENO{N, FT, WCT}) where {N, FT, WCT}
+    return WENO{N, FT, WCT}(nothing, scheme.buffer_scheme, scheme.advecting_velocity_scheme, scheme.time_discretization)
+end
+
+#####
+##### Flux divergence
+#####
 
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, ::ZeroField) = zero(grid)
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, ::ZeroU, c) = zero(grid)
@@ -28,30 +151,17 @@ end
 @inline bounded_tracer_flux_divergence_z(i, j, k, ::AbstractGrid{FT, TX, TY, Flat}, advection::BoundsPreservingWENO, args...) where {FT, TX, TY} = zero(FT)
 
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
-    c_min = @inbounds advection.bounds[1]
-    c_max = @inbounds advection.bounds[2]
+    θ = advection.bounds.limiter
 
     c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias,  c)
     c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias, c)
     c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias,  c)
     c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias, c)
 
-    FT = eltype(c)
-    ω̂₁ = convert(FT, _ω̂₁)
-    ω̂ₙ = convert(FT, _ω̂ₙ)
-    ε₂ = convert(FT, _ε₂)
-
-    cᵢⱼ = @inbounds c[i, j, k]
-    p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M = max(p̃, c₊ᴸ, c₋ᴿ)
-    m = min(p̃, c₊ᴸ, c₋ᴿ)
-
-    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
-    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
-    θ = min(θ_max, θ_min, one(grid))
-
-    c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
-    c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
+    c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i,   j, k, grid, θ, c)
+    c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i+1, j, k, grid, θ, c)
+    c₋ᴸ = rescaled_reconstruction(c₋ᴸ, i-1, j, k, grid, θ, c)
+    c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i,   j, k, grid, θ, c)
 
     u⁺ = @inbounds u[i+1, j, k]
     u⁻ = @inbounds u[i,   j, k]
@@ -62,30 +172,17 @@ end
 end
 
 @inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
-    c_min = @inbounds advection.bounds[1]
-    c_max = @inbounds advection.bounds[2]
+    θ = advection.bounds.limiter
 
     c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias,  c)
     c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias, c)
     c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias,  c)
     c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias, c)
 
-    FT = eltype(c)
-    ω̂₁ = convert(FT, _ω̂₁)
-    ω̂ₙ = convert(FT, _ω̂ₙ)
-    ε₂ = convert(FT, _ε₂)
-
-    cᵢⱼ = @inbounds c[i, j, k]
-    p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M = max(p̃, c₊ᴸ, c₋ᴿ)
-    m = min(p̃, c₊ᴸ, c₋ᴿ)
-
-    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
-    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
-    θ = min(θ_max, θ_min, one(grid))
-
-    c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
-    c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
+    c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j,   k, grid, θ, c)
+    c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j+1, k, grid, θ, c)
+    c₋ᴸ = rescaled_reconstruction(c₋ᴸ, i, j-1, k, grid, θ, c)
+    c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j,   k, grid, θ, c)
 
     v⁺ = @inbounds v[i, j+1, k]
     v⁻ = @inbounds v[i, j,   k]
@@ -96,30 +193,17 @@ end
 end
 
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
-    c_min = @inbounds advection.bounds[1]
-    c_max = @inbounds advection.bounds[2]
+    θ = advection.bounds.limiter
 
     c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias,  c)
     c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias, c)
     c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias,  c)
     c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias, c)
 
-    FT = eltype(c)
-    ω̂₁ = convert(FT, _ω̂₁)
-    ω̂ₙ = convert(FT, _ω̂ₙ)
-    ε₂ = convert(FT, _ε₂)
-
-    cᵢⱼ = @inbounds c[i, j, k]
-    p̃ = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M = max(p̃, c₊ᴸ, c₋ᴿ)
-    m = min(p̃, c₊ᴸ, c₋ᴿ)
-
-    θ_max = abs((c_max - cᵢⱼ) / (M - cᵢⱼ + ε₂))
-    θ_min = abs((c_min - cᵢⱼ) / (m - cᵢⱼ + ε₂))
-    θ = min(θ_max, θ_min, one(grid))
-
-    c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
-    c₋ᴿ = θ * (c₋ᴿ - cᵢⱼ) + cᵢⱼ
+    c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j, k,   grid, θ, c)
+    c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j, k+1, grid, θ, c)
+    c₋ᴸ = rescaled_reconstruction(c₋ᴸ, i, j, k-1, grid, θ, c)
+    c₋ᴿ = rescaled_reconstruction(c₋ᴿ, i, j, k,   grid, θ, c)
 
     w⁺ = @inbounds w[i, j, k+1]
     w⁻ = @inbounds w[i, j, k]

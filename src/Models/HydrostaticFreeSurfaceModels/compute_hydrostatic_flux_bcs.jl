@@ -25,14 +25,16 @@ end
 end
 
 @inline function compute_tracer_flux_bcs!(model::HydrostaticFreeSurfaceModel)
-    Gⁿ   = model.timestepper.Gⁿ
-    grid = model.grid
-    arch = architecture(grid)
+    compute_tracer_flux_bcs!(model, Val(propertynames(model.tracers)))
+    return nothing
+end
+
+@inline compute_tracer_flux_bcs!(model, ::Val{()}) = nothing
+
+@inline function compute_tracer_flux_bcs!(model, ::Val{names}) where names
+    name = first(names)
     args = (model.clock, fields(model), model.closure, model.buoyancy)
-
-    for i in propertynames(model.tracers)
-        compute_flux_bcs!(Gⁿ[i], model.tracers[i], arch, args)
-    end
-
+    compute_flux_bcs!(model.timestepper.Gⁿ[name], model.tracers[name], architecture(model.grid), args)
+    compute_tracer_flux_bcs!(model, Val(Base.tail(names)))
     return nothing
 end

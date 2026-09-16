@@ -1,5 +1,8 @@
 const binary_operators = Set()
 
+# Operands a binary operator accepts next to an `AbstractField`
+const BinaryOperand = Union{Number, Function, GridMetric, AbstractField}
+
 """
     BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 
@@ -34,6 +37,8 @@ indices(β::BinaryOperation) = construct_regionally(intersect_indices, location(
 """Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
 `a` and `b` have location `La` and `Lb`."""
 function _binary_operation(Lc::Tuple{LX, LY, LZ}, op, a, b, La, Lb, grid) where {LX<:Location, LY<:Location, LZ<:Location}
+    a = validate_operand(a)
+    b = validate_operand(b)
     ▶a = interpolation_operator(La, Lc)
     ▶b = interpolation_operator(Lb, Lc)
 
@@ -64,6 +69,7 @@ function define_binary_operator(op)
         local FunctionField = $(Oceananigans.Fields).FunctionField
         local ConstantField = $(Oceananigans.Fields).ConstantField
         local AbstractGrid = $(Oceananigans.Grids).AbstractGrid
+        local BinaryOperand = $(Oceananigans.AbstractOperations).BinaryOperand
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
             @inbounds $(apply_op)($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
@@ -104,7 +110,7 @@ function define_binary_operator(op)
         the location of the dimension in question is supplied either by `location(b)` or
         if that is also Nothing, `Lc`.
         """
-        function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a, b)
+        function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::BinaryOperand, b::BinaryOperand)
             La = $(Oceananigans.Fields).instantiated_location(a)
             Lb = $(Oceananigans.Fields).instantiated_location(b)
             Lab = $(choose_location).(La, Lb, Lc)
@@ -125,7 +131,7 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
-        $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, a::BinaryOperand, b::BinaryOperand) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), f, b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, f)
@@ -135,8 +141,8 @@ function define_binary_operator(op)
 
         # Sugary versions with default locations
         $op(a::AbstractField, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
-        $op(a::AbstractField, b) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
-        $op(a, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a, b)
+        $op(a::AbstractField, b::BinaryOperand) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
+        $op(a::BinaryOperand, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a, b)
 
         $op(a::AbstractField, b::Number) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
         $op(a::Number, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a, b)
@@ -226,7 +232,7 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
                                 Adapt.adapt(to, binary.grid),
-                                eltype(binary))
+                                unwrapped_eltype(eltype(binary)))
 
 
 Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
