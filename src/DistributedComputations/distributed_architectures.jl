@@ -464,9 +464,9 @@ function Base.show(io::IO, arch::Distributed)
     last_rank = Nr - 1
 
     rank_info = if last_rank == 0
-        "1 rank:"
+        "1 rank"
     else
-        "$Nr = $Rx×$Ry×$Rz ranks:"
+        "$Nr = $Rx×$Ry×$Rz ranks"
     end
 
     if arch isa SynchronizedDistributed
@@ -477,7 +477,7 @@ function Base.show(io::IO, arch::Distributed)
       sync_type = "unknown"
     end
 
-    print(io, summary(arch), " across ", rank_info, ", with $sync_type communications", '\n')
+    print(io, summary(arch), " across ", rank_info, ", with $sync_type communications:", '\n')
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index
