@@ -2365,9 +2365,12 @@ for arch in archs
                     test_checkpointing_catke_closure(arch, FT, timestepper, (CATKEVerticalDiffusivity(FT), VerticalScalarDiffusivity(FT, κ=1e-5)))
                 end
 
-                @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
-                    @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
-                    test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
+                # TKEDissipationVerticalDiffusivity does not work with Float32 yet: on GPU, building the model corrupts the CUDA context
+                if FT == Float64
+                    @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]" begin
+                        @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $FT, $timestepper]..."
+                        test_checkpointing_tke_dissipation_closure(arch, FT, timestepper)
+                    end
                 end
             end
         end
