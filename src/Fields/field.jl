@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, N
     BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
-    index_range_contains, halo_size, offset_data, interior_parent_indices
+    index_range_contains, halo_size, offset_data, interior_parent_indices, unwrapped_eltype
 using Oceananigans.Utils: @apply_regionally, getregion
 using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
@@ -29,7 +29,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
 
     # Inner constructor that does not validate _anything_!
     Base.@constprop :aggressive function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
-        T = eltype(data)
+        T = unwrapped_eltype(eltype(data)) # see https://github.com/CliMA/Oceananigans.jl/issues/5837
         @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
         return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
