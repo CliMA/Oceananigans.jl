@@ -187,6 +187,13 @@ and samples every `stride` iterations inside the window.
 [`SpecifiedTimes`](@ref Oceananigans.OutputWriters.SpecifiedTimes) but with a trailing averaging window.
 Pass either a `SpecifiedTimes` instance or raw times.
 
+### `LowPassFilter`
+
+[`LowPassFilter`](@ref Oceananigans.OutputWriters.LowPassFilter) asks an output writer to write each frame as a
+Lanczos-weighted average over a `window` centered on the frame time, which removes periods shorter than `cutoff`.
+Because the window is centered, frames carry no phase shift, unlike the trailing window of `AveragedTimeInterval`;
+each frame is therefore written `window / 2` after its time.
+
 ### `FileSizeLimit`
 
 [`FileSizeLimit`](@ref Oceananigans.OutputWriters.FileSizeLimit) actuates when the target file grows beyond `size_limit` bytes.
