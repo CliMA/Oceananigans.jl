@@ -1,45 +1,9 @@
 #####
-##### Tidal astronomy
+##### Tidal harmonics
 #####
-
-const astronomical_epoch = DateTime(1900, 1, 1)
-
-# Mean solar angle and mean longitudes of the Moon, the Sun and the lunar perigee at
-# `astronomical_epoch` [°], followed by a right angle, and their rates [° per Julian century].
-const astronomical_angles = (0, 277.0248, 280.1895, 334.3853, 90)
-const astronomical_rates = (360 * 36525, 481267.8906, 36000.7689, 4069.0340, 0)
-
-# Longitude of the Moon's ascending node [°] and its rate [° per Julian century]
-const lunar_node_angle = 259.1568
-const lunar_node_rate = -1934.1420
-
-"""
-Properties of the tidal constituents: the equilibrium `amplitude` [m], which is the
-Cartwright–Tayler amplitude times the Love number factor ``1 + k - h`` of an elastic Earth; the
-multiples of the angles in `astronomical_angles` that sum to the equilibrium argument ``V``; and the
-`nodal` coefficients, with which the 18.6-year cycle of the lunar node longitude ``N`` modulates
-amplitude as ``f = f₀ + f₁ \\cos N`` and phase as ``u = u₁ \\sin N`` [°].
-
-The first multiple is the constituent's species: 2 semidiurnal, 1 diurnal, 0 long-period.
-
-References: Schureman (1958), [Kowalik and Luick (2019)](@cite kowalik2019modern).
-"""
-const tidal_constituents = (
-    M2 = (amplitude = 0.242334 * 0.693, argument = ( 2, -2,  2,  0,  0), nodal = (f₀ = 1.000, f₁ = -0.037, u₁ =  -2.1)),
-    S2 = (amplitude = 0.112743 * 0.693, argument = ( 2,  0,  0,  0,  0), nodal = (f₀ = 1.000, f₁ =  0.000, u₁ =   0.0)),
-    N2 = (amplitude = 0.046397 * 0.693, argument = ( 2, -3,  2,  1,  0), nodal = (f₀ = 1.000, f₁ = -0.037, u₁ =  -2.1)),
-    K2 = (amplitude = 0.030684 * 0.693, argument = ( 2,  0,  2,  0,  0), nodal = (f₀ = 1.024, f₁ =  0.286, u₁ = -17.7)),
-    K1 = (amplitude = 0.141565 * 0.736, argument = ( 1,  0,  1,  0,  1), nodal = (f₀ = 1.006, f₁ =  0.115, u₁ =  -8.9)),
-    O1 = (amplitude = 0.100661 * 0.695, argument = ( 1, -2,  1,  0, -1), nodal = (f₀ = 1.009, f₁ =  0.187, u₁ =  10.8)),
-    P1 = (amplitude = 0.046848 * 0.706, argument = ( 1,  0, -1,  0, -1), nodal = (f₀ = 1.000, f₁ =  0.000, u₁ =   0.0)),
-    Q1 = (amplitude = 0.019273 * 0.695, argument = ( 1, -3,  1,  1, -1), nodal = (f₀ = 1.009, f₁ =  0.187, u₁ =  10.8)),
-    Mf = (amplitude = 0.042041 * 0.693, argument = ( 0,  2,  0,  0,  0), nodal = (f₀ = 1.043, f₁ =  0.414, u₁ = -23.7)),
-    Mm = (amplitude = 0.022191 * 0.693, argument = ( 0,  1,  0, -1,  0), nodal = (f₀ = 1.000, f₁ = -0.130, u₁ =   0.0)),
-)
 
 struct TidalHarmonics{N, FT, C}
     constituents :: C
-    reference_date :: DateTime
     frequencies :: NTuple{N, FT}
     phases :: NTuple{N, FT}
     nodal_factors :: NTuple{N, FT}
@@ -51,56 +15,58 @@ end
 """
 $(TYPEDSIGNATURES)
 
-The astronomical tide of `constituents` at `reference_date`: their frequencies ``ω`` and the phases
-``V + u`` that the equilibrium arguments and the nodal corrections reach at that date. Model time is
-seconds from `reference_date`, so a constituent of amplitude ``A`` and phase lag ``G`` contributes
-``f A \\cos(ω t + V + u - G)``.
+A set of tidal constituents, each an oscillation of frequency ``ω`` [rad s⁻¹] holding phase ``V + u``
+[rad] at ``t = 0``, so that a constituent of amplitude ``A`` and phase lag ``G`` contributes
+``f A \\cos(ω t + V + u - G)`` for a nodal factor ``f``. Model time is seconds from the epoch the
+phases were computed for.
 
-The available constituents are the eight primary astronomical ones, `:M2`, `:S2`, `:N2`, `:K2`,
-`:K1`, `:O1`, `:P1` and `:Q1`, and the two dominant long-period ones, `:Mf` and `:Mm`. A shelf
-generates the compound and overtides internally, so those are not offered.
+`constituents` are the labels `tidal_boundary_conditions` passes to `tidal_atlas_constants` to look
+up harmonic constants. `equilibrium_amplitudes` [m] and `species` set the equilibrium tide that
+`tidal_forcing` differentiates: species 2 is semidiurnal, with latitude structure ``\\cos^2 φ``;
+1 is diurnal, ``\\sin 2φ``; and 0 is long-period, ``\\frac{1}{2} - \\frac{3}{2} \\sin^2 φ``. These are
+the degree-2 components of the tidal potential of a distant body.
 
-`ramp_time` eases the tide in from rest as ``\\tanh(t / T)``, which a basin started impulsively needs
-to avoid ringing its gravest gravity mode.
+`nodal_factors` default to one: no slow modulation of amplitude. `ramp_time` eases the tide in from
+rest as ``\\tanh(t / T)``, which a basin started impulsively needs to avoid ringing its gravest
+gravity mode.
 
 A single `TidalHarmonics` feeds both `tidal_forcing` and `tidal_boundary_conditions`, which keeps
-the astronomical tide and the boundary tide in phase with each other.
+the equilibrium tide and the boundary tide in phase with each other.
 
 ```jldoctest
 using Oceananigans
-using Dates
 
-TidalHarmonics(DateTime(2019, 4, 1); constituents = (:M2, :K1))
+TidalHarmonics(constituents = (:M2,),
+               frequencies = (1.405189e-4,),
+               phases = (1.7,),
+               equilibrium_amplitudes = (0.168,),
+               species = (2,))
 
 # output
-TidalHarmonics at 2019-04-01T00:00:00 with M2, K1
+TidalHarmonics with M2
 ```
 """
-function TidalHarmonics(reference_date::DateTime;
-                        constituents = keys(tidal_constituents),
-                        ramp_time = 0)
-
-    names = Tuple(Symbol(constituent) for constituent in constituents)
-    properties = Tuple(tidal_constituents[name] for name in names)
-
-    centuries = Dates.value(reference_date - astronomical_epoch) / (86_400_000 * 36_525)
-    angles = astronomical_angles .+ astronomical_rates .* centuries
-    node = lunar_node_angle + lunar_node_rate * centuries
+function TidalHarmonics(; constituents,
+                          frequencies,
+                          phases,
+                          equilibrium_amplitudes,
+                          species,
+                          nodal_factors = map(one, Tuple(frequencies)),
+                          ramp_time = 0)
 
     FT = Oceananigans.defaults.FloatType
-    frequencies = Tuple(FT(deg2rad(sum(p.argument .* astronomical_rates)) / (36_525 * 86_400)) for p in properties)
-    phases = Tuple(FT(deg2rad(mod(sum(p.argument .* angles) + p.nodal.u₁ * sind(node), 360))) for p in properties)
-    nodal_factors = Tuple(FT(p.nodal.f₀ + p.nodal.f₁ * cosd(node)) for p in properties)
-    equilibrium_amplitudes = Tuple(FT(p.amplitude) for p in properties)
-    species = Tuple(first(p.argument) for p in properties)
 
-    return TidalHarmonics(names, reference_date, frequencies, phases, nodal_factors,
-                          equilibrium_amplitudes, species, FT(ramp_time))
+    return TidalHarmonics(Tuple(constituents),
+                          map(FT, Tuple(frequencies)),
+                          map(FT, Tuple(phases)),
+                          map(FT, Tuple(nodal_factors)),
+                          map(FT, Tuple(equilibrium_amplitudes)),
+                          map(Int, Tuple(species)),
+                          FT(ramp_time))
 end
 
 Adapt.adapt_structure(to, harmonics::TidalHarmonics) =
     TidalHarmonics(nothing,
-                   harmonics.reference_date,
                    harmonics.frequencies,
                    harmonics.phases,
                    harmonics.nodal_factors,
@@ -109,7 +75,7 @@ Adapt.adapt_structure(to, harmonics::TidalHarmonics) =
                    harmonics.ramp_time)
 
 Base.summary(harmonics::TidalHarmonics) =
-    string("TidalHarmonics at ", harmonics.reference_date, " with ", join(harmonics.constituents, ", "))
+    string("TidalHarmonics with ", join(harmonics.constituents, ", "))
 
 Base.show(io::IO, harmonics::TidalHarmonics) = print(io, summary(harmonics))
 

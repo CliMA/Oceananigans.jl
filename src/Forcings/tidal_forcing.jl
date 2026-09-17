@@ -12,18 +12,22 @@ using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 """
 $(TYPEDSIGNATURES)
 
-Forcing `(u = Fᵘ, v = Fᵛ)` of the astronomical tide of `harmonics` on a spherical grid, which enters
+Forcing `(u = Fᵘ, v = Fᵛ)` of the equilibrium tide of `harmonics` on a spherical grid, which enters
 the momentum equations as ``+g ∇η_{eq}`` for the equilibrium elevation ``η_{eq}``. The gradient is
 taken over the same cells as the model's pressure gradient, so a resting ocean with
 ``η = η_{eq}`` stays at rest.
 
-The forcing is barotropic: the astronomical tide pulls uniformly over the column.
+The forcing is barotropic: the equilibrium tide pulls uniformly over the column.
 
 ```jldoctest
 using Oceananigans
-using Dates
 
-harmonics = TidalHarmonics(DateTime(2019, 4, 1))
+harmonics = TidalHarmonics(constituents = (:M2,),
+                           frequencies = (1.405189e-4,),
+                           phases = (1.7,),
+                           equilibrium_amplitudes = (0.168,),
+                           species = (2,))
+
 keys(tidal_forcing(harmonics))
 
 # output

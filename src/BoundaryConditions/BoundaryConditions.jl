@@ -21,7 +21,6 @@ export
     DistributedFillHalo
 
 using Adapt: Adapt, adapt
-using Dates: Dates, DateTime
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
