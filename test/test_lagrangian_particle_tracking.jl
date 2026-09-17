@@ -80,9 +80,12 @@ function run_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAdamsBash
     ##### Test Boundary restitution
     #####
 
+    # The particle bounces off the top of the fluid: the top of the domain, or, on the immersed
+    # grid whose top cell is immersed, the bottom face of that cell.
     @allowscalar begin
         initial_z    = znode(1, 1, grid.Nz-1, grid, Center(), Center(), Center())
-        top_boundary = znode(1, 1, grid.Nz+1, grid, Center(), Center(), Face())
+        top_boundary = grid isa ImmersedBoundaryGrid ? znode(1, 1, grid.Nz,   grid, Center(), Center(), Face()) :
+                                                       znode(1, 1, grid.Nz+1, grid, Center(), Center(), Face())
     end
 
     x, y, z = on_architecture.(Ref(arch), ([0.0], [0.0], [initial_z]))
@@ -317,6 +320,79 @@ end
 lagrangian_particle_test_curvilinear_grid(arch, z) =
     LatitudeLongitudeGrid(arch; size=(5, 5, 5), longitude=(-1, 1), latitude=(-1, 1), z, precompute_metrics=true)
 
+function run_immersed_boundary_bounce_tests(arch, FT)
+    #####
+    ##### Particles that are advected into an immersed cell bounce off its face
+    #####
+
+    # A solid block filling cells 2:4 in every direction, surrounded by a one-cell shell of fluid
+    underlying_grid = RectilinearGrid(arch, FT; size=(5, 5, 5), x=(0, 5), y=(0, 5), z=(0, 5),
+                                      topology=(Bounded, Bounded, Bounded))
+    block(x, y, z) = 1 < x < 4 && 1 < y < 4 && 1 < z < 4
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(block))
+
+    # One particle facing each face of the block, half a cell away from it.
+    # Each velocity component points towards the block and vanishes on the plane through its centre,
+    # so every particle is carried 0.8 cell widths towards the block, 0.3 of them past its face.
+    x₀ = FT[0.5, 4.5, 2.5, 2.5, 2.5, 2.5]
+    y₀ = FT[2.5, 2.5, 0.5, 4.5, 2.5, 2.5]
+    z₀ = FT[2.5, 2.5, 2.5, 2.5, 0.5, 4.5]
+
+    u = (x, y, z, t) -> 0.8 * sign(2.5 - x)
+    v = (x, y, z, t) -> 0.8 * sign(2.5 - y)
+    w = (x, y, z, t) -> 0.8 * sign(2.5 - z)
+    velocities = PrescribedVelocityFields(; u, v, w)
+
+    for restitution in (1.0, 0.5)
+        @info "  Testing Lagrangian particles bouncing off an immersed boundary [$(typeof(arch)), $FT] with restitution $restitution ..."
+
+        x, y, z = on_architecture.(Ref(arch), (copy(x₀), copy(y₀), copy(z₀)))
+        particles = LagrangianParticles(; x, y, z, restitution)
+        model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
+        time_step!(model, 1)
+
+        x = Array(model.particles.properties.x)
+        y = Array(model.particles.properties.y)
+        z = Array(model.particles.properties.z)
+
+        # Reflected off the face of the block, back into the fluid shell
+        near, far = 1 - 0.3 * restitution, 4 + 0.3 * restitution
+        @test x ≈ FT[near, far, 2.5, 2.5, 2.5, 2.5]
+        @test y ≈ FT[2.5, 2.5, near, far, 2.5, 2.5]
+        @test z ≈ FT[2.5, 2.5, 2.5, 2.5, near, far]
+    end
+
+    #####
+    ##### Particles that cross a periodic boundary into an immersed cell bounce off the face they crossed
+    #####
+
+    @info "  Testing Lagrangian particles bouncing off an immersed boundary across a periodic boundary [$(typeof(arch)), $FT] ..."
+
+    underlying_grid = RectilinearGrid(arch, FT; size=(5, 5), x=(0, 5), z=(0, 5), topology=(Periodic, Flat, Bounded))
+
+    # A solid column against the left (right) periodic boundary; one particle approaches it across the
+    # periodic boundary and another approaches it from within the domain.
+    left_column(x, z) = x < 1
+    right_column(x, z) = x > 4
+
+    for (column, x₀, u, expected) in ((left_column,  FT[4.5, 1.5], (x, z, t) -> 0.8 * sign(x - 3), FT[4.7, 1.3]),
+                                      (right_column, FT[0.5, 3.5], (x, z, t) -> 0.8 * sign(x - 2), FT[0.3, 3.7]))
+
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(column))
+        velocities = PrescribedVelocityFields(; u)
+
+        x, y, z = on_architecture.(Ref(arch), (copy(x₀), zeros(FT, 2), FT[2.5, 2.5]))
+        particles = LagrangianParticles(; x, y, z)
+        model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
+        time_step!(model, 1)
+
+        @test Array(model.particles.properties.x) ≈ expected
+        @test Array(model.particles.properties.z) ≈ FT[2.5, 2.5]
+    end
+
+    return nothing
+end
+
 @testset "Lagrangian particle tracking" begin
     timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     y_topologies = (Periodic(), Flat())
@@ -350,6 +426,10 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
 
         grid = lagrangian_particle_test_curvilinear_grid(arch, z)
         run_particle_tracking_tests(grid, dynamics)
+    end
+
+    for arch in archs, FT in float_types
+        run_immersed_boundary_bounce_tests(arch, FT)
     end
 
     for arch in archs
