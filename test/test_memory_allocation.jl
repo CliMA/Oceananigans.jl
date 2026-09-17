@@ -158,20 +158,24 @@ end
     # A type object's own fields are cyclic, so the generic `getfield` recursion overflows the
     # stack on one. Closures reach them: capturing a float type is a common way to write a
     # type-stable forcing or boundary condition.
-    @test extract_field_time_series(Float32) === ()
-    @test extract_field_time_series(FieldTimeSeries) === ()
+    @test @inferred(extract_field_time_series(Float32)) === ()
+    @test @inferred(extract_field_time_series(FieldTimeSeries)) === ()
 
     typed_source = let FT = Float32
         (x, y, z, t) -> FT(1) / FT(2)
     end
-    @test extract_field_time_series(typed_source) === ()
+    @test @inferred(extract_field_time_series(typed_source)) === ()
+    # The compile-time predicate has to agree, or the recursion it exists to avoid is inferred
+    # at the call site anyway.
+    @test !has_field_time_series(typeof(typed_source))
 
     # Stopping at a type must not stop the search: a closure holding one alongside a series
     # still has to give the series up.
     typed_and_series = let FT = Float32, series = fts
         (x, y, z, t) -> FT(1) * series[1][1, 1, 1]
     end
-    @test extract_field_time_series(typed_and_series) === (fts,)
+    @test @inferred(extract_field_time_series(typed_and_series)) === (fts,)
+    @test has_field_time_series(typeof(typed_and_series))
 end
 
 @testset "Memory allocation regression tests" begin
