@@ -1,3 +1,4 @@
+using Adapt: Adapt
 # State of communications for MPI
 # The requests Channel exists for threads to add MPI requests to, in a thread safe way,
 # for the main thread to then wait on.
