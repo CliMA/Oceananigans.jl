@@ -87,7 +87,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       dimensions = Dict(),
                       with_halos = false,
                       include_grid_metrics = true,
-                      overwrite_existing = nothing,
+                      overwrite_files = nothing,
+                      overwrite_snapshots = true,
                       verbose = false,
                       deflatelevel = 0,
                       part = 1,
@@ -108,10 +109,10 @@ function NetCDFWriter(model::AbstractModel, outputs;
     schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
+    outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
-    output_grids = Dict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
+    output_grids = OrderedDict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
     unique_grids = Tuple(unique(objectid, collect(values(output_grids))))
     output_grid_map = Dict(name => findfirst(gr -> gr === output_grids[name], unique_grids) for name in keys(outputs))
 
@@ -140,7 +141,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         dimensions,
                         with_halos,
                         include_grid_metrics,
-                        overwrite_existing,
+                        overwrite_files,
+                        overwrite_snapshots,
                         verbose,
                         deflatelevel,
                         part,
@@ -161,13 +163,13 @@ function initialize!(writer::NetCDFWriter, model)
 
     filepath = writer.filepath
 
-    if isnothing(writer.overwrite_existing)
-        writer.overwrite_existing = !isfile(filepath)
-    elseif isfile(filepath) && !writer.overwrite_existing
-        @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
+    if isnothing(writer.overwrite_files)
+        writer.overwrite_files = !isfile(filepath)
+    elseif isfile(filepath) && !writer.overwrite_files
+        @warn "$filepath already exists and `overwrite_files = false`. Mode will be set to append to existing file. " *
               "You might experience errors when writing output if the existing file belonged to a different simulation!"
 
-    elseif isfile(filepath) && writer.overwrite_existing
+    elseif isfile(filepath) && writer.overwrite_files
         @warn "Overwriting existing $filepath."
     end
 
@@ -195,12 +197,12 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
                                                     dimensions,
                                                     with_halos,
                                                     include_grid_metrics,
-                                                    overwrite_existing,
+                                                    overwrite_files,
                                                     deflatelevel,
                                                     dimension_name_generator,
                                                     dimension_type)
 
-    mode = (overwrite_existing || !isfile(filepath)) ? "c" : "a"
+    mode = (overwrite_files || !isfile(filepath)) ? "c" : "a"
 
     # Add useful metadata
     useful_attributes = Dict("date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
@@ -333,7 +335,7 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
                                                                  ow.dimensions,
                                                                  ow.with_halos,
                                                                  ow.include_grid_metrics,
-                                                                 ow.overwrite_existing,
+                                                                 ow.overwrite_files,
                                                                  ow.deflatelevel,
                                                                  ow.dimension_name_generator,
                                                                  ow.dimension_type)
@@ -386,6 +388,10 @@ end
 
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractField}, output_name; kwargs...) =
+    define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
+
+""" Defines empty field variable for `TimeDerivative`s of fields. """
+define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 """ Defines empty variable for particle trackting. """
@@ -441,6 +447,35 @@ float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 
 """
+    time_index_for_writing(ds, model, ow, filepath)
+
+Return the index along the time dimension of `ds` at which output for the current model time
+should be written, or `nothing` if it should not be written at all.
+
+Output normally lands at the end of the time dimension. Picking up from a checkpoint written
+before the last output rewinds the clock behind times the file already covers, though, and
+appending then would leave the time axis unsorted. `ow.overwrite_snapshots` decides what happens
+instead: if `true`, the index of the snapshot the current time belongs at is returned, and if
+`false`, `nothing` is returned, keeping what the file already holds.
+"""
+function time_index_for_writing(ds, model, ow, filepath)
+    time_index = length(ds["time"]) + 1
+    t = float_or_date_time(model.clock.time)
+
+    # The common case: the clock is ahead of every time in the file, so output is appended.
+    if time_index == 1 || ds["time"][time_index - 1] < t
+        return time_index
+    end
+
+    if !ow.overwrite_snapshots
+        @warn "Time $t is already covered by $filepath. Skipping output writing."
+        return nothing
+    end
+
+    return something(findfirst(≥(t), collect(ds["time"])), time_index)
+end
+
+"""
     write_output!(ow::NetCDFWriter, model)
 
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
@@ -457,7 +492,13 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     ds = open(ow)
     verbose, filepath = ow.verbose, ow.filepath
 
-    time_index = length(ds["time"]) + 1
+    time_index = time_index_for_writing(ds, model, ow, filepath)
+
+    if isnothing(time_index)
+        close(ds)
+        return nothing
+    end
+
     ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
@@ -540,7 +581,7 @@ function Base.show(io::IO, ow::NetCDFWriter)
 
     dims = if file_exists
         NCDataset(ow.filepath, "r") do ds
-            show_dimensions(dim_name => length(ds[dim_name]) for dim_name in keys(ds.dim))
+            show_dimensions(ds.dim)
         end
     else
         show_dimensions(planned_dimensions(ow))
@@ -575,13 +616,13 @@ function start_next_file(model, ow::NetCDFWriter)
     if ow.part == 1
         part1_path = replace(ow.filepath, r".nc$" => "_part1.nc")
         verbose && @info "Renaming first part: $(ow.filepath) -> $part1_path"
-        mv(ow.filepath, part1_path, force=ow.overwrite_existing)
+        mv(ow.filepath, part1_path, force=ow.overwrite_files)
         ow.filepath = part1_path
     end
 
     ow.part += 1
     ow.filepath = replace(ow.filepath, r"part\d+.nc$" => "part" * string(ow.part) * ".nc")
-    ow.overwrite_existing && isfile(ow.filepath) && rm(ow.filepath, force=true)
+    ow.overwrite_files && isfile(ow.filepath) && rm(ow.filepath, force=true)
     verbose && @info "Now writing to: $(ow.filepath)"
 
     initialize_nc_file(ow, model)
