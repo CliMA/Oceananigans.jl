@@ -142,7 +142,7 @@ zonal_momentum_flux(λ, φ, t, parameters) = - zonal_wind_stress(φ, parameters.
 
 # We plot the wind stress together with the Sverdrup transport per unit zonal width
 # that it drives at Earth's rotation rate. The wind stress curl is
-# ``- (1/R) \, \mathrm{d} τˣ / \mathrm{d} φ``.
+# ``- R^{-1} \, ∂τˣ / ∂φ``.
 
 R = Oceananigans.defaults.planet_radius
 Ω = Oceananigans.defaults.planet_rotation_rate
@@ -202,7 +202,7 @@ free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 # We use WENO advection schemes for momentum and for temperature, and no explicit
 # viscosity or diffusivity apart from a convective adjustment that mixes statically
 # unstable columns. Temperature sets the buoyancy through a linear equation of state.
-# It starts from a horizontally uniform exponential thermocline with a 1 km scale:
+# It starts from a horizontally uniform exponential thermocline with a 1 kilometer scale:
 # a meridional density gradient across a basin comes with a depth-integrated thermal
 # wind of hundreds of Sverdrups that would swamp the wind-driven gyres and take years
 # to adjust away, so the equator-to-pole contrast enters only through the surface restoring.
