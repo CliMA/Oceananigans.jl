@@ -44,7 +44,12 @@ end
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing)
+# `Type` is here because the generic fallback recurses through `getfield`, and a type object's
+# own fields are cyclic: `DataType.super` chains and `Core.TypeName.wrapper` points back at the
+# type. Reaching one is not exotic — a forcing or boundary-condition closure that captures its
+# float type, `let FT = Float32; (x, y, z, t) -> FT(1)/FT(2) end`, stores `Float32` as a closure
+# field. Descending into it overflows the stack. A type describes a field; it never holds one.
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing, :Type)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = ()
