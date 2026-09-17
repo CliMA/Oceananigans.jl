@@ -73,7 +73,9 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::DistributedField, args...; kwargs...) =
+function fill_halo_regions!(field::DistributedField, args...; kwargs...)
+    # We need to wait for any previous halo filling/comms to finish first, and update halos
+    synchronize_communication!(field)
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -82,6 +84,7 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        field.communication_buffers,
                        args...;
                        kwargs...)
+end
 
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly
@@ -95,8 +98,6 @@ fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::Dist
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args...; kwargs...)
-    # We need to wait for any previous halo filling/comms to finish first
-    wait_for_comms!(buffers)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args...; kwargs...)
@@ -143,7 +144,7 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
 
-    if async || (arch isa AsynchronousDistributed)
+    if async && (arch isa AsynchronousDistributed)
       async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
     else
       sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
@@ -228,7 +229,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     fill_event = record_event(arch)
     add_fill_event!(buffers)
 
-    if arch isa AsynchronousDistributed
+    if async && (arch isa AsynchronousDistributed)
       Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
     else
       perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
