@@ -12,6 +12,10 @@ struct CommState
   tag::UInt64
 end
 
+# CommState only lives on host, so never needs to be converted
+Adapt.adapt_structure(to, cs::CommState) = nothing
+on_architecture(arch, cs::CommState) = nothing
+
 communication_state(arch) = nothing
 communication_state(arch::Distributed) = CommState(Channel(Inf), Threads.Atomic{UInt64}(0), get_new_tag(arch))
 
