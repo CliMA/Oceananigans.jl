@@ -202,10 +202,8 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 function cooperative_waitall!(request_channel::Channel)
   # If there are no requests, skip the waitall
   # For distributed fields, use wait_for_comms to ensure correct behaviour
-  if !isempty(request_channel)
-    for req in request_channel
-      cooperative_waitall!(req)
-    end
+  while !isempty(request_channel)
+    cooperative_waitall!(take!(request_channel))
   end
 end
 
