@@ -233,6 +233,9 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
       Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
     else
       perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
+      # Need to synchronize communications
+      wait_for_comms!(buffers)
+      recv_from_buffers!(c, buffers, grid, kernel!.side)
     end
 
     return nothing
