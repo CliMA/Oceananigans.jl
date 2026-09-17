@@ -1,34 +1,19 @@
 """
-    struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
-
-Time-discretization of a `Flux` boundary condition whose linear part is integrated implicitly.
-At the boundary-adjacent cell the flux is split into
-
-```math
-J(φᵦ) ≈ Fₑ + λ φᵦ
-```
-
-where `φᵦ` is the boundary-cell field value. The explicit part `Fₑ` is integrated through the tendency
-and the linear part `λ φᵦ` by the vertical tridiagonal solver, which removes the `Δz`-dependent time step
-restriction of an explicit dissipative flux. How a boundary condition is split depends on its condition,
-see [`implicit_flux_coefficient`](@ref) and [`explicit_flux`](@ref):
-
-* A condition that carries its own split, such as an [`IMEXFlux`](@ref) or a `BulkDragFunction`, supplies
-  `Fₑ` and `λ` directly.
-* Any other condition, a number, an array, a `Field`, or a function, is split by the Patankar rule: with `J`
-  the flux at the current `φᵦ`, the dissipative part of `J / φᵦ` is the coefficient `λ` and the remainder
-  `J - λ φᵦ` is integrated explicitly.
-
     IMEXFluxTimeDiscretization(implicit_coefficient=nothing)
 
-Build the discretization and pass it to [`FluxBoundaryCondition`](@ref). Without a coefficient, the flux
-passed to `FluxBoundaryCondition` is the whole flux `J`, split as described above. With a coefficient `λ`,
-the flux passed to `FluxBoundaryCondition` is the explicit part `Fₑ`:
+Time-discretization of a `Flux` boundary condition whose linear part is integrated implicitly.
+At the boundary-adjacent cell the flux is split into `J(φᵦ) ≈ Fₑ + λ φᵦ`, where `φᵦ` is the
+boundary-cell field value. `Fₑ` is integrated through the tendency and `λ φᵦ` by the vertical
+tridiagonal solver, which removes the `Δz`-dependent time step restriction of an explicit
+dissipative flux:
 
 ```julia
-FluxBoundaryCondition(J;  time_discretization = IMEXFluxTimeDiscretization())   # J split by the Patankar rule
+FluxBoundaryCondition(J;  time_discretization = IMEXFluxTimeDiscretization())   # J split automatically
 FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ))  # J = Fₑ + λ φᵦ
 ```
+
+Without a coefficient the split is up to the condition: `BulkDragFunction` supplies its own, and any
+other condition is split by the Patankar rule, see [`implicit_flux_coefficient`](@ref).
 """
 struct IMEXFluxTimeDiscretization{C} <: AbstractTimeDiscretization
     implicit_coefficient :: C
@@ -68,17 +53,10 @@ end
     IMEXFluxBoundaryCondition(flux; kwargs...)
     IMEXFluxBoundaryCondition(explicit_flux, implicit_coefficient; kwargs...)
 
-Return a `Flux` boundary condition whose linear part is integrated implicitly. With one argument, `flux` is
-the total flux `J` and is split at the boundary cell according to its condition (by the Patankar rule unless
-the condition supplies its own split). With two arguments, the boundary condition represents the affine flux
-`J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`. Shorthands for
-
-```julia
-FluxBoundaryCondition(flux;          time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
-FluxBoundaryCondition(explicit_flux; time_discretization = IMEXFluxTimeDiscretization(implicit_coefficient), kwargs...)
-```
-
-See [`IMEXFluxTimeDiscretization`](@ref).
+Shorthand for a `Flux` boundary condition with an [`IMEXFluxTimeDiscretization`](@ref), whose linear part is
+integrated implicitly. With one argument, `flux` is the total flux `J`, split at the boundary cell according
+to its condition. With two, the boundary condition is the affine flux
+`J(φᵦ) = explicit_flux + implicit_coefficient φᵦ`.
 """
 IMEXFluxBoundaryCondition(J; kwargs...) =
     FluxBoundaryCondition(J; time_discretization = IMEXFluxTimeDiscretization(), kwargs...)
@@ -95,7 +73,11 @@ IMEXFluxBoundaryCondition(Fₑ, λ; kwargs...) =
 
 @inline boundary_flux(condition, ::Union{Bottom, Top}, i, j, k, grid, args...) = getbc(condition, i, j, grid, args...)
 @inline boundary_flux(condition, ::ImmersedFacet,      i, j, k, grid, args...) = getbc(condition, i, j, k, grid, args...)
-@inline boundary_flux(::Nothing, boundary, i, j, k, grid, args...) = zero(grid)
+
+# `Nothing` is spelled out for each boundary rather than for all of them at once, which would be
+# ambiguous with the two methods above.
+@inline boundary_flux(::Nothing, ::Union{Bottom, Top}, i, j, k, grid, args...) = zero(grid)
+@inline boundary_flux(::Nothing, ::ImmersedFacet,      i, j, k, grid, args...) = zero(grid)
 
 #####
 ##### The affine split of a flux condition
@@ -115,18 +97,16 @@ end
 """
     implicit_flux_coefficient(condition, boundary, i, j, k, grid, ϕ, args...)
 
-The linear coefficient `λ` of the affine split `J(φᵦ) ≈ Fₑ + λ φᵦ` of the flux `condition` at the
-boundary-adjacent cell `(i, j, k)` of the field `ϕ`, where `boundary` is `Bottom()`, `Top()`, or
-`ImmersedFacet()` and `args` are the arguments the condition is evaluated with (`clock, fields, ...`).
-The vertically implicit solver embeds `λ` in the boundary-cell diagonal.
+The linear coefficient `λ` of the split `J(φᵦ) ≈ Fₑ + λ φᵦ` of the flux `condition` at the boundary-adjacent
+cell `(i, j, k)` of the field `ϕ`, where `boundary` is `Bottom()`, `Top()`, or `ImmersedFacet()` and `args`
+are the arguments the condition is evaluated with (`clock, fields, ...`). The vertically implicit solver
+embeds `λ` in the boundary-cell diagonal.
 
-The fallback is the Patankar rule: with `J` the flux at the current `φᵦ`, `λ` is the dissipative part of
-`J / φᵦ`, the part with the sign that makes the implicit step damp `φᵦ`. For a flux proportional to `φᵦ`
-(a drag or a sink toward zero) this recovers `λ = J / φᵦ` and the whole flux is integrated implicitly. For a
-flux that does not vanish with `φᵦ`, such as a prescribed stress or a relaxation toward a nonzero target,
-the Patankar coefficient is zero or a poor estimate of the slope, and the remainder is integrated explicitly.
-Conditions that know their own split extend this function together with [`explicit_flux`](@ref), as
-[`IMEXFlux`](@ref) and `BulkDragFunction` do, and avoid the division.
+The fallback is the Patankar rule: `λ` is the dissipative part of `J / φᵦ`, the part whose sign makes the
+implicit step damp `φᵦ`. A flux proportional to `φᵦ`, such as a drag, is thereby integrated implicitly in
+full; what is left of a flux that does not vanish with `φᵦ`, such as a stress or a relaxation toward a
+nonzero target, is integrated explicitly by [`explicit_flux`](@ref). Conditions that know their own split,
+like [`IMEXFlux`](@ref) and `BulkDragFunction`, extend both functions and avoid the division.
 """
 @inline function implicit_flux_coefficient(condition, boundary, i, j, k, grid, ϕ, args...)
     J  = boundary_flux(condition, boundary, i, j, k, grid, args...)
@@ -176,9 +156,14 @@ needs_implicit_solver(bc::IEFBC) = true
 The realized boundary flux `Fₑ + λ φᵦ` of `bc` for the field `ϕ`, evaluated with the boundary-cell value
 `ϕ[i, j, k]` (`k = Nz` on the `Top()`, `k = 1` on the `Bottom()`). A derived boundary condition that needs
 the actual flux, such as the friction velocity `u★` of a TKE closure, reconstructs it with this function.
-For a boundary condition without an implicit part it is the flux itself.
+Without an implicit part it is the flux itself.
 """
 @inline total_boundary_flux(bc, boundary, i, j, k, grid, ϕ, args...) =
+    explicit_flux(bc, boundary, i, j, k, grid, ϕ, args...)
+
+# Only an implicit-explicit flux has a linear part, so only this method needs `ϕ` to be indexable:
+# `ϕ` may also be a constant, as the salinity of a `TemperatureSeawaterBuoyancy` is.
+@inline total_boundary_flux(bc::IEFBC, boundary, i, j, k, grid, ϕ, args...) =
     explicit_flux(bc, boundary, i, j, k, grid, ϕ, args...) +
     implicit_flux_coefficient(bc, boundary, i, j, k, grid, ϕ, args...) * @inbounds ϕ[i, j, k]
 

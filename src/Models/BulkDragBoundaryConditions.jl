@@ -330,15 +330,13 @@ See [`BulkDragFunction`](@ref) for details.
 
 # Implicit-explicit time discretization
 
-The drag is affine in the tangential velocity, ``τ = λ (u + U_∞)`` with ``λ = -C^D |U + U_∞|`` for the
-quadratic formulation and ``λ = -C^D`` for the linear one. With `time_discretization = IMEXFluxTimeDiscretization()`,
-the explicit part ``λ U_∞`` is integrated through the tendency while the linear part ``λ u`` is embedded in the
-vertical tridiagonal solver, which removes the time step restriction ``C^D |U| Δt / Δz < 2`` of the explicit
-treatment. For the quadratic formulation the speed ``|U + U_∞|`` in ``λ`` is evaluated from the current velocities
-when the implicit solve is built, so the drag is linearized about the current speed.
-
-Like every [`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` boundaries and on
-the `bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref).
+The drag is affine in the tangential velocity, ``τ = λ (u + U_∞)``, so with
+`time_discretization = IMEXFluxTimeDiscretization()` the explicit part ``λ U_∞`` is integrated through the
+tendency while ``λ u`` is embedded in the vertical tridiagonal solver, which removes the time step restriction
+``C^D |U| Δt / Δz < 2``. For the quadratic formulation the speed in ``λ = -C^D |U + U_∞|`` is evaluated when the
+implicit solve is built, so the drag is linearized about the current speed. Like every
+[`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` boundaries and on the
+`bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref).
 
 ```jldoctest
 using Oceananigans
