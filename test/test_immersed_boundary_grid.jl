@@ -194,6 +194,46 @@ function test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid = false)
     actual_spacings = Array(interior(Δz_partial, 1, 1, :))
     @test actual_spacings ≈ expected_spacings
 
+    # The face above the partial cell is Δz/4 above its center and Δz/2 below the center of the cell above
+    face_spacings = Field(zspacings(ibg, Center(), Center(), Face()))
+    expected_face_spacings = FT.([1, 1, 3/4, 1] ./ Nz)
+    @test Array(interior(face_spacings, 1, 1, :)) ≈ expected_face_spacings
+
+    reference_face_spacings = Field(rspacings(ibg, Center(), Center(), Face()))
+    @test interior(face_spacings) == interior(reference_face_spacings)
+
+    return nothing
+end
+
+function test_partial_cell_bottom_face_spacings(FT, arch)
+    Nx, Ny, Nz = 2, 2, 4
+    underlying_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-Nz, 0))
+
+    # A partial cell of different height at a different level in every column, including the lowest and highest cells
+    bottom_height = FT[-3.5 -1.9;
+                       -2.3 -0.5]
+    ib = PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
+    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+
+    center_spacings = Array(interior(Field(zspacings(ibg, Center(), Center(), Center()))))
+    face_spacings   = Array(interior(Field(zspacings(ibg, Center(), Center(), Face()))))
+
+    for i in 1:Nx, j in 1:Ny
+        zᵇ = bottom_height[i, j]
+        kᵇ = floor(Int, zᵇ + Nz) + 1
+        h = kᵇ - Nz - zᵇ
+
+        expected_center_spacings = ones(Nz)
+        expected_center_spacings[kᵇ] = h
+
+        # The face above the partial cell is h/2 above its center and Δz/2 = 1/2 below the center of the cell above
+        expected_face_spacings = ones(Nz + 1)
+        expected_face_spacings[kᵇ + 1] = (1 + h) / 2
+
+        @test center_spacings[i, j, :] ≈ expected_center_spacings
+        @test face_spacings[i, j, :] ≈ expected_face_spacings
+    end
+
     return nothing
 end
 
@@ -517,6 +557,7 @@ end
             @testset "Spacings [$FT, $(typeof(arch))]" begin
                 test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=false)
                 test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=true)
+                test_partial_cell_bottom_face_spacings(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)
                     test_immersed_volume_calculation(FT, arch, boundary_type)
