@@ -1,9 +1,11 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans: TendencyCallsite
 using Oceananigans.BoundaryConditions: needs_implicit_solver
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               update_advection!,
+                              adaptive_advection_timestep,
                               advective_tracer_flux_z,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
@@ -11,7 +13,7 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
 using Oceananigans.Grids: Center, Face, znode
 using Oceananigans.Operators: volume, ℑzᵃᵃᶠ
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
-                                 time_discretization, implicit_step!, reset!
+                                 RungeKutta3TimeStepper, time_discretization, implicit_step!, reset!
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
@@ -296,4 +298,142 @@ end
 
     @test isfinite(scheme.time_discretization.Δt[])
     @test all(isfinite, interior(scheme.bounds.limiter))
+end
+
+@testset "AIVA Δt is the Δt of the upcoming RK3 stage" begin
+    for arch in archs, FT in float_types
+        grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 1, 1))
+        ts = RungeKutta3TimeStepper(grid, NamedTuple())
+        clock = Clock(grid)
+        Δt = 100.0
+        Δτ = (ts.γ¹ * Δt, (ts.γ² + ts.ζ²) * Δt, (ts.γ³ + ts.ζ³) * Δt)   # (8/15, 2/15, 1/3) Δt
+
+        # RK3 ticks the clock before `update_state!`: `clock.stage` is the stage about to be taken
+        # and `clock.last_stage_Δt` the Δt of the stage that just finished.
+        for stage in 1:3
+            finished_stage = stage == 1 ? 3 : stage - 1
+            clock.stage = stage
+            clock.last_Δt = Δt
+            clock.last_stage_Δt = Δτ[finished_stage]
+            @test adaptive_advection_timestep(ts, clock) ≈ Δτ[stage]
+        end
+
+        # First `update_state!` of a run: no stage has finished and `last_stage_Δt` is the first stage's Δt.
+        clock.stage = 1
+        clock.last_Δt = Δt
+        clock.last_stage_Δt = Δτ[1]
+        @test adaptive_advection_timestep(ts, clock) ≈ Δτ[1]
+
+        # A Δt that changed between steps is picked up from the finished stage.
+        clock.stage = 2
+        clock.last_Δt = Δt / 2
+        clock.last_stage_Δt = Δτ[1]
+        @test adaptive_advection_timestep(ts, clock) ≈ Δτ[2]
+    end
+end
+
+@testset "AIVA Δt matches the upcoming stage Δt while time stepping" begin
+    Δt = 1.0
+
+    # Records (iteration, clock.stage, td.Δt[]) whenever tendencies are computed, i.e. right after
+    # `update_advection!` has refreshed td.Δt[] for the substep about to be taken.
+    function recorded_advection_timesteps(model)
+        td = time_discretization(model.advection.c)
+        seen = Tuple{Int, Int, Float64}[]
+        record(model) = push!(seen, (model.clock.iteration, model.clock.stage, td.Δt[]))
+        callbacks = [Callback(record, callsite=TendencyCallsite())]
+        time_step!(model, Δt; callbacks)
+        time_step!(model, Δt; callbacks)
+        return seen
+    end
+
+    for arch in archs, FT in float_types
+        A = typeof(arch)
+        grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+        advection = WENO(FT; time_discretization=AdaptiveVerticallyImplicitDiscretization(FT; cfl=0.3))
+        rtol = 10 * eps(FT)
+
+        @testset "RungeKutta3TimeStepper [$A, $FT]" begin
+            model = NonhydrostaticModel(grid; advection, tracers=:c, timestepper=:RungeKutta3)
+            ts = model.timestepper
+            Δτ = (ts.γ¹ * Δt, (ts.γ² + ts.ζ²) * Δt, (ts.γ³ + ts.ζ³) * Δt)
+            seen = recorded_advection_timesteps(model)
+            @test length(seen) == 1 + 2 * 3
+            # The clock is ticked before `update_state!`, so `clock.stage` is the stage about to be taken.
+            for (iteration, stage, advection_timestep) in seen
+                @test advection_timestep ≈ Δτ[stage] rtol=rtol
+            end
+        end
+
+        @testset "QuasiAdamsBashforth2TimeStepper [$A, $FT]" begin
+            model = NonhydrostaticModel(grid; advection, tracers=:c, timestepper=:QuasiAdamsBashforth2)
+            seen = recorded_advection_timesteps(model)
+            @test length(seen) == 1 + 2
+            for (iteration, stage, advection_timestep) in seen
+                @test advection_timestep ≈ Δt rtol=rtol
+            end
+        end
+
+        @testset "SplitRungeKuttaTimeStepper [$A, $FT]" begin
+            model = HydrostaticFreeSurfaceModel(grid; tracer_advection=advection, tracers=:c, timestepper=:SplitRungeKutta3)
+            β = model.timestepper.β
+            Nstages = model.timestepper.Nstages
+            seen = recorded_advection_timesteps(model)
+            @test length(seen) == 1 + 2 * Nstages
+            # `clock.stage` is set before each substep, so at the callback it is the stage that just finished.
+            # The first `update_state!` of the run precedes every stage but looks like stage 1 having finished,
+            # so its td.Δt[] is that of stage 2 rather than stage 1; it is skipped here.
+            for (iteration, stage, advection_timestep) in seen[2:end]
+                next_stage = stage == Nstages ? 1 : stage + 1
+                @test advection_timestep ≈ Δt / β[next_stage] rtol=rtol
+            end
+        end
+    end
+end
+
+@testset "AIVA reproduces the explicit scheme below the stage CFL threshold" begin
+    # A cellular flow from a discrete streamfunction is exactly divergence-free, so the pressure projection
+    # leaves it untouched and the vertical CFL of every stage is known exactly.
+    Nx, Nz = 16, 32
+    Δx, Δz = 1 / Nx, 1 / Nz
+    ψ(x, z) = sinpi(2x) * sinpi(z) / (2π)                     # ∂ψ/∂x = cospi(2x) sinpi(z), so max |w| ≈ 1
+    Ψ = [ψ(i * Δx, k * Δz) for i in 0:Nx, k in 0:Nz]           # cell corners; Ψ[Nx+1, :] wraps periodically
+    u = [-(Ψ[i, k+1] - Ψ[i, k]) / Δz for i in 1:Nx, _ in 1:1, k in 1:Nz]
+    w = [ (Ψ[i+1, k] - Ψ[i, k]) / Δx for i in 1:Nx, _ in 1:1, k in 1:Nz+1]
+    wmax = maximum(abs, w)
+
+    # The longest RK3 stage is the first, γ¹ Δt, so the split is inert in every stage while γ¹ |w| Δt / Δz ≤ cfl.
+    cfl = 0.5
+    γ¹ = 8 / 15
+    explicit_limit = cfl * Δz / (γ¹ * wmax)
+    nsteps = 10
+
+    for arch in archs, FT in float_types
+        A = typeof(arch)
+        grid = RectilinearGrid(arch, FT, size=(Nx, Nz), x=(0, 1), z=(0, 1), topology=(Periodic, Flat, Bounded))
+
+        function final_tracer(time_discretization, Δt)
+            tracer_advection = WENO(FT; time_discretization)
+            model = NonhydrostaticModel(grid; momentum_advection=nothing, tracer_advection, tracers=:c,
+                                        timestepper=:RungeKutta3)
+            set!(model; u, w, c=(x, z) -> sinpi(2x))
+            for _ in 1:nsteps
+                time_step!(model, Δt)
+            end
+            return Array(interior(model.tracers.c))
+        end
+
+        @testset "AIVA equals explicit scheme below threshold [$A, $FT]" begin
+            Δt = 0.95 * explicit_limit
+            explicit_tracer = final_tracer(ExplicitTimeDiscretization(), Δt)
+            adaptive_tracer = final_tracer(AdaptiveVerticallyImplicitDiscretization(FT; cfl), Δt)
+            @test maximum(abs, adaptive_tracer .- explicit_tracer) < 100 * eps(FT)
+
+            # Just above the threshold the first stage is partly implicit and the two schemes differ.
+            Δt = 1.05 * explicit_limit
+            explicit_tracer = final_tracer(ExplicitTimeDiscretization(), Δt)
+            adaptive_tracer = final_tracer(AdaptiveVerticallyImplicitDiscretization(FT; cfl), Δt)
+            @test maximum(abs, adaptive_tracer .- explicit_tracer) > 1e-4
+        end
+    end
 end

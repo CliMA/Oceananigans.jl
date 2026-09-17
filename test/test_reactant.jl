@@ -48,14 +48,15 @@ end
     Gui = Array(interior(Gu))
     Gvi = Array(interior(Gv))
 
-    carch = Oceananigans.Architectures.ReactantState()
+    carch = CPU()
     cgrid = LatitudeLongitudeGrid(carch; lat_lon_kw...)
     cmodel = HydrostaticFreeSurfaceModel(cgrid; hydrostatic_model_kw...)
 
     set!(cmodel, u=ui, v=vi)
 
     simple_tendency!(cmodel)
-    @test all(Array(interior(model.timestepper.Gⁿ.u)) .≈ Array(interior(cmodel.timestepper.Gⁿ.u)))
+    @test all(Gui .≈ Array(interior(cmodel.timestepper.Gⁿ.u)))
+    @test all(Gvi .≈ Array(interior(cmodel.timestepper.Gⁿ.v)))
 end
 
 @testset "Reactant RectilinearGrid Simulation Tests" begin
