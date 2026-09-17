@@ -447,6 +447,10 @@ end
 define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{<:AbstractField}, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
+# TimeDerivative of a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative, name, model) =
+    define_zarr_output_variable!(g, writer, output.operand, name, model)
+
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
 function define_zarr_output_variable!(g, writer::ZarrWriter, output, name, model)
     if !haskey(writer.dimensions, name)
