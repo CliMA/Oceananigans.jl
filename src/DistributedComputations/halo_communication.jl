@@ -74,8 +74,6 @@ end
 #####
 
 function fill_halo_regions!(field::DistributedField, args...; kwargs...)
-    # We need to wait for any previous halo filling/comms to finish first, and update halos
-    synchronize_communication!(field)
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
