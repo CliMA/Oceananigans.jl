@@ -171,7 +171,7 @@ function remaining_workers(r1, r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
-struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, T, D} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -179,7 +179,6 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     local_index :: I
     connectivity :: C
     communicator :: γ
-    mpi_requests :: M
     field_count :: T
     devices :: D
 
@@ -190,17 +189,15 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                    local_index :: I,
                    connectivity :: C,
                    communicator :: γ,
-                   mpi_requests :: M,
                    field_count :: T,
-                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, T, D} =
+                   new{A, S, Δ, R, ρ, I, C, γ, T, D}(child_architecture,
                                                         partition,
                                                         ranks,
                                                         local_rank,
                                                         local_index,
                                                         connectivity,
                                                         communicator,
-                                                        mpi_requests,
                                                         field_count,
                                                         devices)
 end
@@ -295,12 +292,6 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
-    if synchronized_communication
-      mpi_requests = MPI.Request[]
-    else
-      mpi_requests = nothing
-    end
-
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,
                                                    ranks,
@@ -308,7 +299,6 @@ function Distributed(child_architecture = CPU();
                                                    local_index,
                                                    local_connectivity,
                                                    communicator,
-                                                   mpi_requests,
                                                    Threads.Atomic{UInt64}(0),
                                                    devices)
 end
@@ -342,7 +332,6 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.local_index,
                                                     arch.connectivity,
                                                     arch.communicator,
-                                                    arch.mpi_requests,
                                                     arch.field_count,
                                                     arch.devices)
 
@@ -355,7 +344,6 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.local_index,
                    arch.connectivity,
                    arch.communicator,
-                   arch.mpi_requests,
                    arch.field_count,
                    nothing) # No devices on the CPU
 
