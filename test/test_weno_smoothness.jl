@@ -82,3 +82,25 @@ end
         end
     end
 end
+
+@testset "Float32 WENO weights where the flow is smooth" begin
+    # τ is zero wherever the flow is smooth, which is most of any run. Nothing in the weight
+    # computation may divide by it: under `BackendOptimizedDivision` that division is undefined,
+    # and it hands automatic differentiation a derivative of -dmin/τ². Both showed up as a NaN
+    # rather than an error, so this pins the smooth limit for both dividers.
+    for order in (5, 7, 9)
+        buffer = Int((order + 1) ÷ 2)
+        δ = ntuple(_ -> 1f0, Val(2buffer - 2))          # linear field ⇒ every β equal ⇒ τ = 0
+
+        for weight_computation in (Oceananigans.Utils.NormalDivision,
+                                   Oceananigans.Utils.BackendOptimizedDivision)
+            scheme = WENO(Float32; order, weight_computation)
+            ω = biased_weno_weights(δ, nothing, scheme)
+            optimal = ntuple(r -> Oceananigans.Advection.C★(scheme, Val(r - 1)), buffer)
+
+            @test all(isfinite, ω)
+            @test sum(ω) ≈ 1
+            @test all(isapprox.(ω, optimal; atol = 10eps(Float32)))
+        end
+    end
+end

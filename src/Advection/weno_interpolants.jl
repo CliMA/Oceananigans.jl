@@ -378,9 +378,14 @@ end
 # overflow at any input magnitude and no bound has to be chosen. `biased_weno_weights` normalizes
 # by Σα, so dividing every αᵣ by the common M² leaves the weights it returns unchanged.
 #
+# Neither a nor b divides by τ. τ is zero wherever the flow is smooth, and dividing by it there
+# is undefined under the fast-math division that `BackendOptimizedDivision` selects, and hands
+# automatic differentiation a derivative of -dmin/τ². So a is written as dmin/max(τ, dmin), the
+# same number as min(1, dmin/τ), and b divides by dmin instead. Both denominators are at least
+# ϵ > 0 for every input, and b stays correct even if τ overflows to Inf.
+#
 # The limits are the intended ones: τ = 0 gives a = 1, b = 0 and αᵣ = C★ᵣ, while a τ that
-# overflows gives a = 0, b = 1 and C★ᵣ (dmin / dᵣ)², the ratio the weights tend to. dmin ≥ ϵ > 0,
-# so no denominator here can vanish.
+# overflows gives a = 0, b = 1 and C★ᵣ (dmin / dᵣ)², the ratio the weights tend to.
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -389,7 +394,7 @@ end
 
     return quote
         dmin = minimum(β) + ϵ
-        a = min(one(FT), newton_div(WCT, dmin, τ))
+        a = newton_div(WCT, dmin, max(τ, dmin))
         b = min(one(FT), newton_div(WCT, τ, dmin))
         ($(elem...),)
     end
