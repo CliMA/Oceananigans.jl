@@ -834,6 +834,61 @@ end
         @test total_extent(Bounded(), 1, 0.2, 1.0) == 1.4
     end
 
+    @testset "nearest_index" begin
+        @info "  Testing nearest_index..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(4, 4, 10), x=(0, 1), y=(0, 1), z=(0, 1000))
+            # z centers: 50, 150, …, 950
+            @test nearest_index(grid, 340, :z)  == 4   # nearest 350, not 250
+            @test nearest_index(grid, 350, :z)  == 4   # exact node
+            @test nearest_index(grid, -100, :z) == 1   # below range → clamp to 1
+            @test nearest_index(grid, 1e6, :z)  == 10  # above range → clamp to N
+            @test nearest_index(grid, 340, 3)   == 4   # integer dim
+            @test nearest_index(grid, 0, :z, location=Face()) == 1  # z faces: 0, 100, …
+            # x centers: 0.125, 0.375, 0.625, 0.875
+            @test nearest_index(grid, 0.6, :x)  == 3
+            @test nearest_index(grid, 0.6, 1)   == 3   # integer dim
+            @test_throws ArgumentError nearest_index(grid, 0, :w)
+
+            # tuple form returns the (i, j, k) indices
+            @test nearest_index(grid, (0.6, 0.6, 340)) == (3, 3, 4)
+
+            # stretched z; centers at 0.5, 2, 5, 11, 23
+            sgrid = RectilinearGrid(arch, size=(2, 2, 5), x=(0, 1), y=(0, 1), z=[0, 1, 3, 7, 15, 31])
+            @test nearest_index(sgrid, 4, :z) == 3     # nearest 5 (idx 3), not 2 (idx 2)
+            @test nearest_index(sgrid, 3, :z) == 2     # nearest 2 (idx 2), not 5 (idx 3)
+
+            # LatitudeLongitudeGrid: :x → longitude λ, :y → latitude φ
+            llg = LatitudeLongitudeGrid(arch, size=(8, 6, 2), longitude=(-10, 10),
+                                        latitude=(30, 42), z=(-100, 0))
+            @test nearest_index(llg, 36.5, :y) == 4    # φ centers 31,33,35,37,… → 37
+            @test nearest_index(llg, -8, :x)   == 1    # λ centers -8.75,-6.25,… → -8.75
+        end
+
+        # Flat dimension → 1
+        fgrid = RectilinearGrid(size=(4, 4), x=(0, 1), y=(0, 1), topology=(Bounded, Bounded, Flat))
+        @test nearest_index(fgrid, 12.3, :z) == 1
+    end
+
+    @testset "fractional_index on Flat dimensions" begin
+        @info "  Testing fractional_index on Flat dimensions..."
+        # A Flat dimension is also "regular", so the regular fractional_*_index methods
+        # are dispatched; they must return 0 rather than indexing a `nothing` node.
+        FI = Oceananigans.Fields
+        ccc = (Center(), Center(), Center())
+        for arch in archs
+            fz = RectilinearGrid(arch, size=(4, 4), x=(0, 1), y=(0, 1), topology=(Bounded, Bounded, Flat))
+            @test FI.fractional_z_index(12.3, ccc, fz) == 0
+            fx = RectilinearGrid(arch, size=(4, 4), y=(0, 1), z=(0, 1), topology=(Flat, Bounded, Bounded))
+            @test FI.fractional_x_index(12.3, ccc, fx) == 0
+            fy = RectilinearGrid(arch, size=(4, 4), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+            @test FI.fractional_y_index(12.3, ccc, fy) == 0
+            llgz = LatitudeLongitudeGrid(arch, size=(4, 4), longitude=(-10, 10), latitude=(30, 40),
+                                         topology=(Bounded, Bounded, Flat))
+            @test FI.fractional_z_index(12.3, ccc, llgz) == 0
+        end
+    end
+
     @testset "Coordinate utils" begin
         @info "  Testing ExponentialDiscretization..."
 
