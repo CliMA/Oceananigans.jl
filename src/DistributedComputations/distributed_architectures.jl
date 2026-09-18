@@ -252,7 +252,7 @@ function Distributed(child_architecture = CPU();
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
-        MPI.Init()
+        MPI.Init(; threadlevel=:multiple)
     end
 
     if isnothing(communicator) # default communicator
