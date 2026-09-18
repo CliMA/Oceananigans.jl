@@ -36,8 +36,9 @@ function internal_wave_solution(; L, background_stratification=false)
     wavy_b(x, z, t) = a(x, z, t) * B * sin(k*x + m*z - σ*t)
     wavy_b(x, y, z, t) = wavy_b(x, z, t)
 
+    # Defined independently for each arity: a self-referencing closure is boxed and cannot be adapted to GPU kernels
     background_b(x, z, t) = ℕ^2 * z
-    background_b(x, y, z, t) = background_b(x, z, t)
+    background_b(x, y, z, t) = ℕ^2 * z
 
     if background_stratification # Move stratification to a background field
         background_fields = (; b=background_b)
