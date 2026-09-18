@@ -47,7 +47,15 @@ else
     # Tests that mutate process-global state (loggers, Enzyme and Reactant flags, the active project,
     # the default float type) get a throw-away worker.
     dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/")
-    test_worker(name) = any(prefix -> startswith(name, prefix), dedicated_prefixes) ? addworker() : nothing
+    function test_worker(name)
+        if any(prefix -> startswith(name, prefix), dedicated_prefixes)
+            addworker()
+        elseif startswith(name, "memory_allocation/")
+            addworker(; exeflags=["--check-bounds=auto"])
+        else
+            nothing
+        end
+    end
 
     memory_per_worker = 4 * 2^30
 
