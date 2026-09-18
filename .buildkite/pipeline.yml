@@ -5,11 +5,6 @@ env:
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
-  # Copy of the checkout that the init steps instantiate and precompile once per
-  # build. Every other step runs in it so that the resolved manifests and the
-  # precompilation cache are shared: Julia only reuses a cache file for a package
-  # loaded from the same path it was compiled from, and each Buildkite agent
-  # checks the repository out in its own directory.
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
   JULIA_CUDA_USE_COMPAT: false
 agents:
@@ -32,8 +27,7 @@ steps:
       cd "$OCEANANIGANS_DIR"
 
       # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13. The test steps run in this directory and pick the file up from
-      # here; they must not rewrite it while other jobs may be reading it.
+      # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
@@ -110,9 +104,6 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo "$$TEST_GROUP"
 
-      # Run in the checkout instantiated by the init step so that its manifest
-      # and precompilation cache are reused instead of resolving and
-      # precompiling from scratch in every job (#6026).
       cd "$OCEANANIGANS_DIR"
 
       # Julia writes the coverage files next to the source files, so the .cov
