@@ -54,9 +54,8 @@ function test_jld2_size_file_splitting(arch, compress)
         file["boundary_conditions/fake"] = π
     end
 
-    # Each of the 11 outputs is 34³ Float64s ≈ 307 KiB, or ≈ 244 KiB compressed, and every
-    # file starts with ≈ 26 KiB of metadata. So the limit is exceeded after 4 outputs
-    # (5 when compressed) and the output is split into 3 files holding 4, 4, and 3 outputs
+    # Set thresold so that output file is always split into 3 files.
+    # With 1 MiB the output is split into 3 files holding 4, 4, and 3 outputs
     # (5, 5, and 1 when compressed).
     threshold = 1MiB
 
@@ -91,7 +90,7 @@ function test_jld2_size_file_splitting(arch, compress)
                 # Test to make sure all files contain structs from `including`.
                 @test file["grid/Nx"] == Nx
 
-                # Test to make sure all files contain info from `init` function.
+                # Make sure all files contain info from `init` function.
                 @test file["boundary_conditions/fake"] == π
 
                 file_iterations = parse.(Int, keys(file["timeseries/t"]))
