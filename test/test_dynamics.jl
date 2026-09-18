@@ -422,6 +422,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     time_discretizations = tuple(ExplicitTimeDiscretization())
                 end
 
+                grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+
                 for time_discretization in time_discretizations
                     for closurename in [ScalarDiffusivity, VerticalScalarDiffusivity, HorizontalScalarDiffusivity]
 
@@ -434,8 +436,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
                         topology[3] === Periodic && push!(fieldnames, :w)
-
-                        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                         model = NonhydrostaticModel(grid; timestepper, closure, tracers = :c)
 

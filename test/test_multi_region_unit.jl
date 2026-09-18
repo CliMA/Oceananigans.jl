@@ -70,41 +70,46 @@ end
         immersed_boundaries = [GridFittedBottom((x, y) -> 0.5),
                                GridFittedBoundary((x, y, z) -> z>0.5)]
 
-        for grid in grids, Partition in partition_types, region in regions
-            @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
-            mrg = MultiRegionGrid(grid, partition = Partition(region))
+        field_types = [CenterField, XFaceField, YFaceField]
 
-            @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
-            @test minimum_yspacing(mrg) == minimum(minimum_yspacing(mrg[r]) for r in 1:length(mrg.region_grids))
-            @test minimum_zspacing(mrg) == minimum(minimum_zspacing(mrg[r]) for r in 1:length(mrg.region_grids))
-
-            @test reconstruct_global_grid(mrg) == grid
-
-            for FieldType in [CenterField, XFaceField, YFaceField]
-                @info "Testing multi region $(FieldType) on $(getnamewrapper(grid)) on $regions $(Partition)s"
-
-                multi_region_field  = FieldType(mrg)
+        for grid in grids
+            single_region_fields = map(field_types) do FieldType
                 single_region_field = FieldType(grid)
-
                 set!(single_region_field, (x, y, z) -> x)
-                set!(multi_region_field,  (x, y, z) -> x)
-
                 fill_halo_regions!(single_region_field)
-                fill_halo_regions!(multi_region_field)
-
-                # Remember that fields are reconstructed on the CPU!!
-                reconstructed_field = reconstruct_global_field(multi_region_field)
-
-                @test parent(reconstructed_field) ≈ Array(parent(single_region_field))
+                return single_region_field
             end
 
-            for immersed_boundary in immersed_boundaries
-                @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
-                ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
+            for Partition in partition_types, region in regions
+                @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
                 mrg = MultiRegionGrid(grid, partition = Partition(region))
-                mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
-                @test reconstruct_global_grid(mribg) == ibg
+                @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+                @test minimum_yspacing(mrg) == minimum(minimum_yspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+                @test minimum_zspacing(mrg) == minimum(minimum_zspacing(mrg[r]) for r in 1:length(mrg.region_grids))
+
+                @test reconstruct_global_grid(mrg) == grid
+
+                for (FieldType, single_region_field) in zip(field_types, single_region_fields)
+                    @info "Testing multi region $(FieldType) on $(getnamewrapper(grid)) on $regions $(Partition)s"
+
+                    multi_region_field = FieldType(mrg)
+                    set!(multi_region_field, (x, y, z) -> x)
+                    fill_halo_regions!(multi_region_field)
+
+                    # Remember that fields are reconstructed on the CPU!!
+                    reconstructed_field = reconstruct_global_field(multi_region_field)
+
+                    @test parent(reconstructed_field) ≈ Array(parent(single_region_field))
+                end
+
+                for immersed_boundary in immersed_boundaries
+                    @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
+                    ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
+                    mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
+
+                    @test reconstruct_global_grid(mribg) == ibg
+                end
             end
         end
     end

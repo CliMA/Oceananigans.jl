@@ -159,14 +159,14 @@ end
 @testset "Memory allocation regression tests" begin
     for arch in archs
         @testset "Testing time-stepping memory allocations [$(summary(arch))]..." begin
-            for (name, (build, Δt)) in pairs(Models)
-                for immersed in (:flat, :immersed, :active_immersed)
-                    grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
+            for immersed in (:flat, :immersed, :active_immersed)
+                grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
 
-                    dev = Oceananigans.Architectures.device(arch)
-                    @test (@inferred work_layout(dev, grid, Val(:xyz), ())) isa Tuple
-                    @test (@inferred interior_work_layout(dev, grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
+                dev = Oceananigans.Architectures.device(arch)
+                @test (@inferred work_layout(dev, grid, Val(:xyz), ())) isa Tuple
+                @test (@inferred interior_work_layout(dev, grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
 
+                for (name, (build, Δt)) in pairs(Models)
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
                     baseline = if arch isa Distributed{<:GPU}

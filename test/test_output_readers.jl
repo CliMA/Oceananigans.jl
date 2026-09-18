@@ -471,15 +471,16 @@ function test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz
 end
 
 function test_field_time_series_reductions(filepath3d, Nt)
-    for name in ("u", "v", "w", "T", "b", "ζ"), fun in (sum, mean, maximum, minimum)
+    for name in ("u", "v", "w", "T", "b", "ζ")
         f = FieldTimeSeries(filepath3d, name, architecture=CPU())
-
         ε = eps(maximum(abs, f.data.parent))
 
-        val1 = fun(f)
-        val2 = fun([fun(f[n]) for n in 1:Nt])
+        for fun in (sum, mean, maximum, minimum)
+            val1 = fun(f)
+            val2 = fun([fun(f[n]) for n in 1:Nt])
 
-        @test val1 ≈ val2 atol=4ε
+            @test val1 ≈ val2 atol=4ε
+        end
     end
 
     return nothing
@@ -846,6 +847,20 @@ end
         end
     end
 
+    for arch in archs
+        if arch isa CPU
+            @testset "FieldTimeSeries pickup" begin
+                @info "  Testing FieldTimeSeries pickup"
+                test_field_time_series_pickup(arch)
+            end
+        end
+
+        @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeries with Array boundary conditions..."
+            test_field_time_series_array_boundary_conditions(arch)
+        end
+    end
+
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
@@ -868,23 +883,11 @@ end
                 end
             end
 
-            if arch isa CPU
-                @testset "FieldTimeSeries pickup" begin
-                    @info "  Testing FieldTimeSeries pickup with $output_writer"
-                    test_field_time_series_pickup(arch)
-                end
-            end
-
             if output_writer == JLD2Writer
                 @testset "FieldTimeSeries with split files [$(typeof(arch))]" begin
                     @info "  Testing FieldTimeSeries with split files [$(typeof(arch))]..."
                     test_field_time_series_split_files(arch)
                 end
-            end
-
-            @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))] with $output_writer" begin
-                @info "  Testing FieldTimeSeries with Array boundary conditions..."
-                test_field_time_series_array_boundary_conditions(arch)
             end
 
             # TODO: Make FieldTimeSeries{OnDisk} work with NetCDFWriter

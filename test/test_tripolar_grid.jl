@@ -164,25 +164,25 @@ end
 
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
     for arch in archs
+        # Test the orthogonality of a tripolar grid based on the orthogonality of a
+        # cubed sphere of the same size (1ᵒ in latitude and longitude)
+        cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
+        cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
+
+        angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
+        cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
+        xF, yF, zF = cartesian_nodes
+        xF = on_architecture(arch, xF)
+        yF = on_architecture(arch, yF)
+        zF = on_architecture(arch, zF)
+        Nx, Ny, _  = size(cubed_sphere_panel)
+
+        # Exclude the corners from the computation! (They are definitely not orthogonal)
+        params = KernelParameters(5:Nx-5, 5:Ny-5)
+
+        launch!(arch, cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
+
         @testset "$fold_topology fold topology" for fold_topology in fold_topologies
-            # Test the orthogonality of a tripolar grid based on the orthogonality of a
-            # cubed sphere of the same size (1ᵒ in latitude and longitude)
-            cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
-            cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
-
-            angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
-            cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
-            xF, yF, zF = cartesian_nodes
-            xF = on_architecture(arch, xF)
-            yF = on_architecture(arch, yF)
-            zF = on_architecture(arch, zF)
-            Nx, Ny, _  = size(cubed_sphere_panel)
-
-            # Exclude the corners from the computation! (They are definitely not orthogonal)
-            params = KernelParameters(5:Nx-5, 5:Ny-5)
-
-            launch!(arch, cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
-
             first_pole_longitude = λ¹ₚ = 75
             north_poles_latitude = φₚ  = 35
 
