@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           earlyoom -m 3 -s 100 -r 5 --prefer 'julia' &
-          julia --project --color=yes --check-bounds=auto -e 'using Pkg; Pkg.test(; coverage=true, julia_args=["--check-bounds=auto", "--compiled-modules=yes", "--depwarn=yes", "-O0"], force_latest_compatible_version=false, allow_reresolve=true)'
+          julia --project --color=yes --check-bounds=auto -e 'using Pkg; Pkg.test(; coverage=true, julia_args=["--check-bounds=auto", "--compiled-modules=yes", "--depwarn=yes", "-O0", "--color=yes"], force_latest_compatible_version=false, allow_reresolve=true)'
         env:
           XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
           JULIA_DEBUG: "Reactant, Reactant_jll"
@@ -242,7 +242,7 @@ jobs:
           julia --project --color=yes --check-bounds=auto -e '
             using Pkg
             Pkg.test(; coverage=true,
-                       julia_args=["--check-bounds=auto", "-O0"],
+                       julia_args=["--check-bounds=auto", "-O0", "--color=yes"],
                        test_args=["--verbose"],
                        force_latest_compatible_version=false,
                        allow_reresolve=true)'
