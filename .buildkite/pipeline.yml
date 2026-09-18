@@ -88,7 +88,7 @@ steps:
     artifact_paths:
       - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  - label: "{{ matrix.architecture }} - all tests"
     key: "tests"
     depends_on: "init"
     agents:
@@ -103,18 +103,13 @@ steps:
         export TEST_ARCHITECTURE="GPU"
       fi
 
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
       # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage="user", test_args=["--verbose"])'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage="user", test_args=[`--verbose unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts`])'
       test_status=$$?
       set -e
 
@@ -123,9 +118,7 @@ steps:
       echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
       find . -type f -name "*.cov" | head -n 20 || true
 
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-all.tgz"
 
 
       find . -type f -name "*.cov" > cov_list.txt
@@ -144,71 +137,13 @@ steps:
         architecture:
           - "CPU"
           - "GPU"
-        group:
-          - "🐇 unit"
-          - "👻 abstract_operations"
-          - "🏀 coriolis"
-          - "🫐 tripolar_grid"
-          - "🕊 poisson_solvers"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping"
-          - "🐫 regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🥑 vertical_coordinate"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🧵 conservative_regridding"
-          - "🦧 scripts"
 
     retry:
       automatic:
         - exit_status: 1
           limit: 1
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "test_memory_allocation"
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="0"
-        export TEST_ARCHITECTURE="GPU"
-      fi
-
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
-
-      # CodeCov increases allocations, we run without it to test memory allocations
-      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(; julia_args=["--check-bounds=auto"], test_args=["--verbose"])'
-
-    matrix:
-      setup:
-        architecture:
-          - "CPU"
-          - "GPU"
-        group:
-          - "🧠 memory_allocation"
-
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
     key: "tests_enzyme_reactant"
     depends_on: "init_enzyme"
     agents:
@@ -223,11 +158,6 @@ steps:
         export TEST_ARCHITECTURE="GPU"
       fi
 
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
       # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
@@ -235,7 +165,7 @@ steps:
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"], test_args=["--verbose"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"], test_args=[`--verbose enzyme reactant`])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
@@ -244,9 +174,7 @@ steps:
       echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
       find . -type f -name "*.cov" | head -n 20 || true
 
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-enzyme.tgz"
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
@@ -264,9 +192,6 @@ steps:
         architecture:
           - "CPU"
           - "GPU"
-        group:
-          - "👺 enzyme"
-          - "🎭 reactant"
 
     retry:
       automatic:
