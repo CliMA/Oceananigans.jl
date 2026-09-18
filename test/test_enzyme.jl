@@ -3,6 +3,9 @@ include("dependencies_for_runtests.jl")
 using Enzyme
 using Oceananigans.TimeSteppers: reset!
 
+# Enzyme cannot differentiate GPU kernel launches ("Active kernel arguments not supported on GPU"),
+# so these tests are CPU-only and the pipeline runs this group in the CPU job only
+
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)

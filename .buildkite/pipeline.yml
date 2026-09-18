@@ -169,6 +169,11 @@ steps:
           - "🌍 multi_region_simulation_immersed"
           - "🧵 conservative_regridding"
           - "🦧 scripts"
+      adjustments:
+        - with:
+            architecture: "GPU"
+            group: "🧵 conservative_regridding"
+          skip: "ConservativeRegridding computes the cell intersections on the CPU, so these tests are architecture-independent"
 
     retry:
       automatic:
@@ -276,6 +281,11 @@ steps:
           - "👺 enzyme"
           - "👹 reactant_1"
           - "🧪 reactant_correctness"
+      adjustments:
+        - with:
+            architecture: "GPU"
+            group: "👺 enzyme"
+          skip: "Enzyme cannot differentiate GPU kernel launches, so test_enzyme.jl is CPU-only"
 
     retry:
       automatic:
