@@ -41,17 +41,20 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_size_file_splitting(arch, compress)
-    Nx = 128
+    Nx = 16
     grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+    # Random velocities do not compress, so the same threshold splits the output
+    # into several parts whether or not the file is compressed
+    set!(model; u=(x, y, z) -> 1e-3 * rand())
+    simulation = Simulation(model; Δt=1, stop_iteration=20)
 
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
 
-    # Set thresold so that output file is always split into 3 files
-    threshold = compress ? 100KiB : 75MiB
+    threshold = 200KiB
 
     mktempdir() do dir
 
@@ -69,15 +72,18 @@ function test_jld2_size_file_splitting(arch, compress)
 
         run!(simulation)
 
-        # Test that files has been split according to size as expected.
-        @test filesize(joinpath(dir, "test_part1.jld2")) > threshold
-        @test filesize(joinpath(dir, "test_part2.jld2")) > threshold
-        @test filesize(joinpath(dir, "test_part3.jld2")) < threshold
-        @test !isfile(joinpath(dir, "test_part4.jld2"))
+        part_filename(n) = joinpath(dir, "test_part$n.jld2")
 
-        for n in string.(1:3)
-            filename = joinpath(dir, "test_part$n.jld2")
-            jldopen(filename, "r") do file
+        # Test that files have been split according to size as expected: every part but
+        # the last one exceeds the threshold, and the parts are numbered consecutively.
+        number_of_parts = count(n -> isfile(part_filename(n)), 1:100)
+        @test number_of_parts ≥ 3
+        @test all(filesize(part_filename(n)) > threshold for n in 1:number_of_parts-1)
+        @test filesize(part_filename(number_of_parts)) < threshold
+        @test !isfile(part_filename(number_of_parts + 1))
+
+        for n in 1:number_of_parts
+            jldopen(part_filename(n), "r") do file
                 # Test to make sure all files contain structs from `including`.
                 @test file["grid/Nx"] == Nx
 
