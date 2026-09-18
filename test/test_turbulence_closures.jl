@@ -283,6 +283,48 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
     return model
 end
 
+function run_catke_closure_tuple_surface_tke_flux_tests(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(1, 2, 3))
+
+    # Wind stress and surface buoyancy loss make both the shear-driven and the
+    # convective contributions to the surface TKE flux nonzero
+    u★ = 1e-2
+    Jᵇ = 1e-8
+    boundary_conditions = (u = FieldBoundaryConditions(top=FluxBoundaryCondition(-u★^2)),
+                           b = FieldBoundaryConditions(top=FluxBoundaryCondition(Jᵇ)))
+
+    catke = CATKEVerticalDiffusivity()
+    Cᵂu★ = catke.turbulent_kinetic_energy_equation.Cᵂu★
+    CᵂwΔ = catke.turbulent_kinetic_energy_equation.CᵂwΔ
+    Δz = grid.Lz / grid.Nz
+    expected_surface_tke_flux = - Cᵂu★ * u★^3 - CᵂwΔ * Jᵇ * Δz
+
+    build_model(closure) = HydrostaticFreeSurfaceModel(grid; closure, boundary_conditions,
+                                                       buoyancy = BuoyancyTracer(), tracers = :b)
+
+    reference_model = build_model(catke)
+    time_step!(reference_model, 1)
+    reference_tke = Array(interior(reference_model.tracers.e))
+
+    # Padding with closures that do nothing must not change the surface TKE flux
+    padding = VerticalScalarDiffusivity(ν=0, κ=0)
+
+    for N in 1:6
+        closure = (catke, ntuple(_ -> padding, N-1)...)
+        model = build_model(closure)
+
+        # Evaluate the boundary condition with the arguments the tendency kernel passes to it
+        surface_tke_flux = getbc(model.tracers.e.boundary_conditions.top, 1, 1, grid,
+                                 model.clock, fields(model), model.closure, model.buoyancy)
+        @test surface_tke_flux ≈ expected_surface_tke_flux
+
+        time_step!(model, 1)
+        @test Array(interior(model.tracers.e)) ≈ reference_tke
+    end
+
+    return nothing
+end
+
 function compute_closure_specific_diffusive_cfl(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
 
@@ -536,6 +578,9 @@ end
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
+
+            @info "    Testing the surface TKE flux with CATKE in closure tuples of length 1 to 6..."
+            run_catke_closure_tuple_surface_tke_flux_tests(arch)
 
             @info "    Testing CATKE with ImmersedBoundaryGrid and active_cells_map on $arch..."
             underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 2, 3))
