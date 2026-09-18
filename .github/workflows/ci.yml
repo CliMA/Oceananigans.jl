@@ -126,8 +126,10 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: --verbose
         env:
-          TEST_GROUP: "mpi_tripolar"
+          TEST_GROUP: "distributed/tripolar"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           # default is src,ext — include others if you need them
@@ -136,7 +138,7 @@ jobs:
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
+          flags: distributed_tripolar   # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   distributed_output:
@@ -161,8 +163,10 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: --verbose
         env:
-          TEST_GROUP: "distributed_output"
+          TEST_GROUP: "distributed/output_combining"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           # default is src,ext — include others if you need them
@@ -171,7 +175,7 @@ jobs:
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
+          flags: distributed_output   # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   makie_ext:
@@ -196,6 +200,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: --verbose
         env:
           TEST_GROUP: "makie"
       - uses: julia-actions/julia-processcoverage@v1
@@ -210,9 +216,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   reactant:
-    name: Reactant Correctness - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -237,10 +243,11 @@ jobs:
             using Pkg
             Pkg.test(; coverage=true,
                        julia_args=["--check-bounds=auto", "-O0"],
+                       test_args=["--verbose"],
                        force_latest_compatible_version=false,
                        allow_reresolve=true)'
         env:
-          TEST_GROUP: "reactant_correctness"
+          TEST_GROUP: "reactant"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: src,ext
@@ -248,115 +255,7 @@ jobs:
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          flags: ${{ env.TEST_GROUP }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  reactant_1:
-    name: Reactant Unit - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.11.9'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
-        env:
-          TEST_GROUP: "reactant_1"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: reactant_1
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  reactant_2:
-    name: Reactant Simulations - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.11.9'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
-        env:
-          TEST_GROUP: "reactant_2"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: reactant_2
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  reactant_3:
-    name: Reactant LLG Simulations - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.11.9'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
-        env:
-          TEST_GROUP: "reactant_3"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: reactant_3
+          flags: reactant
           token: ${{ secrets.CODECOV_TOKEN }}
 
   metal:
@@ -381,6 +280,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: --verbose
         env:
           TEST_GROUP: "metal"
       - uses: julia-actions/julia-processcoverage@v1
