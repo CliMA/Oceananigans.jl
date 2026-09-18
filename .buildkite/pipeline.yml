@@ -5,6 +5,11 @@ env:
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
+  # Copy of the checkout that the init steps instantiate and precompile once per
+  # build. Every other step runs in it so that the resolved manifests and the
+  # precompilation cache are shared: Julia only reuses a cache file for a package
+  # loaded from the same path it was compiled from, and each Buildkite agent
+  # checks the repository out in its own directory.
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
   JULIA_CUDA_USE_COMPAT: false
 agents:
@@ -27,7 +32,8 @@ steps:
       cd "$OCEANANIGANS_DIR"
 
       # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
+      # use v13. The test steps run in this directory and pick the file up from
+      # here; they must not rewrite it while other jobs may be reading it.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
@@ -49,10 +55,6 @@ steps:
     command: |
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
-
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
@@ -106,11 +108,17 @@ steps:
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
+      echo "$$TEST_GROUP"
 
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+      # Run in the checkout instantiated by the init step so that its manifest
+      # and precompilation cache are reused instead of resolving and
+      # precompiling from scratch in every job (#6026).
+      cd "$OCEANANIGANS_DIR"
+
+      # Julia writes the coverage files next to the source files, so the .cov
+      # files of every job accumulate in this shared directory. Remember when
+      # this job started to collect only the files it produced.
+      cov_start=$$(mktemp)
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -120,19 +128,18 @@ steps:
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
+      echo "Coverage files produced:" `find . -type f -name "*.cov" -newer "$$cov_start" | wc -l`
+      find . -type f -name "*.cov" -newer "$$cov_start" | head -n 20 || true
 
       group_slug="{{ matrix.group }}"
       group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
       tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
 
-
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
+      # Another job finishing right now may still be writing its .cov files while
+      # we read ours, in which case tar exits with status 1; don't fail the job.
+      find . -type f -name "*.cov" -newer "$$cov_start" | tar -czf "$$tarball" -T - || echo "tar exited with status $$?"
       ls -lh "$$tarball"
+      rm -f "$$cov_start"
 
       buildkite-agent artifact upload "$$tarball"
 
@@ -193,11 +200,10 @@ steps:
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
+      echo "$$TEST_GROUP"
 
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+      # Run in the checkout instantiated by the init step (see the tests step).
+      cd "$OCEANANIGANS_DIR"
 
       # CodeCov increases allocations, we run without it to test memory allocations
       julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
@@ -233,11 +239,11 @@ steps:
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
+      echo "$$TEST_GROUP"
 
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+      # Run in the checkout instantiated by the init steps (see the tests step).
+      cd "$OCEANANIGANS_DIR"
+      cov_start=$$(mktemp)
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -248,18 +254,16 @@ steps:
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
+      echo "Coverage files produced:" `find . -type f -name "*.cov" -newer "$$cov_start" | wc -l`
+      find . -type f -name "*.cov" -newer "$$cov_start" | head -n 20 || true
 
       group_slug="{{ matrix.group }}"
       group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
       tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
 
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
+      find . -type f -name "*.cov" -newer "$$cov_start" | tar -czf "$$tarball" -T - || echo "tar exited with status $$?"
       ls -lh "$$tarball"
+      rm -f "$$cov_start"
 
       buildkite-agent artifact upload "$$tarball"
 
