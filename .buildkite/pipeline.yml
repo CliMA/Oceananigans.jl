@@ -112,11 +112,24 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
+      # Collect code coverage only on pushes to main
+      if [[ "$${BUILDKITE_BRANCH}" == "main" && "$${BUILDKITE_PULL_REQUEST}" == "false" ]]; then
+        collect_coverage=true
+        coverage_flag="--code-coverage=user"
+      else
+        collect_coverage=false
+        coverage_flag=""
+      fi
+
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION -O0 --color=yes --project $${coverage_flag} -e "using Pkg; Pkg.test(coverage=$${collect_coverage})"
       test_status=$$?
       set -e
+
+      if [[ "$${collect_coverage}" != "true" ]]; then
+        exit "$${test_status}"
+      fi
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
@@ -239,12 +252,25 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
+      # Collect code coverage only on pushes to main
+      if [[ "$${BUILDKITE_BRANCH}" == "main" && "$${BUILDKITE_PULL_REQUEST}" == "false" ]]; then
+        collect_coverage=true
+        coverage_flag="--code-coverage=user"
+      else
+        collect_coverage=false
+        coverage_flag=""
+      fi
+
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project $${coverage_flag} -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
+
+      if [[ "$${collect_coverage}" != "true" ]]; then
+        exit "$${test_status}"
+      fi
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
@@ -294,6 +320,7 @@ steps:
   #####
 
   - label: "📊 Upload coverage to Codecov"
+    if: build.branch == "main" && build.pull_request.id == null
     agents:
       queue: "Oceananigans-nautilus"
     command: |
