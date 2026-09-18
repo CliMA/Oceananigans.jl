@@ -66,24 +66,35 @@ end
 # Recompute location of multiary operation
 @inline at(loc, Π::MultiaryOperation) = Π.op(loc, Tuple(at(loc, a) for a in Π.args)...)
 
+"""
+$(TYPEDSIGNATURES)
+
+Create the multiary operation `op(args...)` at `Lop`, converting functions to `FunctionField`s.
+"""
+function multiary_operation(Lop, op, args...)
+    grid = validate_grid(args...)
+    args = Tuple(fieldify_function(Lop, a, grid) for a in args)
+    Largs = Tuple(location(a) for a in args)
+    return _multiary_operation(Lop, op, args, Largs, grid)
+end
+
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
-        function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location},
-                     a::Oceananigans.Fields.AbstractField,
-                     b::Union{Function, Number, Oceananigans.Fields.AbstractField},
-                     c::Union{Function, Number, Oceananigans.Fields.AbstractField},
-                     d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
+        $op(Lop::Tuple{<:$Location, <:$Location, <:$Location},
+            a::Oceananigans.Fields.AbstractField,
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $(multiary_operation)(Lop, $op, a, b, c, d...)
 
-            args = tuple(a, b, c, d...)
-            grid = $(validate_grid)(args...)
+        $op(Lop::$(LocatedTuple),
+            a::Union{Function, Number},
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $(multiary_operation)(Lop, $op, a, b, c, d...)
 
-            # Convert any functions to FunctionFields
-            args = Tuple(Oceananigans.Fields.fieldify_function(Lop, a, grid) for a in args)
-            Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
-
-            return $(_multiary_operation)(Lop, $op, args, Largs, grid)
-        end
+        # Numbers are not fields...
+        $op(Lop::$(LocatedTuple), a::Number, b::Number, c::Number, d::Number...) = $op(a, b, c, d...)
 
         # Instantiate location if types are passed
         $op(Lop::Tuple,
@@ -108,8 +119,7 @@ into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations
 Note that a multiary operator:
   * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
   * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
-  * requires its first argument to be an `AbstractField`, whose location is used
-    unless the "location" is passed explicitly as the first argument; see example.
+  * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
 
 Example
 =======

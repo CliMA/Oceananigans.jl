@@ -47,6 +47,11 @@ end
 
 const ConcreteLocationType = Union{Face, Center}
 
+# A location with at least one concrete direction, so that methods dispatching on it are not type piracy
+const LocatedTuple = Union{Tuple{<:ConcreteLocationType, <:Location, <:Location},
+                           Tuple{<:Location, <:ConcreteLocationType, <:Location},
+                           Tuple{<:Location, <:Location, <:ConcreteLocationType}}
+
 # Precedence rules for choosing operation location:
 choose_location(La, Lb, Lc) = Lc                              # Fallback to the specification Lc, but also...
 choose_location(::Face,   ::Face,   Lc) = Face()              # keep common locations; and
@@ -125,6 +130,9 @@ function define_binary_operator(op)
         """
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, b::Union{Number, AbstractField}) = $(binary_operation)(Lc, $op, a, b)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::Number, b::AbstractField) = $(binary_operation)(Lc, $op, a, b)
+
+        # Numbers are not fields...
+        $op(Lc::$(LocatedTuple), a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
