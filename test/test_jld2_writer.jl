@@ -41,17 +41,24 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_size_file_splitting(arch, compress)
-    Nx = 128
+    Nx = 32
     grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+    # Random noise barely compresses, whereas a velocity field at rest would compress
+    # to a few hundred bytes per output, much less than the metadata written to every file.
+    set!(model, u = (x, y, z) -> 1e-3 * rand())
 
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
 
-    # Set thresold so that output file is always split into 3 files
-    threshold = compress ? 100KiB : 75MiB
+    # Each of the 11 outputs is 34³ Float64s ≈ 307 KiB, or ≈ 244 KiB compressed, and every
+    # file starts with ≈ 26 KiB of metadata. So the limit is exceeded after 4 outputs
+    # (5 when compressed) and the output is split into 3 files holding 4, 4, and 3 outputs
+    # (5, 5, and 1 when compressed).
+    threshold = 1MiB
 
     mktempdir() do dir
 
@@ -75,6 +82,9 @@ function test_jld2_size_file_splitting(arch, compress)
         @test filesize(joinpath(dir, "test_part3.jld2")) < threshold
         @test !isfile(joinpath(dir, "test_part4.jld2"))
 
+        iterations = Int[]
+        raw_output_size = sizeof(Float64) * length(parent(model.velocities.u))
+
         for n in string.(1:3)
             filename = joinpath(dir, "test_part$n.jld2")
             jldopen(filename, "r") do file
@@ -83,8 +93,19 @@ function test_jld2_size_file_splitting(arch, compress)
 
                 # Test to make sure all files contain info from `init` function.
                 @test file["boundary_conditions/fake"] == π
+
+                file_iterations = parse.(Int, keys(file["timeseries/t"]))
+                append!(iterations, file_iterations)
+
+                # Test that every file is compressed (or not): a compressed file is smaller than the raw
+                # size of the outputs it holds, while an uncompressed file is larger since it also holds metadata.
+                raw_outputs_size = length(file_iterations) * raw_output_size
+                @test (filesize(filename) < raw_outputs_size) == compress
             end
         end
+
+        # Test that every output was written to exactly one file, in order.
+        @test iterations == 0:10
 
         return nothing
     end
