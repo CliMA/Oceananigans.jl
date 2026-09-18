@@ -22,7 +22,7 @@ import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
 # The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
@@ -181,6 +181,7 @@ displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("boundary_targeted_transport.jl")
 include("barotropic_pressure_correction.jl")
