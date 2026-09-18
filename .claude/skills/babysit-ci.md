@@ -46,7 +46,7 @@ These are mechanical issues with obvious fixes:
 | Failure | How to fix |
 |---------|-----------|
 | **Whitespace check** | Run `.julia/contrib/check-whitespace.jl` logic: remove trailing whitespace, ensure final newline, no trailing blank lines |
-| **Missing explicit import** | `ExplicitImports` error in `test_quality_assurance.jl` — add the missing `using`/`import` to the appropriate file |
+| **Missing explicit import** | `ExplicitImports` error in `test/unit/quality_assurance.jl` — add the missing `using`/`import` to the appropriate file |
 | **Aqua.jl ambiguities** | Add the missing method disambiguation |
 | **Doctest output mismatch** | Update the expected output in the docstring to match actual output |
 | **Typo in error message or docstring** | Fix the typo |

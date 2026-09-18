@@ -30,7 +30,7 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
       # After we have instantiated the general environment, move manifest to the
       # version-specific filename, not to clash with the manifest for Enzyme.
       mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION}" | cut -d. -f1-2).toml
@@ -54,7 +54,7 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(; julia_args=["--check-bounds=auto"], test_args=["--verbose"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
       # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
@@ -114,7 +114,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage="user", test_args=["--verbose"])'
       test_status=$$?
       set -e
 
@@ -145,28 +145,21 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          - "🦖 poisson_solvers_2"
           - "🐇 unit"
           - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
+          - "🏀 coriolis"
+          - "🫐 tripolar_grid"
+          - "🕊 poisson_solvers"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
-          - "🏀 coriolis"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
+          - "🦀 time_stepping"
+          - "🐫 regression"
           - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate_1"
-          - "🍎 vertical_coordinate_2"
-          - "🙈 hydrostatic_regression"
+          - "🥑 vertical_coordinate"
           - "🦢 shallow_water"
           - "🐳 simulation"
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
-          - "🌐 multi_region_simulation"
-          - "🌍 multi_region_simulation_immersed"
           - "🧵 conservative_regridding"
           - "🦧 scripts"
 
@@ -200,7 +193,7 @@ steps:
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # CodeCov increases allocations, we run without it to test memory allocations
-      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
+      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(; julia_args=["--check-bounds=auto"], test_args=["--verbose"])'
 
     matrix:
       setup:
@@ -242,7 +235,7 @@ steps:
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"], test_args=["--verbose"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
@@ -272,10 +265,8 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          - "🎭 reactant_2"
           - "👺 enzyme"
-          - "👹 reactant_1"
-          - "🧪 reactant_correctness"
+          - "🎭 reactant"
 
     retry:
       automatic:
