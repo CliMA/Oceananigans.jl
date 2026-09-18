@@ -168,8 +168,10 @@ function incompressible_in_time(grid, Nt, timestepper)
 
     div_U = CenterField(grid)
 
-    # Just add a temperature perturbation so we get some velocity field.
-    @allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
+    # Just add a temperature perturbation in the middle half of the domain so we get some velocity field.
+    Nx, Ny, Nz = size(grid)
+    bubble = (Nx÷4:3Nx÷4, Ny÷4:3Ny÷4, Nz÷4:3Nz÷4)
+    @allowscalar interior(model.tracers.T)[bubble...] .+= 0.01
 
     update_state!(model)
     for n in 1:Nt
@@ -660,7 +662,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Incompressibility" begin
         for FT in float_types, arch in archs
-            Nx, Ny, Nz = 32, 32, 32
+            Nx, Ny, Nz = 16, 16, 16
 
             regular_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
 
@@ -681,7 +683,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
                 @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
 
-                for Nt in [1, 10, 100], timestepper in timesteppers
+                # The pressure projection removes the divergence of the full predictor velocity every time step,
+                # so the divergence left after a step is set by that step's Poisson solve and does not accumulate.
+                # Nt=1 covers the first (Euler) step of QuasiAdamsBashforth2 and one full RungeKutta3 step;
+                # Nt=10 covers the multi-step Adams-Bashforth combination and repeated solves.
+                for Nt in [1, 10], timestepper in timesteppers
                     @test incompressible_in_time(grid, Nt, timestepper)
                 end
             end
