@@ -918,6 +918,26 @@ end
 
             @test !(z isa Oceananigans.Grids.MutableVerticalDiscretization)
             @test z_mutable isa Oceananigans.Grids.MutableVerticalDiscretization
+
+            # A stretching law that shrinks rather than grows the spacing can never reach `extent`.
+            # `PowerLawStretching(power)` with `power > 1` shrinks spacings smaller than one, so
+            # this must be reported rather than looping forever.
+            @test_throws ArgumentError ReferenceToStretchedDiscretization(extent = 100,
+                                                                         constant_spacing = 0.05,
+                                                                         constant_spacing_extent = 0.05,
+                                                                         maximum_spacing = 20,
+                                                                         stretching = PowerLawStretching(1.3))
+
+            # The same coordinate is fine with a stretching law that grows spacings of any size.
+            z = ReferenceToStretchedDiscretization(extent = 100,
+                                                   constant_spacing = 0.05,
+                                                   constant_spacing_extent = 0.05,
+                                                   maximum_spacing = 20,
+                                                   stretching = LinearStretching(0.3),
+                                                   rounding_digits = 6)
+
+            @test z.faces[end] - z.faces[1] ≥ 100
+            @test all(diff(z.faces) .> 0)
         end
     end
 
