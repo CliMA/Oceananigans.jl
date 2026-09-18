@@ -149,9 +149,9 @@ add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
 
-### `OffsetActuation`
+### `TimeOffset`
 
-[`OffsetActuation`](@ref Oceananigans.Utils.OffsetActuation) actuates when the parent schedule does and once more
+[`TimeOffset`](@ref Oceananigans.Utils.TimeOffset) actuates when the parent schedule does and once more
 at a time `offset` away from it. A positive `offset` places the extra actuation after each parent actuation, and
 a negative `offset` places it before the next parent actuation. The time step is aligned so that the extra
 actuation lands exactly on the requested time. This is useful, for example, to sample a quantity a fixed time
@@ -161,7 +161,7 @@ before each output is written, so that a time difference over that interval can 
 Oceananigans.Simulations.reset!(simulation)
 simulation.stop_time = 2.5
 
-schedule = OffsetActuation(TimeInterval(1), -0.2)
+schedule = TimeOffset(TimeInterval(1), -0.2)
 add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
@@ -184,7 +184,7 @@ run!(simulation)
 ```
 
 !!! warning "Stateful schedules"
-    Stateful schedules such as `TimeInterval`, `SpecifiedTimes`, `ConsecutiveIterations`, and `OffsetActuation` store
+    Stateful schedules such as `TimeInterval`, `SpecifiedTimes`, `ConsecutiveIterations`, and `TimeOffset` store
     their own counters, so we need to create a _fresh_ instance (or call `copy`) for each callback or
     output writer that needs an identical pattern.
 

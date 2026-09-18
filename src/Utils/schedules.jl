@@ -422,10 +422,10 @@ restore_prognostic_state!(::PrecedingIterations, ::Nothing) = nothing
 Base.summary(schedule::PrecedingIterations) = string("PrecedingIterations(", summary(schedule.parent), ")")
 
 #####
-##### OffsetActuation
+##### TimeOffset
 #####
 
-mutable struct OffsetActuation{S, O, TT} <: AbstractSchedule
+mutable struct TimeOffset{S, O, TT} <: AbstractSchedule
     parent :: S
     offset :: O
     parent_actuation_time :: TT
@@ -433,9 +433,9 @@ mutable struct OffsetActuation{S, O, TT} <: AbstractSchedule
 end
 
 """
-    OffsetActuation(parent_schedule, offset)
+    TimeOffset(parent_schedule, offset)
 
-Return a `schedule::OffsetActuation` that actuates both when `parent_schedule` actuates
+Return a `schedule::TimeOffset` that actuates both when `parent_schedule` actuates
 and once more at a time `offset` away from it. A positive `offset` places the extra actuation
 `offset` after each actuation of `parent_schedule`. A negative `offset` places it `|offset|` before
 the next actuation of `parent_schedule`, which must then have a finite `next_actuation_time`
@@ -451,13 +451,13 @@ Example
 ```jldoctest
 using Oceananigans
 
-schedule = OffsetActuation(TimeInterval(10), -2)
+schedule = TimeOffset(TimeInterval(10), -2)
 
 # output
-OffsetActuation(TimeInterval(10 seconds), -2 seconds)
+TimeOffset(TimeInterval(10 seconds), -2 seconds)
 ```
 """
-function OffsetActuation(parent_schedule, offset)
+function TimeOffset(parent_schedule, offset)
     O = period_type(offset)
     offset = convert(O, offset)
     validate_offset(parent_schedule, offset)
@@ -465,7 +465,7 @@ function OffsetActuation(parent_schedule, offset)
     parent_actuation_time = zero(TT)
     # A positive offset has nothing to actuate until the parent actuates
     offset_actuated = period_to_seconds(offset) > 0
-    return OffsetActuation{typeof(parent_schedule), O, TT}(parent_schedule, offset, parent_actuation_time, offset_actuated)
+    return TimeOffset{typeof(parent_schedule), O, TT}(parent_schedule, offset, parent_actuation_time, offset_actuated)
 end
 
 function validate_offset(parent, offset)
@@ -484,7 +484,7 @@ function validate_offset(parent::TimeInterval{<:Union{Number, Period}}, offset)
     return nothing
 end
 
-function offset_time(schedule::OffsetActuation)
+function offset_time(schedule::TimeOffset)
     if period_to_seconds(schedule.offset) > 0
         return add_time_interval(schedule.parent_actuation_time, schedule.offset)
     else
@@ -492,20 +492,20 @@ function offset_time(schedule::OffsetActuation)
     end
 end
 
-function offset_reached(schedule::OffsetActuation, t)
+function offset_reached(schedule::TimeOffset, t)
     t★ = offset_time(schedule)
     t★ === Inf && return false
     return time_difference_seconds(t, t★) >= 0
 end
 
-function reset_offset!(schedule::OffsetActuation, t, parent_actuated=true)
+function reset_offset!(schedule::TimeOffset, t, parent_actuated=true)
     schedule.parent_actuation_time = t
     positive = period_to_seconds(schedule.offset) > 0
     schedule.offset_actuated = (positive && !parent_actuated) || offset_reached(schedule, t)
     return nothing
 end
 
-function (schedule::OffsetActuation)(model)
+function (schedule::TimeOffset)(model)
     t = model.clock.time
     if schedule.parent(model)
         reset_offset!(schedule, t)
@@ -518,7 +518,7 @@ function (schedule::OffsetActuation)(model)
     end
 end
 
-function initialize!(schedule::OffsetActuation, model)
+function initialize!(schedule::TimeOffset, model)
     t = model.clock.time
 
     if schedule.parent_actuation_time isa Number && t isa Dates.AbstractDateTime
@@ -532,7 +532,7 @@ function initialize!(schedule::OffsetActuation, model)
     return parent_actuated
 end
 
-function schedule_aligned_time_step(schedule::OffsetActuation, clock, Δt)
+function schedule_aligned_time_step(schedule::TimeOffset, clock, Δt)
     Δt = schedule_aligned_time_step(schedule.parent, clock, Δt)
     schedule.offset_actuated && return Δt
     t★ = offset_time(schedule)
@@ -542,20 +542,20 @@ function schedule_aligned_time_step(schedule::OffsetActuation, clock, Δt)
     return min(Δt, δt)
 end
 
-function prognostic_state(schedule::OffsetActuation)
+function prognostic_state(schedule::TimeOffset)
     return (parent = prognostic_state(schedule.parent),
             parent_actuation_time = schedule.parent_actuation_time,
             offset_actuated = schedule.offset_actuated)
 end
 
-function restore_prognostic_state!(restored::OffsetActuation, from)
+function restore_prognostic_state!(restored::TimeOffset, from)
     restore_prognostic_state!(restored.parent, from.parent)
     restored.parent_actuation_time = from.parent_actuation_time
     restored.offset_actuated = from.offset_actuated
     return restored
 end
 
-restore_prognostic_state!(::OffsetActuation, ::Nothing) = nothing
+restore_prognostic_state!(::TimeOffset, ::Nothing) = nothing
 
 #####
 ##### Any and AndSchedule
@@ -620,11 +620,11 @@ Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
 offset_string(offset::Number) = string(offset < 0 ? "-" : "+", prettytime(abs(offset)))
 offset_string(offset::Period) = string(offset)
 
-Base.summary(schedule::OffsetActuation) = string("OffsetActuation(", summary(schedule.parent), ", ",
-                                                 offset_string(schedule.offset), ")")
-Base.show(io::IO, schedule::OffsetActuation) = print(io, summary(schedule))
+Base.summary(schedule::TimeOffset) = string("TimeOffset(", summary(schedule.parent), ", ",
+                                            offset_string(schedule.offset), ")")
+Base.show(io::IO, schedule::TimeOffset) = print(io, summary(schedule))
 
-const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations, OffsetActuation}
+const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations, TimeOffset}
 
 materialize_schedule(s) = s
 materialize_schedule(ss::StatefulSchedules) = deepcopy(ss) # required to reuse a pre-defined schedule with a state
