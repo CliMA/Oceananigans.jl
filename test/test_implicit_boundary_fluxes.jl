@@ -2,7 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans
 using Oceananigans: PrescribedVelocityFields
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity,
+    immersed_bottom_facet, immersed_top_facet
+using Oceananigans.Grids: Center, Face
 
 #####
 ##### A single column relaxed by a surface drag flux J = λ (cᵦ − c★), with β = λ Δt / Δz. An explicit
@@ -81,6 +83,29 @@ function aiva_drag_column(arch, Δt, nsteps; implicit, λ=0.05, c★=1.0, c₀=0
     return (cmax = maximum(abs, filter(isfinite, cprofile); init=0.0), csurf = cprofile[end])
 end
 
+@inline immersed_u_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, k]
+@inline immersed_u_drag_coefficient(i, j, k, grid, clock, fields, μ) = - μ
+
+# Uniform `u` over a stepped bottom, so most bottom `u` points have rock below only one of their two tracer cells.
+function stepped_bottom_drag(arch, Δt; implicit, μ=0.1)
+    underlying_grid = RectilinearGrid(arch; size=(6, 4, 4), halo=(3, 3, 3), x=(0, 6), y=(0, 4), z=(-4, 0), topology=(Periodic, Periodic, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(repeat([-4, -4, -3, -2, -2, -3], 1, 4)))
+    drag = implicit ? IMEXFluxBoundaryCondition(0, immersed_u_drag_coefficient; discrete_form=true, parameters=μ) :
+                      FluxBoundaryCondition(immersed_u_drag; discrete_form=true, parameters=μ)
+    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=0)
+    model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy=nothing, tracers=(), momentum_advection=nothing,
+        boundary_conditions=(; u=FieldBoundaryConditions(immersed=ImmersedBoundaryCondition(bottom=drag))))
+    set!(model, u=1)
+    time_step!(model, Δt)
+    return Array(interior(model.velocities.u))
+end
+
+# A single column whose two topmost cells are solid, so the fluid meets an immersed ceiling.
+function ceiling_column(arch)
+    underlying_grid = RectilinearGrid(arch; size=6, z=(0, 6), topology=(Flat, Flat, Bounded))
+    return ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(z -> z > 4))
+end
+
 @testset "Implicit-explicit flux boundary conditions" begin
     for arch in archs
         @testset "Tracer drag [$(typeof(arch))]" begin
@@ -135,6 +160,29 @@ end
             @test explicit.cmax > 1e3                              # explicit BC blows up even with AIVA
             @test isfinite(implicit.cmax) && implicit.cmax ≤ 1.01  # implicit BC + AIVA stays bounded
             @test isapprox(implicit.csurf, c★; atol=1e-3)          # ... and relaxes to the target
+        end
+
+        @testset "Immersed bottom drag on a stepped bottom [$(typeof(arch))]" begin
+            explicit = stepped_bottom_drag(arch, 1e-3; implicit=false)
+            implicit = stepped_bottom_drag(arch, 1e-3; implicit=true)
+            @test isapprox(implicit, explicit; atol=1e-7)  # μ Δt = 1e-4, so the schemes differ by O(1e-8)
+        end
+
+        @testset "Immersed facets follow the vertical location [$(typeof(arch))]" begin
+            grid = ceiling_column(arch)
+            c, f = Center(), Face()
+
+            # Cells 1-4 are fluid: the ceiling is face 5 for centers and center 5 for the w-face control volume.
+            @test [immersed_top_facet(1, 1, k, grid, c, c, c) for k in 1:4] == [false, false, false, true]
+            @test [immersed_top_facet(1, 1, k, grid, c, c, f) for k in 1:5] == [false, false, false, false, true]
+            @test !any(immersed_bottom_facet(1, 1, k, grid, c, c, c) for k in 1:4)
+            @test !any(immersed_bottom_facet(1, 1, k, grid, c, c, f) for k in 1:5)
+        end
+
+        @testset "Implicit-explicit flux on a z-face field [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4))
+            @test_throws ArgumentError NonhydrostaticModel(grid;
+                boundary_conditions=(; w=FieldBoundaryConditions(top=IMEXFluxBoundaryCondition(0.0, 0.1))))
         end
     end
 end

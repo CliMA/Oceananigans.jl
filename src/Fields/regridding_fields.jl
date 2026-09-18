@@ -444,6 +444,7 @@ end
 @inline fractional_horizontal_area(grid::RectilinearGrid, x₁, x₂, y₁, y₂) = (x₂ - x₁) * (y₂ - y₁)
 @inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Flat}, x₁, x₂, y₁, y₂) = y₂ - y₁
 @inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Any, <:Flat}, x₁, x₂, y₁, y₂) = (x₂ - x₁)
+@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Flat, <:Flat}, x₁, x₂, y₁, y₂) = one(eltype(grid))
 
 @inline function fractional_horizontal_area(grid::LatitudeLongitudeGrid, λ₁, λ₂, φ₁, φ₂)
     Δλ = λ₂ - λ₁
@@ -452,3 +453,4 @@ end
 
 @inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * (hack_sind(φ₂) - hack_sind(φ₁))
 @inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * deg2rad(λ₂ - λ₁)
+@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat, <:Flat}, λ₁, λ₂, φ₁, φ₂) = one(eltype(grid))

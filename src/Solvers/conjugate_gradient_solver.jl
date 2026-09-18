@@ -242,7 +242,7 @@ function initialize_solution!(q, x, b, solver, args...)
     return nothing
 end
 
-""" one conjugate gradient iteration """
+""" update the search direction `p = z + β * p`; the linear operator is applied afterwards by `perform_linear_operation!` """
 function perform_iteration!(q, p, ρ, z, solver, args...)
     pp = parent(p)
     zp = parent(z)
@@ -255,9 +255,6 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
 
         @debug "ConjugateGradientSolver $(solver.iteration), β: $β"
     end
-
-    # q = A * p
-    solver.linear_operation!(q, p, args...)
 
     return nothing
 end
