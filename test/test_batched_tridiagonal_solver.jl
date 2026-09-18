@@ -92,6 +92,55 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; trid
     return Array(ϕ) ≈ ϕ_correct
 end
 
+# Garbage rows have non-finite diagonals and right-hand sides but vanishing couplings, like inactive
+# cells across an immersed boundary; the remaining rows must still solve their own, smaller system.
+function can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end = :bottom)
+    ArrayType = array_type(arch)
+
+    a = rand(FT, Nx, Ny, Nz-1)
+    b = 3 .+ rand(FT, Nx, Ny, Nz) # +3 to ensure diagonal dominance.
+    c = rand(FT, Nx, Ny, Nz-1)
+    f = rand(FT, Nx, Ny, Nz)
+
+    expected_solution = zeros(FT, Nx, Ny, Nz)
+    remaining = falses(Nx, Ny, Nz)
+
+    for i = 1:Nx, j = 1:Ny
+        # Every column has a different number of garbage rows, from none to all of them
+        m = mod(i - 1 + Nx * (j - 1), Nz + 1)
+        garbage_rows   = garbage_end == :bottom ? (1:m) : (Nz-m+1:Nz)
+        remaining_rows = garbage_end == :bottom ? (m+1:Nz) : (1:Nz-m)
+
+        for k in garbage_rows
+            b[i, j, k] = NaN
+            f[i, j, k] = NaN
+            k > 1  && (a[i, j, k-1] = 0; c[i, j, k-1] = 0) # couplings between rows k-1 and k
+            k < Nz && (a[i, j, k]   = 0; c[i, j, k]   = 0) # couplings between rows k and k+1
+        end
+
+        isempty(remaining_rows) && continue
+        M = Tridiagonal(a[i, j, remaining_rows[1:end-1]], b[i, j, remaining_rows], c[i, j, remaining_rows[1:end-1]])
+        expected_solution[i, j, remaining_rows] .= M \ f[i, j, remaining_rows]
+        remaining[i, j, remaining_rows] .= true
+    end
+
+    # Convert to CuArray if needed.
+    a, b, c, f = ArrayType.([a, b, c, f])
+
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    btsolver = BatchedTridiagonalSolver(grid;
+                                        lower_diagonal = a,
+                                        diagonal = b,
+                                        upper_diagonal = c)
+
+    ϕ = zeros(FT, Nx, Ny, Nz) |> ArrayType
+
+    solve!(ϕ, btsolver, f)
+    ϕ = Array(ϕ)
+
+    return all(isfinite, ϕ[remaining]) && ϕ[remaining] ≈ expected_solution[remaining]
+end
+
 @testset "Batched tridiagonal solvers" begin
     @info "Testing BatchedTridiagonalSolver..."
 
@@ -109,6 +158,10 @@ end
                 for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
                     @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction)
                 end
+            end
+
+            for FT in float_types, Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
+                @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
             end
         end
     end

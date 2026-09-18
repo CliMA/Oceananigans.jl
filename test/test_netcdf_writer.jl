@@ -2678,7 +2678,35 @@ function test_netcdf_overriding_attributes(arch)
     return nothing
 end
 
-function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
+# The displacement is written on its own and together with the velocities and tracers,
+# with and without halos, from a single simulation of each model.
+function free_surface_output_writers!(simulation, model, dir, prefix, suffix)
+    displacement_outputs = (; model.free_surface.displacement)
+    mixed_outputs = merge(model.velocities, model.tracers, displacement_outputs)
+
+    filepaths = Dict()
+
+    for (kind, outputs) in (("", displacement_outputs), ("mixed_", mixed_outputs)),
+        (halos, with_halos) in (("with_halos", true), ("no_halos", false))
+
+        filepath = joinpath(dir, "test_$(prefix)$(kind)free_surface_$(halos)_$(suffix).nc")
+        filepaths[(kind, halos)] = filepath
+
+        # The mixed writers overwrite existing files, the others rely on the default
+        overwrite_files = kind == "mixed_" ? true : nothing
+
+        simulation.output_writers[Symbol(kind, halos)] =
+            NetCDFWriter(model, outputs;
+                filename = filepath,
+                schedule = IterationInterval(1),
+                with_halos,
+                overwrite_files)
+    end
+
+    return filepaths
+end
+
+function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, vertically_stretched=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
 
@@ -2702,135 +2730,52 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; model.free_surface.displacement,)
-
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
     stretched_str = vertically_stretched ? "_stretched" : ""
-    filepath_with_halos = "test_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_with_halos) && rm(filepath_with_halos)
-
-    simulation.output_writers[:with_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_with_halos,
-            schedule = IterationInterval(1),
-            with_halos = true)
-
-    filepath_no_halos = "test_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_no_halos) && rm(filepath_no_halos)
-
-    simulation.output_writers[:no_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_no_halos,
-            schedule = IterationInterval(1),
-            with_halos = false)
+    dir = mktempdir()
+    filepaths = free_surface_output_writers!(simulation, model, dir, "", "$(Arch)$(immersed_str)$(stretched_str)")
 
     run!(simulation)
 
-    ds_h = NCDataset(filepath_with_halos)
+    for kind in ("", "mixed_")
+        ds_h = NCDataset(filepaths[(kind, "with_halos")])
 
-    @test haskey(ds_h, "displacement")
-    @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
+        @test haskey(ds_h, "displacement")
+        @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
 
-    close(ds_h)
-    rm(filepath_with_halos)
+        if kind == "mixed_"
+            @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:w]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+            @test dimsize(ds_h[:T]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:S]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+        end
 
-    ds_n = NCDataset(filepath_no_halos)
+        close(ds_h)
 
-    @test haskey(ds_n, "displacement")
-    @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
+        ds_n = NCDataset(filepaths[(kind, "no_halos")])
 
-    close(ds_n)
-    rm(filepath_no_halos)
+        @test haskey(ds_n, "displacement")
+        @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
+
+        if kind == "mixed_"
+            @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
+            @test dimsize(ds_n[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+        end
+
+        close(ds_n)
+    end
+
+    rm(dir; recursive=true)
 
     return nothing
 end
 
-function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
-    Nλ, Nφ, Nz = 8, 8, 4
-    Hλ, Hφ, Hz = 3, 4, 2
-
-    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
-
-    underlying_grid = LatitudeLongitudeGrid(arch;
-                                            topology = (Bounded, Bounded, Bounded),
-                                            size = (Nλ, Nφ, Nz),
-                                            halo = (Hλ, Hφ, Hz),
-                                            longitude = (-1, 1),
-                                            latitude = (-1, 1),
-                                            z)
-
-    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
-
-    model = HydrostaticFreeSurfaceModel(grid;
-                                        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
-    Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
-
-    free_surface_outputs = (; model.free_surface.displacement,)
-
-    outputs = merge(model.velocities, model.tracers, free_surface_outputs)
-
-    Arch = typeof(arch)
-    immersed_str = immersed ? "_immersed" : ""
-    stretched_str = vertically_stretched ? "_stretched" : ""
-    filepath_with_halos = "test_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_with_halos) && rm(filepath_with_halos)
-
-    simulation.output_writers[:with_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_with_halos,
-            schedule = IterationInterval(1),
-            with_halos = true,
-            overwrite_files = true)
-
-    filepath_no_halos = "test_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_no_halos) && rm(filepath_no_halos)
-
-    simulation.output_writers[:no_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_no_halos,
-            schedule = IterationInterval(1),
-            with_halos = false,
-            overwrite_files = true)
-
-    run!(simulation)
-
-    ds_h = NCDataset(filepath_with_halos)
-
-    @test haskey(ds_h, "displacement")
-    @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
-
-    @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-
-    close(ds_h)
-    rm(filepath_with_halos)
-
-    ds_n = NCDataset(filepath_no_halos)
-
-    @test haskey(ds_n, "displacement")
-    @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
-
-    @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_n[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-
-    close(ds_n)
-    rm(filepath_no_halos)
-
-    return nothing
-end
-
-function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=false, vertically_stretched=false)
+function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, vertically_stretched=false)
     Nx, Ny, Nz = 8, 8, 4
     Hx, Hy, Hz = 3, 4, 2
 
@@ -2855,126 +2800,47 @@ function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=fals
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; model.free_surface.displacement)
-
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
     stretched_str = vertically_stretched ? "_stretched" : ""
-    filepath_with_halos = "test_nonhydrostatic_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_with_halos) && rm(filepath_with_halos)
-
-    simulation.output_writers[:with_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_with_halos,
-            schedule = IterationInterval(1),
-            with_halos = true)
-
-    filepath_no_halos = "test_nonhydrostatic_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_no_halos) && rm(filepath_no_halos)
-
-    simulation.output_writers[:no_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_no_halos,
-            schedule = IterationInterval(1),
-            with_halos = false)
+    dir = mktempdir()
+    filepaths = free_surface_output_writers!(simulation, model, dir, "nonhydrostatic_", "$(Arch)$(immersed_str)$(stretched_str)")
 
     run!(simulation)
 
-    ds_h = NCDataset(filepath_with_halos)
-    @test haskey(ds_h, "displacement")
-    @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
-    close(ds_h)
-    rm(filepath_with_halos)
+    for kind in ("", "mixed_")
+        ds_h = NCDataset(filepaths[(kind, "with_halos")])
 
-    ds_n = NCDataset(filepath_no_halos)
-    @test haskey(ds_n, "displacement")
-    @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
-    close(ds_n)
-    rm(filepath_no_halos)
+        @test haskey(ds_h, "displacement")
+        @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
 
-    return nothing
-end
+        if kind == "mixed_"
+            @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+            @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+            @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+        end
 
-function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=false, vertically_stretched=false)
-    Nx, Ny, Nz = 8, 8, 4
-    Hx, Hy, Hz = 3, 4, 2
+        close(ds_h)
 
-    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
+        ds_n = NCDataset(filepaths[(kind, "no_halos")])
 
-    underlying_grid = RectilinearGrid(arch;
-                                      topology = (Bounded, Bounded, Bounded),
-                                      size = (Nx, Ny, Nz),
-                                      halo = (Hx, Hy, Hz),
-                                      x = (-1, 1),
-                                      y = (-1, 1),
-                                      z)
+        @test haskey(ds_n, "displacement")
+        @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
 
-    grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
+        if kind == "mixed_"
+            @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:v]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:w]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1, time=Nt + 1)
+            @test dimsize(ds_n[:T]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+            @test dimsize(ds_n[:S]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+        end
 
-    model = NonhydrostaticModel(grid;
-                                free_surface = ImplicitFreeSurface(),
-                                closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                buoyancy = SeawaterBuoyancy(),
-                                tracers = (:T, :S))
+        close(ds_n)
+    end
 
-    Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
-
-    free_surface_outputs = (; model.free_surface.displacement)
-    outputs = merge(model.velocities, model.tracers, free_surface_outputs)
-
-    Arch = typeof(arch)
-    immersed_str = immersed ? "_immersed" : ""
-    stretched_str = vertically_stretched ? "_stretched" : ""
-    filepath_with_halos = "test_nonhydrostatic_mixed_free_surface_with_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_with_halos) && rm(filepath_with_halos)
-
-    simulation.output_writers[:with_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_with_halos,
-            schedule = IterationInterval(1),
-            with_halos = true,
-            overwrite_files = true)
-
-    filepath_no_halos = "test_nonhydrostatic_mixed_free_surface_no_halos_$(Arch)$(immersed_str)$(stretched_str).nc"
-    isfile(filepath_no_halos) && rm(filepath_no_halos)
-
-    simulation.output_writers[:no_halos] =
-        NetCDFWriter(model, outputs;
-            filename = filepath_no_halos,
-            schedule = IterationInterval(1),
-            with_halos = false,
-            overwrite_files = true)
-
-    run!(simulation)
-
-    ds_h = NCDataset(filepath_with_halos)
-
-    @test haskey(ds_h, "displacement")
-    @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
-
-    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
-
-    close(ds_h)
-    rm(filepath_with_halos)
-
-    ds_n = NCDataset(filepath_no_halos)
-
-    @test haskey(ds_n, "displacement")
-    @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
-
-    @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:v]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:w]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_n[:T]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:S]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
-
-    close(ds_n)
-    rm(filepath_no_halos)
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -4048,10 +3914,8 @@ end
         @testset "Free surface output [$A]" begin
             @info "  Testing free surface output [$A]..."
             for immersed in (false, true), vertically_stretched in (false, true)
-                test_netcdf_hydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
-                test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
-                test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed, vertically_stretched)
-                test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed, vertically_stretched)
+                test_netcdf_hydrostatic_free_surface_output(arch; immersed, vertically_stretched)
+                test_netcdf_nonhydrostatic_free_surface_output(arch; immersed, vertically_stretched)
             end
         end
 
