@@ -106,36 +106,9 @@ steps:
 
       cd "$OCEANANIGANS_DIR"
 
-      # Julia writes the coverage files next to the source files, so the .cov
-      # files of every job accumulate in this shared directory. Remember when
-      # this job started to collect only the files it produced.
-      cov_start=$$(mktemp)
-
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
+      # Coverage data is written next to the source files and picked up from
+      # this directory by the Codecov step once all test jobs have finished.
       julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" -newer "$$cov_start" | wc -l`
-      find . -type f -name "*.cov" -newer "$$cov_start" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-      # Another job finishing right now may still be writing its .cov files while
-      # we read ours, in which case tar exits with status 1; don't fail the job.
-      find . -type f -name "*.cov" -newer "$$cov_start" | tar -czf "$$tarball" -T - || echo "tar exited with status $$?"
-      ls -lh "$$tarball"
-      rm -f "$$cov_start"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
 
     matrix:
       setup:
@@ -193,7 +166,6 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo "$$TEST_GROUP"
 
-      # Run in the checkout instantiated by the init step (see the tests step).
       cd "$OCEANANIGANS_DIR"
 
       # CodeCov increases allocations, we run without it to test memory allocations
@@ -232,34 +204,10 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo "$$TEST_GROUP"
 
-      # Run in the checkout instantiated by the init steps (see the tests step).
       cd "$OCEANANIGANS_DIR"
-      cov_start=$$(mktemp)
 
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(; coverage=false, julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" -newer "$$cov_start" | wc -l`
-      find . -type f -name "*.cov" -newer "$$cov_start" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-      find . -type f -name "*.cov" -newer "$$cov_start" | tar -czf "$$tarball" -T - || echo "tar exited with status $$?"
-      ls -lh "$$tarball"
-      rm -f "$$cov_start"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
 
     matrix:
       setup:
@@ -294,20 +242,18 @@ steps:
     command: |
       set -e
 
-      mkdir -p coverage_artifacts
+      # The test jobs ran with --code-coverage=user in this directory, which
+      # writes the .cov files next to the source files. The directory is
+      # specific to this build, so every .cov file in it belongs to this build.
+      cd "$OCEANANIGANS_DIR"
 
-      buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/ || {
-        echo "No coverage tarballs were uploaded by test steps."
+      echo "Found .cov files:" $$(find src ext -name "*.cov" | wc -l)
+      find src ext -name "*.cov" | head -n 20 || true
+
+      if [ "$$(find src ext -name "*.cov" | wc -l)" -eq 0 ]; then
+        echo "No coverage files were produced by the test steps."
         exit 0
-      }
-
-      # Extract .cov files alongside the real source tree
-      for f in coverage_artifacts/coverage-*.tgz; do
-        tar -xzf "$$f" -C .
-      done
-
-      echo "Found .cov files in checkout:" $$(find . -name "*.cov" | wc -l)
-      find . -name "*.cov" | head -n 20 || true
+      fi
 
       # Convert Julia .cov -> lcov.info (temp env so we don't edit Project/Manifest)
       julia --color=yes --project -e "import Pkg; Pkg.activate(; temp=true); Pkg.add(\"Coverage\"); using Coverage; cov = vcat(process_folder(\"src\"), process_folder(\"ext\")); LCOV.writefile(\"lcov.info\", cov)"
