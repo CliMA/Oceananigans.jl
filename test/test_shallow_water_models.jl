@@ -203,7 +203,7 @@ end
 
         @testset "Time-step Wizard ShallowWaterModels [$arch, $topos[1]]" begin
         @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
-            @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing)
+            @test time_step_wizard_shallow_water_model_works(arch, topos[1], nothing)
         end
 
         # Advection = nothing is broken as halo does not have a maximum

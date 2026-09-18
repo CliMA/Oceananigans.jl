@@ -76,7 +76,7 @@ function advective_timescale_cfl_on_regular_grid(arch, FT)
 end
 
 function advective_timescale_cfl_on_stretched_grid(arch, FT)
-    grid = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=[k^2 for k in 0:8])
+    grid = RectilinearGrid(arch, FT, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=[k^2 for k in 0:8])
     model = NonhydrostaticModel(grid)
 
     Δt = FT(15.5)
@@ -101,7 +101,7 @@ function advective_timescale_cfl_on_stretched_grid(arch, FT)
 end
 
 function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
-    grid = LatitudeLongitudeGrid(arch, size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
+    grid = LatitudeLongitudeGrid(arch, FT, size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
     model = HydrostaticFreeSurfaceModel(grid; momentum_advection=VectorInvariant())
 
     Δt = FT(1000)

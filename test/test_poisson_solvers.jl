@@ -68,25 +68,22 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
         @testset "Divergence-free solution [$(typeof(arch))]" begin
             @info "  Testing divergence-free solution [$(typeof(arch))]..."
 
-            for topo in topos
-                for N in [7, 16]
+            for topo in topos, N in [7, 16]
+                grids = [RectilinearGrid(arch, topology=topo, size=(N, N, N), extent=(1, 1, 1)),
+                         RectilinearGrid(arch, topology=topo, size=(1, N, N), extent=(1, 1, 1)),
+                         RectilinearGrid(arch, topology=topo, size=(N, 1, N), extent=(1, 1, 1)),
+                         RectilinearGrid(arch, topology=topo, size=(N, N, 1), extent=(1, 1, 1))]
 
-                    grids_3d = [RectilinearGrid(arch, topology=topo, size=(N, N, N), extent=(1, 1, 1)),
-                                RectilinearGrid(arch, topology=topo, size=(1, N, N), extent=(1, 1, 1)),
-                                RectilinearGrid(arch, topology=topo, size=(N, 1, N), extent=(1, 1, 1)),
-                                RectilinearGrid(arch, topology=topo, size=(N, N, 1), extent=(1, 1, 1))]
-
-                    grids_2d = [RectilinearGrid(arch, size=(N, N), extent=(1, 1), topology=topo)
-                                for topo in two_dimensional_topologies]
-
-                    grids = []
-                    push!(grids, grids_3d..., grids_2d...)
-
-                    for grid in grids
-                        N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
-                        @test divergence_free_poisson_solution(grid)
-                    end
+                for grid in grids
+                    N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
+                    @test divergence_free_poisson_solution(grid)
                 end
+            end
+
+            for topo in two_dimensional_topologies, N in [7, 16]
+                grid = RectilinearGrid(arch, size=(N, N), extent=(1, 1), topology=topo)
+                N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
+                @test divergence_free_poisson_solution(grid)
             end
 
             Ns = [11, 16]

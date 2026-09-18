@@ -973,7 +973,7 @@ end
         Nx, Ny, Nz = 9, 9, 2
         grid = ConformalCubedSphereGrid(arch, FT;
                                         panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
-                                        horizontal_direction_halo = 3)
+                                        horizontal_direction_halo = 3, non_uniform_conformal_mapping)
         Hx, Hy, Hz = halo_size(grid)
 
         η = CenterField(grid)
