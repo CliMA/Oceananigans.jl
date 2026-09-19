@@ -10,7 +10,7 @@ function show_hydrostatic_test(grid, free_surface, precompute_metrics)
     typeof(grid) <: ZRegularLLG ? gz = :regular : gz = :stretched
 
     arch = grid.architecture
-    free_surface_str = string(typeof(free_surface).name.wrapper)
+    free_surface_str = string(nameof(typeof(free_surface)))
 
     strc = "$(precompute_metrics ? ", metrics are precomputed" : "")"
 

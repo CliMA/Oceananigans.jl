@@ -30,8 +30,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
         end
     else
         firstclosure = first(closure)
-        closurename = typeof(firstclosure).name.wrapper
-        closurestr = string(closurename)
+        closurestr = string(nameof(typeof(firstclosure)))
         name = "ocean_large_eddy_simulation_$closurestr"
     end
 
