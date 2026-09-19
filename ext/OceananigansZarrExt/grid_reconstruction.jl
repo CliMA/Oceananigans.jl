@@ -6,7 +6,7 @@
 ##### Grid reconstruction
 #####
 
-zarr_grid_type_string(g) = string(nameof(typeof(g))
+zarr_grid_type_string(g) = string(nameof(typeof(g)))
 
 add_conformal_mapping_info_to_kwargs!(kwargs, grid) = nothing
 
