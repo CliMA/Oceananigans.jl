@@ -365,27 +365,8 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ), rescaled by the largest ratio in the stencil.
-#
-# β and τ both scale with the square of the reconstructed field while ϵ is absolute, so a flat
-# sub-stencil beside a large jump drives τ / (βᵣ + ϵ) arbitrarily high, and in Float32 its square
-# overflows for jumps ≳ 1e5: α = Inf and the normalized weights are NaN. Writing dᵣ = βᵣ + ϵ,
-# dmin = minᵣ dᵣ and M = max(1, τ / dmin),
-#
-#     αᵣ / M² = C★ᵣ [(1/M)² + (τ / (M dᵣ))²] = C★ᵣ [a² + (b dmin / dᵣ)²]
-#
-# with a = min(1, dmin/τ) and b = min(1, τ/dmin). Every factor is at most one, so no term can
-# overflow at any input magnitude and no bound has to be chosen. `biased_weno_weights` normalizes
-# by Σα, so dividing every αᵣ by the common M² leaves the weights it returns unchanged.
-#
-# Neither a nor b divides by τ. τ is zero wherever the flow is smooth, and dividing by it there
-# is undefined under the fast-math division that `BackendOptimizedDivision` selects, and hands
-# automatic differentiation a derivative of -dmin/τ². So a is written as dmin/max(τ, dmin), the
-# same number as min(1, dmin/τ), and b divides by dmin instead. Both denominators are at least
-# ϵ > 0 for every input, and b stays correct even if τ overflows to Inf.
-#
-# The limits are the intended ones: τ = 0 gives a = 1, b = 0 and αᵣ = C★ᵣ, while a τ that
-# overflows gives a = 0, b = 1 and C★ᵣ (dmin / dᵣ)², the ratio the weights tend to.
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ), divided by M² where M = max(1, τ₂ᵣ₋₁ / dmin) and
+# dmin = minᵣ(βᵣ + ϵ), so that no term can overflow. M² cancels when the weights are normalized.
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
@@ -394,8 +375,8 @@ end
 
     return quote
         dmin = minimum(β) + ϵ
-        a = newton_div(WCT, dmin, max(τ, dmin))
-        b = min(one(FT), newton_div(WCT, τ, dmin))
+        a = newton_div(WCT, dmin, max(τ, dmin))    # 1 / M, without dividing by τ
+        b = min(one(FT), newton_div(WCT, τ, dmin)) # τ / (M * dmin)
         ($(elem...),)
     end
 end
