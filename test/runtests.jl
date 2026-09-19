@@ -36,12 +36,19 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            include("test_quality_assurance.jl")
+            if child_arch isa CPU
+                include("test_quality_assurance.jl")
+                include("test_operators.jl")
+                include("test_utils.jl")
+                include("test_schedules.jl")
+                include("test_weno_smoothness.jl")
+                include("test_weno_smoothness_reference.jl")
+            end
+
             include("test_grids.jl")
             include("test_lambert_conformal_conic_grid.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
-            include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_implicit_boundary_fluxes.jl")
@@ -54,14 +61,10 @@ CUDA.allowscalar() do
             include("test_halo_regions.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
-            include("test_utils.jl")
-            include("test_schedules.jl")
             include("test_newton_div.jl")
             include("test_materialize_advection.jl")
             include("test_bounds_preserving_advection.jl")
             include("test_adaptive_implicit_vertical_advection.jl")
-            include("test_weno_smoothness.jl")
-            include("test_weno_smoothness_reference.jl")
         end
     end
 
