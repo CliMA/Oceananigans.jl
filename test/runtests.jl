@@ -38,7 +38,9 @@ else
 
     # init/init warms the depot and must finish before anything else; the distributed tests each spawn
     # their own 4-rank job, so they never overlap. Serial tests run before the parallel batch.
-    serial = filter(name -> name == "init/init" || startswith(name, "distributed/"), collect(keys(testsuite)))
+    serial = filter(
+        name -> name == "init/init" || startswith(name, "distributed/") || startswith(name, "sharding/"),
+        collect(keys(testsuite)))
 
     # Download reference data once, in this process, so workers only hit the DataDeps cache.
     needs_data(name) = startswith(name, "regression/") || name == "unit/grids" || startswith(name, "multi_region/cubed_sphere")
