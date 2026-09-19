@@ -13,7 +13,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl")
 # These tests are meant to be run on 4 ranks. This script may be run
 # stand-alone (outside the test environment) via
 #
-# mpiexec -n 4 julia --project test/mpi/conjugate_gradient_poisson_solver.jl
+# mpiexec -n 4 julia --project test/mpi/conjugate_gradient_solver.jl
 #
 # provided that a few packages (like TimesDates.jl) are in your global environment.
 
@@ -55,7 +55,7 @@ function random_divergent_source_term(grid::DistributedGrid)
     return R, U
 end
 
-# Mirrors `compute_pressure_solution` from poisson_solvers/conjugate_gradient_poisson_solver.jl,
+# Mirrors `compute_pressure_solution` from poisson_solvers/conjugate_gradient.jl,
 # but builds the solver on a `Distributed` grid and selects the preconditioner.
 function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, preconditioner_type)
     arch = Distributed(child_arch, partition=Partition(ranks...))
