@@ -19,7 +19,7 @@ using MPI
 #
 # julia> include("test_distributed_models.jl")
 
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid

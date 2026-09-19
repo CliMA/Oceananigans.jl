@@ -18,7 +18,7 @@ end
 
 tripolar_reconstructed_grid_script(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
     using Test
 
     include($(repr(distributed_tests_utils)))
@@ -57,7 +57,7 @@ tripolar_reconstructed_grid_script(fold_topology) = """
 
 tripolar_reconstructed_field_script(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
     using Test
 
     include($(repr(distributed_tests_utils)))
@@ -104,7 +104,7 @@ end
 
 tripolar_boundary_conditions_script(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     include($(repr(distributed_tests_utils)))
 
@@ -181,7 +181,7 @@ end
 
 run_slab_distributed_grid(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(1, 4))
@@ -190,7 +190,7 @@ run_slab_distributed_grid(fold_topology) = """
 
 run_pencil_distributed_grid(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(2, 2))
@@ -199,7 +199,7 @@ run_pencil_distributed_grid(fold_topology) = """
 
 run_large_pencil_distributed_grid(fold_topology) = """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     include($(repr(distributed_tests_utils)))
     arch = Distributed(CPU(), partition = Partition(4, 2))

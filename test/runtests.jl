@@ -220,7 +220,7 @@ CUDA.allowscalar() do
     end
 
     if group == :nccl_extension || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         reset_cuda_if_necessary()
         @testset "NCCL extension tests" begin
             include("test_nccl_extension.jl")
@@ -228,7 +228,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
@@ -236,7 +236,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_memory_allocation || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = nonhydrostatic_regression_test_architectures()
@@ -244,7 +244,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_solvers || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
@@ -253,7 +253,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_hydrostatic_regression || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
@@ -261,7 +261,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_hydrostatic_model || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
@@ -270,14 +270,14 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_vertical_coordinate_1 || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_zstar_conservation_explicit.jl")
     end
 
     if group == :distributed_vertical_coordinate_2 || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_zstar_conservation_implicit.jl")
@@ -285,7 +285,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_output || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         reset_cuda_if_necessary()
         @testset "Distributed output combining tests" begin
             include("test_distributed_output_combining.jl")
@@ -293,7 +293,7 @@ CUDA.allowscalar() do
     end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
-        MPI.Initialized() || MPI.Init()
+        MPI.Initialized() || MPI.Init(threadlevel=:multiple)
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = nonhydrostatic_regression_test_architectures()
