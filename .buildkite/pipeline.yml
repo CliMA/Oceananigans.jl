@@ -67,33 +67,6 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🦉 documentation"
-    concurrency_group: gate
-    concurrency: 6
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    env:
-      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
-    command: |
-      cd "$OCEANANIGANS_DIR"
-
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
-
-      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
-      # across builds. Resolve the docs environment from `docs/Project.toml`.
-      rm -f docs/Manifest.toml
-
-      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.instantiate()'
-      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
-
-      tar czf docs/docs-build.tar.gz docs/build
-    artifact_paths:
-      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
-
   - label: "{{ matrix.architecture }} - all tests"
     concurrency_group: gate
     concurrency: 6
@@ -147,6 +120,33 @@ steps:
         architecture:
           - "CPU"
           - "GPU"
+
+  - label: "🦉 documentation"
+    concurrency_group: gate
+    concurrency: 6
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
+    command: |
+      cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
+
+      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
+      # across builds. Resolve the docs environment from `docs/Project.toml`.
+      rm -f docs/Manifest.toml
+
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
+        'using Pkg; Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+      tar czf docs/docs-build.tar.gz docs/build
+    artifact_paths:
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
     concurrency_group: gate
