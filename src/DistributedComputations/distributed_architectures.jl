@@ -328,6 +328,7 @@ zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT,
 array_type(arch::Distributed)              = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
 convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+convert_to_device(arch::Distributed, FT, arg) = convert_to_device(child_architecture(arch), FT, arg)
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch

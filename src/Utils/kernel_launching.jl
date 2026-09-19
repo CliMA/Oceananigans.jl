@@ -372,7 +372,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(Architectures.convert_to_device(arch, kernel_args)...)
+        loop!(Architectures.convert_to_device(arch, eltype(grid), kernel_args)...)
     end
 
     return nothing
