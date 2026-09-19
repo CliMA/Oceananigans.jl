@@ -92,7 +92,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test("Oceananigans"; coverage="user", test_args=`--verbose unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts`)'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test("Oceananigans"; coverage="user", test_args=`--verbose --quickfail unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts`)'
       test_status=$$?
       set -e
 
@@ -174,7 +174,7 @@ steps:
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test("Oceananigans"; coverage=false, julia_args=["--check-bounds=auto"], test_args=`--verbose enzyme reactant`)' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test("Oceananigans"; coverage=false, julia_args=["--check-bounds=auto"], test_args=`--verbose --quickfail enzyme reactant`)' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
