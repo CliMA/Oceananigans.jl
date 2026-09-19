@@ -85,7 +85,7 @@ else
     # A worker with Oceananigans and CUDA loaded already uses a few GB, so the runner's default
     # threshold would recycle it after nearly every test.
     max_worker_rss = max(ParallelTestRunner.get_max_worker_rss(),
-                         min(Int(Sys.total_memory()) ÷ (2jobs), 24 * 2^30))
+                         min(Int(Sys.total_memory()) ÷ (2jobs), 10 * 2^30))
 
     runtests(Oceananigans, args; testsuite, test_worker, serial, max_worker_rss, recycle_on_failure=true)
 end
