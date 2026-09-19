@@ -2,13 +2,13 @@
 
 const mpi_groups = Dict(
     "distributed"                           => ["mpi/architectures", "mpi/models"],
-    "distributed_solvers"                   => ["mpi/transpose", "mpi/poisson_solvers", "mpi/conjugate_gradient_poisson_solver"],
+    "distributed_solvers"                   => ["mpi/transpose", "mpi/poisson_solvers", "mpi/conjugate_gradient_solver"],
     "distributed_hydrostatic_model"         => ["mpi/hydrostatic_model", "mpi/split_explicit_boundaries"],
     "distributed_hydrostatic_regression"    => ["regression/hydrostatic"],
     "distributed_nonhydrostatic_regression" => ["regression/nonhydrostatic"],
     "distributed_memory_allocation"         => ["memory_allocation/memory_allocation"],
-    "distributed_vertical_coordinate_1"     => ["vertical_coordinate/zstar_conservation_explicit"],
-    "distributed_vertical_coordinate_2"     => ["vertical_coordinate/zstar_conservation_implicit", "vertical_coordinate/zstar_conservation_tripolar"],
+    "distributed_vertical_coordinate_1"     => ["vertical_coordinate/conservation_explicit"],
+    "distributed_vertical_coordinate_2"     => ["vertical_coordinate/conservation_implicit", "vertical_coordinate/conservation_tripolar"],
     "nccl_extension"                        => ["mpi/nccl"],
 )
 

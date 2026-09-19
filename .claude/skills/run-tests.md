@@ -18,20 +18,20 @@ are most likely affected. Use this mapping:
 |---|---|
 | `src/Grids/` | `unit/grids`, `unit/grid_reconstruction` |
 | `src/Fields/` | `unit/field`, `abstract_operations/computed_field`, `unit/field_scans` |
-| `src/Operators/` | `unit/operators`, `unit/vector_rotation_operators` |
-| `src/BoundaryConditions/` | `unit/boundary_conditions`, `time_stepping/boundary_conditions_integration` |
+| `src/Operators/` | `unit/operators`, `unit/vector_rotation` |
+| `src/BoundaryConditions/` | `unit/boundary_conditions`, `time_stepping/boundary_conditions` |
 | `src/Models/NonhydrostaticModels/` | `time_stepping/nonhydrostatic_models`, `time_stepping/time_stepping` |
-| `src/Models/HydrostaticFreeSurfaceModels/` | `hydrostatic_free_surface/hydrostatic_free_surface_models`, `hydrostatic_free_surface/split_explicit_free_surface_solver` |
-| `src/Models/ShallowWaterModels/` | `shallow_water/shallow_water_models` |
+| `src/Models/HydrostaticFreeSurfaceModels/` | `hydrostatic_free_surface/models`, `hydrostatic_free_surface/split_explicit_solver` |
+| `src/Models/ShallowWaterModels/` | `shallow_water/models` |
 | `src/TimeSteppers/` | `time_stepping/time_stepping`, `time_stepping/dynamics` |
 | `src/TurbulenceClosures/` | `turbulence_closures/turbulence_closures` |
 | `src/Advection/` | `time_stepping/immersed_advection`, `time_stepping/dynamics` |
 | `src/BuoyancyFormulations/` | `unit/buoyancy`, `time_stepping/seawater_density` |
-| `src/Solvers/` | `poisson_solvers/poisson_solvers`, `general_solvers/batched_tridiagonal_solver` |
+| `src/Solvers/` | `poisson_solvers/regular_grids`, `general_solvers/batched_tridiagonal` |
 | `src/Simulations/` | `simulation/simulations`, `simulation/diagnostics` |
 | `src/OutputWriters/` | `simulation/output_writers`, `simulation/jld2_writer`, `simulation/netcdf_writer` |
 | `src/OutputReaders/` | `simulation/output_readers` |
-| `src/ImmersedBoundaries/` | `unit/immersed_boundary_grid`, `hydrostatic_free_surface/hydrostatic_free_surface_immersed_boundaries` |
+| `src/ImmersedBoundaries/` | `unit/immersed_boundary_grid`, `hydrostatic_free_surface/immersed_boundaries` |
 | `src/Coriolis/` | `coriolis/coriolis` |
 | `src/Forcings/` | `time_stepping/forcings` |
 | `src/Oceananigans.jl` (exports) | `unit/quality_assurance` |
