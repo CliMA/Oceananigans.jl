@@ -127,8 +127,21 @@ unified_array(::GPU, a) = a
 
 @inline unsafe_free!(a) = nothing
 
+"""
+    FloatTypeAdaptor{FT}
+
+`Adapt` adaptor that converts every floating point number in a structure to `FT`.
+"""
+struct FloatTypeAdaptor{FT} end
+
+Adapt.adapt_storage(::FloatTypeAdaptor{FT}, x::AbstractFloat) where FT = convert(FT, x)
+
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = args
+
+# Convert arguments to the device, then floating point numbers in them to `FT`
+@inline convert_to_device(arch, FT, args) = Adapt.adapt(FloatTypeAdaptor{FT}(), convert_to_device(arch, args))
+@inline convert_to_device(::CPU, FT, args) = args
 
 end # module
