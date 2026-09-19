@@ -154,6 +154,18 @@ end
     nested = (u = 1, deep = (grid = grid, series = fts, tag = "t"))
     got = extract_field_time_series(nested)
     @test got == (fts,)
+
+    # A closure that captures a type holds the type object as a field
+    typed_source = let FT = Float32
+        (x, y, z, t) -> FT(1) / FT(2)
+    end
+    @test @inferred(extract_field_time_series(Float32)) === ()
+    @test @inferred(extract_field_time_series(typed_source)) === ()
+
+    typed_and_series = let FT = Float32, series = fts
+        (x, y, z, t) -> FT(1) * series[1][1, 1, 1]
+    end
+    @test @inferred(extract_field_time_series(typed_and_series)) === (fts,)
 end
 
 @testset "Memory allocation regression tests" begin
