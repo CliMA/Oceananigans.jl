@@ -3,6 +3,10 @@ using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
+strip_halos(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
+                               grid.Hy+1:grid.Ny+grid.Hy,
+                               grid.Hz+1:grid.Nz+grid.Hz)
+
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
     #####
@@ -166,11 +170,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     global_grid = reconstruct_global_grid(model.grid)
 
-    u₁ = interior(solution₁.u, global_grid)
-    v₁ = interior(solution₁.v, global_grid)
-    w₁ = interior(solution₁.w, global_grid)
-    b₁ = interior(solution₁.b, global_grid)
-    c₁ = interior(solution₁.c, global_grid)
+    u₁ = strip_halos(solution₁.u, global_grid)
+    v₁ = strip_halos(solution₁.v, global_grid)
+    w₁ = strip_halos(solution₁.w, global_grid)
+    b₁ = strip_halos(solution₁.b, global_grid)
+    c₁ = strip_halos(solution₁.c, global_grid)
 
     reference_fields = (u = partition(Array(u₁), cpu_arch, size(u)),
                         v = partition(Array(v₁), cpu_arch, size(v)),

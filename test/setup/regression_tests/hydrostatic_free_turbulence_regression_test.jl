@@ -12,14 +12,14 @@ using JLD2
 
 ordered_indices(r, i) = i == 1 ? r : i == 2 ? (r[2], r[1], r[3]) : (r[3], r[2], r[1])
 
-global_topology(grid, i) = string(topology(grid, i))
+global_topology(grid, i) = string(nameof(topology(grid, i)))
 
 function global_topology(grid::DistributedGrid, i)
     arch = architecture(grid)
     R = arch.ranks[i]
     r = ordered_indices(arch.local_index, i)
     T = reconstruct_global_topology(topology(grid, i), R, r..., arch)
-    return string(T)
+    return string(nameof(T))
 end
 
 using Oceananigans.Grids: YRegLLGOTF
@@ -87,7 +87,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
     η = model.free_surface.displacement
 
-    free_surface_str = string(typeof(model.free_surface).name.wrapper)
+    free_surface_str = string(nameof(typeof(model.free_surface)))
     x_topology_str = global_topology(grid, 1)
     output_filename = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$(free_surface_str).jld2"
 
