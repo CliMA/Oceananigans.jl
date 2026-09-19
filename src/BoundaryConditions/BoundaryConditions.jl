@@ -10,6 +10,7 @@ export
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
     GravityWaveRadiation, NormalRadiation, ObliqueRadiation, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
+    TidalHarmonics, tidal_boundary_conditions, tidal_atlas_constants,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -23,11 +24,12 @@ using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans: Oceananigans
-using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
+using Oceananigans: Oceananigans, defaults
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFoldedTopology, Face,
                           Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
-                          RightCenterFolded, RightConnected, RightFaceFolded, halo_size, node, φnode, topology
+                          RightCenterFolded, RightConnected, RightFaceFolded, halo_size, node, λnode, φnode,
+                          λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
@@ -70,5 +72,6 @@ include("open_boundary_schemes/perturbation_advection.jl")
 include("open_boundary_schemes/gravity_wave_schemes.jl")
 include("open_boundary_schemes/normal_radiation.jl")
 include("open_boundary_schemes/oblique_radiation.jl")
+include("open_boundary_schemes/tidal_forcing.jl")
 
 end # module
