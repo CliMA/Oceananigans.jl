@@ -5,17 +5,23 @@ using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
 """
-    BoundsPreservation(minimum_value, maximum_value, maximum_courant_number, limiter)
+    BoundsPreservation(minimum_value, maximum_value; maximum_courant_number = 5//18)
 
-The interval a tracer is restricted to, the Courant number ``ω̂₁`` up to which the bound holds, and the field
-`limiter` holding the cell-wise rescaling factor ``θ``. `limiter` is `nothing` until the scheme is materialized
-on a grid.
+The interval `(minimum_value, maximum_value)` a tracer is restricted to, and the Courant number ``ω̂₁ ∈ (0, 1/2)``
+up to which the bound holds. Raising `maximum_courant_number` admits a larger time step and limits more
+aggressively. Passed as the `bounds` of a `WENO` scheme.
 """
 struct BoundsPreservation{FT, L}
     minimum_value :: FT
     maximum_value :: FT
     maximum_courant_number :: FT
     limiter :: L
+end
+
+function BoundsPreservation(minimum_value, maximum_value; maximum_courant_number = 5//18)
+    0 < maximum_courant_number < 1//2 || throw(ArgumentError("maximum_courant_number must lie in (0, 1/2), found $maximum_courant_number"))
+
+    return BoundsPreservation(promote(minimum_value, maximum_value, maximum_courant_number)..., nothing)
 end
 
 Base.show(io::IO, bounds::BoundsPreservation) = print(io, "(", bounds.minimum_value, ", ", bounds.maximum_value, ")")

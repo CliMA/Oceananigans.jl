@@ -61,3 +61,5 @@ materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
 
 materialize_advection(scheme::Centered{N, FT}, grid) where {N, FT} =
     Centered{N, FT}(materialize_advection(without_bounds_preservation(scheme.buffer_scheme), grid), scheme.time_discretization)
+
+materialize_advection(scheme::GhostCells, grid) = GhostCells(materialize_advection(scheme.scheme, grid), scheme.curvature_weight, scheme.monotone)
