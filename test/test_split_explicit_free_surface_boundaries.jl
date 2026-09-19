@@ -1,7 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Random
+
 using Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, DiscreteBoundaryFunction
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
@@ -195,4 +197,31 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         @test all(η[i, j, 1] == 0 for i in 1:Nx, j in 1:Ny if solid(i, j))
         @test maximum(abs(η[i, j, 1]) for i in 1:Nx, j in 1:Ny if !solid(i, j); init=0.0) > 0
     end
+end
+
+@testset "Time-dependent barotropic boundary conditions see the correct substep time" begin
+    # A frozen substep clock would report the same time on every evaluation; `GravityWaveRadiation`
+    # is documented to apply at every barotropic substep, so a time-dependent exterior value must
+    # see each substep's own time, evenly spaced by the barotropic Δτ.
+    grid = RectilinearGrid(size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
+                           topology=(Bounded, Periodic, Bounded))
+
+    times = Float64[]
+    recording_U_ext(i, j, grid, clock, model_fields) = (push!(times, clock.time); 0.0)
+    recording_η_ext(i, j, grid, clock, model_fields) = 0.0
+
+    U_bc = GravityWaveRadiationBoundaryCondition((DiscreteBoundaryFunction(recording_U_ext, nothing),
+                                                  DiscreteBoundaryFunction(recording_η_ext, nothing)))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east=U_bc)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=SplitExplicitFreeSurface(grid; substeps=10),
+                                        boundary_conditions=(; U=U_bcs), buoyancy=nothing, tracers=())
+
+    time_step!(model, 100.0)
+
+    substep_times = sort(unique(times))
+    @test length(substep_times) > 1
+
+    Δτ = diff(substep_times)
+    @test all(isapprox.(Δτ, Δτ[1]; rtol=1e-6))
 end
