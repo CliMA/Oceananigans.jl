@@ -14,6 +14,7 @@ module OceananigansNCDatasetsExt
 import NCDatasets
 using NCDatasets: NCDataset, defDim, defGroup, dimnames, name, sync
 using NCDatasets.CommonDataModel: AbstractDataset
+using NCDatasets.DiskArrays: AbstractDiskArray
 
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
@@ -26,7 +27,7 @@ using Oceananigans: prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 import Oceananigans.Fields
-using Oceananigans.Fields: Fields, AbstractField, data, interior, set!, Reduction, location, indices
+using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, grid, nodes, constructor_arguments,
     generate_coordinate
@@ -96,6 +97,10 @@ const f = Face()
 #####
 ##### Include scripts
 #####
+
+# Both Oceananigans and DiskArrays define a `copyto!` for this pair; the Oceananigans
+# semantics (copy into the interior) apply.
+Base.copyto!(f::Field, src::AbstractDiskArray) = copyto!(interior(f), src)
 
 include("utils.jl")
 include("dimensions.jl")
