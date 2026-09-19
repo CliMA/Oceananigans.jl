@@ -361,15 +361,15 @@ end
 
     # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
     dmodel = Enzyme.make_zero(model)
-    dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
-                    viscous_hydrostatic_turbulence,
-                    Active(ν1),
-                    Duplicated(model, dmodel),
-                    Const(u_init),
-                    Const(v_init),
-                    Const(Δt),
-                    Const(u_truth),
-                    Const(v_truth))
+    dedν = @with_stack_size autodiff(set_runtime_activity(Enzyme.Reverse),
+                                     viscous_hydrostatic_turbulence,
+                                     Active(ν1),
+                                     Duplicated(model, dmodel),
+                                     Const(u_init),
+                                     Const(v_init),
+                                     Const(Δt),
+                                     Const(u_truth),
+                                     Const(v_truth))
 
     @info "Automatically computed: $dedν."
     @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
