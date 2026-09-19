@@ -3,6 +3,9 @@ using Aqua: Aqua
 using ExplicitImports: ExplicitImports
 using Test: @testset, @test, @test_throws, detect_ambiguities
 
+# Load other packages to force running Aqua tests only on extensions
+using NCDatasets: NCDataset
+
 # Helper function to get all the submodules of a given module.
 function walk_submodules!(result, visited, mod::Module)
     for name in sort(names(mod; all=true, imported=false))
