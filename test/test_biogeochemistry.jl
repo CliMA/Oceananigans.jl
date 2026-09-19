@@ -130,16 +130,19 @@ end
 
 @testset "Biogeochemistry" begin
     @info "Testing biogeochemistry setup..."
-    for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry),
-        model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
-        arch in archs,
-        grid in (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)),
+    for arch in archs
+        grids = (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)),
                  LatitudeLongitudeGrid(arch; size = (5, 5, 5), longitude = (-180, 180), latitude = (-85, 85), z = (-2, 0)),
                  ConformalCubedSpherePanelGrid(arch; size = (3, 3, 3), z = (-2, 0)))
 
-        if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
-            @info "Testing $bgc in $model on $grid..."
-            test_biogeochemistry(grid, bgc, model)
+        for bgc in (MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry),
+            model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
+            grid in grids
+
+            if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
+                @info "Testing $bgc in $model on $grid..."
+                test_biogeochemistry(grid, bgc, model)
+            end
         end
     end
 end

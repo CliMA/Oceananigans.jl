@@ -232,6 +232,20 @@ function run_field_interpolation_tests(grid)
         end
     end
 
+    # Check interpolation on Windowed fields
+    wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
+    If = Field{Center, Center, Nothing}(grid)
+    set!(If, (x, y)-> x * y)
+    interpolate!(wf, If)
+
+    @allowscalar begin
+        @test all(interior(wf) .≈ interior(If))
+    end
+
+    return nothing
+end
+
+function run_longitude_interpolation_tests(arch)
     @info "    Testing the convert functions"
     for n in 1:30
         @test convert_to_0_360(- 10.e0^(-n)) > 359
@@ -246,19 +260,7 @@ function run_field_interpolation_tests(grid)
     # Generating a random interpolation longitude
     λsᵢ = rand(1000) .* 2000 .- 1000
 
-    for λ₀ in λs₀, λᵢ in λsᵢ
-        @test λ₀ ≤ convert_to_λ₀_λ₀_plus360(λᵢ, λ₀) ≤ λ₀ + 360
-    end
-
-    # Check interpolation on Windowed fields
-    wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
-    If = Field{Center, Center, Nothing}(grid)
-    set!(If, (x, y)-> x * y)
-    interpolate!(wf, If)
-
-    @allowscalar begin
-        @test all(interior(wf) .≈ interior(If))
-    end
+    @test all(λ₀ ≤ convert_to_λ₀_λ₀_plus360(λᵢ, λ₀) ≤ λ₀ + 360 for λ₀ in λs₀, λᵢ in λsᵢ)
 
     # interpolation between fields on latitudelongitude grids with different longitudes
     grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(    0,       360), latitude=(-90, 90), z=(0, 1))
@@ -890,40 +892,47 @@ end
             zu = (-100, 0)
             zs = range(-100, 0, length=33)
 
-            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs), loc in (Center(), Face())
-                @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
+            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs)
                 grid = LatitudeLongitudeGrid(arch; size = (20, 20, 32), longitude, latitude, z, halo = (5, 5, 5))
 
-                # Test random positions,
-                # set seed for reproducibility
-                Random.seed!(1234)
-                Xs = [(2rand()-1, 2rand()-1, -100rand()) for p in 1:20]
+                for loc in (Center(), Face())
+                    @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
 
-                for X in Xs
-                    (x, y, z)  = X
-                    fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
+                    # Test random positions,
+                    # set seed for reproducibility
+                    Random.seed!(1234)
+                    Xs = [(2rand()-1, 2rand()-1, -100rand()) for p in 1:20]
 
-                    i⁻, i⁺, _ = interpolator(fi.i)
-                    j⁻, j⁺, _ = interpolator(fi.j)
-                    k⁻, k⁺, _ = interpolator(fi.k)
+                    for X in Xs
+                        (x, y, z)  = X
+                        fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
 
-                    x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
-                    y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
-                    z⁻ = @allowscalar rnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+                        i⁻, i⁺, _ = interpolator(fi.i)
+                        j⁻, j⁺, _ = interpolator(fi.j)
+                        k⁻, k⁺, _ = interpolator(fi.k)
 
-                    x⁺ = @allowscalar ξnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
-                    y⁺ = @allowscalar ηnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
-                    z⁺ = @allowscalar rnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+                        x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+                        y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+                        z⁻ = @allowscalar rnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
 
-                    @test x⁻ ≤ x ≤ x⁺
-                    @test y⁻ ≤ y ≤ y⁺
-                    @test z⁻ ≤ z ≤ z⁺
+                        x⁺ = @allowscalar ξnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+                        y⁺ = @allowscalar ηnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+                        z⁺ = @allowscalar rnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+
+                        @test x⁻ ≤ x ≤ x⁺
+                        @test y⁻ ≤ y ≤ y⁺
+                        @test z⁻ ≤ z ≤ z⁺
+                    end
                 end
             end
         end
     end
 
     @testset "Field interpolation" begin
+        for arch in archs
+            run_longitude_interpolation_tests(arch)
+        end
+
         for arch in archs, FT in float_types
             @info "  Testing field interpolation [$(typeof(arch)), $FT]..."
             reg_grid = RectilinearGrid(arch, FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), halo=(1, 1, 1))
@@ -1076,15 +1085,13 @@ end
         grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
 
         for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
-            for arch in archs
-                f = Field{X, Y, Z}(grid)
-                run_similar_field_tests(f)
+            f = Field{X, Y, Z}(grid)
+            run_similar_field_tests(f)
 
-                for dims in (3, (1, 2), (1, 2, 3))
-                    loc = reduced_location((X(), Y(), Z()); dims)
-                    f = Field(loc, grid)
-                    run_similar_field_tests(f)
-                end
+            for dims in (3, (1, 2), (1, 2, 3))
+                loc = reduced_location((X(), Y(), Z()); dims)
+                f = Field(loc, grid)
+                run_similar_field_tests(f)
             end
         end
     end

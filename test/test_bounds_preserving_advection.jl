@@ -107,10 +107,10 @@ end
     end
 
     @testset "Model integration" begin
-        for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true)
-            underlying_grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
-                                              topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
+        underlying_grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
+                                          topology=(Periodic, Periodic, Bounded), halo=(6, 6, 6))
 
+        for model_type in (:nonhydrostatic, :hydrostatic), immersed in (false, true)
             grid = immersed ?
                 ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x < 0.5 ? -0.5 : -1)) :
                 underlying_grid

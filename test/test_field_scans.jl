@@ -421,7 +421,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             @test bottom_half_average_array[1, 1, 1] == bottom_half_average_manual
 
             # See: https://github.com/CliMA/Oceananigans.jl/issues/3948
-            underlying_grid = RectilinearGrid(
+            underlying_grid = RectilinearGrid(arch,
                 topology=(Periodic, Periodic, Periodic),
                 size=(3, 3, 3),
                 x=(0, 1), y=(0, 1), z=(0, 1)
