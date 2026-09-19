@@ -287,7 +287,7 @@ function compute_stretched_interfaces(; extent,
         # loop below `extent` forever. Note that `PowerLawStretching(power)` with `power > 1`
         # shrinks any spacing smaller than one; use `LinearStretching` for such coordinates.
         if next_face == faces[end]
-            throw(ArgumentError("cannot reach the requested extent $extent: the interface spacing " *
+            throw(ArgumentError("Cannot reach the requested extent $extent: the interface spacing " *
                                 "collapsed to zero at $(faces[end]) after shrinking from " *
                                 "$constant_spacing to $Δ_previous. Either `stretching` does not " *
                                 "increase spacings of this size — note that PowerLawStretching(power) " *
