@@ -156,6 +156,7 @@ function DC.sync_event(event::CUDA.CuEvent)
   event_complete = CUDA.isdone(event)
   while !event_complete
     event_complete = CUDA.isdone(event)
+    yield()
   end
   return nothing
 end

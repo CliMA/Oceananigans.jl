@@ -1,5 +1,5 @@
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 using Random
 Random.seed!(1234)

@@ -27,7 +27,7 @@ opposite_side = Dict(
     :northeast => :southwest,
 )
 
-ID_DIGITS   = 2
+const ID_DIGITS   = 2
 
 # A Hashing function which returns a unique
 # integer between 0 and 26 for a combination of
@@ -173,8 +173,7 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
   fill_event = record_event(arch)
   add_fill_event!(buffers)
 
-  Threads.@spawn begin
-    # Need to lock the channel to show we are waiting on send buffers
+  errormonitor(Threads.@spawn begin
     sync_event(fill_event)
 
     reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
@@ -192,7 +191,7 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
     add_comm_requests!(buffers, reqs)
     complete_fill_event!(buffers)
 
-  end
+  end)
 
 end
 
@@ -226,7 +225,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     add_fill_event!(buffers)
 
     if async && (arch isa AsynchronousDistributed)
-      Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
+      errormonitor(Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...))
     else
       perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
       # Need to synchronize communications

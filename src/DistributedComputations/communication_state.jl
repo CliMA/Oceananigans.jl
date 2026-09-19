@@ -15,10 +15,10 @@ end
 
 # CommState only lives on host, so never needs to be converted
 Adapt.adapt_structure(to, cs::CommState) = nothing
-on_architecture(arch, cs::CommState) = nothing
+on_architecture(arch, cs::CommState) = cs
 
 communication_state(arch) = nothing
-communication_state(arch::Distributed) = CommState(Channel(Inf), Threads.Atomic{UInt64}(0), get_new_tag(arch))
+communication_state(arch::Distributed) = CommState(Channel(Inf), Threads.Atomic{UInt64}(0), mod(get_new_tag(arch), 10^ID_DIGITS))
 
 add_fill_event!(f) = nothing
 add_fill_event!(f::Field) = add_fill_event!(f.communication_buffers.state)
@@ -50,6 +50,7 @@ function wait_for_comms!(cs::CommState)
   fill_finished = false
   while !fill_finished
     fill_finished = (cs.fill_events[] == 0)
+    yield()
   end
   # Wait for MPI comms to complete
   cooperative_waitall!(cs.comm_requests)
