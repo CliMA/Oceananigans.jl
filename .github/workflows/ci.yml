@@ -21,8 +21,8 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  mpi_tripolar:
-    name: Distributed MPI Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  mpi:
+    name: Distributed MPI - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -33,20 +33,28 @@ jobs:
         os:
           - ubuntu-latest
         arch:
-          - x64
+          - 'default'
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          show-versioninfo: true
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
+      - name: Instantiate environment
+        timeout-minutes: 45
+        shell: bash
+        run: |
+          julia --project=test --color=yes --check-bounds=yes -e '
+            using Pkg
+            Pkg.instantiate()
+          '
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: --verbose
         env:
-          TEST_GROUP: "distributed/tripolar"
+          TEST_GROUP: "distributed/tripolar,distributed/output_combining"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           # default is src,ext — include others if you need them
@@ -58,47 +66,10 @@ jobs:
           flags: distributed_tripolar   # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
-  distributed_output:
-    name: Distributed Output Combining - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          test_args: --verbose
-        env:
-          TEST_GROUP: "distributed/output_combining"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          # default is src,ext — include others if you need them
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: distributed_output   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
-
   reactant_makie:
     name: Reactant and Makie - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -107,13 +78,14 @@ jobs:
         os:
           - ubuntu-latest
         arch:
-          - x64
+          - 'default'
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          show-versioninfo: true
       - uses: julia-actions/cache@v3
       - name: Set IFRT runtime for Reactant
         run: |
@@ -134,6 +106,7 @@ jobs:
           mkdir -vp "${TMPDIR}"
           echo "TMPDIR=${TMPDIR}" | tee -a "${GITHUB_ENV}"
       - name: Instantiate environment
+        timeout-minutes: 45
         shell: bash
         run: |
           julia --project=test --color=yes --check-bounds=auto -e '
@@ -143,7 +116,7 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          earlyoom -m 3 -s 100 -r 60 --prefer 'julia' &
+          earlyoom -m 2 -s 100 -r 60 --prefer 'julia' &
           julia --project --color=yes --check-bounds=auto -e '
             using Pkg
             Pkg.test(; coverage=true,
@@ -154,6 +127,7 @@ jobs:
         env:
           TEST_GROUP: "makie,reactant,sharding"
           JULIA_DEBUG: "Reactant, Reactant_jll"
+          JULIA_TEST_MAXRSS_MB: 3200
           REACTANT_TEST: true
           XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
 
@@ -199,15 +173,23 @@ jobs:
         os:
           - macos-latest
         arch:
-          - arm64
+          - 'default'
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          show-versioninfo: true
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
+      - name: Instantiate environment
+        timeout-minutes: 45
+        shell: bash
+        run: |
+          julia --project=test --color=yes --check-bounds=yes -e '
+            using Pkg
+            Pkg.instantiate()
+          '
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: --verbose
