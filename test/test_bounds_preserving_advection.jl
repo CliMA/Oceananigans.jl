@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -102,6 +102,14 @@ end
         default_cᵐⁱⁿ, default_cᵐᵃˣ = advect_forward_euler!(grid, scheme, c, U, N, 100, courant_number)
 
         @test default_cᵐⁱⁿ < -1e-12 || default_cᵐᵃˣ > 1 + 1e-12
+    end
+
+    @testset "Limiter is finite when the undershoot equals the regularizer" begin
+        grid = RectilinearGrid(CPU(), Float32, size=16, x=(0, 1), topology=(Periodic, Flat, Flat))
+        scheme = materialize_advection(WENO(Float32; order=5, bounds=(0, 1)), grid)
+        c = CenterField(grid)
+        c[9, 1, 1] = 4.615384f-20 # cell 8 rests on the lower bound and undershoots by ε₂ = 1e-20
+        @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c))
     end
 
     @testset "Model integration" begin
