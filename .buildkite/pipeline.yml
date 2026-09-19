@@ -140,11 +140,6 @@ steps:
           - "CPU"
           - "GPU"
 
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
   - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
     key: "tests_enzyme_reactant"
     depends_on: "init_enzyme"
@@ -196,11 +191,6 @@ steps:
         architecture:
           - "CPU"
           - "GPU"
-
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
 
   #####
   ##### Blocking wait on tests and documentation
