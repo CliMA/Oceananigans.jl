@@ -36,7 +36,6 @@ CUDA.allowscalar() do
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            # Architecture-independent tests need only run once, in the CPU job
             if child_arch isa CPU
                 include("test_quality_assurance.jl")
                 include("test_operators.jl")

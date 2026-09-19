@@ -2,8 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using ConservativeRegridding
 
-# ConservativeRegridding computes the cell intersections on the CPU, so these tests are
-# architecture-independent and the pipeline runs this group in the CPU job only
 @testset "ConservativeRegridding extension" begin
     @info "Testing ConservativeRegridding extension..."
 
