@@ -75,7 +75,7 @@ steps:
     agents:
       queue: "Oceananigans-nautilus"
     env:
-      JULIA_CPU_THREADS: "2"
+      JULIA_CPU_THREADS: "6"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -156,7 +156,7 @@ steps:
     agents:
       queue: "Oceananigans-nautilus"
     env:
-      JULIA_CPU_THREADS: "2"
+      JULIA_CPU_THREADS: "4"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
