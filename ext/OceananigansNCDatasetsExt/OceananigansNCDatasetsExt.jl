@@ -12,7 +12,8 @@ Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigan
 module OceananigansNCDatasetsExt
 
 import NCDatasets
-using NCDatasets: AbstractDataset, NCDataset, defDim, defGroup, dimnames, name, sync
+using NCDatasets: NCDataset, defDim, defGroup, dimnames, name, sync
+using NCDatasets.CommonDataModel: AbstractDataset
 
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
@@ -40,6 +41,7 @@ using Oceananigans.ImmersedBoundaries:
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
+    auto_extension,
     InMemoryFTS,
     time_indices,
     InMemory,
@@ -49,7 +51,6 @@ using Oceananigans.OutputReaders:
     UnspecifiedBoundaryConditions,
     NetCDFPath
 using Oceananigans.OutputWriters:
-    auto_extension,
     output_averaging_schedule,
     show_averaging_schedule,
     WindowedTimeAverage,
