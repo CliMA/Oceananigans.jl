@@ -14,11 +14,7 @@ function type_contains_field_time_series(T, seen)
                           type_contains_field_time_series(T.b, seen)
     T <: FieldTimeSeries && return true
     T <: GPUAdaptedFieldTimeSeries && return true
-    # `T <: Type` covers a field that holds a type object. Those are ruled out here as well as
-    # in `extract_field_time_series`: without it this predicate answers `true` for anything
-    # holding a type, because `DataType` has an `instance::Any` field and so is not concrete,
-    # and the recursion this exists to avoid is inferred anyway.
-    (T <: Number || T <: AbstractGrid || T <: Type) && return false
+    (T <: Number || T <: AbstractGrid) && return false
     (T <: AbstractArray && !(T <: AbstractField)) && return false
     isconcretetype(T) || return true # abstract / unresolved: assume an FTS may hide inside
     return any(ft -> type_contains_field_time_series(ft, seen), fieldtypes(T))
@@ -48,12 +44,6 @@ end
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
-# `Type` is here because the generic fallback recurses through `getfield`, and a type object's
-# own fields are cyclic: `DataType.super` chains and `Core.TypeName.wrapper` points back at the
-# type. Reaching one is not exotic — a forcing or boundary-condition closure that captures its
-# float type, `let FT = Float32; (x, y, z, t) -> FT(1)/FT(2) end`, stores `Float32` as a closure
-# field. Descending into it overflows the stack. A type describes the layout of data; it never
-# holds any.
 CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing, :Type)
 
 for T in CannotPossiblyContainFTS
