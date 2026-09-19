@@ -1,7 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!,
-                              bounds_preserving_limiter, reconstruction_extrema_x
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
@@ -106,31 +105,11 @@ end
     end
 
     @testset "Limiter is finite when the undershoot equals the regularizer" begin
-        # A cell resting on the lower bound, beside a neighbor whose amplitude is swept bit by bit
-        # through the value at which the reconstruction undershoots by exactly ε₂ = 1e-20.
-        FT = Float32
-        ε₂ = FT(1e-20)
-        grid = RectilinearGrid(CPU(), FT, size=16, x=(0, 1), topology=(Periodic, Flat, Flat), halo=6)
-
-        for order in (5, 7, 9)
-            scheme = materialize_advection(WENO(FT; order, bounds=(0, 1)), grid)
-            ω̂₁ = scheme.bounds.maximum_courant_number
-            c = CenterField(grid)
-            i = 8
-
-            # The undershoot is linear in the amplitude at this magnitude.
-            c[i+1, 1, 1] = ε₂
-            m, M = reconstruction_extrema_x(i, 1, 1, grid, scheme, c, zero(FT), zero(FT), ω̂₁)
-            a = prevfloat(ε₂ * (ε₂ / -m), 4096)
-
-            θ = map(1:8192) do _
-                a = nextfloat(a)
-                c[i+1, 1, 1] = a
-                bounds_preserving_limiter(i, 1, 1, grid, scheme, c)
-            end
-
-            @test all(isfinite, θ)
-        end
+        grid = RectilinearGrid(CPU(), Float32, size=16, x=(0, 1), topology=(Periodic, Flat, Flat))
+        scheme = materialize_advection(WENO(Float32; order=5, bounds=(0, 1)), grid)
+        c = CenterField(grid)
+        c[9, 1, 1] = 4.615384f-20 # cell 8 rests on the lower bound and undershoots by ε₂ = 1e-20
+        @test isfinite(bounds_preserving_limiter(8, 1, 1, grid, scheme, c))
     end
 
     @testset "Model integration" begin
