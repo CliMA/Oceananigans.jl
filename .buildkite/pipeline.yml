@@ -14,6 +14,8 @@ with:
 
 steps:
   - label: "🏕️ initialize general environment"
+    concurrency_group: gate
+    concurrency: 6
     key: "init"
     agents:
       queue: "Oceananigans-nautilus"
@@ -40,6 +42,8 @@ steps:
           limit: 1
 
   - label: "🏕️ initialize enzyme environment"
+    concurrency_group: gate
+    concurrency: 6
     key: "init_enzyme"
     depends_on: "init"
     agents:
@@ -64,6 +68,8 @@ steps:
           limit: 1
 
   - label: "🦉 documentation"
+    concurrency_group: gate
+    concurrency: 6
     depends_on: "init"
     agents:
       queue: "Oceananigans-nautilus"
@@ -89,6 +95,8 @@ steps:
       - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "{{ matrix.architecture }} - all tests"
+    concurrency_group: gate
+    concurrency: 6
     key: "tests"
     depends_on: "init"
     agents:
@@ -141,6 +149,8 @@ steps:
           - "GPU"
 
   - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
+    concurrency_group: gate
+    concurrency: 6
     key: "tests_enzyme_reactant"
     depends_on: "init_enzyme"
     agents:
