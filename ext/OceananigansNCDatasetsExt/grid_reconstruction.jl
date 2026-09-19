@@ -7,7 +7,7 @@
 ##### Grid reconstruction
 #####
 
-netcdf_string(obj) = string(typeof(obj).name.name)
+netcdf_string(obj) = string(nameof(typeof(obj)))
 # OSSG variants are type aliases of OrthogonalSphericalShellGrid; record the alias name
 # so reconstruction dispatches on the right constructor (which accepts a different
 # kwarg set than the base OSSG constructor).
