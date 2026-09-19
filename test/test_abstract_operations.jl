@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: ConditionalOperation, BinaryOperation, Δz
+using Oceananigans.AbstractOperations: ConditionalOperation, BinaryOperation, MultiaryOperation, Δz
 using Oceananigans.Grids: node
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -84,6 +84,15 @@ function times_x_derivative(a, b, location, i, j, k, answer)
     return @allowscalar b∇a[i, j, k] == answer
 end
 
+# Operators with a location tuple must not capture calls without Oceananigans operands
+# (https://github.com/CliMA/Oceananigans.jl/issues/5601).
+@testset "No dispatch on Base Tuple operators" begin
+    @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
+    @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
+    @test Base.:+((Center(), Center(), Center()), 1, 2) == 3
+    @test Base.:*((Center(), Center(), Center()), 2, 2, 3) == 12
+end
+
 for arch in archs
     A = typeof(arch)
     @testset "Abstract operations [$A]" begin
@@ -104,6 +113,35 @@ for arch in archs
                     @test @allowscalar typeof(d(ψ)[2, 2, 2]) <: Number
                 end
             end
+        end
+
+        @testset "Numerical sub-expressions in @at [$A]" begin
+            g = 2.0
+            ρ₀ = 4.0
+            set!(c, 1)
+
+            # Binary operations between numbers
+            op = @at (Center, Center, Center) (g / ρ₀) * c
+            @test op isa BinaryOperation
+            @test @allowscalar op[2, 2, 2] == 0.5
+
+            op = @at (Center, Center, Center) g / ρ₀ * c
+            @test op isa BinaryOperation
+            @test @allowscalar op[2, 2, 2] == 0.5
+
+            # Multiary operations with a leading number
+            op = @at (Center, Center, Center) 2 * 3 * c
+            @test op isa MultiaryOperation
+            @test @allowscalar op[2, 2, 2] == 6
+
+            op = @at (Center, Center, Center) 1 + 2 + c
+            @test op isa MultiaryOperation
+            @test @allowscalar op[2, 2, 2] == 4
+
+            # Multiary operations between numbers
+            op = @at (Center, Center, Center) (1 + 2 + 3) * c
+            @test op isa BinaryOperation
+            @test @allowscalar op[2, 2, 2] == 6
         end
 
         @testset "Binary operations [$A]" begin
