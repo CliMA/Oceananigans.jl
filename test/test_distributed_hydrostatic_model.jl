@@ -24,6 +24,7 @@ MPI.Initialized() || MPI.Init()
 
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized, synchronize_communication!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition, ShavedCellBottom
 
 function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -119,6 +120,17 @@ for arch in archs
                 rebuilt_active_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), GridFittedBottom(bottom); active_cells_map = true)
                 @test extended_active_grid.interior_active_cells == rebuilt_active_grid.interior_active_cells
                 @test extended_active_grid.active_z_columns == rebuilt_active_grid.active_z_columns
+
+                sloping_bottom(λ, φ) = -0.6 - 0.3 * sin(2π * λ / 360) * cos(2π * φ / 160)
+
+                for immersed_boundary in (GridFittedBottom(sloping_bottom, InterfaceImmersedCondition()),
+                                          PartialCellBottom(sloping_bottom, minimum_fractional_cell_height=0.5),
+                                          ShavedCellBottom(sloping_bottom, minimum_fractional_cell_height=0.5))
+
+                    extended_grid = with_halo(new_halo, ImmersedBoundaryGrid(underlying_grid, immersed_boundary))
+                    rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), immersed_boundary)
+                    @test extended_grid.immersed_boundary == rebuilt_grid.immersed_boundary
+                end
 
                 global_underlying_grid = reconstruct_global_grid(underlying_grid)
                 global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))

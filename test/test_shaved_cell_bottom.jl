@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: znodes, peripheral_node,
+using Oceananigans.Grids: znodes, peripheral_node, with_halo,
                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶠᶜᶜ, Δrᶜᶠᶜ, Δrᶠᶠᶜ
 using Oceananigans.ImmersedBoundaries: immersed_cell
@@ -25,6 +25,28 @@ function test_shaved_cell_reduces_to_partial_cells(FT, arch)
             @test Δrᶜᶜᶜ(i, j, k, shaved) ≈ Δrᶜᶜᶜ(i, j, k, partial)
             @test Δrᶠᶜᶜ(i, j, k, shaved) ≈ Δrᶠᶜᶜ(i, j, k, partial)
             @test Δrᶜᶠᶜ(i, j, k, shaved) ≈ Δrᶜᶠᶜ(i, j, k, partial)
+        end
+    end
+
+    return nothing
+end
+
+function test_shaved_cell_land_stays_out_of_the_sea(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(6, 6, 8), extent=(1, 1, 1))
+    Nx, Ny, Nz = size(underlying_grid)
+
+    island_bottom_height(land_height, sea_height) = [2 ≤ i ≤ 4 && 3 ≤ j ≤ 4 ? land_height : sea_height for i in 1:Nx, j in 1:Ny]
+
+    # An island on a flat sea floor stays dry, and the height given to the land does not reach the sea.
+    for sea_height in (-1/2, -1/2 - 1/2Nz)
+        partial = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(island_bottom_height(100, sea_height)))
+        shaved = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(island_bottom_height(100, sea_height)))
+        flush_shaved = ImmersedBoundaryGrid(underlying_grid, ShavedCellBottom(island_bottom_height(0, sea_height)))
+
+        @test shaved.immersed_boundary == flush_shaved.immersed_boundary
+
+        @allowscalar for i in 1:Nx, j in 1:Ny, k in 1:Nz
+            @test immersed_cell(i, j, k, shaved) == immersed_cell(i, j, k, partial)
         end
     end
 
@@ -122,6 +144,24 @@ function test_shaved_cell_flat_topologies(FT, arch)
     return nothing
 end
 
+function test_shaved_cell_with_halo(FT, arch)
+    underlying_grid = LatitudeLongitudeGrid(arch, FT, size=(32, 24, 6), halo=(3, 3, 3), longitude=(0, 360), latitude=(-60, 60), z=(-1000, 0))
+    bottom(λ, φ) = -600 - 300 * sin(2π * λ / 360) * cos(2π * φ / 120)
+    shaved_cell_bottom = ShavedCellBottom(bottom, minimum_fractional_cell_height=0.5)
+
+    grid = ImmersedBoundaryGrid(underlying_grid, shaved_cell_bottom)
+
+    for new_halo in ((3, 18, 3), (5, 5, 3))
+        extended_grid = with_halo(new_halo, grid)
+        rebuilt_grid = ImmersedBoundaryGrid(with_halo(new_halo, underlying_grid), shaved_cell_bottom)
+        @test extended_grid.immersed_boundary == rebuilt_grid.immersed_boundary
+        @test extended_grid.immersed_boundary == grid.immersed_boundary
+        @test with_halo((3, 3, 3), extended_grid).immersed_boundary == grid.immersed_boundary
+    end
+
+    return nothing
+end
+
 function test_shaved_cell_time_stepping(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, topology=(Bounded, Flat, Bounded),
                                       size=(32, 16), halo=(5, 5), x=(0, 1000), z=(-100, 0))
@@ -156,10 +196,12 @@ end
     for arch in archs, FT in float_types
         @info "  Testing ShavedCellBottom [$FT, $(typeof(arch))]..."
         test_shaved_cell_reduces_to_partial_cells(FT, arch)
+        test_shaved_cell_land_stays_out_of_the_sea(FT, arch)
         test_shaved_cell_geometry(FT, arch)
         test_shaved_cells_are_bounded_by_their_faces(FT, arch)
         test_shaved_cell_column_depth_consistency(FT, arch)
         test_shaved_cell_flat_topologies(FT, arch)
+        test_shaved_cell_with_halo(FT, arch)
         test_shaved_cell_time_stepping(FT, arch)
     end
 end
