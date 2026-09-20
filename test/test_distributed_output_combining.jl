@@ -18,9 +18,12 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 #####
 
 function run_mpi_script(script, filename, nranks=4)
-    write(filename, script)
-    run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $filename`)
-    rm(filename)
+    mktempdir() do dir
+        path = joinpath(dir, filename)
+        write(path, script)
+        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $path`)
+    end
+    return nothing
 end
 
 function cleanup_rank_files(prefix, nranks=4)

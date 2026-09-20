@@ -59,8 +59,8 @@ Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output`
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols
 or strings that name output data. The values of `outputs` are `AbstractField`s,
-`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, or functions that take a
-`model` and return data.
+`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, `TimeDerivative`s, or functions
+that take a `model` and return data.
 
 Each output is stored as a chunked Zarr array of shape `(field_dims..., time)`, growing
 along the time axis. A top-level `time` array tracks simulation time at each step. Grid
