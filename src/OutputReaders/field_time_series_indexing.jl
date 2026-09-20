@@ -11,6 +11,7 @@ using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, Fixe
 using Oceananigans.Grids: _node
 using Oceananigans.Units: Time
 using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
+using Oceananigans.TimeSteppers: Clock
 
 @inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
 
@@ -263,8 +264,8 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
         return fts[n₁]
     end
 
-    # Otherwise, make a Field representing a linear interpolation in time
-    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
+    # Otherwise, make a Field representing a linear interpolation in time.
+    # Ensure both n₁ and n₂ are in memory simultaneously,
     update_field_time_series!(fts, n₁, n₂)
 
     t₂ = @allowscalar fts.times[n₂]
@@ -272,9 +273,8 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     t = interp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
-    ψ₂ = fts[n₂]
-    ψ₁ = fts[n₁]
-    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ); status)
+    # then interpolate pointwise, via `fts[i, j, k, Time(t)]` inside the compute kernel.
+    ψ̃ = Field(TimeSeriesInterpolation(fts, fts.grid; clock=Clock(time=time_index.time)); status)
 
     # Compute the field and return it
     return compute!(ψ̃)
