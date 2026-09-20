@@ -3,8 +3,6 @@ using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments, XFla
 using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Grids: peripheral_node
-import Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶜ
-using Oceananigans.Operators: Azᶠᶜᶜ, Azᶜᶠᶜ, Azᶜᶜᶜ
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
                                Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
 
@@ -474,11 +472,3 @@ end
 
 @inline peripheral_node(i, j, k, ibg::SCBIBG, ::Center, ::Face, ::Center) =
     inactive_cell(i, j, k, ibg) | inactive_cell(i, j-1, k, ibg) | closed_face_y(i, j, k, ibg)
-
-
-# A cell left open only by one of its faces has almost no volume: the floor keeps it out of denominators.
-@inline function Vᶜᶜᶜ(i, j, k, ibg::SCBIBG)
-    Δr = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    ϵ = ibg.immersed_boundary.minimum_fractional_cell_height
-    return Azᶜᶜᶜ(i, j, k, ibg) * max(Δzᶜᶜᶜ(i, j, k, ibg), ϵ * Δr)
-end
