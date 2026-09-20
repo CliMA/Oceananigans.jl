@@ -26,6 +26,24 @@ of active (non-masked) nodes to compensate for missing neighbors.
 struct ActiveWeightedEnergyConserving end
 
 """
+    ConsistentAreaEnstrophyConserving
+
+Enstrophy-conserving Coriolis scheme that divides the area-weighted interpolation of the transport by the
+interpolation of the wet face areas, `ℑxy(A q) / ℑxy(A)`, so that a uniform velocity is reconstructed exactly
+next to immersed boundaries and where face areas vary horizontally.
+"""
+struct ConsistentAreaEnstrophyConserving end
+
+"""
+    ConsistentAreaEnergyConserving
+
+Energy-conserving Coriolis scheme that divides the area-weighted interpolation of the transport by the
+interpolation of the wet face areas, `ℑxy(A q) / ℑxy(A)`, so that a uniform velocity is reconstructed exactly
+next to immersed boundaries and where face areas vary horizontally.
+"""
+struct ConsistentAreaEnergyConserving end
+
+"""
     TriadScheme
 
 Energy- and enstrophy-conserving Coriolis scheme based on the triad formulation
@@ -40,6 +58,8 @@ Base.summary(::EnergyConserving) = "EnergyConserving"
 Base.summary(::ActiveWeightedEnstrophyConserving) = "ActiveWeightedEnstrophyConserving"
 Base.summary(::ActiveWeightedEnergyConserving) = "ActiveWeightedEnergyConserving"
 Base.summary(::TriadScheme) = "TriadScheme"
+Base.summary(::ConsistentAreaEnstrophyConserving) = "ConsistentAreaEnstrophyConserving"
+Base.summary(::ConsistentAreaEnergyConserving) = "ConsistentAreaEnergyConserving"
 
 # Helpers for counting active velocity nodes in the 4-point stencil
 @inline not_peripheral_nodeᶜᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Center(), Face(), Center())
@@ -117,6 +137,42 @@ end
         result = ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
         return ifelse(active_nodes == 0, zero(grid), result / active_nodes)
     end
+end
+
+#####
+##### Consistent-area enstrophy-conserving scheme
+#####
+
+const CAESC = AbstractRotation{<:ConsistentAreaEnstrophyConserving}
+
+@inline function x_f_cross_U(i, j, k, grid, coriolis::CAESC, U)
+    A = ℑxyᶠᶜᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, OneField())
+    V = ℑxyᶠᶜᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, U[2])
+    return ifelse(A == 0, zero(grid), - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * V / A)
+end
+
+@inline function y_f_cross_U(i, j, k, grid, coriolis::CAESC, U)
+    A = ℑxyᶜᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, OneField())
+    Ũ = ℑxyᶜᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, U[1])
+    return ifelse(A == 0, zero(grid), ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * Ũ / A)
+end
+
+#####
+##### Consistent-area energy-conserving scheme
+#####
+
+const CAENC = AbstractRotation{<:ConsistentAreaEnergyConserving}
+
+@inline function x_f_cross_U(i, j, k, grid, coriolis::CAENC, U)
+    A = ℑxyᶠᶜᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, OneField())
+    V = ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2])
+    return ifelse(A == 0, zero(grid), - V / A)
+end
+
+@inline function y_f_cross_U(i, j, k, grid, coriolis::CAENC, U)
+    A = ℑxyᶜᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, OneField())
+    Ũ = ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1])
+    return ifelse(A == 0, zero(grid), Ũ / A)
 end
 
 #####
