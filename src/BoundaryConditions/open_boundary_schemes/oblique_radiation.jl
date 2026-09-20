@@ -3,7 +3,10 @@
 #####
 
 """
-    ObliqueRadiation(; inflow_timescale = 0, outflow_timescale = Inf, use_boundary_velocity = false)
+    ObliqueRadiation(; inflow_timescale = 0,
+                       outflow_timescale = Inf,
+                       use_boundary_velocity = false,
+                       target_transport = nothing)
 
 Raymond & Kuo (1984) two-dimensional radiation condition with adaptive nudging
 (Marchesiello et al. 2001):
@@ -22,7 +25,8 @@ lateral boundaries only.
 Inflow versus outflow is decided from the boundary-normal velocity: on inflow `cₙ = cₜ = 0` and
 `τ = inflow_timescale`; on outflow `τ = outflow_timescale`. For `Value` boundary conditions,
 `use_boundary_velocity = true` takes that velocity at the boundary face rather than one cell into
-the interior.
+the interior. `target_transport` pins the net transport through a `NormalFlowBoundaryCondition`, as for
+[`NormalRadiation`](@ref).
 
 References
 ==========
@@ -41,10 +45,11 @@ ObliqueRadiation()
 ObliqueRadiation{Float64}
 ├── inflow_timescale: 0.0
 ├── outflow_timescale: Inf
-└── use_boundary_velocity: false
+├── use_boundary_velocity: false
+└── target_transport: Nothing
 ```
 """
-struct ObliqueRadiation{FT, S, B} <: AbstractRadiationScheme{FT}
+struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
@@ -53,17 +58,20 @@ struct ObliqueRadiation{FT, S, B} <: AbstractRadiationScheme{FT}
     φ₁ˡ :: S
     previous_boundary :: B # boundary values written during the previous iteration, double-buffered by iteration parity
     previous_interior :: B # first-interior values, likewise
+    target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
 function ObliqueRadiation(FT = defaults.FloatType;
                           inflow_timescale = 0,
                           outflow_timescale = Inf,
-                          use_boundary_velocity = false)
+                          use_boundary_velocity = false,
+                          target_transport = nothing)
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
+    target_transport = convert_target_transport(FT, target_transport)
     return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity,
-                            nothing, nothing, nothing, nothing, nothing)
+                            nothing, nothing, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
@@ -74,7 +82,11 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      adapt(to, r.φ₁),
                      adapt(to, r.φ₁ˡ),
                      adapt(to, r.previous_boundary),
-                     adapt(to, r.previous_interior))
+                     adapt(to, r.previous_interior),
+                     adapt(to, r.target_transport))
+
+has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
+has_target_transport(::ObliqueRadiation) = true
 
 radiation_buffers(::ObliqueRadiation, arch, FT, tangential_size) =
     (on_architecture(arch, zeros(FT, tangential_size..., 2)),
