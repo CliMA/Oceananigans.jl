@@ -117,8 +117,7 @@ const RBC   = Union{RVBC, RNFBC}
 ##### Radiation storage allocation during BC regularization
 #####
 
-# Allocate the 2D storage array holding the previous-timestep interior value φ₁ⁿ
-# needed by the Orlanski phase-speed diagnosis.
+# `radiation_buffers` allocates the storage arrays a scheme needs; `radiation_storage` rebuilds the scheme from them.
 function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
@@ -128,19 +127,20 @@ function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid,
                       dim == 2 ? (Sx, Sz) :
                                  (Sx, Sy)
 
-    φᵇ  = on_architecture(arch, zeros(FT, tangential_size...))
-    φ₁  = on_architecture(arch, zeros(FT, tangential_size...))
-    φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
     buffers = radiation_buffers(radiation, arch, FT, tangential_size)
-
-    # every radiation scheme ends with its scheme-specific buffers followed by `target_transport`
-    return getnamewrapper(radiation)(radiation.outflow_timescale,
-                                     radiation.inflow_timescale,
-                                     radiation.use_boundary_velocity,
-                                     φᵇ, φ₁, φ₁ˡ, buffers..., radiation.target_transport)
+    return radiation_storage(radiation, buffers)
 end
 
-radiation_buffers(radiation, arch, FT, tangential_size) = ()
+radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_size) =
+    ntuple(_ -> zeros(arch, FT, tangential_size...), 3) # φᵇ, φ₁, φ₁ˡ
+
+radiation_storage(radiation::AbstractRadiationScheme, (φᵇ, φ₁, φ₁ˡ)) =
+    getnamewrapper(radiation)(radiation.outflow_timescale, radiation.inflow_timescale,
+                              radiation.use_boundary_velocity, φᵇ, φ₁, φ₁ˡ)
+
+radiation_storage(radiation::NormalRadiation, (φᵇ, φ₁, φ₁ˡ)) =
+    NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
+                    φᵇ, φ₁, φ₁ˡ, radiation.target_transport)
 
 rebuild_classification(::Value, scheme) = Value(scheme)
 rebuild_classification(::NormalFlow, scheme) = NormalFlow(scheme)
