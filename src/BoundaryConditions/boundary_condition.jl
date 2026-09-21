@@ -83,7 +83,6 @@ const BC   = BoundaryCondition
 const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
 const NFBC = BoundaryCondition{<:NormalFlow}
-
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const MBC  = BoundaryCondition{<:Mixed}
