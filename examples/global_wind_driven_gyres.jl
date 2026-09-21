@@ -31,34 +31,35 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: φnode
+using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
 using NCDatasets
 using Downloads
 using Printf
 using CairoMakie
 
 # We run on whichever GPU is available: Metal on Apple silicon, CUDA otherwise, falling
-# back to the CPU. Apple GPUs only support single precision, so Metal runs use `Float32`.
+# back to the CPU. Everything runs in single precision, which Apple GPUs require and
+# which roughly halves the run time on other GPUs.
 
 if Sys.isapple()
     using Metal
     arch = GPU(Metal.MetalBackend())
-    FT = Float32
 else
     using CUDA
     arch = CUDA.functional() ? GPU() : CPU()
-    FT = Float64
 end
 
+FT = Float32
 Oceananigans.defaults.FloatType = FT
 
 # ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: the four 1° runs below take about 20 minutes on a laptop GPU, ½° takes
-# about eight times longer, and 2° is quick enough for a CPU. The four layers thicken with depth, from 100 m at the
-# surface to 2.5 km at the bottom. We build the vertical coordinate with a
-# `MutableVerticalDiscretization` so that the layers can stretch with the free surface,
-# which is what the ``z^\star`` coordinate does.
+# parameter: the four 1° runs below take about ten minutes on a laptop GPU, ½° takes
+# about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
+# with depth, from 100 m at the surface to 2.5 km at the bottom. We build the vertical
+# coordinate with a `MutableVerticalDiscretization` so that the layers can stretch with
+# the free surface, which is what the ``z^\star`` coordinate does.
 
 resolution = 1 # degrees
 Nx = round(Int, 360 / resolution)
@@ -71,38 +72,44 @@ underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 
 # ## Bathymetry from ETOPO1
 #
-# NOAA's ERDDAP server can subsample the 1-arc-minute ETOPO1 relief on the fly,
-# so we download only every `stride`-th point: a map of the world at our resolution
-# of a few megabytes.
+# NOAA's ERDDAP server can subsample the 1-arc-minute ETOPO1 relief on the fly, so we
+# download every `stride`-th point, three per grid cell, a file of a couple of megabytes.
+# Averaging the samples in 3 × 3 blocks then gives the mean elevation of each grid cell
+# rather than the elevation at a single point.
 
-stride = round(Int, 60resolution)
+stride = round(Int, 20resolution) # arc-minutes between samples
 etopo_url = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/etopo180.nc?altitude" *
-            "[($(-90 + resolution/2)):$stride:($(90 - resolution/2))]" *
-            "[($(-180 + resolution/2)):$stride:($(180 - resolution/2))]"
+            "[($(-90 + stride/120)):$stride:($(90 - stride/120))]" *
+            "[($(-180 + stride/120)):$stride:($(180 - stride/120))]"
 
-etopo_filename = "etopo1_$(resolution)_degree.nc"
+etopo_filename = "etopo1_$(stride)_arcmin.nc"
 isfile(etopo_filename) || Downloads.download(etopo_url, etopo_filename)
 
-elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_filename) do dataset
+etopo_elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_filename) do dataset
     nomissing(dataset["altitude"][:, :]), dataset["longitude"][:], dataset["latitude"][:]
 end
 
+block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
+elevation = block_mean(etopo_elevation, 3)
+
 # We put the elevation on a `LatitudeLongitudeGrid`, interpolate it onto the tripolar
-# grid, and use it as the bottom height of a `GridFittedBottom`. Every cell whose center
-# lies below the sea floor is land, so the ocean is 100, 500, 1500, or 4000 m deep.
+# grid, and use it as the bottom height of a `GridFittedBottom`. With the
+# `InterfaceImmersedCondition`, a cell is land only when it lies entirely below the sea
+# floor, so the ocean is 100, 500, 1500, or 4000 m deep: the shelf seas and straits stay
+# open at 100 m and ridges deeper than 1500 m are flattened to 4000 m.
 
 etopo_grid = LatitudeLongitudeGrid(arch; size = size(elevation),
                                    longitude = (-180, 180),
                                    latitude = (-90, 90),
                                    topology = (Periodic, Bounded, Flat))
 
-etopo_elevation = CenterField(etopo_grid)
-set!(etopo_elevation, elevation)
+elevation_field = CenterField(etopo_grid)
+set!(elevation_field, elevation)
 
 bottom_height = Field{Center, Center, Nothing}(underlying_grid)
-interpolate!(bottom_height, etopo_elevation)
+interpolate!(bottom_height, elevation_field)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map=true)
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height, InterfaceImmersedCondition()); active_cells_map=true)
 
 # The tripolar grid is curvilinear, so we draw maps with `surface!` on the grid's own
 # longitudes and latitudes, which run from 70°E eastward around the globe, and hide the land.
@@ -235,7 +242,7 @@ end
 
 # ## Running with three rotation rates
 #
-# The simulation runner saves the surface temperature and the barotropic streamfunction
+# The simulation runner saves the surface speed and the barotropic streamfunction
 # ``ψ``, defined by ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating
 # ``U`` northward from Antarctica, every couple of days.
 
@@ -259,11 +266,12 @@ function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
     u, v, w = model.velocities
     U = Field(Integral(u, dims=3))
     ψ = Field(CumulativeIntegral(-U, dims=2))
-    T = view(model.tracers.T, :, :, grid.Nz)
+    speed = Field(@at (Center, Center, Center) sqrt(u^2 + v^2))
+    surface_speed = view(speed, :, :, grid.Nz)
 
     filename = "global_wind_driven_gyres_$name.jld2"
 
-    simulation.output_writers[:surface] = JLD2Writer(model, (; T, ψ); filename,
+    simulation.output_writers[:surface] = JLD2Writer(model, (; surface_speed, ψ); filename,
                                                      schedule = TimeInterval(save_interval),
                                                      array_type = Array{Float32},
                                                      overwrite_files = true)
@@ -300,7 +308,7 @@ kuroshio = (longitude = (118, 160), latitude = (20, 42))
 # For the Sverdrup prediction we integrate the interior transport across each basin
 # on the ETOPO grid and take the largest value over the latitudes of the gyre.
 
-etopo_ocean = elevation .< 0
+etopo_ocean = etopo_elevation .< 0
 etopo_longitude = mod.(etopo_longitude, 360)
 
 function sverdrup_gyre_transport(rotation_rate, basin)
@@ -378,20 +386,22 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](global_wind_driven_gyres.png)
 #
-# The surface temperature relaxes toward its restoring profile while the circulation
-# stirs it: the boundary currents bend the isotherms poleward along the western coasts
-# and the subpolar gyres pull cold water south.
+# The western boundary currents are the fastest currents outside the Antarctic
+# Circumpolar Current, and they take only a few weeks to appear. The surface temperature,
+# on the other hand, stays close to its restoring profile: the currents are barotropic
+# during the spin-up, so a 50 Sv boundary current spread over 4 km of water moves the
+# surface at only a few tens of centimeters per second.
 
-Tt = FieldTimeSeries(filenames[Ω], "T")
+speeds = FieldTimeSeries(filenames[Ω], "surface_speed")
 n = Observable(1)
-temperature = @lift ifelse.(land, NaN, interior(Tt[$n], :, :, 1))
-title = @lift "Surface temperature after " * prettytime(times[$n])
+surface_speed = @lift ifelse.(land, NaN, interior(speeds[$n], :, :, 1))
+title = @lift "Surface speed after " * prettytime(times[$n])
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title)
-sf = surface!(ax, λ, φ, 0 * λ; color=temperature, colormap=:thermal, colorrange=(0, 30),
+sf = surface!(ax, λ, φ, 0 * λ; color=surface_speed, colormap=:magma, colorrange=(0, 0.3),
               shading=NoShading, nan_color=:gray)
-Colorbar(fig[1, 2], sf, label="Temperature [°C]")
+Colorbar(fig[1, 2], sf, label="Speed [m s⁻¹]")
 
 CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:length(times), framerate=12) do frame
     n[] = frame
