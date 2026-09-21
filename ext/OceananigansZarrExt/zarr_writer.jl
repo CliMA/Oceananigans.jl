@@ -2,26 +2,26 @@
 ##### Zarr output writer for Oceananigans
 #####
 
-function ZarrWriter(model::AbstractModel, outputs;
-                    filename = nothing,
-                    schedule,
-                    dir = ".",
-                    indices = (:, :, :),
-                    with_halos = false,
-                    array_type = Array{Float32},
-                    global_attributes = Dict(),
-                    output_attributes = Dict(),
-                    file_splitting = NoFileSplitting(),
-                    overwrite_files = false,
-                    verbose = false,
-                    part = 1,
-                    store = nothing,
-                    chunks = nothing,
-                    compressor = nothing,
-                    dimensions = Dict{String, Any}(),
-                    include_grid_metrics = true,
-                    dimension_name_generator = trilocation_dim_name,
-                    dimension_type = Float64)
+function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
+                                  filename = nothing,
+                                  schedule,
+                                  dir = ".",
+                                  indices = (:, :, :),
+                                  with_halos = false,
+                                  array_type = Array{Float32},
+                                  global_attributes = Dict(),
+                                  output_attributes = Dict(),
+                                  file_splitting = NoFileSplitting(),
+                                  overwrite_files = false,
+                                  verbose = false,
+                                  part = 1,
+                                  store = nothing,
+                                  chunks = nothing,
+                                  compressor = nothing,
+                                  dimensions = Dict{String, Any}(),
+                                  include_grid_metrics = true,
+                                  dimension_name_generator = trilocation_dim_name,
+                                  dimension_type = Float64)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -136,7 +136,7 @@ output_grid(other)                                           = nothing
 Create the Zarr store, output arrays, root-level coordinate arrays, and a growing
 one-dimensional `time` array. Private grid reconstruction metadata is stored in subgroups.
 """
-function initialize!(writer::ZarrWriter, model)
+function Oceananigans.initialize!(writer::ZarrWriter, model)
     writer.initialized && return nothing
 
     distributed = is_distributed_arch(model)
@@ -503,7 +503,7 @@ end
 ##### Per-step write
 #####
 
-function write_output!(writer::ZarrWriter, model::AbstractModel)
+function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
     distributed = is_distributed_arch(model)
     is_root = !distributed || mpi_rank(global_communicator()) == 0
 
