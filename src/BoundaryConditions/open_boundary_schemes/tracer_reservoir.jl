@@ -92,9 +92,8 @@ radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
     return ifelse(L == 0, c★, (cʳ + a * c★) / (1 + a))
 end
 
-# The reservoir is advanced once per time step from an anchor: an anchored fill (stage ≤ 1)
-# promotes the latest value to the anchor, and later stages re-step from it. The first fill
-# (Δt = Inf) starts the reservoir at the exterior value.
+# `cʳ` anchors the reservoir at the start of the time step; every stage relaxes from it with
+# its own `Δt` into `cʳˡ`, which becomes next step's anchor.
 @inline function reservoir_halo!(cᵇ, cᴵ, l, m, grid, c, bc, uₙ, outflow, closed, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
