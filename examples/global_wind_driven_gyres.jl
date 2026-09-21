@@ -16,7 +16,7 @@
 #
 # and the western boundary current returns that transport back across the basin.
 # Its strength should therefore scale with ``1 / \Omega``, which we check by running
-# the simulation with three planetary rotation rates. A fourth run with a constant
+# the simulation at Earth's rotation rate and at twice that. A third run with a constant
 # Coriolis parameter shows that the gyres owe their western intensification to ``β``.
 #
 # ## Install dependencies
@@ -55,7 +55,7 @@ Oceananigans.defaults.FloatType = FT
 # ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: the four 1° runs below take about ten minutes on a laptop GPU, ½° takes
+# parameter: the three 1° runs below take about eight minutes on a laptop GPU, ½° takes
 # about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
 # with depth, from 100 m at the surface to 2.5 km at the bottom. We build the vertical
 # coordinate with a `MutableVerticalDiscretization` so that the layers can stretch with
@@ -240,7 +240,7 @@ function build_model(grid, coriolis)
     return model
 end
 
-# ## Running with three rotation rates
+# ## Running with two rotation rates
 #
 # The simulation runner saves the surface speed and the barotropic streamfunction
 # ``ψ``, defined by ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating
@@ -282,7 +282,7 @@ function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
     return filename
 end
 
-rotation_rates = (Ω / 2, Ω, 2Ω)
+rotation_rates = (Ω, 2Ω)
 filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate), @sprintf("omega_%.1f", rotation_rate / Ω))
                  for rotation_rate in rotation_rates)
 
@@ -325,7 +325,7 @@ atlantic = (longitude = (280, 360), latitude = (20, 42))
 pacific = (longitude = (120, 250), latitude = (20, 42))
 
 # Now we compare the transport time series with the Sverdrup prediction, which
-# halves every time the rotation rate doubles.
+# halves when the rotation rate doubles.
 
 Sv = 1e6 # m³ s⁻¹
 
@@ -375,7 +375,7 @@ function streamfunction_map!(fig, row, filename; title, colorrange=(-100, 100))
     return streamfunction
 end
 
-fig = Figure(size=(900, 1000))
+fig = Figure(size=(900, 700))
 
 for (row, rotation_rate) in enumerate(rotation_rates)
     title = @sprintf("Ω = %.1f Ω_Earth", rotation_rate / Ω)
