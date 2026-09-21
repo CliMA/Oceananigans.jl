@@ -810,7 +810,7 @@ end
     @testset "Equilibrium tidal body force" begin
         @test test_tidal_body_force()
     end
-                                                    
+
     @testset "TracerReservoir length-scale regimes" begin
         @test test_tracer_reservoir_regimes()
     end
