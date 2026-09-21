@@ -14,7 +14,7 @@ using OrderedCollections: OrderedDict
 
 import Dates
 using Dates: AbstractTime, UTC, now, DateTime
-using Oceananigans: AbstractModel
+using Oceananigans: Oceananigans, AbstractModel
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
 using Oceananigans.Fields: AbstractField, location, indices, interior
 import Oceananigans.Grids: grid
@@ -33,9 +33,9 @@ using Oceananigans.Models: LagrangianParticles
 using Oceananigans.DistributedComputations:
     Distributed, DistributedGrid, global_barrier, mpi_rank, mpi_initialized,
     global_communicator, concatenate_local_sizes
-import Oceananigans
+using Oceananigans.OutputReaders:
+    auto_extension
 using Oceananigans.OutputWriters:
-    auto_extension,
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,

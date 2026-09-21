@@ -7,6 +7,7 @@ using Test: @testset, @test, detect_ambiguities
 
 # Load other packages to force running Aqua tests only on extensions
 using NCDatasets: NCDataset
+using Zarr: Zarr
 
 # Helper function to get all the submodules of a given module.
 function walk_submodules!(result, visited, mod::Module)

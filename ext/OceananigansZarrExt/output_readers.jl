@@ -2,9 +2,10 @@
 ##### FieldTimeSeries reader for Zarr stores
 #####
 
+using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, cpu_architecture, architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
-using Oceananigans.Fields: instantiated_location, set!, location, indices, interior
+using Oceananigans.Fields: set!, location, indices, interior
 using Oceananigans.OutputReaders:
     InMemoryFTS,
     InMemory, Linear, UnspecifiedBoundaryConditions,

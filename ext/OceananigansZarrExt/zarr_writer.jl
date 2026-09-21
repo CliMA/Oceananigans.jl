@@ -532,7 +532,7 @@ end
 function write_output_serial!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
     time = zarr_time_value(model.clock.time, writer.dimension_type)
-    Zarr.append!(g["time"], [time]; dims=1)
+    append!(g["time"], [time]; dims=1)
     for (name, output) in pairs(writer.outputs)
         data = fetch_and_convert_output(output, model, writer)
         data = squeeze_reduced_dimensions(output, data)
@@ -541,7 +541,7 @@ function write_output_serial!(writer::ZarrWriter, model)
         if eltype(data_arr) === Bool
             data_arr = Int8.(data_arr)
         end
-        Zarr.append!(arr, data_arr; dims=ndims(arr))
+        append!(arr, data_arr; dims=ndims(arr))
     end
     Zarr.consolidate_metadata(g)
     return nothing
@@ -570,7 +570,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
     # Bump the time axis and write the new time value (root only).
     if is_root
         time = zarr_time_value(model.clock.time, writer.dimension_type)
-        Zarr.append!(g["time"], [time]; dims=1)
+        append!(g["time"], [time]; dims=1)
     end
     zarr_barrier()
 
@@ -592,7 +592,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
         old_shape = size(arr)
         new_shape = ntuple(d -> d == length(old_shape) ? new_time_index : old_shape[d], length(old_shape))
         if is_root
-            Zarr.resize!(arr, new_shape)
+            resize!(arr, new_shape)
         else
             arr.metadata.shape[] = new_shape
         end
