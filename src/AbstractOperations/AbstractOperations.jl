@@ -13,7 +13,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_location
 using Oceananigans.Grids: Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
 

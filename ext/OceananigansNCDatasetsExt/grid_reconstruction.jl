@@ -7,7 +7,7 @@
 ##### Grid reconstruction
 #####
 
-netcdf_string(obj) = typeof(obj).name.wrapper |> string
+netcdf_string(obj) = string(nameof(typeof(obj)))
 # OSSG variants are type aliases of OrthogonalSphericalShellGrid; record the alias name
 # so reconstruction dispatches on the right constructor (which accepts a different
 # kwarg set than the base OSSG constructor).
@@ -120,7 +120,7 @@ reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsup
 function reconstruct_immersed_boundary(ds, prefix)
     grid_reconstruction_metadata = ds.group["$(prefix)grid_reconstruction_metadata"].attrib
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
-    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)), prefix)
+    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(last(split(immersed_boundary_type, '.')))), prefix)
     return immersed_boundary
 end
 

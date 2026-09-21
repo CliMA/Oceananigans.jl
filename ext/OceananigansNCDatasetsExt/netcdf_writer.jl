@@ -60,13 +60,13 @@ end
 
 defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
 
-function add_location_attribute!(attrib, fd::AbstractField)
+Base.@nospecializeinfer function add_location_attribute!(attrib, @nospecialize(fd::AbstractField))
     loc = location(fd) |> convert_for_netcdf
     loc_attrib = Dict("location" => loc)
     return merge(loc_attrib, attrib)
 end
 
-function add_aux_coordinates_attribute!(attrib, fd::AbstractField, dim_name_generator; grid_index=nothing)
+Base.@nospecializeinfer function add_aux_coordinates_attribute!(attrib, @nospecialize(fd::AbstractField), dim_name_generator; grid_index=nothing)
     coordinates = field_auxiliary_coordinates(fd, dim_name_generator; grid_index)
     isempty(coordinates) || (attrib["coordinates"] = join(coordinates, " "))
     return attrib
@@ -415,7 +415,7 @@ end
 Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
 
 # Saving outputs with no time dependence (e.g. grid metrics)
-function save_output!(ds, output, model, output_name, array_type)
+Base.@nospecializeinfer function save_output!(ds, @nospecialize(output), @nospecialize(model), output_name, array_type)
     fetched = fetch_output(output, model)
     data = convert_output(fetched, array_type)
     data = squeeze_reduced_dimensions(output, data)
@@ -425,7 +425,7 @@ function save_output!(ds, output, model, output_name, array_type)
 end
 
 # Saving time-dependent outputs
-function save_output!(ds, output, model, ow, time_index, output_name)
+Base.@nospecializeinfer function save_output!(ds, @nospecialize(output), @nospecialize(model), ow, time_index, output_name)
     data = fetch_and_convert_output(output, model, ow)
     data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
