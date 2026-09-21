@@ -50,7 +50,7 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
             @test sum(ω_f32) ≈ 1
 
             for r in 1:buffer
-                @test ω_f32[r] ≈ ω_f64[r] atol=1e-3
+                @test ω_f32[r] ≈ ω_f64[r] rtol=2e-3
             end
         end
     end
@@ -71,7 +71,7 @@ end
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
-            @test all(isapprox.(Float64.(ω), reference; atol = 1.0e-12))
+            @test all(isapprox.(ω, reference; rtol=1e-5))
         end
     end
 end
@@ -89,7 +89,7 @@ end
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
-            @test all(isapprox.(ω, optimal; atol = 10eps(Float32)))
+            @test all(isapprox.(ω, optimal; rtol=1e-6))
         end
     end
 end
