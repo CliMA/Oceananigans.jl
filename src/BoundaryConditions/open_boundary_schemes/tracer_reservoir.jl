@@ -34,7 +34,7 @@ TracerReservoir{Float64}
 └── outflow_length_scale: 0.0
 ```
 """
-struct TracerReservoir{FT, S}
+struct TracerReservoir{FT, S} <: AbstractRadiationScheme{FT}
     inflow_length_scale  :: FT
     outflow_length_scale :: FT
     cʳ  :: S  # anchor reservoir value (2D array or nothing)
@@ -70,34 +70,31 @@ end
 
 const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 
+# `TracerReservoir` is a `Value` scheme only (see its docstring). Subtyping
+# `AbstractRadiationScheme` means it now also structurally matches `RNFBC`, the `NormalFlow` union
+# `NormalRadiation`/`ObliqueRadiation` use — a `NormalFlowBoundaryCondition(...; scheme =
+# TracerReservoir())` would regularize without error and only fail once it actually tries to fill a
+# halo, inside `radiation_update`, which `TracerReservoir` never implements. An explicit early guard
+# here was tried and dropped: it's ambiguous with the tripolar-grid `regularize_boundary_condition`
+# tie-breakers in OrthogonalSphericalShellGrids (the same kind of ambiguity #5962/#5964 already hit
+# and fixed for their own methods), and resolving that means touching files outside this scheme for
+# an error message on a misuse nothing here documents or tests. Left as an ordinary MethodError.
+
 #####
 ##### Storage allocation during BC regularization
 #####
+#
+# `TracerReservoir` subtypes `AbstractRadiationScheme` (see normal_radiation.jl) so it reuses that
+# type's `regularize_boundary_condition(bc::RBC, ...)` — its own copy was identical but for the local
+# variable names. Its storage layout isn't the default one, though: two buffers (`cʳ`, `cʳˡ`), not
+# three, and no previous-interior value at all, since there's no Orlanski phase-speed diagnosis here
+# to feed — so it still needs its own `radiation_buffers`/`radiation_storage`.
 
-function materialize_radiation_storage(reservoir::TracerReservoir, grid, loc, dim)
-    FT = eltype(grid)
-    Sx, Sy, Sz = size(grid, loc)
-    arch = architecture(grid)
+radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_size) =
+    ntuple(_ -> zero_buffer(arch, FT, tangential_size), 2) # cʳ, cʳˡ
 
-    tangential_size = dim == 1 ? (Sy, Sz) :
-                      dim == 2 ? (Sx, Sz) :
-                                 (Sx, Sy)
-
-    cʳ  = on_architecture(arch, zeros(FT, tangential_size...))
-    cʳˡ = on_architecture(arch, zeros(FT, tangential_size...))
-
-    return TracerReservoir(reservoir.inflow_length_scale,
-                           reservoir.outflow_length_scale,
-                           cʳ, cʳˡ)
-end
-
-function regularize_boundary_condition(bc::TRVBC, grid, loc, dim, args...)
-    regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
-    reservoir = bc.classification.scheme
-    materialized_reservoir = materialize_radiation_storage(reservoir, grid, loc, dim)
-    classification = rebuild_classification(bc.classification, materialized_reservoir)
-    return BoundaryCondition(classification, regularized_condition)
-end
+radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
+    TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, cʳ, cʳˡ)
 
 #####
 ##### The reservoir update

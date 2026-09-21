@@ -76,9 +76,16 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      adapt(to, r.previous_boundary),
                      adapt(to, r.previous_interior))
 
-radiation_buffers(::ObliqueRadiation, arch, FT, tangential_size) =
-    (on_architecture(arch, zeros(FT, tangential_size..., 2)),
+# Two more than the default (φᵇ, φ₁, φ₁ˡ): the double-buffered previous boundary/interior values
+# `tangential_differences` reads (see `written_buffer` below).
+radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
+    (ntuple(_ -> zero_buffer(arch, FT, tangential_size), 3)...,
+     on_architecture(arch, zeros(FT, tangential_size..., 2)),
      on_architecture(arch, zeros(FT, tangential_size..., 2)))
+
+radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)) =
+    ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
+                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)
 
 # Fills read the buffer written during the previous iteration and write the other one.
 @inline written_buffer(clock) = clock.iteration % 2 + 1
