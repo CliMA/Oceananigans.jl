@@ -16,9 +16,9 @@ steps:
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
 
-      TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
     agents:
       queue: "rocm"
     timeout_in_minutes: 30
@@ -37,9 +37,9 @@ steps:
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
 
-      TEST_GROUP=oneapi julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=oneapi julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
     agents:
       queue: "oneapi"
     timeout_in_minutes: 30
