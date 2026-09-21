@@ -1,0 +1,561 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper, ImpenetrableBoundaryCondition
+using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
+using Oceananigans.Fields: Face, Center
+
+simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
+
+function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
+    success = try
+        bc(C, FT, ArrayType)
+        true
+    catch
+        false
+    end
+    return success
+end
+
+@testset "Boundary conditions" begin
+    @info "Testing boundary conditions..."
+
+    @testset "Default serial boundary conditions" begin
+        @info "  Testing default boundary conditions..."
+        loc  = (Center(), Center(), Center())
+        grid = RectilinearGrid(size=(10, 10), x=(0, 1), y=(0, 1), topology=(Periodic, Bounded, Flat))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+
+        @test default_bcs.east  isa PBC
+        @test default_bcs.west  isa PBC
+        @test default_bcs.north isa ZFBC
+        @test default_bcs.south isa ZFBC
+        @test default_bcs.top    isa Nothing
+        @test default_bcs.bottom isa Nothing
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(-10, 10), z = (0, 1))
+        locC  = (Center(), Center(), Center())
+        locF  = (Center(), Face(), Center())
+        locN  = (Center(), nothing, Center())
+
+        default_bcs_C = FieldBoundaryConditions(grid, locC)
+        default_bcs_F = FieldBoundaryConditions(grid, locF)
+        default_bcs_N = FieldBoundaryConditions(grid, locN)
+
+        @test default_bcs_C.north isa VBC
+        @test default_bcs_C.south isa VBC
+
+        @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_F.north isa NFBC
+        @test default_bcs_F.south isa NFBC
+
+        @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+        @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+
+        @test default_bcs_N.north isa Nothing
+        @test default_bcs_N.south isa Nothing
+
+        grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
+        default_bcs = FieldBoundaryConditions(grid, loc)
+        @test default_bcs.north.classification isa Zipper
+        @test default_bcs.south isa ZFBC
+    end
+
+    @testset "Boundary condition instantiation" begin
+        @info "  Testing boundary condition instantiation..."
+
+        for C in (Value, Gradient, Flux, Mixed, Value(), Gradient(), Flux(), Mixed())
+            @test can_instantiate_boundary_condition(integer_bc, C)
+            @test can_instantiate_boundary_condition(irrational_bc, C)
+            @test can_instantiate_boundary_condition(simple_function_bc, C)
+            @test can_instantiate_boundary_condition(parameterized_function_bc, C)
+            @test can_instantiate_boundary_condition(field_dependent_function_bc, C)
+            @test can_instantiate_boundary_condition(discrete_function_bc, C)
+            @test can_instantiate_boundary_condition(parameterized_discrete_function_bc, C)
+
+            for FT in float_types
+                @test can_instantiate_boundary_condition(float_bc, C, FT)
+                @test can_instantiate_boundary_condition(parameterized_field_dependent_function_bc, C, FT)
+
+                for arch in archs
+                    ArrayType = array_type(arch)
+                    @test can_instantiate_boundary_condition(array_bc, C, FT, ArrayType)
+                end
+            end
+        end
+    end
+
+    @testset "Field and coordinate boundary conditions" begin
+        @info "  Testing field and coordinate boundary conditions..."
+
+        # Triply periodic
+        ppp_topology = (Periodic, Periodic, Periodic)
+        ppp_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
+
+        default_bcs = FieldBoundaryConditions()
+
+        u_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :T)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa PBC
+        @test u_bcs.north isa PBC
+        @test u_bcs.bottom  isa PBC
+        @test u_bcs.top isa PBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa PBC
+        @test v_bcs.north isa PBC
+        @test v_bcs.bottom  isa PBC
+        @test v_bcs.top isa PBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa PBC
+        @test w_bcs.north isa PBC
+        @test w_bcs.bottom  isa PBC
+        @test w_bcs.top isa PBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa PBC
+        @test T_bcs.north isa PBC
+        @test T_bcs.bottom  isa PBC
+        @test T_bcs.top isa PBC
+
+        # Doubly periodic. Engineers call this a "Channel geometry".
+        ppb_topology = (Periodic, Periodic, Bounded)
+        ppb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
+
+        u_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :T)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa PBC
+        @test u_bcs.north isa PBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa PBC
+        @test v_bcs.north isa PBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa PBC
+        @test w_bcs.north isa PBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa PBC
+        @test T_bcs.north isa PBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
+
+        # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
+        pbb_topology = (Periodic, Bounded, Bounded)
+        pbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
+
+        u_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :T)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa ZFBC
+        @test u_bcs.north isa ZFBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa ZFBC
+        @test w_bcs.north isa ZFBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa ZFBC
+        @test T_bcs.north isa ZFBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
+
+        # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
+        bbb_topology = (Bounded, Bounded, Bounded)
+        bbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
+
+        u_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
+
+        @test u_bcs isa FieldBoundaryConditions
+        @test u_bcs.west  isa NFBC
+        @test u_bcs.east isa NFBC
+        @test u_bcs.south  isa ZFBC
+        @test u_bcs.north isa ZFBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
+
+        @test v_bcs isa FieldBoundaryConditions
+        @test v_bcs.west  isa ZFBC
+        @test v_bcs.east isa ZFBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
+
+        @test w_bcs isa FieldBoundaryConditions
+        @test w_bcs.west  isa ZFBC
+        @test w_bcs.east isa ZFBC
+        @test w_bcs.south  isa ZFBC
+        @test w_bcs.north isa ZFBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
+
+        @test T_bcs isa FieldBoundaryConditions
+        @test T_bcs.west  isa ZFBC
+        @test T_bcs.east isa ZFBC
+        @test T_bcs.south  isa ZFBC
+        @test T_bcs.north isa ZFBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
+
+        grid = bbb_grid
+
+        T_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+                                        east = ValueBoundaryCondition(simple_bc),
+                                        west = ValueBoundaryCondition(simple_bc),
+                                        bottom = ValueBoundaryCondition(simple_bc),
+                                        top = ValueBoundaryCondition(simple_bc),
+                                        north = ValueBoundaryCondition(simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
+
+        @test T_bcs.east.condition isa ContinuousBoundaryFunction
+        @test T_bcs.west.condition isa ContinuousBoundaryFunction
+        @test T_bcs.north.condition isa ContinuousBoundaryFunction
+        @test T_bcs.south.condition isa ContinuousBoundaryFunction
+        @test T_bcs.top.condition isa ContinuousBoundaryFunction
+        @test T_bcs.bottom.condition isa ContinuousBoundaryFunction
+
+        @test T_bcs.east.condition.func === simple_bc
+        @test T_bcs.west.condition.func === simple_bc
+        @test T_bcs.north.condition.func === simple_bc
+        @test T_bcs.south.condition.func === simple_bc
+        @test T_bcs.top.condition.func === simple_bc
+        @test T_bcs.bottom.condition.func === simple_bc
+
+        one_bc = BoundaryCondition(Value(), 1.0)
+
+        T_bcs = FieldBoundaryConditions(east = one_bc,
+                                        west = one_bc,
+                                        bottom = one_bc,
+                                        top = one_bc,
+                                        north = one_bc,
+                                        south = one_bc)
+
+        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
+
+        @test T_bcs.east   === one_bc
+        @test T_bcs.west   === one_bc
+        @test T_bcs.north  === one_bc
+        @test T_bcs.south  === one_bc
+        @test T_bcs.top    === one_bc
+        @test T_bcs.bottom === one_bc
+
+        # Mixed boundary conditions
+        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=bbb_topology)
+        ϕ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+                                        east = MixedBoundaryCondition(simple_bc, simple_bc),
+                                        west = MixedBoundaryCondition(1),
+                                        bottom = MixedBoundaryCondition(2, π),
+                                        top = MixedBoundaryCondition(3, 2π),
+                                        north = MixedBoundaryCondition(simple_bc, simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
+
+        @test ϕ_bcs.east.condition.coefficient isa ContinuousBoundaryFunction
+        @test ϕ_bcs.east.condition.inhomogeneity isa ContinuousBoundaryFunction
+        @test ϕ_bcs.west.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.west.condition.inhomogeneity isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.bottom.condition.inhomogeneity isa eltype(grid)
+        @test ϕ_bcs.top.condition.coefficient isa eltype(grid)
+        @test ϕ_bcs.top.condition.inhomogeneity isa eltype(grid)
+
+        ϕ = CenterField(grid, boundary_conditions=ϕ_bcs)
+        set!(ϕ, 1)
+
+        dummy_clock = (; time=0)
+        fields = tuple()
+        fill_halo_regions!(ϕ, dummy_clock, fields)
+
+        west_bc_field = Field(∂x(ϕ) + ϕ)
+        bottom_bc_field = Field(∂z(ϕ) + 2 * ϕ)
+        top_bc_field = Field(∂z(ϕ) + 3 * ϕ)
+
+        @test all(interior(west_bc_field, 1, :, :) .≈ 0)
+        @test all(interior(bottom_bc_field, :, :, 1) .≈ π)
+        @test all(interior(top_bc_field, :, :, 3) .≈ 2π)
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
+        f = CenterField(grid)
+
+        @test f.boundary_conditions.north isa ZFBC
+        @test f.boundary_conditions.south isa ZFBC
+
+        set!(f, (x, y, z) -> x)
+        fill_halo_regions!(f)
+
+        @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
+        @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+
+        # ContinuousBoundaryFunction on Flat topologies (dispatch disambiguation)
+        @info "  Testing ContinuousBoundaryFunction on Flat topologies..."
+        for topo in ((Flat, Flat, Bounded), (Flat, Bounded, Flat), (Bounded, Flat, Flat))
+            bounded_dim = findfirst(t -> t === Bounded, topo)
+
+            grid_kw = Dict{Symbol,Any}(:topology => topo)
+            if topo[1] !== Flat; grid_kw[:x] = (0, 1); end
+            if topo[2] !== Flat; grid_kw[:y] = (0, 1); end
+            if topo[3] !== Flat; grid_kw[:z] = (0, 1); end
+            grid_kw[:size] = Tuple(4 for i in 1:3 if topo[i] !== Flat)
+
+            grid = RectilinearGrid(; grid_kw...)
+            loc = (Center(), Center(), Center())
+
+            bc_func(t) = 1.0
+            left_bc  = FluxBoundaryCondition(bc_func)
+            right_bc = FluxBoundaryCondition(bc_func)
+
+            if bounded_dim == 1
+                bcs = FieldBoundaryConditions(west=left_bc, east=right_bc)
+            elseif bounded_dim == 2
+                bcs = FieldBoundaryConditions(south=left_bc, north=right_bc)
+            else
+                bcs = FieldBoundaryConditions(bottom=left_bc, top=right_bc)
+            end
+
+            # Regularize like model constructors do
+            bcs = regularize_field_boundary_conditions(bcs, grid, loc)
+            c = CenterField(grid; boundary_conditions=bcs)
+            Gc = CenterField(grid)
+            clock = (; time = 0.0)
+
+            if bounded_dim == 1
+                compute_x_bcs!(Gc, c, CPU(), clock, tuple())
+            elseif bounded_dim == 2
+                compute_y_bcs!(Gc, c, CPU(), clock, tuple())
+            else
+                compute_z_bcs!(Gc, c, CPU(), clock, tuple())
+            end
+
+            @test !all(Array(interior(Gc)) .== 0)
+        end
+
+        # ContinuousBoundaryFunction with field_dependencies on a Flat topology
+        # Building and time-stepping a model exercises the full regularization
+        # path including interpolation_code for BoundaryAdjacent.
+        @info "  Testing ContinuousBoundaryFunction with field_dependencies on Flat topology..."
+        grid = RectilinearGrid(size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+        dep_bc(t, T) = T  # no spatial args on (Flat, Flat, Bounded)
+        bottom_bc = FluxBoundaryCondition(dep_bc, field_dependencies=:T)
+        model = NonhydrostaticModel(grid; tracers=:T,
+                                    boundary_conditions=(T=FieldBoundaryConditions(bottom=bottom_bc),))
+        set!(model, T=1)
+        time_step!(model, 1e-3)
+        @test model.clock.iteration == 1
+
+        # Minimal test for PolarValueBoundaryCondition
+        polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        c = CenterField(polar_grid)
+        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarValueBoundaryCondition
+
+        set!(c, (x, y, z) -> x)
+        fill_halo_regions!(c)
+
+        @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
+        @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
+
+        # A polar boundary paired with an impenetrable one on the other side
+        one_pole_grid = LatitudeLongitudeGrid(size=(10, 10, 4), latitude=(-80, 90), longitude=(0, 360), z=(0, 1))
+        v_bcs = FieldBoundaryConditions(one_pole_grid, (Center(), Face(), Center()); south=ImpenetrableBoundaryCondition())
+        v = YFaceField(one_pole_grid; boundary_conditions=v_bcs)
+        @test v.boundary_conditions.south isa Oceananigans.BoundaryConditions.NFBC
+        @test v.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarNormalFlowBoundaryCondition
+
+        set!(v, (x, y, z) -> x)
+        fill_halo_regions!(v)
+        @test all(v.data[1:10, 1, 1:4] .== 0)
+        @test all(v.data[1:10, 11, 1:4] .== mean(v.data[1:10, 10, 1:4]))
+
+        model = HydrostaticFreeSurfaceModel(one_pole_grid; momentum_advection=nothing, tracer_advection=nothing, buoyancy=nothing)
+        time_step!(model, 1)
+        @test model.clock.iteration == 1
+    end
+
+    @testset "Windowed Field boundary conditions [$(typeof(arch))]" for arch in archs
+        @info "  Testing windowed Field boundary conditions [$(typeof(arch))]..."
+
+        Nx, Ny, Nz = 3, 4, 5
+        Lx, Ly, Lz = 1, 2, 3
+        grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Bounded, Bounded, Bounded))
+        Δx, Δy, Δz = Lx / Nx, Ly / Ny, Lz / Nz
+
+        ρ = CenterField(grid)
+        set!(ρ, (x, y, z) -> 1 + x + 2y + 3z)
+        fill_halo_regions!(ρ)
+
+        # Computed fields windowed to the bottom and top planes, and views of `ρ` windowed to the
+        # west, east, south, and north planes. All of them store their data offset to the window
+        # (e.g. the k-axis of `∂z_cᵗ` is Nz:Nz), and must be read at their own plane.
+        ∂z_cᵇ = Field(-2ρ, indices=(:, :, 1))
+        ∂z_cᵗ = Field(-2ρ, indices=(:, :, Nz))
+        compute!(∂z_cᵇ)
+        compute!(∂z_cᵗ)
+
+        ρʷ = view(ρ, 1,  :, :)
+        ρᵉ = view(ρ, Nx, :, :)
+        ρˢ = view(ρ, :, 1,  :)
+        ρⁿ = view(ρ, :, Ny, :)
+
+        loc = (Center(), Center(), Center())
+        bcs = FieldBoundaryConditions(grid, loc;
+                                      west   = ValueBoundaryCondition(ρʷ),
+                                      east   = ValueBoundaryCondition(ρᵉ),
+                                      south  = ValueBoundaryCondition(ρˢ),
+                                      north  = ValueBoundaryCondition(ρⁿ),
+                                      bottom = GradientBoundaryCondition(∂z_cᵇ),
+                                      top    = GradientBoundaryCondition(∂z_cᵗ))
+
+        # The boundary conditions are read at the plane the fields are windowed to
+        @allowscalar begin
+            @test all(getbc(bcs.west,   j, k, grid) == ρ[1,  j, k]      for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(bcs.east,   j, k, grid) == ρ[Nx, j, k]      for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(bcs.south,  i, k, grid) == ρ[i, 1,  k]      for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(bcs.north,  i, k, grid) == ρ[i, Ny, k]      for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(bcs.bottom, i, j, grid) == -2 * ρ[i, j, 1]  for i in 1:Nx, j in 1:Ny)
+            @test all(getbc(bcs.top,    i, j, grid) == -2 * ρ[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+        end
+
+        # ... also when filling halos
+        c = CenterField(grid; boundary_conditions=bcs)
+        set!(c, (x, y, z) -> x * y * z)
+        fill_halo_regions!(c)
+
+        @allowscalar begin
+            @test all(c[0,    j, k] ≈ 2 * ρ[1,  j, k] - c[1,  j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[Nx+1, j, k] ≈ 2 * ρ[Nx, j, k] - c[Nx, j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[i, 0,    k] ≈ 2 * ρ[i, 1,  k] - c[i, 1,  k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, Ny+1, k] ≈ 2 * ρ[i, Ny, k] - c[i, Ny, k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, j, 0]    ≈ c[i, j, 1]  + 2 * ρ[i, j, 1]  * Δz for i in 1:Nx, j in 1:Ny)
+            @test all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2 * ρ[i, j, Nz] * Δz for i in 1:Nx, j in 1:Ny)
+        end
+
+        # A field neither reduced nor windowed along the boundary-normal direction is windowed, when
+        # the boundary conditions are regularized, to its plane adjacent to (Center) or on (Face)
+        # the boundary
+        w = ZFaceField(grid)
+        set!(w, (x, y, z) -> x - y + 4z)
+        full_bcs = FieldBoundaryConditions(grid, loc;
+                                           west   = ValueBoundaryCondition(ρ),
+                                           east   = ValueBoundaryCondition(ρ),
+                                           south  = ValueBoundaryCondition(ρ),
+                                           north  = ValueBoundaryCondition(ρ),
+                                           bottom = ValueBoundaryCondition(w),
+                                           top    = ValueBoundaryCondition(w))
+
+        @test full_bcs.west.condition.indices   == (1:1,   Colon(), Colon())
+        @test full_bcs.east.condition.indices   == (Nx:Nx, Colon(), Colon())
+        @test full_bcs.south.condition.indices  == (Colon(), 1:1,   Colon())
+        @test full_bcs.north.condition.indices  == (Colon(), Ny:Ny, Colon())
+        @test full_bcs.bottom.condition.indices == (Colon(), Colon(), 1:1)
+        @test full_bcs.top.condition.indices    == (Colon(), Colon(), Nz+1:Nz+1)
+
+        @allowscalar begin
+            @test all(getbc(full_bcs.west,   j, k, grid) == ρ[1,  j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.east,   j, k, grid) == ρ[Nx, j, k]    for j in 1:Ny, k in 1:Nz)
+            @test all(getbc(full_bcs.south,  i, k, grid) == ρ[i, 1,  k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.north,  i, k, grid) == ρ[i, Ny, k]    for i in 1:Nx, k in 1:Nz)
+            @test all(getbc(full_bcs.bottom, i, j, grid) == w[i, j, 1]     for i in 1:Nx, j in 1:Ny)
+            @test all(getbc(full_bcs.top,    i, j, grid) == w[i, j, Nz+1]  for i in 1:Nx, j in 1:Ny)
+        end
+
+        # ... and it shares its data with the original field
+        c_full = CenterField(grid; boundary_conditions=full_bcs)
+        set!(w, 7)
+        fill_halo_regions!(c_full)
+        @test @allowscalar all(c_full[i, j, Nz+1] ≈ 14 - c_full[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+
+        # Updating the windowed computed field updates the boundary condition in place
+        set!(ρ, 1)
+        compute!(∂z_cᵗ)
+        fill_halo_regions!(c)
+        @test @allowscalar all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2Δz for i in 1:Nx, j in 1:Ny)
+
+        # The window is preserved when the boundary condition is adapted for kernels, but the
+        # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
+        # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
+        # other model fields, so that the tuple of model fields stays homogeneous)
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        adapted_top = Adapt.adapt(Array, bcs.top)
+        @test adapted_top.condition isa Field
+        @test adapted_top.condition.indices == ∂z_cᵗ.indices
+        @test location(adapted_top.condition) == location(∂z_cᵗ)
+
+        # Fields reduced along the boundary-normal direction are still supported
+        cᵗ = Field{Center, Center, Nothing}(grid)
+        set!(cᵗ, (x, y) -> x + y)
+        reduced_bcs = FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(cᵗ))
+        @test @allowscalar all(getbc(reduced_bcs.top, i, j, grid) == cᵗ[i, j, 1] for i in 1:Nx, j in 1:Ny)
+
+        # A Field windowed to more than one plane along the boundary-normal direction is ambiguous...
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, :, :, 2:3)))
+
+        # ... and a Field windowed along a tangential direction is rejected too, whether or not it is
+        # also windowed to a single plane (or reduced) along the boundary-normal direction: the
+        # tangential indices of the boundary index the condition directly, so it would be read
+        # outside its window (`condition[i, j, 1]` for the last three) or at the wrong plane.
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1, :, :)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; west=ValueBoundaryCondition(∂z_cᵗ))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 1:2, :, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=GradientBoundaryCondition(view(ρ, 2, 2:3, Nz)))
+        @test_throws ArgumentError FieldBoundaryConditions(grid, loc; top=ValueBoundaryCondition(view(cᵗ, 1:2, :, :)))
+    end
+end

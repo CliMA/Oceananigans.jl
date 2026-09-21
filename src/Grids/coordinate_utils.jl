@@ -280,7 +280,23 @@ function compute_stretched_interfaces(; extent,
             Δ = Δ_previous
         end
 
-        push!(faces, round(faces[end] + dir * Δ, digits=rounding_digits))
+        next_face = round(faces[end] + dir * Δ, digits=rounding_digits)
+
+        # A stretching law that shrinks the spacing rather than growing it, or a `rounding_digits`
+        # too coarse to resolve the spacing, leaves the coordinate stuck at `faces[end]` and the
+        # loop below `extent` forever. Note that `PowerLawStretching(power)` with `power > 1`
+        # shrinks any spacing smaller than one; use `LinearStretching` for such coordinates.
+        if next_face == faces[end]
+            throw(ArgumentError("Cannot reach the requested extent $extent: the interface spacing " *
+                                "collapsed to zero at $(faces[end]) after shrinking from " *
+                                "$constant_spacing to $Δ_previous. Either `stretching` does not " *
+                                "increase spacings of this size — note that PowerLawStretching(power) " *
+                                "shrinks spacings smaller than one, whereas LinearStretching grows " *
+                                "spacings of any size — or `rounding_digits = $rounding_digits` is too " *
+                                "coarse to resolve a spacing of $Δ."))
+        end
+
+        push!(faces, next_face)
     end
 
     if dir == -1

@@ -13,18 +13,18 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   FixedTimeStepSize,
                                                                                   maybe_augmented_kernel_parameters
 
-struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractSerialArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
 
-    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A}
+    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A <: AbstractSerialArchitecture}
         return new{FT, TX, TY, TZ, CZ, P, C, G, A}(arch, partition, connectivity, region_grids)
     end
 end
 
-const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid}
+const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
 
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
