@@ -27,6 +27,14 @@ else
     end
     delete!(testsuite, "sharding/tripolar") # TripolarGrid + ImmersedBoundaryGrid cause Reactant MLIR errors
 
+    # Some tests don't run on GPU, always remove them.
+    if on_gpu
+        for prefix in ("enzyme/", "conservative_regridding/", "unit/operators", "unit/quality_assurance",
+                       "unit/schedules", "unit/utils", "unit/weno_smoothness_reference", "unit/weno_smoothness")
+            filter!(((name, _),) -> !startswith(name, prefix), testsuite)
+        end
+    end
+
     if filter_tests!(testsuite, args)
         # No explicit selection: skip suites that need extra hardware, a working MPI launcher, or a
         # different Julia version.
