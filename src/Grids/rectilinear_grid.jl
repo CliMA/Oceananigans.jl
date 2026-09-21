@@ -63,6 +63,7 @@ regular_dimensions(::XYZRegularRG) = (1, 2, 3)
 stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
 stretched_dimensions(::XYRegularRG) = tuple(3)
+stretched_dimensions(::XYZRegularRG) = tuple()
 
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
