@@ -39,7 +39,7 @@ simulation = Simulation(model; Δt=0.1, stop_iteration=10)
 simulation.output_writers[:fields] = JLD2Writer(model, model.velocities;
                                                 schedule = IterationInterval(1),
                                                 filename = "test.jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 run!(simulation)
 
 fts = FieldTimeSeries("test.jld2", "u")
@@ -284,9 +284,9 @@ fds = FieldDataset("test.jld2"; backend=InMemory())
 
 # output
 FieldDataset with 3 fields and 0 metadata entries:
+├── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
 ├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) of v at test.jld2
-├── w: 8×8×9×11 FieldTimeSeries{InMemory} located at (Center, Center, Face) of w at test.jld2
-└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) of u at test.jld2
+└── w: 8×8×9×11 FieldTimeSeries{InMemory} located at (Center, Center, Face) of w at test.jld2
 ```
 
 An empty `FieldDataset` may also be constructed by providing a grid, saved times and a tuple of field names. Optional keyword arguments specify locations, indices, boundary conditions and output path (in the case of `backend = OnDisk()`):
@@ -304,8 +304,8 @@ new_fds = FieldDataset(grid, times, fields; location, backend=InMemory())
 
 # output
 FieldDataset with 2 fields and 0 metadata entries:
-├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
-└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+├── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+└── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
 ```
 
 A convenience constructor also exists to generate a `FieldDataset` according to a `NamedTuple` of preexisting fields. The following is equivalent to the above:
@@ -324,8 +324,8 @@ new_fds = FieldDataset(times, fields; backend=InMemory())
 
 # output
 FieldDataset with 2 fields and 0 metadata entries:
-├── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
-└── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+├── u: 8×8×8×11 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+└── v: 8×8×8×11 FieldTimeSeries{InMemory} located at (Center, Face, Center) on CPU
 ```
 
 Note that the new `FieldDataset` is unrelated to the data contained in the input fields. The result inherits the grid, locations, indices and boundary conditions of the input fields. Individual timeseries may be retrieved by indexing

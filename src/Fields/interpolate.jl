@@ -48,10 +48,11 @@ end
     @inbounds x₂ = vec[i₂]
 
     ii = (i₂ - i₁) / (x₂ - x₁) * (val - x₁) + i₁
-    ii = ifelse(i₁ == i₂, i₁, ii)
+    ii = oftype(val, ii)
+    i₁ft = oftype(val, i₁)
+    ii = ifelse(i₁ == i₂, i₁ft, ii)
 
-    FT = typeof(val) # convert "fractional index" to type of `val`
-    return convert(FT, ii)
+    return ii
 end
 
 #####

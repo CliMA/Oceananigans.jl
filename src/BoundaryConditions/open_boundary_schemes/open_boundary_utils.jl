@@ -1,5 +1,6 @@
 using Oceananigans: defaults
 using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ, immersed_peripheral_node
+using Oceananigans.Utils: getnamewrapper
 
 #####
 ##### Shared utilities for the open boundary schemes below
@@ -20,3 +21,8 @@ const AAC = Tuple{Any, Any, Center}
 
 @inline anchored_fill(clock) = clock.stage ≤ 1
 @inline anchored_fill(::Nothing) = true
+
+# A `target_transport` is `nothing`, a fixed transport, or a callable of the grid (kept as is).
+convert_target_transport(FT, ::Nothing) = nothing
+convert_target_transport(FT, target_transport::Number) = convert(FT, target_transport)
+convert_target_transport(FT, target_transport) = target_transport
