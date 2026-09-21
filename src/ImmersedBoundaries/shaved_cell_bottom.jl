@@ -41,7 +41,10 @@ The height of a shaved cell, and of each of its open lateral faces, is greater t
 minimum_fractional_cell_height * Δz,
 ```
 
-where `Δz` is the original height of the bottom cell of the underlying grid.
+where `Δz` is the original height of the bottom cell of the underlying grid. A cell is as tall as the mean of the
+openings its faces leave, so a cell whose faces are cut in different levels asks its open faces to leave more: with
+`n` of four faces open each leaves `4 * minimum_fractional_cell_height * Δz / n`, capped at `Δz`, so that the
+guarantee saturates at `n * Δz / 4` when `minimum_fractional_cell_height` exceeds `n / 4`.
 """
 ShavedCellBottom(bottom_height; minimum_fractional_cell_height=0.2) = ShavedCellBottom(bottom_height, nothing, nothing, nothing, minimum_fractional_cell_height)
 
@@ -72,6 +75,8 @@ function Base.show(io::IO, ib::ShavedCellBottom)
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
+
+const maximum_shaving_iterations = 20
 
 @inline x_index(i, grid, offset) = i + offset
 @inline x_index(i, grid::XFlatGrid, offset) = i
@@ -152,6 +157,8 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
     west_field = Field{Face, Center, Nothing}(grid)
     south_field = Field{Center, Face, Nothing}(grid)
     previous_bottom_field = Field{Center, Center, Nothing}(grid)
+    floor_field = Field{Center, Center, Nothing}(grid)
+    top_field = Field{Center, Center, Nothing}(grid)
 
     compute_ib = ShavedCellBottom(bottom_field, nothing, nothing, nothing, ϵ)
 
@@ -159,12 +166,28 @@ function materialize_immersed_boundary(grid, ib::ShavedCellBottom)
     wˣ = TX === Flat && TY !== Flat ? 0 : 1
     wʸ = TY === Flat && TX !== Flat ? 0 : 1
 
-    # Immersing a cell can close the faces of its neighbors, so faces and cells are recomputed until no level changes.
+    # Immersing a cell can close the faces of its neighbors, and deepening a face moves the cells on both sides of
+    # it, so faces and cells are recomputed until no level changes.
     converged = false
-    while !converged
+    iteration = 0
+    while !converged && iteration < maximum_shaving_iterations
+        iteration += 1
         set!(previous_bottom_field, bottom_field)
 
         @apply_regionally launch!(arch, grid, parameters, _compute_shaved_face_bottom_heights!, west_field, south_field, corner_field, grid, compute_ib)
+
+        fill_halo_regions!(west_field)
+        fill_halo_regions!(south_field)
+
+        # the level a cell is cut in follows from its faces, so the requirement is posted against a boundary that carries them
+        face_ib = ShavedCellBottom(bottom_field, west_field.data, south_field.data, corner_field.data, ϵ)
+
+        @apply_regionally launch!(arch, grid, :xy, _require_open_face_depths!, floor_field, top_field, west_field, south_field, grid, face_ib, ϵ)
+
+        fill_halo_regions!(floor_field)
+        fill_halo_regions!(top_field)
+
+        @apply_regionally launch!(arch, grid, parameters, _deepen_open_faces!, west_field, south_field, floor_field, top_field, grid)
 
         fill_halo_regions!(west_field)
         fill_halo_regions!(south_field)
@@ -260,6 +283,61 @@ end
     # never become arbitrarily thin (which would wreck the conditioning of the free-surface solve).
     @inbounds west_field[i, j, 1]  = shaved_face_bottom_height(i, j, bottom_level(i, j, grid, rᶠᶜ), grid, rᶠᶜ, ϵ)
     @inbounds south_field[i, j, 1] = shaved_face_bottom_height(i, j, bottom_level(i, j, grid, rᶜᶠ), grid, rᶜᶠ, ϵ)
+end
+
+# The height of a cell is the mean of the openings its faces leave, so a cell whose faces are cut in different
+# levels is thinner than any of them: with n of four faces open it keeps only n/4 of ϵ Δr. Each cell therefore asks
+# its open faces to leave 4 ϵ Δr / n, which restores the ϵ guarantee without moving a face out of the cell's level.
+@kernel function _require_open_face_depths!(floor_field, top_field, west_field, south_field, grid, ib, ϵ)
+    i, j = @index(Global, NTuple)
+
+    iᴱ = x_index(i, grid, +1)
+    jᴺ = y_index(j, grid, +1)
+
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    kᶜ = bottom_active_index(i, j, grid, ib)
+    k  = min(kᶜ, grid.Nz)
+    r⁺ = rnode(i, j, k+1, grid, c, c, f)
+    Δr = Δrᶜᶜᶜ(i, j, k, grid)
+
+    oᵂ = @inbounds face_open_height(west_field[i, j, 1],   r⁺, Δr)
+    oᴱ = @inbounds face_open_height(west_field[iᴱ, j, 1],  r⁺, Δr)
+    oˢ = @inbounds face_open_height(south_field[i, j, 1],  r⁺, Δr)
+    oᴺ = @inbounds face_open_height(south_field[i, jᴺ, 1], r⁺, Δr)
+
+    n = ifelse(oᵂ > zero(Δr), 1, 0) + ifelse(oᴱ > zero(Δr), 1, 0) +
+        ifelse(oˢ > zero(Δr), 1, 0) + ifelse(oᴺ > zero(Δr), 1, 0)
+
+    opening = (oᵂ + oᴱ + oˢ + oᴺ) / 4
+    thin = (opening < ϵ * Δr) & (n > 0) & (kᶜ ≤ grid.Nz)
+
+    # a face cannot leave more open than the level it sits in, so the guarantee saturates at n Δr / 4
+    target = min(4ϵ * Δr / max(n, 1), Δr)
+
+    @inbounds floor_field[i, j, 1] = ifelse(thin, r⁺ - target, rᵗ)
+    @inbounds top_field[i, j, 1] = r⁺
+end
+
+# A face separates two cells and must satisfy both, but only where it is already open: pulling a face down into a
+# level it does not reach would carve a trench through the staircase it belongs to.
+@kernel function _deepen_open_faces!(west_field, south_field, floor_field, top_field, grid)
+    i, j = @index(Global, NTuple)
+
+    iᵂ = x_index(i, grid, -1)
+    jˢ = y_index(j, grid, -1)
+    rᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+
+    @inbounds begin
+        rᵂ = west_field[i, j, 1]
+        capᵂ = ifelse(rᵂ < top_field[iᵂ, j, 1], floor_field[iᵂ, j, 1], rᵗ)
+        capᶜ = ifelse(rᵂ < top_field[i, j, 1],  floor_field[i, j, 1],  rᵗ)
+        west_field[i, j, 1] = min(rᵂ, capᵂ, capᶜ)
+
+        rˢ = south_field[i, j, 1]
+        capˢ = ifelse(rˢ < top_field[i, jˢ, 1], floor_field[i, jˢ, 1], rᵗ)
+        capᴺ = ifelse(rˢ < top_field[i, j, 1],  floor_field[i, j, 1],  rᵗ)
+        south_field[i, j, 1] = min(rˢ, capˢ, capᴺ)
+    end
 end
 
 # A face shaved in a higher level is closed in this one, so clipping the faces into the level of the cell makes them bound its volume.
