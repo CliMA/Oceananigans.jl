@@ -42,7 +42,8 @@ intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, 
 output_indices(output::AbstractField, indices, with_halos) = output_indices(output, output.grid, indices, with_halos)
 output_indices(output::Reduction, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
 
-function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
+# Runs once per output at writer construction, so it is not specialized on the output type
+Base.@nospecializeinfer function output_indices(@nospecialize(output::Union{AbstractField, Reduction}), @nospecialize(grid), indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
@@ -56,7 +57,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     return intersected
 end
 
-function construct_output(user_output::Union{AbstractField, Reduction}, user_indices, with_halos)
+Base.@nospecializeinfer function construct_output(@nospecialize(user_output::Union{AbstractField, Reduction}), user_indices, with_halos)
     indices = output_indices(user_output, user_indices, with_halos)
 
     # Don't compute AbstractOperations or Reductions

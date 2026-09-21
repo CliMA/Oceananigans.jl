@@ -31,6 +31,7 @@ using Oceananigans.Grids: Center, Face
 
 # Parse a location string like "Center" or "Face" back to a type.
 function _parse_location(s::AbstractString)
+    s = last(split(s, '.')) # tolerate module-qualified names
     s == "Nothing" && return Nothing
     s == "Center"  && return Center
     s == "Face"    && return Face
