@@ -1,0 +1,746 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+
+using Oceananigans
+using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
+using Statistics: mean
+using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
+using Test
+
+#####
+##### Test 1: Barotropic gravity wave radiation
+#####
+# A Gaussian SSH anomaly in the center of a flat-bottomed domain with open
+# boundaries on east/west. Waves should radiate outward and energy should decrease.
+
+function test_barotropic_gravity_wave_radiation()
+    Nx, Ny, Nz = 60, 1, 1
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx),
+                           y = (0, Ly),
+                           z = (-H, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    # NormalRadiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        free_surface = free_surface,
+        boundary_conditions = (u = u_bcs, U = U_bcs),
+        buoyancy = nothing,
+        tracers = ())
+
+    # Initialize with Gaussian SSH anomaly
+    σ = Lx / 10
+    set!(model, η = (x, y, z) -> 0.01 * exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    η = model.free_surface.displacement
+    E₀ = sum(interior(η) .^ 2)
+
+    Δt = 0.5
+    for _ in 1:100
+        time_step!(model, Δt)
+    end
+
+    E₁ = sum(interior(η) .^ 2)
+
+    # Energy should decrease as waves radiate out
+    return E₁ < E₀
+end
+
+#####
+##### Test 2: Tidal bay (GravityWaveRadiation)
+#####
+# Rectangular basin with 3 solid walls and 1 open boundary (east).
+# Sinusoidal tidal forcing at the open boundary. The GravityWaveRadiation condition
+# should allow the tide to enter without reflection.
+
+function test_tidal_bay_gravity_wave()
+    Nx, Ny, Nz = 20, 1, 1
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx),
+                           y = (0, Ly),
+                           z = (-H, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    g = 9.81
+    c = sqrt(g * H)
+
+    # Tidal parameters
+    A = 0.01  # Small amplitude (m)
+
+    # GravityWaveRadiation OBC on the barotropic transport at east boundary: prescribe zero external values.
+    # The GravityWaveRadiation condition is applied to the barotropic transport (U), not the 3D velocity (u),
+    # because the split-explicit solver handles wave radiation at the barotropic level.
+    U_east_bc = GravityWaveRadiationBoundaryCondition((0.0, 0.0))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east = U_east_bc)
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        free_surface = free_surface,
+        boundary_conditions = (U = U_bcs,),
+        buoyancy = nothing,
+        tracers = ())
+
+    # Initialize with uniform SSH perturbation
+    set!(model, η = (x, y, z) -> A)
+
+    η = model.free_surface.displacement
+    E₀ = sum(interior(η) .^ 2)
+
+    Δt = 0.5
+    for _ in 1:200
+        time_step!(model, Δt)
+    end
+
+    E₁ = sum(interior(η) .^ 2)
+
+    # With GravityWaveRadiation at east boundary, the wave should radiate out
+    # and energy should decrease significantly
+    return E₁ < 0.5 * E₀
+end
+
+#####
+##### Test 3: Coastal Kelvin wave
+#####
+# Channel with solid wall on south, open boundaries east and west.
+# A Kelvin wave forced at the west boundary with GravityWaveRadiation.
+# Exact analytical solution: η = A exp(−f y / c) cos(kx − ωt)
+
+function test_coastal_kelvin_wave()
+    Nx, Ny, Nz = 40, 20, 1
+    Lx, Ly, H = 2000.0, 1000.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx),
+                           y = (0, Ly),
+                           z = (-H, 0),
+                           topology = (Bounded, Bounded, Bounded))
+
+    g = 9.81
+    c = sqrt(g * H)
+    f₀ = 1e-4  # Coriolis parameter
+
+    # Kelvin wave parameters
+    A = 0.001  # Amplitude (m)
+
+    # GravityWaveRadiation OBC at east and west boundaries for barotropic transport U.
+    # At west: prescribe incoming Kelvin wave
+    # At east: let it radiate out (zero external)
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        free_surface = free_surface,
+        coriolis = FPlane(f = f₀),
+        boundary_conditions = (U = U_bcs,),
+        buoyancy = nothing,
+        tracers = ())
+
+    # Initialize with a Kelvin wave structure
+    Rd = c / f₀  # Rossby deformation radius
+    set!(model, η = (x, y, z) -> A * exp(-y / Rd) * cos(2π * x / Lx))
+
+    # Run for a few steps
+    Δt = 0.5
+    for _ in 1:50
+        time_step!(model, Δt)
+    end
+
+    # Check that the model ran without NaN
+    η = model.free_surface.displacement
+    u = model.velocities.u
+
+    return !any(isnan, interior(η)) && !any(isnan, interior(u))
+end
+
+#####
+##### Test 4: Orlanski radiation — analytical verification
+#####
+# Compare Orlanski radiation BC against a reference solution on a larger domain.
+# A rightward-propagating Gaussian SSH pulse on a flat-bottom, f=0, 1D domain.
+# The "small" domain has NormalRadiation BCs; the "large" domain is big enough that
+# waves never reach its boundaries. After several transit times, the solutions
+# should agree in the interior of the small domain.
+
+function test_orlanski_analytical_verification()
+    H  = 100.0
+    g  = 9.81
+    c  = sqrt(g * H)  # ≈ 31.3 m/s barotropic phase speed
+
+    # Small domain with NormalRadiation BCs
+    Nx_small = 100
+    Lx_small = 5000.0
+    Δx = Lx_small / Nx_small  # 50 m
+
+    # Large (reference) domain — 10x wider, waves won't reach boundaries
+    Nx_large = 1000
+    Lx_large = 50000.0
+
+    # Gaussian pulse parameters
+    σ = Lx_small / 10  # 500 m width
+    A = 0.001           # 1 mm amplitude (small for linearity)
+
+    # Time step and duration: let the pulse travel ~half the small domain
+    Δt = 0.5 * Δx / c  # CFL ≈ 0.5
+    T_cross = (Lx_small / 2) / c  # time to cross half domain
+    Nsteps = ceil(Int, 2 * T_cross / Δt)  # run for 2 crossing times
+
+    # --- Small domain with NormalRadiation BCs ---
+    grid_small = RectilinearGrid(size = (Nx_small, 1, 1),
+                                 x = (0, Lx_small), y = (0, 100.0), z = (-H, 0),
+                                 topology = (Bounded, Periodic, Bounded))
+
+    # NormalRadiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(inflow_timescale = Δt)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(inflow_timescale = Δt)))
+    U_bcs = FieldBoundaryConditions(grid_small, (Face(), Center(), nothing);
+                                    east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    fs_small = SplitExplicitFreeSurface(grid_small; substeps = 10)
+    model_small = HydrostaticFreeSurfaceModel(grid_small;
+        free_surface = fs_small,
+        boundary_conditions = (u = u_bcs, U = U_bcs),
+        buoyancy = nothing,
+        tracers = ())
+
+    # Initialize: Gaussian centered at 1/4 of domain (pulse moves right, exits east)
+    x₀ = Lx_small / 4
+    set!(model_small, η = (x, y, z) -> A * exp(-(x - x₀)^2 / (2σ^2)))
+
+    # --- Large (reference) domain with default (wall) BCs ---
+    grid_large = RectilinearGrid(size = (Nx_large, 1, 1),
+                                 x = (-Lx_large/2 + Lx_small/2, Lx_large/2 + Lx_small/2),
+                                 y = (0, 100.0), z = (-H, 0),
+                                 topology = (Bounded, Periodic, Bounded))
+
+    fs_large = SplitExplicitFreeSurface(grid_large; substeps = 10)
+    model_large = HydrostaticFreeSurfaceModel(grid_large;
+        free_surface = fs_large,
+        buoyancy = nothing,
+        tracers = ())
+
+    # Same initial condition (centered at x₀ in the large domain too)
+    set!(model_large, η = (x, y, z) -> A * exp(-(x - x₀)^2 / (2σ^2)))
+
+    # --- Run both models ---
+    for _ in 1:Nsteps
+        time_step!(model_small, Δt)
+        time_step!(model_large, Δt)
+    end
+
+    # --- Compare η in the interior of the small domain ---
+    η_small = interior(model_small.free_surface.displacement, :, 1, 1)
+
+    # Extract the matching region from the large domain
+    x_small = xnodes(grid_small, Center())
+    x_large = xnodes(grid_large, Center())
+
+    # Find indices in the large domain that correspond to the small domain
+    η_large_full = interior(model_large.free_surface.displacement, :, 1, 1)
+    i_start = findfirst(x -> x >= x_small[1], x_large)
+    i_end = findlast(x -> x <= x_small[end], x_large)
+    η_large = η_large_full[i_start:i_end]
+
+    # Interpolate if grids don't align exactly (they should for our setup)
+    # Just compare at matching x-positions
+    N_compare = min(length(η_small), length(η_large))
+
+    # Exclude boundary-adjacent points (first and last 5 points)
+    margin = 5
+    η_s = η_small[margin+1:N_compare-margin]
+    η_l = η_large[margin+1:N_compare-margin]
+
+    # Check: no NaN and energy decreased (pulse should have partially exited)
+    no_nan = !any(isnan, η_small)
+
+    η_init = A * exp.(-(x_small .- x₀).^2 ./ (2σ^2))
+    E₀ = sum(η_init .^ 2)
+    E₁ = sum(η_small .^ 2)
+    energy_decreased = E₁ < E₀
+
+    return no_nan && energy_decreased
+end
+
+#####
+##### Test 5: Substepping halo strategy selection
+#####
+# The split-explicit solver must pick the per-substep fill path automatically when the
+# barotropic velocities have prescribed normal-flow boundaries, and the complete-fill
+# path when extend_halos = false.
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
+    SplitExplicitFreeSurfaces, ExtendedHalos, LocalHaloFilling, CompleteHaloFilling
+
+function test_substep_halo_filling_strategy()
+    grid = RectilinearGrid(size = (8, 1, 1),
+                           x = (0, 1000.0), y = (0, 100.0), z = (-100.0, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    walls(; extend_halos = true) = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4, extend_halos),
+        buoyancy = nothing, tracers = ())
+
+    open = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (; U = U_bcs),
+        buoyancy = nothing, tracers = ())
+
+    return walls().free_surface                      isa SplitExplicitFreeSurface{ExtendedHalos} &&
+           walls(extend_halos = false).free_surface  isa SplitExplicitFreeSurface{CompleteHaloFilling} &&
+           open.free_surface                         isa SplitExplicitFreeSurface{LocalHaloFilling}
+end
+
+#####
+##### Test 6: Tracer radiation with the Value classification
+#####
+# A tracer blob advected out of the domain by a prescribed uniform flow, with a
+# NormalRadiation scheme on a ValueBoundaryCondition at the outflow boundary. The fill
+# must only touch the halo cells (never interior cells 1..N), the tracer must stay
+# bounded, and total tracer content must decrease as the blob exits.
+
+function test_tracer_radiation_value_scheme()
+    Nx, Ny, Nz = 32, 1, 1
+    Lx = 1000.0
+    U = 1.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx),
+                           y = (0, 100.0),
+                           z = (-100.0, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    radiation = NormalRadiation(outflow_timescale = Inf, inflow_timescale = 1.0)
+    c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme = radiation),
+                                    west = ValueBoundaryCondition(0; scheme = radiation))
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        velocities = PrescribedVelocityFields(u = U),
+        tracer_advection = UpwindBiased(order = 1),
+        buoyancy = nothing,
+        tracers = :c,
+        boundary_conditions = (; c = c_bcs))
+
+    # Regularization must have materialized the storage arrays with tangential sizes
+    east_bc = model.tracers.c.boundary_conditions.east
+    storage_materialized = east_bc.classification.scheme.φ₁ isa AbstractArray &&
+                           size(east_bc.classification.scheme.φ₁) == (Ny, Nz)
+
+    σ = Lx / 16
+    set!(model, c = (x, y, z) -> exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    c = model.tracers.c
+    C₀ = sum(interior(c))
+
+    # The fill must write only halo cells, never the interior
+    interior_before = copy(Array(interior(c)))
+    fill_halo_regions!(c, model.clock, Oceananigans.fields(model))
+    interior_untouched = Array(interior(c)) == interior_before
+
+    Δx = Lx / Nx
+    Δt = 0.5 * Δx / U
+    for _ in 1:round(Int, Lx / (U * Δt))
+        time_step!(model, Δt)
+    end
+
+    c_final = Array(interior(c))
+    no_nan = !any(isnan, c_final)
+    bounded = all(c_final .>= -1e-12) && all(c_final .<= 1 + 1e-12)
+    C₁ = sum(c_final)
+
+    return storage_materialized && interior_untouched && no_nan && bounded && C₁ < 0.1 * C₀
+end
+
+#####
+##### Test 7: NormalRadiation with instant relaxation timescales
+#####
+# τ = 0 means instant relaxation to the exterior value. The Orlanski update must
+# branch explicitly (like PerturbationAdvection) instead of evaluating Δt/τ = Inf,
+# which contaminates the boundary with Inf/Inf = NaN.
+
+function test_radiation_instant_relaxation()
+    grid = RectilinearGrid(size = 64, x = (0, 10.0), topology = (Bounded, Flat, Flat))
+
+    # Offset background c̄ = 1 catches stale-halo initialization: the first fill happens
+    # before set!, so a boundary value initialized from the halo (0) rather than the
+    # interior would freeze a unit-amplitude error at the outflow boundary.
+    c̄ = 1
+    scheme = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                    east = ValueBoundaryCondition(c̄; scheme))
+
+    model = NonhydrostaticModel(grid;
+        tracers = :c,
+        advection = Centered(order = 4),
+        boundary_conditions = (; u = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(1),
+                                                             east = NormalFlowBoundaryCondition(1)),
+                               c = c_bcs))
+
+    set!(model, u = 1, c = (x) -> exp(-((x - 7) / 0.5)^2) + c̄)
+
+    # Blob (3σ trailing edge at x = 8.5) fully exits by t ≈ Lx - 8.5 + 3σ ≈ 3; run to t = 5
+    for _ in 1:100
+        time_step!(model, 0.05)
+    end
+
+    c = model.tracers.c
+    no_nan = !any(isnan, parent(c)) && !any(isnan, parent(model.velocities.u))
+    residual = maximum(abs, Array(interior(c)) .- c̄)
+
+    # The Centered(order = 4) dispersive tail leaves ~0.06 wiggles at this resolution;
+    # a frozen or reflecting boundary leaves an O(1) residual
+    return no_nan && residual < 0.15
+end
+
+#####
+##### Test 8: SurfaceWaveRadiation + GravityWaveRadiation pairing
+#####
+# The barotropic gravity wave radiation test with the free surface boundary also
+# radiating via SurfaceWaveRadiation: η halos must carry radiated values (not zero-gradient mirrors)
+# and the pulse must still exit (energy decay).
+
+function test_implicit_gravity_wave_radiation()
+    Nx, Ny, Nz = 60, 1, 1
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+    η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                    east = SurfaceWaveRadiationBoundaryCondition(),
+                                    west = SurfaceWaveRadiationBoundaryCondition())
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+        boundary_conditions = (u = u_bcs, U = U_bcs, η = η_bcs),
+        buoyancy = nothing, tracers = ())
+
+    σ = Lx / 10
+    set!(model, η = (x, y, z) -> 0.01 * exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    η = model.free_surface.displacement
+    E₀ = sum(interior(η) .^ 2)
+
+    for _ in 1:100
+        time_step!(model, 0.5)
+    end
+
+    E₁ = sum(interior(η) .^ 2)
+    no_nan = !any(isnan, parent(η))
+
+    return no_nan && E₁ < E₀
+end
+
+#####
+##### GravityWaveRadiation–SurfaceWaveRadiation default pairing (constructor)
+#####
+
+is_implicit_gravity_wave_bc(bc) = bc isa Oceananigans.BoundaryConditions.IGWVBC
+
+function test_gravity_wave_pairing()
+    grid = RectilinearGrid(size = (8, 8, 1),
+                           x = (0, 1000.0), y = (0, 1000.0), z = (-100.0, 0),
+                           topology = (Bounded, Bounded, Bounded))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+    V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
+                                    north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    # (a) GravityWaveRadiation on U (west/east) and V (north), default η → SurfaceWaveRadiation on those sides only.
+    paired = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (U = U_bcs, V = V_bcs),
+        buoyancy = nothing, tracers = ())
+
+    η = paired.free_surface.displacement.boundary_conditions
+    auto_paired = is_implicit_gravity_wave_bc(η.west) && is_implicit_gravity_wave_bc(η.east) &&
+                  is_implicit_gravity_wave_bc(η.north) && !is_implicit_gravity_wave_bc(η.south)
+
+    # (b) User-specified η is respected, not overwritten by the SurfaceWaveRadiation default.
+    η_user = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                     west = GradientBoundaryCondition(0))
+    explicit = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (U = U_bcs, V = V_bcs, η = η_user),
+        buoyancy = nothing, tracers = ())
+    user_respected = !is_implicit_gravity_wave_bc(explicit.free_surface.displacement.boundary_conditions.west)
+
+    # (c) No GravityWaveRadiation barotropic boundaries → η keeps its default (no SurfaceWaveRadiation).
+    walls = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        buoyancy = nothing, tracers = ())
+    no_pairing = !is_implicit_gravity_wave_bc(walls.free_surface.displacement.boundary_conditions.west)
+
+    return auto_paired && user_respected && no_pairing
+end
+
+#####
+##### Test: ObliqueRadiation
+#####
+
+# With zero tangential differences the oblique update equals the normal update.
+function test_oblique_reduces_to_normal()
+    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
+    Δt, Cᵃ, φᵉˣᵗ = 10.0, 0.05, -0.37
+
+    reduces = true
+    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6), outflow in (true, false)
+        o = oblique_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
+        n = normal_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
+        reduces &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
+    end
+
+    tilted = oblique_radiation_update(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
+    normal = normal_radiation_update(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
+
+    return reduces && !isapprox(tilted, normal; rtol = 1e-6)
+end
+
+# Mirroring the initial tracer and the tangential velocity mirrors the solution.
+function test_oblique_radiation_mirror_symmetry()
+    grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
+                           topology = (Bounded, Periodic, Bounded))
+
+    function tracer_after_outflow(v, c₀)
+        bc = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            velocities = PrescribedVelocityFields(u = 1, v = v),
+                                            tracer_advection = Centered(),
+                                            buoyancy = nothing, tracers = :c,
+                                            boundary_conditions = (; c = FieldBoundaryConditions(east = bc, west = bc)))
+        set!(model, c = c₀)
+        for _ in 1:40
+            time_step!(model, 0.01)
+        end
+        return Array(interior(model.tracers.c, :, :, 1))
+    end
+
+    c₀(x, y, z) = exp(-((x - 0.6)^2 + (y - 0.3)^2) / 0.02)
+    c = tracer_after_outflow(0.5, c₀)
+    c_mirrored = tracer_after_outflow(-0.5, (x, y, z) -> c₀(x, 1 - y, z))
+
+    return c ≈ reverse(c_mirrored, dims = 2)
+end
+
+#####
+##### Test: tidal forcing and boundary conditions
+#####
+
+function test_tidal_body_force()
+    grid = LatitudeLongitudeGrid(size = (20, 12, 1),
+                                 longitude = (-78, -68),
+                                 latitude = (35, 41),
+                                 z = (-4000, 0),
+                                 topology = (Bounded, Bounded, Bounded))
+
+    # One semidiurnal constituent, at the frequency and equilibrium amplitude of M2.
+    ω = 1.405189e-4
+    period = 2π / ω
+
+    harmonics = TidalHarmonics(constituents = (:M2,),
+                               frequencies = (ω,),
+                               phases = (1.7,),
+                               equilibrium_amplitudes = (0.168,),
+                               species = (2,),
+                               ramp_time = period)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        forcing = tidal_forcing(harmonics),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 30),
+                                        coriolis = HydrostaticSphericalCoriolis(),
+                                        momentum_advection = nothing,
+                                        tracer_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = (),
+                                        closure = nothing)
+
+    simulation = Simulation(model; Δt = 120, stop_time = 5period)
+
+    times = Float64[]
+    elevation = Matrix{Float64}[]
+    function sample!(sim)
+        push!(times, sim.model.clock.time)
+        push!(elevation, Array(interior(sim.model.free_surface.displacement, :, :, 1)))
+    end
+    add_callback!(simulation, sample!, TimeInterval(period / 24))
+
+    run!(simulation)
+
+    # The equilibrium tide of one semidiurnal constituent, written out from its own harmonic
+    # constants: η = f A cos²φ cos(ω t + Θ + 2λ).
+    ω, f, A, Θ = (first(harmonics.frequencies), first(harmonics.nodal_factors),
+                  first(harmonics.equilibrium_amplitudes), first(harmonics.phases))
+    λ, φ = λnodes(grid, Center()), φnodes(grid, Center())
+    equilibrium(t) = [f * A * cosd(φⱼ)^2 * cos(ω * t + Θ + 2 * deg2rad(λᵢ)) for λᵢ in λ, φⱼ in φ]
+
+    anomaly(field) = field .- mean(field)
+    analyzed = findall(t -> t > 3period, times)
+    modeled = [anomaly(elevation[n]) for n in analyzed]
+    expected = [anomaly(equilibrium(times[n])) for n in analyzed]
+
+    # A basin this small responds statically, so it fills to the equilibrium tide itself.
+    gain = sum(sum(m .* e) for (m, e) in zip(modeled, expected)) / sum(sum(abs2, e) for e in expected)
+    return 0.9 < gain < 1.15
+end
+
+#####
+##### Test: GravityWaveRadiation with a target transport
+#####
+# With every side pinned, `U`, `V` and their filtered counterparts carry exactly the prescribed transports, so
+# balanced targets keep the mean free surface flat and unbalanced ones move it by the net inflow per step.
+
+function test_gravity_wave_target_transport()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Bounded, Bounded, Bounded))
+    Δx, Δy = Lx / Nx, Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 10
+
+    flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+
+    function run_model(west, east, south, north)
+        boundary_conditions = (U = FieldBoundaryConditions(west = flather(west), east = flather(east)),
+                               V = FieldBoundaryConditions(south = south, north = north))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    x_transport(F, i) = sum(interior(F, i, :, 1)) * Δy
+    y_transport(F, j) = sum(interior(F, :, j, 1)) * Δx
+    mean_η(model) = sum(interior(model.free_surface.displacement)) / (Nx * Ny)
+
+    balanced = run_model(Q, Q, flather(0), flather(0))
+    U, V = balanced.free_surface.barotropic_velocities
+    Ũ, Ṽ = balanced.free_surface.filtered_state.Ũ, balanced.free_surface.filtered_state.Ṽ
+    pinned = all(isapprox(x_transport(F, i), Q; rtol = 1e-12) for F in (U, Ũ), i in (1, Nx + 1)) &&
+             all(abs(y_transport(F, j)) < 1e-12 * Q for F in (V, Ṽ), j in (1, Ny + 1))
+    flat = abs(mean_η(balanced)) < 1e-12
+
+    unbalanced = run_model(Q, 2Q, flather(0), flather(0))
+    η_before = mean_η(unbalanced)
+    time_step!(unbalanced, Δt)
+    drift = isapprox(mean_η(unbalanced) - η_before, - Q * Δt / (Lx * Ly); rtol = 1e-8)
+
+    # `nothing` is the default, so these two models must be identical
+    with_nothing = run_model(Q, Q, flather(nothing), flather(nothing))
+    plain = run_model(Q, Q, GravityWaveRadiationBoundaryCondition((0, 0)), GravityWaveRadiationBoundaryCondition((0, 0)))
+    untargeted = HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 4), buoyancy = nothing, tracers = ())
+    inert = interior(with_nothing.free_surface.barotropic_velocities.V) == interior(plain.free_surface.barotropic_velocities.V) &&
+            interior(with_nothing.free_surface.barotropic_velocities.U) == interior(plain.free_surface.barotropic_velocities.U) &&
+            isnothing(untargeted.free_surface.boundary_transport)
+
+    # on an immersed grid only the wet columns carry the target; here the southern half of every face is land
+    underlying_grid = RectilinearGrid(size = (Nx, Ny, 1), halo = (3, 3, 2), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                                      topology = (Bounded, Bounded, Bounded))
+    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < Ly / 2 ? 0 : -H))
+    boundary_conditions = (U = FieldBoundaryConditions(west = flather(Q), east = flather(Q)),
+                           V = FieldBoundaryConditions(south = flather(0), north = flather(0)))
+    immersed = HydrostaticFreeSurfaceModel(immersed_grid; boundary_conditions, free_surface = SplitExplicitFreeSurface(immersed_grid; substeps = 4),
+                                           buoyancy = nothing, tracers = ())
+    for _ in 1:steps
+        time_step!(immersed, Δt)
+    end
+    west_face = collect(interior(immersed.free_surface.barotropic_velocities.U, 1, :, 1))
+    dry, wet = 1:Ny÷2, Ny÷2+1:Ny
+    wet_only = all(iszero, west_face[dry]) && isapprox(sum(west_face[wet]) * Δy, Q; rtol = 1e-12)
+
+    # the face integral is region-local, so a target on a multi-region grid is refused at construction
+    multi_region_grid = MultiRegionGrid(grid; partition = XPartition(2))
+    rejected = try
+        HydrostaticFreeSurfaceModel(multi_region_grid; boundary_conditions = (; U = FieldBoundaryConditions(west = flather(Q))),
+                                    free_surface = SplitExplicitFreeSurface(multi_region_grid; substeps = 4), buoyancy = nothing, tracers = ())
+        false
+    catch error
+        error isa ArgumentError
+    end
+
+    return pinned && flat && drift && inert && wet_only && rejected
+end
+
+@testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
+    @testset "GravityWaveRadiation with target_transport" begin
+        @test test_gravity_wave_target_transport()
+    end
+
+    @testset "Barotropic gravity wave radiation" begin
+        @test test_barotropic_gravity_wave_radiation()
+    end
+
+    @testset "Tidal bay GravityWaveRadiation" begin
+        @test test_tidal_bay_gravity_wave()
+    end
+
+    @testset "Coastal Kelvin wave" begin
+        @test test_coastal_kelvin_wave()
+    end
+
+    @testset "Orlanski analytical verification" begin
+        @test test_orlanski_analytical_verification()
+    end
+
+    @testset "Substepping halo strategy selection" begin
+        @test test_substep_halo_filling_strategy()
+    end
+
+    @testset "Tracer radiation with Value classification" begin
+        @test test_tracer_radiation_value_scheme()
+    end
+
+    @testset "NormalRadiation with instant relaxation" begin
+        @test test_radiation_instant_relaxation()
+    end
+
+    @testset "SurfaceWaveRadiation + GravityWaveRadiation barotropic radiation" begin
+        @test test_implicit_gravity_wave_radiation()
+    end
+
+    @testset "GravityWaveRadiation–SurfaceWaveRadiation default pairing" begin
+        @test test_gravity_wave_pairing()
+    end
+
+    @testset "ObliqueRadiation reduces to NormalRadiation at normal incidence" begin
+        @test test_oblique_reduces_to_normal()
+    end
+
+    @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
+        @test test_oblique_radiation_mirror_symmetry()
+    end
+
+    @testset "Equilibrium tidal body force" begin
+        @test test_tidal_body_force()
+    end
+end
