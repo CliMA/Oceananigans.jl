@@ -14,9 +14,9 @@ function filtered_tidal_signal(arch, directory; stop_time, pickup = false)
 
     simulation = Simulation(model; Δt = 10minutes, stop_time)
     simulation.output_writers[:daily] = JLD2Writer(model, (; c); dir = directory, filename = "daily",
-                                                   schedule = LowPassFilter(1days), overwrite_existing = pickup === false)
+                                                   schedule = LowPassFilter(1days), overwrite_files = pickup === false)
     simulation.output_writers[:weekly] = JLD2Writer(model, (; c); dir = directory, filename = "weekly",
-                                                    schedule = LowPassFilter(7days), overwrite_existing = pickup === false)
+                                                    schedule = LowPassFilter(7days), overwrite_files = pickup === false)
     simulation.output_writers[:checkpointer] = Checkpointer(model; dir = directory, prefix = "checkpoint",
                                                             schedule = TimeInterval(5days))
     run!(simulation; pickup)
