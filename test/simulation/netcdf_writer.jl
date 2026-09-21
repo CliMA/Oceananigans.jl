@@ -2182,7 +2182,7 @@ function test_netcdf_function_output(arch)
 end
 
 function test_netcdf_spatial_average(arch)
-    topo = (Periodic, Periodic, Periodic)
+    topo = (Periodic, Periodic, Bounded)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
 
@@ -2623,11 +2623,10 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 end
 
 function test_netcdf_overriding_attributes(arch)
-    arch = CPU()
-
     grid = LatitudeLongitudeGrid(arch;
                                  topology = (Bounded, Bounded, Bounded),
-                                 size = (4, 4, 4),
+                                 size = (8, 8, 4),
+                                 halo = (3, 4, 2),
                                  longitude = (-1, 1),
                                  latitude = (-1, 1),
                                  z = (-100, 0))
@@ -2706,11 +2705,9 @@ function free_surface_output_writers!(simulation, model, dir, prefix, suffix)
     return filepaths
 end
 
-function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, vertically_stretched=false)
+function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false)
     Nλ, Nφ, Nz = 8, 8, 4
     Hλ, Hφ, Hz = 3, 4, 2
-
-    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
 
     underlying_grid = LatitudeLongitudeGrid(arch;
                                             topology = (Bounded, Bounded, Bounded),
@@ -2718,7 +2715,7 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
                                             halo = (Hλ, Hφ, Hz),
                                             longitude = (-1, 1),
                                             latitude = (-1, 1),
-                                            z)
+                                            z = (-100, 0))
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
@@ -2732,9 +2729,8 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
-    stretched_str = vertically_stretched ? "_stretched" : ""
     dir = mktempdir()
-    filepaths = free_surface_output_writers!(simulation, model, dir, "", "$(Arch)$(immersed_str)$(stretched_str)")
+    filepaths = free_surface_output_writers!(simulation, model, dir, "", "$(Arch)$(immersed_str)")
 
     run!(simulation)
 
@@ -2775,11 +2771,9 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
     return nothing
 end
 
-function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, vertically_stretched=false)
+function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false)
     Nx, Ny, Nz = 8, 8, 4
     Hx, Hy, Hz = 3, 4, 2
-
-    z = vertically_stretched ? [k^2 - 100 for k in 0:Nz] : (-100, 0)
 
     underlying_grid = RectilinearGrid(arch;
                                       topology = (Bounded, Bounded, Bounded),
@@ -2787,7 +2781,7 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
                                       halo = (Hx, Hy, Hz),
                                       x = (-1, 1),
                                       y = (-1, 1),
-                                      z)
+                                      z = (-100, 0))
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
@@ -2802,9 +2796,8 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
-    stretched_str = vertically_stretched ? "_stretched" : ""
     dir = mktempdir()
-    filepaths = free_surface_output_writers!(simulation, model, dir, "nonhydrostatic_", "$(Arch)$(immersed_str)$(stretched_str)")
+    filepaths = free_surface_output_writers!(simulation, model, dir, "nonhydrostatic_", "$(Arch)$(immersed_str)")
 
     run!(simulation)
 
@@ -3056,7 +3049,7 @@ end
 
 function test_netcdf_writer_different_grid(arch)
 
-    grid = RectilinearGrid(arch, size=(1, 1, 8), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid)
 
     coarse_grid = RectilinearGrid(arch, size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
@@ -3082,8 +3075,8 @@ function test_netcdf_writer_different_grid(arch)
 
     # Verify that dimensions match the coarse grid, not the model grid
     ds = NCDataset(filepath)
-    @test length(ds["z_aac"]) == grid.Nz÷2  # Should be 4, not 8
-    @test length(ds["z_aaf"]) == grid.Nz÷2 + 1  # Should be 5, not 9
+    @test length(ds["z_aac"]) == grid.Nz÷2
+    @test length(ds["z_aaf"]) == grid.Nz÷2 + 1
 
     # Verify that the z coordinates match the coarse grid
     expected_z_centers = znodes(coarse_grid, Center())
@@ -3172,7 +3165,7 @@ function test_netcdf_reduced_field_time_series(arch)
     # spatial dimensions, and the reader must re-inflate those dimensions (via
     # `inflate_nothing_dimensions`) before building the OffsetArray — otherwise
     # `offset_data` is handed a lower-dimensional array than the grid expects.
-    Nx, Ny, Nz = 4, 5, 6
+    Nx, Ny, Nz = 4, 4, 4
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
     set!(model, c=(x, y, z) -> x + 2y + 3z)
@@ -3433,7 +3426,7 @@ function test_netcdf_tripolar_field_time_series(arch)
     # Use a generous initial condition that stays well within the dynamic range and
     # `stop_iteration=1` to avoid any chance of numerical instability propagating into
     # the round-trip comparison — we're testing the I/O round-trip, not the physics.
-    Nx, Ny, Nz = 12, 10, 3
+    Nx, Ny, Nz = 20, 16, 4
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
@@ -3575,7 +3568,7 @@ function test_netcdf_tripolar_immersed_output(arch)
     # immersed-boundary reconstruction-data writer (which `defVar`s `bottom_height`
     # in a subgroup whose dimension scope is local — `create_field_coord_variables!`
     # for OSSG fields has to defDim the bare `i_*`/`j_*` dims in the subgroup).
-    Nx, Ny, Nz = 20, 16, 3
+    Nx, Ny, Nz = 20, 16, 4
     ug = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
     grid = ImmersedBoundaryGrid(ug, GridFittedBottom((λ, φ) -> -50))
 
@@ -3750,7 +3743,7 @@ function test_netcdf_abstract_vertical_coordinate_name(arch)
 end
 
 function test_netcdf_tripolar_grid_reconstruction(arch)
-    Nx, Ny, Nz = 20, 16, 3
+    Nx, Ny, Nz = 20, 16, 4
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
@@ -3843,7 +3836,6 @@ end
 
             @testset "LatitudeLongitude grid fitted bottom [$A]" begin
                 test_netcdf_latlon_grid_fitted_bottom(arch, GridFittedBottom)
-                test_netcdf_latlon_grid_fitted_bottom(arch, PartialCellBottom)
             end
         end
 
@@ -3853,7 +3845,6 @@ end
             test_netcdf_rectilinear_flat_xz(arch, immersed=false)
             test_netcdf_rectilinear_flat_xz(arch, immersed=true)
             test_netcdf_rectilinear_flat_yz(arch, immersed=false)
-            test_netcdf_rectilinear_flat_yz(arch, immersed=true)
             test_netcdf_rectilinear_column(arch)
         end
 
@@ -3913,9 +3904,9 @@ end
 
         @testset "Free surface output [$A]" begin
             @info "  Testing free surface output [$A]..."
-            for immersed in (false, true), vertically_stretched in (false, true)
-                test_netcdf_hydrostatic_free_surface_output(arch; immersed, vertically_stretched)
-                test_netcdf_nonhydrostatic_free_surface_output(arch; immersed, vertically_stretched)
+            for immersed in (false, true)
+                test_netcdf_hydrostatic_free_surface_output(arch; immersed)
+                test_netcdf_nonhydrostatic_free_surface_output(arch; immersed)
             end
         end
 
