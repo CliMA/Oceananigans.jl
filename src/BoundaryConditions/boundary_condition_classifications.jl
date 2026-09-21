@@ -104,7 +104,6 @@ NormalFlow() = NormalFlow(nothing)
 
 Adapt.adapt_structure(to, normal_flow::NormalFlow) = NormalFlow(adapt(to, normal_flow.scheme))
 
-
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
 
