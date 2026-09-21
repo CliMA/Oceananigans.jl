@@ -25,7 +25,7 @@
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie, NCDatasets"
+# pkg"add Oceananigans, CairoMakie, NCDatasets, CUDA" # Metal instead of CUDA on Apple silicon
 # ```
 
 using Oceananigans
@@ -35,13 +35,21 @@ using NCDatasets
 using Downloads
 using Printf
 using CairoMakie
-using CUDA # `using Metal` on Apple silicon
 
-# We run on a GPU. Apple Metal GPUs only support single precision, so the floating
-# point type is a parameter that Metal users should set to `Float32`.
+# We run on whichever GPU is available: Metal on Apple silicon, CUDA otherwise, falling
+# back to the CPU. Apple GPUs only support single precision, so Metal runs use `Float32`.
 
-arch = GPU()
-Oceananigans.defaults.FloatType = Float64
+if Sys.isapple()
+    using Metal
+    arch = GPU(Metal.MetalBackend())
+    FT = Float32
+else
+    using CUDA
+    arch = CUDA.functional() ? GPU() : CPU()
+    FT = Float64
+end
+
+Oceananigans.defaults.FloatType = FT
 
 # ## A four-layer tripolar grid
 #
@@ -134,8 +142,8 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 # domain, so the momentum flux from the wind is minus the wind stress divided by
 # the reference density `ρ₀`.
 
-τ₀ = 0.15   # peak wind stress [N m⁻²]
-ρ₀ = 1020   # reference density [kg m⁻³]
+τ₀ = FT(0.15)   # peak wind stress [N m⁻²]
+ρ₀ = 1020       # reference density [kg m⁻³]
 
 zonal_wind_stress(φ, τ₀) = - τ₀ * sind(2φ) * sind(6φ)
 zonal_momentum_flux(λ, φ, t, parameters) = - zonal_wind_stress(φ, parameters.τ₀) / parameters.ρ₀
@@ -166,7 +174,7 @@ save("wind_stress.png", fig, px_per_unit=2) #hide
 # deep ocean and an immersed boundary everywhere else.
 
 wind_stress = FluxBoundaryCondition(zonal_momentum_flux, parameters=(; τ₀, ρ₀))
-drag = BulkDrag(coefficient=2.5e-3)
+drag = BulkDrag(coefficient=FT(2.5e-3))
 u_boundary_conditions = FieldBoundaryConditions(top=wind_stress, bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 
@@ -183,7 +191,7 @@ surface_temperature(φ) = 30 * cosd(φ)^2
     return @inbounds parameters.rate * (fields.T[i, j, grid.Nz] - surface_temperature(φ))
 end
 
-restoring_rate = 100 / 30days # surface layer thickness over the restoring time scale [m s⁻¹]
+restoring_rate = FT(100 / 30days) # surface layer thickness over the restoring time scale [m s⁻¹]
 temperature_restoring = FluxBoundaryCondition(temperature_flux; discrete_form=true, parameters=(; rate=restoring_rate))
 T_boundary_conditions = FieldBoundaryConditions(top=temperature_restoring)
 
