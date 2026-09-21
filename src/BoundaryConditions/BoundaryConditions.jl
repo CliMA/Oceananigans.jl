@@ -9,7 +9,7 @@ export
     implicit_flux_coefficient,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
-    GravityWaveRadiation, NormalRadiation, ObliqueRadiation, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
+    GravityWaveRadiation, NormalRadiation, ObliqueRadiation, TracerReservoir, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
     TidalHarmonics, tidal_boundary_conditions, tidal_atlas_constants,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -72,6 +72,7 @@ include("open_boundary_schemes/perturbation_advection.jl")
 include("open_boundary_schemes/gravity_wave_schemes.jl")
 include("open_boundary_schemes/normal_radiation.jl")
 include("open_boundary_schemes/oblique_radiation.jl")
+include("open_boundary_schemes/tracer_reservoir.jl")
 include("open_boundary_schemes/tidal_forcing.jl")
 
 end # module
