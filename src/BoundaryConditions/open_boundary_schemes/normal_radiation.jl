@@ -94,14 +94,7 @@ const RBC   = Union{RVBC, RNFBC}
 ##### Radiation storage allocation during BC regularization
 #####
 
-# `radiation_buffers` says how many zero-initialised 2D storage arrays a scheme needs (and at what
-# size); `radiation_storage` rebuilds the scheme from them. Schemes with a different storage layout
-# than the default — `TracerReservoir`, which carries no previous-interior value at all, or
-# `ObliqueRadiation`, which needs two more than the default — implement both themselves rather than
-# padding their own fields to fit somebody else's.
-#
-# The default layout is `NormalRadiation`'s: `φᵇ`, the previous boundary value, and `φ₁`/`φ₁ˡ`, the
-# previous/latest interior value the Orlanski phase-speed diagnosis needs.
+# `radiation_buffers` allocates the storage arrays a scheme needs; `radiation_storage` rebuilds the scheme from them.
 function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
@@ -115,10 +108,8 @@ function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid,
     return radiation_storage(radiation, buffers)
 end
 
-zero_buffer(arch, FT, tangential_size) = on_architecture(arch, zeros(FT, tangential_size...))
-
 radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_size) =
-    ntuple(_ -> zero_buffer(arch, FT, tangential_size), 3) # φᵇ, φ₁, φ₁ˡ
+    ntuple(_ -> zeros(arch, FT, tangential_size...), 3) # φᵇ, φ₁, φ₁ˡ
 
 radiation_storage(radiation::AbstractRadiationScheme, (φᵇ, φ₁, φ₁ˡ)) =
     getnamewrapper(radiation)(radiation.outflow_timescale, radiation.inflow_timescale,
