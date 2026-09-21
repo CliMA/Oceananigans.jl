@@ -93,10 +93,11 @@ Base.show(io::IO, harmonics::TidalHarmonics) = print(io, summary(harmonics))
     t = clock.time
 
     η = zero(grid)
+    semidiurnal, diurnal, long_period = cos(φ)^2, sin(2φ), (1 - 3 * sin(φ)^2) / 2
 
     @inbounds for n in eachindex(harmonics.frequencies)
         s = harmonics.species[n]
-        structure = ifelse(s == 2, cos(φ)^2, ifelse(s == 1, sin(2φ), (1 - 3 * sin(φ)^2) / 2))
+        structure = ifelse(s == 2, semidiurnal, ifelse(s == 1, diurnal, long_period))
         η += harmonics.nodal_factors[n] * harmonics.equilibrium_amplitudes[n] * structure *
              cos(harmonics.frequencies[n] * t + harmonics.phases[n] + s * λ)
     end
