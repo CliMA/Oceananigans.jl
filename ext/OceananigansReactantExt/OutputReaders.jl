@@ -6,7 +6,7 @@ using Oceananigans.Fields: Field, FixedTime, instantiated_location
 using Oceananigans.Grids: offset_data
 using Oceananigans.OutputReaders: TimeInterpolator, TotallyInMemoryFTS, memory_index
 using Oceananigans.Units: Time
-using Reactant: TracedStepRangeLen, TracedRNumber
+using Reactant: Reactant, TracedStepRangeLen, TracedRNumber
 import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indices
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
@@ -46,7 +46,8 @@ function Base.getindex(fts::TotallyInMemoryFTS, time_index::Time{<:TracedRNumber
     indices = @allowscalar TimeInterpolator(fts, time_index.time)
 
     # `ñ = 0` when `n₁ == n₂`, so no branch is needed
-    ñ  = TracedRNumber{eltype(fts.grid)}(indices.fractional_index)
+    # `eltype(fts.grid)` is itself a `TracedRNumber` when the grid holds traced (array) coordinates
++   ñ  = TracedRNumber{Reactant.unwrapped_eltype(eltype(fts.grid))}(indices.fractional_index)
     ψ₁ = snapshot(fts, indices.first_index)
     ψ₂ = snapshot(fts, indices.second_index)
 
