@@ -91,7 +91,7 @@ end
 @inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
-@inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
+@inline find_λ_range(λ) = floor(λ / 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate.
