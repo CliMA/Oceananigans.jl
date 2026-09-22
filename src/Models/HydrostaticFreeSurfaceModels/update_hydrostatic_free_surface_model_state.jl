@@ -1,5 +1,5 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection_timestep!
+using Oceananigans.Advection: update_advection!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
@@ -79,7 +79,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     @apply_regionally begin
-        update_advection_timestep!(model.advection, model.timestepper, model.clock)
+        update_advection!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
     end
 
@@ -118,5 +118,5 @@ can be computed correctly at domain boundaries without requiring (possibly costl
     return KernelParameters(ii, jj, kk)
 end
 
-step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt) =
+step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

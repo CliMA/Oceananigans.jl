@@ -262,7 +262,7 @@ fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.closure
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "Stokes_drift_jet_fields.jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 # ### An "averages" writer
 #
@@ -281,7 +281,7 @@ wv = Average(w * v, dims=(1, 2))
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
                                                   schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                   filename = "Stokes_drift_jet_averages.jld2",
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 # ## Running the simulation
 #

@@ -43,7 +43,8 @@ julia> model = NonhydrostaticModel(grid; boundary_conditions=(u=no_slip_field_bc
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -363,6 +364,26 @@ FluxBoundaryCondition: 16×16 Matrix{Float64}
 
 When running on the GPU, `Q` must be converted to a `CuArray`.
 
+A `Field` can be used in the same way, which is convenient when the boundary values are computed
+from other fields. The field may be _reduced_ along the boundary-normal direction (for example a
+`Field{Center, Center, Nothing}` for a bottom or top boundary condition) or _windowed_ to a single
+plane along it with `indices`, in which case it is evaluated at its own plane; a field that is
+neither is windowed, when the boundary conditions are regularized (by [`FieldBoundaryConditions`](@ref)
+called with a grid and a location, or by the model constructor), to its plane on (`Face`) or adjacent
+to (`Center`) the boundary. For instance, a top gradient boundary condition on the pressure `p` given
+by the density `ρ` at the top of the domain, which is refreshed by `compute!` whenever `ρ` changes:
+
+```jldoctest
+julia> grid = RectilinearGrid(size=(4, 4, 8), extent=(1, 1, 1));
+
+julia> ρ = CenterField(grid);
+
+julia> ∂z_p = Field(-9.81 * ρ, indices=(:, :, grid.Nz));
+
+julia> p_top_bc = GradientBoundaryCondition(∂z_p)
+GradientBoundaryCondition: 4×4×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+```
+
 ### 10. Open boundary condition with matching scheme
 
 As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often necessary to specify a matching scheme
@@ -389,7 +410,7 @@ exit the domain in each specific problem.
 
 ### 11. Open boundary condition with a target transport
 
-A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
+A [`PerturbationAdvection`](@ref) or [`NormalRadiation`](@ref) scheme can additionally pin the *net volume transport*
 through the boundary — the integral of the normal velocity over the boundary area,
 ``\oint \mathbf{u} \cdot \mathrm{d} \mathbf{A}`` (units m³ s⁻¹) — to a prescribed value
 through the `target_transport` keyword:
@@ -407,6 +428,22 @@ PerturbationAdvection{Float64}
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+```
+
+The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):
+
+```jldoctest
+julia> using Oceananigans
+
+julia> scheme = NormalRadiation(; inflow_timescale=1, outflow_timescale=10, target_transport=2)
+NormalRadiation{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── use_boundary_velocity: false
+└── target_transport: 2.0
+
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{NormalRadiation{Float64, Nothing, Float64}}: 1
 ```
 
 At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
@@ -468,7 +505,9 @@ julia> model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   ├── momentum: Centered(order=2)
+│   └── c: Centered(order=2)
 ├── tracers: c
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -575,7 +614,8 @@ model = NonhydrostaticModel(grid; boundary_conditions=(u=velocity_bcs, v=velocit
 NonhydrostaticModel{CPU, ImmersedBoundaryGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing

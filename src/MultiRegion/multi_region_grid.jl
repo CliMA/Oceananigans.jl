@@ -13,18 +13,18 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   FixedTimeStepSize,
                                                                                   maybe_augmented_kernel_parameters
 
-struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractSerialArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
 
-    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A}
+    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A <: AbstractSerialArchitecture}
         return new{FT, TX, TY, TZ, CZ, P, C, G, A}(arch, partition, connectivity, region_grids)
     end
 end
 
-const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid}
+const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
 
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
@@ -226,7 +226,7 @@ multi_region_object_from_array(a::AbstractArray, grid) = on_architecture(archite
 #### Utilities for MultiRegionGrid
 ####
 
-Grids.new_data(FT::DataType, mrg::MultiRegionGrids, args...) = construct_regionally(new_data, FT, mrg, args...)
+Grids.new_data(::Type{FT}, mrg::MultiRegionGrids, args...) where FT = construct_regionally(new_data, FT, mrg, args...)
 
 # This is kind of annoying but it is necessary to have compatible MultiRegion and Distributed
 function Grids.with_halo(new_halo, mrg::MultiRegionGrid)
@@ -330,4 +330,4 @@ function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, gri
     return KernelParameters(kernel_size, kernel_offsets)
 end
 
-materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids, bcs) = nothing

@@ -110,7 +110,7 @@ function hilly_simulation(; Nx = 64,
                    schedule = TimeInterval(save_interval),
                    with_halos = true,
                    filename,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @info "Made a simulation of"
     @show model

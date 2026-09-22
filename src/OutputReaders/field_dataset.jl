@@ -1,4 +1,6 @@
-using Oceananigans.Fields: instantiated_location, indices, set!
+using OrderedCollections: OrderedDict
+
+using Oceananigans.Fields: Fields, instantiated_location, indices, set!
 
 struct FieldDataset{F, B, M, P, KW}
         fields :: F
@@ -16,8 +18,8 @@ end
                  metadata_paths = ["metadata"],
                  reader_kw = NamedTuple())
 
-Return a `Dict`ionary containing a `FieldTimeSeries` for each field in the JLD2 file located
-at `filepath`.
+Return a `FieldDataset` containing a `FieldTimeSeries` for each field in the JLD2 file located
+at `filepath`, in the order the fields are stored in the file.
 
 !!! note "Saved halo requirement"
     The model output in `filepath` **must** have been saved with halos.
@@ -49,7 +51,7 @@ function FieldDataset(filepath;
   field_names = keys(file["timeseries"])
   filter!(k -> k != "t", field_names)  # Time is not a field.
 
-  ds = Dict{String, FieldTimeSeries}(
+  ds = OrderedDict{String, FieldTimeSeries}(
       name => FieldTimeSeries(filepath, name; architecture, backend, grid, reader_kw)
       for name in field_names
   )
@@ -171,7 +173,7 @@ function FieldDataset(grid, times, fields::NTuple{N, Symbol};
                         boundary_conditions=bcs)
     end
 
-    ds = Dict{String, FieldTimeSeries}(
+    ds = OrderedDict{String, FieldTimeSeries}(
         name => fts
         for (name, fts) in zip(field_names, ftss)
     )
@@ -232,7 +234,7 @@ Call `set!` on each `FieldTimeSeries` contained in `fds`. This is a convenience
 function that calls `set!(fds.k, fields.k, args...)` for each `k` in `keys(fields)`.
 The function of positional arguments depends on the underlying `FieldTimeSeries`.
 """
-function Oceananigans.Fields.set!(fds::FieldDataset, args...; fields...)
+function Fields.set!(fds::FieldDataset, args...; fields...)
     for (k, v) in pairs(fields)
         set!(fds[k], v, args...)
     end
@@ -240,7 +242,7 @@ function Oceananigans.Fields.set!(fds::FieldDataset, args...; fields...)
 end
 
 # Write metadata if possible for OnDisk FieldDataset
-function Oceananigans.Fields.set!(fds::FieldDataset{F, B, M, P, KW}, args...; fields...) where {F, B<:OnDisk, M, P, KW}
+function Fields.set!(fds::FieldDataset{F, B, M, P, KW}, args...; fields...) where {F, B<:OnDisk, M, P, KW}
     jldopen(fds.filepath, "a+") do file
         for (k, v) in pairs(fds.metadata)
             maybe_write_property!(file, "metadata/$k", v)
