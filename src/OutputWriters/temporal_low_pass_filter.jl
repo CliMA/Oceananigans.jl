@@ -70,7 +70,7 @@ should_write_initial_output(::TemporalLowPassFilter) = false
 Oceananigans.prognostic_state(::TemporalLowPassFilter) = nothing
 Oceananigans.restore_prognostic_state!(::TemporalLowPassFilter, ::Nothing) = nothing
 
-mutable struct TemporalTemporalLowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
+mutable struct TemporalLowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
     operand :: O
     filter :: TemporalLowPassFilter{FT}
     schedule :: IterationInterval
@@ -80,17 +80,17 @@ mutable struct TemporalTemporalLowPassFilteredOutput{O, A, FT} <: AbstractDiagno
     previous_time :: FT
 end
 
-function TemporalTemporalLowPassFilteredOutput(operand, filter, model)
+function TemporalLowPassFilteredOutput(operand, filter, model)
     output = fetch_output(operand, model)
     frames_in_progress = floor(Int, filter.window / filter.interval) + 1
     sums = [zero(output) for _ in 1:frames_in_progress]
     FT = typeof(filter.interval)
-    return TemporalTemporalLowPassFilteredOutput(operand, filter, IterationInterval(1), sums,
+    return TemporalLowPassFilteredOutput(operand, filter, IterationInterval(1), sums,
                                  zeros(FT, frames_in_progress), zeros(Int, frames_in_progress),
                                  convert(FT, model.clock.time))
 end
 
-function Oceananigans.run_diagnostic!(output::TemporalTemporalLowPassFilteredOutput, model)
+function Oceananigans.run_diagnostic!(output::TemporalLowPassFilteredOutput, model)
     filter = output.filter
     t = model.clock.time
     Δt = t - output.previous_time
@@ -123,17 +123,17 @@ function Oceananigans.run_diagnostic!(output::TemporalTemporalLowPassFilteredOut
     return nothing
 end
 
-function (output::TemporalTemporalLowPassFilteredOutput)(model)
+function (output::TemporalLowPassFilteredOutput)(model)
     n = mod(output.filter.next_frame, length(output.sums)) + 1
     return output.sums[n] ./ output.weights[n]
 end
 
-Grids.grid(output::TemporalTemporalLowPassFilteredOutput) = grid(output.operand)
-Fields.location(output::TemporalTemporalLowPassFilteredOutput) = location(output.operand)
-Fields.indices(output::TemporalTemporalLowPassFilteredOutput) = indices(output.operand)
+Grids.grid(output::TemporalLowPassFilteredOutput) = grid(output.operand)
+Fields.location(output::TemporalLowPassFilteredOutput) = location(output.operand)
+Fields.indices(output::TemporalLowPassFilteredOutput) = indices(output.operand)
 
 function time_average_outputs(filter::TemporalLowPassFilter, outputs::NamedTuple, model)
-    filtered_outputs = NamedTuple(name => TemporalTemporalLowPassFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
+    filtered_outputs = NamedTuple(name => TemporalLowPassFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
     return filter, filtered_outputs
 end
 
@@ -141,6 +141,6 @@ function time_average_outputs(filter::TemporalLowPassFilter, outputs::AbstractDi
     # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
     # dictionary type back so their output order is preserved.
     DictType = Base.typename(typeof(outputs)).wrapper
-    filtered_outputs = DictType(name => TemporalTemporalLowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
+    filtered_outputs = DictType(name => TemporalLowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
 end

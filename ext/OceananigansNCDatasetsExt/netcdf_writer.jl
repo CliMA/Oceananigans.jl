@@ -348,7 +348,7 @@ materialize_output(func, model) = func(model)
 materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
-materialize_output(output::TemporalTemporalLowPassFilteredOutput, model) = output
+materialize_output(output::TemporalLowPassFilteredOutput, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(model, dataset, output, output_name; array_type,
@@ -395,8 +395,8 @@ define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractFi
 define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
-""" Defines empty field variable for `TemporalTemporalLowPassFilteredOutput`s over fields. """
-define_output_variable!(model, dataset, output::TemporalTemporalLowPassFilteredOutput, output_name; kwargs...) =
+""" Defines empty field variable for `TemporalLowPassFilteredOutput`s over fields. """
+define_output_variable!(model, dataset, output::TemporalLowPassFilteredOutput, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 """ Defines empty variable for particle trackting. """

@@ -124,7 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
-output_grid(output::TemporalTemporalLowPassFilteredOutput)                   = grid(output.operand)
+output_grid(output::TemporalLowPassFilteredOutput)                   = grid(output.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -207,7 +207,7 @@ end
 rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
     rank_global_offsets(output.operand)
 
-rank_global_offsets(output::TemporalTemporalLowPassFilteredOutput) =
+rank_global_offsets(output::TemporalLowPassFilteredOutput) =
     rank_global_offsets(output.operand)
 
 # Global shape of a Field on a (possibly distributed) grid.
@@ -455,8 +455,8 @@ define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{
 define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
-# TemporalTemporalLowPassFilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
-define_zarr_output_variable!(g, writer::ZarrWriter, output::TemporalTemporalLowPassFilteredOutput, name, model) =
+# TemporalLowPassFilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::TemporalLowPassFilteredOutput, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
