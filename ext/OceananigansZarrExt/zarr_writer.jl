@@ -2,26 +2,26 @@
 ##### Zarr output writer for Oceananigans
 #####
 
-function ZarrWriter(model::AbstractModel, outputs;
-                    filename = nothing,
-                    schedule,
-                    dir = ".",
-                    indices = (:, :, :),
-                    with_halos = false,
-                    array_type = Array{Float32},
-                    global_attributes = Dict(),
-                    output_attributes = Dict(),
-                    file_splitting = NoFileSplitting(),
-                    overwrite_files = false,
-                    verbose = false,
-                    part = 1,
-                    store = nothing,
-                    chunks = nothing,
-                    compressor = nothing,
-                    dimensions = Dict{String, Any}(),
-                    include_grid_metrics = true,
-                    dimension_name_generator = trilocation_dim_name,
-                    dimension_type = Float64)
+function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
+                                  filename = nothing,
+                                  schedule,
+                                  dir = ".",
+                                  indices = (:, :, :),
+                                  with_halos = false,
+                                  array_type = Array{Float32},
+                                  global_attributes = Dict(),
+                                  output_attributes = Dict(),
+                                  file_splitting = NoFileSplitting(),
+                                  overwrite_files = false,
+                                  verbose = false,
+                                  part = 1,
+                                  store = nothing,
+                                  chunks = nothing,
+                                  compressor = nothing,
+                                  dimensions = Dict{String, Any}(),
+                                  include_grid_metrics = true,
+                                  dimension_name_generator = trilocation_dim_name,
+                                  dimension_type = Float64)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -137,7 +137,7 @@ output_grid(other)                                           = nothing
 Create the Zarr store, output arrays, root-level coordinate arrays, and a growing
 one-dimensional `time` array. Private grid reconstruction metadata is stored in subgroups.
 """
-function initialize!(writer::ZarrWriter, model)
+function Oceananigans.initialize!(writer::ZarrWriter, model)
     writer.initialized && return nothing
 
     distributed = is_distributed_arch(model)
@@ -511,7 +511,7 @@ end
 ##### Per-step write
 #####
 
-function write_output!(writer::ZarrWriter, model::AbstractModel)
+function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
     distributed = is_distributed_arch(model)
     is_root = !distributed || mpi_rank(global_communicator()) == 0
 
@@ -546,7 +546,7 @@ function write_output_serial!(writer::ZarrWriter, model)
     fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
 
     time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
-    Zarr.append!(g["time"], [time]; dims=1)
+    append!(g["time"], [time]; dims=1)
     for (name, output, data) in fetched
         data = squeeze_reduced_dimensions(output, data)
         arr = g[string(name)]
@@ -554,7 +554,7 @@ function write_output_serial!(writer::ZarrWriter, model)
         if eltype(data_arr) === Bool
             data_arr = Int8.(data_arr)
         end
-        Zarr.append!(arr, data_arr; dims=ndims(arr))
+        append!(arr, data_arr; dims=ndims(arr))
     end
     Zarr.consolidate_metadata(g)
     return nothing
@@ -590,7 +590,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
     # the schedule. Persisting the value, though, is still root-only.
     time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
     if is_root
-        Zarr.append!(g["time"], [time]; dims=1)
+        append!(g["time"], [time]; dims=1)
     end
     zarr_barrier()
 
@@ -611,7 +611,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
         old_shape = size(arr)
         new_shape = ntuple(d -> d == length(old_shape) ? new_time_index : old_shape[d], length(old_shape))
         if is_root
-            Zarr.resize!(arr, new_shape)
+            resize!(arr, new_shape)
         else
             arr.metadata.shape[] = new_shape
         end

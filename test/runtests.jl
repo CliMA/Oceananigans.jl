@@ -67,8 +67,6 @@ else
         end
     end
 
-    memory_per_worker = 4 * 2^30
-
     function gpu_free_memory()
         using_cuda = on_gpu && CUDA.functional()
         using_cuda || return typemax(Int)
@@ -84,9 +82,17 @@ else
     end
 
     if args.jobs === nothing
+        cpu_memory_per_worker = 4 * 2^30
+        gpu_memory_per_worker = 3 * 2^30
+        available_gpu_memory = gpu_free_memory()
+
+        if CUDA.functional()
+            println("Available CUDA GPU memory: ", Base.format_bytes(available_gpu_memory))
+        end
+
         jobs = default_njobs()
-        jobs = min(jobs, max(1, Int(Sys.free_memory()) ÷ memory_per_worker))
-        jobs = min(jobs, max(1, gpu_free_memory() ÷ memory_per_worker))
+        jobs = min(jobs, max(1, Int(Sys.free_memory()) ÷ cpu_memory_per_worker))
+        jobs = min(jobs, max(1, available_gpu_memory ÷ gpu_memory_per_worker))
         args = ParallelTestRunner.ParsedArgs(Some(jobs), args.verbose, args.quickfail, args.list,
                                              args.custom, args.positionals)
     end
