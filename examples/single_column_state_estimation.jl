@@ -79,7 +79,7 @@ function take_25_steps!(model, uᵢ, bᵢ)
     model.clock.iteration = 0
     model.clock.time = 0
 
-    Δt = model.clock.last_Δt
+    Δt = 1minutes
     @trace mincut = true checkpointing = true track_numbers = false for n = 1:25
         time_step!(model, Δt)
     end
@@ -87,7 +87,6 @@ function take_25_steps!(model, uᵢ, bᵢ)
     return nothing
 end
 
-model.clock.last_Δt = 1minutes
 u₀ = set!(CenterField(grid), u_jet)
 b₀ = set!(CenterField(grid), b_stratified)
 
