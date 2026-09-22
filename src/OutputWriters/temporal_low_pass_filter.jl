@@ -10,7 +10,7 @@ mutable struct TemporalLowPassFilter{FT} <: AbstractSchedule
     interval :: FT
     window :: FT
     cutoff :: FT
-    next_frame :: Int # frame k is centered at k * interval; 0 before the first time step
+    next_frame_number :: Int # frame k is centered at k * interval; 0 before the first time step
 end
 
 """
@@ -50,16 +50,16 @@ Base.summary(filter::TemporalLowPassFilter) = string("TemporalLowPassFilter(inte
 
 Base.show(io::IO, filter::TemporalLowPassFilter) = print(io, summary(filter))
 
-(filter::TemporalLowPassFilter)(model) = filter.next_frame > 0 &&
-                                 model.clock.time >= filter.next_frame * filter.interval + filter.window / 2
+(filter::TemporalLowPassFilter)(model) = filter.next_frame_number > 0 &&
+                                 model.clock.time >= filter.next_frame_number * filter.interval + filter.window / 2
 
 # The frame that just became complete is written with its own center time rather than
 # `clock.time` (when it fires, `window / 2` later). Called exactly once per write, since a
 # writer's `schedule(model)` check (which doesn't call this) already gates whether
 # `write_output!` — and so this — runs at all.
 function output_time(clock, filter::TemporalLowPassFilter)
-    t = filter.next_frame * filter.interval
-    filter.next_frame += 1
+    t = filter.next_frame_number * filter.interval
+    filter.next_frame_number += 1
     return t
 end
 
@@ -74,19 +74,19 @@ mutable struct TemporalLowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
     operand :: O
     filter :: TemporalLowPassFilter{FT}
     schedule :: IterationInterval
-    sums :: Vector{A}     # weighted sum of the operand, one per frame in progress
-    weights :: Vector{FT} # sum of the weights in each
-    frames :: Vector{Int} # frame each sum belongs to
+    sum_buffer :: Vector{A} # weighted sum of the operand, one per frame in progress
+    weights :: Vector{FT}   # sum of the weights in each
+    frames :: Vector{Int}   # frame each sum belongs to
     previous_time :: FT
 end
 
 function TemporalLowPassFilteredOutput(operand, filter, model)
     output = fetch_output(operand, model)
-    frames_in_progress = floor(Int, filter.window / filter.interval) + 1
-    sums = [zero(output) for _ in 1:frames_in_progress]
+    Nbuffer = floor(Int, filter.window / filter.interval) + 1
+    sum_buffer = [zero(output) for _ in 1:Nbuffer]
     FT = typeof(filter.interval)
-    return TemporalLowPassFilteredOutput(operand, filter, IterationInterval(1), sums,
-                                 zeros(FT, frames_in_progress), zeros(Int, frames_in_progress),
+    return TemporalLowPassFilteredOutput(operand, filter, IterationInterval(1), sum_buffer,
+                                 zeros(FT, Nbuffer), zeros(Int, Nbuffer),
                                  convert(FT, model.clock.time))
 end
 
@@ -97,26 +97,26 @@ function Oceananigans.run_diagnostic!(output::TemporalLowPassFilteredOutput, mod
     output.previous_time = t
 
     # Frames whose window starts before the first time step seen are never complete.
-    if filter.next_frame == 0
-        filter.next_frame = ceil(Int, (t + filter.window / 2) / filter.interval)
+    if filter.next_frame_number == 0
+        filter.next_frame_number = ceil(Int, (t + filter.window / 2) / filter.interval)
     end
 
     φ = fetch_output(output.operand, model)
-    first_frame = max(filter.next_frame, ceil(Int, (t - filter.window / 2) / filter.interval))
+    first_frame = max(filter.next_frame_number, ceil(Int, (t - filter.window / 2) / filter.interval))
     last_frame = floor(Int, (t + filter.window / 2) / filter.interval)
 
     for frame in first_frame:last_frame
-        n = mod(frame, length(output.sums)) + 1
+        n = mod(frame, length(output.sum_buffer)) + 1
 
         if output.frames[n] != frame
             output.frames[n] = frame
-            output.sums[n] .= 0
+            output.sum_buffer[n] .= 0
             output.weights[n] = 0
         end
 
         τ = t - frame * filter.interval
         w = sinc(2τ / filter.cutoff) * sinc(2τ / filter.window) * Δt
-        output.sums[n] .+= w .* φ
+        output.sum_buffer[n] .+= w .* φ
         output.weights[n] += w
     end
 
@@ -124,8 +124,8 @@ function Oceananigans.run_diagnostic!(output::TemporalLowPassFilteredOutput, mod
 end
 
 function (output::TemporalLowPassFilteredOutput)(model)
-    n = mod(output.filter.next_frame, length(output.sums)) + 1
-    return output.sums[n] ./ output.weights[n]
+    n = mod(output.filter.next_frame_number, length(output.sum_buffer)) + 1
+    return output.sum_buffer[n] ./ output.weights[n]
 end
 
 Grids.grid(output::TemporalLowPassFilteredOutput) = grid(output.operand)
