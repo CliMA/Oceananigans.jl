@@ -55,8 +55,8 @@ Oceananigans.defaults.FloatType = FT
 # ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: the three year-long 1° runs below take about twenty minutes on a laptop GPU,
-# ½° takes about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
+# parameter: the three five-year 1° runs below take about an hour and a half on a laptop
+# GPU, ½° takes about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
 # with depth, from 100 m at the surface to 2.5 km at the bottom. We build the vertical
 # coordinate with a `MutableVerticalDiscretization` so that the layers can stretch with
 # the free surface, which is what the ``z^\star`` coordinate does.
@@ -251,10 +251,12 @@ end
 #
 # The simulation runner saves the barotropic streamfunction ``ψ``, defined by
 # ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U`` northward from
-# Antarctica, together with the surface speed and the surface temperature, every five days
-# of a year-long run.
+# Antarctica, together with the surface speed and the surface temperature, every ten days
+# of a five-year run.
 
-function run_gyres(grid, coriolis, name; stop_time=360days, save_interval=5days)
+year = 360days
+
+function run_gyres(grid, coriolis, name; stop_time=5year, save_interval=10days)
     model = build_model(grid, coriolis)
     simulation = Simulation(model; Δt, stop_time)
 
@@ -343,8 +345,8 @@ pacific = (longitude = (120, 250), latitude = (20, 42))
 Sv = 1e6 # m³ s⁻¹
 
 fig = Figure(size=(900, 400))
-axes = (gulf_stream = Axis(fig[1, 1], title="Gulf Stream", xlabel="Time [days]", ylabel="Transport [Sv]"),
-        kuroshio = Axis(fig[1, 2], title="Kuroshio", xlabel="Time [days]"))
+axes = (gulf_stream = Axis(fig[1, 1], title="Gulf Stream", xlabel="Time [years]", ylabel="Transport [Sv]"),
+        kuroshio = Axis(fig[1, 2], title="Kuroshio", xlabel="Time [years]"))
 
 colors = Dict(zip(rotation_rates, Makie.wong_colors()))
 
@@ -355,7 +357,7 @@ for rotation_rate in rotation_rates
 
     for (name, box, basin) in ((:gulf_stream, gulf_stream, atlantic), (:kuroshio, kuroshio, pacific))
         transport = [gyre_transport(streamfunctions[n], box) for n in 1:length(times)]
-        lines!(axes[name], times / day, transport / Sv; label, color)
+        lines!(axes[name], times / year, transport / Sv; label, color)
         hlines!(axes[name], sverdrup_gyre_transport(rotation_rate, basin) / Sv; color, linestyle=:dash)
     end
 end
@@ -413,7 +415,7 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # streamfunction climbs to the gyre maximum within a few degrees of the western coast
 # and decays slowly across the rest of the basin. On the ``f``-plane the gyres are
 # symmetric about the middle of each basin and there is no western boundary current.
-# They are also twenty times stronger and take most of the year to level off: without
+# They are also twenty times stronger and take about a year to level off: without
 # ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
 # friction alone can remove the vorticity it puts in.
 #
@@ -422,11 +424,11 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # Finally we animate the surface speed and the departure of the surface temperature from
 # its restoring profile, ``T - T^\star``, for the three Coriolis parameters. With
 # ``f = 2Ω \sin φ`` the western boundary currents appear within the first weeks and then
-# sharpen and speed up at the surface over the rest of the year; with ``f = 4Ω \sin φ``
+# sharpen and speed up at the surface over the following years; with ``f = 4Ω \sin φ``
 # they are half as fast. On the ``f``-plane there are no boundary currents at all: the
 # whole gyre circulates at a few tens of centimeters per second. The temperature spends
 # its first two months relaxing from the uniform initial 10 °C toward ``T^\star``. After
-# that it stays within a degree or two of ``T^\star`` on the ``β``-planes, cooler along the
+# that it stays within a few degrees of ``T^\star`` on the ``β``-planes, cooler along the
 # equator where the Ekman divergence brings deeper water to the surface and warmer under
 # the subtropical convergence and along the western boundaries, while the fast ``f``-plane
 # gyres stir it into lobes several degrees warm and cold.
@@ -436,7 +438,7 @@ restoring_profile = restoring_temperature.(φ)
 n = Observable(1)
 
 fig = Figure(size=(1400, 1000))
-Label(fig[1, 1:4], @lift("After " * prettytime(times[$n])); fontsize=22, tellwidth=false)
+Label(fig[1, 1:4], @lift(@sprintf("After %.1f years", times[$n] / year)); fontsize=22, tellwidth=false)
 
 for (row, (filename, title, _)) in enumerate(experiments)
     speeds = FieldTimeSeries(filename, "surface_speed")
@@ -455,7 +457,7 @@ for (row, (filename, title, _)) in enumerate(experiments)
     row == 1 && Colorbar(fig[2:4, 4], sf, label="T − T* [°C]")
 end
 
-CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:length(times), framerate=12) do frame
+CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:2:length(times), framerate=12) do frame
     n[] = frame
 end
 nothing #hide
