@@ -55,8 +55,8 @@ Oceananigans.defaults.FloatType = FT
 # ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: the three 1° runs below take about eight minutes on a laptop GPU, ½° takes
-# about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
+# parameter: the three year-long 1° runs below take about twenty minutes on a laptop GPU,
+# ½° takes about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
 # with depth, from 100 m at the surface to 2.5 km at the bottom. We build the vertical
 # coordinate with a `MutableVerticalDiscretization` so that the layers can stretch with
 # the free surface, which is what the ``z^\star`` coordinate does.
@@ -187,15 +187,15 @@ v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBo
 
 # ## Surface temperature restoring
 #
-# The surface layer is restored on a 30-day time scale to a temperature that is warm at
-# the equator and cold at the poles. The flux is written in discrete form so that it can
-# read the surface temperature at each column.
+# The surface layer is restored on a 30-day time scale to ``T^\star(φ) = 30 \cos^2 φ``,
+# warm at the equator and cold at the poles. The flux is written in discrete form so that
+# it can read the surface temperature at each column.
 
-surface_temperature(φ) = 30 * cosd(φ)^2
+restoring_temperature(φ) = 30 * cosd(φ)^2
 
 @inline function temperature_flux(i, j, grid, clock, fields, parameters)
     φ = φnode(i, j, grid.Nz, grid, Center(), Center(), Center())
-    return @inbounds parameters.rate * (fields.T[i, j, grid.Nz] - surface_temperature(φ))
+    return @inbounds parameters.rate * (fields.T[i, j, grid.Nz] - restoring_temperature(φ))
 end
 
 restoring_rate = FT(100 / 30days) # surface layer thickness over the restoring time scale [m s⁻¹]
@@ -240,13 +240,21 @@ function build_model(grid, coriolis)
     return model
 end
 
-# ## Running with two rotation rates
+# ## Three Coriolis parameters
 #
-# The simulation runner saves the surface speed and the barotropic streamfunction
-# ``ψ``, defined by ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating
-# ``U`` northward from Antarctica, every couple of days.
+# The Coriolis parameter is the only thing that differs between the runs. Two of them use
+# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at twice it, which doubles
+# ``β`` and should halve the Sverdrup transport. The third uses an [`FPlane`](@ref) with the
+# value of ``f`` at 30°N everywhere, ``f = 2Ω \sin 30°``, so that ``β = 0``. A constant
+# ``f`` has the wrong sign in the Southern Hemisphere, so on the ``f``-plane we only look
+# at the northern gyres.
+#
+# The simulation runner saves the barotropic streamfunction ``ψ``, defined by
+# ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U`` northward from
+# Antarctica, together with the surface speed and the surface temperature, every five days
+# of a year-long run.
 
-function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
+function run_gyres(grid, coriolis, name; stop_time=360days, save_interval=5days)
     model = build_model(grid, coriolis)
     simulation = Simulation(model; Δt, stop_time)
 
@@ -268,10 +276,11 @@ function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
     ψ = Field(CumulativeIntegral(-U, dims=2))
     speed = Field(@at (Center, Center, Center) sqrt(u^2 + v^2))
     surface_speed = view(speed, :, :, grid.Nz)
+    surface_temperature = view(model.tracers.T, :, :, grid.Nz)
 
     filename = "global_wind_driven_gyres_$name.jld2"
 
-    simulation.output_writers[:surface] = JLD2Writer(model, (; surface_speed, ψ); filename,
+    simulation.output_writers[:surface] = JLD2Writer(model, (; ψ, surface_speed, surface_temperature); filename,
                                                      schedule = TimeInterval(save_interval),
                                                      array_type = Array{Float32},
                                                      overwrite_files = true)
@@ -282,9 +291,13 @@ function run_gyres(grid, coriolis, name; stop_time=120days, save_interval=2days)
     return filename
 end
 
+coriolis_title(rotation_rate) = "f = $(round(Int, 2rotation_rate / Ω))Ω sin φ"
+
 rotation_rates = (Ω, 2Ω)
-filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate), @sprintf("omega_%.1f", rotation_rate / Ω))
+filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate), @sprintf("omega_%d", rotation_rate / Ω))
                  for rotation_rate in rotation_rates)
+
+f_plane_filename = run_gyres(grid, FPlane(latitude=30), "f_plane")
 
 # ## Gyre transports
 #
@@ -337,7 +350,7 @@ colors = Dict(zip(rotation_rates, Makie.wong_colors()))
 
 for rotation_rate in rotation_rates
     streamfunctions = FieldTimeSeries(filenames[rotation_rate], "ψ")
-    label = @sprintf("Ω = %.1f Ω_Earth", rotation_rate / Ω)
+    label = coriolis_title(rotation_rate)
     color = colors[rotation_rate]
 
     for (name, box, basin) in ((:gulf_stream, gulf_stream, atlantic), (:kuroshio, kuroshio, pacific))
@@ -358,13 +371,14 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 #
 # ## The gyres
 #
-# Next we plot the streamfunction at the end of each simulation. The Antarctic
-# Circumpolar Current puts a large offset between ``ψ`` on Antarctica and everywhere
-# else, so we set ``ψ = 0`` on North America.
+# Next we plot the streamfunction at the end of each simulation and follow it along
+# 30°N across the Pacific and the Atlantic. The Antarctic Circumpolar Current puts a
+# large offset between ``ψ`` on Antarctica and everywhere else, so we set ``ψ = 0`` on
+# North America. Note the ten times larger color range of the ``f``-plane map.
 
 north_america = argmin(@. (mod(λ, 360) - 260)^2 + (φ - 40)^2)
 
-function streamfunction_map!(fig, row, filename; title, colorrange=(-100, 100))
+function streamfunction_map!(fig, row, filename; title, colorrange)
     streamfunctions = FieldTimeSeries(filename, "ψ")
     ψ_end = interior(streamfunctions[end], :, :, 1)
     streamfunction = ifelse.(land, NaN, (ψ_end .- ψ_end[north_america]) / Sv)
@@ -375,33 +389,71 @@ function streamfunction_map!(fig, row, filename; title, colorrange=(-100, 100))
     return streamfunction
 end
 
-fig = Figure(size=(900, 700))
+experiments = ((filenames[Ω], coriolis_title(Ω), (-100, 100)),
+               (filenames[2Ω], coriolis_title(2Ω), (-100, 100)),
+               (f_plane_filename, "f = 2Ω sin 30°", (-1000, 1000)))
 
-for (row, rotation_rate) in enumerate(rotation_rates)
-    title = @sprintf("Ω = %.1f Ω_Earth", rotation_rate / Ω)
-    streamfunction_map!(fig, row, filenames[rotation_rate]; title)
+along_30N = @. abs(φ - 30) < resolution / 2
+eastward = sortperm(λ[along_30N])
+
+fig = Figure(size=(900, 1400))
+ax = Axis(fig[4, 1], xlabel="Longitude", ylabel="Streamfunction along 30°N [Sv]", xticks=longitude_ticks)
+
+for (row, (filename, title, colorrange)) in enumerate(experiments)
+    streamfunction = streamfunction_map!(fig, row, filename; title, colorrange)
+    lines!(ax, λ[along_30N][eastward], streamfunction[along_30N][eastward]; label=title)
 end
 
+axislegend(ax)
 save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](global_wind_driven_gyres.png)
 #
-# The western boundary currents are the fastest currents outside the Antarctic
-# Circumpolar Current, and they take only a few weeks to appear. The surface temperature,
-# on the other hand, stays close to its restoring profile: the currents are barotropic
-# during the spin-up, so a 50 Sv boundary current spread over 4 km of water moves the
-# surface at only a few tens of centimeters per second.
+# Doubling the rotation rate halves the gyres but leaves their shape alone: the
+# streamfunction climbs to the gyre maximum within a few degrees of the western coast
+# and decays slowly across the rest of the basin. On the ``f``-plane the gyres are
+# symmetric about the middle of each basin and there is no western boundary current.
+# They are also twenty times stronger and take most of the year to level off: without
+# ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
+# friction alone can remove the vorticity it puts in.
+#
+# ## Currents and temperature
+#
+# Finally we animate the surface speed and the departure of the surface temperature from
+# its restoring profile, ``T - T^\star``, for the three Coriolis parameters. With
+# ``f = 2Ω \sin φ`` the western boundary currents appear within the first weeks and then
+# sharpen and speed up at the surface over the rest of the year; with ``f = 4Ω \sin φ``
+# they are half as fast. On the ``f``-plane there are no boundary currents at all: the
+# whole gyre circulates at a few tens of centimeters per second. The temperature spends
+# its first two months relaxing from the uniform initial 10 °C toward ``T^\star``. After
+# that it stays within a degree or two of ``T^\star`` on the ``β``-planes, cooler along the
+# equator where the Ekman divergence brings deeper water to the surface and warmer under
+# the subtropical convergence and along the western boundaries, while the fast ``f``-plane
+# gyres stir it into lobes several degrees warm and cold.
 
-speeds = FieldTimeSeries(filenames[Ω], "surface_speed")
+restoring_profile = restoring_temperature.(φ)
+
 n = Observable(1)
-surface_speed = @lift ifelse.(land, NaN, interior(speeds[$n], :, :, 1))
-title = @lift "Surface speed after " * prettytime(times[$n])
 
-fig = Figure(size=(900, 500))
-ax = map_axis(fig[1, 1]; title)
-sf = surface!(ax, λ, φ, 0 * λ; color=surface_speed, colormap=:magma, colorrange=(0, 0.3),
-              shading=NoShading, nan_color=:gray)
-Colorbar(fig[1, 2], sf, label="Speed [m s⁻¹]")
+fig = Figure(size=(1400, 1000))
+Label(fig[1, 1:4], @lift("After " * prettytime(times[$n])); fontsize=22, tellwidth=false)
+
+for (row, (filename, title, _)) in enumerate(experiments)
+    speeds = FieldTimeSeries(filename, "surface_speed")
+    temperatures = FieldTimeSeries(filename, "surface_temperature")
+    speed = @lift ifelse.(land, NaN, interior(speeds[$n], :, :, 1))
+    anomaly = @lift ifelse.(land, NaN, interior(temperatures[$n], :, :, 1) .- restoring_profile)
+
+    ax = map_axis(fig[row + 1, 1]; title="Surface speed, " * title)
+    sf = surface!(ax, λ, φ, 0 * λ; color=speed, colormap=:magma, colorrange=(0, 0.3),
+                  shading=NoShading, nan_color=:gray)
+    row == 1 && Colorbar(fig[2:4, 2], sf, label="Speed [m s⁻¹]")
+
+    ax = map_axis(fig[row + 1, 3]; title="T − T*, " * title)
+    sf = surface!(ax, λ, φ, 0 * λ; color=anomaly, colormap=:balance, colorrange=(-2, 2),
+                  shading=NoShading, nan_color=:gray)
+    row == 1 && Colorbar(fig[2:4, 4], sf, label="T − T* [°C]")
+end
 
 CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:length(times), framerate=12) do frame
     n[] = frame
@@ -409,41 +461,3 @@ end
 nothing #hide
 
 # ![](global_wind_driven_gyres.mp4)
-#
-# ## Western intensification needs β
-#
-# Both the Sverdrup balance and the western boundary currents that close it exist
-# because the Coriolis parameter changes with latitude. To see what happens without
-# ``β``, we run the model once more with an [`FPlane`](@ref) whose Coriolis parameter
-# has the value of 30°N everywhere. A constant ``f`` has the wrong sign in the Southern
-# Hemisphere, so we only look at the northern gyres.
-
-f_plane_filename = run_gyres(grid, FPlane(latitude=30), "f_plane")
-
-# We compare the streamfunction with the run at Earth's rotation rate, and follow both
-# along 30°N across the Pacific and the Atlantic. Note the ten times larger color range
-# of the ``f``-plane map.
-
-fig = Figure(size=(900, 1000))
-ax = Axis(fig[3, 1], xlabel="Longitude", ylabel="Streamfunction along 30°N [Sv]", xticks=longitude_ticks)
-
-along_30N = @. abs(φ - 30) < resolution / 2
-eastward = sortperm(λ[along_30N])
-
-for (row, (filename, title, colorrange)) in enumerate(((filenames[Ω], "β-plane", (-100, 100)),
-                                                        (f_plane_filename, "f-plane", (-1000, 1000))))
-    streamfunction = streamfunction_map!(fig, row, filename; title, colorrange)
-    lines!(ax, λ[along_30N][eastward], streamfunction[along_30N][eastward]; label=title)
-end
-
-axislegend(ax)
-save("f_plane_gyres.png", fig, px_per_unit=2) #hide
-
-# ![](f_plane_gyres.png)
-#
-# On the ``β``-plane the streamfunction climbs to the gyre maximum within a few degrees of
-# the western coast and decays slowly across the rest of the basin. On the ``f``-plane the
-# gyres are symmetric about the middle of each basin and there is no western boundary
-# current. They are also ten times stronger and still growing after four months: without
-# ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
-# friction alone can remove the vorticity it puts in.
