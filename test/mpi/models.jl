@@ -493,42 +493,65 @@ end
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
-        if child_arch isa GPU
-            @info "Testing `on_architecture` for distributed grids..."
+        @info "Testing `on_architecture` for distributed grids..."
 
-            arch = Distributed(child_arch; partition=Partition(1, 4))
-            rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            llg  = LatitudeLongitudeGrid(arch, size=(8, 16, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
-            osg  = TripolarGrid(arch, size=(8, 16, 8))
+        arch = Distributed(child_arch; partition=Partition(1, 4))
 
-            cpu_arch = cpu_architecture(arch)
+        # A stretched y so that the cell widths Δyᵃᶜᵃ and the center-to-center
+        # distances Δyᵃᶠᵃ differ from each other
+        y = [j^2 for j in 0:16]
 
-            cpurg  = on_architecture(cpu_arch, rg)
-            cpullg = on_architecture(cpu_arch, llg)
-            cpuosg = on_architecture(cpu_arch, osg)
+        rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 16, 8), x=(0, 1), y=y, z=(0, 3))
+        llg  = LatitudeLongitudeGrid(arch, size=(8, 16, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
+        osg  = TripolarGrid(arch, size=(8, 16, 8))
 
-            @test child_architecture(architecture(cpurg))  == CPU()
-            @test child_architecture(architecture(cpullg)) == CPU()
-            @test child_architecture(architecture(cpuosg)) == CPU()
+        cpu_arch = cpu_architecture(arch)
 
-            @info "Testing `minimum_*spacing` for distributed grids..."
+        cpurg  = on_architecture(cpu_arch, rg)
+        cpullg = on_architecture(cpu_arch, llg)
+        cpuosg = on_architecture(cpu_arch, osg)
 
-            grg  = reconstruct_global_grid(rg)
-            gllg = reconstruct_global_grid(llg)
-            gosg = reconstruct_global_grid(osg)
+        @test child_architecture(architecture(cpurg))  == CPU()
+        @test child_architecture(architecture(cpullg)) == CPU()
+        @test child_architecture(architecture(cpuosg)) == CPU()
 
-            @test minimum_xspacing(rg) == minimum_xspacing(grg)
-            @test minimum_yspacing(rg) == minimum_yspacing(grg)
-            @test minimum_zspacing(rg) == minimum_zspacing(grg)
+        @info "Testing that `on_architecture` preserves the metrics of distributed grids..."
 
-            @test minimum_xspacing(llg) == minimum_xspacing(llg)
-            @test minimum_yspacing(llg) == minimum_yspacing(llg)
-            @test minimum_zspacing(llg) == minimum_zspacing(llg)
-
-            @test minimum_xspacing(osg) == minimum_xspacing(osg)
-            @test minimum_yspacing(osg) == minimum_yspacing(osg)
-            @test minimum_zspacing(osg) == minimum_zspacing(osg)
+        # `on_architecture` moves the metric arrays between architectures without recomputing
+        # them, so it must return every metric unchanged (and in the same slot)
+        for name in (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+            @test on_architecture(CPU(), getproperty(cpullg, name)) == on_architecture(CPU(), getproperty(llg, name))
         end
+
+        for name in (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ,
+                     :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
+            @test on_architecture(CPU(), getproperty(cpuosg, name)) == on_architecture(CPU(), getproperty(osg, name))
+        end
+
+        @info "Testing the spacings of distributed grids..."
+
+        # Δyᵃᶜᵃ[j] is the width of cell j; Δyᵃᶠᵃ[j] the distance between the centers of cells j-1 and j
+        ny = size(rg, 2)
+        @test Array(rg.Δyᵃᶜᵃ[1:ny])   ≈ diff(Array(rg.yᵃᶠᵃ[1:ny+1]))
+        @test Array(rg.Δyᵃᶠᵃ[2:ny])   ≈ diff(Array(rg.yᵃᶜᵃ[1:ny]))
+
+        @info "Testing `minimum_*spacing` for distributed grids..."
+
+        grg  = reconstruct_global_grid(rg)
+        gllg = reconstruct_global_grid(llg)
+        gosg = reconstruct_global_grid(osg)
+
+        @test minimum_xspacing(rg) == minimum_xspacing(grg)
+        @test minimum_yspacing(rg) == minimum_yspacing(grg)
+        @test minimum_zspacing(rg) == minimum_zspacing(grg)
+
+        @test minimum_xspacing(llg) == minimum_xspacing(gllg)
+        @test minimum_yspacing(llg) == minimum_yspacing(gllg)
+        @test minimum_zspacing(llg) == minimum_zspacing(gllg)
+
+        @test minimum_xspacing(osg) == minimum_xspacing(gosg)
+        @test minimum_yspacing(osg) == minimum_yspacing(gosg)
+        @test minimum_zspacing(osg) == minimum_zspacing(gosg)
     end
 
     @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin
