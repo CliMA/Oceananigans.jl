@@ -2,19 +2,22 @@ module Utils
 
 export configure_kernel, launch!, KernelParameters
 export prettytime, pretty_filesize
-export tupleit, parenttuple, datatuple, datatuples
+export tupleit, parenttuple, datatuple, datatuples, named_tuple
 export ordered_dict_show
 export instantiate
 export with_tracers
+export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
-export newton_div
+export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Misc. small utils
@@ -25,10 +28,13 @@ instantiate(t) = t
 
 getnamewrapper(type) = typeof(type).name.wrapper
 
+function get_active_cells_map end
+
 #####
 ##### Include utils
 #####
 
+include("time_discretizations.jl")
 include("prettysummary.jl")
 include("kernel_launching.jl")
 include("prettytime.jl")

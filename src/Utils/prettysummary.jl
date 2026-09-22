@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 shortsummary(x, args...) = string(typeof(x).name.wrapper)
 prettysummary(x, args...) = summary(x)
 
@@ -37,8 +39,12 @@ function prettysummary(nt::NamedTuple, args...)
     return string(str, ")")
 end
 
-function prettykeys(t)
-    names = collect(keys(t))
+# Unordered dictionaries have no fixed iteration order, so their keys are listed sorted
+prettykeys(t) = prettykeys(collect(keys(t)))
+prettykeys(t::AbstractDict) = prettykeys(sort!(collect(keys(t)); by = string))
+prettykeys(t::OrderedDict) = prettykeys(collect(keys(t)))
+
+function prettykeys(names::AbstractVector)
     length(names) == 0 && return "()"
     length(names) == 1 && return string(first(names))
     return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")

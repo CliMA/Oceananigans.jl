@@ -158,6 +158,7 @@ end
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -198,13 +199,8 @@ end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
-
-# Disambiguations
 @inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)

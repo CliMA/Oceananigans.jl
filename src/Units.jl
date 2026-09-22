@@ -2,7 +2,7 @@ module Units
 
 export Time, second, minute, hour, day, meter, kilometer,
        seconds, minutes, hours, days, meters, kilometers,
-       KiB, MiB, GiB, TiB
+       KiB, MiB, GiB, TiB, hPa
 
 #####
 ##### Convenient definitions
@@ -119,6 +119,13 @@ const GiB = 1024MiB
 A `Float64` constant equal to 1024`GiB`. Useful for increasing the clarity of scripts, e.g. `max_filesize = 2TiB`.
 """
 const TiB = 1024GiB
+
+"""
+    hPa
+
+A `Float64` constant equal to 100.0. Useful for increasing the clarity of scripts, e.g. `p₀ = 1000hPa`.
+"""
+const hPa = 100.0
 
 """
     Time(t)

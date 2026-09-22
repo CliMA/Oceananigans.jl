@@ -1,8 +1,10 @@
 using Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 import KernelAbstractions
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+
 using Oceananigans.Architectures: CPU, device
+
 import Oceananigans.Architectures: on_architecture
 
 """

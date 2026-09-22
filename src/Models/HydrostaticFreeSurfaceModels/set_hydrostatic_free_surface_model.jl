@@ -4,7 +4,9 @@ using Oceananigans.Utils: @apply_regionally
 import Oceananigans.Fields: set!
 
 """
-    set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+    set!(model::HydrostaticFreeSurfaceModel;
+         u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+         reconcile_state=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
@@ -66,7 +68,7 @@ model.velocities.u
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
 
-        @apply_regionally set!(ϕ, value)
+        @apply_regionally set!(ϕ, value, model.clock, fields(model))
     end
 
     reconcile_state && reconcile_state!(model)
@@ -95,8 +97,8 @@ where the extrinsic and intrinsic coordinate systems differ.
 """
 function set_velocities!(model, u, v; intrinsic_velocities=false)
     if intrinsic_velocities || !(model.grid isa IntrinsicCoordinateGrid)
-        u isa ZeroField || set!(model.velocities.u, u)
-        v isa ZeroField || set!(model.velocities.v, v)
+        u isa ZeroField || set!(model.velocities.u, u, model.clock, fields(model))
+        v isa ZeroField || set!(model.velocities.v, v, model.clock, fields(model))
     else
         set_from_extrinsic_velocities!(model.velocities, model.grid, u, v)
     end

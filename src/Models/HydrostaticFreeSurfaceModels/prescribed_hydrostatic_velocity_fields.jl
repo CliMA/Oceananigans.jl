@@ -93,8 +93,13 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     end
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
+Base.@constprop :aggressive hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+
+for FS in (:ExplicitFreeSurface, :SplitExplicitFreeSurface)
+    @eval Base.@constprop :aggressive hydrostatic_tendency_fields(velocities::PrescribedVelocityFields, ::$FS, grid, tracer_names, bcs) =
+        hydrostatic_tendency_fields(velocities, nothing, grid, tracer_names, bcs)
+end
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
@@ -114,16 +119,20 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
 @inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
 
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3) = sum_of_velocities(velocities(U1), velocities(U2), U3)
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), U2, velocities(U3))
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2), velocities(U3))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2), velocities(U3))
+
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
-mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
+mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
 
 # No need for extra velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::Nothing) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
@@ -131,12 +140,13 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
@@ -163,7 +173,7 @@ function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwarg
     update_state!(model, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) =
+update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
 #####

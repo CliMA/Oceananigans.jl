@@ -2,7 +2,7 @@
 @inline c²(i, j, k, grid, cⁿ⁺¹, cⁿ) = @inbounds (cⁿ⁺¹[i, j, k] * cⁿ[i, j, k])
 
 """
-    compute_dissipation!(dissipation, model, tracer_name)
+$(TYPEDSIGNATURES)
 
 Compute the numerical dissipation for tracer `tracer_name`, from the previously calculated advective and diffusive fluxes,
 the formulation is:

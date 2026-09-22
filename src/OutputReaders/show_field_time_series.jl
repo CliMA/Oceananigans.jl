@@ -54,7 +54,10 @@ function field_time_series_suffix(fts::InMemoryFTS)
                   "    └── ", data_summary(parent(fts)))
 end
 
+show_path(path::AbstractString) = path
+show_path(path::SplitFilePath) = string(length(path.paths), " part files: ", first(path.paths), " … ", last(path.paths))
+
 field_time_series_suffix(fts::OnDiskFTS) =
     string("├── backend: ", summary(fts.backend), '\n',
-           "├── path: ", fts.path, '\n',
+           "├── path: ", show_path(fts.path), '\n',
            "└── name: ", fts.name)

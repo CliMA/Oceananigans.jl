@@ -127,13 +127,12 @@ simulation.output_writers[:things] =
                  global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field, and dimensions are
+suffixed (e.g., `_grid1`, `_grid2`) when multiple grids are present.
 
 ```@example
 using Oceananigans
-using Oceananigans.Fields: interpolate!
 using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
@@ -142,12 +141,11 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+# u lives on coarse_grid, w lives on model.grid — both in the same file
+outputs = (; u = coarse_u, w = model.velocities.w)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
-                             filename = "coarse_u.nc",
+                             filename = "multi_grid.nc",
                              schedule = IterationInterval(1))
 ```
 
@@ -201,6 +199,21 @@ simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                schedule = AveragedTimeInterval(20minute, window=5minute))
 ```
 
+To reduce the size of output files, data can be compressed when written to disk via the
+`compress` keyword argument, at the cost of some extra time spent compressing while writing
+and decompressing while reading:
+
+```@example jld2_output_writer
+simulation.output_writers[:compressed] = JLD2Writer(model, model.velocities,
+                                                    filename = "some_compressed_data.jld2",
+                                                    schedule = TimeInterval(20minute),
+                                                    compress = true)
+```
+
+With `compress = true` (which is the default), the `Deflate` compression filter is used; see the
+[JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/) for
+the other supported compressors.
+
 See [`JLD2Writer`](@ref) for more information.
 
 ## Time-averaged output
@@ -208,7 +221,7 @@ See [`JLD2Writer`](@ref) for more information.
 Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFWriter` or
 `JLD2Writer` to [`AveragedTimeInterval`](@ref).
 
-With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Riemann sum corresponding to
+With `AveragedTimeInterval`, the time-average of ``a`` is taken as a right Riemann sum corresponding to
 
 ```math
 \langle a \rangle = \frac{1}{T} \int_{t_i-T}^{t_i} a \, \mathrm{d} t \, ,
@@ -249,3 +262,78 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "even_more_averaged_velocity_data.jld2",
                                                     schedule = AveragedTimeInterval(4days, window=1day, stride=2))
 ```
+
+## Time-derivative output
+
+[`TimeDerivative`](@ref) computes the time derivative of an output while a simulation runs, which
+makes it possible to, for example, close a budget online instead of differencing two saved snapshots afterwards.
+The derivative is a backward difference,
+
+```math
+\partial_t a \approx \frac{a^n - a^{n-1}}{t^n - t^{n-1}} \, ,
+```
+
+where ``a^n`` and ``a^{n-1}`` are the operand evaluated at the two most recent times the derivative
+was updated. The result is therefore centered at ``t^n - \Delta t / 2``, where ``\Delta t = t^n - t^{n-1}``.
+A `TimeDerivative` is zero until its operand has been evaluated twice, so the value written at the
+start of a simulation is zero.
+
+Unlike the spatial operators `∂x`, `∂y` and `∂z`, a `TimeDerivative` does not differentiate lazily: the
+difference is evaluated when its schedule actuates. It is an output that a writer interprets, and
+updating it is the job of a [`TimeDerivativeCallback`](@ref) (which a writer can add to
+`simulation.callbacks` on `IterationInterval(1)` for each `TimeDerivative` among its outputs).
+
+### Example
+
+Writing the rate of change of tracer variance alongside the other terms of its budget,
+
+```@example time_derivative
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+model = NonhydrostaticModel(grid, tracers=:c)
+
+simulation = Simulation(model, Δt=1, stop_iteration=10)
+
+∂ₜ∫c² = TimeDerivative(Integral(model.tracers.c^2))
+
+simulation.output_writers[:budget] = JLD2Writer(model, (; ∂ₜ∫c²),
+                                                filename = "tracer_variance_budget.jld2",
+                                                schedule = TimeInterval(1))
+```
+
+Output derivatives are differenced across consecutive time steps, which is what is needed when the
+other terms of a budget are evaluated every step. To difference over a longer interval, construct the
+updating callback yourself with a coarser `schedule`.
+
+### Use without an output writer
+
+An output writer is not required. A [`TimeDerivativeCallback`](@ref) added to `simulation.callbacks`
+keeps its `TimeDerivative` up to date on its own schedule, and the derivative can be read at any
+point during the run,
+
+```@example time_derivative
+∂ₜc = TimeDerivativeCallback(model.tracers.c, schedule=IterationInterval(1))
+
+simulation.callbacks[:∂ₜc] = ∂ₜc
+
+derivative = ∂ₜc.func
+
+progress(sim) = @info "iteration $(iteration(sim)): max|∂ₜc| = $(maximum(abs, derivative))"
+
+add_callback!(simulation, progress, IterationInterval(5))
+
+run!(simulation)
+```
+
+A `TimeDerivative` is an `AbstractField` that reads as the `Field` it computes (`derivative.result`), so `interior`,
+`maximum`, indexing, and operations such as `2 * derivative` or `Average(derivative)` apply to the derivative itself.
+Reading a derivative, including through `compute!`, does not advance it: an operation built from one sees whatever
+its callback last computed, so keep the `TimeDerivativeCallback` in `simulation.callbacks` when such operations
+are written by an output writer.
+
+Callback ordering works in your favor here: callbacks run after the time step and before output
+writers, so a callback that reads the derivative always sees it across the step that just finished.
+Callbacks are actuated in insertion order, so register the `TimeDerivativeCallback` before any
+callback that reads it.

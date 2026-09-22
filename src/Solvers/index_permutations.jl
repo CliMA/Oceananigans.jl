@@ -1,9 +1,9 @@
-# For why we use Base.unsafe_trunc instead of floor below see:
-# https://github.com/CliMA/Oceananigans.jl/issues/828
-# https://github.com/CliMA/Oceananigans.jl/pull/997
+# These kernels run on GPUs, some of which (e.g. Metal) cannot compile Float64
+# arithmetic, so index computations must stay in integer arithmetic throughout:
+# i ÷ 2 == trunc(i/2) and (N + 1) ÷ 2 == ceil(N/2) for the i, N ≥ 0 used here.
 
 """
-    permute_index(i, N)
+$(TYPEDSIGNATURES)
 
 Permute `i` such that, for example, `i ∈ 1:N` becomes
 
@@ -16,11 +16,11 @@ for `N=8` and `N=9` respectively.
 See equation (20) of [Makhoul80](@citet).
 """
 @inline permute_index(i, N)::Int = ifelse(isodd(i),
-                                          Base.unsafe_trunc(Int, i/2) + 1,
-                                          N - Base.unsafe_trunc(Int, (i-1)/2))
+                                          i ÷ 2 + 1,
+                                          N - (i - 1) ÷ 2)
 
 """
-    unpermute_index(i, N)
+$(TYPEDSIGNATURES)
 
 Permute `i` in the opposite manner as `permute_index`, such that,
 for example, `i ∈ 1:N` becomes
@@ -33,7 +33,7 @@ for `N=8` and `N=9` respectively.
 
 See equation (20) of [Makhoul80](@citet).
 """
-@inline unpermute_index(i, N) = ifelse(i <= ceil(N/2), 2i-1, 2(N-i+1))
+@inline unpermute_index(i, N) = ifelse(i <= (N + 1) ÷ 2, 2i-1, 2(N-i+1))
 
 @kernel function permute_x_indices!(dst, src, grid)
     i, j, k = @index(Global, NTuple)

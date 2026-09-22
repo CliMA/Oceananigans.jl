@@ -1,7 +1,6 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid, Partition
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
@@ -12,11 +11,16 @@ using Oceananigans.OutputReaders: auto_extension
 ##### Output writer utilities
 #####
 
+# Names of the requested outputs; unordered dictionaries have no fixed iteration order, so their keys are sorted
+output_names(outputs) = keys(outputs)
+output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)
+output_names(outputs::OrderedDict) = keys(outputs)
+
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-initialize!(::NoFileSplitting, model) = nothing
+Oceananigans.initialize!(::NoFileSplitting, model) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
@@ -31,6 +35,13 @@ the `size_limit`.
 
 The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
+
+The `size_limit` applies to the on-disk size of the file, which includes
+the metadata the output writer stores in every part file upon initialization.
+Compression typically shrinks the output data much more than the metadata,
+so choose a `size_limit` comfortably larger than the metadata overhead:
+otherwise every part file exceeds the limit and contains a single output,
+and the total output size can end up much larger than without splitting.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
@@ -52,8 +63,10 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     return nothing
 end
 
+validate_file_splitting(schedule, args...) = nothing
+
 """
-    ext(ow)
+$(TYPEDSIGNATURES)
 
 Return the file extension for the output writer or output
 writer type `ow`.
@@ -61,12 +74,30 @@ writer type `ow`.
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
 ext(ow::AbstractOutputWriter) = ext(typeof(ow))
 
+"""
+$(TYPEDSIGNATURES)
+
+Return the filepath for the given `part` number. Handles both base paths
+(without `_partN` suffix) and paths that already contain a `_partN` suffix.
+"""
+function filepath_for_part(filepath, part)
+    extension = splitext(filepath)[2] # e.g., ".jld2" or ".nc"
+    esc_ext = replace(extension, "." => "\\.")
+    # Strip any existing _partN suffix to get the base path
+    base = replace(filepath, Regex("_part\\d+" * esc_ext * "\$") => extension)
+    if part > 1
+        return replace(base, Regex(esc_ext * "\$") => "_part$(part)" * extension)
+    else
+        return base
+    end
+end
+
 # TODO: add example to docstring below
 
 """
-    saveproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
-Save data in `obj` to `file[address]` in a "languate-agnostic" way,
+Save data in `obj` to `file[address]` in a "language-agnostic" way,
 thus primarily consisting of arrays and numbers, absent Julia-specific types
 or other data that can _only_ be interpreted by Julia.
 """
@@ -109,7 +140,7 @@ function saveproperty!(file, address, bcs::FieldBoundaryConditions)
 end
 
 """
-    serializeproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
 Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
 `CuArray` to `Array` so data can be loaded on any architecture,
@@ -200,7 +231,7 @@ has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
     has_reference(T, bcs.immersed)
 
 """
-    has_reference(has_type, obj)
+$(TYPEDSIGNATURES)
 
 Check (or attempt to check) if `obj` contains, somewhere among its
 subfields and subfields of fields, a reference to an object of type

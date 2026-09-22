@@ -1,7 +1,8 @@
-using Printf
+using Printf: Printf, @sprintf
+
 using Oceananigans.Architectures: cpu_architecture
+using Oceananigans.Fields: Fields, Field, set_to_function!
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.Fields: set_to_function!
 
 #####
 ##### set!
@@ -10,7 +11,7 @@ using Oceananigans.Fields: set_to_function!
 iterations_from_file(file::JLD2.JLDFile) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
-    # We introduce an additional absolute tolerance to accomodate
+    # We introduce an additional absolute tolerance to accommodate
     # time values very close to zero, for which a relative tolerance will not work
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
     ϵa = 100 * eps(Δt)
@@ -23,24 +24,41 @@ find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time,
 # Extended in OceananigansNCDatasetsExt
 set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets")
 
-function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
+# Extended in OceananigansZarrExt
+set_from_zarr!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from Zarr files requires Zarr")
+
+function Fields.set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     if endswith(path, ".jld2")
         file = jldopen(path; fts.reader_kw...)
         set!(fts, file, args...; kwargs...)
         close(file)
     elseif endswith(path, ".nc")
         return set_from_netcdf!(fts, path, args...; kwargs...)
+    elseif endswith(path, ".zarr") || endswith(path, ".zip")
+        return set_from_zarr!(fts, path, args...; kwargs...)
     else
         error("Unsupported file extension: $(path)")
     end
 end
 
-# Convenience method with default path
-function set!(fts::InMemoryFTS; kwargs...)
-    return set!(fts, fts.path; kwargs...)
+function Fields.set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name)
+    Ntotal = last(sfp.cumulative_length)
+    needed_paths = String[]
+    for n in time_indices(fts)
+        (n < 1 || n > Ntotal) && continue
+        part_path, _ = file_and_local_index(sfp, n)
+        part_path ∉ needed_paths && push!(needed_paths, part_path)
+    end
+    for part_path in needed_paths
+        set!(fts, part_path, name; warn_missing_data=false)
+    end
+    return nothing
 end
 
-function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
+# Convenience method with default path
+Fields.set!(fts::InMemoryFTS; kwargs...) = set!(fts, fts.path; kwargs...)
+
+function Fields.set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
 
@@ -85,9 +103,15 @@ function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_
     return nothing
 end
 
-set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
+Fields.set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
-function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
+# Set every time slice to the same value.
+function Fields.set!(fts::InMemoryFTS, value::Number)
+    fill!(parent(fts), value)
+    return fts
+end
+
+function Fields.set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
 
     for (n, field) in enumerate(fields_vector)
@@ -109,13 +133,13 @@ function maybe_write_property!(file, property, data)
 end
 
 """
-    set!(fts::OnDiskFieldTimeSeries, field::Field, n::Int, time=fts.times[time_index])
+    set!(fts::OnDiskFieldTimeSeries, field::Field, n::Int, time=fts.times[n])
 
 Write the data in `parent(field)` to the file at `fts.path`,
 under `fts.name` and at `time_index`. The save field is assigned `time`,
 which is extracted from `fts.times[time_index]` if not provided.
 """
-function set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
+function Fields.set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
     fts.grid == field.grid || error("The grids attached to the Field and \
                                     FieldTimeSeries appear to be different.")
     path = fts.path
@@ -135,9 +159,10 @@ function initialize_file!(file, name, fts)
     return nothing
 end
 
-set!(fts::OnDiskFTS, path::String, name::String) = nothing
+Fields.set!(fts::OnDiskFTS, path::String, name::String; kwargs...) = nothing
+Fields.set!(fts::OnDiskFTS, ::SplitFilePath, name::String=fts.name) = nothing
 
-function set!(fts::InMemoryFTS, f::Function)
+function Fields.set!(fts::InMemoryFTS, f::Function)
     cpu_times = on_architecture(CPU(), fts.times)
     n1 = first(time_indices(fts))
     clock = Clock(time=cpu_times[n1])

@@ -33,10 +33,14 @@ end
 @inline add_time_interval(base, interval::Array{<:Dates.Period}, count=1) = seconds_to_nanosecond(interval[count])
 @inline add_time_interval(base, interval::Array{Dates.DateTime}, count=1) = interval[count]
 
+period_type(interval::AbstractFloat) = typeof(interval)
+
 function period_type(interval::Number)
     FT = Oceananigans.defaults.FloatType
     return FT
 end
+
+period_type(interval::Array{<:AbstractFloat}) = Array{eltype(interval), 1}
 
 function period_type(interval::Array{<:Number})
     FT = Oceananigans.defaults.FloatType

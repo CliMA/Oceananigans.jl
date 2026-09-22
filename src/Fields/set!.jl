@@ -18,7 +18,8 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
-set!(obj, ::Nothing) = nothing
+set!(obj::AbstractField, ::Nothing) = nothing
+set!(obj::Field, ::Nothing) = nothing
 
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
@@ -28,22 +29,56 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-# This interface helps us do things like set distributed fields
-set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
-set!(u::Field, v::Field) = set_to_field!(u, v)
+function set!(ft::NamedFieldTuple, a::Number)
+    for field in ft
+        set!(field, a)
+    end
+    return ft
+end
 
-function set!(u::Field, a::Number)
+function set!(dst::NamedFieldTuple, src::NamedTuple)
+    for name in keys(dst)
+        set!(dst[name], src[name])
+    end
+    return dst
+end
+
+# This interface helps us do things like set distributed fields
+set!(u::Field, f::Function, args...) = set_to_function!(u, f)
+set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
+
+"""
+$(TYPEDSIGNATURES)
+
+Set `u` from `v`. When `u` and `v` have the same `size`, `location`, and
+`indices`, the data of `v` is copied into `u` (cross-architecture transfers
+are handled automatically). Otherwise, `v` is migrated to `u`'s architecture
+if needed, its halo regions are filled, and then it is interpolated onto `u`
+with [`interpolate!`](@ref). This means field-to-field `set!` "just works"
+across grids of different resolution, between staggered locations, and across
+architectures.
+
+Note that the interpolation path samples `v` pointwise; for conservative
+remapping, call [`regrid!`](@ref) explicitly.
+
+When `u` is set from a model's `set!(model; kwargs...)`, `args...` (eg `clock, model_fields`)
+carries the model's simulation context through to the halo fill of `v`, so that `v`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`). Different
+models pass different `args` into `fill_halo_regions!`, so this is kept generic.
+"""
+set!(u::Field, v::Field, args...) = set_to_field!(u, v, args...)
+
+function set!(u::Field, a::Number, args...)
     fill!(interior(u), a) # note all other set! only change interior
     return u # return u, not parent(u), for type-stability
 end
 
-function set!(u::Field, v)
+function set!(u::Field, v, args...)
     u .= v # fallback
     return u
 end
 
-set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+set!(u::Field, z::ZeroField, args...) = set!(u, zero(eltype(u)))
 
 #####
 ##### Setting to specific things
@@ -99,7 +134,7 @@ function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
     try
-        copyto!(interior(u), a)
+        copyto!(u, a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
@@ -117,9 +152,79 @@ function set_to_array!(u, a)
     return u
 end
 
-function set_to_field!(u, v)
+function set_to_field!(u, v, args...)
+    if copyable_fields(u, v)
+        copy_to_field!(u, v)
+    else
+        fill_halo_regions!(v, args...)
+        # Avoid reconstructing immersed grids when architectures already match.
+        v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
+        interpolate!(u, v_on_u, args...)
+    end
+
+    return u
+end
+
+# `u` may be filled from `v` by copying, rather than by interpolating, when every
+# dimension is copyable. Note that sizes need not match: `v` may be reduced.
+function copyable_fields(u, v)
+    ℓu = location(u)
+    ℓv = location(v)
+    iu = indices(u)
+    iv = indices(v)
+    Nu = size(u)
+    Nv = size(v)
+    return copyable_dimension(ℓu[1], ℓv[1], iu[1], iv[1], Nu[1], Nv[1]) &&
+           copyable_dimension(ℓu[2], ℓv[2], iu[2], iv[2], Nu[2], Nv[2]) &&
+           copyable_dimension(ℓu[3], ℓv[3], iu[3], iv[3], Nu[3], Nv[3])
+end
+
+# Along a dimension, `u` may be filled from `v` by copying in three mutually exclusive
+# situations: the two fields are discretized equivalently, the dimension is degenerate,
+# or `v` is reduced and stretches across `u`.
+@inline copyable_dimension(ℓu, ℓv, iu, iv, Nu, Nv) =
+    equivalent_dimension(ℓu, ℓv, iu, iv, Nu, Nv) ||
+    degenerate_dimension(ℓu, ℓv, Nu, Nv) ||
+    expandable_source_dimension(ℓv, Nu)
+
+# `u` and `v` place their nodes identically: same location, same extent, and windows
+# selecting the same absolute indices.
+@inline equivalent_dimension(ℓu, ℓv, iu, iv, Nu, Nv) =
+    ℓu == ℓv && Nu == Nv && equivalent_index(iu, iv, Nu)
+
+# Both fields span a single point and at least one carries no node there. A `Nothing`
+# location has no node to interpolate to, so the single slab copies directly whatever the
+# other field's location and absolute index are (e.g. a reduced field set from a windowed
+# single-layer field, whose locations are `Nothing` vs `Center` and indices `:` vs `k:k`).
+@inline degenerate_dimension(ℓu, ℓv, Nu, Nv) =
+    Nu == Nv == 1 && (ℓu === Nothing || ℓv === Nothing)
+
+# `v` carries no node, so its single value is replicated across `u`'s cells --- a 1D
+# reference column set into a 3D field, say. Only the source may stretch, mirroring
+# broadcasting, so a reduced `u` fed by a many-celled `v` is not copyable.
+@inline expandable_source_dimension(ℓv, Nu) = ℓv === Nothing && Nu > 1
+
+@inline equivalent_index(a, b, N) = a == b
+@inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
+@inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
+
+function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
+
+    if size(u) != size(v)
+        # `v` is reduced along at least one dimension (see `expandable_source_dimension`)
+        # and stretches across `u`. Only interior points participate: `v` spans a single
+        # point along a stretched dimension, so it has no halo data to lend there.
+        if child_architecture(u) === child_architecture(v)
+            interior(u) .= interior(v)
+        else
+            v_data = on_architecture(child_architecture(u), v.data)
+            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
+        end
+
+        return u
+    end
 
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
@@ -146,6 +251,8 @@ function set_to_field!(u, v)
     return u
 end
 
-Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{<:Base.Broadcast.DefaultArrayStyle}) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{0}}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))

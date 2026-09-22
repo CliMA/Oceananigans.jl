@@ -76,7 +76,7 @@ indices(::Function) = default_indices(3)
 indices(::Number)   = default_indices(3)
 
 """
-    intersect_indices(loc, operands...)
+$(TYPEDSIGNATURES)
 
 Utility to compute the intersection of `operands' indices.
 """

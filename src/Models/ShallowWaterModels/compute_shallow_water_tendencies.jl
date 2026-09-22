@@ -9,7 +9,7 @@ using Oceananigans.BoundaryConditions
 
 
 """
-    compute_tendencies!(model::ShallowWaterModel)
+$(TYPEDSIGNATURES)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.

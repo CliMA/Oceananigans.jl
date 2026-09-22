@@ -20,14 +20,14 @@ end
 
 min_Δxyz(grid, ::VerticalFormulation) = minimum_zspacing(grid, Center(), Center(), Center())
 
-
 Diagnostics.cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.closure_fields,
                                                                        model.grid, model.clock, fields(model))
 Diagnostics.cell_diffusion_timescale(::Nothing, closure_fields, grid, clock, fields) = Inf
 
 maximum_numeric_diffusivity(κ::Number, grid, clock, fields) = κ
 maximum_numeric_diffusivity(κ::FunctionField, grid, clock, fields) = maximum(κ)
-maximum_numeric_diffusivity(κ_tuple::NamedTuple, grid, clock, fields) = maximum(maximum_numeric_diffusivity(κ, grid, clock, fields) for κ in κ_tuple)
+maximum_numeric_diffusivity(κ_tuple::NamedTuple, grid, clock, fields) =
+    maximum(maximum_numeric_diffusivity(κ, grid, clock, fields) for κ in κ_tuple)
 maximum_numeric_diffusivity(κ::NamedTuple{()}, grid, clock, fields) = 0 # tracers=nothing means empty diffusivity tuples
 maximum_numeric_diffusivity(::Nothing, grid, clock, fields) = 0
 
@@ -46,6 +46,9 @@ function Diagnostics.cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir
     max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
+
+Diagnostics.cell_diffusion_timescale(::VerticalScalarDiffusivity{<:VerticallyImplicitTimeDiscretization},
+                                     closure_fields, grid, clock, fields) = Inf
 
 function Diagnostics.cell_diffusion_timescale(closure::ScalarBiharmonicDiffusivity{Dir}, closure_fields, grid, clock, fields) where {Dir}
     Δ = min_Δxyz(grid, formulation(closure))
@@ -74,9 +77,30 @@ function Diagnostics.cell_diffusion_timescale(closure::TwoDimensionalLeith, clos
     return Δ^2 / max_ν
 end
 
-# Vertically-implicit treatment of vertical diffusivity has no time-step restriction
-Diagnostics.cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyImplicitTimeDiscretization},
-                                     closure_fields, grid, clock, fields) = Inf
+# Vertically-implicit treatment of purely vertical diffusivity has no explicit
+# diffusive time-step restriction.
+const VerticallyImplicitDiffusivity = AbstractScalarDiffusivity{<:VerticallyImplicitTimeDiscretization, <:VerticalFormulation}
+
+Diagnostics.cell_diffusion_timescale(::VerticallyImplicitDiffusivity, closure_fields, grid, clock, fields) = Inf
 
 Diagnostics.cell_diffusion_timescale(closure::Tuple, closure_fields, grid, clock, fields) =
     minimum(cell_diffusion_timescale(c, cf, grid, clock, fields) for (c, cf) in zip(closure, closure_fields))
+
+function Diagnostics.cell_diffusion_timescale(closure::Union{CATKEVerticalDiffusivity{<:ExplicitTimeDiscretization},
+                                                             TKEDissipationVerticalDiffusivity{<:ExplicitTimeDiscretization}},
+                                              closure_fields, grid, clock, fields)
+    Δ = min_Δxyz(grid, VerticalFormulation())
+    max_ν = maximum(viscosity(closure, closure_fields).data.parent)
+    max_κ = maximum(maximum(diffusivity(closure, closure_fields, Val(tracer_name)).data.parent)
+                    for tracer_name in keys(closure_fields._tupled_tracer_diffusivities))
+    return min(Δ^2 / max_ν, Δ^2 / max_κ)
+end
+
+function Diagnostics.cell_diffusion_timescale(closure::Union{ConvectiveAdjustmentVerticalDiffusivity{<:ExplicitTimeDiscretization},
+                                                             RiBasedVerticalDiffusivity{<:ExplicitTimeDiscretization}},
+                                              closure_fields, grid, clock, fields)
+    Δ = min_Δxyz(grid, VerticalFormulation())
+    max_ν = maximum(viscosity(closure, closure_fields).data.parent)
+    max_κ = maximum(diffusivity(closure, closure_fields, nothing).data.parent)
+    return min(Δ^2 / max_ν, Δ^2 / max_κ)
+end

@@ -60,6 +60,7 @@ using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
     YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
     Center, Face
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Convenient aliases
@@ -108,7 +109,6 @@ include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
 include("time_variable_grid_operators.jl")
-include("generalized_derivatives.jl")
 include("vector_rotation_operators.jl")
 
 @inline xspacing(args...) = Δx(args...)

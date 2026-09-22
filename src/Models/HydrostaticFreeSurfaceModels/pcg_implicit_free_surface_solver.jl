@@ -94,34 +94,27 @@ function Solvers.solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurface
     return nothing
 end
 
-function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
-                                                        g, Δt, U, η)
+function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
     arch = architecture(solver)
     grid = solver.grid
-
-    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η)
-
+    launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end
 
-compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η) =
-    launch!(arch, grid, :xy,
-            implicit_free_surface_right_hand_side!,
-            rhs, grid, g, Δt, U, η)
-
-@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η)
+@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
-    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
+    fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
+    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end
 
 """
-    implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+$(TYPEDSIGNATURES)
 
 Return `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
@@ -151,7 +144,7 @@ end
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * δyᶜᶠᶠ(i, j, k, grid, η) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 
 """
-    _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+$(TYPEDSIGNATURES)
 
 Return the left side of the "implicit ``η`` equation"
 

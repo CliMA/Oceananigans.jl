@@ -3,11 +3,17 @@
 ## Running Tests
 
 ```julia
-# All tests
+# Default test suite (everything that needs no extra hardware); files run in parallel worker processes
 Pkg.test("Oceananigans")
 
-# Run specific test groups by setting the TEST_GROUP environment variable
-ENV["TEST_GROUP"] = "unit"  # or "time_stepping", "regression", etc.
+# Select tests by prefix of "group/name", i.e. of the path test/<group>/<name>.jl
+Pkg.test("Oceananigans"; test_args=["unit"])                  # all of test/unit/
+Pkg.test("Oceananigans"; test_args=["unit/grids", "coriolis"]) # one file plus one group
+Pkg.test("Oceananigans"; test_args=["--list"])                # list tests with last durations
+Pkg.test("Oceananigans"; test_args=["--jobs=4", "--verbose"])
+
+# TEST_GROUP is an equivalent, comma-separated selection (used by CI)
+ENV["TEST_GROUP"] = "unit"
 Pkg.test("Oceananigans")
 
 # CPU-only (disable GPU)
@@ -21,8 +27,8 @@ Pkg.test("Oceananigans")
 
 ## Writing Tests
 
-- Place tests in `test/` directory
-- Follow the existing test group structure
+- Place tests in `test/<group>/` and include `test/setup/dependencies_for_runtests.jl` at the top with `joinpath(@__DIR__, ...)`
+- Every `.jl` file under `test/<group>/` is a test; helper files go in `test/setup/`
 - Test on both CPU and GPU when possible
 - Name test files descriptively (snake_case)
 - Include both unit tests and integration tests

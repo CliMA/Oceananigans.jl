@@ -1,4 +1,5 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.Grids: grid
 
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
@@ -20,6 +21,8 @@ ConstantField(constant) = ConstantField{3}(constant)
 @inline Base.getindex(f::ConstantField, ind...) = f.constant
 
 const CF = Union{ConstantField, ZeroField, OneField}
+
+grid(::CF) = nothing
 
 BoundaryConditions.fill_halo_regions!(::ZeroField, args...; kw...) = nothing
 BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing

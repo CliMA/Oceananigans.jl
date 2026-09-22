@@ -231,10 +231,12 @@ simulation.output_writers[:slices] =
                filename = filename * ".jld2",
                indices = (:, grid.Ny/2, :),
                schedule = TimeInterval(1minute),
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # We're ready:
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Turbulence visualization

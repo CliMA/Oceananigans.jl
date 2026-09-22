@@ -140,7 +140,7 @@ fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
 simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
                                                   filename = fields_filename,
                                                   schedule = TimeInterval(2),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
@@ -150,10 +150,12 @@ simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
                                                   filename = growth_filename,
                                                   schedule = IterationInterval(1),
                                                   dimensions = (; perturbation_norm = ()),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 # And finally run the simulation.
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results

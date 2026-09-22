@@ -5,3 +5,15 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+  - package-ecosystem: "julia"
+    directories:
+      - "/"
+      - "/benchmark"
+      - "/test"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "Oceananigans"
+    groups:
+      per-dependency:
+        group-by: dependency-name

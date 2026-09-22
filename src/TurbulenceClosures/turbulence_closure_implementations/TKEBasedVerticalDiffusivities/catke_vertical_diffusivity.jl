@@ -144,7 +144,7 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                         tke_time_step)
 end
 
-function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
+Base.@constprop :aggressive function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
     :e ∈ tracer_names ||
         throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
                             "for `CATKEVerticalDiffusivity`."))
@@ -200,7 +200,7 @@ function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEClosur
     return fill_halo_regions!(κ, args...; kw...)
 end
 
-function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
+Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
                                κc = FieldBoundaryConditions(grid, (Center(), Center(), Face())),
@@ -221,8 +221,15 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     previous_velocities = (; u=u⁻, v=v⁻)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
-    _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
-    _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
+    _tupled_tracer_diffusivities = named_tuple(tracer_names) do name
+        Base.@constprop :aggressive
+        name === :e ? κe : κc
+    end
+
+    _tupled_implicit_linear_coefficients = named_tuple(tracer_names) do name
+        Base.@constprop :aggressive
+        name === :e ? Le : ZeroField()
+    end
 
     return CATKEClosureFields(κu, κc, κe, Le, Jᵇ,
                                   previous_velocities,
@@ -251,9 +258,12 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
+    active_cells_map = get_active_cells_map(grid, Val(:xy))
+
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
+            active_cells_map)
 
     return nothing
 end
@@ -354,7 +364,7 @@ end
 #####
 
 function Base.summary(closure::CATKEVD)
-    TD = nameof(typeof(time_discretization(closure)))
+    TD = nameof(typeof(TimeSteppers.time_discretization(closure)))
     return string("CATKEVerticalDiffusivity{$TD}")
 end
 
