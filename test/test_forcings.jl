@@ -347,13 +347,21 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     """
     Test that compares settling tracer simulations on regular vs immersed boundary grids.
     Both should conserve tracer mass and have similar maximum values.
+
+    The grid has two columns: an open column (x < Lx/2) with a genuine domain-edge
+    bottom boundary, and a fully-immersed "island" column (x > Lx/2) that exercises
+    the immersed boundary machinery without obstructing the open column's exit path.
+    The tracer patch lives only in the open column, so both columns' contributions
+    to the diagnostics below are identical between `regular_grid` and `immersed_grid`.
     """
 
+    Nx = 4
     Nz = 16
+    Lx = 2
     Lz = 1
 
-    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = Nz, z = (-Lz, 0))
-    immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
+    regular_grid = RectilinearGrid(arch, topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z = (-Lz, 0))
+    immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(x -> ifelse(x > Lx/2, 0, -2Lz)))
 
     function build_settling_model(grid, w_settle)
         # Create settling velocity as a field with appropriate boundary conditions
@@ -365,21 +373,17 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
         set!(w_settle_field, w_settle)
         fill_halo_regions!(w_settle_field)
 
-        # Apply boundary condition to immersed boundaries
-        if open_bottom
-            mask_immersed_field!(w_settle_field, w_settle)
-        else
-            mask_immersed_field!(w_settle_field, 0)
-        end
+        # The island column is fully immersed, so it never carries tracer; always mask it out.
+        mask_immersed_field!(w_settle_field, 0)
 
         # Create settling forcing with the velocity field
         settling_forcing = AdvectiveForcing(w = w_settle_field)
         model = NonhydrostaticModel(grid; advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
-        # Initial condition: patch of tracer c=1 in the upper part
+        # Initial condition: patch of tracer c=1 in the upper part of the open column only
         z_center = -Lz/4  # Upper quarter of domain
         z_width = Lz/8    # Width of initial patch
-        c_initial(z) = abs(z - z_center) <= z_width ? 1.0 : 0.0
+        c_initial(x, z) = (x < Lx/2) & (abs(z - z_center) <= z_width) ? 1.0 : 0.0
         set!(model, c = c_initial)
         return model
     end
