@@ -6,7 +6,7 @@ using Oceananigans.OutputWriters: fetch_output, output_time, should_write_initia
 using Oceananigans.Units: days, hours
 using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
 
-mutable struct LowPassFilter{FT} <: AbstractSchedule
+mutable struct TemporalLowPassFilter{FT} <: AbstractSchedule
     interval :: FT
     window :: FT
     cutoff :: FT
@@ -33,46 +33,46 @@ a simulation picked up from a checkpoint writes its first frame `window / 2` aft
 using Oceananigans
 using Oceananigans.Units
 
-LowPassFilter(1days)
+TemporalLowPassFilter(1days)
 
 # output
-LowPassFilter(interval=1 day, window=5 days, cutoff=1.667 days)
+TemporalLowPassFilter(interval=1 day, window=5 days, cutoff=1.667 days)
 ```
 """
-function LowPassFilter(interval; window = 5days, cutoff = 40hours)
+function TemporalLowPassFilter(interval; window = 5days, cutoff = 40hours)
     interval, window, cutoff = promote(interval, window, cutoff)
-    return LowPassFilter(interval, window, cutoff, 0)
+    return TemporalLowPassFilter(interval, window, cutoff, 0)
 end
 
-Base.summary(filter::LowPassFilter) = string("LowPassFilter(interval=", prettytime(filter.interval),
+Base.summary(filter::TemporalLowPassFilter) = string("TemporalLowPassFilter(interval=", prettytime(filter.interval),
                                              ", window=", prettytime(filter.window),
                                              ", cutoff=", prettytime(filter.cutoff), ")")
 
-Base.show(io::IO, filter::LowPassFilter) = print(io, summary(filter))
+Base.show(io::IO, filter::TemporalLowPassFilter) = print(io, summary(filter))
 
-(filter::LowPassFilter)(model) = filter.next_frame > 0 &&
+(filter::TemporalLowPassFilter)(model) = filter.next_frame > 0 &&
                                  model.clock.time >= filter.next_frame * filter.interval + filter.window / 2
 
 # The frame that just became complete is written with its own center time rather than
 # `clock.time` (when it fires, `window / 2` later). Called exactly once per write, since a
 # writer's `schedule(model)` check (which doesn't call this) already gates whether
 # `write_output!` — and so this — runs at all.
-function output_time(clock, filter::LowPassFilter)
+function output_time(clock, filter::TemporalLowPassFilter)
     t = filter.next_frame * filter.interval
     filter.next_frame += 1
     return t
 end
 
 # A fresh simulation always writes every output writer once at iteration 0, regardless of what
-# its schedule says at that point — `LowPassFilter`'s first frame is never complete that early.
-should_write_initial_output(::LowPassFilter) = false
+# its schedule says at that point — `TemporalLowPassFilter`'s first frame is never complete that early.
+should_write_initial_output(::TemporalLowPassFilter) = false
 
-Oceananigans.prognostic_state(::LowPassFilter) = nothing
-Oceananigans.restore_prognostic_state!(::LowPassFilter, ::Nothing) = nothing
+Oceananigans.prognostic_state(::TemporalLowPassFilter) = nothing
+Oceananigans.restore_prognostic_state!(::TemporalLowPassFilter, ::Nothing) = nothing
 
-mutable struct LowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
+mutable struct TemporalTemporalLowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
     operand :: O
-    filter :: LowPassFilter{FT}
+    filter :: TemporalLowPassFilter{FT}
     schedule :: IterationInterval
     sums :: Vector{A}     # weighted sum of the operand, one per frame in progress
     weights :: Vector{FT} # sum of the weights in each
@@ -80,17 +80,17 @@ mutable struct LowPassFilteredOutput{O, A, FT} <: AbstractDiagnostic
     previous_time :: FT
 end
 
-function LowPassFilteredOutput(operand, filter, model)
+function TemporalTemporalLowPassFilteredOutput(operand, filter, model)
     output = fetch_output(operand, model)
     frames_in_progress = floor(Int, filter.window / filter.interval) + 1
     sums = [zero(output) for _ in 1:frames_in_progress]
     FT = typeof(filter.interval)
-    return LowPassFilteredOutput(operand, filter, IterationInterval(1), sums,
+    return TemporalTemporalLowPassFilteredOutput(operand, filter, IterationInterval(1), sums,
                                  zeros(FT, frames_in_progress), zeros(Int, frames_in_progress),
                                  convert(FT, model.clock.time))
 end
 
-function Oceananigans.run_diagnostic!(output::LowPassFilteredOutput, model)
+function Oceananigans.run_diagnostic!(output::TemporalTemporalLowPassFilteredOutput, model)
     filter = output.filter
     t = model.clock.time
     Δt = t - output.previous_time
@@ -123,24 +123,24 @@ function Oceananigans.run_diagnostic!(output::LowPassFilteredOutput, model)
     return nothing
 end
 
-function (output::LowPassFilteredOutput)(model)
+function (output::TemporalTemporalLowPassFilteredOutput)(model)
     n = mod(output.filter.next_frame, length(output.sums)) + 1
     return output.sums[n] ./ output.weights[n]
 end
 
-Grids.grid(output::LowPassFilteredOutput) = grid(output.operand)
-Fields.location(output::LowPassFilteredOutput) = location(output.operand)
-Fields.indices(output::LowPassFilteredOutput) = indices(output.operand)
+Grids.grid(output::TemporalTemporalLowPassFilteredOutput) = grid(output.operand)
+Fields.location(output::TemporalTemporalLowPassFilteredOutput) = location(output.operand)
+Fields.indices(output::TemporalTemporalLowPassFilteredOutput) = indices(output.operand)
 
-function time_average_outputs(filter::LowPassFilter, outputs::NamedTuple, model)
-    filtered_outputs = NamedTuple(name => LowPassFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
+function time_average_outputs(filter::TemporalLowPassFilter, outputs::NamedTuple, model)
+    filtered_outputs = NamedTuple(name => TemporalTemporalLowPassFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
     return filter, filtered_outputs
 end
 
-function time_average_outputs(filter::LowPassFilter, outputs::AbstractDict, model)
+function time_average_outputs(filter::TemporalLowPassFilter, outputs::AbstractDict, model)
     # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
     # dictionary type back so their output order is preserved.
     DictType = Base.typename(typeof(outputs)).wrapper
-    filtered_outputs = DictType(name => LowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
+    filtered_outputs = DictType(name => TemporalTemporalLowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
 end

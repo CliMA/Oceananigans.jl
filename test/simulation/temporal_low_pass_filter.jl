@@ -14,9 +14,9 @@ function filtered_tidal_signal(arch, directory; stop_time, pickup = false)
 
     simulation = Simulation(model; Δt = 10minutes, stop_time)
     simulation.output_writers[:daily] = JLD2Writer(model, (; c); dir = directory, filename = "daily",
-                                                   schedule = LowPassFilter(1days), overwrite_files = pickup === false)
+                                                   schedule = TemporalLowPassFilter(1days), overwrite_files = pickup === false)
     simulation.output_writers[:weekly] = JLD2Writer(model, (; c); dir = directory, filename = "weekly",
-                                                    schedule = LowPassFilter(7days), overwrite_files = pickup === false)
+                                                    schedule = TemporalLowPassFilter(7days), overwrite_files = pickup === false)
     simulation.output_writers[:checkpointer] = Checkpointer(model; dir = directory, prefix = "checkpoint",
                                                             schedule = TimeInterval(5days))
     run!(simulation; pickup)
@@ -31,7 +31,7 @@ frames(series) = Array(interior(series))[1, 1, 1, :]
 for arch in archs
     A = typeof(arch)
 
-    @testset "LowPassFilter removes the tides [$A]" begin
+    @testset "TemporalLowPassFilter removes the tides [$A]" begin
         daily, weekly = filtered_tidal_signal(arch, mktempdir(); stop_time = 20days)
 
         @test daily.times ≈ (3:17) .* days
@@ -40,7 +40,7 @@ for arch in archs
         @test maximum(abs, frames(weekly) .- slow_signal.(weekly.times)) < 0.02
     end
 
-    @testset "LowPassFilter continues across a checkpoint [$A]" begin
+    @testset "TemporalLowPassFilter continues across a checkpoint [$A]" begin
         continuous, _ = filtered_tidal_signal(arch, mktempdir(); stop_time = 20days)
 
         directory = mktempdir()

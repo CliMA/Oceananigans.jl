@@ -111,7 +111,7 @@ export
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     PrecedingIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
-    LowPassFilter,
+    TemporalLowPassFilter,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,

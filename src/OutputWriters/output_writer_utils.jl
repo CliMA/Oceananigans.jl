@@ -16,7 +16,7 @@ $(TYPEDSIGNATURES)
 
 Return the time a writer should stamp its next output with, given the model `clock` and the
 writer's `schedule`. Falls back to `clock.time`; a schedule whose nominal output time differs
-from when it actually fires (such as `LowPassFilter`) overrides this instead of leaving each
+from when it actually fires (such as `TemporalLowPassFilter`) overrides this instead of leaving each
 writer to work out and apply that correction on its own.
 """
 output_time(clock, schedule) = clock.time
@@ -27,7 +27,7 @@ $(TYPEDSIGNATURES)
 Return whether a fresh simulation should write an initial (iteration 0) output for `schedule`,
 regardless of what `schedule(model)` itself says at that point. Most schedules want this (a
 `TimeInterval`, for instance, treats iteration 0 as its own first actuation); a schedule whose
-frames are only ever complete strictly after some accumulation, like `LowPassFilter`, overrides
+frames are only ever complete strictly after some accumulation, like `TemporalLowPassFilter`, overrides
 this to `false`.
 """
 should_write_initial_output(schedule) = true
