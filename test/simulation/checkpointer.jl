@@ -1322,6 +1322,9 @@ function Oceananigans.restore_prognostic_state!(counter::ActuationCounter, state
     return counter
 end
 
+# Disambiguates from `restore_prognostic_state!(obj, ::Nothing)` in src/OutputWriters/checkpointer.jl
+Oceananigans.restore_prognostic_state!(::ActuationCounter, ::Nothing) = nothing
+
 function test_stateful_callback_checkpointing(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     simulation = Simulation(NonhydrostaticModel(grid), Δt=0.1, stop_iteration=10)
