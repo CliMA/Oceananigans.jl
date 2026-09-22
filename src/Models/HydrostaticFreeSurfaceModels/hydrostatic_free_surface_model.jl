@@ -265,6 +265,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracer_names, free_surface, auxiliary_fields, biogeochemistry, grid)
     default_boundary_conditions = NamedTuple{field_names}(ntuple(_ -> FieldBoundaryConditions(), Val(length(field_names))))
+    validate_free_surface_boundary_conditions(free_surface, boundary_conditions, grid)
     default_boundary_conditions = merge(default_boundary_conditions, default_free_surface_boundary_conditions(free_surface, boundary_conditions))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions

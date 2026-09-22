@@ -4,7 +4,7 @@ export
     JLD2Writer, NetCDFWriter, ZarrWriter,
     Checkpointer, checkpoint,
     written_names,
-    WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit,
+    WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
 using DocStringExtensions: TYPEDSIGNATURES
@@ -15,7 +15,7 @@ using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, wri
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!
+using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
                           RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
                           ColumnEnsembleSize, Periodic, Bounded, FullyConnected,
@@ -55,6 +55,7 @@ include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
+include("time_derivative.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")
