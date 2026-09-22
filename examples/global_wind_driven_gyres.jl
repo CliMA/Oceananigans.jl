@@ -164,7 +164,7 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 τ₀ = FT(0.15)   # peak wind stress [N m⁻²]
 ρ₀ = 1020       # reference density [kg m⁻³]
 
-zonal_wind_stress(φ, τ₀) = - τ₀ * sind(2φ) * sind(6φ)
+zonal_wind_stress(φ, τ₀) = - τ₀ * sin(2 * deg2rad(φ)) * sin(6 * deg2rad(φ))
 zonal_momentum_flux(λ, φ, t, parameters) = - zonal_wind_stress(φ, parameters.τ₀) / parameters.ρ₀
 
 # We plot the wind stress together with the Sverdrup transport per unit zonal width
@@ -203,7 +203,7 @@ v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBo
 # warm at the equator and cold at the poles. The flux is written in discrete form so that
 # it can read the surface temperature at each column.
 
-restoring_temperature(φ) = 30 * cosd(φ)^2
+restoring_temperature(φ) = 30 * cos(deg2rad(φ))^2
 
 @inline function temperature_flux(i, j, grid, clock, fields, parameters)
     φ = φnode(i, j, grid.Nz, grid, Center(), Center(), Center())
