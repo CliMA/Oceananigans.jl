@@ -21,11 +21,15 @@
 #
 # ## Install dependencies
 #
-# First let's make sure we have all required packages installed.
+# Besides Oceananigans, this example needs NCDatasets to read the bathymetry and CairoMakie
+# to make the plots. To run on a GPU you also need the Julia package for your GPU: CUDA for
+# NVIDIA, Metal for Apple silicon, or AMDGPU for AMD. On a machine without a GPU, skip that
+# package and the example runs on the CPU.
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, CairoMakie, NCDatasets, CUDA" # Metal instead of CUDA on Apple silicon
+# pkg"add Oceananigans, NCDatasets, CairoMakie"
+# pkg"add CUDA" # or Metal, or AMDGPU
 # ```
 
 using Oceananigans
@@ -37,16 +41,24 @@ using Downloads
 using Printf
 using CairoMakie
 
-# We run on whichever GPU is available: Metal on Apple silicon, CUDA otherwise, falling
-# back to the CPU. Everything runs in single precision, which Apple GPUs require and
-# which roughly halves the run time on other GPUs.
+# We run on the GPU if there is one: Metal on Apple silicon, CUDA if an NVIDIA driver is
+# installed, AMDGPU if a ROCm driver is installed, and the CPU otherwise.
+#
+# To keep the demo fast, everything runs in single precision (`Float32`), which is much faster
+# than double precision on most GPUs. For research-grade simulations we recommend `Float64`,
+# which Metal does not currently support, so Apple GPUs are limited to `Float32`.
 
-if Sys.isapple()
+if Sys.isapple() && Sys.ARCH === :aarch64
     using Metal
-    arch = GPU(Metal.MetalBackend())
-else
+    arch = Metal.functional() ? GPU(Metal.MetalBackend()) : CPU()
+elseif !isnothing(Sys.which("nvidia-smi"))
     using CUDA
     arch = CUDA.functional() ? GPU() : CPU()
+elseif !isnothing(Sys.which("rocminfo"))
+    using AMDGPU
+    arch = AMDGPU.functional() ? GPU(AMDGPU.ROCBackend()) : CPU()
+else
+    arch = CPU()
 end
 
 FT = Float32
@@ -90,7 +102,7 @@ etopo_elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_filename) do 
 end
 
 block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
-elevation = block_mean(etopo_elevation, 3)
+elevation = FT.(block_mean(etopo_elevation, 3))
 
 # We put the elevation on a `LatitudeLongitudeGrid`, interpolate it onto the tripolar
 # grid, and use it as the bottom height of a `GridFittedBottom`. With the
