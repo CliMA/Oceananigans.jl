@@ -2715,7 +2715,9 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false)
                                             halo = (Hλ, Hφ, Hz),
                                             longitude = (-1, 1),
                                             latitude = (-1, 1),
-                                            z = (-100, 0))
+                                            # Stretched, and spanning the full depth so the bottom at
+                                            # -50 cuts the column rather than sitting above it.
+                                            z = [100 * (k / Nz)^2 - 100 for k in 0:Nz])
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
@@ -2781,7 +2783,9 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false)
                                       halo = (Hx, Hy, Hz),
                                       x = (-1, 1),
                                       y = (-1, 1),
-                                      z = (-100, 0))
+                                      # Stretched, and spanning the full depth so the bottom at -50
+                                      # cuts the column rather than sitting above it.
+                                      z = [100 * (k / Nz)^2 - 100 for k in 0:Nz])
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
