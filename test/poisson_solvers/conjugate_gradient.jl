@@ -255,8 +255,7 @@ end
 function test_divergence_free_solution(arch, float_type, topos)
     for topo in topos
         @info "    Testing $topo topology on square grids [$(typeof(arch)), $float_type]..."
-        Ns = any(t -> t == Flat, topo) ? [11, 16] : [16]
-        for N in Ns
+        for N in [7, 16]
             grid = make_random_immersed_grid(RectilinearGrid(arch, float_type, topology=topo; size_and_extent_from_topo(N, topo)...))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
             @test @allowscalar interior(∇²ϕ) ≈ interior(R)
