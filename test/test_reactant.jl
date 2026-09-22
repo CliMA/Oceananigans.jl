@@ -93,3 +93,47 @@ end
                                     rungekutta3_kw,
                                     immersed_boundary_grid=true)
 end
+
+@testset "Reactant Simulation: compiled run! with callbacks" begin
+    @info "Testing a compiled run! of a Reactant Simulation with an IterationInterval callback..."
+    Nx, Ny, Nz = (10, 10, 10)
+    halo = (7, 7, 7)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
+
+    grid = RectilinearGrid(CPU(); rectilinear_kw...)
+    r_grid = RectilinearGrid(ReactantState(); rectilinear_kw...)
+    model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+    r_model = HydrostaticFreeSurfaceModel(r_grid; model_kw...)
+
+    ui = randn(size(model.velocities.u)...)
+    vi = randn(size(model.velocities.v)...)
+    set!(model, u=ui, v=vi)
+    set!(r_model, u=ui, v=vi)
+
+    Δt = 1e-6 * minimum_xspacing(grid)
+    stop_iteration = 4
+
+    # A callback that does only device work: accumulate Σu² into a length-one array every second
+    # step. The eager run fires it at iteration 0 (initialization) and at iterations 2 and 4; the
+    # compiled run must do the same.
+    accumulate_u²!(sim, p) = (p.total .+= sum(interior(sim.model.velocities.u) .^ 2); nothing)
+    energy_callback(total) = Callback(accumulate_u²!, IterationInterval(2); parameters=(; total))
+
+    simulation = Simulation(model; Δt, stop_iteration, verbose=false)
+    total = zeros(1)
+    add_callback!(simulation, energy_callback(total); name=:energy)
+    run!(simulation)
+
+    r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
+    r_total = Reactant.to_rarray(zeros(1))
+    add_callback!(r_simulation, energy_callback(r_total); name=:energy)
+    compiled_run! = @compile run!(r_simulation)
+    compiled_run!(r_simulation)
+
+    @test iteration(r_simulation) == stop_iteration
+    @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    @test Array(interior(r_model.velocities.v)) ≈ Array(interior(model.velocities.v))
+    @test Array(r_total)[1] ≈ total[1]
+    @test total[1] > 0
+end

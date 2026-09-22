@@ -10,7 +10,7 @@ using OrderedCollections: OrderedDict
 using ..Architectures: ReactantState
 using ..TimeSteppers: ReactantModel
 
-using Oceananigans: run_diagnostic!
+using Oceananigans: run_diagnostic!, Callback, TimeStepCallsite
 using Oceananigans.Architectures: architecture
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.OutputWriters: write_output!
@@ -21,7 +21,10 @@ using Oceananigans.Simulations:
     add_dependencies!,
     reset!,
     AbstractDiagnostic,
-    AbstractOutputWriter
+    AbstractOutputWriter,
+    ModelCallsite
+
+import Oceananigans: run!
 
 import Oceananigans.Simulations:
     iteration,
