@@ -46,7 +46,7 @@ function Base.getindex(fts::TotallyInMemoryFTS, time_index::Time{<:TracedRNumber
     indices = @allowscalar TimeInterpolator(fts, time_index.time)
 
     # `ñ = 0` when `n₁ == n₂`, so no branch is needed
-    # `eltype(fts.grid)` is itself a `TracedRNumber` when the grid holds traced (array) coordinates
+    # `eltype(fts.grid)` is itself a `TracedRNumber` when the grid holds traced coordinates
     ñ  = TracedRNumber{Reactant.unwrapped_eltype(eltype(fts.grid))}(indices.fractional_index)
     ψ₁ = snapshot(fts, indices.first_index)
     ψ₂ = snapshot(fts, indices.second_index)
