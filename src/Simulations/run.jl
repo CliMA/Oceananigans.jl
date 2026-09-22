@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, LowPassFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, LowPassFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state, should_write_initial_output
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
@@ -382,7 +382,7 @@ function Oceananigans.initialize!(sim::Simulation)
 
         for writer in values(sim.output_writers)
             writer.schedule(model)
-            write_output!(writer, sim)
+            should_write_initial_output(writer.schedule) && write_output!(writer, sim)
         end
     end
 

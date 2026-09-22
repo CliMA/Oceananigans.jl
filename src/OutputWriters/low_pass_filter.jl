@@ -1,10 +1,8 @@
-using JLD2: jldopen
-
-using Oceananigans: Oceananigans, AbstractModel, prognostic_state, restore_prognostic_state!
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.Fields: Fields, indices, location
 using Oceananigans.Grids: Grids, grid
-using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.OutputWriters: fetch_output, output_time, should_write_initial_output
 using Oceananigans.Units: days, hours
 using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
 
@@ -18,9 +16,9 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return a schedule for `JLD2Writer` that writes its outputs low-pass filtered in time, one frame
-every `interval`. Each frame averages an output over a `window` centered on the frame time with
-the weights of a Lanczos filter [Duchon (1979)](@cite duchon1979lanczos),
+Return a schedule for an output writer that writes its outputs low-pass filtered in time, one
+frame every `interval`. Each frame averages an output over a `window` centered on the frame time
+with the weights of a Lanczos filter [Duchon (1979)](@cite duchon1979lanczos),
 
     w(τ) = sinc(2τ / cutoff) sinc(2τ / window),    |τ| ≤ window / 2,
 
@@ -54,6 +52,20 @@ Base.show(io::IO, filter::LowPassFilter) = print(io, summary(filter))
 
 (filter::LowPassFilter)(model) = filter.next_frame > 0 &&
                                  model.clock.time >= filter.next_frame * filter.interval + filter.window / 2
+
+# The frame that just became complete is written with its own center time rather than
+# `clock.time` (when it fires, `window / 2` later). Called exactly once per write, since a
+# writer's `schedule(model)` check (which doesn't call this) already gates whether
+# `write_output!` — and so this — runs at all.
+function output_time(clock, filter::LowPassFilter)
+    t = filter.next_frame * filter.interval
+    filter.next_frame += 1
+    return t
+end
+
+# A fresh simulation always writes every output writer once at iteration 0, regardless of what
+# its schedule says at that point — `LowPassFilter`'s first frame is never complete that early.
+should_write_initial_output(::LowPassFilter) = false
 
 Oceananigans.prognostic_state(::LowPassFilter) = nothing
 Oceananigans.restore_prognostic_state!(::LowPassFilter, ::Nothing) = nothing
@@ -125,22 +137,10 @@ function time_average_outputs(filter::LowPassFilter, outputs::NamedTuple, model)
     return filter, filtered_outputs
 end
 
-function time_average_outputs(filter::LowPassFilter, outputs::Dict, model)
-    filtered_outputs = Dict(name => LowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
+function time_average_outputs(filter::LowPassFilter, outputs::AbstractDict, model)
+    # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
+    # dictionary type back so their output order is preserved.
+    DictType = Base.typename(typeof(outputs)).wrapper
+    filtered_outputs = DictType(name => LowPassFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
-end
-
-function Oceananigans.write_output!(writer::JLD2Writer{<:Any, <:LowPassFilter}, model::AbstractModel)
-    filter = writer.schedule
-    filter(model) || return nothing # only frames whose window is complete
-    @invoke Oceananigans.write_output!(writer::JLD2Writer, model::Any)
-
-    jldopen(writer.filepath, "r+"; writer.jld2_kw...) do file
-        address = "timeseries/t/$(model.clock.iteration)"
-        delete!(file, address)
-        file[address] = filter.next_frame * filter.interval
-    end
-
-    filter.next_frame += 1
-    return nothing
 end

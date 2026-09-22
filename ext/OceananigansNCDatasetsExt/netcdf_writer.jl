@@ -348,6 +348,7 @@ materialize_output(func, model) = func(model)
 materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
+materialize_output(output::LowPassFilteredOutput, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(model, dataset, output, output_name; array_type,
@@ -394,6 +395,10 @@ define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractFi
 define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
+""" Defines empty field variable for `LowPassFilteredOutput`s over fields. """
+define_output_variable!(model, dataset, output::LowPassFilteredOutput, output_name; kwargs...) =
+    define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
+
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(model, dataset, output::LagrangianParticles, output_name; array_type,
                                  deflatelevel, kwargs...)
@@ -424,17 +429,16 @@ Base.@nospecializeinfer function save_output!(ds, @nospecialize(output), @nospec
     return nothing
 end
 
-# Saving time-dependent outputs
-Base.@nospecializeinfer function save_output!(ds, @nospecialize(output), @nospecialize(model), ow, time_index, output_name)
-    data = fetch_and_convert_output(output, model, ow)
+# Writing already-fetched time-dependent output. Split from fetching (see `write_output!`) so
+# every output can be fetched before a state-holding schedule like `LowPassFilter` advances.
+Base.@nospecializeinfer function write_time_dependent_output!(ds, @nospecialize(output), @nospecialize(data), time_index, output_name)
     data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons..., time_index:time_index] = data
     return nothing
 end
 
-function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
-    data = fetch_and_convert_output(output, model, ow)
+function write_time_dependent_output!(ds, output::LagrangianParticles, data, time_index, name)
     for (particle_field, vals) in pairs(data)
         ds[string(particle_field)][:, time_index] = vals
     end
@@ -447,20 +451,19 @@ float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 
 """
-    time_index_for_writing(ds, model, ow, filepath)
+    time_index_for_writing(ds, t, ow, filepath)
 
-Return the index along the time dimension of `ds` at which output for the current model time
-should be written, or `nothing` if it should not be written at all.
+Return the index along the time dimension of `ds` at which output for time `t` should be
+written, or `nothing` if it should not be written at all.
 
 Output normally lands at the end of the time dimension. Picking up from a checkpoint written
 before the last output rewinds the clock behind times the file already covers, though, and
 appending then would leave the time axis unsorted. `ow.overwrite_snapshots` decides what happens
-instead: if `true`, the index of the snapshot the current time belongs at is returned, and if
-`false`, `nothing` is returned, keeping what the file already holds.
+instead: if `true`, the index of the snapshot `t` belongs at is returned, and if `false`,
+`nothing` is returned, keeping what the file already holds.
 """
-function time_index_for_writing(ds, model, ow, filepath)
+function time_index_for_writing(ds, t, ow, filepath)
     time_index = length(ds["time"]) + 1
-    t = float_or_date_time(model.clock.time)
 
     # The common case: the clock is ahead of every time in the file, so output is appended.
     if time_index == 1 || ds["time"][time_index - 1] < t
@@ -492,34 +495,31 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     ds = open(ow)
     verbose, filepath = ow.verbose, ow.filepath
 
-    time_index = time_index_for_writing(ds, model, ow, filepath)
+    if verbose
+        @info "Writing to NetCDF: $filepath..."
+        # Time and file size before computing any outputs.
+        t0, sz0 = time_ns(), filesize(filepath)
+    end
+
+    # Every output is fetched before the output time is computed: for a schedule like
+    # `LowPassFilter`, computing the output time also advances internal state that fetching
+    # still depends on (which frame's accumulated sum is "current").
+    fetched = OrderedDict(output_name => fetch_and_convert_output(output, model, ow) for (output_name, output) in ow.outputs)
+
+    t = float_or_date_time(output_time(model.clock, ow.schedule))
+    time_index = time_index_for_writing(ds, t, ow, filepath)
 
     if isnothing(time_index)
         close(ds)
         return nothing
     end
 
-    ds["time"][time_index] = float_or_date_time(model.clock.time)
+    ds["time"][time_index] = t
 
-    if verbose
-        @info "Writing to NetCDF: $filepath..."
-        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
-
-        # Time and file size before computing any outputs.
-        t0, sz0 = time_ns(), filesize(filepath)
-    end
+    verbose && @info "Writing NetCDF outputs at time index $(time_index): $(keys(ow.outputs))..."
 
     for (output_name, output) in ow.outputs
-        # Time before computing this output.
-        verbose && (t0′ = time_ns())
-
-        save_output!(ds, output, model, ow, time_index, output_name)
-
-        if verbose
-            # Time after computing this output.
-            t1′ = time_ns()
-            @info "Computing $output_name done: time=$(prettytime((t1′-t0′) / 1e9))"
-        end
+        write_time_dependent_output!(ds, output, fetched[output_name], time_index, output_name)
     end
 
     sync(ds)

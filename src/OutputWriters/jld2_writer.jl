@@ -394,7 +394,7 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
-        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        jld2output!(writer.filepath, model.clock.iteration, output_time(model.clock, writer.schedule), data, writer.jld2_kw)
         end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",

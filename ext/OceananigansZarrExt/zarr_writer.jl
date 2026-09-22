@@ -124,6 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
+output_grid(output::LowPassFilteredOutput)                   = grid(output.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -204,6 +205,9 @@ function rank_global_offsets(field::AbstractField)
 end
 
 rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
+    rank_global_offsets(output.operand)
+
+rank_global_offsets(output::LowPassFilteredOutput) =
     rank_global_offsets(output.operand)
 
 # Global shape of a Field on a (possibly distributed) grid.
@@ -451,6 +455,10 @@ define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{
 define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
+# LowPassFilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::LowPassFilteredOutput, name, model) =
+    define_zarr_output_variable!(g, writer, output.operand, name, model)
+
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
 function define_zarr_output_variable!(g, writer::ZarrWriter, output, name, model)
     if !haskey(writer.dimensions, name)
@@ -531,10 +539,15 @@ end
 
 function write_output_serial!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
-    time = zarr_time_value(model.clock.time, writer.dimension_type)
+
+    # Fetch every output before computing the output time: for a schedule like `LowPassFilter`,
+    # `output_time` advances internal state that fetching still depends on (which frame's
+    # accumulated sum is "current").
+    fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
+
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
     Zarr.append!(g["time"], [time]; dims=1)
-    for (name, output) in pairs(writer.outputs)
-        data = fetch_and_convert_output(output, model, writer)
+    for (name, output, data) in fetched
         data = squeeze_reduced_dimensions(output, data)
         arr = g[string(name)]
         data_arr = data isa AbstractArray ? data : fill(data)
@@ -567,9 +580,16 @@ function write_output_distributed!(writer::ZarrWriter, model)
     is_root = mpi_rank(global_communicator()) == 0
     g = Zarr.zopen(writer.store, "w")
 
-    # Bump the time axis and write the new time value (root only).
+    # Fetch every output before computing the output time: for a schedule like `LowPassFilter`,
+    # `output_time` advances internal state that fetching still depends on (which frame's
+    # accumulated sum is "current").
+    fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
+
+    # Every rank calls `output_time`, not just root: for a schedule like `LowPassFilter` this
+    # also advances internal state, which has to stay in step across every rank's own copy of
+    # the schedule. Persisting the value, though, is still root-only.
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
     if is_root
-        time = zarr_time_value(model.clock.time, writer.dimension_type)
         Zarr.append!(g["time"], [time]; dims=1)
     end
     zarr_barrier()
@@ -578,9 +598,8 @@ function write_output_distributed!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
     new_time_index = length(g["time"])
 
-    for (name, output) in pairs(writer.outputs)
+    for (name, output, data) in fetched
         arr = g[string(name)]
-        data = fetch_and_convert_output(output, model, writer)
         data = squeeze_reduced_dimensions(output, data)
         data_arr = data isa AbstractArray ? data : fill(data)
         if eltype(data_arr) === Bool
