@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using Oceananigans.DistributedComputations: @handshake
+using Oceananigans.DistributedComputations: @handshake, ranks
 using Oceananigans.Models: is_local_dimension
 using Oceananigans.Grids: RightConnected, LeftConnected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
@@ -73,22 +73,59 @@ const serial_memory_gpu = Dict(
     (:nonhydrostatic, :active_immersed) => 8.0e5,
 )
 
+# Distributed allocations depend on the partition, so baselines are keyed by `ranks(arch)`.
 const distributed_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 6.0e4,
-    (:hydrostatic,    :immersed)        => 6.9e4,
-    (:hydrostatic,    :active_immersed) => 7.2e4,
-    (:nonhydrostatic, :flat)            => 1.3e5,
-    (:nonhydrostatic, :immersed)        => 1.5e5,
-    (:nonhydrostatic, :active_immersed) => 1.7e5,
+    (4, 1, 1) => Dict(
+        (:hydrostatic,    :flat)            => 6.0e4,
+        (:hydrostatic,    :immersed)        => 6.9e4,
+        (:hydrostatic,    :active_immersed) => 7.2e4,
+        (:nonhydrostatic, :flat)            => 1.3e5,
+        (:nonhydrostatic, :immersed)        => 1.5e5,
+        (:nonhydrostatic, :active_immersed) => 1.7e5,
+    ),
+    (1, 4, 1) => Dict(
+        (:hydrostatic,    :flat)            => 6.0e4,
+        (:hydrostatic,    :immersed)        => 6.9e4,
+        (:hydrostatic,    :active_immersed) => 7.2e4,
+        (:nonhydrostatic, :flat)            => 1.3e5,
+        (:nonhydrostatic, :immersed)        => 1.5e5,
+        (:nonhydrostatic, :active_immersed) => 1.7e5,
+    ),
+    (2, 2, 1) => Dict(
+        (:hydrostatic,    :flat)            => 6.9e5,
+        (:hydrostatic,    :immersed)        => 8.0e5,
+        (:hydrostatic,    :active_immersed) => 8.4e5,
+        (:nonhydrostatic, :flat)            => 1.5e6,
+        (:nonhydrostatic, :immersed)        => 1.8e6,
+        (:nonhydrostatic, :active_immersed) => 1.7e6,
+    ),
 )
 
 const distributed_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 1.7e6,
-    (:hydrostatic,    :immersed)        => 1.9e6,
-    (:hydrostatic,    :active_immersed) => 2.0e6,
-    (:nonhydrostatic, :flat)            => 1.7e6,
-    (:nonhydrostatic, :immersed)        => 1.9e6,
-    (:nonhydrostatic, :active_immersed) => 2.0e6,
+    (4, 1, 1) => Dict(
+        (:hydrostatic,    :flat)            => 1.5e6,
+        (:hydrostatic,    :immersed)        => 1.7e6,
+        (:hydrostatic,    :active_immersed) => 1.8e6,
+        (:nonhydrostatic, :flat)            => 1.6e6,
+        (:nonhydrostatic, :immersed)        => 1.8e6,
+        (:nonhydrostatic, :active_immersed) => 1.9e6,
+    ),
+    (1, 4, 1) => Dict(
+        (:hydrostatic,    :flat)            => 1.5e6,
+        (:hydrostatic,    :immersed)        => 1.7e6,
+        (:hydrostatic,    :active_immersed) => 1.8e6,
+        (:nonhydrostatic, :flat)            => 1.6e6,
+        (:nonhydrostatic, :immersed)        => 1.8e6,
+        (:nonhydrostatic, :active_immersed) => 1.9e6,
+    ),
+    (2, 2, 1) => Dict(
+        (:hydrostatic,    :flat)            => 3.5e6,
+        (:hydrostatic,    :immersed)        => 3.7e6,
+        (:hydrostatic,    :active_immersed) => 4.1e6,
+        (:nonhydrostatic, :flat)            => 4.6e6,
+        (:nonhydrostatic, :immersed)        => 5.1e6,
+        (:nonhydrostatic, :active_immersed) => 5.5e6,
+    ),
 )
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
@@ -182,9 +219,9 @@ end
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
                     baseline = if arch isa Distributed{<:GPU}
-                        distributed_memory_gpu
+                        distributed_memory_gpu[ranks(arch)]
                     elseif arch isa Distributed{<:CPU}
-                        distributed_memory_cpu
+                        distributed_memory_cpu[ranks(arch)]
                     elseif arch isa GPU
                         serial_memory_gpu
                     else
