@@ -11,6 +11,7 @@ export interpolate
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArray
+using StaticArrays: StaticArray
 
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
@@ -18,7 +19,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid, Periodic,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
-using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator
+using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator, named_tuple
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference

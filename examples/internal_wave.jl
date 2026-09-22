@@ -123,7 +123,7 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 filename = "internal_wave.jld2"
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; filename,
                                                     schedule = IterationInterval(1),
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 

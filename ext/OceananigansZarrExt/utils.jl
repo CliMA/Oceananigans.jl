@@ -4,7 +4,7 @@
 #####
 
 # Location and indices as JSON-friendly String tuples.
-location_strings(field::AbstractField) = map(loc -> loc === Nothing ? "Nothing" : string(loc),
+location_strings(field::AbstractField) = map(loc -> string(nameof(loc)),
                                              location(field))
 
 indices_strings(field::AbstractField) = map(index_string, indices(field))

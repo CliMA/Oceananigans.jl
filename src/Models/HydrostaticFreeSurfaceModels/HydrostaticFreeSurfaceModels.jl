@@ -13,7 +13,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
 import Oceananigans: fields, prognostic_fields, initialize!
@@ -93,6 +93,9 @@ reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
 # Transport velocity computation
 function compute_transport_velocities! end
 
+# Hook for free surfaces that restrict the boundary conditions the user may pass
+validate_free_surface_boundary_conditions(free_surface, boundary_conditions, grid) = nothing
+
 
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
@@ -139,7 +142,7 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 
 velocity_names(user_velocities) = (:u, :v, :w)
 
-constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
+Base.@constprop :aggressive constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
     tuple(velocity_names(user_velocities)...,
           tracernames(user_tracers)...,
           free_surface_names(user_free_surface, user_velocities, grid)...,
