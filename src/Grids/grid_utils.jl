@@ -59,9 +59,11 @@ Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
+const LocationInstance = Union{Face, Center, Nothing}
+
 # "Indices-aware" length
-Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
+Base.length(loc::LocationInstance, topo::AT, N, ::Colon) = length(loc, topo, N)
+Base.length(loc::LocationInstance, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
