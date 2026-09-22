@@ -143,7 +143,6 @@ $(TYPEDSIGNATURES)
 Record `derivative.operand` and the current time for the next update to difference against.
 """
 function initialize!(derivative::TimeDerivative, model::AbstractModel)
-    println("    [TimeDerivative] SEED   at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt)")  # TEMPORARY
     if derivative.previous_time isa Number && model.clock.time isa AbstractDateTime
         T = typeof(model.clock.time)
         throw(ArgumentError("TimeDerivative must be constructed with the model when the clock keeps $T time"))
@@ -164,7 +163,6 @@ Difference `derivative.operand` against its value at `derivative.previous_time` 
 the result in `derivative.result`.
 """
 function update_time_derivative!(derivative::TimeDerivative, model)
-    println("    [TimeDerivative] UPDATE at iteration $(model.clock.iteration), t = $(model.clock.time), last_Δt = $(model.clock.last_Δt), differencing Δt = $(time_difference_seconds(model.clock.time, derivative.previous_time))")  # TEMPORARY
     Δt = time_difference_seconds(model.clock.time, derivative.previous_time)
     Δt == 0 && return nothing
 
