@@ -23,6 +23,7 @@ Distributed.addprocs(2)
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
     using NCDatasets
+    using Zarr
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
