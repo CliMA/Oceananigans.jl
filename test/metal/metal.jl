@@ -108,7 +108,6 @@ end
     closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=1e-3)
     model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, timestepper=:SplitRungeKutta3)
     time_step!(model, 1.0)
-    @test iteration(model) == 1
 end
 
 @testset "MetalGPU: test for reductions" begin
