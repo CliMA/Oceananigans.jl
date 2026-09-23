@@ -97,7 +97,7 @@ const distributed_memory_cpu = Dict(
         (:hydrostatic,    :active_immersed) => 8.4e5,
         (:nonhydrostatic, :flat)            => 1.5e6,
         (:nonhydrostatic, :immersed)        => 1.8e6,
-        (:nonhydrostatic, :active_immersed) => 1.7e6,
+        (:nonhydrostatic, :active_immersed) => 1.9e6,
     ),
 )
 
