@@ -1,5 +1,8 @@
-Rename kernels to LanczosKernel, HanningKernel, BoxcarKernel
+Give each filter kernel its own window
 
-Matches AbstractFilterKernel, per @glwagner.
+FilteredTimeInterval(LanczosKernel(window; cutoff); interval) and
+FilteredTimeInterval(BoxcarKernel(window); interval): the window is a
+property of the kernel, so kernels are called as kernel(τ) and the
+schedule reads kernel.window.
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

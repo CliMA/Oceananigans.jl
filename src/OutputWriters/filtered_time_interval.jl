@@ -9,56 +9,65 @@ using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
 """
     AbstractFilterKernel
 
-Supertype for the weighting used by [`FilteredTimeInterval`](@ref). A kernel is called as
-`kernel(τ, window)` and returns the weight of a sample at time offset `τ` from the center of
-a frame, for `|τ| ≤ window / 2`.
+Supertype for the weighting used by [`FilteredTimeInterval`](@ref). A kernel has a `window` field and
+is called as `kernel(τ)`, returning the weight of a sample at time offset `τ` from the center of a
+frame, for `|τ| ≤ window / 2`.
 """
 abstract type AbstractFilterKernel end
 
 """
 $(TYPEDSIGNATURES)
 
-Lanczos filter weights [Duchon (1979)](@cite duchon1979lanczos),
+Lanczos filter weights [Duchon (1979)](@cite duchon1979lanczos) over `window`,
 
     w(τ) = sinc(2τ / cutoff) sinc(2τ / window),
 
 which pass periods longer than `cutoff` and remove shorter ones.
 """
 struct LanczosKernel{FT} <: AbstractFilterKernel
+    window :: FT
     cutoff :: FT
 end
 
-(kernel::LanczosKernel)(τ, window) = sinc(2τ / kernel.cutoff) * sinc(2τ / window)
+function LanczosKernel(window; cutoff)
+    window, cutoff = promote(window, cutoff)
+    return LanczosKernel(window, cutoff)
+end
+
+(kernel::LanczosKernel)(τ) = sinc(2τ / kernel.cutoff) * sinc(2τ / kernel.window)
 
 Base.summary(kernel::LanczosKernel) = string("Lanczos, cutoff=", prettytime(kernel.cutoff))
 
 """
 $(TYPEDSIGNATURES)
 
-Uniform weights over the window, so each frame is a running mean.
+Uniform weights over `window`, so each frame is a running mean.
 """
-struct BoxcarKernel <: AbstractFilterKernel end
+struct BoxcarKernel{FT} <: AbstractFilterKernel
+    window :: FT
+end
 
-(::BoxcarKernel)(τ, window) = abs(τ) <= window / 2 ? one(τ) : zero(τ)
+(kernel::BoxcarKernel)(τ) = abs(τ) <= kernel.window / 2 ? one(τ) : zero(τ)
 
 Base.summary(::BoxcarKernel) = "boxcar"
 
 """
 $(TYPEDSIGNATURES)
 
-Raised-cosine weights over the window,
+Raised-cosine weights over `window`,
 
     w(τ) = (1 + cos(2πτ / window)) / 2,    |τ| ≤ window / 2.
 """
-struct HanningKernel <: AbstractFilterKernel end
+struct HanningKernel{FT} <: AbstractFilterKernel
+    window :: FT
+end
 
-(::HanningKernel)(τ, window) = abs(τ) <= window / 2 ? (1 + cos(2π * τ / window)) / 2 : zero(τ)
+(kernel::HanningKernel)(τ) = abs(τ) <= kernel.window / 2 ? (1 + cos(2π * τ / kernel.window)) / 2 : zero(τ)
 
 Base.summary(::HanningKernel) = "Hanning"
 
 mutable struct FilteredTimeInterval{FT, K<:AbstractFilterKernel} <: AbstractSchedule
     interval :: FT
-    window :: FT
     kernel :: K
     next_frame_number :: Int # frame k is centered at k * interval; 0 before the first time step
 end
@@ -67,10 +76,10 @@ end
 $(TYPEDSIGNATURES)
 
 Return a schedule for an output writer that writes its outputs filtered in time, one frame every
-`interval`. Each frame is a weighted average of an output over a `window` centered on the frame time,
-with weights given by `kernel`, an [`AbstractFilterKernel`](@ref): [`LanczosKernel`](@ref)`(cutoff)`,
-[`HanningKernel`](@ref)`()` or [`BoxcarKernel`](@ref)`()`. `LanczosKernel` passes periods longer than `cutoff` and removes
-shorter ones, so a cutoff of 40 hours removes the diurnal and semidiurnal tides.
+`interval`. Each frame is a weighted average of an output over the `window` of `kernel`, centered on
+the frame time. The kernel is an [`AbstractFilterKernel`](@ref): [`LanczosKernel`](@ref)`(window; cutoff)`,
+[`HanningKernel`](@ref)`(window)` or [`BoxcarKernel`](@ref)`(window)`. `LanczosKernel` passes periods longer
+than `cutoff` and removes shorter ones, so a cutoff of 40 hours removes the diurnal and semidiurnal tides.
 
 Frames fall on multiples of `interval` and are stamped with their center time; each is written
 `window / 2` after it. Frames whose window starts before the first time step are not written, so
@@ -80,25 +89,25 @@ a simulation picked up from a checkpoint writes its first frame `window / 2` aft
 using Oceananigans
 using Oceananigans.Units
 
-FilteredTimeInterval(LanczosKernel(40hours); interval=1days, window=5days)
+FilteredTimeInterval(LanczosKernel(5days; cutoff=40hours); interval=1days)
 
 # output
 FilteredTimeInterval(interval=1 day, window=5 days, Lanczos, cutoff=1.667 days)
 ```
 """
-function FilteredTimeInterval(kernel::AbstractFilterKernel; interval, window)
-    interval, window = promote(interval, window)
-    return FilteredTimeInterval(interval, window, kernel, 0)
+function FilteredTimeInterval(kernel::AbstractFilterKernel; interval)
+    interval = convert(typeof(kernel.window), interval)
+    return FilteredTimeInterval(interval, kernel, 0)
 end
 
 Base.summary(filter::FilteredTimeInterval) = string("FilteredTimeInterval(interval=", prettytime(filter.interval),
-                                             ", window=", prettytime(filter.window),
+                                             ", window=", prettytime(filter.kernel.window),
                                              ", ", summary(filter.kernel), ")")
 
 Base.show(io::IO, filter::FilteredTimeInterval) = print(io, summary(filter))
 
 (filter::FilteredTimeInterval)(model) = filter.next_frame_number > 0 &&
-                                 model.clock.time >= filter.next_frame_number * filter.interval + filter.window / 2
+                                 model.clock.time >= filter.next_frame_number * filter.interval + filter.kernel.window / 2
 
 # The frame that just became complete is written with its own center time rather than
 # `clock.time` (when it fires, `window / 2` later). Called exactly once per write, since a
@@ -129,7 +138,7 @@ end
 
 function FilteredOutput(operand, filter, model)
     output = fetch_output(operand, model)
-    Nbuffer = floor(Int, filter.window / filter.interval) + 1
+    Nbuffer = floor(Int, filter.kernel.window / filter.interval) + 1
     sum_buffer = [zero(output) for _ in 1:Nbuffer]
     FT = typeof(filter.interval)
     return FilteredOutput(operand, filter, IterationInterval(1), sum_buffer,
@@ -145,12 +154,12 @@ function Oceananigans.run_diagnostic!(output::FilteredOutput, model)
 
     # Frames whose window starts before the first time step seen are never complete.
     if filter.next_frame_number == 0
-        filter.next_frame_number = ceil(Int, (t + filter.window / 2) / filter.interval)
+        filter.next_frame_number = ceil(Int, (t + filter.kernel.window / 2) / filter.interval)
     end
 
     φ = fetch_output(output.operand, model)
-    first_frame = max(filter.next_frame_number, ceil(Int, (t - filter.window / 2) / filter.interval))
-    last_frame = floor(Int, (t + filter.window / 2) / filter.interval)
+    first_frame = max(filter.next_frame_number, ceil(Int, (t - filter.kernel.window / 2) / filter.interval))
+    last_frame = floor(Int, (t + filter.kernel.window / 2) / filter.interval)
 
     for frame in first_frame:last_frame
         n = mod(frame, length(output.sum_buffer)) + 1
@@ -162,7 +171,7 @@ function Oceananigans.run_diagnostic!(output::FilteredOutput, model)
         end
 
         τ = t - frame * filter.interval
-        w = filter.kernel(τ, filter.window) * Δt
+        w = filter.kernel(τ) * Δt
         output.sum_buffer[n] .+= w .* φ
         output.weights[n] += w
     end
