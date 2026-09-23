@@ -42,8 +42,18 @@ actuation counter when it fires, so it is converted here to the `IterationInterv
 under a fixed `Δt`, counted from the simulation's current iteration; an interval that is not a
 whole number of steps is an error, since a schedule has no remainder step to take. Other
 schedules are refused. The `add_callback!(sim, func, schedule; kw...)` form routes through here.
+
+The callback's function is checked too. Of the functions Oceananigans itself puts in callbacks,
+four cannot run inside a program and are refused here with the reason, rather than failing inside
+`@compile`: a `TimeStepWizard` changes `Δt`, which a program fixes and uses as its loop bound; a
+`NaNChecker` raises a data-dependent error; the eager stop criteria (`stop_iteration_exceeded`,
+`stop_time_exceeded`, `wall_time_limit_exceeded`) compare the traced clock on the host to set
+`sim.running`, which the loop bound has replaced; a `TimeDerivative` branches on the traced clock
+and stores it. Neither check sees a callback assigned into `sim.callbacks` directly, as
+`conjure_time_step_wizard!` does.
 """
 function add_callback!(sim::ReactantSimulation, callback::Callback; name = GenericName())
+    check_traceable(callback.func)
     schedule = traced_schedule(callback.schedule, sim)
     callback = Callback(callback.func, schedule, callback.callsite, callback.parameters)
     return invoke(add_callback!, Tuple{Any, Callback}, sim, callback; name)
@@ -63,6 +73,26 @@ end
 traced_schedule(schedule, sim) = throw(ArgumentError(
     "$(typeof(schedule)) cannot fire inside a compiled run: a schedule there must be a pure function " *
     "of the clock. Use IterationInterval, or a TimeInterval that Δt divides."))
+
+# Callback functions that cannot run inside a program. Anything else is admitted on trust: the
+# rule it must follow (device work only) is in the `time_step!` docstring.
+check_traceable(func) = nothing
+
+check_traceable(::TimeStepWizard) = throw(ArgumentError(
+    "A TimeStepWizard cannot fire inside a compiled run: Δt is fixed for the program and bounds its " *
+    "loop. Adapt Δt between programs, by constructing a Simulation with the new Δt."))
+
+check_traceable(::NaNChecker) = throw(ArgumentError(
+    "A NaNChecker cannot fire inside a compiled run: its data-dependent error cannot exist inside a " *
+    "program. Check the fields for NaNs on the host after the compiled call returns."))
+
+check_traceable(func::Union{typeof(stop_iteration_exceeded), typeof(stop_time_exceeded), typeof(wall_time_limit_exceeded)}) = throw(ArgumentError(
+    "$func cannot fire inside a compiled run: it compares the traced clock on the host to stop the " *
+    "eager loop, and a compiled run is bounded by stop_iteration or stop_time at construction instead."))
+
+check_traceable(::TimeDerivative) = throw(ArgumentError(
+    "A TimeDerivative cannot be updated inside a compiled run: it branches on the traced clock and stores " *
+    "it as a plain number. Difference the field between programs, or accumulate it in a callback of your own."))
 
 #####
 ##### Stepping
@@ -90,12 +120,12 @@ function initialize!(sim::ReactantSimulation)
     return nothing
 end
 
-# The model step, with the Euler switch only the Adams-Bashforth stepper has. Eagerly, AB2 takes
-# an Euler step whenever `Δt` differs from the last step's, which covers the first step and an
-# aligned last step; the Reactant `time_step!` for AB2 needs to be told, so `run!` says so for
-# the first step and the remainder step.
-model_time_step!(model, Δt, callbacks, euler) = time_step!(model, Δt; callbacks)
-model_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt, callbacks, euler) =
+# The step of a Reactant model, with the Euler switch only the Adams-Bashforth stepper has.
+# Eagerly, AB2 takes an Euler step whenever `Δt` differs from the last step's, which covers the
+# first step and an aligned last step; the Reactant `time_step!` for AB2 needs to be told, so
+# `run!` says so for the first step and the remainder step.
+reactant_model_time_step!(model, Δt, callbacks, euler) = time_step!(model, Δt; callbacks)
+reactant_model_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt, callbacks, euler) =
     time_step!(model, Δt; callbacks, euler)
 
 """
@@ -117,7 +147,7 @@ time_step!(sim::ReactantSimulation; euler = false) = time_step!(sim, sim.Δt; eu
 
 function time_step!(sim::ReactantSimulation, Δt; euler = false)
     model = sim.model
-    model_time_step!(model, Δt, callbacks_at(sim, ModelCallsite), euler)
+    reactant_model_time_step!(model, Δt, callbacks_at(sim, ModelCallsite), euler)
 
     # `track_numbers = false`: the branch captures `sim`, and promoting the plain numbers inside
     # the model to traced numbers fails on structs whose type parameters do not cover every

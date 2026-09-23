@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using Oceananigans.Diagnostics: NaNChecker
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
     i, j, k = @index(Global, NTuple)
@@ -208,6 +209,13 @@ end
     @test_throws ArgumentError add_callback!(r_simulation, accumulate_u²!, TimeInterval(2.5Δt); parameters=(; total=r_total))
     @test_throws ArgumentError add_callback!(r_simulation, accumulate_u²!, WallTimeInterval(1.0); parameters=(; total=r_total))
     @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration=4, stop_time=4Δt, verbose=false)
+
+    # Callback functions a program cannot run are refused too: the ones that change Δt, raise on
+    # the data, stop the eager loop, or branch on the traced clock.
+    @test_throws ArgumentError add_callback!(r_simulation, TimeStepWizard(cfl=0.5), IterationInterval(1))
+    @test_throws ArgumentError add_callback!(r_simulation, NaNChecker((; u=r_model.velocities.u)), IterationInterval(1))
+    @test_throws ArgumentError add_callback!(r_simulation, Oceananigans.Simulations.stop_time_exceeded)
+    @test_throws ArgumentError add_callback!(r_simulation, TimeDerivativeCallback(r_model.velocities.u))
 end
 
 # A callback whose function type records the initial and final Σu² through the `initialize!` and
