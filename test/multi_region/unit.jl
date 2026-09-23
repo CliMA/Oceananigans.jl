@@ -114,3 +114,42 @@ end
         end
     end
 end
+
+# A region's parent array, halos included, is a contiguous slab of the single-region parent array
+# along the partitioned dimension, so comparing them checks both the seams and the outer halos.
+function regional_slab(single_region_field, multi_region_field, region)
+    mrg = multi_region_field.grid
+    dim = mrg.partition isa XPartition ? 1 : 2
+    offset = sum(size(mrg[r], dim) for r in 1:region-1; init=0)
+    total = size(parent(getregion(multi_region_field, region)), dim)
+    return selectdim(Array(parent(single_region_field)), dim, offset+1:offset+total)
+end
+
+@testset "Testing multi region halo filling" begin
+    for arch in archs
+        rectilinear_grids = [RectilinearGrid(arch, size=(12, 12, 1), x=(0, 1), y=(0, 1), z=(0, 1), topology=(TX, TY, Bounded))
+                             for TX in (Periodic, Bounded), TY in (Periodic, Bounded)]
+
+        lat_lon_grid = LatitudeLongitudeGrid(arch, size=(12, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
+
+        for grid in (rectilinear_grids..., lat_lon_grid), Partition in (XPartition, YPartition), regions in (2, 3)
+            @testset "Halo filling on $(getnamewrapper(grid)) with topology $(topology(grid)) on $regions $(Partition)s on $arch" begin
+                mrg = MultiRegionGrid(grid, partition = Partition(regions))
+
+                for FieldType in (CenterField, XFaceField, YFaceField)
+                    single_region_field = FieldType(grid)
+                    set!(single_region_field, (x, y, z) -> x + 10y)
+                    fill_halo_regions!(single_region_field)
+
+                    multi_region_field = FieldType(mrg)
+                    set!(multi_region_field, (x, y, z) -> x + 10y)
+                    fill_halo_regions!(multi_region_field)
+
+                    for region in 1:regions
+                        @test Array(parent(getregion(multi_region_field, region))) ≈ regional_slab(single_region_field, multi_region_field, region)
+                    end
+                end
+            end
+        end
+    end
+end
