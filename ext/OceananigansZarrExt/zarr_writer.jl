@@ -124,7 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
-output_grid(output::TemporalLowPassFilteredOutput)                   = grid(output.operand)
+output_grid(output::FilteredOutput)                   = grid(output.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -207,7 +207,7 @@ end
 rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
     rank_global_offsets(output.operand)
 
-rank_global_offsets(output::TemporalLowPassFilteredOutput) =
+rank_global_offsets(output::FilteredOutput) =
     rank_global_offsets(output.operand)
 
 # Global shape of a Field on a (possibly distributed) grid.
@@ -455,8 +455,8 @@ define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{
 define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
-# TemporalLowPassFilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
-define_zarr_output_variable!(g, writer::ZarrWriter, output::TemporalLowPassFilteredOutput, name, model) =
+# FilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::FilteredOutput, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
@@ -540,7 +540,7 @@ end
 function write_output_serial!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
 
-    # Fetch every output before computing the output time: for a schedule like `TemporalLowPassFilter`,
+    # Fetch every output before computing the output time: for a schedule like `FilteredTimeInterval`,
     # `output_time` advances internal state that fetching still depends on (which frame's
     # accumulated sum is "current").
     fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
@@ -580,12 +580,12 @@ function write_output_distributed!(writer::ZarrWriter, model)
     is_root = mpi_rank(global_communicator()) == 0
     g = Zarr.zopen(writer.store, "w")
 
-    # Fetch every output before computing the output time: for a schedule like `TemporalLowPassFilter`,
+    # Fetch every output before computing the output time: for a schedule like `FilteredTimeInterval`,
     # `output_time` advances internal state that fetching still depends on (which frame's
     # accumulated sum is "current").
     fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
 
-    # Every rank calls `output_time`, not just root: for a schedule like `TemporalLowPassFilter` this
+    # Every rank calls `output_time`, not just root: for a schedule like `FilteredTimeInterval` this
     # also advances internal state, which has to stay in step across every rank's own copy of
     # the schedule. Persisting the value, though, is still root-only.
     time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)

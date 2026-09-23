@@ -111,7 +111,7 @@ export
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     PrecedingIterations, TimeOffset,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
-    TemporalLowPassFilter,
+    FilteredTimeInterval, AbstractFilterKernel, Lanczos, Boxcar, Hanning,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,

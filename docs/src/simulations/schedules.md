@@ -204,10 +204,13 @@ and samples every `stride` iterations inside the window.
 [`SpecifiedTimes`](@ref Oceananigans.OutputWriters.SpecifiedTimes) but with a trailing averaging window.
 Pass either a `SpecifiedTimes` instance or raw times.
 
-### `TemporalLowPassFilter`
+### `FilteredTimeInterval`
 
-[`TemporalLowPassFilter`](@ref Oceananigans.OutputWriters.TemporalLowPassFilter) asks an output writer to write each frame as a
-Lanczos-weighted average over a `window` centered on the frame time, which removes periods shorter than `cutoff`.
+[`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write each frame as a
+weighted average over a `window` centered on the frame time, with weights from a kernel:
+[`Lanczos`](@ref Oceananigans.OutputWriters.Lanczos)`(cutoff)`, which removes periods shorter than `cutoff`,
+[`Hanning`](@ref Oceananigans.OutputWriters.Hanning) or [`Boxcar`](@ref Oceananigans.OutputWriters.Boxcar) (a running mean).
+Any [`AbstractFilterKernel`](@ref Oceananigans.OutputWriters.AbstractFilterKernel) can be supplied.
 Because the window is centered, frames carry no phase shift, unlike the trailing window of `AveragedTimeInterval`;
 each frame is therefore written `window / 2` after its time.
 

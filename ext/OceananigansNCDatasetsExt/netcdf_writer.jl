@@ -348,7 +348,7 @@ materialize_output(func, model) = func(model)
 materialize_output(field::AbstractField, model) = field
 materialize_output(particles::LagrangianParticles, model) = particles
 materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
-materialize_output(output::TemporalLowPassFilteredOutput, model) = output
+materialize_output(output::FilteredOutput, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(model, dataset, output, output_name; array_type,
@@ -395,8 +395,8 @@ define_output_variable!(model, dataset, output::WindowedTimeAverage{<:AbstractFi
 define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
-""" Defines empty field variable for `TemporalLowPassFilteredOutput`s over fields. """
-define_output_variable!(model, dataset, output::TemporalLowPassFilteredOutput, output_name; kwargs...) =
+""" Defines empty field variable for `FilteredOutput`s over fields. """
+define_output_variable!(model, dataset, output::FilteredOutput, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
 
 """ Defines empty variable for particle trackting. """
@@ -430,7 +430,7 @@ Base.@nospecializeinfer function save_output!(ds, @nospecialize(output), @nospec
 end
 
 # Writing already-fetched time-dependent output. Split from fetching (see `write_output!`) so
-# every output can be fetched before a state-holding schedule like `TemporalLowPassFilter` advances.
+# every output can be fetched before a state-holding schedule like `FilteredTimeInterval` advances.
 Base.@nospecializeinfer function write_time_dependent_output!(ds, @nospecialize(output), @nospecialize(data), time_index, output_name)
     data = squeeze_reduced_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
@@ -502,7 +502,7 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     end
 
     # Every output is fetched before the output time is computed: for a schedule like
-    # `TemporalLowPassFilter`, computing the output time also advances internal state that fetching
+    # `FilteredTimeInterval`, computing the output time also advances internal state that fetching
     # still depends on (which frame's accumulated sum is "current").
     fetched = OrderedDict(output_name => fetch_and_convert_output(output, model, ow) for (output_name, output) in ow.outputs)
 

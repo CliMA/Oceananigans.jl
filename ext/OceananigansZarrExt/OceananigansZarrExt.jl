@@ -48,7 +48,7 @@ using Oceananigans.OutputWriters:
     fetch_and_convert_output,
     WindowedTimeAverage,
     TimeDerivative,
-    TemporalLowPassFilteredOutput,
+    FilteredOutput,
     add_grid_suffix,
     add_schedule_metadata!,
     default_output_attributes,
