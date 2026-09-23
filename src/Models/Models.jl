@@ -201,6 +201,8 @@ function reset!(model::OceananigansModels)
         zero_field!(field)
     end
 
+    reset!(model.closure_fields, model.closure)
+
     return nothing
 end
 

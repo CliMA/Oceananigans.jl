@@ -265,6 +265,17 @@ end
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
+function reset!(closure_fields, ::FlavorOfTD)
+    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.κϵ,
+              closure_fields.previous_velocities...)
+
+    for field in fields
+        fill!(field, 0)
+    end
+
+    return nothing
+end
+
 function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
     # Step TKE/dissipation equations with the provided timestep
     time_step_tke_dissipation_equations!(model, Δt)

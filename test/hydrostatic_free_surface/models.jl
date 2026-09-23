@@ -102,15 +102,21 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
     @testset "reset! for $topo_1d models" begin
         @info "  Testing reset! for $topo_1d models..."
-        for arch in archs
+        for arch in archs, closure in (nothing, CATKEVerticalDiffusivity(), TKEDissipationVerticalDiffusivity())
             grid = RectilinearGrid(arch, topology=topo_1d, size=4, extent=1)
-            model = HydrostaticFreeSurfaceModel(grid; tracers=:c, buoyancy=nothing)
-            set!(model, u=1, c=1)
+            model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer())
+            set!(model, u=1, b=1)
             time_step!(model, 1)
             reset!(model)
-            @test all(Array(interior(model.velocities.u)) .== 0)
-            @test all(Array(interior(model.tracers.c)) .== 0)
-            @test all(Array(interior(model.timestepper.G⁻.c)) .== 0)
+            @test maximum(abs, model.velocities.u) == 0
+            @test maximum(abs, model.tracers.b) == 0
+            @test maximum(abs, model.timestepper.G⁻.b) == 0
+
+            if !isnothing(closure)
+                u⁻, v⁻ = model.closure_fields.previous_velocities
+                @test maximum(abs, u⁻) == 0
+                @test maximum(abs, model.closure_fields.κu) == 0
+            end
         end
     end
 

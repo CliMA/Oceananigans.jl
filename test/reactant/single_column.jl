@@ -87,8 +87,8 @@ using Statistics: mean
 
         compiled_run! = @compile raise=true raise_first=true sync=true run_timesteps!(model, 60.0, 10)
         compiled_run!(model, 60.0, 10)
-        @test any(Array(interior(model.tracers.e)) .!= 1e-6)
-        @test any(Array(interior(model.tracers.ϵ)) .!= 1e-9)
+        @test minimum(model.tracers.e) < 1e-6
+        @test minimum(model.tracers.ϵ) < 1e-9
     end
 
     @testset "Enzyme reverse-mode gradient" begin

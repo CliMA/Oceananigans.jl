@@ -20,7 +20,7 @@
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, Enzyme, Reactant, CUDA, CairoMakie"
+# pkg"add Oceananigans, Enzyme, Reactant, CUDA, Optim, CairoMakie"
 # ```
 #
 # Reactant needs CUDA.jl to be loaded to compile Oceananigans' kernels,
@@ -28,16 +28,12 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Architectures: ReactantState
-using Oceananigans.Models: reset!
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: VariableStabilityFunctions
 using Enzyme
 using Reactant
 using CUDA
 using CairoMakie
 using Printf
 using Statistics: mean
-using LinearAlgebra: dot
 
 # ## A single column model
 #
@@ -58,8 +54,9 @@ using LinearAlgebra: dot
 # Reactant numbers, which we obtain with `Reactant.to_rarray(closure; track_numbers=Number)`.
 # Similarly, we represent the surface fluxes with `Field`s, whose values we can change.
 
-grid = RectilinearGrid(ReactantState(), size=64, z=(-128, 0), topology=(Flat, Flat, Bounded))
+using Oceananigans.Architectures: ReactantState
 
+grid = RectilinearGrid(ReactantState(), size=64, z=(-128, 0), topology=(Flat, Flat, Bounded))
 closure = Reactant.to_rarray(TKEDissipationVerticalDiffusivity(); track_numbers=Number)
 
 τˣ = Field{Face, Center, Nothing}(grid)
@@ -79,39 +76,44 @@ model = HydrostaticFreeSurfaceModel(grid; closure,
 
 scales = (Cu₀ = 0.1, Cc₀ = 0.1, τˣ = 1e-4, Jᵇ = 1e-8)
 
-# The function below assigns normalized parameters `x` to the model. It builds a new closure with
+# The function below assigns `normalized_parameters` to the model. It builds a new closure with
 # the `VariableStabilityFunctions` constructor, which also computes another constant, `𝕊u₀`, from `Cu₀`.
 # Because we call the constructor inside the function we differentiate, the gradient accounts
 # for the dependence of `𝕊u₀` on `Cu₀`.
 
-function assign_parameters!(model, x)
-    Cu₀ = scales.Cu₀ * x.Cu₀
-    Cc₀ = scales.Cc₀ * x.Cc₀
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: VariableStabilityFunctions
+const vitd = VerticallyImplicitTimeDiscretization()
+
+function assign_parameters!(model, normalized_parameters)
+    Cu₀ = scales.Cu₀ * normalized_parameters.Cu₀
+    Cc₀ = scales.Cc₀ * normalized_parameters.Cc₀
     FT = typeof(Cu₀)
 
     stability_functions = VariableStabilityFunctions(FT; Cu₀, Cc₀)
-    model.closure = TKEDissipationVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; stability_functions)
+    model.closure = TKEDissipationVerticalDiffusivity(vitd, FT; stability_functions)
 
     τˣ = model.velocities.u.boundary_conditions.top.condition
     Jᵇ = model.tracers.b.boundary_conditions.top.condition
-    parent(τˣ) .= scales.τˣ * x.τˣ
-    parent(Jᵇ) .= scales.Jᵇ * x.Jᵇ
+    parent(τˣ) .= scales.τˣ * normalized_parameters.τˣ
+    parent(Jᵇ) .= scales.Jᵇ * normalized_parameters.Jᵇ
 
     return nothing
 end
 
 # We represent parameters with a `NamedTuple` of Reactant numbers,
 
-parameters(values) = NamedTuple{keys(scales)}(Tuple(Reactant.ConcreteRNumber.(values)))
+reactant_parameters(values) = NamedTuple{keys(scales)}(Tuple(Reactant.ConcreteRNumber.(values)))
 
 # ## Running the column
 #
 # Each run starts from rest with constant stratification and lasts 12 hours. Because we reuse the same
-# model for every run, we first `reset!` the model, which zeros its fields (including `e` and `ϵ`) and
-# tendencies. We also zero the velocities that the closure saves from the previous time step,
-# so that every run starts from the same state.
+# model for every run, we first `reset!` the model, which zeros its fields (including `e` and `ϵ`),
+# its tendencies, and the closure's state saved from previous time steps, so that every run starts
+# from the same state.
 # The k-ϵ equations need a fairly short time step: with `Δt = 10minutes`, for example, the solution
 # becomes noisy.
+
+using Oceananigans.Models: reset!
 
 N² = 1e-5
 bᵢ = set!(CenterField(grid), z -> N² * z)
@@ -119,14 +121,10 @@ bᵢ = set!(CenterField(grid), z -> N² * z)
 Δt = 1minute
 Nt = 720
 
-function run_column!(model, x, bᵢ, Δt, Nt)
-    assign_parameters!(model, x)
+function run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
+    assign_parameters!(model, normalized_parameters)
 
     reset!(model)
-    for u⁻ in model.closure_fields.previous_velocities
-        fill!(u⁻, 0)
-    end
-
     set!(model, b=bᵢ)
 
     @trace track_numbers=false for n = 1:Nt
@@ -140,11 +138,13 @@ end
 #
 # The nature run uses the default closure parameters `Cu₀ = 0.1067` and `Cc₀ = 0.1120`,
 # a wind stress `τˣ = -10⁻⁴ m² s⁻²`, and a cooling buoyancy flux `Jᵇ = 2 × 10⁻⁸ m² s⁻³`.
+# We collect the normalized parameters in the vector `θ = (Cu₀, Cc₀, τˣ, Jᵇ) ./ scales`,
+# and convert them to Reactant numbers with `reactant_parameters`.
 
-x★ = [1.067, 1.120, -1, 2]
+θ★ = [1.067, 1.120, -1, 2]
 
-compiled_run_column! = @compile raise=true raise_first=true sync=true run_column!(model, parameters(x★), bᵢ, Δt, Nt)
-compiled_run_column!(model, parameters(x★), bᵢ, Δt, Nt)
+compiled_run_column! = @compile raise=true raise_first=true sync=true run_column!(model, reactant_parameters(θ★), bᵢ, Δt, Nt)
+compiled_run_column!(model, reactant_parameters(θ★), bᵢ, Δt, Nt)
 
 # We save the final state of the nature run as our "observations",
 
@@ -165,8 +165,8 @@ observations = observe(model)
 # The cost function is the normalized mean square difference between
 # the final state of the model and the observations,
 
-function cost(x, model, bᵢ, observations, Δt, Nt)
-    run_column!(model, x, bᵢ, Δt, Nt)
+function cost(normalized_parameters, model, bᵢ, observations, Δt, Nt)
+    run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
 
     u, v = model.velocities
     b = model.tracers.b
@@ -175,99 +175,76 @@ function cost(x, model, bᵢ, observations, Δt, Nt)
     U² = 1e-2
     B² = (N² * 10)^2
 
-    Ju = mean((interior(u) .- interior(u★)).^2) / U²
-    Jv = mean((interior(v) .- interior(v★)).^2) / U²
-    Jb = mean((interior(b) .- interior(b★)).^2) / B²
+    𝒥u = mean((interior(u) .- interior(u★)).^2) / U²
+    𝒥v = mean((interior(v) .- interior(v★)).^2) / U²
+    𝒥b = mean((interior(b) .- interior(b★)).^2) / B²
 
-    return Ju + Jv + Jb
+    return 𝒥u + 𝒥v + 𝒥b
 end
 
 # To compute the gradient, we differentiate `cost` in reverse mode. Enzyme accumulates the
-# gradient of the cost with respect to the parameters into the "shadow" parameters `∂J∂x`.
+# gradient of the cost with respect to the parameters into the "shadow" parameters `cost_gradient`.
 # The model is also mutated by `cost`, so we give it a shadow as well.
 
-function cost_and_gradient!(∂J∂x, x, model, shadow, bᵢ, observations, Δt, Nt)
+function cost_and_gradient!(cost_gradient, normalized_parameters, model, shadow, bᵢ, observations, Δt, Nt)
     mode = Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal)
-    _, J = Enzyme.autodiff(mode, cost, Enzyme.Active,
-                           Enzyme.Duplicated(x, ∂J∂x),
+    _, 𝒥 = Enzyme.autodiff(mode, cost, Enzyme.Active,
+                           Enzyme.Duplicated(normalized_parameters, cost_gradient),
                            Enzyme.Duplicated(model, shadow),
                            Enzyme.Const(bᵢ),
                            Enzyme.Const(observations),
                            Enzyme.Const(Δt),
                            Enzyme.Const(Nt))
-    return J
+    return 𝒥
 end
 
 # We start from an initial guess that's quite different from the nature run,
 
-x₀ = [0.6, 1.8, -0.5, 0.5]
+θ₀ = [0.6, 1.8, -0.5, 0.5]
 
 # and compile the cost and its gradient. Compiling the gradient takes a few minutes.
 
 shadow = Enzyme.make_zero(model)
-∂J∂x = parameters(zeros(4))
+cost_gradient = reactant_parameters(zeros(4))
 
-compiled_cost = @compile raise=true raise_first=true sync=true cost(parameters(x₀), model, bᵢ, observations, Δt, Nt)
-compiled_cost_and_gradient! = @compile raise=true raise_first=true sync=true cost_and_gradient!(∂J∂x, parameters(x₀), model, shadow, bᵢ, observations, Δt, Nt)
+compiled_cost = @compile raise=true raise_first=true sync=true cost(reactant_parameters(θ₀), model, bᵢ, observations, Δt, Nt)
+compiled_cost_and_gradient! = @compile raise=true raise_first=true sync=true cost_and_gradient!(cost_gradient, reactant_parameters(θ₀), model, shadow, bᵢ, observations, Δt, Nt)
 
-J(x) = Float64(compiled_cost(parameters(x), model, bᵢ, observations, Δt, Nt))
+𝒥(θ) = Float64(compiled_cost(reactant_parameters(θ), model, bᵢ, observations, Δt, Nt))
 
-function cost_and_gradient(x)
+function cost_and_gradient(θ)
     shadow = Enzyme.make_zero(model)
-    ∂J∂x = parameters(zeros(4))
-    Jx = compiled_cost_and_gradient!(∂J∂x, parameters(x), model, shadow, bᵢ, observations, Δt, Nt)
-    return Float64(Jx), Float64.(collect(∂J∂x))
+    cost_gradient = reactant_parameters(zeros(4))
+    𝒥θ = compiled_cost_and_gradient!(cost_gradient, reactant_parameters(θ), model, shadow, bᵢ, observations, Δt, Nt)
+    return Float64(𝒥θ), Float64.(collect(cost_gradient))
 end
 
 # ## Minimizing the cost
 #
-# We minimize the cost with [BFGS](https://en.wikipedia.org/wiki/Broyden–Fletcher–Goldfarb–Shanno_algorithm),
-# a quasi-Newton flavor of gradient descent. Plain gradient descent steps along `-∇J`. BFGS instead
-# steps along `-H ∇J`, where `H` is an estimate of the inverse Hessian of `J` that BFGS builds from the
-# change in the gradient between iterations. We start with `H = α I`, which makes the first iteration
-# a plain gradient descent step. Each step is shortened by a backtracking line search until the cost
-# decreases sufficiently.
+# We minimize the cost with the [BFGS](https://en.wikipedia.org/wiki/Broyden–Fletcher–Goldfarb–Shanno_algorithm)
+# algorithm implemented by [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl). BFGS is a quasi-Newton
+# flavor of gradient descent: rather than stepping along `-∇𝒥`, it steps along `-H ∇𝒥`, where `H` is an
+# estimate of the inverse Hessian of `𝒥` that BFGS builds from the change in the gradient between iterations.
+# Optim needs the cost `𝒥`, and a function that computes the gradient in place,
 
-identity_matrix(N) = [i == j ? 1.0 : 0.0 for i in 1:N, j in 1:N]
+using Optim
 
-function bfgs(x₀; iterations=10, α=1)
-    x = copy(x₀)
-    Jⁿ, ∇J = cost_and_gradient(x)
-    H = α * identity_matrix(length(x))
-    history = [(x=copy(x), J=Jⁿ)]
-
-    for n = 1:iterations
-        d = - H * ∇J
-
-        t = 1.0
-        x′ = x .+ t .* d
-        J′ = J(x′)
-        while J′ > Jⁿ + 1e-4 * t * dot(∇J, d)
-            t /= 2
-            x′ = x .+ t .* d
-            J′ = J(x′)
-        end
-
-        J′, ∇J′ = cost_and_gradient(x′)
-
-        ## BFGS update of the inverse Hessian estimate
-        s = x′ .- x
-        y = ∇J′ .- ∇J
-        if dot(s, y) > 0
-            ρ = 1 / dot(s, y)
-            A = identity_matrix(length(x)) .- ρ .* s * y'
-            H = A * H * A' .+ ρ .* s * s'
-        end
-
-        x, Jⁿ, ∇J = x′, J′, ∇J′
-        push!(history, (x=copy(x), J=Jⁿ))
-        @info @sprintf("iteration %2d: J = %.2e, x / x★ = %s", n, Jⁿ, string(round.(x ./ x★, digits=3)))
-    end
-
-    return history
+function ∇𝒥!(G, θ)
+    𝒥θ, ∇𝒥θ = cost_and_gradient(θ)
+    G .= ∇𝒥θ
+    return G
 end
 
-history = bfgs(x₀)
+options = Optim.Options(iterations=10, store_trace=true, extended_trace=true)
+result = optimize(𝒥, ∇𝒥!, θ₀, BFGS(), options)
+
+# The trace records the parameters and cost at each iteration,
+
+history = [(θ=θ, 𝒥=𝒥θ) for (θ, 𝒥θ) in zip(Optim.x_trace(result), Optim.f_trace(result))]
+
+for (n, h) in enumerate(history)
+    @info @sprintf("iteration %2d: 𝒥 = %.2e, θ / θ★ = %s", n - 1, h.𝒥, string(round.(h.θ ./ θ★, digits=3)))
+end
 
 # ## Visualizing the parameter estimation
 #
@@ -275,16 +252,16 @@ history = bfgs(x₀)
 
 z = Array(znodes(grid, Center()))
 
-function final_state(x)
-    compiled_run_column!(model, parameters(x), bᵢ, Δt, Nt)
+function final_state(θ)
+    compiled_run_column!(model, reactant_parameters(θ), bᵢ, Δt, Nt)
     u = Array(interior(model.velocities.u))[:]
     v = Array(interior(model.velocities.v))[:]
     b = Array(interior(model.tracers.b))[:] .- N² .* z
     return (; u, v, b)
 end
 
-nature_state = final_state(x★)
-iteration_states = [final_state(h.x) for h in history]
+nature_state = final_state(θ★)
+iteration_states = [final_state(h.θ) for h in history]
 
 # and plot the parameters, the cost, and the profiles of velocity and the buoyancy
 # anomaly `b - N² z`. We plot the state of the optimization at iteration `n`, starting
@@ -296,7 +273,7 @@ bottom = fig[3, 1] = GridLayout()
 
 n = Observable(length(history))
 
-title = @lift @sprintf("Iteration %d, J = %.1e", $n - 1, history[$n].J)
+title = @lift @sprintf("Iteration %d, 𝒥 = %.1e", $n - 1, history[$n].𝒥)
 Label(fig[1, 1], title, fontsize=20, tellwidth=false)
 
 iterations = 0:length(history)-1
@@ -305,7 +282,7 @@ labels = ["Cu₀", "Cc₀", "τˣ", "Jᵇ"]
 ax = Axis(top[1, 1]; xlabel="Iteration", ylabel="Parameter / nature run value", title="Parameters")
 hlines!(ax, 1; color=:gray, linestyle=:dash)
 for i in 1:4
-    ratio = [h.x[i] / x★[i] for h in history]
+    ratio = [h.θ[i] / θ★[i] for h in history]
     points = @lift Point2f.(iterations[1:$n], ratio[1:$n])
     scatterlines!(ax, points; label=labels[i])
 end
@@ -313,8 +290,8 @@ xlims!(ax, -0.5, length(history) - 0.5)
 ylims!(ax, 0, 2)
 axislegend(ax, position=:rt)
 
-costs = [h.J for h in history]
-ax = Axis(top[1, 2]; xlabel="Iteration", ylabel="J", yscale=log10, title="Cost")
+costs = [h.𝒥 for h in history]
+ax = Axis(top[1, 2]; xlabel="Iteration", ylabel="𝒥", yscale=log10, title="Cost")
 cost_points = @lift Point2f.(iterations[1:$n], costs[1:$n])
 scatterlines!(ax, cost_points)
 xlims!(ax, -0.5, length(history) - 0.5)
