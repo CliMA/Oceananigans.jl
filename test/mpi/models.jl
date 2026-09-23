@@ -530,7 +530,6 @@ end
 
         @info "Testing the spacings of distributed grids..."
 
-        # Δyᵃᶜᵃ[j] is the width of cell j; Δyᵃᶠᵃ[j] the distance between the centers of cells j-1 and j
         ny = size(rg, 2)
         @test Array(rg.Δyᵃᶜᵃ[1:ny])   ≈ diff(Array(rg.yᵃᶠᵃ[1:ny+1]))
         @test Array(rg.Δyᵃᶠᵃ[2:ny])   ≈ diff(Array(rg.yᵃᶜᵃ[1:ny]))
