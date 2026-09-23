@@ -274,7 +274,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 
 # The solver applies ∂z(νz ∂z w) implicitly. Three-dimensional closures have τ₃₃ = -2ν ∂z w with no cross term
 # left to the explicit fluxes (unlike τ₁₃ = ν ∂z u + ν ∂x w above), so their implicit viscosity for w is 2ν.
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::AID, K, id, clk, fields) = 2 * νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::AID, K, clk, fields) = 2 * νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
