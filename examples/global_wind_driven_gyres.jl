@@ -48,17 +48,17 @@ using CairoMakie
 # than double precision on most GPUs. For research-grade simulations we recommend `Float64`,
 # which Metal does not currently support, so Apple GPUs are limited to `Float32`.
 
-if Sys.isapple() && Sys.ARCH === :aarch64
+arch = if Sys.isapple() && Sys.ARCH === :aarch64
     using Metal
-    arch = Metal.functional() ? GPU(Metal.MetalBackend()) : CPU()
+    Metal.functional() ? GPU(Metal.MetalBackend()) : CPU()
 elseif !isnothing(Sys.which("nvidia-smi"))
     using CUDA
-    arch = CUDA.functional() ? GPU() : CPU()
+    CUDA.functional() ? GPU() : CPU()
 elseif !isnothing(Sys.which("rocminfo"))
     using AMDGPU
-    arch = AMDGPU.functional() ? GPU(AMDGPU.ROCBackend()) : CPU()
+    AMDGPU.functional() ? GPU(AMDGPU.ROCBackend()) : CPU()
 else
-    arch = CPU()
+    CPU()
 end
 
 FT = Float32
