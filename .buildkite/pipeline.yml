@@ -90,9 +90,12 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
+      # Use multi-threaded garbage collector
+      export JULIA_NUM_GC_THREADS="4,1"
+
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user --gcthreads=4,1 -e \
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e \
         'using Pkg;
          Pkg.test("Oceananigans";
            coverage="user",
@@ -177,11 +180,14 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
+      # Use multi-threaded garbage collector
+      export JULIA_NUM_GC_THREADS="4,1"
+
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
       # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user --gcthreads=4,1 -e \
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e \
         'using Pkg;
          Pkg.test("Oceananigans";
            coverage=false,
