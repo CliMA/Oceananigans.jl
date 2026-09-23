@@ -103,6 +103,7 @@ end
 
 block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
 elevation = FT.(block_mean(etopo_elevation, 3))
+nothing #hide
 
 # We put the elevation on a `LatitudeLongitudeGrid`, interpolate it onto the tripolar
 # grid, and use it as the bottom height of a `GridFittedBottom`. With the
