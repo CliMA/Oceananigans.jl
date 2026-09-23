@@ -10,7 +10,7 @@ abstract type AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
 grid(g::AbstractGrid) = g
 
 # Grids carry no field metadata, so CPU kernels take them unchanged (see `Architectures.convert_to_device`).
-@inline Adapt.adapt(::CPUKernelAdaptor, grid::AbstractGrid) = grid
+@inline Adapt.adapt(::CPU, grid::AbstractGrid) = grid
 
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
