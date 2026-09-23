@@ -142,22 +142,21 @@ end
 
 θ★ = [1.067, 1.120, -1, 2]
 
-compiled_run_column! = @compile raise=true raise_first=true sync=true run_column!(model, reactant_parameters(θ★), bᵢ, Δt, Nt)
+compiled_run_column! = @compile raise=true raise_first=true sync=true run_column!(
+    model, reactant_parameters(θ★), bᵢ, Δt, Nt)
+
 compiled_run_column!(model, reactant_parameters(θ★), bᵢ, Δt, Nt)
 
 # We save the final state of the nature run as our "observations",
 
-function observe(model)
-    u★ = XFaceField(grid)
-    v★ = YFaceField(grid)
-    b★ = CenterField(grid)
-    set!(u★, model.velocities.u)
-    set!(v★, model.velocities.v)
-    set!(b★, model.tracers.b)
-    return (; u★, v★, b★)
-end
+u★ = XFaceField(grid)
+v★ = YFaceField(grid)
+b★ = CenterField(grid)
+set!(u★, model.velocities.u)
+set!(v★, model.velocities.v)
+set!(b★, model.tracers.b)
 
-observations = observe(model)
+obs = (; u★, v★, b★)
 
 # ## Cost function and its gradient
 #
@@ -166,12 +165,12 @@ observations = observe(model)
 
 using Statistics: mean
 
-function cost(normalized_parameters, model, bᵢ, observations, Δt, Nt)
+function cost(normalized_parameters, model, bᵢ, obs, Δt, Nt)
     run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
 
     u, v = model.velocities
     b = model.tracers.b
-    u★, v★, b★ = observations
+    u★, v★, b★ = obs
 
     U² = 1e-2
     B² = (N² * 10)^2
@@ -187,13 +186,13 @@ end
 # gradient of the cost with respect to the parameters into the "shadow" parameters `cost_gradient`.
 # The model is also mutated by `cost`, so we give it a shadow as well.
 
-function cost_and_gradient!(cost_gradient, normalized_parameters, model, shadow, bᵢ, observations, Δt, Nt)
+function cost_and_gradient!(cost_gradient, parameters, model, shadow, bᵢ, obs, Δt, Nt)
     mode = Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal)
     _, 𝒥 = Enzyme.autodiff(mode, cost, Enzyme.Active,
-                           Enzyme.Duplicated(normalized_parameters, cost_gradient),
+                           Enzyme.Duplicated(parameters, cost_gradient),
                            Enzyme.Duplicated(model, shadow),
                            Enzyme.Const(bᵢ),
-                           Enzyme.Const(observations),
+                           Enzyme.Const(obs),
                            Enzyme.Const(Δt),
                            Enzyme.Const(Nt))
     return 𝒥
@@ -208,15 +207,18 @@ end
 shadow = Enzyme.make_zero(model)
 cost_gradient = reactant_parameters(zeros(4))
 
-compiled_cost = @compile raise=true raise_first=true sync=true cost(reactant_parameters(θ₀), model, bᵢ, observations, Δt, Nt)
-compiled_cost_and_gradient! = @compile raise=true raise_first=true sync=true cost_and_gradient!(cost_gradient, reactant_parameters(θ₀), model, shadow, bᵢ, observations, Δt, Nt)
+compiled_cost = @compile raise=true raise_first=true sync=true cost(
+    reactant_parameters(θ₀), model, bᵢ, obs, Δt, Nt)
 
-𝒥(θ) = Float64(compiled_cost(reactant_parameters(θ), model, bᵢ, observations, Δt, Nt))
+compiled_cost_and_gradient! = @compile raise=true raise_first=true sync=true cost_and_gradient!(
+    cost_gradient, reactant_parameters(θ₀), model, shadow, bᵢ, obs, Δt, Nt)
+
+𝒥(θ) = Float64(compiled_cost(reactant_parameters(θ), model, bᵢ, obs, Δt, Nt))
 
 function cost_and_gradient(θ)
     shadow = Enzyme.make_zero(model)
     cost_gradient = reactant_parameters(zeros(4))
-    𝒥θ = compiled_cost_and_gradient!(cost_gradient, reactant_parameters(θ), model, shadow, bᵢ, observations, Δt, Nt)
+    𝒥θ = compiled_cost_and_gradient!(cost_gradient, reactant_parameters(θ), model, shadow, bᵢ, obs, Δt, Nt)
     return Float64(𝒥θ), Float64.(collect(cost_gradient))
 end
 
@@ -237,11 +239,11 @@ function ∇𝒥!(G, θ)
 end
 
 options = Optim.Options(iterations=10, store_trace=true, extended_trace=true)
-result = optimize(𝒥, ∇𝒥!, θ₀, BFGS(), options)
+bfgs_result = optimize(𝒥, ∇𝒥!, θ₀, BFGS(), options)
 
 # The trace records the parameters and cost at each iteration,
 
-history = [(θ=θ, 𝒥=𝒥θ) for (θ, 𝒥θ) in zip(Optim.x_trace(result), Optim.f_trace(result))]
+history = [(θ=θ, 𝒥=𝒥θ) for (θ, 𝒥θ) in zip(Optim.x_trace(bfgs_result), Optim.f_trace(bfgs_result))]
 
 for (n, h) in enumerate(history)
     @info @sprintf("iteration %2d: 𝒥 = %.2e, θ / θ★ = %s", n - 1, h.𝒥, string(round.(h.θ ./ θ★, digits=3)))
@@ -328,3 +330,38 @@ end
 nothing #hide
 
 # ![](single_column_parameter_estimation.mp4)
+
+# ## Comparing BFGS with gradient descent
+#
+# Optim makes it easy to try other optimizers with the same compiled cost and gradient.
+# We repeat the optimization with plain gradient descent, starting from the same initial guess
+# and taking the same number of iterations,
+
+gradient_descent_result = optimize(𝒥, ∇𝒥!, θ₀, GradientDescent(), options)
+
+# The optimizers' line searches evaluate the cost and gradient a different number of times per
+# iteration, so we also count evaluations, and measure how long each evaluation takes,
+
+forward_time = @elapsed 𝒥(θ₀)
+gradient_time = @elapsed cost_and_gradient(θ₀)
+
+@info @sprintf("Evaluating the cost takes %.2f s and evaluating its gradient takes %.2f s", forward_time, gradient_time)
+
+for (name, result) in (("BFGS", bfgs_result), ("Gradient descent", gradient_descent_result))
+    θ = Optim.minimizer(result)
+    @info @sprintf("%s: 𝒥 = %.2e after %d iterations with %d cost and %d gradient evaluations; θ / θ★ = %s",
+                   name, Optim.minimum(result), Optim.iterations(result),
+                   Optim.f_calls(result), Optim.g_calls(result), string(round.(θ ./ θ★, digits=3)))
+end
+
+fig = Figure(size=(600, 400))
+ax = Axis(fig[1, 1]; xlabel="Iteration", ylabel="𝒥", yscale=log10, title="Cost")
+
+for (label, result) in (("BFGS", bfgs_result), ("gradient descent", gradient_descent_result))
+    costs = Optim.f_trace(result)
+    scatterlines!(ax, 0:length(costs)-1, costs; label)
+end
+
+axislegend(ax)
+
+current_figure() #hide
