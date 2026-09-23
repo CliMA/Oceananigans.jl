@@ -1,0 +1,5 @@
+Rename kernels to LanczosKernel, HanningKernel, BoxcarKernel
+
+Matches AbstractFilterKernel, per @glwagner.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

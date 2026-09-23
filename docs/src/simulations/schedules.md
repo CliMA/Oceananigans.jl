@@ -208,8 +208,8 @@ Pass either a `SpecifiedTimes` instance or raw times.
 
 [`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write each frame as a
 weighted average over a `window` centered on the frame time, with weights from a kernel:
-[`Lanczos`](@ref Oceananigans.OutputWriters.Lanczos)`(cutoff)`, which removes periods shorter than `cutoff`,
-[`Hanning`](@ref Oceananigans.OutputWriters.Hanning) or [`Boxcar`](@ref Oceananigans.OutputWriters.Boxcar) (a running mean).
+[`LanczosKernel`](@ref Oceananigans.OutputWriters.LanczosKernel)`(cutoff)`, which removes periods shorter than `cutoff`,
+[`HanningKernel`](@ref Oceananigans.OutputWriters.HanningKernel) or [`BoxcarKernel`](@ref Oceananigans.OutputWriters.BoxcarKernel) (a running mean).
 Any [`AbstractFilterKernel`](@ref Oceananigans.OutputWriters.AbstractFilterKernel) can be supplied.
 Because the window is centered, frames carry no phase shift, unlike the trailing window of `AveragedTimeInterval`;
 each frame is therefore written `window / 2` after its time.

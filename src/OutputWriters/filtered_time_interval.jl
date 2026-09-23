@@ -24,24 +24,24 @@ Lanczos filter weights [Duchon (1979)](@cite duchon1979lanczos),
 
 which pass periods longer than `cutoff` and remove shorter ones.
 """
-struct Lanczos{FT} <: AbstractFilterKernel
+struct LanczosKernel{FT} <: AbstractFilterKernel
     cutoff :: FT
 end
 
-(kernel::Lanczos)(τ, window) = sinc(2τ / kernel.cutoff) * sinc(2τ / window)
+(kernel::LanczosKernel)(τ, window) = sinc(2τ / kernel.cutoff) * sinc(2τ / window)
 
-Base.summary(kernel::Lanczos) = string("Lanczos, cutoff=", prettytime(kernel.cutoff))
+Base.summary(kernel::LanczosKernel) = string("Lanczos, cutoff=", prettytime(kernel.cutoff))
 
 """
 $(TYPEDSIGNATURES)
 
 Uniform weights over the window, so each frame is a running mean.
 """
-struct Boxcar <: AbstractFilterKernel end
+struct BoxcarKernel <: AbstractFilterKernel end
 
-(::Boxcar)(τ, window) = abs(τ) <= window / 2 ? one(τ) : zero(τ)
+(::BoxcarKernel)(τ, window) = abs(τ) <= window / 2 ? one(τ) : zero(τ)
 
-Base.summary(::Boxcar) = "boxcar"
+Base.summary(::BoxcarKernel) = "boxcar"
 
 """
 $(TYPEDSIGNATURES)
@@ -50,11 +50,11 @@ Raised-cosine weights over the window,
 
     w(τ) = (1 + cos(2πτ / window)) / 2,    |τ| ≤ window / 2.
 """
-struct Hanning <: AbstractFilterKernel end
+struct HanningKernel <: AbstractFilterKernel end
 
-(::Hanning)(τ, window) = abs(τ) <= window / 2 ? (1 + cos(2π * τ / window)) / 2 : zero(τ)
+(::HanningKernel)(τ, window) = abs(τ) <= window / 2 ? (1 + cos(2π * τ / window)) / 2 : zero(τ)
 
-Base.summary(::Hanning) = "Hanning"
+Base.summary(::HanningKernel) = "Hanning"
 
 mutable struct FilteredTimeInterval{FT, K<:AbstractFilterKernel} <: AbstractSchedule
     interval :: FT
@@ -68,8 +68,8 @@ $(TYPEDSIGNATURES)
 
 Return a schedule for an output writer that writes its outputs filtered in time, one frame every
 `interval`. Each frame is a weighted average of an output over a `window` centered on the frame time,
-with weights given by `kernel`, an [`AbstractFilterKernel`](@ref): [`Lanczos`](@ref)`(cutoff)`,
-[`Hanning`](@ref)`()` or [`Boxcar`](@ref)`()`. `Lanczos` passes periods longer than `cutoff` and removes
+with weights given by `kernel`, an [`AbstractFilterKernel`](@ref): [`LanczosKernel`](@ref)`(cutoff)`,
+[`HanningKernel`](@ref)`()` or [`BoxcarKernel`](@ref)`()`. `LanczosKernel` passes periods longer than `cutoff` and removes
 shorter ones, so a cutoff of 40 hours removes the diurnal and semidiurnal tides.
 
 Frames fall on multiples of `interval` and are stamped with their center time; each is written
@@ -80,7 +80,7 @@ a simulation picked up from a checkpoint writes its first frame `window / 2` aft
 using Oceananigans
 using Oceananigans.Units
 
-FilteredTimeInterval(Lanczos(40hours); interval=1days, window=5days)
+FilteredTimeInterval(LanczosKernel(40hours); interval=1days, window=5days)
 
 # output
 FilteredTimeInterval(interval=1 day, window=5 days, Lanczos, cutoff=1.667 days)

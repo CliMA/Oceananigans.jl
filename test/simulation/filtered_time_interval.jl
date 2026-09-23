@@ -15,9 +15,9 @@ function filtered_tidal_signal(arch, directory; stop_time, pickup = false)
 
     simulation = Simulation(model; Δt = 10minutes, stop_time)
     simulation.output_writers[:daily] = JLD2Writer(model, (; c); dir = directory, filename = "daily",
-                                                   schedule = FilteredTimeInterval(Lanczos(40hours); interval = 1days, window = 5days), overwrite_files = pickup === false)
+                                                   schedule = FilteredTimeInterval(LanczosKernel(40hours); interval = 1days, window = 5days), overwrite_files = pickup === false)
     simulation.output_writers[:weekly] = JLD2Writer(model, (; c); dir = directory, filename = "weekly",
-                                                    schedule = FilteredTimeInterval(Lanczos(40hours); interval = 7days, window = 5days), overwrite_files = pickup === false)
+                                                    schedule = FilteredTimeInterval(LanczosKernel(40hours); interval = 7days, window = 5days), overwrite_files = pickup === false)
     simulation.output_writers[:checkpointer] = Checkpointer(model; dir = directory, prefix = "checkpoint",
                                                             schedule = TimeInterval(5days))
     run!(simulation; pickup)
@@ -54,18 +54,18 @@ for arch in archs
     end
 
     @testset "FilteredTimeInterval kernels [$A]" begin
-        @test Lanczos(2days)(0, 5days) == 1
-        @test Boxcar()(1day, 5days) == 1
-        @test Boxcar()(3days, 5days) == 0
+        @test LanczosKernel(2days)(0, 5days) == 1
+        @test BoxcarKernel()(1day, 5days) == 1
+        @test BoxcarKernel()(3days, 5days) == 0
 
-        @test Hanning()(0, 4days) == 1
-        @test Hanning()(2days, 4days) ≈ 0 atol = 1e-15
-        @test Hanning()(3days, 4days) == 0
+        @test HanningKernel()(0, 4days) == 1
+        @test HanningKernel()(2days, 4days) ≈ 0 atol = 1e-15
+        @test HanningKernel()(3days, 4days) == 0
 
-        filter = FilteredTimeInterval(Lanczos(2days); interval = 1day, window = 6days)
-        @test filter.kernel isa Lanczos
+        filter = FilteredTimeInterval(LanczosKernel(2days); interval = 1day, window = 6days)
+        @test filter.kernel isa LanczosKernel
         @test filter.kernel.cutoff == 2days
-        @test FilteredTimeInterval(Boxcar(); interval = 1day, window = 6days).kernel isa Boxcar
+        @test FilteredTimeInterval(BoxcarKernel(); interval = 1day, window = 6days).kernel isa BoxcarKernel
 
         # A running mean over a window centered on a frame returns a linear signal's value at its center.
         grid = RectilinearGrid(arch; size = (1, 1, 1), extent = (1, 1, 1))
@@ -74,7 +74,7 @@ for arch in archs
         directory = mktempdir()
         simulation = Simulation(model; Δt = 10minutes, stop_time = 10days)
         simulation.output_writers[:boxcar] = JLD2Writer(model, (; c); dir = directory, filename = "boxcar",
-                                                        schedule = FilteredTimeInterval(Boxcar(); interval = 1day, window = 4days))
+                                                        schedule = FilteredTimeInterval(BoxcarKernel(); interval = 1day, window = 4days))
         run!(simulation)
 
         boxcar = FieldTimeSeries(simulation.output_writers[:boxcar].filepath, "c")

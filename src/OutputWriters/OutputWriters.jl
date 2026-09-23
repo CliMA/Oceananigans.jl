@@ -6,7 +6,7 @@ export
     written_names,
     WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
-    FilteredTimeInterval, AbstractFilterKernel, Lanczos, Boxcar, Hanning
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
