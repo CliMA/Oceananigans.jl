@@ -87,7 +87,7 @@ function Solvers.solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurface
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FFTImplicitFreeSurfaceSolver,
-                                                        g, Δt, velocities, η, args...)
+                                                        g, Δt, velocities, η, Fη, clock, fields)
 
     poisson_solver = implicit_solver.fft_poisson_solver
     arch = architecture(poisson_solver)
@@ -96,17 +96,18 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FF
 
     launch!(arch, grid, :xy,
             fft_implicit_free_surface_right_hand_side!,
-            rhs, grid, g, Lz, Δt, velocities, η)
+            rhs, grid, g, Lz, Δt, velocities, η, Fη, clock, fields)
 
     return nothing
 end
 
-@kernel function fft_implicit_free_surface_right_hand_side!(rhs, grid, g, Lz, Δt, U, η)
+@kernel function fft_implicit_free_surface_right_hand_side!(rhs, grid, g, Lz, Δt, U, η, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
-    @inbounds rhs[i, j, 1] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Lz * Δt * Az)
+    @inbounds rhs[i, j, 1] = (δx_U + δy_V - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Lz * Δt * Az)
 end
