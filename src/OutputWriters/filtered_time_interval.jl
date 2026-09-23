@@ -3,7 +3,6 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.Fields: Fields, indices, location
 using Oceananigans.Grids: Grids, grid
 using Oceananigans.OutputWriters: fetch_output, output_time, should_write_initial_output
-using Oceananigans.Units: days, hours
 using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
 
 """
