@@ -104,6 +104,14 @@ end
     @test maximum(simulation.model.velocities.u) > 0.01
 end
 
+@testset "MetalGPU: vertically implicit diffusion with SplitRungeKutta3" begin
+    grid = RectilinearGrid(GPU(Metal.MetalBackend()), size=(1, 1, 4), extent=(1, 1, 1))
+    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=1e-3)
+    model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, timestepper=:SplitRungeKutta3)
+    time_step!(model, 1.0)
+    @test iteration(model) == 1
+end
+
 @testset "MetalGPU: test for reductions" begin
     arch = GPU(Metal.MetalBackend())
     grid = RectilinearGrid(arch, size=(32, 32, 32), extent=(1, 1, 1))
