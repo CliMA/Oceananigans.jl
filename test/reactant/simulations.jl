@@ -219,15 +219,18 @@ end
 end
 
 # A callback whose function type records the initial and final Σu² through the `initialize!` and
-# `finalize!` hooks, which run once each outside the traced loop. It carries its own buffer, since
-# the hooks receive the function, not the callback's parameters.
+# `finalize!` hooks, which run once each outside the traced loop. It carries its own buffers, since
+# the hooks receive the function, not the callback's parameters. Each is a length-one array written
+# whole: a broadcast into a view of a traced array does not trace.
 struct EnergyBookends{T}
-    values :: T   # [initial, final]
+    initial :: T
+    final :: T
 end
+EnergyBookends(arrayify) = EnergyBookends(arrayify(zeros(1)), arrayify(zeros(1)))
 (::EnergyBookends)(sim) = nothing
 Σu²(sim) = sum(interior(sim.model.velocities.u) .^ 2)
-Oceananigans.initialize!(bookends::EnergyBookends, sim) = (bookends.values[1:1] .= Σu²(sim); nothing)
-Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.values[2:2] .= Σu²(sim); nothing)
+Oceananigans.initialize!(bookends::EnergyBookends, sim) = (bookends.initial .= Σu²(sim); nothing)
+Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.final .= Σu²(sim); nothing)
 
 @testset "Reactant Simulation: initialize! and finalize! on callbacks" begin
     @info "Testing the initialize!/finalize! callback hooks under a compiled run!..."
@@ -249,19 +252,20 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.va
     stop_iteration = 4
 
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
-    bookends = EnergyBookends(zeros(2))
+    bookends = EnergyBookends(identity)
     add_callback!(simulation, Callback(bookends, IterationInterval(1)); name=:bookends)
     run!(simulation)
 
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
-    r_bookends = EnergyBookends(Reactant.to_rarray(zeros(2)))
+    r_bookends = EnergyBookends(Reactant.to_rarray)
     add_callback!(r_simulation, Callback(r_bookends, IterationInterval(1)); name=:bookends)
     compiled_run! = @compile run!(r_simulation)
     compiled_run!(r_simulation)
 
-    r_values = Array(r_bookends.values)
-    @test r_values[1] ≈ bookends.values[1]           # initialize!: the initial state
-    @test r_values[2] ≈ bookends.values[2]           # finalize!: the final state
-    @test r_values[2] ≈ sum(Array(interior(r_model.velocities.u)) .^ 2)
-    @test r_values[1] != r_values[2]
+    r_initial = Array(r_bookends.initial)[1]
+    r_final = Array(r_bookends.final)[1]
+    @test r_initial ≈ bookends.initial[1]           # initialize!: the initial state
+    @test r_final ≈ bookends.final[1]               # finalize!: the final state
+    @test r_final ≈ sum(Array(interior(r_model.velocities.u)) .^ 2)
+    @test r_initial != r_final
 end
