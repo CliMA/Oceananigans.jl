@@ -53,7 +53,7 @@ Distributed.addprocs(2)
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
-        "single_column_state_estimation.jl",
+        "single_column_parameter_estimation.jl",
     ]
 end
 
@@ -141,7 +141,7 @@ example_pages = [
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
     "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md",
-    "Single column state estimation"        => "literated/single_column_state_estimation.md",
+    "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
 ]
 
 model_pages = [
