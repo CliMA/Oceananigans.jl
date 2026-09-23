@@ -386,7 +386,7 @@ const FlowDependentRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Re
     X = node(i, j, k, grid, mt.location...)
     @inbounds ϕ = model_fields[field_index(mt)][i, j, k]
     ϕᵣ = evaluate_target(mt.target, X, clock.time)
-    rate = evaluate_rate(f.rate, i, j, k, grid, model_fields, mt.location)
+    rate = evaluate_rate(i, j, k, grid, f.rate, model_fields, mt.location)
     return rate * f.mask(X...) * (ϕᵣ - ϕ)
 end
 
