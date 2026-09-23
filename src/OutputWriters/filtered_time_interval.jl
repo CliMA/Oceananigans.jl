@@ -2,7 +2,7 @@ using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.Fields: Fields, indices, location
 using Oceananigans.Grids: Grids, grid
-using Oceananigans.OutputWriters: fetch_output, output_time, should_write_initial_output
+using Oceananigans.OutputWriters: fetch_output, output_time, has_initial_output
 using Oceananigans.Utils: AbstractSchedule, IterationInterval, prettytime
 
 """
@@ -35,7 +35,7 @@ end
 
 (kernel::LanczosKernel)(τ) = sinc(2τ / kernel.cutoff) * sinc(2τ / kernel.window)
 
-Base.summary(kernel::LanczosKernel) = string("Lanczos, cutoff=", prettytime(kernel.cutoff))
+Base.summary(kernel::LanczosKernel) = string("LanczosKernel(window=", prettytime(kernel.window), ", cutoff=", prettytime(kernel.cutoff), ")")
 
 """
 $(TYPEDSIGNATURES)
@@ -48,7 +48,7 @@ end
 
 (kernel::BoxcarKernel)(τ) = abs(τ) <= kernel.window / 2 ? one(τ) : zero(τ)
 
-Base.summary(::BoxcarKernel) = "boxcar"
+Base.summary(kernel::BoxcarKernel) = string("BoxcarKernel(window=", prettytime(kernel.window), ")")
 
 """
 $(TYPEDSIGNATURES)
@@ -63,7 +63,7 @@ end
 
 (kernel::HanningKernel)(τ) = abs(τ) <= kernel.window / 2 ? (1 + cos(2π * τ / kernel.window)) / 2 : zero(τ)
 
-Base.summary(::HanningKernel) = "Hanning"
+Base.summary(kernel::HanningKernel) = string("HanningKernel(window=", prettytime(kernel.window), ")")
 
 mutable struct FilteredTimeInterval{FT, K<:AbstractFilterKernel} <: AbstractSchedule
     interval :: FT
@@ -74,15 +74,16 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return a schedule for an output writer that writes its outputs filtered in time, one frame every
-`interval`. Each frame is a weighted average of an output over the `window` of `kernel`, centered on
-the frame time. The kernel is an [`AbstractFilterKernel`](@ref): [`LanczosKernel`](@ref)`(window; cutoff)`,
-[`HanningKernel`](@ref)`(window)` or [`BoxcarKernel`](@ref)`(window)`. `LanczosKernel` passes periods longer
-than `cutoff` and removes shorter ones, so a cutoff of 40 hours removes the diurnal and semidiurnal tides.
+Return a schedule for an output writer that periodically writes time-filtered output on `interval`.
+The output is a weighted average of an `AbstractField` (or a compatible function-based diagnostic)
+over the `window` of `kernel`, centered on the output time. The weights come from `kernel`, an
+[`AbstractFilterKernel`](@ref): [`LanczosKernel`](@ref)`(window; cutoff)`, [`HanningKernel`](@ref)`(window)`
+or [`BoxcarKernel`](@ref)`(window)`. `LanczosKernel` passes periods longer than `cutoff` and removes
+shorter ones, so a cutoff of 40 hours removes the diurnal and semidiurnal tides.
 
-Frames fall on multiples of `interval` and are stamped with their center time; each is written
-`window / 2` after it. Frames whose window starts before the first time step are not written, so
-a simulation picked up from a checkpoint writes its first frame `window / 2` after the checkpoint.
+Outputs fall on multiples of `interval` and are stamped with their center time; each is written
+`window / 2` after it. Outputs whose window starts before the first time step are not written, so
+a simulation picked up from a checkpoint writes its first output `window / 2` after the checkpoint.
 
 ```jldoctest
 using Oceananigans
@@ -91,7 +92,7 @@ using Oceananigans.Units
 FilteredTimeInterval(LanczosKernel(5days; cutoff=40hours); interval=1days)
 
 # output
-FilteredTimeInterval(interval=1 day, window=5 days, Lanczos, cutoff=1.667 days)
+FilteredTimeInterval(LanczosKernel(window=5 days, cutoff=1.667 days), interval=1 day)
 ```
 """
 function FilteredTimeInterval(kernel::AbstractFilterKernel; interval)
@@ -99,16 +100,17 @@ function FilteredTimeInterval(kernel::AbstractFilterKernel; interval)
     return FilteredTimeInterval(interval, kernel, 0)
 end
 
-Base.summary(filter::FilteredTimeInterval) = string("FilteredTimeInterval(interval=", prettytime(filter.interval),
-                                             ", window=", prettytime(filter.kernel.window),
-                                             ", ", summary(filter.kernel), ")")
+Base.show(io::IO, kernel::AbstractFilterKernel) = print(io, summary(kernel))
+
+Base.summary(filter::FilteredTimeInterval) =
+    string("FilteredTimeInterval(", summary(filter.kernel), ", interval=", prettytime(filter.interval), ")")
 
 Base.show(io::IO, filter::FilteredTimeInterval) = print(io, summary(filter))
 
 (filter::FilteredTimeInterval)(model) = filter.next_frame_number > 0 &&
                                  model.clock.time >= filter.next_frame_number * filter.interval + filter.kernel.window / 2
 
-# The frame that just became complete is written with its own center time rather than
+# The filtered output that just became complete is written with its own center time rather than
 # `clock.time` (when it fires, `window / 2` later). Called exactly once per write, since a
 # writer's `schedule(model)` check (which doesn't call this) already gates whether
 # `write_output!` — and so this — runs at all.
@@ -118,9 +120,8 @@ function output_time(clock, filter::FilteredTimeInterval)
     return t
 end
 
-# A fresh simulation always writes every output writer once at iteration 0, regardless of what
-# its schedule says at that point — `FilteredTimeInterval`'s first frame is never complete that early.
-should_write_initial_output(::FilteredTimeInterval) = false
+# The first filtered output only exists once its window has been accumulated, so there is none at iteration 0.
+has_initial_output(::FilteredTimeInterval) = false
 
 Oceananigans.prognostic_state(::FilteredTimeInterval) = nothing
 Oceananigans.restore_prognostic_state!(::FilteredTimeInterval, ::Nothing) = nothing

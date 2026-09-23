@@ -206,13 +206,13 @@ Pass either a `SpecifiedTimes` instance or raw times.
 
 ### `FilteredTimeInterval`
 
-[`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write each frame as a
-weighted average over the `window` of a kernel, centered on the frame time, with weights from the kernel:
+[`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write time-filtered output: a
+weighted average over the `window` of a kernel, centered on the output time, with weights from the kernel:
 [`LanczosKernel`](@ref Oceananigans.OutputWriters.LanczosKernel)`(window; cutoff)`, which removes periods shorter than `cutoff`,
 [`HanningKernel`](@ref Oceananigans.OutputWriters.HanningKernel) or [`BoxcarKernel`](@ref Oceananigans.OutputWriters.BoxcarKernel) (a running mean).
 Any [`AbstractFilterKernel`](@ref Oceananigans.OutputWriters.AbstractFilterKernel) can be supplied.
-Because the window is centered, frames carry no phase shift, unlike the trailing window of `AveragedTimeInterval`;
-each frame is therefore written `window / 2` after its time.
+Because the window is centered, the output carries no phase shift, unlike the trailing window of `AveragedTimeInterval`;
+each output is therefore written `window / 2` after its time.
 
 ### `FileSizeLimit`
 

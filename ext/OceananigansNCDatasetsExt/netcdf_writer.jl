@@ -485,6 +485,8 @@ Write output to netcdf file `output_writer.filepath` at specified intervals. Inc
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFWriter, model::AbstractModel)
+    model.clock.iteration == 0 && !has_initial_output(ow.schedule) && return nothing
+
     # Ensure the writer is initialized before writing
     initialize!(ow, model)
 

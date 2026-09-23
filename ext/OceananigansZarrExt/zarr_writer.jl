@@ -124,7 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
-output_grid(output::FilteredOutput)                   = grid(output.operand)
+output_grid(output::FilteredOutput)                          = grid(output.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -207,8 +207,7 @@ end
 rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
     rank_global_offsets(output.operand)
 
-rank_global_offsets(output::FilteredOutput) =
-    rank_global_offsets(output.operand)
+rank_global_offsets(output::FilteredOutput) = rank_global_offsets(output.operand)
 
 # Global shape of a Field on a (possibly distributed) grid.
 function global_field_size(field::AbstractField)
@@ -512,6 +511,8 @@ end
 #####
 
 function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
     distributed = is_distributed_arch(model)
     is_root = !distributed || mpi_rank(global_communicator()) == 0
 

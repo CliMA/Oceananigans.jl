@@ -356,6 +356,8 @@ function iteration_exists(filepath, iter=0)
 end
 
 function Oceananigans.write_output!(writer::JLD2Writer, model)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
     # Ensure the writer is initialized before writing
     if !writer.initialized
         initialize!(writer, model)

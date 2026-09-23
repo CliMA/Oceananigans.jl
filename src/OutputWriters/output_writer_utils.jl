@@ -24,13 +24,12 @@ output_time(clock, schedule) = clock.time
 """
 $(TYPEDSIGNATURES)
 
-Return whether a fresh simulation should write an initial (iteration 0) output for `schedule`,
-regardless of what `schedule(model)` itself says at that point. Most schedules want this (a
-`TimeInterval`, for instance, treats iteration 0 as its own first actuation); a schedule whose
-frames are only ever complete strictly after some accumulation, like `FilteredTimeInterval`, overrides
-this to `false`.
+Return whether an output written on `schedule` exists at the start of a simulation (iteration 0).
+Most schedules have one (a `TimeInterval`, for instance, treats iteration 0 as its own first
+output); a schedule whose output only exists once it has accumulated some data, like
+`FilteredTimeInterval`, overrides this to `false`, and `write_output!` then skips the initial write.
 """
-should_write_initial_output(schedule) = true
+has_initial_output(schedule) = true
 
 # Names of the requested outputs; unordered dictionaries have no fixed iteration order, so their keys are sorted
 output_names(outputs) = keys(outputs)

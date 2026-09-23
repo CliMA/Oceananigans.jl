@@ -40,6 +40,7 @@ using Oceananigans.OutputWriters:
     construct_output,
     output_names,
     time_average_outputs,
+    has_initial_output,
     output_time,
     output_averaging_schedule,
     show_averaging_schedule,
