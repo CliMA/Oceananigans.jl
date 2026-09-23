@@ -364,9 +364,7 @@ user-supplied `target` (a `Number` or callable) unchanged; constructed by
 $(TYPEDFIELDS)
 """
 struct MaterializedRelaxationTarget{L, T, I}
-    "simulation-side instantiated location tuple"
     location :: L
-    "user-supplied target, wrapped unchanged"
     target   :: T
 end
 
