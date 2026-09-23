@@ -55,8 +55,9 @@ else
     args.list === nothing && any(needs_data, keys(testsuite)) && include(joinpath(SETUP, "data_dependencies.jl"))
 
     # Tests that mutate process-global state (loggers, Enzyme and Reactant flags, the active project,
-    # the default float type) get a throw-away worker.
-    dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/")
+    # the default float type), and quality assurance, which inspects every method loaded in the process,
+    # get a throw-away worker.
+    dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/", "unit/quality_assurance")
     function test_worker(name)
         if any(prefix -> startswith(name, prefix), dedicated_prefixes)
             addworker()
