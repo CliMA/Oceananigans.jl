@@ -127,8 +127,20 @@ unified_array(::GPU, a) = a
 
 @inline unsafe_free!(a) = nothing
 
-# Convert arguments to GPU-compatible types
+# Adaptor for CPU kernel arguments. Like the GPU adaptors it strips fields down to their data, so
+# that kernels do not specialize on field metadata that kernels never use (e.g. boundary conditions:
+# without this every distinct combination of boundary-condition types recompiles every kernel).
+# Unlike the GPU adaptors it leaves objects that are already CPU-ready as they are, notably grids
+# (see `Grids`): rebuilding them buys nothing on the CPU and only makes the kernel-launching code
+# larger, which can defeat inlining and cause allocations in tight launch loops.
+struct CPUKernelAdaptor end
+
+# User functions (e.g. closures, which may even be self-referential through a `Core.Box`) are passed
+# to CPU kernels as they are, rather than recursing into their captured variables.
+@inline Adapt.adapt(::CPUKernelAdaptor, f::Function) = f
+
+# Convert arguments to device-compatible types
 @inline convert_to_device(arch, args)  = args
-@inline convert_to_device(::CPU, args) = args
+@inline convert_to_device(::CPU, args) = Adapt.adapt(CPUKernelAdaptor(), args)
 
 end # module

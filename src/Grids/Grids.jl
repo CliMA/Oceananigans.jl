@@ -36,7 +36,7 @@ using Printf: @sprintf
 using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
-using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
+using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, CPUKernelAdaptor,
                                   architecture, on_architecture
 using Oceananigans.Utils: Utils
 
