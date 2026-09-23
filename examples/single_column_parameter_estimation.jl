@@ -33,7 +33,6 @@ using Reactant
 using CUDA
 using CairoMakie
 using Printf
-using Statistics: mean
 
 # ## A single column model
 #
@@ -152,9 +151,9 @@ function observe(model)
     u★ = XFaceField(grid)
     v★ = YFaceField(grid)
     b★ = CenterField(grid)
-    interior(u★) .= interior(model.velocities.u)
-    interior(v★) .= interior(model.velocities.v)
-    interior(b★) .= interior(model.tracers.b)
+    set!(u★, model.velocities.u)
+    set!(v★, model.velocities.v)
+    set!(b★, model.tracers.b)
     return (; u★, v★, b★)
 end
 
@@ -164,6 +163,8 @@ observations = observe(model)
 #
 # The cost function is the normalized mean square difference between
 # the final state of the model and the observations,
+
+using Statistics: mean
 
 function cost(normalized_parameters, model, bᵢ, observations, Δt, Nt)
     run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
@@ -175,9 +176,9 @@ function cost(normalized_parameters, model, bᵢ, observations, Δt, Nt)
     U² = 1e-2
     B² = (N² * 10)^2
 
-    𝒥u = mean((interior(u) .- interior(u★)).^2) / U²
-    𝒥v = mean((interior(v) .- interior(v★)).^2) / U²
-    𝒥b = mean((interior(b) .- interior(b★)).^2) / B²
+    𝒥u = mean((u - u★)^2) / U²
+    𝒥v = mean((v - v★)^2) / U²
+    𝒥b = mean((b - b★)^2) / B²
 
     return 𝒥u + 𝒥v + 𝒥b
 end
@@ -306,6 +307,12 @@ for (ax, name) in zip((axu, axv, axb), (:u, :v, :b))
     lines!(ax, getproperty(first(iteration_states), name), z; linewidth=2, linestyle=:dot, color=(:gray, 0.6), label="initial guess")
     profile = @lift getproperty(iteration_states[$n], name)
     lines!(ax, profile, z; linewidth=3, linestyle=:dash, label="estimate")
+
+    all_profiles = [getproperty(state, name) for state in (nature_state, iteration_states...)]
+    xmin = minimum(minimum, all_profiles)
+    xmax = maximum(maximum, all_profiles)
+    δx = (xmax - xmin) / 20
+    xlims!(ax, xmin - δx, xmax + δx)
     ylims!(ax, -80, 0)
 end
 
