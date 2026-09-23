@@ -36,6 +36,7 @@ using CUDA
 using CairoMakie
 using Printf
 using Statistics: mean
+using LinearAlgebra: dot
 
 # ## Two single column models
 #
@@ -67,13 +68,8 @@ function surface_flux(value)
     return flux
 end
 
-# By default, `VariableStabilityFunctions` computes `𝕊u₀` from `Cu₀`. We hold it fixed instead,
-# so that the parameters we differentiate with respect to are the only ones that change.
-
-𝕊u₀ = VariableStabilityFunctions().𝕊u₀
-
 function column_model(Cu₀, Cc₀; τˣ=0, Jᵇ=0)
-    stability_functions = VariableStabilityFunctions(; Cu₀, Cc₀, 𝕊u₀)
+    stability_functions = VariableStabilityFunctions(; Cu₀, Cc₀)
     closure = TKEDissipationVerticalDiffusivity(; stability_functions)
     closure = Reactant.to_rarray(closure; track_numbers=Number)
 
@@ -194,6 +190,22 @@ function J(θ)
     return sum(column_costs)
 end
 
+# `VariableStabilityFunctions` derives a third constant, `𝕊u₀`, from `Cu₀` (and other constants),
+# so that the stability functions are consistent with a logarithmic boundary layer.
+# The closure stores `𝕊u₀` as a number in its own right, and so the shadow model contains
+# `∂J/∂𝕊u₀` separately from `∂J/∂Cu₀`. We use the chain rule to compute the total derivative
+# with respect to `Cu₀`,
+#
+# ```math
+# \frac{dJ}{dCu₀} = \frac{∂J}{∂Cu₀} + \frac{∂J}{∂𝕊u₀} \frac{d𝕊u₀}{dCu₀} \, ,
+# ```
+#
+# where we compute `d𝕊u₀/dCu₀` by differentiating the `VariableStabilityFunctions` constructor
+# with Enzyme.
+
+derived_𝕊u₀(Cu₀) = VariableStabilityFunctions(; Cu₀).𝕊u₀
+d𝕊u₀dCu₀(Cu₀) = only(Enzyme.autodiff(Enzyme.Reverse, derived_𝕊u₀, Enzyme.Active, Enzyme.Active(Cu₀))[1])
+
 function cost_and_gradient(θ)
     models = column_models(θ...)
     Jθ = 0.0
@@ -202,7 +214,10 @@ function cost_and_gradient(θ)
     for (model, obs) in zip(models, observations)
         shadow = Enzyme.make_zero(model)
         Jθ += Float64(compiled_column_cost_and_shadow!(model, shadow, bᵢ, obs, Δt, Nt))
-        ∇J[1] += Float64(shadow.closure.stability_functions.Cu₀)
+
+        ∂J∂Cu₀ = Float64(shadow.closure.stability_functions.Cu₀)
+        ∂J∂𝕊u₀ = Float64(shadow.closure.stability_functions.𝕊u₀)
+        ∇J[1] += ∂J∂Cu₀ + ∂J∂𝕊u₀ * d𝕊u₀dCu₀(θ[1])
         ∇J[2] += Float64(shadow.closure.stability_functions.Cc₀)
     end
 
@@ -222,35 +237,52 @@ J₀, ∇J₀ = cost_and_gradient(θ₀)
 
 # ## Gradient descent
 #
-# We minimize the cost with gradient descent. Each iteration steps along `-∇J` with a
-# step size chosen by a backtracking line search: we halve the step until the
-# cost decreases sufficiently, then try a longer step at the next iteration.
+# We minimize the cost with a quasi-Newton flavor of gradient descent called
+# [BFGS](https://en.wikipedia.org/wiki/Broyden–Fletcher–Goldfarb–Shanno_algorithm).
+# Plain gradient descent steps along `-∇J`, and zig-zags slowly along the narrow valley
+# in this cost function. BFGS instead steps along `-H ∇J`, where `H` is an estimate of the
+# inverse Hessian of `J` that BFGS builds from the change in the gradient between iterations.
+# We start with `H = α I`, which makes the first step a plain gradient descent step.
+# Each step is shortened by a backtracking line search until the cost decreases sufficiently.
 
-function gradient_descent(θ₀; iterations=12, α=0.5)
+function bfgs_descent(θ₀; iterations=10, α=0.5)
     θ = collect(θ₀)
-    history = [(θ=copy(θ), J=J(θ))]
+    Jⁿ, ∇J = cost_and_gradient(θ)
+    H = α * [1 0; 0 1]
+    history = [(θ=copy(θ), J=Jⁿ)]
 
     for n = 1:iterations
-        Jⁿ, ∇J = cost_and_gradient(θ)
+        d = - H * ∇J
 
-        θ′ = θ .- α .* ∇J
+        t = 1.0
+        θ′ = θ .+ t .* d
         J′ = J(θ′)
-        while J′ > Jⁿ - 1e-4 * α * sum(abs2, ∇J)
-            α /= 2
-            θ′ = θ .- α .* ∇J
+        while J′ > Jⁿ + 1e-4 * t * dot(∇J, d)
+            t /= 2
+            θ′ = θ .+ t .* d
             J′ = J(θ′)
         end
 
-        θ .= θ′
-        α *= 2
-        push!(history, (θ=copy(θ), J=J′))
-        @info @sprintf("iteration %2d: J = %.3e, Cu₀ = %.4f, Cc₀ = %.4f", n, J′, θ...)
+        J′, ∇J′ = cost_and_gradient(θ′)
+
+        ## BFGS update of the inverse Hessian estimate
+        s = θ′ .- θ
+        y = ∇J′ .- ∇J
+        if dot(s, y) > 0
+            ρ = 1 / dot(s, y)
+            A = [1 0; 0 1] .- ρ .* s * y'
+            H = A * H * A' .+ ρ .* s * s'
+        end
+
+        θ, Jⁿ, ∇J = θ′, J′, ∇J′
+        push!(history, (θ=copy(θ), J=Jⁿ))
+        @info @sprintf("iteration %2d: J = %.3e, Cu₀ = %.4f, Cc₀ = %.4f", n, Jⁿ, θ...)
     end
 
     return history
 end
 
-history = gradient_descent(θ₀)
+history = bfgs_descent(θ₀)
 θ̂ = history[end].θ
 
 @info @sprintf("Estimated: Cu₀ = %.4f, Cc₀ = %.4f (nature run: Cu₀ = %.4f, Cc₀ = %.4f)", θ̂..., θ★...)
@@ -265,7 +297,10 @@ Cc₀s = range(0.05, 0.17, length=9)
 Js = [J((Cu₀, Cc₀)) for Cu₀ in Cu₀s, Cc₀ in Cc₀s]
 
 # Finally, we compare the nature run with the model at the initial guess
-# and at the estimated parameters.
+# and at the estimated parameters. We plot the buoyancy anomaly `b - N² z`,
+# which reveals the mixed layers that each column develops.
+
+z = Array(znodes(grid, Center()))
 
 function final_state(θ)
     models = column_models(θ...)
@@ -274,16 +309,14 @@ function final_state(θ)
     end
     u = Array(interior(models.wind.velocities.u))[:]
     v = Array(interior(models.wind.velocities.v))[:]
-    bʷ = Array(interior(models.wind.tracers.b))[:]
-    bᶜ = Array(interior(models.convection.tracers.b))[:]
+    bʷ = Array(interior(models.wind.tracers.b))[:] .- N² .* z
+    bᶜ = Array(interior(models.convection.tracers.b))[:] .- N² .* z
     return (; u, v, bʷ, bᶜ)
 end
 
 nature_state = final_state(θ★)
 guess_state = final_state(θ₀)
 estimated_state = final_state(θ̂)
-
-z = Array(znodes(grid, Center()))
 
 fig = Figure(size=(1200, 800))
 top = fig[1, 1] = GridLayout()
@@ -294,7 +327,7 @@ hm = heatmap!(ax, Cu₀s, Cc₀s, log10.(Js); colormap=:deep)
 Colorbar(top[1, 2], hm; label="log₁₀ J")
 Cu₀_path = [h.θ[1] for h in history]
 Cc₀_path = [h.θ[2] for h in history]
-scatterlines!(ax, Cu₀_path, Cc₀_path; color=:orange, markersize=8, label="gradient descent")
+scatterlines!(ax, Cu₀_path, Cc₀_path; color=:orange, markersize=8, label="BFGS")
 scatter!(ax, [θ★[1]], [θ★[2]]; color=:red, marker=:star5, markersize=20, label="nature run")
 axislegend(ax, position=:rt)
 
@@ -303,8 +336,8 @@ scatterlines!(ax, 0:length(history)-1, [h.J for h in history])
 
 axu = Axis(bottom[1, 1]; xlabel="u (m s⁻¹)", ylabel="z (m)", title="Wind: u")
 axv = Axis(bottom[1, 2]; xlabel="v (m s⁻¹)", title="Wind: v")
-axbʷ = Axis(bottom[1, 3]; xlabel="b (m s⁻²)", title="Wind: b", xticks=LinearTicks(3))
-axbᶜ = Axis(bottom[1, 4]; xlabel="b (m s⁻²)", title="Convection: b", xticks=LinearTicks(3))
+axbʷ = Axis(bottom[1, 3]; xlabel="b - N² z (m s⁻²)", title="Wind: b", xticks=LinearTicks(3))
+axbᶜ = Axis(bottom[1, 4]; xlabel="b - N² z (m s⁻²)", title="Convection: b", xticks=LinearTicks(3))
 
 for (state, label, style) in ((nature_state, "nature run", :solid),
                               (guess_state, "initial guess", :dot),
@@ -322,3 +355,60 @@ end
 axislegend(axu, position=:lb)
 
 current_figure() #hide
+
+# ## Animating gradient descent
+#
+# To watch the model converge on the observations, we compute the final
+# state of the model for the parameters at each iteration of gradient descent,
+
+iteration_states = [final_state(h.θ) for h in history]
+
+# and animate the profiles, together with the path through parameter space.
+
+fig = Figure(size=(1200, 800))
+top = fig[2, 1] = GridLayout()
+bottom = fig[3, 1] = GridLayout()
+
+n = Observable(1)
+
+title = @lift @sprintf("Iteration %d: Cu₀ = %.4f, Cc₀ = %.4f, J = %.1e",
+                       $n - 1, history[$n].θ..., history[$n].J)
+Label(fig[1, 1], title, fontsize=20, tellwidth=false)
+
+ax = Axis(top[1, 1]; xlabel="Cu₀", ylabel="Cc₀", title="BFGS path")
+hm = heatmap!(ax, Cu₀s, Cc₀s, log10.(Js); colormap=:deep)
+Colorbar(top[1, 2], hm; label="log₁₀ J")
+path = @lift Point2f.(Cu₀_path[1:$n], Cc₀_path[1:$n])
+scatterlines!(ax, path; color=:orange, markersize=8)
+scatter!(ax, [θ★[1]], [θ★[2]]; color=:red, marker=:star5, markersize=20)
+
+ax = Axis(top[1, 3]; xlabel="Iteration", ylabel="J", yscale=log10, title="Cost")
+costs = [h.J for h in history]
+xlims!(ax, -0.5, length(history) - 0.5)
+ylims!(ax, minimum(costs) / 2, 2 * maximum(costs))
+cost_history = @lift Point2f.(0:$n-1, costs[1:$n])
+scatterlines!(ax, cost_history)
+
+axu = Axis(bottom[1, 1]; xlabel="u (m s⁻¹)", ylabel="z (m)", title="Wind: u")
+axv = Axis(bottom[1, 2]; xlabel="v (m s⁻¹)", title="Wind: v")
+axbʷ = Axis(bottom[1, 3]; xlabel="b - N² z (m s⁻²)", title="Wind: b", xticks=LinearTicks(3))
+axbᶜ = Axis(bottom[1, 4]; xlabel="b - N² z (m s⁻²)", title="Convection: b", xticks=LinearTicks(3))
+
+for (ax, name) in zip((axu, axv, axbʷ, axbᶜ), (:u, :v, :bʷ, :bᶜ))
+    lines!(ax, getproperty(nature_state, name), z; linewidth=3, label="nature run")
+    lines!(ax, getproperty(guess_state, name), z; linewidth=2, linestyle=:dot, color=(:gray, 0.6), label="initial guess")
+    iterate = @lift getproperty(iteration_states[$n], name)
+    lines!(ax, iterate, z; linewidth=3, linestyle=:dash, label="BFGS")
+    ylims!(ax, -80, 0)
+end
+
+axislegend(axu, position=:lb)
+
+frames = 1:length(history)
+
+CairoMakie.record(fig, "single_column_parameter_estimation.mp4", frames, framerate=2) do i
+    n[] = i
+end
+nothing #hide
+
+# ![](single_column_parameter_estimation.mp4)
