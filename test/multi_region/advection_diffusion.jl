@@ -91,7 +91,9 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
                                         coriolis = nothing,
                                         buoyancy=nothing)
 
-    initial_condition(x, y, z) = cos(2x)
+    # The initial condition varies in both directions and is not symmetric about the walls,
+    # so that a wall halo wrongly filled by wrap-around communication changes the result.
+    initial_condition(x, y, z) = cos(2x) * cos(2y)
 
     expr = quote
         # we use set!(model, ...) so that initialize!(model) is called
@@ -113,7 +115,7 @@ end
 
 Nx = Ny = 32
 
-partitioning = [XPartition]
+partitioning = [XPartition, YPartition]
 
 for arch in archs
     grid_rect = RectilinearGrid(arch,
@@ -192,31 +194,39 @@ for arch in archs
     end
 
     @testset "Testing multi region gaussian diffusion" begin
-        grid  = RectilinearGrid(arch,
-                                size = (Nx, Ny, 1),
-                                halo = (3, 3, 3),
-                                topology = (Bounded, Bounded, Bounded),
-                                x = (0, 1),
-                                y = (0, 1),
-                                z = (0, 1))
-
         diff₂ = ScalarDiffusivity(ν = 1, κ = 1)
         diff₄ = ScalarBiharmonicDiffusivity(ν = 1e-5, κ = 1e-5)
 
-        for field_name in (:u, :v, :c)
-            for closure in (diff₂, diff₄)
+        # A closed basin and a channel in each direction, so that the partitioned direction
+        # is periodic for one of the partitions and bounded for the other.
+        topologies = ((Bounded,  Bounded,  Bounded),
+                      (Periodic, Bounded,  Bounded),
+                      (Bounded,  Periodic, Bounded))
 
-                # on a single grid
-                fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
-                fs = Array(interior(fs))
+        for topology in topologies
+            grid = RectilinearGrid(arch,
+                                   size = (Nx, Ny, 1),
+                                   halo = (3, 3, 3),
+                                   topology = topology,
+                                   x = (0, 1),
+                                   y = (0, 1),
+                                   z = (0, 1))
 
-                for regions in (2,), P in partitioning
-                    @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) on $arch"
+            for field_name in (:u, :v, :c)
+                for closure in (diff₂, diff₄)
 
-                    f = diffusion_cosine_test(grid; closure, P, field_name, regions)
-                    f = interior(reconstruct_global_field(f))
+                    # on a single grid
+                    fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
+                    fs = Array(interior(fs))
 
-                    @test all(isapprox(f, fs, atol=1e-20, rtol=1e-15))
+                    for regions in (2,), P in partitioning
+                        @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) with topology $topology on $arch"
+
+                        f = diffusion_cosine_test(grid; closure, P, field_name, regions)
+                        f = interior(reconstruct_global_field(f))
+
+                        @test all(isapprox(f, fs, atol=1e-20, rtol=1e-15))
+                    end
                 end
             end
         end
