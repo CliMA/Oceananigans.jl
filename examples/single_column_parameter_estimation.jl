@@ -29,6 +29,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Architectures: ReactantState
+using Oceananigans.Models: reset!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: VariableStabilityFunctions
 using Enzyme
 using Reactant
@@ -106,8 +107,9 @@ parameters(values) = NamedTuple{keys(scales)}(Tuple(Reactant.ConcreteRNumber.(va
 # ## Running the column
 #
 # Each run starts from rest with constant stratification and lasts 12 hours. Because we reuse the same
-# model for every run, we first zero its velocities, tracers (including `e` and `ϵ`), and the
-# tendencies and velocities saved from previous time steps, so that every run starts from the same state.
+# model for every run, we first `reset!` the model, which zeros its fields (including `e` and `ϵ`) and
+# tendencies. We also zero the velocities that the closure saves from the previous time step,
+# so that every run starts from the same state.
 # The k-ϵ equations need a fairly short time step: with `Δt = 10minutes`, for example, the solution
 # becomes noisy.
 
@@ -117,21 +119,14 @@ bᵢ = set!(CenterField(grid), z -> N² * z)
 Δt = 1minute
 Nt = 720
 
-function reset_column!(model)
-    u, v = model.velocities
-    u⁻, v⁻ = model.closure_fields.previous_velocities
-    fields = (u, v, u⁻, v⁻, model.tracers..., model.timestepper.Gⁿ..., model.timestepper.G⁻...)
-
-    for field in fields
-        fill!(field, 0)
-    end
-
-    return nothing
-end
-
 function run_column!(model, x, bᵢ, Δt, Nt)
     assign_parameters!(model, x)
-    reset_column!(model)
+
+    reset!(model)
+    for u⁻ in model.closure_fields.previous_velocities
+        fill!(u⁻, 0)
+    end
+
     set!(model, b=bᵢ)
 
     @trace track_numbers=false for n = 1:Nt
@@ -235,7 +230,7 @@ end
 
 identity_matrix(N) = [i == j ? 1.0 : 0.0 for i in 1:N, j in 1:N]
 
-function bfgs(x₀; iterations=25, α=1)
+function bfgs(x₀; iterations=10, α=1)
     x = copy(x₀)
     Jⁿ, ∇J = cost_and_gradient(x)
     H = α * identity_matrix(length(x))

@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
+using Oceananigans.Models: reset!
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
@@ -96,6 +97,20 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # SingleColumnGrid tests
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
+        end
+    end
+
+    @testset "reset! for $topo_1d models" begin
+        @info "  Testing reset! for $topo_1d models..."
+        for arch in archs
+            grid = RectilinearGrid(arch, topology=topo_1d, size=4, extent=1)
+            model = HydrostaticFreeSurfaceModel(grid; tracers=:c, buoyancy=nothing)
+            set!(model, u=1, c=1)
+            time_step!(model, 1)
+            reset!(model)
+            @test all(Array(interior(model.velocities.u)) .== 0)
+            @test all(Array(interior(model.tracers.c)) .== 0)
+            @test all(Array(interior(model.timestepper.G⁻.c)) .== 0)
         end
     end
 
