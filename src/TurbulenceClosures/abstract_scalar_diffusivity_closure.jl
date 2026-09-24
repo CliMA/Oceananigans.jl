@@ -302,11 +302,9 @@ end
                   ivd_viscous_flux_vz(i, j, k, grid, closure, K, clk, fields, b))
 end
 
-@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, clk, fields, b)
-    return ifelse((k == 1) | (k == grid.Nz+1),
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, clk, fields, b),
-                  zero(grid))
-end
+# Every vertical flux of w is an interior flux between two faces, which the tridiagonal solver represents
+# in full with w = 0 on the boundary faces, so there is no boundary flux of w left to treat explicitly
+@inline viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, clk, fields, b) = zero(grid)
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
