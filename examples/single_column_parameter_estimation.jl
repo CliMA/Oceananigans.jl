@@ -25,6 +25,15 @@
 #
 # Reactant needs CUDA.jl to be loaded to compile Oceananigans' kernels,
 # even when it compiles for the CPU.
+#
+# Reactant can run with one of two runtimes, PJRT (the default) or IFRT. Oceananigans'
+# Reactant tests use IFRT. To use IFRT, add the following to the `Project.toml` or
+# `LocalPreferences.toml` of your project, and restart Julia:
+#
+# ```toml
+# [preferences.Reactant]
+# xla_runtime = "IFRT"
+# ```
 
 using Oceananigans
 using Oceananigans.Units
