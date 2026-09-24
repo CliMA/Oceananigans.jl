@@ -371,8 +371,8 @@ fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1]; xlabel="Iteration", ylabel="𝒥", yscale=log10, title="Cost")
 
 for (label, result) in (("BFGS", bfgs_result), ("gradient descent", gradient_descent_result))
-    costs = Optim.f_trace(result)
-    scatterlines!(ax, 0:length(costs)-1, costs; label)
+    cost_trace = Optim.f_trace(result)
+    scatterlines!(ax, 0:length(cost_trace)-1, cost_trace; label)
 end
 
 axislegend(ax)
