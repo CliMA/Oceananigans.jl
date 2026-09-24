@@ -69,7 +69,7 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "{{ matrix.architecture }} - all tests"
+  - label: "🧪 {{ matrix.architecture }} - all tests"
     concurrency_group: gate
     concurrency: 6
     key: "tests"
@@ -152,7 +152,7 @@ steps:
     artifact_paths:
       - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
-  - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
+  - label: "☣ {{ matrix.architecture }} - Enzyme/Reactant tests"
     concurrency_group: gate
     concurrency: 6
     key: "tests_enzyme_reactant"
