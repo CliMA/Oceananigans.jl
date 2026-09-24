@@ -38,6 +38,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "single_column_parameter_estimation.jl",
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
@@ -53,7 +54,6 @@ Distributed.addprocs(2)
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
-        "single_column_parameter_estimation.jl",
     ]
 end
 
