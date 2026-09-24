@@ -111,9 +111,6 @@ const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-const AIDorAHD = Union{AID, AHD}
-const AIDorAVD = Union{AID, AVD}
-
 # Viscosities without explicit passing of `id`
 @inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 @inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
@@ -141,10 +138,6 @@ const AIDorAVD = Union{AID, AVD}
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
-
-# νz is the coefficient of ∂z ϕ in the vertical flux of ϕ. For w under a three-dimensional closure that is 2ν, since
-# the flux is -2ν Σ₃₃ = -2ν ∂z w, whereas for u the 2 cancels the 1/2 in Σ₁₃ to leave -2ν Σ₁₃ = -ν ∂z u - ν ∂x w.
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::AID, K, clk, fields) = 2 * νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 
 # Viscosities with explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
@@ -228,6 +221,7 @@ const C = Center
 # Vertical viscous fluxes for isotropic diffusivities
 @inline viscous_flux_uz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, Σ₁₃, fields.u, fields.v, fields.w)
 @inline viscous_flux_vz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, Σ₂₃, fields.u, fields.v, fields.w)
+@inline viscous_flux_wz(i, j, k, grid, clo::AID, K, clk, fields, b) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, Σ₃₃, fields.u, fields.v, fields.w)
 
 # Horizontal viscous fluxes for horizontal diffusivities
 @inline νh_δᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields, u, v) = νhᶜᶜᶜ(i, j, k, grid, closure, K, clock, fields) * div_xyᶜᶜᶜ(i, j, k, grid, u, v)
@@ -254,13 +248,14 @@ const C = Center
 
 @inline viscous_flux_uz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶠᶜᶠ, fields.u)
 @inline viscous_flux_vz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶠᶠ, fields.v)
-
-# The vertical flux of w is -νz ∂z w for vertical and three-dimensional closures alike, with νz = 2ν for the latter
-@inline viscous_flux_wz(i, j, k, grid, clo::AIDorAVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶜᶜ, fields.w)
+@inline viscous_flux_wz(i, j, k, grid, clo::AVD, K, clk, fields, b) = - νz_σᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, ∂zᶜᶜᶜ, fields.w)
 
 #####
 ##### Diffusive fluxes
 #####
+
+const AIDorAHD = Union{AID, AHD}
+const AIDorAVD = Union{AID, AVD}
 
 @inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 @inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
@@ -276,6 +271,10 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AID, K, clock, fields, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, ∂yᵣᶜᶠᶠ, fields.w)
 @inline ivd_viscous_flux_uz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
+
+# The vertical flux of w under a three-dimensional closure is -2ν Σ₃₃ = -2ν ∂z w, all of which the solver applies implicitly
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, closure::AID, K, id, clk, fields) =
+    2 * νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields) * !inactive_node(i, j, k, grid, c, c, c)
 
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
