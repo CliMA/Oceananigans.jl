@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
-using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, oblique_phase_speeds
 using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
 using Oceananigans.Units
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
@@ -506,23 +506,35 @@ end
 ##### Test: ObliqueRadiation
 #####
 
-# With zero tangential differences the oblique update equals the normal update.
-function test_oblique_reduces_to_normal()
-    obl = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf)
-    nrm = NormalRadiation(inflow_timescale = 0, outflow_timescale = Inf)
-    Δt, Cᵃ, φᵉˣᵗ = 10.0, 0.05, -0.37
+# Without a tangential gradient and without averaging, the oblique update is the one-dimensional radiation
+# update: φᵇ ← (φᵇ + C φ₁) / (1 + C) with C = min(∂ₜφ / ∂ₙφ, 1), followed by nudging toward φᵉˣᵗ.
+function test_oblique_radiation_update()
+    Δt, φᵉˣᵗ = 10.0, -0.37
+    free   = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = Inf, phase_speed_weight = 1)
+    nudged = ObliqueRadiation(inflow_timescale = 0, outflow_timescale = 100, phase_speed_weight = 1)
 
-    reduces = true
-    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6), outflow in (true, false)
-        o = oblique_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, 0.0, 0.0, 0.0, 0.0, φᵉˣᵗ, Δt, obl, outflow, Cᵃ)
-        n = normal_radiation_update(φᵇ, φ₁, φ₂, φ₁ⁿ, φᵉˣᵗ, Δt, nrm, outflow, Cᵃ)
-        reduces &= isapprox(o, n; rtol = 1e-12, atol = 1e-14)
+    radiate(radiation, φᵇ, φ₁, φ₂, φ₁ⁿ; δᵇ = (0.0, 0.0), δ₁ = (0.0, 0.0)) = begin
+        rₙ, rₜ, c, radiating = oblique_phase_speeds(φ₁, φ₂, φ₁ⁿ, δ₁...)
+        oblique_radiation_update(φᵇ, φ₁, δᵇ..., rₙ, rₜ, c, radiating, φᵉˣᵗ, Δt, radiation)
     end
 
-    tilted = oblique_radiation_update(0.5, 0.8, 0.3, 0.6, 0.2, 0.1, 0.25, 0.15, φᵉˣᵗ, Δt, obl, true, Cᵃ)
-    normal = normal_radiation_update(0.5, 0.8, 0.3, 0.6, φᵉˣᵗ, Δt, nrm, true, Cᵃ)
+    ok = true
+    for φᵇ in (-1.0, 0.0, 0.7), φ₁ in (-0.5, 0.3, 1.2), φ₂ in (-0.2, 0.9), φ₁ⁿ in (0.1, 0.6)
+        ∂t, ∂n = φ₁ⁿ - φ₁, φ₁ - φ₂
+        if ∂t * ∂n > 0 # phase speed out of the domain: radiate
+            C = min(∂t / ∂n, 1)
+            expected = (φᵇ + C * φ₁) / (1 + C)
+            ok &= radiate(free, φᵇ, φ₁, φ₂, φ₁ⁿ) ≈ expected
+            γ = Δt / (100 + Δt)
+            ok &= radiate(nudged, φᵇ, φ₁, φ₂, φ₁ⁿ) ≈ (1 - γ) * expected + γ * φᵉˣᵗ
+        else           # phase speed into the domain or zero: inflow, imposed exterior value
+            ok &= radiate(free, φᵇ, φ₁, φ₂, φ₁ⁿ) == φᵉˣᵗ
+        end
+    end
 
-    return reduces && !isapprox(tilted, normal; rtol = 1e-6)
+    straight = radiate(free, 0.5, 0.8, 0.3, 0.9)
+    tilted   = radiate(free, 0.5, 0.8, 0.3, 0.9; δᵇ = (0.2, 0.1), δ₁ = (0.25, 0.15))
+    return ok && !isapprox(tilted, straight; rtol = 1e-6)
 end
 
 # Mirroring the initial tracer and the tangential velocity mirrors the solution.
@@ -737,8 +749,8 @@ end
         @test test_gravity_wave_pairing()
     end
 
-    @testset "ObliqueRadiation reduces to NormalRadiation at normal incidence" begin
-        @test test_oblique_reduces_to_normal()
+    @testset "ObliqueRadiation update and inflow nudging" begin
+        @test test_oblique_radiation_update()
     end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
