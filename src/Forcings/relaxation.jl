@@ -328,22 +328,22 @@ end
     return u, v
 end
 
-@inline function evaluate_rate(r::FlowDependentRate{:west}, i, j, k, grid, model_fields, loc)
+@inline function evaluate_rate(i, j, k, grid, r::FlowDependentRate{:west}, model_fields, loc)
     uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
     return ifelse(uₙ > 0, r.rate_in, r.rate_out)
 end
 
-@inline function evaluate_rate(r::FlowDependentRate{:east}, i, j, k, grid, model_fields, loc)
+@inline function evaluate_rate(i, j, k, grid, r::FlowDependentRate{:east}, model_fields, loc)
     uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
     return ifelse(uₙ < 0, r.rate_in, r.rate_out)
 end
 
-@inline function evaluate_rate(r::FlowDependentRate{:south}, i, j, k, grid, model_fields, loc)
+@inline function evaluate_rate(i, j, k, grid, r::FlowDependentRate{:south}, model_fields, loc)
     uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
     return ifelse(vₙ > 0, r.rate_in, r.rate_out)
 end
 
-@inline function evaluate_rate(r::FlowDependentRate{:north}, i, j, k, grid, model_fields, loc)
+@inline function evaluate_rate(i, j, k, grid, r::FlowDependentRate{:north}, model_fields, loc)
     uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
     return ifelse(vₙ < 0, r.rate_in, r.rate_out)
 end
