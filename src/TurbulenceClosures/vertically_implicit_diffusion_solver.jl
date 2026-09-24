@@ -292,7 +292,6 @@ function implicit_step!(field::Field,
 
     LX, LY, LZ = location(field)
     w = isnothing(velocities) ? nothing : velocities.w
-    Δt = convert(eltype(field.grid), Δt)
 
     return solve!(field, implicit_solver, field,
                   vi_closure, vi_closure_fields, tracer_index,
