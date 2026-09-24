@@ -43,6 +43,10 @@ using CUDA
 using CairoMakie
 using Printf
 
+# A single column is small, so we run Reactant on the CPU even when a GPU is available,
+
+Reactant.set_default_backend("cpu")
+
 # ## A single column model
 #
 # We simulate a column of ocean mixed by a surface wind stress `τˣ` and cooled by
@@ -242,7 +246,7 @@ end
 using Optim
 
 function ∇𝒥!(G, θ)
-    𝒥θ, ∇𝒥θ = cost_and_gradient(θ)
+    _, ∇𝒥θ = cost_and_gradient(θ)
     G .= ∇𝒥θ
     return G
 end
