@@ -9,6 +9,8 @@ using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
 using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
+using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Fields: instantiated_location
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
@@ -203,6 +205,36 @@ end
         (x, y, z, t) -> FT(1) * series[1][1, 1, 1]
     end
     @test @inferred(extract_field_time_series(typed_and_series)) === (fts,)
+end
+
+@testset "CPU kernel arguments: convert_to_device is inferred and strips field metadata" begin
+    grid = allocation_grid(CPU(); immersed_mode=:active_immersed, size=(8, 8, 4))
+    top_value = FieldBoundaryConditions(grid, (Center(), Center(), Center()); top=ValueBoundaryCondition(1))
+    c₁ = CenterField(grid)
+    c₂ = CenterField(grid; boundary_conditions=top_value)
+    η  = Field{Center, Center, Nothing}(grid)
+    loc = instantiated_location(c₁)
+    clock = Clock(grid)
+
+    args₁ = (grid, c₁, η, loc, clock, Val(true), 1.0)
+    args₂ = (grid, c₂, η, loc, clock, Val(true), 1.0)
+    converted₁ = @inferred convert_to_device(CPU(), args₁)
+    converted₂ = @inferred convert_to_device(CPU(), args₂)
+
+    # Kernels specialize on their argument types: fields that differ only in their boundary
+    # conditions must be converted to the same types, so they share compiled kernels.
+    @test typeof(converted₁) === typeof(converted₂)
+    @test converted₁[1] === grid     # grids are passed to CPU kernels unchanged
+    @test converted₁[2] === c₁.data  # fields are stripped down to their data
+    @test converted₁[4] === loc
+
+    # The location instances `mask_immersed_field!` launches with must be inferred as such
+    # (types passed as values are widened to `DataType`, making the launch type-unstable).
+    @test @inferred(instantiated_location(c₁)) === (Center(), Center(), Center())
+
+    convert_allocations(args) = @allocated convert_to_device(CPU(), args)
+    convert_allocations(args₁)  # warm up
+    @test convert_allocations(args₁) == 0
 end
 
 @testset "Memory allocation regression tests" begin
