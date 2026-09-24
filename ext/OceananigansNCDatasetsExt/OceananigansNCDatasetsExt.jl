@@ -12,7 +12,9 @@ Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigan
 module OceananigansNCDatasetsExt
 
 import NCDatasets
-using NCDatasets: AbstractDataset, NCDataset, defDim, defGroup, dimnames, name, sync
+using NCDatasets: NCDataset, defDim, defGroup, dimnames, name, sync
+using NCDatasets.CommonDataModel: AbstractDataset
+using NCDatasets.DiskArrays: AbstractDiskArray
 
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
@@ -25,7 +27,7 @@ using Oceananigans: prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 import Oceananigans.Fields
-using Oceananigans.Fields: Fields, AbstractField, data, interior, set!, Reduction, location, indices
+using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, grid, nodes, constructor_arguments,
     generate_coordinate
@@ -40,6 +42,7 @@ using Oceananigans.ImmersedBoundaries:
     CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
+    auto_extension,
     InMemoryFTS,
     time_indices,
     InMemory,
@@ -49,13 +52,14 @@ using Oceananigans.OutputReaders:
     UnspecifiedBoundaryConditions,
     NetCDFPath
 using Oceananigans.OutputWriters:
-    auto_extension,
     output_averaging_schedule,
     show_averaging_schedule,
     WindowedTimeAverage,
+    TimeDerivative,
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,
+    output_names,
     time_average_outputs,
     fetch_output,
     convert_output,
@@ -93,6 +97,10 @@ const f = Face()
 #####
 ##### Include scripts
 #####
+
+# Both Oceananigans and DiskArrays define a `copyto!` for this pair; the Oceananigans
+# semantics (copy into the interior) apply.
+Base.copyto!(f::Field, src::AbstractDiskArray) = copyto!(interior(f), src)
 
 include("utils.jl")
 include("dimensions.jl")

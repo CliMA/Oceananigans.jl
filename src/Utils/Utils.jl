@@ -2,14 +2,14 @@ module Utils
 
 export configure_kernel, launch!, KernelParameters, kernel_time_step
 export prettytime, pretty_filesize
-export tupleit, parenttuple, datatuple, datatuples
+export tupleit, parenttuple, datatuple, datatuples, named_tuple
 export ordered_dict_show
 export instantiate
 export with_tracers
 export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
