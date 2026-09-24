@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
-using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, oblique_phase_speeds
+using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, oblique_phase_speeds,
+                                       tangential_radiation_update, radiation_buffers, radiation_storage
 using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
 using Oceananigans.Units
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
@@ -537,6 +538,23 @@ function test_oblique_radiation_update()
     return ok && !isapprox(tilted, straight; rtol = 1e-6)
 end
 
+# A tangential velocity radiates with the phase speed of the adjacent normal velocity: here the tangential
+# velocity itself is steady, so it only radiates when the phase speed comes from the normal velocity.
+function test_oblique_tangential_uses_normal_phase_speed()
+    clock = (; stage = 1, last_stage_Δt = 10.0, iteration = 1)
+    materialize(weight) = radiation_storage(ObliqueRadiation(inflow_timescale = Inf, phase_speed_weight = weight),
+                                            radiation_buffers(ObliqueRadiation(), CPU(), Float64, (3, 1)))
+    φᵇ, φ₁, φ₂, φᵉˣᵗ = 0.2, 0.9, 0.5, -0.3
+    # normal velocity next to the boundary: previous interior value 0 (fresh buffers), now -1, second interior -2,
+    # so its phase speed points out of the domain
+    outgoing = (-1.0, -2.0, 0.0, 0.0)
+
+    coupled = tangential_radiation_update(materialize(0.3), 2, 1, clock, φᵇ, φ₁, φ₂, φ₁, φᵉˣᵗ, 10.0, outgoing, outgoing)
+    own     = tangential_radiation_update(materialize(1),   2, 1, clock, φᵇ, φ₁, φ₂, φ₁, φᵉˣᵗ, 10.0, outgoing, outgoing)
+
+    return own == φᵇ && φᵇ < coupled < φ₁
+end
+
 # Mirroring the initial tracer and the tangential velocity mirrors the solution.
 function test_oblique_radiation_mirror_symmetry()
     grid = RectilinearGrid(size = (24, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1),
@@ -751,6 +769,10 @@ end
 
     @testset "ObliqueRadiation update and inflow nudging" begin
         @test test_oblique_radiation_update()
+    end
+
+    @testset "ObliqueRadiation radiates tangential velocity with the normal phase speed" begin
+        @test test_oblique_tangential_uses_normal_phase_speed()
     end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
