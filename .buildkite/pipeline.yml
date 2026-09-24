@@ -21,6 +21,7 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       TEST_GROUP: "init"
+    timeout_in_minutes: 60
     command: |
       juliaup add $JULIA_VERSION
 
@@ -50,6 +51,7 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       TEST_GROUP: "init"
+    timeout_in_minutes: 60
     command: |
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
@@ -76,6 +78,7 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       JULIA_CPU_THREADS: "6"
+    timeout_in_minutes: 150
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -129,6 +132,7 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
+    timeout_in_minutes: 120
     command: |
       cd "$OCEANANIGANS_DIR"
 
@@ -157,6 +161,7 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       JULIA_CPU_THREADS: "4"
+    timeout_in_minutes: 45
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -216,6 +221,7 @@ steps:
   - label: "📊 Upload coverage to Codecov"
     agents:
       queue: "Oceananigans-nautilus"
+    timeout_in_minutes: 20
     command: |
       set -e
 
