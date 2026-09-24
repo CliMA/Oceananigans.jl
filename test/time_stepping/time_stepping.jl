@@ -399,6 +399,21 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
+    @testset "Clock with integer time adapts to a kernel argument" begin
+        # The default `last_Δt = Inf` cannot be represented by the integer time type.
+        clock = Clock(time=1)
+        @test clock.last_Δt === Inf
+
+        kernel_clock = @inferred Adapt.adapt(nothing, clock)
+        @test kernel_clock.time === 1
+        @test kernel_clock.last_Δt === Inf
+        @test kernel_clock.last_stage_Δt === Inf
+
+        integer_clock = Clock{Int}(time=0)
+        @test integer_clock.last_Δt === Inf
+        @test Adapt.adapt(nothing, integer_clock).last_Δt === Inf
+    end
+
     @testset "Clock last_Δt tracks the most recent time step" begin
         @info "  Testing that clock.last_Δt is updated by every time stepper..."
 

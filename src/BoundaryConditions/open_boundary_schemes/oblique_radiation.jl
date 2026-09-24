@@ -88,9 +88,14 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
 has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-radiation_buffers(::ObliqueRadiation, arch, FT, tangential_size) =
-    (on_architecture(arch, zeros(FT, tangential_size..., 2)),
-     on_architecture(arch, zeros(FT, tangential_size..., 2)))
+radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
+    (ntuple(_ -> zeros(arch, FT, tangential_size...), 3)...,
+     zeros(arch, FT, tangential_size..., 2),
+     zeros(arch, FT, tangential_size..., 2))
+
+radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)) =
+    ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
+                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport)
 
 # Fills read the buffer written during the previous iteration and write the other one.
 @inline written_buffer(clock) = clock.iteration % 2 + 1
