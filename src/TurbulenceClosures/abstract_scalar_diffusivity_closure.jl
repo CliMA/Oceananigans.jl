@@ -272,6 +272,10 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ivd_viscous_flux_uz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 
+# The vertical flux of w under a three-dimensional closure is -2ν Σ₃₃ = -2ν ∂z w, all of which the solver applies implicitly
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, closure::AID, K, id, clk, fields) =
+    2 * νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields) * !inactive_node(i, j, k, grid, c, c, c)
+
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
 @inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, fields, b)
