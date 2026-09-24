@@ -803,8 +803,8 @@ end
             G, w⁰ = w_viscous_tendency(grid, ScalarDiffusivity(; ν), u₀, v₀, w₀, Δt)
             @test view(G, :, :, 2:Nz) ≈ -ν * (k^2 + l^2 + m^2) .* view(w⁰, :, :, 2:Nz)
 
-            # Face 1 is the boundary and face 2 still sees the double-counted k == 1 flux (issue #6048)
-            faces = 3:Nz
+            # Face 1 is the boundary, where w vanishes and no tendency is computed
+            faces = 2:Nz
             for (name, explicit, implicit) in (("ScalarDiffusivity",             ScalarDiffusivity(; ν),          ScalarDiffusivity(VITD; ν)),
                                                ("SmagorinskyLilly",              SmagorinskyLilly(),              SmagorinskyLilly(VITD)),
                                                ("AnisotropicMinimumDissipation", AnisotropicMinimumDissipation(), AnisotropicMinimumDissipation(VITD)))
