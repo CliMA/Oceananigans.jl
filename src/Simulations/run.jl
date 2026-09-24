@@ -4,7 +4,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Fields: set!
-using Oceananigans.OutputWriters: WindowedTimeAverage, FilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
 using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
 
@@ -294,10 +294,10 @@ function add_dependency!(sim, wta::WindowedTimeAverage, schedule)
     end
 end
 
-function add_dependency!(sim, output::FilteredOutput, schedule)
+function add_dependency!(sim, output::TimeFilteredOutput, schedule)
     diags = sim.diagnostics
     if output ∉ values(diags)
-        diags[next_dependency_name("FilteredOutput", keys(diags))] = output
+        diags[next_dependency_name("TimeFilteredOutput", keys(diags))] = output
     end
 end
 

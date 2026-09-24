@@ -126,7 +126,7 @@ has_initial_output(::FilteredTimeInterval) = false
 Oceananigans.prognostic_state(::FilteredTimeInterval) = nothing
 Oceananigans.restore_prognostic_state!(::FilteredTimeInterval, ::Nothing) = nothing
 
-mutable struct FilteredOutput{O, A, FT, K} <: AbstractDiagnostic
+mutable struct TimeFilteredOutput{O, A, FT, K} <: AbstractDiagnostic
     operand :: O
     filter :: FilteredTimeInterval{FT, K}
     schedule :: IterationInterval
@@ -136,17 +136,17 @@ mutable struct FilteredOutput{O, A, FT, K} <: AbstractDiagnostic
     previous_time :: FT
 end
 
-function FilteredOutput(operand, filter, model)
+function TimeFilteredOutput(operand, filter, model)
     output = fetch_output(operand, model)
     Nbuffer = floor(Int, filter.kernel.window / filter.interval) + 1
     sum_buffer = [zero(output) for _ in 1:Nbuffer]
     FT = typeof(filter.interval)
-    return FilteredOutput(operand, filter, IterationInterval(1), sum_buffer,
+    return TimeFilteredOutput(operand, filter, IterationInterval(1), sum_buffer,
                                  zeros(FT, Nbuffer), zeros(Int, Nbuffer),
                                  convert(FT, model.clock.time))
 end
 
-function Oceananigans.run_diagnostic!(output::FilteredOutput, model)
+function Oceananigans.run_diagnostic!(output::TimeFilteredOutput, model)
     filter = output.filter
     t = model.clock.time
     Δt = t - output.previous_time
@@ -179,17 +179,17 @@ function Oceananigans.run_diagnostic!(output::FilteredOutput, model)
     return nothing
 end
 
-function (output::FilteredOutput)(model)
+function (output::TimeFilteredOutput)(model)
     n = mod(output.filter.next_frame_number, length(output.sum_buffer)) + 1
     return output.sum_buffer[n] ./ output.weights[n]
 end
 
-Grids.grid(output::FilteredOutput) = grid(output.operand)
-Fields.location(output::FilteredOutput) = location(output.operand)
-Fields.indices(output::FilteredOutput) = indices(output.operand)
+Grids.grid(output::TimeFilteredOutput) = grid(output.operand)
+Fields.location(output::TimeFilteredOutput) = location(output.operand)
+Fields.indices(output::TimeFilteredOutput) = indices(output.operand)
 
 function time_average_outputs(filter::FilteredTimeInterval, outputs::NamedTuple, model)
-    filtered_outputs = NamedTuple(name => FilteredOutput(outputs[name], filter, model) for name in keys(outputs))
+    filtered_outputs = NamedTuple(name => TimeFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
     return filter, filtered_outputs
 end
 
@@ -197,6 +197,6 @@ function time_average_outputs(filter::FilteredTimeInterval, outputs::AbstractDic
     # `NetCDFWriter`/`ZarrWriter` pass an `OrderedDict`, not a `Dict`; build the same concrete
     # dictionary type back so their output order is preserved.
     DictType = Base.typename(typeof(outputs)).wrapper
-    filtered_outputs = DictType(name => FilteredOutput(output, filter, model) for (name, output) in outputs)
+    filtered_outputs = DictType(name => TimeFilteredOutput(output, filter, model) for (name, output) in outputs)
     return filter, filtered_outputs
 end
