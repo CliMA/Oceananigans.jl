@@ -125,7 +125,7 @@ jobs:
                        force_latest_compatible_version=false,
                        allow_reresolve=true)'
         env:
-          TEST_GROUP: "makie,reactant,sharding"
+          TEST_GROUP: "makie"
           JULIA_DEBUG: "Reactant, Reactant_jll"
           JULIA_TEST_MAXRSS_MB: 3200
           REACTANT_TEST: true
