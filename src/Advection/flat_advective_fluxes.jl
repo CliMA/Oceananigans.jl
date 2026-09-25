@@ -46,5 +46,8 @@ for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, 
         @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
         @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
         @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::GhostCellWENO, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::GhostCellWENO, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::GhostCellWENO, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
     end
 end
