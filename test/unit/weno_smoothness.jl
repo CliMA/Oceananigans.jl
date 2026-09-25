@@ -50,8 +50,46 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
             @test sum(ω_f32) ≈ 1
 
             for r in 1:buffer
-                @test ω_f32[r] ≈ ω_f64[r] atol=1e-3
+                @test ω_f32[r] ≈ ω_f64[r] rtol=2e-3
             end
+        end
+    end
+end
+
+@testset "Float32 WENO weights beside a large jump" begin
+    # A flat sub-stencil beside a jump of 3e5: τ / (β + ϵ) ≈ 3e19, whose square overflows Float32
+    for order in (5, 7, 9)
+        buffer = Int((order + 1) ÷ 2)
+        S = ntuple(i -> i < buffer + 1 ? 0f0 : 3f5 * (i - buffer), 2buffer - 1)
+        δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
+
+        for weight_computation in (Oceananigans.Utils.NormalDivision,
+                                   Oceananigans.Utils.BackendOptimizedDivision)
+            ω = biased_weno_weights(δ, nothing, WENO(Float32; order, weight_computation))
+            reference = biased_weno_weights(Float64.(δ), nothing,
+                                            WENO(Float64; order, weight_computation))
+
+            @test all(isfinite, ω)
+            @test sum(ω) ≈ 1
+            @test all(isapprox.(ω, reference; rtol=1e-5))
+        end
+    end
+end
+
+@testset "Float32 WENO weights where the flow is smooth" begin
+    for order in (5, 7, 9)
+        buffer = Int((order + 1) ÷ 2)
+        δ = ntuple(_ -> 1f0, Val(2buffer - 2))          # linear field ⇒ every β equal ⇒ τ = 0
+
+        for weight_computation in (Oceananigans.Utils.NormalDivision,
+                                   Oceananigans.Utils.BackendOptimizedDivision)
+            scheme = WENO(Float32; order, weight_computation)
+            ω = biased_weno_weights(δ, nothing, scheme)
+            optimal = ntuple(r -> Oceananigans.Advection.C★(scheme, Val(r - 1)), buffer)
+
+            @test all(isfinite, ω)
+            @test sum(ω) ≈ 1
+            @test all(isapprox.(ω, optimal; rtol=1e-6))
         end
     end
 end
