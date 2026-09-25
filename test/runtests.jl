@@ -61,7 +61,8 @@ else
         if any(prefix -> startswith(name, prefix), dedicated_prefixes)
             addworker()
         elseif startswith(name, "memory_allocation/")
-            addworker(; exeflags=["--check-bounds=auto"])
+            # Coverage instrumentation inflates the measured allocations.
+            addworker(; exeflags=["--check-bounds=auto", "--code-coverage=none"])
         else
             nothing
         end
