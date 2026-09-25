@@ -171,7 +171,7 @@ function remaining_workers(r1, r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
-struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, T, D} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -179,8 +179,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     local_index :: I
     connectivity :: C
     communicator :: γ
-    mpi_requests :: M
-    mpi_tag :: T
+    field_count :: T
     devices :: D
 
     Distributed{S}(child_architecture :: A,
@@ -190,18 +189,16 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                    local_index :: I,
                    connectivity :: C,
                    communicator :: γ,
-                   mpi_requests :: M,
-                   mpi_tag :: T,
-                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
+                   field_count :: T,
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, T, D} =
+                   new{A, S, Δ, R, ρ, I, C, γ, T, D}(child_architecture,
                                                         partition,
                                                         ranks,
                                                         local_rank,
                                                         local_index,
                                                         connectivity,
                                                         communicator,
-                                                        mpi_requests,
-                                                        mpi_tag,
+                                                        field_count,
                                                         devices)
 end
 
@@ -255,7 +252,7 @@ function Distributed(child_architecture = CPU();
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
-        MPI.Init()
+        MPI.Init(; threadlevel=:multiple)
     end
 
     if isnothing(communicator) # default communicator
@@ -295,8 +292,6 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
-    mpi_requests = MPI.Request[]
-
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,
                                                    ranks,
@@ -304,8 +299,7 @@ function Distributed(child_architecture = CPU();
                                                    local_index,
                                                    local_connectivity,
                                                    communicator,
-                                                   mpi_requests,
-                                                   Ref(0),
+                                                   Threads.Atomic{UInt64}(0),
                                                    devices)
 end
 
@@ -338,8 +332,7 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.local_index,
                                                     arch.connectivity,
                                                     arch.communicator,
-                                                    arch.mpi_requests,
-                                                    arch.mpi_tag,
+                                                    arch.field_count,
                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
@@ -351,9 +344,13 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.local_index,
                    arch.connectivity,
                    arch.communicator,
-                   arch.mpi_requests,
-                   arch.mpi_tag,
+                   arch.field_count,
                    nothing) # No devices on the CPU
+
+# Unique per-field tag
+function get_new_tag(arch::Distributed)
+  return Threads.atomic_add!(arch.field_count, UInt64(1))
+end
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -460,12 +457,20 @@ function Base.show(io::IO, arch::Distributed)
     last_rank = Nr - 1
 
     rank_info = if last_rank == 0
-        "1 rank:"
+        "1 rank"
     else
-        "$Nr = $Rx×$Ry×$Rz ranks:"
+        "$Nr = $Rx×$Ry×$Rz ranks"
     end
 
-    print(io, summary(arch), " across ", rank_info, '\n')
+    if arch isa SynchronizedDistributed
+      sync_type = "synchronous"
+    elseif arch isa AsynchronousDistributed
+      sync_type = "asynchronous"
+    else
+      sync_type = "unknown"
+    end
+
+    print(io, summary(arch), " across ", rank_info, ", with $sync_type communications:", '\n')
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index

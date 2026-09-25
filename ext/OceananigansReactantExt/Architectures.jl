@@ -90,7 +90,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
 
     # Syncronized communication does not mean anything in this case so we set it to nothing
     return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
-                                             mesh, nothing, nothing, Ref(0), devices)
+                                             mesh, nothing, Threads.Atomic{UInt64}(0), devices)
 end
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.TracedRNumber}) = Reactant.unwrapped_eltype(T)

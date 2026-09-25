@@ -20,6 +20,11 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
 
+const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
+
+
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
@@ -32,10 +37,6 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
 
     return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
-
-const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
-const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
@@ -93,22 +94,12 @@ $(TYPEDSIGNATURES)
 complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
-    arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
+  wait_for_comms!(field)
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+  recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
-    end
-
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
-    return nothing
+  return nothing
 end
 
 # Fallback
@@ -161,8 +152,7 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
 
-    arch = architecture(f)
-    sync_device!(arch)
+    sync_device!(architecture(f))
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
