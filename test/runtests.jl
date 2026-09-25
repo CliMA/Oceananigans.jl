@@ -58,11 +58,12 @@ else
     # the default float type) get a throw-away worker.
     dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/")
     function test_worker(name)
+        color = get(stdout, :color, false)
         if any(prefix -> startswith(name, prefix), dedicated_prefixes)
-            addworker()
+            addworker(; color)
         elseif startswith(name, "memory_allocation/")
             # Coverage instrumentation inflates the measured allocations.
-            addworker(; exeflags=["--check-bounds=auto", "--code-coverage=none"])
+            addworker(; exeflags=["--check-bounds=auto", "--code-coverage=none"], color)
         else
             nothing
         end
