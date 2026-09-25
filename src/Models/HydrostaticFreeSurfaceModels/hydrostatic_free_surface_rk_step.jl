@@ -1,5 +1,6 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
+using Oceananigans.Coriolis: rk_substep_coriolis!, add_c_grid_increment!
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
@@ -11,8 +12,12 @@ Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
 """
-rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
+function rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+    rk_substep_coriolis!(model.coriolis, model.velocities, Δτ)
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+    add_c_grid_increment!(model.coriolis, model.velocities, model.timestepper.Ψ⁻, Δτ)
+    return nothing
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -158,14 +163,13 @@ end
 
 @inline function rk_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[name]
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     velocity_field = velocities[name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
+            _rk_substep_field!, velocity_field, Δt, Gⁿ, Ψ⁻; exclude_periphery=true)
 
     return nothing
 end
@@ -222,14 +226,13 @@ end
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
 
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
     c  = model.tracers[tracer_name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+            _rk_substep_tracer_field!, c, grid, Δt, Gⁿ, Ψ⁻)
 
     @inbounds c_advection = model.advection[tracer_name]
     implicit_step!(c,

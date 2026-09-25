@@ -2,6 +2,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl"))
 
 using Metal
+using Oceananigans.Fields: interpolate!
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 Oceananigans.defaults.FloatType = Float32
 
@@ -171,4 +174,55 @@ end
     arch = GPU(Metal.MetalBackend())
     faces = collect(0:8) .^ 1.2
     @test stretched_poisson_solver_correct_answer(Float32, arch, (Periodic, Periodic, Bounded), 8, 8, faces)
+end
+
+@testset "MetalGPU: interpolate! on LatitudeLongitudeGrid" begin
+    arch = GPU(Metal.MetalBackend())
+    source_grid = LatitudeLongitudeGrid(arch; size=(8, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
+    target_grid = LatitudeLongitudeGrid(arch; size=(6, 8, 1), longitude=(0, 360), latitude=(-60, 60), z=(0, 1))
+
+    source = CenterField(source_grid)
+    target = CenterField(target_grid)
+    expected = CenterField(target_grid)
+    set!(source, (λ, φ, z) -> φ)
+    set!(expected, (λ, φ, z) -> φ)
+
+    interpolate!(target, source)
+    @test Array(interior(target)) ≈ Array(interior(expected))
+end
+
+@testset "MetalGPU: CATKEVerticalDiffusivity" begin
+    # https://github.com/CliMA/Oceananigans.jl/issues/5939
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch; size=(8, 8, 16), x=(0, 128), y=(0, 128), z=(-64, 0),
+                           topology=(Periodic, Periodic, Bounded))
+
+    @test eltype(grid) == Float32
+
+    Tbcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-4)) # surface cooling
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        momentum_advection = WENO(),
+                                        tracer_advection = WENO(),
+                                        buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState()),
+                                        tracers = (:T, :S),
+                                        closure = CATKEVerticalDiffusivity(),
+                                        boundary_conditions = (; T=Tbcs))
+
+    @test model.clock isa Clock{Float64}
+    @test Oceananigans.TimeSteppers.kernel_time_type(model.clock) == Float32
+
+    set!(model, T=(x, y, z) -> 20f0 + 0.01f0 * z, S=35f0)
+    set!(model, e=1f-6)
+
+    @test maximum(model.tracers.e) == 1f-6
+
+    simulation = Simulation(model, Δt=1minute, stop_iteration=3)
+    run!(simulation)
+
+    @test iteration(simulation) == 3
+    @test time(simulation) == 3minutes
+
+    @test maximum(model.tracers.e) > 1f-6
+    @test maximum(model.tracers.T) < 20
 end

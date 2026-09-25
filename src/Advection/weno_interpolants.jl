@@ -365,14 +365,20 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ), divided by M² where M = max(1, τ₂ᵣ₋₁ / dmin) and
+# dmin = minᵣ(βᵣ + ϵ), so that no term can overflow. M² cancels when the weights are normalized.
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (a^2 + (b * newton_div(WCT, dmin, β[$stencil] + ϵ))^2))
     end
 
-    return :($(elem...),)
+    return quote
+        dmin = minimum(β) + ϵ
+        a = newton_div(WCT, dmin, max(τ, dmin))    # 1 / M, without dividing by τ
+        b = min(one(FT), newton_div(WCT, τ, dmin)) # τ / (M * dmin)
+        ($(elem...),)
+    end
 end
 
 for buffer in advection_buffers[2:end]
