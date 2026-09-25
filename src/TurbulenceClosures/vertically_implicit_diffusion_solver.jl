@@ -291,6 +291,11 @@ function implicit_step!(field::Field,
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 
+    if vi_closure === ()
+        vi_closure = nothing
+        vi_closure_fields = nothing
+    end
+
     bcs = field.boundary_conditions
     isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing
 
