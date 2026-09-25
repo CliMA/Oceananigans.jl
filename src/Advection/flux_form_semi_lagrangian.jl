@@ -67,6 +67,9 @@ once per Runge-Kutta stage), with the transport velocities of the final stage, w
 that advance the free surface. Vertical advection stays in the tendency and uses `vertical_scheme`
 (which may be an `AdaptiveImplicitVerticalAdvection` scheme).
 
+With a `TracerTimeStepSplitting`, slow tracers that use this scheme take one horizontal step per long
+step, over the whole long step, with the accumulated transport velocities.
+
 Only `HydrostaticFreeSurfaceModel` with a `SplitRungeKuttaTimeStepper` supports this scheme.
 The grid halo must be at least `maximum_courant_number + 3` in every horizontal direction that
 is not `Flat`.

@@ -44,6 +44,12 @@ consistently with the accumulated transports and a uniform tracer stays uniform.
 
 Vertical diffusion with a vertically implicit closure uses the time-mean closure fields.
 
+Slow tracers may use [`FluxFormSemiLagrangian`](@ref) advection, which remains stable at the
+horizontal Courant numbers larger than one that a long step reaches. Their horizontal step is taken
+once per long step, over the whole accumulated time `T`, with the long-step transports `ū, v̄` and the
+cell volumes at the beginning of the long step. The `maximum_courant_number` of the scheme (and the
+grid halo, which must be at least `maximum_courant_number + 3`) should cover the long-step Courant number.
+
 Keyword arguments
 =================
 
@@ -377,15 +383,22 @@ function long_tracer_time_step!(splitting, model)
 
     stage_time = start_time
 
-    for β in (3, 2, 1)
+    stage_denominators = (3, 2, 1)
+    Nstages = length(stage_denominators)
+
+    for (stage, β) in enumerate(stage_denominators)
         Δτ = T / β
         clock.time = stage_time
+        clock.stage = stage
         clock.last_stage_Δt = Δτ
         clock.last_Δt = T
 
         compute_long_step_velocities!(splitting, grid, T)
         set_slow_advection_timestep!(model.advection, splitting.slow_tracers, Δτ)
         compute_slow_tracer_tendencies!(splitting, model, biogeochemistry)
+
+        # Horizontal flux-form semi-Lagrangian step of the slow tracers over the whole long step (on the final stage)
+        slow_flux_form_semi_lagrangian_advection!(splitting, model, stage, Nstages, Δτ)
 
         advance_long_step_grid!(splitting, model.vertical_coordinate, grid, 1 / β)
         substep_slow_tracers!(splitting, model, Δτ)

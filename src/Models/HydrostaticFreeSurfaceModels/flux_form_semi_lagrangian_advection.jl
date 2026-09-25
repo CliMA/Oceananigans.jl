@@ -121,6 +121,9 @@ $(TYPEDSIGNATURES)
 Advect the tracers that use `FluxFormSemiLagrangian` horizontally. Called after the tracer tendencies are computed:
 on the first stage the grid stretching at the beginning of the step is stored, and on the final stage the
 horizontal step is taken with the stage's transport velocities.
+
+With a [`TracerTimeStepSplitting`](@ref), only the tracers stepped every time step are advected here; the slow
+tracers are advected by [`slow_flux_form_semi_lagrangian_advection!`](@ref) during the long step.
 """
 flux_form_semi_lagrangian_advection!(model) =
     flux_form_semi_lagrangian_advection!(model, model.timestepper, flux_form_semi_lagrangian_workspace(model.advection))
@@ -129,6 +132,9 @@ flux_form_semi_lagrangian_advection!(model, timestepper, ::Nothing) = nothing
 flux_form_semi_lagrangian_advection!(model, ::SplitRungeKuttaTimeStepper, ::Nothing) = nothing
 
 function flux_form_semi_lagrangian_advection!(model, timestepper::SplitRungeKuttaTimeStepper, workspace)
+    names = fast_flux_form_semi_lagrangian_names(ffsl_tracer_names(workspace), model.tracer_time_step_splitting)
+    isempty(names) && return nothing
+
     stage = model.clock.stage
 
     if stage == 1
@@ -136,11 +142,50 @@ function flux_form_semi_lagrangian_advection!(model, timestepper::SplitRungeKutt
     end
 
     if stage == timestepper.Nstages
-        horizontal_flux_form_semi_lagrangian_step!(model, workspace, model.clock.last_stage_Δt)
+        u, v, _ = model.transport_velocities
+        σc = NamedTuple{names}(model.timestepper.Ψ⁻)
+        horizontal_flux_form_semi_lagrangian_step!(model, workspace, Val(names), σc, (; u, v),
+                                                   model.clock.last_stage_Δt, model.clock)
     end
 
     return nothing
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Advect the slow tracers of `splitting` that use `FluxFormSemiLagrangian` horizontally during `stage` of the long step.
+On the first stage the grid stretching at the beginning of the long step is stored; on the final stage (whose
+sub-step `Δτ` spans the whole long step) the horizontal step is taken with the long-step transport velocities,
+the same velocities that set the long-step vertical velocity through continuity.
+"""
+function slow_flux_form_semi_lagrangian_advection!(splitting, model, stage, Nstages, Δτ)
+    workspace = flux_form_semi_lagrangian_workspace(model.advection)
+    slow_flux_form_semi_lagrangian_advection!(splitting, model, workspace, stage, Nstages, Δτ)
+    return nothing
+end
+
+slow_flux_form_semi_lagrangian_advection!(splitting, model, ::Nothing, stage, Nstages, Δτ) = nothing
+
+function slow_flux_form_semi_lagrangian_advection!(splitting, model, workspace, stage, Nstages, Δτ)
+    names = slow_flux_form_semi_lagrangian_names(ffsl_tracer_names(workspace), splitting)
+    isempty(names) && return nothing
+
+    if stage == 1
+        store_initial_stretching!(workspace.σ⁰, model.grid)
+    end
+
+    if stage == Nstages
+        ū, v̄, _ = splitting.velocities
+        σc = NamedTuple{names}(splitting.previous_tracers)
+        horizontal_flux_form_semi_lagrangian_step!(model, workspace, Val(names), σc, (u = ū, v = v̄), Δτ, splitting.clock)
+    end
+
+    return nothing
+end
+
+fast_flux_form_semi_lagrangian_names(names, splitting) = filter(name -> !is_slow_tracer(splitting, Val(name)), names)
+slow_flux_form_semi_lagrangian_names(names, splitting) = filter(name -> is_slow_tracer(splitting, Val(name)), names)
 
 store_initial_stretching!(::Nothing, grid) = nothing
 store_initial_stretching!(σ⁰, grid) = parent(σ⁰) .= parent(grid.z.σᶜᶜⁿ)
@@ -157,26 +202,26 @@ store_initial_stretching!(σ⁰, grid) = parent(σ⁰) .= parent(grid.z.σᶜᶜ
     @inbounds c[i, j, k] = σc⁰ / σ
 end
 
-function horizontal_flux_form_semi_lagrangian_step!(model, workspace, Δt)
+# The workspace is shared by the tracers stepped every time step and the slow tracers of a `TracerTimeStepSplitting`:
+# its fields only carry information from the first to the final stage of a single (short or long) step, and the
+# long step is taken after the short step that completes it.
+function horizontal_flux_form_semi_lagrangian_step!(model, workspace, ::Val{names}, σc, U, Δt, clock) where names
     grid = model.grid
     arch = architecture(grid)
-    names = ffsl_tracer_names(workspace)
 
     tracers = NamedTuple{names}(model.tracers)
-    σc = NamedTuple{names}(model.timestepper.Ψ⁻)
     scheme = model.advection[first(names)]
     Cmax = Val(maximum_courant_number(scheme))
 
-    u, v, _ = model.transport_velocities
     Δt = convert(eltype(grid), Δt)
 
     map(values(σc), values(tracers)) do σcₙ, cₙ
-        launch!(arch, grid, :xyz, _prepare_flux_form_semi_lagrangian_step!, σcₙ, cₙ, grid, u, v, Δt, workspace.σ⁰)
+        launch!(arch, grid, :xyz, _prepare_flux_form_semi_lagrangian_step!, σcₙ, cₙ, grid, U.u, U.v, Δt, workspace.σ⁰)
     end
 
-    fill_halo_regions!(tracers, model.clock, fields(model))
+    fill_halo_regions!(tracers, clock, fields(model))
 
-    flux_form_semi_lagrangian_step!(values(σc), values(tracers), fields_tuple(workspace), grid, (; u, v), Δt, scheme.limiter, Cmax)
+    flux_form_semi_lagrangian_step!(values(σc), values(tracers), fields_tuple(workspace), grid, U, Δt, scheme.limiter, Cmax)
 
     return nothing
 end
