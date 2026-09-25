@@ -584,6 +584,9 @@ function substep_slow_tracer!(splitting, model, Δτ, ::Val{tracer_index}, ::Val
 
     launch!(architecture(grid), grid, :xyz, _rk_substep_tracer_field!, c, grid, convert(FT, Δτ), Gⁿ, σc⁻)
 
+    c_velocities = tracer_advecting_velocities(splitting.velocities, model.biogeochemistry, model.closure,
+                                               splitting.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(c,
                    model.timestepper.implicit_solver,
                    model.closure,
@@ -593,7 +596,7 @@ function substep_slow_tracer!(splitting, model, Δτ, ::Val{tracer_index}, ::Val
                    fields(model),
                    Δτ,
                    model.advection[tracer_name],
-                   splitting.velocities)
+                   c_velocities)
 
     mask_immersed_field!(c)
     fill_halo_regions!(c, splitting.clock, fields(model))

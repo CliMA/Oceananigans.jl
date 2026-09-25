@@ -101,6 +101,16 @@ function zstar_grids()
             "LatitudeLongitude basin with an immersed ridge, z-star" => latitude_longitude_ridge)
 end
 
+function tripolar_grids(z)
+    # Gaussian islands, as in test/vertical_coordinate/conservation_tripolar.jl
+    mountain(λ, φ, λ₀, φ₀) = exp(- (λ - λ₀)^2 / 2 / 5^2 - (φ - φ₀)^2 / 2 / 5^2)
+    islands(λ, φ) = - 20 + 30 * (mountain(λ, φ, 70, 55) + mountain(λ, φ, 250, 55) + mountain(λ, φ, 430, 55))
+
+    return Tuple(string(fold_topology, " TripolarGrid with immersed islands") =>
+                 ImmersedBoundaryGrid(TripolarGrid(; size = (20, 32, 5), z, fold_topology), GridFittedBottom(islands))
+                 for fold_topology in (RightCenterFolded, RightFaceFolded))
+end
+
 mode = isempty(ARGS) ? "all" : ARGS[1]
 
 if mode ∈ ("static", "all")
@@ -129,5 +139,26 @@ if mode ∈ ("zstar", "all")
     for (name, grid) in zstar_grids()
         build(grid, ratio) = baroclinic_adjustment_model(grid; ratio, buoyancy_contrast = 0.1)
         convergence_table(name, build, grid, 3minutes, 32)
+    end
+end
+
+if mode ∈ ("tripolar", "all")
+    println("\n## A5: TripolarGrid with immersed islands, z-star, random flow across the fold")
+    for (name, grid) in tripolar_grids(MutableVerticalDiscretization(collect(-10:2:0)))
+        build(grid, ratio) = random_flow_model(grid; ratio)
+        convergence_table(name * ", z-star", build, grid, 2minutes, 32)
+    end
+
+    println("\n## A5: TripolarGrid with immersed islands, static z, oscillating overturning (at rest near the fold)")
+    for (name, grid) in tripolar_grids((-10, 0))
+        build(grid, ratio) = overturning_model(grid; ratio, speed = 1, period = 30minutes, northern_rows_at_rest = 4)
+        convergence_table(name * ", static z", build, grid, 2minutes, 32)
+    end
+
+    println("\n## A5 (supplementary): TripolarGrid with immersed islands, static z, random flow across the fold")
+    println("The unsplit model does not conserve ∫c dV here either: with a static z the tracer flux through the moving surface is not zero.")
+    for (name, grid) in tripolar_grids((-10, 0))
+        build(grid, ratio) = random_flow_model(grid; ratio, vertical_coordinate = ZCoordinate())
+        convergence_table(name * ", static z", build, grid, 2minutes, 32)
     end
 end

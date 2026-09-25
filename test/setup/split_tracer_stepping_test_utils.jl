@@ -1,4 +1,5 @@
 using Random
+using Statistics: mean
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: cell_advection_timescale
@@ -67,10 +68,11 @@ end
 Return a CPU array with the interior of an `XFaceField` holding an overturning velocity
 `u = - δz ψ / Δz` in the x-z plane. The streamfunction `ψ` vanishes at the top, at the bottom
 and on every face that touches an immersed cell, so that `∫ u dz = 0` in every column and
-`u = 0` on immersed faces: the free surface stays at rest and the vertical velocity at the top
+`u = 0` on immersed faces. With `northern_rows_at_rest > 0` the flow also vanishes in the northernmost rows
+(for example, next to the fold of a `TripolarGrid`). The free surface stays at rest and the vertical velocity at the top
 vanishes, which makes the tracer inventory exactly conserved also with a static vertical coordinate.
 """
-function overturning_velocity(grid)
+function overturning_velocity(grid; northern_rows_at_rest = 0)
     Nx, Ny, Nz = size(grid)
     active = active_cells(grid)
     TX = topology(grid, 1)
@@ -80,7 +82,7 @@ function overturning_velocity(grid)
 
     ψ = zeros(Nu, Ny, Nz + 1)
     for k in 1:Nz+1, j in 1:Ny, i in 1:Nu
-        surrounded = wet(i-1, j, k-1) && wet(i, j, k-1) && wet(i-1, j, k) && wet(i, j, k)
+        surrounded = wet(i-1, j, k-1) && wet(i, j, k-1) && wet(i-1, j, k) && wet(i, j, k) && j ≤ Ny - northern_rows_at_rest
         ψ[i, j, k] = surrounded ? sinpi(2 * (i - 1) / Nu) + 1 / 2 * cospi(3 * (k - 1) / Nz) * sinpi(j / Ny) : 0
     end
 
@@ -111,10 +113,12 @@ function overturning_model(grid; ratio = 1,
                            tracer_advection = WENO(order=5),
                            timestepper = :SplitRungeKutta3,
                            free_surface = SplitExplicitFreeSurface(grid; substeps=8),
-                           closure = nothing)
+                           closure = nothing,
+                           northern_rows_at_rest = 0)
 
     structure = XFaceField(grid)
-    u = speed .* overturning_velocity(grid) ./ maximum(abs, overturning_velocity(grid))
+    u = overturning_velocity(grid; northern_rows_at_rest)
+    u = speed .* u ./ maximum(abs, u)
     set!(structure, u)
     fill_halo_regions!(structure)
 
@@ -245,3 +249,79 @@ biogeochemical_drift_velocity(bgc::MinimalNPZD{<:Any, Nothing}, ::Val{:D}) = not
 @inline (bgc::MinimalNPZD)(::Val{:P}, x, y, z, t, N, P, Z, D) =   npzd_growth(bgc, z, N, P) - npzd_grazing(bgc, P, Z) - npzd_mortality(bgc, P)
 @inline (bgc::MinimalNPZD)(::Val{:Z}, x, y, z, t, N, P, Z, D) =   npzd_grazing(bgc, P, Z)
 @inline (bgc::MinimalNPZD)(::Val{:D}, x, y, z, t, N, P, Z, D) =   npzd_mortality(bgc, P) - npzd_remineralization(bgc, D)
+
+"""
+    npzd_model(grid; ratio, biogeochemistry_substeps, ...)
+
+A z-star baroclinic adjustment carrying the `MinimalNPZD` tracers as the slow group.
+"""
+function npzd_model(grid; ratio = 1,
+                    biogeochemistry_substeps = nothing,
+                    sinking_speed = 10 / day,
+                    remineralization_rate = 1 / 5day,
+                    growth_rate = 1 / day,
+                    tracer_advection = WENO(order=5),
+                    vertical_coordinate = ZStarCoordinate(),
+                    closure = nothing,
+                    buoyancy_contrast = 0.05)
+
+    biogeochemistry = MinimalNPZD(grid; sinking_speed, remineralization_rate, growth_rate)
+
+    splitting = isnothing(ratio) ? nothing :
+                TracerTimeStepSplitting(tracers = (:N, :P, :Z, :D), ratio = ratio, biogeochemistry_substeps = biogeochemistry_substeps)
+
+    model = HydrostaticFreeSurfaceModel(grid; biogeochemistry, tracer_advection, closure, vertical_coordinate,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps=8),
+                                        timestepper = :SplitRungeKutta3,
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = (:b, :N, :P, :Z, :D),
+                                        tracer_time_step_splitting = splitting)
+
+    x = first(nodes(grid, Center(), Center(), Center()))
+    x₀ = (minimum(x) + maximum(x)) / 2
+    bᵢ(x, y, z) = x < x₀ ? buoyancy_contrast : buoyancy_contrast / 5
+
+    Random.seed!(1234)
+    set!(model, b = bᵢ,
+         N = (x, y, z) -> 4 + rand(),
+         P = (x, y, z) -> 0.5 + 0.1 * rand(),
+         Z = (x, y, z) -> 0.2 + 0.05 * rand(),
+         D = (x, y, z) -> 0.3 + 0.1 * rand())
+
+    return model
+end
+
+total_nitrogen(model) = sum(tracer_inventory(model.tracers[name]) for name in (:N, :P, :Z, :D))
+
+"""
+    random_flow_model(grid; ratio = 1, speed = 1, ...)
+
+A model with random, horizontally non-divergent initial velocities of order `speed` derived from a random
+streamfunction, and a buoyancy front, as in the tripolar z-star conservation tests.
+"""
+function random_flow_model(grid; ratio = 1,
+                           slow_tracers = (:c, :constant, :smooth),
+                           speed = 1,
+                           tracer_advection = WENO(order=5),
+                           vertical_coordinate = ZStarCoordinate(),
+                           free_surface = SplitExplicitFreeSurface(grid; substeps=8))
+
+    splitting = isnothing(ratio) ? nothing : TracerTimeStepSplitting(tracers = slow_tracers, ratio = ratio)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, tracer_advection, vertical_coordinate,
+                                        timestepper = :SplitRungeKutta3,
+                                        buoyancy = BuoyancyTracer(),
+                                        tracers = (:b, :c, :constant, :smooth),
+                                        tracer_time_step_splitting = splitting)
+
+    Random.seed!(1234)
+    ψ = Field{Center, Center, Center}(grid)
+    Δ = (mean(xspacings(grid, Face(), Face(), Center())) + mean(yspacings(grid, Face(), Face(), Center()))) / 2
+    set!(ψ, speed * Δ * rand(size(ψ)...))
+    fill_halo_regions!(ψ)
+
+    set!(model, u = ∂y(ψ), v = -∂x(ψ), b = (x, y, z) -> y < 0 ? 0.06 : 0.01,
+         c = (x, y, z) -> rand(), constant = 1, smooth = smooth_tracer_initial_condition(grid))
+
+    return model
+end
