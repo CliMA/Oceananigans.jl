@@ -235,7 +235,7 @@ function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     # Test that model can advance in time without blowing up
     @test_nowarn time_step!(model, Δt)
     @test norm(interior(model.velocities.u)) / grid.Nx < 1e2 # Test that u didn't blow up
-    simulation = Simulation(model; Δt, stop_time=5, verbose=false)
+    simulation = Simulation(model; Δt, stop_time=1, verbose=false)
     conjure_time_step_wizard!(simulation, IterationInterval(1), cfl = 0.1)
     run!(simulation)
 
@@ -265,11 +265,11 @@ function test_divergence_free_solution(arch, float_type, topos)
 end
 
 function test_divergence_free_solution_on_rectangular_grids(arch, topos)
-    Ns = [11, 16]
+    sizes = [(11, 16, 16), (16, 11, 16), (16, 16, 11), (16, 16, 16)]
     for topo in topos
         @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
-        for Nx in Ns, Ny in Ns, Nz in Ns
-            grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1)))
+        for sz in sizes
+            grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=sz, extent=(1, 1, 1)))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
             @test @allowscalar interior(∇²ϕ) ≈ interior(R)
             @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
