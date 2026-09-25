@@ -153,6 +153,27 @@ end
     @test eltype(λx) == eltype(grid)
 end
 
+@testset "MetalGPU: time step model configurations" begin
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
+    implicit_diffusion = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1e-3, κ=1e-3)
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3),
+        free_surface in (ExplicitFreeSurface(), ImplicitFreeSurface(), SplitExplicitFreeSurface(grid; substeps=10)),
+        closure in (implicit_diffusion, CATKEVerticalDiffusivity())
+
+        model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, closure,
+                                            buoyancy=BuoyancyTracer(), tracers=:b)
+        time_step!(model, 1.0)
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        model = NonhydrostaticModel(grid; timestepper, closure=implicit_diffusion,
+                                    buoyancy=BuoyancyTracer(), tracers=:b)
+        time_step!(model, 1.0)
+    end
+end
+
 @testset "MetalGPU: FFT-based Poisson solver" begin
     arch = GPU(Metal.MetalBackend())
 
