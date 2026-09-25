@@ -87,7 +87,7 @@ else
         gpu_memory_per_worker = 3 * 2^30
         available_gpu_memory = gpu_free_memory()
 
-        if CUDA.functional()
+        if on_gpu && CUDA.functional()
             println("Available CUDA GPU memory: ", Base.format_bytes(available_gpu_memory))
         end
 
