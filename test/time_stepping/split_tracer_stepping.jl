@@ -116,5 +116,72 @@ end
                 @test abs(tracer_inventory(model.tracers.c) - inventory₀) / inventory₀ < 1e-12
             end
         end
+
+        zstar_grid = ImmersedBoundaryGrid(RectilinearGrid(arch; size = (16, 8, 6), halo = (4, 4, 4),
+                                                          x = (0, 32kilometers), y = (0, 16kilometers),
+                                                          z = MutableVerticalDiscretization(collect(range(-60, 0, length=7))),
+                                                          topology = (Bounded, Bounded, Bounded)),
+                                          GridFittedBottom(ridge(16kilometers, 4kilometers, 30, 60)))
+
+        @testset "NPZD total nitrogen with sub-cycled sources [$(typeof(arch))]" begin
+            @info "  Testing NPZD total nitrogen conservation with sub-cycled sources [$(typeof(arch))]..."
+            ratio = 16
+            Δt = 5minutes
+            stiff_remineralization_rate = 1 / 1000seconds
+
+            for substeps in (nothing, 4)
+                model = npzd_model(zstar_grid; ratio, biogeochemistry_substeps = substeps, sinking_speed = 20 / day,
+                                   remineralization_rate = stiff_remineralization_rate)
+                total₀ = total_nitrogen(model)
+
+                for step in 1:2ratio
+                    time_step!(model, Δt)
+                end
+
+                tracers_are_bounded = all(name -> maximum(abs, Array(interior(model.tracers[name]))) < 50, (:N, :P, :Z, :D))
+
+                if isnothing(substeps)
+                    # r N Δt = 4.8 lies beyond the stability region of the Runge-Kutta step
+                    @test !tracers_are_bounded
+                else
+                    @test tracers_are_bounded
+                    @test abs(total_nitrogen(model) - total₀) / total₀ < 1e-12
+                end
+            end
+        end
+
+        @testset "Checkpointing mid-cycle and at the end of a cycle is bitwise [$(typeof(arch))]" begin
+            @info "  Testing split tracer stepping checkpoint and restart [$(typeof(arch))]..."
+            ratio = 4
+            Δt = 5minutes
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ = 1e-3)
+
+            build() = npzd_model(zstar_grid; ratio, biogeochemistry_substeps = 2, closure)
+
+            continuous = build()
+            for step in 1:3ratio
+                time_step!(continuous, Δt)
+            end
+
+            for checkpoint_iteration in (ratio + 2, 2ratio)
+                prefix = "split_tracer_checkpoint_$(checkpoint_iteration)"
+                model = build()
+                simulation = Simulation(model; Δt, stop_iteration = checkpoint_iteration)
+                simulation.output_writers[:checkpointer] = Checkpointer(model; schedule = IterationInterval(checkpoint_iteration), prefix)
+                run!(simulation)
+
+                restarted = build()
+                simulation = Simulation(restarted; Δt, stop_iteration = 3ratio)
+                simulation.output_writers[:checkpointer] = Checkpointer(restarted; schedule = IterationInterval(10ratio), prefix)
+                run!(simulation, pickup = true)
+
+                for name in (:b, :N, :P, :Z, :D)
+                    @test Array(parent(restarted.tracers[name])) == Array(parent(continuous.tracers[name]))
+                end
+                @test Array(parent(restarted.free_surface.displacement)) == Array(parent(continuous.free_surface.displacement))
+
+                rm.(filter(startswith(prefix), readdir()); force = true)
+            end
+        end
     end
 end
