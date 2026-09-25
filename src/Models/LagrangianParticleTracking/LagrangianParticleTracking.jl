@@ -13,7 +13,7 @@ using Oceananigans.Fields: interpolate, compute!, location
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid, hack_cosd,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
@@ -129,6 +129,7 @@ end
 @inline flattened_node((x, y, z), grid::YZFlatGrid) = tuple(x)
 @inline flattened_node((x, y, z), grid::XZFlatGrid) = tuple(y)
 @inline flattened_node((x, y, z), grid::XYFlatGrid) = tuple(z)
+@inline flattened_node((x, y, z), grid::XYZFlatGrid) = tuple()
 
 include("update_lagrangian_particle_state.jl")
 include("lagrangian_particle_advection.jl")

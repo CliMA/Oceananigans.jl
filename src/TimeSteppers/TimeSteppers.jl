@@ -35,7 +35,7 @@ function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
-step_closure_prognostics!(model, Δt) = nothing
+step_closure_prognostics!(model, Δt::Number) = nothing
 
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing

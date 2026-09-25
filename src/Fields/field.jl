@@ -227,7 +227,7 @@ ZFaceField(grid::AbstractGrid, ::Type{T}=eltype(grid); kw...) where T = Field((C
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=f.grid)
+function Base.similar(f::Field, grid::AbstractGrid=f.grid)
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
@@ -436,8 +436,8 @@ Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O,
 Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
-Base.:(==)(f::Field, a) = interior(f) == a
-Base.:(==)(a, f::Field) = a == interior(f)
+Base.:(==)(f::Field, a::AbstractArray) = interior(f) == a
+Base.:(==)(a::AbstractArray, f::Field) = a == interior(f)
 
 function Base.:(==)(a::Field, b::Field)
     if architecture(a) == architecture(b)
@@ -587,7 +587,10 @@ const ReducedField = Union{XReducedField,
 @inline BoundaryConditions.getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
 @inline BoundaryConditions.getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
-# Boundary conditions reduced in two directions are ambiguous, so that's hard...
+# Boundary conditions reduced in two directions --- the surviving index sits in the same slot on both admissible boundaries
+@inline BoundaryConditions.getbc(condition::XYReducedField, ::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, 1, k]
+@inline BoundaryConditions.getbc(condition::YZReducedField, i::Integer, ::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, 1]
+# A field reduced in x and z is ambiguous: the surviving index is the first one on x boundaries and the second one on z boundaries
 
 # 0D boundary conditions --- easy case
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
@@ -718,12 +721,26 @@ const MinimumReduction = typeof(Base.minimum!)
 const AllReduction     = typeof(Base.all!)
 const AnyReduction     = typeof(Base.any!)
 
-initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
-initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
-initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
-initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
-initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
+# Neutral element the in-place reduction starts from (it runs with `init=false`)
+reduction_init(::SumReduction,  T) = zero(T)
+reduction_init(::ProdReduction, T) = one(T)
+reduction_init(::AllReduction,  T) = true
+reduction_init(::AnyReduction,  T) = false
+
+initialize_reduced_field!(reduction, f, r::ReducedAbstractField, c) = fill!(interior(r), reduction_init(reduction, eltype(r)))
+
+# `maximum` and `minimum` start from `f` of the operand's first slice along the reduced dimensions
+function initialize_reduced_field!(::Union{MaximumReduction, MinimumReduction}, f::F, r::ReducedAbstractField, c) where F
+    R, A = interior(r), interior(c)
+    return map!(f, R, view(A, first_slice(axes(R), axes(A))...))
+end
+
+# Axes of the first slice of `A` along the dimensions reduced in `R`, keeping the axis types
+@inline first_slice(::Tuple{}, ::Tuple{}) = ()
+@inline first_slice(R::Tuple, A::Tuple) = (length(R[1]) == 1 ? first_index(A[1]) : A[1], first_slice(Base.tail(R), Base.tail(A))...)
+
+first_index(::Base.OneTo) = Base.OneTo(1)
+first_index(ax::AbstractUnitRange) = first(ax):first(ax)
 
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
@@ -754,7 +771,8 @@ function reduced_dimension(loc)
     return dims
 end
 
-get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::AllReduction) = true
+get_neutral_mask(::AnyReduction) = false
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
@@ -836,7 +854,9 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
-                return @allowscalar first(r)
+                # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
+                # into a view returns a one-element array rather than a number
+                return @allowscalar interior(r)[1, 1, 1]
             else
                 return r
             end
