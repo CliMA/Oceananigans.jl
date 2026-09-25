@@ -245,7 +245,11 @@ end
     FT = eltype(grid)
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(tracer_field,
                    model.timestepper.implicit_solver,
                    closure,
@@ -255,7 +259,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
     return nothing
 end
 
