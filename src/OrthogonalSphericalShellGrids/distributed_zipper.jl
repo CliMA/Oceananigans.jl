@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunication
+using Oceananigans.BoundaryConditions: DistributedCommunication, pivot_shift
 using Oceananigans.DistributedComputations: CommunicationBuffers, loc_id
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
@@ -67,24 +67,24 @@ end
 #####
 
 struct TwoDZipperBuffer{FL, WFL, TY, Loc, B, S}
-    loc  :: Loc
-    send :: B
-    recv :: B
-    sign :: S
+    loc   :: Loc
+    send  :: B
+    recv  :: B
+    sign  :: S
+    shift :: Int
 end
 
 struct ZipperCornerBuffer{FL, WFL, TY, Loc, B, S}
-    loc  :: Loc
-    send :: B
-    recv :: B
-    sign :: S
+    loc   :: Loc
+    send  :: B
+    recv  :: B
+    sign  :: S
+    shift :: Int
 end
 
 # Partial type-parameter constructors: FL, WFL, TY specified; Loc, B, S inferred
-TwoDZipperBuffer{FL, WFL, TY}(loc::Loc, send::B, recv::B, sign::S) where {FL, WFL, TY, Loc, B, S} =
-    TwoDZipperBuffer{FL, WFL, TY, Loc, B, S}(loc, send, recv, sign)
-ZipperCornerBuffer{FL, WFL, TY}(loc::Loc, send::B, recv::B, sign::S) where {FL, WFL, TY, Loc, B, S} =
-    ZipperCornerBuffer{FL, WFL, TY, Loc, B, S}(loc, send, recv, sign)
+TwoDZipperBuffer{FL, WFL, TY}(loc::Loc, send::B, recv::B, sign::S, shift) where {FL, WFL, TY, Loc, B, S} = TwoDZipperBuffer{FL, WFL, TY, Loc, B, S}(loc, send, recv, sign, shift)
+ZipperCornerBuffer{FL, WFL, TY}(loc::Loc, send::B, recv::B, sign::S, shift) where {FL, WFL, TY, Loc, B, S} = ZipperCornerBuffer{FL, WFL, TY, Loc, B, S}(loc, send, recv, sign, shift)
 
 Adapt.adapt_structure(to, buff::TwoDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::ZipperCornerBuffer) = nothing
@@ -175,7 +175,7 @@ function communication_buffers(grid::MPITripolarGridOfSomeKind, data, bcs, loc)
     arch = architecture(grid)
 
     south = y_communication_buffer(arch, grid, data, Hy, bcs.south)
-    north = y_tripolar_buffer(arch, grid, data, Hy, bcs.north, loc)
+    north = y_tripolar_buffer(arch, grid, data, Hy, bcs.north, loc, pivot_shift(fold_pivot(grid)))
 
     # x-buffers: separate west/east since they complement different corners (NW/NE)
     west  = west_tripolar_buffer(arch, grid, data, Hx, bcs.west, loc, north)
@@ -191,11 +191,10 @@ function communication_buffers(grid::MPITripolarGridOfSomeKind, data, bcs, loc)
 end
 
 # Fallback: non-zipper north BC uses standard buffer
-y_tripolar_buffer(arch, grid, data, Hy, bc, loc) = y_communication_buffer(arch, grid, data, Hy, bc)
+y_tripolar_buffer(arch, grid, data, Hy, bc, loc, shift) = y_communication_buffer(arch, grid, data, Hy, bc)
 
 # 2D fold (MxN) → TwoDZipperBuffer (interior-width, Hy′ = Hy or Hy+1 rows for fold line)
-function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, TY},
-                           data, Hy, bc::DistributedZipper, loc::Loc) where {TY <: PencilFoldedTopology, Loc}
+function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, TY}, data, Hy, bc::DistributedZipper, loc::Loc, shift) where {TY <: PencilFoldedTopology, Loc}
     Nx = size(grid, 1)
     _, _, Tz = size(parent(data))
     FT = eltype(data)
@@ -205,7 +204,7 @@ function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, TY},
     wfl = fl && north_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Nx, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Nx, Hy′, Tz))
-    return TwoDZipperBuffer{fl, wfl, TY}(loc, send, recv, sgn)
+    return TwoDZipperBuffer{fl, wfl, TY}(loc, send, recv, sgn, shift)
 end
 
 # Fallbacks: non-zipper corners
@@ -220,27 +219,27 @@ northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = corner_commu
 function northwest_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{<:Any, <:Any, TY}) where TY
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    ℓx, ℓy = yedge.loc[1], yedge.loc[2]
-    fl = has_fold_line(TY, ℓy)
-    Hy′ = fl ? Hy + 1 : Hy
-    wfl = fl && northwest_writes_fold_line(arch)
-    Hx′ = northwest_x_size(ℓx, Hx)
+    ℓy   = yedge.loc[2]
+    fl   = has_fold_line(TY, ℓy)
+    Hy′  = fl ? Hy + 1 : Hy
+    wfl  = fl && northwest_writes_fold_line(arch)
+    Hx′  = Hx + fold_offset(yedge)
     send = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
-    return ZipperCornerBuffer{fl, wfl, TY}(yedge.loc, send, recv, sgn)
+    return ZipperCornerBuffer{fl, wfl, TY}(yedge.loc, send, recv, sgn, yedge.shift)
 end
 
 function northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{<:Any, <:Any, TY}) where TY
-    Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    ℓx, ℓy = yedge.loc[1], yedge.loc[2]
-    fl = has_fold_line(TY, ℓy)
-    Hy′ = fl ? Hy + 1 : Hy
-    wfl = fl && northeast_writes_fold_line(arch)
-    Hx′ = northeast_x_size(ℓx, Hx)
+    Tz   = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
+    ℓy   = yedge.loc[2]
+    fl   = has_fold_line(TY, ℓy)
+    Hy′  = fl ? Hy + 1 : Hy
+    wfl  = fl && northeast_writes_fold_line(arch)
+    Hx′  = Hx - fold_offset(yedge)
     send = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
-    return ZipperCornerBuffer{fl, wfl, TY}(yedge.loc, send, recv, sgn)
+    return ZipperCornerBuffer{fl, wfl, TY}(yedge.loc, send, recv, sgn, yedge.shift)
 end
 
 #####
@@ -274,27 +273,19 @@ const FF = Tuple{<:Face,   <:Face,   <:Any}
 @inline north_halo_recv_y_range(::FPivotTopology, ::Face, Hy, Ny) = 2+Ny+Hy:1+Ny+2Hy
 @inline north_halo_recv_y_range(topo,             loc_y,  Hy, Ny) = 1+Ny+Hy:Ny+2Hy
 
+# x-offset `o` of the mirrored columns: the pivot shift, plus one for `Face` locations
+@inline fold_offset(b) = b.shift + (b.loc[1] isa Face)
+
 # North buffer: recv x-range
-@inline north_recv_x_range(::Center, Hx, Nx) = 1+Hx:Nx+Hx
-@inline north_recv_x_range(::Face,   Hx, Nx) = 2+Hx:Nx+Hx+1
+@inline north_recv_x_range(o, Hx, Nx) = 1+Hx+o:Nx+Hx+o
 
 # Corner buffers: send x-ranges (reversed for fold)
-@inline northwest_send_x_range(::Center, Hx, Nx) = 2Hx:-1:1+Hx
-@inline northwest_send_x_range(::Face,   Hx, Nx) = 2Hx+1:-1:1+Hx
-@inline northeast_send_x_range(::Center, Hx, Nx) = Nx+Hx:-1:1+Nx
-@inline northeast_send_x_range(::Face,   Hx, Nx) = Nx+Hx:-1:Nx+2
+@inline northwest_send_x_range(o, Hx, Nx) = 2Hx+o:-1:1+Hx
+@inline northeast_send_x_range(o, Hx, Nx) = Nx+Hx:-1:Nx+1+o
 
 # Corner buffers: recv x-ranges
-@inline northwest_recv_x_range(::Center, Hx, Nx) = 1:Hx
-@inline northwest_recv_x_range(::Face,   Hx, Nx) = 1:Hx+1
-@inline northeast_recv_x_range(::Center, Hx, Nx) = 1+Nx+Hx:Nx+2Hx
-@inline northeast_recv_x_range(::Face,   Hx, Nx) = 2+Nx+Hx:Nx+2Hx
-
-# Corner buffers: x-size (for constructors)
-@inline northwest_x_size(::Center, Hx) = Hx
-@inline northwest_x_size(::Face,   Hx) = Hx + 1
-@inline northeast_x_size(::Center, Hx) = Hx
-@inline northeast_x_size(::Face,   Hx) = Hx - 1
+@inline northwest_recv_x_range(o, Hx, Nx) = 1:Hx+o
+@inline northeast_recv_x_range(o, Hx, Nx) = 1+Nx+Hx+o:Nx+2Hx
 
 #####
 ##### TwoDZipperBuffer: north send (FL=true has fold line, FL=false does not)
@@ -321,20 +312,20 @@ end
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{true, true}, Hx, Hy, Nx, Ny)
     topo, ℓy = fold_topo(buff), buff.loc[2]
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
-    xr = north_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
     view(c, xr, j:j   , :) .= view(buff.recv, :, 1:1   , :)
     view(c, xr, yr, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{true, false}, Hx, Hy, Nx, Ny)
-    xr = north_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{false}, Hx, Hy, Nx, Ny)
-    xr = north_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = north_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= buff.recv
 end
@@ -347,14 +338,14 @@ function _fill_northwest_send_buffer!(c, b::ZipperCornerBuffer{true}, Hx, Hy, Nx
     topo = fold_topo(b)
     ℓy = b.loc[2]
     j = north_foldline_send_y_index(topo, ℓy, Hy, Ny)
-    xr = northwest_send_x_range(b.loc[1], Hx, Nx)
+    xr = northwest_send_x_range(fold_offset(b), Hx, Nx)
     b.send .= b.sign .* view(c, xr, j:-1:j-Hy, :)
 end
 
 function _fill_northwest_send_buffer!(c, b::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
     topo = fold_topo(b)
     yr = north_halo_send_y_range(topo, b.loc[2], Hy, Ny)
-    xr = northwest_send_x_range(b.loc[1], Hx, Nx)
+    xr = northwest_send_x_range(fold_offset(b), Hx, Nx)
     b.send .= b.sign .* view(c, xr, yr, :)
 end
 
@@ -362,14 +353,14 @@ function _fill_northeast_send_buffer!(c, b::ZipperCornerBuffer{true}, Hx, Hy, Nx
     topo = fold_topo(b)
     ℓy = b.loc[2]
     j = north_foldline_send_y_index(topo, ℓy, Hy, Ny)
-    xr = northeast_send_x_range(b.loc[1], Hx, Nx)
+    xr = northeast_send_x_range(fold_offset(b), Hx, Nx)
     b.send .= b.sign .* view(c, xr, j:-1:j-Hy, :)
 end
 
 function _fill_northeast_send_buffer!(c, b::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
     topo = fold_topo(b)
     yr = north_halo_send_y_range(topo, b.loc[2], Hy, Ny)
-    xr = northeast_send_x_range(b.loc[1], Hx, Nx)
+    xr = northeast_send_x_range(fold_offset(b), Hx, Nx)
     b.send .= b.sign .* view(c, xr, yr, :)
 end
 
@@ -380,27 +371,27 @@ end
 function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{true, true}, Hx, Hy, Nx, Ny)
     topo, ℓy = fold_topo(buff), buff.loc[2]
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
-    xr = northwest_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
     view(c, xr, j:j, :) .= view(buff.recv, :, 1:1, :)
     view(c, xr,  yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
 end
 
 function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, Nx, Ny)
-    xr = northwest_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
 end
 
 function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
-    xr = northwest_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northwest_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= buff.recv
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, true}, Hx, Hy, Nx, Ny)
     topo, ℓy = fold_topo(buff), buff.loc[2]
-    xr = northeast_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     j = north_foldline_recv_y_index(topo, ℓy, Hy, Ny)
     yr = north_halo_recv_y_range(topo, ℓy, Hy, Ny)
     view(c, xr, j:j, :) .= view(buff.recv, :, 1:1, :)
@@ -408,13 +399,13 @@ function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, true}, H
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, Nx, Ny)
-    xr = northeast_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
 end
 
 function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny)
-    xr = northeast_recv_x_range(buff.loc[1], Hx, Nx)
+    xr = northeast_recv_x_range(fold_offset(buff), Hx, Nx)
     yr = north_halo_recv_y_range(fold_topo(buff), buff.loc[2], Hy, Ny)
     view(c, xr, yr, :) .= buff.recv
 end
