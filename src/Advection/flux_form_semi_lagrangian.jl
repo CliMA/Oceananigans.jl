@@ -286,15 +286,13 @@ end
 $(TYPEDSIGNATURES)
 
 Return the swept region through the face `i, j, k` in the direction `sweep`, as a `NamedTuple` holding
-the volume flux `F`, the number of whole cells `n`, the fraction `r`, the upstream direction, and
-the upstream cell volumes. The region is shared by every tracer advected through the face.
+the number of whole cells `n`, the fraction `r`, the upstream direction, and the upstream cell volumes.
 """
 @inline function swept_region(i, j, k, grid, sweep, s, U, Δt, σ⁰, ::Val{Cmax}) where Cmax
     F = ffsl_volume_flux(i, j, k, grid, sweep, U, Δt)
-    sᵢ = @inbounds s[i, j, k]
-    positive = sᵢ > 0
-    a = abs(sᵢ)
-    n = unsafe_trunc(Int, a)
+    positive = F > 0
+    a = abs(@inbounds s[i, j, k])
+    n = min(unsafe_trunc(Int, a), Cmax)
     r = a - n
     first_offset = ifelse(positive, -1, 0)
     step = ifelse(positive, -1, 1)
@@ -304,19 +302,16 @@ the upstream cell volumes. The region is shared by every tracer advected through
         initial_volume(ii, jj, k, grid, σ⁰)
     end
 
-    return (; F, n, r, positive, first_offset, step, volumes)
+    return (; n, r, positive, first_offset, step, volumes)
 end
-
-@inline swept_region(i, j, k, grid::XFlatGrid, ::XSweep, args...) = nothing
-@inline swept_region(i, j, k, grid::YFlatGrid, ::YSweep, args...) = nothing
 
 """
 $(TYPEDSIGNATURES)
 
-Return the flux of `q` through a face: the volume flux times the average of `q` over the swept `region`.
+Return the average of `q` over the swept `region` through a face.
 """
-@inline function swept_flux(i, j, k, grid, sweep, region, q, limiter, ::Val{Cmax}) where Cmax
-    (; F, n, r, positive, first_offset, step, volumes) = region
+@inline function swept_average(i, j, k, grid, sweep, region, q, limiter, ::Val{Cmax}) where Cmax
+    (; n, r, positive, first_offset, step, volumes) = region
 
     mass = zero(r)
     volume = zero(r)
@@ -338,15 +333,9 @@ Return the flux of `q` through a face: the volume flux times the average of `q` 
 
     i₀, j₀ = offset_indices(sweep, i, j, first_offset)
     q₀ = @inbounds q[i₀, j₀, k]
-    q̂ = ifelse(volume > 0, mass / volume, q₀)
 
-    return F * q̂
+    return ifelse(volume > 0, mass / volume, q₀)
 end
-
-@inline swept_flux(i, j, k, grid, sweep, ::Nothing, args...) = zero(grid)
-
-@inline volume_flux(region) = region.F
-@inline volume_flux(::Nothing) = 0
 
 #####
 ##### Piecewise-parabolic reconstruction in index space
@@ -424,83 +413,118 @@ end
 ##### Horizontal step: inner (advective-form) and outer (flux-form) operators
 #####
 
-@inline function swept_regions(i, j, k, grid, geometry, U, Δt, Cmax)
-    (; sˣ, sʸ, σ⁰) = geometry
-    Rˣ⁻ = swept_region(i,   j,   k, grid, XSweep(), sˣ, U.u, Δt, σ⁰, Cmax)
-    Rˣ⁺ = swept_region(i+1, j,   k, grid, XSweep(), sˣ, U.u, Δt, σ⁰, Cmax)
-    Rʸ⁻ = swept_region(i,   j,   k, grid, YSweep(), sʸ, U.v, Δt, σ⁰, Cmax)
-    Rʸ⁺ = swept_region(i,   j+1, k, grid, YSweep(), sʸ, U.v, Δt, σ⁰, Cmax)
-    return Rˣ⁻, Rˣ⁺, Rʸ⁻, Rʸ⁺
+@kernel function _compute_swept_averages!(q̂, grid, sweep, s, U, Δt, σ⁰, q, limiter, Cmax)
+    i, j, k = @index(Global, NTuple)
+    region = swept_region(i, j, k, grid, sweep, s, U, Δt, σ⁰, Cmax)
+    @inbounds q̂[i, j, k] = swept_average(i, j, k, grid, sweep, region, q, limiter, Cmax)
 end
 
-@inline function advective_form_update(i, j, k, grid, sweep, R⁻, R⁺, q, qᵢ, V⁰, limiter, Cmax)
+compute_swept_averages!(q̂, grid::XFlatGrid, ::XSweep, args...) = nothing
+compute_swept_averages!(q̂, grid::YFlatGrid, ::YSweep, args...) = nothing
+
+function compute_swept_averages!(q̂, grid, sweep, s, U, Δt, σ⁰, q, limiter, Cmax)
+    Nx, Ny, Nz = size(grid)
+    worksize = sweep isa XSweep ? (Nx+1, Ny, Nz) : (Nx, Ny+1, Nz)
+    launch!(architecture(grid), grid, worksize, _compute_swept_averages!, q̂, grid, sweep, s, U, Δt, σ⁰, q, limiter, Cmax)
+    return nothing
+end
+
+# Volume fluxes and swept averages on the two faces of cell i, j, k in the direction `sweep`
+@inline function face_fluxes(i, j, k, grid, sweep, q̂, U, Δt)
     i⁺, j⁺ = offset_indices(sweep, i, j, 1)
-    δF = volume_flux(R⁺) - volume_flux(R⁻)
-    δX = swept_flux(i⁺, j⁺, k, grid, sweep, R⁺, q, limiter, Cmax) -
-         swept_flux(i,  j,  k, grid, sweep, R⁻, q, limiter, Cmax)
-    return - (δX - qᵢ * δF) / V⁰
+    F⁻ = ffsl_volume_flux(i,  j,  k, grid, sweep, U, Δt)
+    F⁺ = ffsl_volume_flux(i⁺, j⁺, k, grid, sweep, U, Δt)
+    q̂⁻ = @inbounds q̂[i,  j,  k]
+    q̂⁺ = @inbounds q̂[i⁺, j⁺, k]
+    return F⁻, F⁺, q̂⁻, q̂⁺
 end
 
-# qˣ = q + ½ aˣ(q) and qʸ = q + ½ aʸ(q), where a is the one-dimensional advective-form update
-@kernel function _ffsl_inner_step!(qˣ, qʸ, tracers, grid, geometry, U, Δt, limiter, Cmax)
-    i, j, k = @index(Global, NTuple)
+@inline function swept_flux_difference(i, j, k, grid, sweep, q̂, U, Δt)
+    F⁻, F⁺, q̂⁻, q̂⁺ = face_fluxes(i, j, k, grid, sweep, q̂, U, Δt)
+    return F⁺ * q̂⁺ - F⁻ * q̂⁻
+end
 
-    Rˣ⁻, Rˣ⁺, Rʸ⁻, Rʸ⁺ = swept_regions(i, j, k, grid, geometry, U, Δt, Cmax)
-    V⁰ = initial_volume(i, j, k, grid, geometry.σ⁰)
+@inline swept_flux_difference(i, j, k, grid::XFlatGrid, ::XSweep, q̂, U, Δt) = zero(grid)
+@inline swept_flux_difference(i, j, k, grid::YFlatGrid, ::YSweep, q̂, U, Δt) = zero(grid)
+
+# With the monotone limiter the inner value is bounded by the cell value and the averages over the swept
+# regions of its faces: at Courant numbers above 2 the advective-form update can otherwise extrapolate
+# where the one-dimensional flow is strongly divergent.
+@inline bound_inner_value(q, qᵢ, q̂⁻, q̂⁺, ::Nothing) = q
+@inline bound_inner_value(q, qᵢ, q̂⁻, q̂⁺, ::MonotonePPMLimiter) = clamp(q, min(qᵢ, q̂⁻, q̂⁺), max(qᵢ, q̂⁻, q̂⁺))
+
+# q + ½ a(q), where a is the one-dimensional advective-form update in the direction `sweep`
+@inline function inner_value(i, j, k, grid, sweep, q̂, U, Δt, qᵢ, V⁰, limiter)
+    F⁻, F⁺, q̂⁻, q̂⁺ = face_fluxes(i, j, k, grid, sweep, q̂, U, Δt)
+    a = - (F⁺ * q̂⁺ - F⁻ * q̂⁻ - qᵢ * (F⁺ - F⁻)) / V⁰
+    return bound_inner_value(qᵢ + a / 2, qᵢ, q̂⁻, q̂⁺, limiter)
+end
+
+@inline inner_value(i, j, k, grid::XFlatGrid, ::XSweep, q̂, U, Δt, qᵢ, V⁰, limiter) = qᵢ
+@inline inner_value(i, j, k, grid::YFlatGrid, ::YSweep, q̂, U, Δt, qᵢ, V⁰, limiter) = qᵢ
+
+@kernel function _ffsl_inner_step!(qˣ, qʸ, q, q̂ˣ, q̂ʸ, grid, U, Δt, σ⁰, limiter)
+    i, j, k = @index(Global, NTuple)
+    V⁰ = initial_volume(i, j, k, grid, σ⁰)
+    qᵢ = @inbounds q[i, j, k]
+    q̃ˣ = inner_value(i, j, k, grid, XSweep(), q̂ˣ, U.u, Δt, qᵢ, V⁰, limiter)
+    q̃ʸ = inner_value(i, j, k, grid, YSweep(), q̂ʸ, U.v, Δt, qᵢ, V⁰, limiter)
     inactive = ffsl_inactive_cell(i, j, k, grid)
-
-    for n in 1:length(tracers)
-        q = tracers[n]
-        qᵢ = @inbounds q[i, j, k]
-        aˣ = advective_form_update(i, j, k, grid, XSweep(), Rˣ⁻, Rˣ⁺, q, qᵢ, V⁰, limiter, Cmax)
-        aʸ = advective_form_update(i, j, k, grid, YSweep(), Rʸ⁻, Rʸ⁺, q, qᵢ, V⁰, limiter, Cmax)
-        @inbounds qˣ[n][i, j, k] = ifelse(inactive, qᵢ, qᵢ + aˣ / 2)
-        @inbounds qʸ[n][i, j, k] = ifelse(inactive, qᵢ, qᵢ + aʸ / 2)
-    end
+    @inbounds qˣ[i, j, k] = ifelse(inactive, qᵢ, q̃ˣ)
+    @inbounds qʸ[i, j, k] = ifelse(inactive, qᵢ, q̃ʸ)
 end
 
-# σc ← σc - [δx(F q̂[qʸ]) + δy(F q̂[qˣ])] / Vₛ, where Vₛ = V / σ is the static cell volume
-@kernel function _ffsl_outer_step!(σc, qˣ, qʸ, grid, geometry, U, Δt, limiter, Cmax)
+# σc ← σc - [δx(F q̂ˣ) + δy(G q̂ʸ)] / Vₛ, where Vₛ = V / σ is the static cell volume
+@kernel function _ffsl_outer_step!(σc, q̂ˣ, q̂ʸ, grid, U, Δt)
     i, j, k = @index(Global, NTuple)
-
-    Rˣ⁻, Rˣ⁺, Rʸ⁻, Rʸ⁺ = swept_regions(i, j, k, grid, geometry, U, Δt, Cmax)
+    δX = swept_flux_difference(i, j, k, grid, XSweep(), q̂ˣ, U.u, Δt)
+    δY = swept_flux_difference(i, j, k, grid, YSweep(), q̂ʸ, U.v, Δt)
     Vₛ = static_volume(i, j, k, grid)
     inactive = ffsl_inactive_cell(i, j, k, grid)
-
-    for n in 1:length(σc)
-        δX = swept_flux(i+1, j, k, grid, XSweep(), Rˣ⁺, qʸ[n], limiter, Cmax) -
-             swept_flux(i,   j, k, grid, XSweep(), Rˣ⁻, qʸ[n], limiter, Cmax)
-        δY = swept_flux(i, j+1, k, grid, YSweep(), Rʸ⁺, qˣ[n], limiter, Cmax) -
-             swept_flux(i, j,   k, grid, YSweep(), Rʸ⁻, qˣ[n], limiter, Cmax)
-        @inbounds σc[n][i, j, k] -= ifelse(inactive, zero(Vₛ), (δX + δY) / Vₛ)
-    end
+    @inbounds σc[i, j, k] -= ifelse(inactive, zero(Vₛ), (δX + δY) / Vₛ)
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Take one horizontal flux-form semi-Lagrangian step of length `Δt` for several tracers at once.
+Take one horizontal flux-form semi-Lagrangian step of length `Δt` for each tracer in `tracers`.
 
 `σc` is a tuple of the (stretched) tracer contents `σ * c` at the beginning of the step, which are updated in place.
-`tracers` holds the tracer concentrations at the beginning of the step, with filled halos. `qˣ` and `qʸ` are
-tuples of scratch fields for the inner advective-form operators. `geometry` holds the shared swept Courant
-numbers `sˣ`, `sʸ` and the grid stretching `σ⁰` at the beginning of the step (`nothing` for static grids).
+`tracers` holds the tracer concentrations at the beginning of the step, with filled halos. `workspace` holds the
+swept Courant numbers `sˣ`, `sʸ` (shared by all tracers), the grid stretching `σ⁰` at the beginning of the step
+(`nothing` for static grids), and scratch fields for the face averages `q̂ˣ`, `q̂ʸ` and the inner fields `qˣ`, `qʸ`.
 `U` holds the volume-conserving horizontal transport velocities `u` and `v`.
 """
-function flux_form_semi_lagrangian_step!(σc, tracers, qˣ, qʸ, geometry, grid, U, Δt, limiter, Cmax::Val)
-    arch = architecture(grid)
+function flux_form_semi_lagrangian_step!(σc, tracers, workspace, grid, U, Δt, limiter, Cmax::Val)
     FT = eltype(grid)
     Δt = convert(FT, Δt)
+    (; sˣ, sʸ, σ⁰) = workspace
 
-    compute_swept_courant_numbers!(geometry.sˣ, grid, XSweep(), U.u, Δt, geometry.σ⁰, Cmax)
-    compute_swept_courant_numbers!(geometry.sʸ, grid, YSweep(), U.v, Δt, geometry.σ⁰, Cmax)
+    compute_swept_courant_numbers!(sˣ, grid, XSweep(), U.u, Δt, σ⁰, Cmax)
+    compute_swept_courant_numbers!(sʸ, grid, YSweep(), U.v, Δt, σ⁰, Cmax)
 
-    launch!(arch, grid, :xyz, _ffsl_inner_step!, qˣ, qʸ, tracers, grid, geometry, U, Δt, limiter, Cmax)
+    map(σc, tracers) do σcₙ, qₙ
+        flux_form_semi_lagrangian_tracer_step!(σcₙ, qₙ, workspace, grid, U, Δt, limiter, Cmax)
+    end
 
-    fill_halo_regions!(qˣ)
-    fill_halo_regions!(qʸ)
+    return nothing
+end
 
-    launch!(arch, grid, :xyz, _ffsl_outer_step!, σc, qˣ, qʸ, grid, geometry, U, Δt, limiter, Cmax)
+function flux_form_semi_lagrangian_tracer_step!(σc, q, workspace, grid, U, Δt, limiter, Cmax)
+    arch = architecture(grid)
+    (; sˣ, sʸ, σ⁰, q̂ˣ, q̂ʸ, qˣ, qʸ) = workspace
+
+    compute_swept_averages!(q̂ˣ, grid, XSweep(), sˣ, U.u, Δt, σ⁰, q, limiter, Cmax)
+    compute_swept_averages!(q̂ʸ, grid, YSweep(), sʸ, U.v, Δt, σ⁰, q, limiter, Cmax)
+
+    launch!(arch, grid, :xyz, _ffsl_inner_step!, qˣ, qʸ, q, q̂ˣ, q̂ʸ, grid, U, Δt, σ⁰, limiter)
+    fill_halo_regions!((qˣ, qʸ))
+
+    # The flux in each direction advects the field that was advected in the other direction
+    compute_swept_averages!(q̂ˣ, grid, XSweep(), sˣ, U.u, Δt, σ⁰, qʸ, limiter, Cmax)
+    compute_swept_averages!(q̂ʸ, grid, YSweep(), sʸ, U.v, Δt, σ⁰, qˣ, limiter, Cmax)
+
+    launch!(arch, grid, :xyz, _ffsl_outer_step!, σc, q̂ˣ, q̂ʸ, grid, U, Δt)
 
     return nothing
 end

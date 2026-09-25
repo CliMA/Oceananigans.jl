@@ -21,16 +21,28 @@ using Oceananigans.TurbulenceClosures: closure_required_tracers
 ##### where Gᶜ holds the vertical advection and all other tendency terms.
 #####
 
-struct FluxFormSemiLagrangianGeometry{names, X, Y, S}
+struct FluxFormSemiLagrangianWorkspace{names, X, Y, S, C}
     sˣ :: X
     sʸ :: Y
     σ⁰ :: S
+    q̂ˣ :: X
+    q̂ʸ :: Y
+    qˣ :: C
+    qʸ :: C
 end
 
-FluxFormSemiLagrangianGeometry{names}(sˣ::X, sʸ::Y, σ⁰::S) where {names, X, Y, S} =
-    FluxFormSemiLagrangianGeometry{names, X, Y, S}(sˣ, sʸ, σ⁰)
+function FluxFormSemiLagrangianWorkspace{names}(grid) where names
+    sˣ = XFaceField(grid)
+    sʸ = YFaceField(grid)
+    X, Y = typeof(sˣ), typeof(sʸ)
+    σ⁰ = initial_stretching_field(grid)
+    qˣ = CenterField(grid)
+    return FluxFormSemiLagrangianWorkspace{names, X, Y, typeof(σ⁰), typeof(qˣ)}(sˣ, sʸ, σ⁰, XFaceField(grid), YFaceField(grid), qˣ, CenterField(grid))
+end
 
-ffsl_tracer_names(::FluxFormSemiLagrangianGeometry{names}) where names = names
+ffsl_tracer_names(::FluxFormSemiLagrangianWorkspace{names}) where names = names
+
+fields_tuple(w::FluxFormSemiLagrangianWorkspace) = (; w.sˣ, w.sʸ, w.σ⁰, w.q̂ˣ, w.q̂ʸ, w.qˣ, w.qʸ)
 
 initial_stretching_field(grid) = nothing
 initial_stretching_field(grid::MutableGridOfSomeKind) = Field{Center, Center, Nothing}(grid)
@@ -67,8 +79,8 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Attach the scratch fields used by the horizontal step to every `FluxFormSemiLagrangian` scheme in `advection`.
-The swept Courant numbers and the initial grid stretching are shared by all tracers.
+Attach the workspace used by the horizontal step to every `FluxFormSemiLagrangian` scheme in `advection`.
+The workspace (swept Courant numbers, initial grid stretching and scratch fields) is shared by all tracers.
 """
 function materialize_flux_form_semi_lagrangian(advection, grid, timestepper, closure)
     tracer_advection = Base.structdiff(advection, NamedTuple{(:momentum,)})
@@ -91,12 +103,8 @@ function materialize_flux_form_semi_lagrangian(advection, grid, timestepper, clo
         validate_flux_form_semi_lagrangian_scheme(name, tracer_advection[name], reference, grid, closure)
     end
 
-    geometry = FluxFormSemiLagrangianGeometry{names}(XFaceField(grid), YFaceField(grid), initial_stretching_field(grid))
-
-    schemes = map(names) do name
-        workspace = (; qˣ = CenterField(grid), qʸ = CenterField(grid), geometry)
-        with_workspace(tracer_advection[name], workspace)
-    end
+    workspace = FluxFormSemiLagrangianWorkspace{names}(grid)
+    schemes = map(name -> with_workspace(tracer_advection[name], workspace), names)
 
     return merge(advection, NamedTuple{names}(schemes))
 end
@@ -105,7 +113,7 @@ end
 @inline flux_form_semi_lagrangian_workspace(::Tuple{}) = nothing
 @inline flux_form_semi_lagrangian_workspace(schemes::Tuple) = flux_form_semi_lagrangian_workspace(first(schemes), Base.tail(schemes))
 @inline flux_form_semi_lagrangian_workspace(scheme, others) = flux_form_semi_lagrangian_workspace(others)
-@inline flux_form_semi_lagrangian_workspace(scheme::FluxFormSemiLagrangian{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}, others) = scheme.workspace
+@inline flux_form_semi_lagrangian_workspace(scheme::FluxFormSemiLagrangian{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:FluxFormSemiLagrangianWorkspace}, others) = scheme.workspace
 
 """
 $(TYPEDSIGNATURES)
@@ -118,17 +126,17 @@ flux_form_semi_lagrangian_advection!(model) =
     flux_form_semi_lagrangian_advection!(model, model.timestepper, flux_form_semi_lagrangian_workspace(model.advection))
 
 flux_form_semi_lagrangian_advection!(model, timestepper, ::Nothing) = nothing
+flux_form_semi_lagrangian_advection!(model, ::SplitRungeKuttaTimeStepper, ::Nothing) = nothing
 
 function flux_form_semi_lagrangian_advection!(model, timestepper::SplitRungeKuttaTimeStepper, workspace)
-    geometry = workspace.geometry
     stage = model.clock.stage
 
     if stage == 1
-        store_initial_stretching!(geometry.σ⁰, model.grid)
+        store_initial_stretching!(workspace.σ⁰, model.grid)
     end
 
     if stage == timestepper.Nstages
-        horizontal_flux_form_semi_lagrangian_step!(model, geometry, model.clock.last_stage_Δt)
+        horizontal_flux_form_semi_lagrangian_step!(model, workspace, model.clock.last_stage_Δt)
     end
 
     return nothing
@@ -137,45 +145,38 @@ end
 store_initial_stretching!(::Nothing, grid) = nothing
 store_initial_stretching!(σ⁰, grid) = parent(σ⁰) .= parent(grid.z.σᶜᶜⁿ)
 
-# Store c⁰ = σ⁰c⁰ / σ⁰ in the tracer fields (their halos are filled next) and remove from σ⁰c⁰
-# the term `c ∇ₕ⋅(Aₕ uₕ)` that the final-stage tendency holds, see `div_Uc(..., ::FluxFormSemiLagrangian, ...)`.
-@kernel function _prepare_flux_form_semi_lagrangian_step!(σc, tracers, grid, u, v, Δt, σ⁰)
+# Store c⁰ = σ⁰c⁰ / σ⁰ in the tracer field (its halos are filled next) and remove from σ⁰c⁰ the
+# term `c ∇ₕ⋅(Aₕ uₕ)` that the final-stage tendency holds, see `div_Uc(..., ::FluxFormSemiLagrangian, ...)`.
+@kernel function _prepare_flux_form_semi_lagrangian_step!(σc, c, grid, u, v, Δt, σ⁰)
     i, j, k = @index(Global, NTuple)
-
     σ = initial_stretching(i, j, σ⁰)
     Vₛ = static_volume(i, j, k, grid)
     δF = Δt * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
-
-    for n in 1:length(tracers)
-        c = tracers[n]
-        σc⁰ = @inbounds σc[n][i, j, k]
-        @inbounds σc[n][i, j, k] = σc⁰ + c[i, j, k] * δF / Vₛ
-        @inbounds c[i, j, k] = σc⁰ / σ
-    end
+    σc⁰ = @inbounds σc[i, j, k]
+    @inbounds σc[i, j, k] = σc⁰ + c[i, j, k] * δF / Vₛ
+    @inbounds c[i, j, k] = σc⁰ / σ
 end
 
-function horizontal_flux_form_semi_lagrangian_step!(model, geometry, Δt)
+function horizontal_flux_form_semi_lagrangian_step!(model, workspace, Δt)
     grid = model.grid
     arch = architecture(grid)
-    names = ffsl_tracer_names(geometry)
+    names = ffsl_tracer_names(workspace)
 
     tracers = NamedTuple{names}(model.tracers)
-    schemes = NamedTuple{names}(model.advection)
-    σc = values(NamedTuple{names}(model.timestepper.Ψ⁻))
-    qˣ = map(scheme -> scheme.workspace.qˣ, values(schemes))
-    qʸ = map(scheme -> scheme.workspace.qʸ, values(schemes))
-
-    scheme = first(schemes)
+    σc = NamedTuple{names}(model.timestepper.Ψ⁻)
+    scheme = model.advection[first(names)]
     Cmax = Val(maximum_courant_number(scheme))
 
     u, v, _ = model.transport_velocities
     Δt = convert(eltype(grid), Δt)
 
-    launch!(arch, grid, :xyz, _prepare_flux_form_semi_lagrangian_step!, σc, values(tracers), grid, u, v, Δt, geometry.σ⁰)
+    map(values(σc), values(tracers)) do σcₙ, cₙ
+        launch!(arch, grid, :xyz, _prepare_flux_form_semi_lagrangian_step!, σcₙ, cₙ, grid, u, v, Δt, workspace.σ⁰)
+    end
+
     fill_halo_regions!(tracers, model.clock, fields(model))
 
-    shared_geometry = (; sˣ = geometry.sˣ, sʸ = geometry.sʸ, σ⁰ = geometry.σ⁰)
-    flux_form_semi_lagrangian_step!(σc, values(tracers), qˣ, qʸ, shared_geometry, grid, (; u, v), Δt, scheme.limiter, Cmax)
+    flux_form_semi_lagrangian_step!(values(σc), values(tracers), fields_tuple(workspace), grid, (; u, v), Δt, scheme.limiter, Cmax)
 
     return nothing
 end
