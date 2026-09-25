@@ -382,6 +382,19 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum(c) ≈ -0.95
         @test maximum(c) ≈ -0.05
     end
+
+    @testset "Compiled Field reductions return numbers" begin
+        grid = RectilinearGrid(arch; size = (2, 2, 4), extent = (1, 1, 1))
+        c = CenterField(grid)
+        set!(c, 2)
+
+        # With Reactant on Julia 1.13, linear indexing into a traced view returns a one-element
+        # array, so reductions to a number must extract their result with Cartesian indexing
+        for reduction in (sum, maximum, minimum, mean)
+            compiled_reduction = @compile sync=true reduction(c)
+            @test compiled_reduction(c) isa Number
+        end
+    end
 end
 
 select_snapshot!(c, fts, n) = set!(c, fts[n])

@@ -89,6 +89,14 @@ function step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, a
     return nothing
 end
 
+reset!(::Tuple{}, ::Tuple{}) = nothing
+
+function reset!(closure_fields_tuple, closure_tuple::Tuple)
+    reset!(first(closure_fields_tuple), first(closure_tuple))
+    reset!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple))
+    return nothing
+end
+
 function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, args...)
     # So the last closure in the tuple has the say...
     for closure in closure_tuple
