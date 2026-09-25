@@ -120,6 +120,7 @@ include("z_star_coordinate.jl")
 
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
+include("flux_form_semi_lagrangian_advection.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
 

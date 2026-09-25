@@ -337,6 +337,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     cached_state = previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻, cached_state...)
     materialize_clock!(clock, timestepper)
+    advection = materialize_flux_form_semi_lagrangian(advection, grid, timestepper, closure)
 
     # Materialize forcing for model tracer and velocity fields.
     # Use hydrostatic_fields (which includes w) to match the model_fields

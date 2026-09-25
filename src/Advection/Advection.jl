@@ -14,6 +14,7 @@ export
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
+    FluxFormSemiLagrangian,
     AdaptiveImplicitVerticalAdvection,
     update_advection!,
     EnergyConserving,
@@ -87,5 +88,6 @@ include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
 include("materialize_advection.jl")
+include("flux_form_semi_lagrangian.jl")
 
 end # module
