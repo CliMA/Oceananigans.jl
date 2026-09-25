@@ -34,6 +34,24 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
 @inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
+struct SubstepWeight{W}
+    substep :: Int
+    weights :: W
+end
+
+struct StepValue{S, N}
+    step :: S
+end
+
+StepValue{N}(step) where N = StepValue{typeof(step), N}(step)
+
+@inline substep_value(value) = value
+@inline substep_value(w::SubstepWeight) = @inbounds w.weights[w.substep]
+@inline substep_value(v::StepValue{<:Any, N}) where N = @inbounds getproperty(v.step[1], N)
+
+Adapt.adapt_structure(to, w::SubstepWeight) = SubstepWeight(w.substep, Adapt.adapt(to, w.weights))
+Adapt.adapt_structure(to, v::StepValue{<:Any, N}) where N = StepValue{N}(Adapt.adapt(to, v.step))
+
 # Evolution Kernels
 #
 # ∂t(η) = - ∇⋅U
@@ -44,6 +62,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
+
+    transport_weight = substep_value(transport_weight)
+    Δτ = substep_value(Δτ)
 
     cache_previous_velocities!(timestepper, i, j, 1, U, V)
 
@@ -68,6 +89,10 @@ end
 @kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
+
+    averaging_weight = substep_value(averaging_weight)
+    Δτ = substep_value(Δτ)
+    clock = substep_value(clock)
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
@@ -192,13 +217,21 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
         converted_U_args = convert_to_device(arch, U_args)
         converted_η_args = convert_to_device(arch, η_args)
 
-        @unroll for substep in 1:Nsubsteps
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
+        substep_barotropic_mode!(child_architecture(arch), free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
+                                 converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
+    end
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
+    return nothing
+end
+
+function substep_barotropic_mode!(arch, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
+                                  converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+    @unroll for substep in 1:Nsubsteps
+        @inbounds averaging_weight = weights[substep]
+        @inbounds transport_weight = transport_weights[substep]
+
+        barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+        free_surface_kernel!(averaging_weight, converted_η_args...)
     end
 
     return nothing
