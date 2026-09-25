@@ -1,0 +1,39 @@
+## A1: static z, oscillating overturning circulation (free surface at rest)
+### Rectilinear basin with an immersed ridge, static z (Δt = 1 minute, 32 steps)
+|  N | max tracer C (h) | max tracer C (v) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.090 | 0.090 | 0.00e+00 | 1.51e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.177 | 0.177 | 0.00e+00 | 1.23e-15 | 1.97e-06 | 1.10e-05 |
+|  4 | 0.355 | 0.355 | 0.00e+00 | 9.61e-16 | 1.39e-05 | 8.99e-05 |
+|  8 | 0.652 | 0.652 | 1.11e-16 | 0.00e+00 | 6.96e-05 | 3.98e-04 |
+| 16 | 0.851 | 0.851 | 2.22e-16 | 1.23e-15 | 1.62e-04 | 1.06e-03 |
+| unsplit | - | - | 0.00e+00 | 4.12e-16 | 1.04e-06 | 5.22e-06 |
+### LatitudeLongitude basin with an immersed ridge, static z (Δt = 1 minute, 32 steps)
+|  N | max tracer C (h) | max tracer C (v) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.093 | 0.093 | 0.00e+00 | 3.85e-16 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.184 | 0.184 | 0.00e+00 | 7.70e-16 | 1.83e-06 | 1.17e-05 |
+|  4 | 0.369 | 0.369 | 0.00e+00 | 3.85e-16 | 1.53e-05 | 9.66e-05 |
+|  8 | 0.677 | 0.677 | 2.22e-16 | 5.13e-16 | 7.78e-05 | 4.54e-04 |
+| 16 | 0.884 | 0.884 | 2.22e-16 | 7.70e-16 | 1.82e-04 | 1.27e-03 |
+| unsplit | - | - | 0.00e+00 | 1.28e-16 | 1.13e-06 | 5.82e-06 |
+## A1 (supplementary): static z, baroclinic adjustment with a moving free surface
+The unsplit model does not conserve ∫c dV here either: with a static z the tracer flux through the moving surface is not zero.
+### Rectilinear basin with an immersed ridge, static z (Δt = 2 minutes, 32 steps)
+|  N | max tracer C (h) | max tracer C (v) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.041 | 0.038 | 0.00e+00 | 6.48e-05 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.080 | 0.075 | 0.00e+00 | 6.48e-05 | 1.74e-05 | 6.84e-05 |
+|  4 | 0.155 | 0.146 | 0.00e+00 | 6.49e-05 | 5.91e-05 | 2.36e-04 |
+|  8 | 0.289 | 0.279 | 0.00e+00 | 6.44e-05 | 1.47e-04 | 4.78e-04 |
+| 16 | 0.514 | 0.494 | 0.00e+00 | 6.40e-05 | 2.19e-04 | 7.54e-04 |
+| unsplit | - | - | 0.00e+00 | 6.48e-05 | 1.79e-06 | 9.64e-06 |
+### LatitudeLongitude basin with an immersed ridge, static z (Δt = 2 minutes, 32 steps)
+|  N | max tracer C (h) | max tracer C (v) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.044 | 0.040 | 0.00e+00 | 8.99e-05 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.086 | 0.080 | 0.00e+00 | 8.99e-05 | 1.86e-05 | 6.18e-05 |
+|  4 | 0.167 | 0.156 | 0.00e+00 | 9.00e-05 | 5.13e-05 | 2.19e-04 |
+|  8 | 0.313 | 0.298 | 1.11e-16 | 8.94e-05 | 1.33e-04 | 4.14e-04 |
+| 16 | 0.548 | 0.529 | 1.11e-16 | 8.94e-05 | 2.93e-04 | 1.17e-03 |
+| unsplit | - | - | 0.00e+00 | 8.99e-05 | 1.92e-06 | 9.99e-06 |

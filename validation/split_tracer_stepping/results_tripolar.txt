@@ -1,0 +1,73 @@
+
+## A5: TripolarGrid with immersed islands, z-star, random flow across the fold
+
+### RightCenterFolded TripolarGrid with immersed islands, z-star (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.000 | 4.93e-02 | 0.00e+00 | 4.10e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.001 | 0.001 | 4.93e-02 | 0.00e+00 | 9.77e-16 | 2.84e-11 | 3.50e-10 |
+|  4 | 0.001 | 0.002 | 4.93e-02 | 0.00e+00 | 2.35e-15 | 1.26e-10 | 1.46e-09 |
+|  8 | 0.003 | 0.003 | 4.93e-02 | 0.00e+00 | 1.17e-15 | 6.59e-10 | 7.46e-09 |
+| 16 | 0.005 | 0.006 | 4.93e-02 | 0.00e+00 | 4.50e-15 | 2.03e-09 | 2.70e-08 |
+| unsplit | - | - | 4.93e-02 | 2.66e-15 | 7.82e-16 | 2.09e-13 | 4.03e-12 |
+
+### RightFaceFolded TripolarGrid with immersed islands, z-star (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.000 | 4.49e-02 | 0.00e+00 | 2.16e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.001 | 0.001 | 4.49e-02 | 0.00e+00 | 1.37e-15 | 3.13e-11 | 4.02e-10 |
+|  4 | 0.001 | 0.001 | 4.49e-02 | 0.00e+00 | 2.55e-15 | 1.79e-10 | 2.34e-09 |
+|  8 | 0.003 | 0.003 | 4.49e-02 | 0.00e+00 | 9.80e-16 | 5.32e-10 | 7.29e-09 |
+| 16 | 0.006 | 0.005 | 4.49e-02 | 0.00e+00 | 3.92e-16 | 2.39e-09 | 3.16e-08 |
+| unsplit | - | - | 4.49e-02 | 2.44e-15 | 3.73e-15 | 1.30e-13 | 1.91e-12 |
+
+## A5: TripolarGrid with immersed islands, static z, oscillating overturning (at rest near the fold)
+
+### RightCenterFolded TripolarGrid with immersed islands, static z (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.000 | 8.42e-18 | 0.00e+00 | 0.00e+00 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.001 | 0.000 | 8.42e-18 | 0.00e+00 | 3.89e-16 | 6.49e-09 | 2.37e-08 |
+|  4 | 0.001 | 0.000 | 8.42e-18 | 0.00e+00 | 1.17e-15 | 6.49e-09 | 2.37e-08 |
+|  8 | 0.002 | 0.001 | 8.42e-18 | 0.00e+00 | 2.92e-15 | 6.49e-09 | 2.37e-08 |
+| 16 | 0.003 | 0.001 | 8.42e-18 | 0.00e+00 | 9.73e-16 | 6.49e-09 | 2.37e-08 |
+| unsplit | - | - | 8.42e-18 | 0.00e+00 | 0.00e+00 | 2.96e-12 | 1.77e-11 |
+
+### RightFaceFolded TripolarGrid with immersed islands, static z (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.000 | 7.28e-18 | 0.00e+00 | 1.17e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.000 | 0.000 | 7.28e-18 | 0.00e+00 | 3.32e-15 | 6.36e-09 | 2.24e-08 |
+|  4 | 0.001 | 0.000 | 7.28e-18 | 0.00e+00 | 2.15e-15 | 6.36e-09 | 2.24e-08 |
+|  8 | 0.001 | 0.000 | 7.28e-18 | 0.00e+00 | 3.71e-15 | 6.36e-09 | 2.24e-08 |
+| 16 | 0.002 | 0.001 | 7.28e-18 | 0.00e+00 | 2.15e-15 | 6.36e-09 | 2.24e-08 |
+| unsplit | - | - | 7.28e-18 | 0.00e+00 | 1.95e-16 | 2.71e-12 | 1.54e-11 |
+
+## A5 (supplementary): TripolarGrid with immersed islands, static z, random flow across the fold
+The unsplit model does not conserve ∫c dV here either: with a static z the tracer flux through the moving surface is not zero.
+
+### RightCenterFolded TripolarGrid with immersed islands, static z (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.001 | 4.93e-02 | 0.00e+00 | 3.27e-06 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.001 | 0.001 | 4.93e-02 | 0.00e+00 | 3.27e-06 | 1.27e-10 | 1.50e-09 |
+|  4 | 0.001 | 0.003 | 4.93e-02 | 0.00e+00 | 3.27e-06 | 4.90e-10 | 6.63e-09 |
+|  8 | 0.003 | 0.005 | 4.93e-02 | 0.00e+00 | 3.27e-06 | 2.50e-09 | 4.53e-08 |
+| 16 | 0.005 | 0.011 | 4.93e-02 | 0.00e+00 | 3.27e-06 | 7.99e-09 | 1.22e-07 |
+| unsplit | - | - | 4.93e-02 | 0.00e+00 | 3.27e-06 | 6.89e-13 | 1.01e-11 |
+
+### RightFaceFolded TripolarGrid with immersed islands, static z (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.000 | 0.001 | 4.49e-02 | 0.00e+00 | 2.53e-06 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.001 | 0.001 | 4.49e-02 | 0.00e+00 | 2.53e-06 | 6.51e-11 | 8.70e-10 |
+|  4 | 0.001 | 0.002 | 4.49e-02 | 0.00e+00 | 2.53e-06 | 5.93e-10 | 6.63e-09 |
+|  8 | 0.003 | 0.004 | 4.49e-02 | 0.00e+00 | 2.53e-06 | 2.56e-09 | 3.42e-08 |
+| 16 | 0.006 | 0.008 | 4.49e-02 | 0.00e+00 | 2.53e-06 | 8.39e-09 | 1.14e-07 |
+| unsplit | - | - | 4.49e-02 | 0.00e+00 | 2.53e-06 | 5.96e-13 | 7.89e-12 |

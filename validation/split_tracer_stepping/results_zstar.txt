@@ -1,0 +1,48 @@
+
+## A2: z-star, baroclinic adjustment with a moving free surface
+
+### Rectilinear basin with an immersed ridge, z-star (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.041 | 0.038 | 5.51e-02 | 0.00e+00 | 1.37e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.080 | 0.075 | 5.51e-02 | 0.00e+00 | 1.37e-15 | 3.35e-06 | 1.98e-05 |
+|  4 | 0.155 | 0.147 | 5.51e-02 | 0.00e+00 | 1.37e-16 | 3.84e-05 | 2.33e-04 |
+|  8 | 0.289 | 0.280 | 5.51e-02 | 0.00e+00 | 4.12e-16 | 9.65e-05 | 4.65e-04 |
+| 16 | 0.515 | 0.495 | 5.51e-02 | 2.22e-16 | 1.37e-16 | 1.88e-04 | 7.25e-04 |
+| unsplit | - | - | 5.51e-02 | 1.78e-15 | 8.23e-16 | 1.82e-06 | 9.69e-06 |
+
+### LatitudeLongitude basin with an immersed ridge, z-star (Δt = 2 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.044 | 0.040 | 9.11e-02 | 0.00e+00 | 7.70e-16 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.086 | 0.080 | 9.11e-02 | 0.00e+00 | 1.28e-16 | 1.11e-05 | 6.51e-05 |
+|  4 | 0.167 | 0.156 | 9.11e-02 | 2.22e-16 | 1.28e-16 | 2.52e-05 | 1.58e-04 |
+|  8 | 0.313 | 0.298 | 9.11e-02 | 2.22e-16 | 1.28e-16 | 7.53e-05 | 2.78e-04 |
+| 16 | 0.549 | 0.530 | 9.11e-02 | 2.22e-16 | 7.70e-16 | 2.72e-04 | 1.18e-03 |
+| unsplit | - | - | 9.11e-02 | 2.22e-15 | 2.05e-15 | 1.97e-06 | 1.01e-05 |
+
+## A2 (larger time step): z-star, baroclinic adjustment with a stronger front
+
+### Rectilinear basin with an immersed ridge, z-star (Δt = 3 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.106 | 0.088 | 1.64e-01 | 0.00e+00 | 1.37e-16 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.211 | 0.175 | 1.64e-01 | 0.00e+00 | 1.92e-15 | 4.86e-05 | 3.00e-04 |
+|  4 | 0.416 | 0.348 | 1.64e-01 | 2.22e-16 | 5.49e-16 | 2.38e-04 | 1.25e-03 |
+|  8 | 0.799 | 0.691 | 1.64e-01 | 4.44e-16 | 4.12e-16 | 1.15e-03 | 6.47e-03 |
+| 16 | 1.554 | 1.272 | 1.64e-01 | 2.22e-16 | 8.23e-16 | 4.98e-03 | 2.51e-02 |
+| unsplit | - | - | 1.64e-01 | 2.00e-15 | 1.37e-16 | 7.95e-06 | 6.02e-05 |
+
+### LatitudeLongitude basin with an immersed ridge, z-star (Δt = 3 minutes, 32 steps)
+
+|  N | max tracer C (h) | max tracer C (v) | η range (m) | uniform deviation | inventory drift | L² error vs N=1 | L∞ error vs N=1 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+|  1 | 0.110 | 0.091 | 9.67e-02 | 0.00e+00 | 1.67e-15 | 0.00e+00 | 0.00e+00 |
+|  2 | 0.219 | 0.182 | 9.67e-02 | 2.22e-16 | 2.57e-16 | 7.20e-05 | 3.97e-04 |
+|  4 | 0.436 | 0.361 | 9.67e-02 | 4.44e-16 | 2.57e-16 | 3.38e-04 | 2.01e-03 |
+|  8 | 0.833 | 0.718 | 9.67e-02 | 6.66e-16 | 7.70e-16 | 1.11e-03 | 6.60e-03 |
+| 16 | 1.611 | 1.288 | 9.67e-02 | 6.66e-16 | 8.98e-16 | 4.77e-03 | 2.48e-02 |
+| unsplit | - | - | 9.67e-02 | 2.22e-15 | 2.57e-16 | 9.73e-06 | 7.27e-05 |
