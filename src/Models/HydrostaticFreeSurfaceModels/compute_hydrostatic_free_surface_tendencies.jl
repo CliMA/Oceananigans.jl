@@ -50,6 +50,7 @@ This function:
 3. Computes flux boundary condition contributions
 4. Scales tendencies by the grid stretching factor for z-star coordinates
 5. Updates biogeochemistry tendencies
+6. Advects `FluxFormSemiLagrangian` tracers horizontally (on the final Runge-Kutta stage)
 
 Tracers are advected using `model.transport_velocities` which may differ from `model.velocities`
 when using split-explicit free surfaces (transport velocities include barotropic correction).
@@ -71,6 +72,8 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     update_tendencies!(model.biogeochemistry, model)
+
+    flux_form_semi_lagrangian_advection!(model)
 
     return nothing
 end

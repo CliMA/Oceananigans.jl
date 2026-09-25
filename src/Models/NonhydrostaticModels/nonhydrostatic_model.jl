@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: Centered, FluxFormSemiLagrangian, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
@@ -257,6 +257,10 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = materialize_model_advection(advection, grid)
+
+    if any(scheme -> scheme isa FluxFormSemiLagrangian, values(advection))
+        throw(ArgumentError("FluxFormSemiLagrangian tracer advection is only supported by HydrostaticFreeSurfaceModel."))
+    end
 
     grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
