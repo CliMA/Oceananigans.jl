@@ -15,7 +15,7 @@ using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, set!, conditional_length
+import Oceananigans.Fields: Field, set!, conditional_length, dot!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
@@ -266,6 +266,9 @@ end
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end
+
+# The local dot products are summed across ranks on the host, so the result is copied back into `r`
+dot!(r, u::DistributedField, v::DistributedField; condition=nothing) = fill!(r, dot(u, v; condition))
 
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)
