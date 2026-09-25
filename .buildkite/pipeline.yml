@@ -32,7 +32,7 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      julia +$JULIA_VERSION -O0 --color=yes --project=test --check-bounds=yes -e 'using Pkg; Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=test --check-bounds=yes -e 'using Pkg; Pkg.instantiate()'
       # After we have instantiated the general environment, move manifest to the
       # version-specific filename, not to clash with the manifest for Enzyme.
       mv -v test/Manifest.toml test/Manifest-v$(echo "${JULIA_VERSION}" | cut -d. -f1-2).toml
@@ -58,7 +58,7 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project=test --check-bounds=auto -e 'using Pkg; Pkg.instantiate()' # Use --check-bounds=yes when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
+      julia +$JULIA_VERSION_ENZYME --color=yes --project=test --check-bounds=auto -e 'using Pkg; Pkg.instantiate()' # Use --check-bounds=yes when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
       # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
