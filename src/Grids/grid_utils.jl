@@ -23,7 +23,9 @@ end
     else
         i = interior_indices(ℓx, Tx(), Nx)
         j = interior_indices(ℓy, Ty(), Ny)
-        return view(ξ, i, j)
+        δi = firstindex(parent(ξ), 1) - firstindex(ξ, 1)
+        δj = firstindex(parent(ξ), 2) - firstindex(ξ, 2)
+        return view(parent(ξ), i .+ δi, j .+ δj)
     end
 end
 
