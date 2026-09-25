@@ -63,7 +63,7 @@ else
             addworker(; color)
         elseif startswith(name, "memory_allocation/")
             # Coverage instrumentation inflates the measured allocations.
-            addworker(; exeflags=["--check-bounds=auto", "--code-coverage=none"], color)
+            addworker(; exeflags=["--check-bounds=auto", "--code-coverage=none", "-O2"], color)
         else
             nothing
         end
