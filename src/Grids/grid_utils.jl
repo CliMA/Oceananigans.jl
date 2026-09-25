@@ -21,9 +21,9 @@ end
     if with_halos
         return ξ
     else
-        i = interior_parent_indices(ℓx, Tx(), Nx, Hx)
-        j = interior_parent_indices(ℓy, Ty(), Ny, Hy)
-        return view(parent(ξ), i, j)
+        i = interior_indices(ℓx, Tx(), Nx)
+        j = interior_indices(ℓy, Ty(), Ny)
+        return view(ξ, i, j)
     end
 end
 
