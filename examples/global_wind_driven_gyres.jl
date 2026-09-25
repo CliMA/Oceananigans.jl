@@ -34,6 +34,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Coriolis: CDScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
 using Oceananigans.Operators: Az
@@ -249,11 +250,10 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # A hydrostatic model cannot overturn such a column, so a convective adjustment mixes
 # temperature and momentum vertically wherever the stratification is unstable.
 
-@inline biharmonic_viscosity(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, τ) = Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / τ
-
-horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=biharmonic_viscosity, discrete_form=true, parameters=FT(30days))
+## @inline biharmonic_viscosity(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, τ) = Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / τ
+## horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=biharmonic_viscosity, discrete_form=true, parameters=FT(30days))
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, convective_νz=1)
-closure = (horizontal_viscosity, convective_adjustment)
+closure = convective_adjustment
 
 function build_model(grid, coriolis)
     model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface, buoyancy, closure,
@@ -324,10 +324,10 @@ end
 coriolis_title(rotation_rate) = "f = $(round(Int, 2rotation_rate / Ω))Ω sin φ"
 
 rotation_rates = (Ω, 2Ω)
-filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate), @sprintf("omega_%d", rotation_rate / Ω))
+filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate, scheme=CDScheme(grid)), @sprintf("omega_%d", rotation_rate / Ω))
                  for rotation_rate in rotation_rates)
 
-f_plane_filename = run_gyres(grid, FPlane(latitude=30), "f_plane")
+f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=CDScheme(grid)), "f_plane")
 
 # ## Gyre transports
 #
