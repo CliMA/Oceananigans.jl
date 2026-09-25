@@ -74,6 +74,23 @@ using Statistics: mean
         @test model.clock.iteration == Nt
     end
 
+    @testset "TKEDissipationVerticalDiffusivity evolves e and ϵ" begin
+        grid = RectilinearGrid(arch; size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
+        u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(-1e-4))
+        model = HydrostaticFreeSurfaceModel(grid;
+                    closure = TKEDissipationVerticalDiffusivity(),
+                    buoyancy = BuoyancyTracer(),
+                    boundary_conditions = (; u=u_bcs),
+                    tracers = :b)
+
+        set!(model, b=z -> 1e-5 * z, e=1e-6, ϵ=1e-9)
+
+        compiled_run! = @compile raise=true raise_first=true sync=true run_timesteps!(model, 60.0, 10)
+        compiled_run!(model, 60.0, 10)
+        @test minimum(model.tracers.e) < 1e-6
+        @test minimum(model.tracers.ϵ) < 1e-9
+    end
+
     @testset "Enzyme reverse-mode gradient" begin
         grid = RectilinearGrid(arch; size=16, z=(-200, 0), topology=(Flat, Flat, Bounded))
         model = HydrostaticFreeSurfaceModel(grid;

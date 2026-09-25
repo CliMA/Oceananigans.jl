@@ -240,6 +240,17 @@ end
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
+function reset!(closure_fields, ::FlavorOfCATKE)
+    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.Jᵇ,
+              closure_fields.previous_velocities...)
+
+    for field in fields
+        fill!(field, 0)
+    end
+
+    return nothing
+end
+
 function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
     arch = model.architecture
     grid = model.grid
