@@ -68,7 +68,7 @@ Reactant.set_default_backend("cpu")
 
 using Oceananigans.Architectures: ReactantState
 
-grid = RectilinearGrid(ReactantState(), size=64, z=(-128, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(ReactantState(), size=32, z=(-128, 0), topology=(Flat, Flat, Bounded))
 closure = Reactant.to_rarray(TKEDissipationVerticalDiffusivity(); track_numbers=Number)
 
 τˣ = Field{Face, Center, Nothing}(grid)
