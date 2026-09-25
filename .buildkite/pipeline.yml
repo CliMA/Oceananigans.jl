@@ -264,4 +264,3 @@ steps:
     commands:
       - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
       - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
-      - "julia -e 'using Pkg; Pkg.gc()'"
