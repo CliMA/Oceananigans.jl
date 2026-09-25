@@ -50,6 +50,9 @@ function maybe_prepare_first_time_step!(model, Δt, callbacks)
     return nothing
 end
 
+# Advance tracers that are stepped less often than the rest of the model (fallback is a no-op).
+step_split_tracers!(model, Δt) = nothing
+
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing

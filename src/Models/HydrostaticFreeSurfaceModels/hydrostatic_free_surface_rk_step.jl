@@ -220,6 +220,7 @@ end
 @inline function rk_substep_tracer!(model, Δt, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
+    is_slow_tracer(model.tracer_time_step_splitting, Val(tracer_name)) && return nothing
 
     grid = model.grid
     FT = eltype(grid)

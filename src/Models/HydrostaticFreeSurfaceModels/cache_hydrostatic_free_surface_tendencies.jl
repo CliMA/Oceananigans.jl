@@ -66,7 +66,8 @@ end
     closure = model.closure
     skip = field_name == :η ||
            (hasclosure(closure, FlavorOfCATKE) && field_name == :e) ||
-           (hasclosure(closure, FlavorOfTD) && (field_name == :ϵ || field_name == :e))
+           (hasclosure(closure, FlavorOfTD) && (field_name == :ϵ || field_name == :e)) ||
+           is_slow_tracer(model.tracer_time_step_splitting, Val(field_name))
     skip && return nothing
     launch!(model.architecture, model.grid, :xyz,
             _cache_field_tendencies!,
@@ -111,6 +112,7 @@ end
 end
 
 @inline function cache_current_field!(model, ::Val{name}) where name
+    is_slow_tracer(model.tracer_time_step_splitting, Val(name)) && return nothing
     grid = model.grid
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     Ψⁿ = prognostic_fields(model)[name]

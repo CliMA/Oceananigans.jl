@@ -3,7 +3,7 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate, TracerTimeStepSplitting
 
 using Adapt: Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
@@ -196,6 +196,7 @@ include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
+include("tracer_time_step_splitting.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")

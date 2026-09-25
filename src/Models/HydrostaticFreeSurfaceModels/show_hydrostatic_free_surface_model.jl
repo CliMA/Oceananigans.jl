@@ -44,6 +44,11 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
 
     print(io, "├── vertical_coordinate: $(summary(model.vertical_coordinate))", "\n")
 
+    splitting = model.tracer_time_step_splitting
+    if !isnothing(splitting)
+        print(io, "├── tracer_time_step_splitting: ", splitting.tracer_names, " stepped every ", splitting.ratio, " time steps", "\n")
+    end
+
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
     else

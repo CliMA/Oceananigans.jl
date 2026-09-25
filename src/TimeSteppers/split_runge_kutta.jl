@@ -206,6 +206,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         update_state!(model, callbacks)
     end
 
+    step_split_tracers!(model, Δt)
+
     # Step particles
     step_lagrangian_particles!(model, Δt)
 

@@ -117,6 +117,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     step_closure_prognostics!(model, Δt)
     update_state!(model, callbacks)
 
+    step_split_tracers!(model, Δt)
+
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value

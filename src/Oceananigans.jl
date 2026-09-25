@@ -95,7 +95,7 @@ export
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    SphericalCoriolis, PrescribedVelocityFields,
+    SphericalCoriolis, PrescribedVelocityFields, TracerTimeStepSplitting,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,

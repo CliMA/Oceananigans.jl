@@ -68,9 +68,11 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
     compute_tracer_flux_bcs!(model)
 
-    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
+    scale_by_stretching_factor!(model.timestepper.Gⁿ, fast_tracers(model), model.grid)
 
     update_tendencies!(model.biogeochemistry, model)
+
+    accumulate_split_tracer_transport!(model.tracer_time_step_splitting, model, model.timestepper)
 
     return nothing
 end
@@ -104,6 +106,16 @@ compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_ma
 
     tracer_name = first(tracer_names)
 
+    if !is_slow_tracer(model.tracer_time_step_splitting, Val(tracer_name))
+        launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, Val(tracer_index), Val(tracer_name))
+    end
+
+    launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
+
+    return nothing
+end
+
+@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
@@ -128,8 +140,6 @@ compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_ma
             model.clock,
             c_forcing;
             active_cells_map)
-
-    launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end

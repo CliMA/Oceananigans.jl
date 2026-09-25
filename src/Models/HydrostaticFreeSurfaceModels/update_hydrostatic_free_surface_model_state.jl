@@ -56,7 +56,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # Fill the halos of the prognostic fields. Note that the halos of the
     # free-surface variables and the horizontal velocities
     # are filled within the time-stepping after the state evolution.
-    fill_halo_regions!(tracers, model.clock, fields(model); async=true)
+    # Slow tracers of a split tracer time step only change during their long step, which fills their halos.
+    fill_halo_regions!(fast_tracers(model), model.clock, fields(model); async=true)
 
     # Compute diagnostic quantities
     @apply_regionally begin

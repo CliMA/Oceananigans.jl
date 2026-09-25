@@ -25,7 +25,7 @@ end
 end
 
 @inline function compute_tracer_flux_bcs!(model::HydrostaticFreeSurfaceModel)
-    compute_tracer_flux_bcs!(model, Val(propertynames(model.tracers)))
+    compute_tracer_flux_bcs!(model, Val(propertynames(fast_tracers(model))))
     return nothing
 end
 

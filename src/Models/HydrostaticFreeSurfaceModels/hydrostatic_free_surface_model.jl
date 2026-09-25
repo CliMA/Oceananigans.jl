@@ -49,7 +49,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
+                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM, TTS} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -71,6 +71,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
     boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
+    tracer_time_step_splitting :: TTS # Split tracer time stepping (or `nothing`)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -100,7 +101,8 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 pressure = nothing,
                                 closure_fields = nothing,
                                 auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+                                vertical_coordinate = default_vertical_coordinate(grid),
+                                tracer_time_step_splitting = nothing)
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -141,6 +143,8 @@ Keyword arguments
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
+  - `tracer_time_step_splitting`: A [`TracerTimeStepSplitting`](@ref) that advances a group of "slow" tracers
+                                  with a longer time step, or `nothing` (default) to step all tracers every time step.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
@@ -160,7 +164,8 @@ function HydrostaticFreeSurfaceModel(grid;
                                      pressure = nothing,
                                      closure_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = default_vertical_coordinate(grid))
+                                     vertical_coordinate = default_vertical_coordinate(grid),
+                                     tracer_time_step_splitting = nothing)
 
     arch = architecture(grid)
 
@@ -220,7 +225,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # inferring `materialize_hydrostatic_free_surface_model` with the names unknown as well.
     settings = (; clock, momentum_advection, tracer_advection, buoyancy, coriolis, free_surface, tracers, forcing, closure,
                   boundary_conditions, particles, biogeochemistry, velocities, pressure, closure_fields,
-                  auxiliary_fields, vertical_coordinate)
+                  auxiliary_fields, vertical_coordinate, tracer_time_step_splitting)
 
     return Base.invokelatest(materialize_hydrostatic_free_surface_model, grid, Val(tracernames(tracers)), timestepper_name(timestepper), settings)
 end
@@ -297,7 +302,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
                                               advection, buoyancy, boundary_conditions, closure, settings) where tracer_names
 
     (; clock, coriolis, free_surface, tracers, forcing, particles, biogeochemistry, velocities, pressure,
-       closure_fields, auxiliary_fields, vertical_coordinate) = settings
+       closure_fields, auxiliary_fields, vertical_coordinate, tracer_time_step_splitting) = settings
 
     arch = architecture(grid)
 
@@ -343,10 +348,14 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
 
     boundary_transport = initialize_targeted_boundary_transport(velocities)
 
+    tracer_time_step_splitting = materialize_tracer_time_step_splitting(tracer_time_step_splitting, grid, clock, tracers,
+                                                                        velocities, closure, timestepper, vertical_coordinate,
+                                                                        biogeochemistry, boundary_conditions)
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate,
-                                        boundary_transport)
+                                        boundary_transport, tracer_time_step_splitting)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -433,6 +442,7 @@ function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    reconcile_tracer_time_step_splitting!(model.tracer_time_step_splitting, model)
     return nothing
 end
 
@@ -461,7 +471,8 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             timestepper = prognostic_state(model.timestepper),
             free_surface = prognostic_state(model.free_surface),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            tracer_time_step_splitting = prognostic_state(model.tracer_time_step_splitting))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
@@ -474,6 +485,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.tracer_time_step_splitting, get(from, :tracer_time_step_splitting, nothing))
     return restored
 end
 

@@ -234,7 +234,8 @@ end
 @inline function ab2_step_tracer!(model, Δt, χ, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
     skip = (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) ||
-           (hasclosure(closure, FlavorOfTD) && (tracer_name == :ϵ || tracer_name == :e))
+           (hasclosure(closure, FlavorOfTD) && (tracer_name == :ϵ || tracer_name == :e)) ||
+           is_slow_tracer(model.tracer_time_step_splitting, Val(tracer_name))
     skip && return nothing
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
