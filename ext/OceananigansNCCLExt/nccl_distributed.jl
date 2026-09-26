@@ -98,7 +98,7 @@ const pending_unpacks = Vector{Any}()
 const pending_unpacks_lock = ReentrantLock()
 
 function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
-                                         arch::NCCLDistributedArchitecture, grid, buffers, args...;
+                                         arch::NCCLDistributedArchitecture, grid, buffers, args;
                                          async = false, only_local_halos = false,
                                          fill_open_bcs = true, kwargs...)
     only_local_halos && return nothing
@@ -168,7 +168,7 @@ end
 #####
 
 function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
-                          grid, buffers, args...; only_local_halos=false, kw...)
+                          grid, buffers; only_local_halos=false, kw...)
     only_local_halos && return nothing
 
     isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
