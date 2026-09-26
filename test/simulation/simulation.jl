@@ -12,10 +12,10 @@ using Oceananigans.Simulations:
 using Dates: DateTime
 
 initialization_logs = ((:info, "Initializing simulation..."),
-                       (:info, r"^    \.\.\. simulation initialization complete \("))
+                       (:info, r"simulation initialization complete \("))
 
 initial_time_step_logs = ((:info, "Executing initial time step..."),
-                          (:info, r"^    \.\.\. initial time step complete \("))
+                          (:info, r"initial time step complete \("))
 
 stop_logs(reason) = ((:info, r"^Simulation is stopping after running for "), (:info, reason))
 
