@@ -5,7 +5,8 @@ export
     Checkpointer, checkpoint,
     written_names,
     WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
@@ -58,6 +59,7 @@ include("windowed_time_average.jl")
 include("time_derivative.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
+include("filtered_time_interval.jl")
 include("output_attributes.jl")
 include("dimension_names.jl")
 include("output_serialization.jl")
