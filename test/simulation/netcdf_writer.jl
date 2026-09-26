@@ -1842,6 +1842,34 @@ function test_netcdf_time_file_splitting(arch)
     return nothing
 end
 
+function test_netcdf_single_time_field_time_series(arch)
+    mktempdir() do dir
+        grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model.tracers.c, 3)
+        simulation = Simulation(model; Δt=1, stop_iteration=1)
+
+        one_time_path = joinpath(dir, "one_time.nc")
+        two_times_path = joinpath(dir, "two_times.nc")
+        simulation.output_writers[:one] = NetCDFWriter(model, model.tracers;
+            filename=one_time_path, schedule=IterationInterval(100))
+        simulation.output_writers[:two] = NetCDFWriter(model, model.tracers;
+            filename=two_times_path, schedule=IterationInterval(1))
+        run!(simulation)
+
+        one_time_series = FieldTimeSeries(one_time_path, "c")
+        two_times_series = FieldTimeSeries(two_times_path, "c")
+        @test one_time_series.times == [0.0]
+        @test two_times_series.times == [0.0, 1.0]
+        @test all(Array(interior(one_time_series[1])) .== 3)
+        @test_logs (:warn, r"Reading boundary conditions") (:warn, r"for field c at path") begin
+            FieldTimeSeries(one_time_path, "c"; times=[1.0])
+        end
+    end
+
+    return nothing
+end
+
 function test_netcdf_deferred_file_creation(arch)
     dir = mktempdir()
     filename = "test_deferred_file_creation_$(typeof(arch)).nc"
@@ -3868,6 +3896,10 @@ end
         @testset "Deferred file creation [$A]" begin
             @info "  Testing deferred file creation [$A]..."
             test_netcdf_deferred_file_creation(arch)
+        end
+
+        @testset "Single-time FieldTimeSeries [$A]" begin
+            test_netcdf_single_time_field_time_series(arch)
         end
 
         @testset "Duplicate times [$A]" begin
