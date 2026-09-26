@@ -22,7 +22,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     Δt = 0.01
 
     model_kwargs = (; tracers=:c, buoyancy=nothing, closure, coriolis)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     sic_model = HydrostaticFreeSurfaceModel(single_column_grid; model_kwargs...)
     per_model = HydrostaticFreeSurfaceModel(periodic_grid; model_kwargs...)
@@ -61,7 +61,7 @@ end
     Δt = 0.01 * grid.z.Δᵃᵃᶜ^2
 
     model_kwargs = (; tracers=:c, buoyancy=nothing, coriolis=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; closure=closures[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
@@ -113,7 +113,7 @@ end
     @test coriolises[2, 2].f == 1.2
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
@@ -166,7 +166,7 @@ end
     @test coriolises[2].f == 1.1
 
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
-    simulation_kwargs = (; Δt, stop_iteration=100)
+    simulation_kwargs = (; Δt, stop_iteration=100, verbose=false)
 
     models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i], model_kwargs...) for i=1:ensemble_size[1]]
 
