@@ -46,3 +46,6 @@ const MRD = Union{MultiRegionField, MultiRegionObject}
 # make it more efficient?
 LinearAlgebra.dot(f::MRD,  g::MRD)  = sum([r for r in construct_regionally(dot, f, g).regional_objects])
 LinearAlgebra.norm(f::MRD) = sqrt(dot(f, f))
+
+# The regional dot products are summed on the host; all regions share one device and hence one `r`
+Fields.dot!(r, f::MRD, g::MRD) = fill!(r, dot(f, g))

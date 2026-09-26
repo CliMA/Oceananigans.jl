@@ -86,6 +86,63 @@ function run_operator_count_test(grid)
     return nothing
 end
 
+# The unpreconditioned conjugate gradient iteration with the scalars ρ, α, and β computed on the host
+function reference_conjugate_gradient!(x, linear_operation!, b, iterations, args...)
+    r = similar(b)
+    p = similar(b)
+    q = similar(b)
+
+    linear_operation!(q, x, args...)
+    parent(r) .= parent(b) .- parent(q)
+
+    ρⁱ⁻¹ = zero(eltype(b))
+
+    for iteration in 0:iterations-1
+        ρ = dot(r, r)
+
+        if iteration == 0
+            parent(p) .= parent(r)
+        else
+            β = ρ / ρⁱ⁻¹
+            parent(p) .= parent(r) .+ β .* parent(p)
+        end
+
+        linear_operation!(q, p, args...)
+        α = ρ / dot(p, q)
+
+        parent(x) .+= α .* parent(p)
+        parent(r) .-= α .* parent(q)
+
+        ρⁱ⁻¹ = ρ
+    end
+
+    return x
+end
+
+function run_reference_iterates_test(grid)
+    arch = architecture(grid)
+
+    ϕ_truth = CenterField(grid)
+    set!(ϕ_truth, (x, y, z) -> rand())
+    parent(ϕ_truth) .-= mean(ϕ_truth)
+    b = CenterField(grid)
+    compute_∇²!(b, ϕ_truth, arch, grid)
+
+    # With zero tolerances the solver performs exactly `maxiter` iterations
+    iterations = 5
+    solver = ConjugateGradientSolver(compute_∇²!, template_field=b, reltol=0, abstol=0, maxiter=iterations)
+    x = CenterField(grid)
+    solve!(x, solver, b, arch, grid)
+
+    x_reference = CenterField(grid)
+    reference_conjugate_gradient!(x_reference, compute_∇²!, b, iterations, arch, grid)
+
+    @test solver.iteration == iterations
+    @test Array(interior(x)) ≈ Array(interior(x_reference))
+
+    return nothing
+end
+
 @testset "ConjugateGradientSolver" begin
     for arch in archs
         @info "Testing ConjugateGradientSolver [$(typeof(arch))]..."
@@ -93,5 +150,6 @@ end
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
         run_operator_count_test(grid)
+        run_reference_iterates_test(grid)
     end
 end
