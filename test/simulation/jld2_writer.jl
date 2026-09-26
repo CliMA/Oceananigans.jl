@@ -70,7 +70,7 @@ function test_jld2_size_file_splitting(arch, compress)
                                                      compress,
                                                      overwrite_files = true)
 
-        run!(simulation)
+        @test_logs min_level=Logging.Warn run!(simulation)
 
         part_filename(n) = joinpath(dir, "test_part$n.jld2")
 
@@ -86,6 +86,7 @@ function test_jld2_size_file_splitting(arch, compress)
             jldopen(part_filename(n), "r") do file
                 # Test to make sure all files contain structs from `including`.
                 @test file["grid/Nx"] == Nx
+                @test file["serialized/grid"] isa RectilinearGrid
 
                 # Test to make sure all files contain info from `init` function.
                 @test file["boundary_conditions/fake"] == π
@@ -116,13 +117,14 @@ function test_jld2_time_file_splitting(arch)
                                                  file_splitting = TimeInterval(3seconds),
                                                  overwrite_files = true)
 
-    run!(simulation)
+    @test_logs min_level=Logging.Warn run!(simulation)
 
     for n in string.(1:3)
         filename = "test_part$n.jld2"
         jldopen(filename, "r") do file
             # Test to make sure all files contain structs from `including`.
             @test file["grid/Nx"] == 16
+            @test file["serialized/grid"] isa RectilinearGrid
 
             # Test to make sure all files contain the same number of snapshots.
             dimlength = length(file["timeseries/t"])

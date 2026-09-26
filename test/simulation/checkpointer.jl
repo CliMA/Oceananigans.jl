@@ -2149,7 +2149,12 @@ function test_checkpointing_with_file_splitting(arch, WriterType)
                                                         overwrite_files = true,
                                                         cleanup = true)
 
-    run!(sim2, pickup=true)
+    if WriterType == JLD2Writer
+        # Appending to the existing part must not re-write its metadata
+        @test_logs min_level=Logging.Warn run!(sim2, pickup=true)
+    else
+        run!(sim2, pickup=true)
+    end
 
     w2 = sim2.output_writers[:fields]
 
@@ -2237,8 +2242,8 @@ function test_checkpointing_with_moved_parts(arch)
                                                         overwrite_files = true,
                                                         cleanup = true)
 
-    # Should not error — writer appends to existing part4
-    run!(sim2, pickup=true)
+    # Should not error or warn — writer appends to existing part4
+    @test_logs min_level=Logging.Warn run!(sim2, pickup=true)
 
     w2 = sim2.output_writers[:fields]
     @test w2.part > 4
