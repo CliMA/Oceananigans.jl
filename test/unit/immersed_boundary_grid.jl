@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, ShavedCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -525,7 +525,7 @@ end
 
     @testset "Basic construction" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
                 @info "  Testing basic immersed boundary grid construction [$FT, $(typeof(arch)), $boundary_type] ..."
                 @testset "Construction [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_construction(FT, arch, boundary_type)
@@ -579,7 +579,7 @@ end
 
     @testset "Show functions" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
                 @info "  Testing show functions [$FT, $(typeof(arch)), $boundary_type]..."
                 @testset "Show [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_show(FT, arch, boundary_type)
@@ -599,7 +599,7 @@ end
 
     @testset "Flat topologies" begin
         for arch in archs, FT in float_types
-            for boundary_type in (GridFittedBottom, PartialCellBottom)
+            for boundary_type in (GridFittedBottom, PartialCellBottom, ShavedCellBottom)
                 @info "  Testing flat topologies [$FT, $(typeof(arch)), $boundary_type]..."
                 @testset "Flat [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_flat_topologies(FT, arch, boundary_type)

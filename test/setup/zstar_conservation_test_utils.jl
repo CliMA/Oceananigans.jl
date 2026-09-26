@@ -1,6 +1,6 @@
 using Random
 using Oceananigans: initialize!
-using Oceananigans.ImmersedBoundaries: PartialCellBottom
+using Oceananigans.ImmersedBoundaries: PartialCellBottom, ShavedCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 using Oceananigans.DistributedComputations: DistributedGrid, @root, @handshake
@@ -102,13 +102,15 @@ function zstar_test_grids(arch, topology, z_stretched)
     rtgv  = RectilinearGrid(arch; size = (Nh, Nh, 5), x = (0, Lx), y = (-Ly/2, Ly/2), topology, z = z_stretched)
     irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 4))
     prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 4))
+    srtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  ShavedCellBottom((x, y) -> rand() - 4))
 
     if topology[2] == Bounded
         llgv  = LatitudeLongitudeGrid(arch; size = (Nh, Nh, 5), latitude = (0, Lφ), longitude = (0, Lφ), topology, z = z_stretched)
         illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 4))
         pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 4))
-        return [llgv, rtgv, illgv, irtgv, pllgv, prtgv]
+        sllgv = ImmersedBoundaryGrid(deepcopy(llgv),  ShavedCellBottom((x, y) -> rand() - 4))
+        return [llgv, rtgv, illgv, irtgv, pllgv, prtgv, sllgv, srtgv]
     else
-        return [rtgv, irtgv, prtgv]
+        return [rtgv, irtgv, prtgv, srtgv]
     end
 end
