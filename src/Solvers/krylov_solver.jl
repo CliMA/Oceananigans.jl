@@ -1,4 +1,4 @@
-using LinearAlgebra: LinearAlgebra, I
+using LinearAlgebra: LinearAlgebra, I, dot, norm
 using Krylov: Krylov, FloatOrComplex
 
 ## Wrapper for AbstractField so that it behaves as a vector for Krylov.jl
