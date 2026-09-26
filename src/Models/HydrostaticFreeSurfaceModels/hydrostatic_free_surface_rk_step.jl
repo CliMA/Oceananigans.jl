@@ -1,5 +1,6 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
+using Oceananigans.Coriolis: rk_substep_coriolis!, add_c_grid_increment!
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
@@ -11,8 +12,12 @@ Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
 """
-rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
+function rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+    rk_substep_coriolis!(model.coriolis, model.velocities, Δτ)
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+    add_c_grid_increment!(model.coriolis, model.velocities, model.timestepper.Ψ⁻, Δτ)
+    return nothing
+end
 
 """
 $(TYPEDSIGNATURES)
