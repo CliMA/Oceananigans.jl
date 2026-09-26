@@ -11,6 +11,17 @@ using Oceananigans.Simulations:
 
 using Dates: DateTime
 
+initialization_logs = ((:info, "Initializing simulation..."),
+                       (:info, r"^    \.\.\. simulation initialization complete \("))
+
+initial_time_step_logs = ((:info, "Executing initial time step..."),
+                          (:info, r"^    \.\.\. initial time step complete \("))
+
+stop_logs(reason) = ((:info, r"^Simulation is stopping after running for "), (:info, reason))
+
+# Logs of a verbose `run!` that stops after the initial time step
+run_logs(reason) = (initialization_logs..., initial_time_step_logs..., stop_logs(reason)...)
+
 function wall_time_step_wizard_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     Δx = grid.Δxᶜᵃᵃ
@@ -83,17 +94,22 @@ function run_basic_simulation_tests(arch)
     @test simulation isa Simulation
 
     simulation.running = true
-    stop_iteration_exceeded(simulation)
+    @test_logs stop_iteration_exceeded(simulation)
     @test simulation.running
 
-    run!(simulation)
+    # With stop_iteration = 1 the simulation stops during the initial time step
+    @test_logs(initialization_logs...,
+               initial_time_step_logs[1],
+               stop_logs("Model iteration 1 equals or exceeds stop iteration 1.")...,
+               initial_time_step_logs[2],
+               run!(simulation))
 
     # Just make sure run! executes without any errors.
     @test simulation isa Simulation
 
     # Some basic tests
     simulation.running = true
-    stop_iteration_exceeded(simulation)
+    @test_logs stop_logs("Model iteration 1 equals or exceeds stop iteration 1.")... stop_iteration_exceeded(simulation)
     @test !(simulation.running)
 
     @test model.clock.time ≈ simulation.Δt
@@ -101,34 +117,34 @@ function run_basic_simulation_tests(arch)
     @test simulation.run_wall_time > 0
 
     simulation.running = true
-    stop_time_exceeded(simulation)
+    @test_logs stop_time_exceeded(simulation)
     @test simulation.running
 
     simulation.running = true
     simulation.stop_time = 1e-12 # less than the current time.
-    stop_time_exceeded(simulation)
+    @test_logs stop_logs(r"^Simulation time 3 seconds equals or exceeds stop time ")... stop_time_exceeded(simulation)
     @test !(simulation.running)
 
     simulation.running = true
-    wall_time_limit_exceeded(simulation)
+    @test_logs wall_time_limit_exceeded(simulation)
     @test simulation.running
 
     simulation.running = true
     simulation.wall_time_limit = 1e-12
-    wall_time_limit_exceeded(simulation)
+    @test_logs stop_logs(r"^Simulation run time .* equals or exceeds wall time limit ")... wall_time_limit_exceeded(simulation)
     @test !(simulation.running)
 
     # Test that simulation stops at `stop_iteration`.
     reset!(simulation)
     simulation.stop_iteration = 3
-    run!(simulation)
+    @test_logs run_logs("Model iteration 3 equals or exceeds stop iteration 3.")... run!(simulation)
 
     @test simulation.model.clock.iteration == 3
 
     # Test that simulation stops at `stop_time`.
     reset!(simulation)
     simulation.stop_time = 20.20
-    run!(simulation)
+    @test_logs run_logs("Simulation time 20.200 seconds equals or exceeds stop time 20.200 seconds.")... run!(simulation)
 
     @test simulation.model.clock.time ≈ 20.20
 
@@ -138,7 +154,7 @@ function run_basic_simulation_tests(arch)
 
     wizard = TimeStepWizard(cfl=0.1)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
-    run!(simulation)
+    @test_logs run_logs("Model iteration 2 equals or exceeds stop iteration 2.")... run!(simulation)
     @test simulation.callbacks[:wizard].func isa TimeStepWizard
 
     # Test time-step alignment with callbacks
@@ -150,7 +166,7 @@ function run_basic_simulation_tests(arch)
     schedule = TimeInterval(0.31)
     capture_call_time(sim, data) = push!(data, sim.model.clock.time)
     simulation.callbacks[:tester] = Callback(capture_call_time, schedule, parameters=called_at)
-    run!(simulation)
+    @test_logs run_logs(r"equals or exceeds stop time 2 seconds\.$")... run!(simulation)
     @test all(called_at .≈ 0.0:schedule.interval:simulation.stop_time)
 
     # Test that minimum_relative_step is running correctly
@@ -158,7 +174,11 @@ function run_basic_simulation_tests(arch)
     model.clock.time = 0
     model.clock.iteration = 0
     simulation = Simulation(model, Δt=1, stop_time=final_time, minimum_relative_step=1e-10)
-    run!(simulation)
+    @test_logs(initialization_logs...,
+               initial_time_step_logs...,
+               (:warn, r"^Resetting clock to 1\.00000000001 and skipping time step of size Δt = "),
+               stop_logs(r"equals or exceeds stop time 1\.000 seconds\.$")...,
+               run!(simulation))
 
     @test time(simulation) == final_time
     @test iteration(simulation) == 1
@@ -168,7 +188,7 @@ function run_basic_simulation_tests(arch)
     simulation = Simulation(model, Δt=1, stop_time=3, align_time_step=true)
     simulation.callbacks[:tester] = Callback(sim -> nothing, TimeInterval(0.1))
 
-    time_step!(simulation)
+    @test_logs initialization_logs... initial_time_step_logs... time_step!(simulation)
     @test time(simulation) == 0.1
     @test iteration(simulation) == 1
 
@@ -210,7 +230,8 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     @test model.clock.time == start_time
     @test simulation.stop_time == stop_time
 
-    run!(simulation)
+    stop_message = "Simulation time $(prettytime(stop_time)) equals or exceeds stop time $(prettytime(stop_time))."
+    @test_logs run_logs(stop_message)... run!(simulation)
 
     @test model.clock.time == stop_time
     @test simulation.stop_time == stop_time
@@ -225,10 +246,17 @@ function run_nan_checker_test(arch; erroring)
     model.velocities.u[1, 1, 1] = NaN
     erroring && erroring_NaNChecker!(simulation)
 
+    # The NaN is detected while initializing the simulation
+    nan_message = "time = 0.0, iteration = 0: NaN found in field u. Stopping simulation."
+
     if erroring
-        @test_throws ErrorException run!(simulation)
+        @test_logs initialization_logs[1] @test_throws ErrorException run!(simulation)
     else
-        run!(simulation)
+        @test_logs(initialization_logs[1],
+                   (:info, nan_message),
+                   initialization_logs[2],
+                   initial_time_step_logs...,
+                   run!(simulation))
         @test model.clock.iteration == 1 # simulation stopped after one iteration
     end
 
@@ -237,7 +265,6 @@ end
 
 @testset "Time step wizard" begin
     for arch in archs
-        @info "Testing time step wizard [$(typeof(arch))]..."
         wall_time_step_wizard_tests(arch)
     end
 end
@@ -261,7 +288,6 @@ end
 
 @testset "Simulations" begin
     for arch in archs
-        @info "Testing simulations [$(typeof(arch))]..."
         run_basic_simulation_tests(arch)
 
         # Test initialization for simulations started with iteration ≠ 0
@@ -274,7 +300,13 @@ end
         simulation.callbacks[:progress] = progress_cb
 
         model.clock.iteration = 1 # we want to start here for some reason
-        run!(simulation)
+        @test_logs(initialization_logs...,
+                   initial_time_step_logs...,
+                   (:info, "Iter: 3, time: 2 seconds"),
+                   (:info, "Iter: 5, time: 4 seconds"),
+                   stop_logs("Simulation time 6 seconds equals or exceeds stop time 6 seconds.")...,
+                   (:info, "Iter: 7, time: 6 seconds"),
+                   run!(simulation))
         @test progress_cb.schedule.actuations == 3
 
         # Test initialize! and finalize!
@@ -285,21 +317,19 @@ end
         @test !(infi.initialized)
         @test !(infi.finalized)
         @test !(simulation.initialized)
-        time_step!(simulation) # should initialize
+        @test_logs initialization_logs... initial_time_step_logs... time_step!(simulation) # should initialize
         @test simulation.initialized
         @test infi.initialized
         @test !(infi.finalized)
-        run!(simulation) # should finalize
+        @test_logs run_logs("Simulation time 6 seconds equals or exceeds stop time 6 seconds.")... run!(simulation) # should finalize
         @test infi.initialized
         @test infi.finalized
 
         @testset "NaN Checker [$(typeof(arch))]" begin
-            @info "  Testing NaN Checker [$(typeof(arch))]..."
             run_nan_checker_test(arch, erroring=true)
             run_nan_checker_test(arch, erroring=false)
         end
 
-        @info "Testing simulations with DateTime [$(typeof(arch))]..."
         run_simulation_date_tests(arch, 0.0, 1.0, 0.3)
         run_simulation_date_tests(arch, DateTime(2020), DateTime(2021), 100days)
         run_simulation_date_tests(arch, TimeDate(2020), TimeDate(2021), 100days)
