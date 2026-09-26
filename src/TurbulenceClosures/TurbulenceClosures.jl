@@ -93,6 +93,12 @@ import Oceananigans.TimeSteppers: step_closure_prognostics!
 step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
 
+# Reset closure fields that carry state between time steps
+import Oceananigans.TimeSteppers: reset!
+reset!(K, closure::AbstractTurbulenceClosure) = nothing
+reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
+reset!(K, ::Nothing) = nothing
+
 # Initialize closure fields when simulation starts (after velocities are properly set)
 initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing

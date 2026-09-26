@@ -14,6 +14,8 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     minimum_roughness_length :: FT = 1e-4
 end
 
+Adapt.@adapt_structure TKEDissipationEquations
+
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
 function time_step_tke_dissipation_equations!(model, Δt)
