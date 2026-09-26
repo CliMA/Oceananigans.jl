@@ -7,7 +7,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   constant_averaging_kernel,
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
-                                                                                  iterate_split_explicit!
+                                                                                  iterate_split_explicit!,
+                                                                                  SubstepWeight,
+                                                                                  StepValue
+using Oceananigans.Architectures: convert_to_device
 
 @inline noforcing(args...) = 0
 
@@ -320,5 +323,60 @@ end # end of testset loop
 
         @test η̅_extend ≈ η̅_fill
         @test U̅_extend ≈ U̅_fill
+    end
+end
+
+@inline clock_dependent_forcing(i, j, k, grid, clock, fields) = 1e-3 * sin(clock.time)
+
+@testset "Device-backed substep values are bit-identical" begin
+    for arch in (CPU(),)
+        grid = RectilinearGrid(arch; size = (16, 16, 1), x = (0, 2π), y = (0, 2π), z = (-1, 0),
+                               topology = (Periodic, Periodic, Bounded))
+
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+        free_surface = materialize_free_surface(free_surface, VelocityFields(grid), grid, barotropic_boundary_conditions(grid))
+
+        GU = Field{Face, Center, Nothing}(grid)
+        GV = Field{Center, Face, Nothing}(grid)
+        set!(GU, (x, y) -> 1e-4 * cos(y))
+        set!(GV, (x, y) -> 1e-4 * sin(x))
+
+        forcing_clock = Clock{Float64}(time = 1)
+        Nsubsteps = calculate_substeps(free_surface.substepping)
+        fractional_Δt, weights, transport_weights = calculate_adaptive_settings(free_surface.substepping, Nsubsteps)
+        Δτ = fractional_Δt * 10
+
+        η = free_surface.displacement
+        U, V = free_surface.barotropic_velocities
+        state = free_surface.filtered_state
+        barotropic_fields = (η, U, V, state.η̅, state.U̅, state.V̅, state.Ũ, state.Ṽ)
+
+        function reset_barotropic_state!()
+            foreach(field -> fill!(field, 0), barotropic_fields)
+            set!(η, (x, y, z) -> 1e-2 * sin(x) * cos(y))
+            fill_halo_regions!(η)
+            return nothing
+        end
+
+        reset_barotropic_state!()
+        iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, clock_dependent_forcing, forcing_clock,
+                                weights, transport_weights, Val(Nsubsteps))
+        plain_results = map(field -> Array(interior(field)), barotropic_fields)
+
+        step = on_architecture(arch, [(; Δτ, clock = convert_to_device(arch, forcing_clock))])
+        device_weights = on_architecture(arch, collect(weights))
+        device_transport_weights = on_architecture(arch, collect(transport_weights))
+        substep_weights = [SubstepWeight(substep, device_weights) for substep in 1:Nsubsteps]
+        substep_transport_weights = [SubstepWeight(substep, device_transport_weights) for substep in 1:Nsubsteps]
+
+        reset_barotropic_state!()
+        iterate_split_explicit!(free_surface, grid, GU, GV, StepValue{:Δτ}(step), clock_dependent_forcing,
+                                StepValue{:clock}(step), substep_weights, substep_transport_weights, Val(Nsubsteps))
+        device_value_results = map(field -> Array(interior(field)), barotropic_fields)
+
+        @test any(!iszero, plain_results[1])
+        for (plain, device_value) in zip(plain_results, device_value_results)
+            @test plain == device_value
+        end
     end
 end

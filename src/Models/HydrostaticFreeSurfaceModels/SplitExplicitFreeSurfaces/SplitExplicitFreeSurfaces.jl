@@ -6,7 +6,7 @@ export FixedSubstepNumber, FixedTimeStepSize
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
-using Oceananigans.Architectures: convert_to_device, architecture, device
+using Oceananigans.Architectures: convert_to_device, architecture, device, child_architecture
 using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
