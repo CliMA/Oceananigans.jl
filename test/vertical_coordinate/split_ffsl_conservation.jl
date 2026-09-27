@@ -100,12 +100,13 @@ end
 
         for fold_topology in (RightCenterFolded, RightFaceFolded)
             @testset "$fold_topology TripolarGrid, z-star, long-step Courant number > 2 [$(typeof(arch))]" begin
-                @info "  Testing FFSL slow tracers across the fold of a $fold_topology TripolarGrid [$(typeof(arch))]..."
+                @info "  Testing FFSL slow tracers at the fold of a $fold_topology TripolarGrid [$(typeof(arch))]..."
                 ratio = 32
                 grid = tripolar_basin(arch; fold_topology)
                 model = tripolar_rotation_model(grid; ratio)
                 Ny = size(grid, 2)
                 fold_courant = test_split_ffsl_conservation(model, ratio, 3hours, 2; minimum_courant_number = 2, fold_rows = Ny-1:Ny+1)
+                # Swept Courant number above 1 in the rows next to the fold (x-faces of rows Ny-1, Ny; y-faces Ny-1, Ny)
                 @test fold_courant > 1
             end
         end
