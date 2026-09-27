@@ -379,13 +379,12 @@ end
             β = model.timestepper.β
             Nstages = model.timestepper.Nstages
             seen = recorded_advection_timesteps(model)
-            @test length(seen) == 1 + 2 * Nstages
-            # `clock.stage` is set before each substep, so at the callback it is the stage that just finished.
-            # The first `update_state!` of the run precedes every stage but looks like stage 1 having finished,
-            # so its td.Δt[] is that of stage 2 rather than stage 1; it is skipped here.
+            @test length(seen) == 2 * Nstages
+            # Tendencies are computed at the start of each substep, so `clock.stage` is the stage being taken.
+            # The first substep of the run uses the td.Δt[] set before the run, which is that of stage 2;
+            # it is skipped here.
             for (iteration, stage, advection_timestep) in seen[2:end]
-                next_stage = stage == Nstages ? 1 : stage + 1
-                @test advection_timestep ≈ Δt / β[next_stage] rtol=rtol
+                @test advection_timestep ≈ Δt / β[stage] rtol=rtol
             end
         end
     end

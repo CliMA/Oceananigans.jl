@@ -80,7 +80,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally begin
         update_advection!(model.advection, model)
-        compute_momentum_tendencies!(model, callbacks)
+        model.timestepper isa SplitRungeKuttaTimeStepper || compute_momentum_tendencies!(model, callbacks)
     end
 
     return nothing

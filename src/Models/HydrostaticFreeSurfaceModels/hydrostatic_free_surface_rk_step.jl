@@ -11,8 +11,10 @@ Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 The substep advances the state from the cached initial fields `Ψ⁻` using: `U = Ψ⁻ + Δτ * Gⁿ`.
 """
-rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
-    rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+function rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+    @apply_regionally compute_momentum_tendencies!(model, callbacks)
+    return rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
+end
 
 """
 $(TYPEDSIGNATURES)

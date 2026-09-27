@@ -86,7 +86,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     update_advection!(model.advection, model)
-    compute_momentum_tendencies!(model, callbacks)
+    model.timestepper isa SplitRungeKuttaTimeStepper || compute_momentum_tendencies!(model, callbacks)
 
     return nothing
 end
