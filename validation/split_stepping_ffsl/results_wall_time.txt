@@ -1,0 +1,43 @@
+
+## Indicative CPU wall time per simulated day (non-divergent gyre, threads = 1)
+
+### 16×8×6 grid, Δt = 3 minutes, 3 slow tracers (+ 2 fast tracers)
+
+| configuration | wall time per simulated day (s) | speed-up vs unsplit |
+|---|---:|---:|
+| unsplit WENO5 | 0.56 | 1.00 |
+| split WENO5, N = 16 | 0.36 | 1.55 |
+| split FFSL, N = 64 | 0.35 | 1.59 |
+
+### 16×8×6 grid, Δt = 3 minutes, 23 slow tracers (+ 2 fast tracers)
+
+| configuration | wall time per simulated day (s) | speed-up vs unsplit |
+|---|---:|---:|
+| unsplit WENO5 | 2.25 | 1.00 |
+| split WENO5, N = 16 | 0.55 | 4.06 |
+| split FFSL, N = 64 | 0.50 | 4.49 |
+
+### 64×32×24 grid, Δt = 45 seconds, 3 slow tracers (+ 2 fast tracers)
+
+| configuration | wall time per simulated day (s) | speed-up vs unsplit |
+|---|---:|---:|
+| unsplit WENO5 | 97.35 | 1.00 |
+| split WENO5, N = 16 | 49.95 | 1.95 |
+| split FFSL, N = 64 | 47.73 | 2.04 |
+
+### 64×32×24 grid, Δt = 45 seconds, 23 slow tracers (+ 2 fast tracers)
+
+| configuration | wall time per simulated day (s) | speed-up vs unsplit |
+|---|---:|---:|
+| unsplit WENO5 | 446.48 | 1.00 |
+| split WENO5, N = 16 | 78.09 | 5.72 |
+| split FFSL, N = 64 | 66.44 | 6.72 |
+
+## Notes
+
+- Reproduce: `julia --project validation/split_stepping_ffsl/wall_time.jl 16 64` (CPU, 1 thread, Julia 1.12); the first long step
+  (compilation) is excluded and 20 long steps are timed. Indicative only; the machine is shared.
+- N = 16 (WENO5) and N = 64 (FFSL) are the maximum stable N of the 16×8×6 gyre table. On the 64×32×24 grid Δt and the
+  gyre speed are scaled to keep the Courant numbers, but the stable N was not re-verified there.
+- The FFSL long step is cheaper than WENO5 per slow step here, but most of the gain from N = 16 to N = 64 is already
+  captured: with the slow group taking 1/N of its unsplit cost, the fast dynamics and fast tracers dominate.

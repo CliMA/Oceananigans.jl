@@ -8,8 +8,8 @@
 
 include(joinpath(@__DIR__, "common.jl"))
 
-weno_ratio = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 8
-ffsl_ratio = length(ARGS) ≥ 2 ? parse(Int, ARGS[2]) : 32
+weno_ratio = length(ARGS) ≥ 1 ? parse(Int, ARGS[1]) : 16
+ffsl_ratio = length(ARGS) ≥ 2 ? parse(Int, ARGS[2]) : 64
 
 function timed_model(grid; ratio, slow, extra)
     extra_names = Tuple(Symbol(:t, n) for n in 1:extra)
