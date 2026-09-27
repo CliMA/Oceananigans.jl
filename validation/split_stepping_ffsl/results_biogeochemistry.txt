@@ -1,0 +1,32 @@
+
+## MinimalNPZD slow group with FFSL horizontal advection and Strang sub-cycled sources (M = 4)
+
+Rectilinear basin 16×8×6 with an immersed ridge, z-star, non-divergent gyre, Δt = 3 minutes, 640 steps, sinking 100 m/day
+
+| vertical scheme (adaptive implicit, cfl 0.5) |  N | C swept (h) | C (v, with sinking) | D | total N drift | min(N, P, Z, D) |
+|---|---:|---:|---:|---:|---:|---:|
+| UpwindBiased(order=1) |  1 | 0.07 | 0.02 | 0.00 | 2.54e-15 | 1.463e-05 |
+| UpwindBiased(order=1) |  4 | 0.30 | 0.09 | 0.01 | 2.11e-15 | 1.462e-05 |
+| UpwindBiased(order=1) | 16 | 1.19 | 0.34 | 0.00 | 2.11e-15 | 1.471e-05 |
+| UpwindBiased(order=1) | 32 | 2.37 | 0.67 | 0.01 | 2.11e-15 | -3.006e-02 |
+| UpwindBiased(order=1) | 64 | 4.00 | 1.34 | 0.01 | 2.11e-15 | -8.773e-02 |
+| WENO(order=5) |  1 | 0.07 | 0.02 | 0.00 | 2.54e-15 | -1.902e+01 |
+| WENO(order=5) |  4 | 0.30 | 0.09 | 0.01 | 2.32e-15 | -1.910e+01 |
+| WENO(order=5) | 16 | 1.19 | 0.34 | 0.00 | 2.32e-15 | -1.936e+01 |
+| WENO(order=5) | 32 | 2.37 | 0.67 | 0.01 | 1.69e-15 | -5.087e+00 |
+| WENO(order=5) | 64 | 4.00 | 1.34 | 0.01 | 1.06e-15 | -8.643e-01 |
+
+## Notes
+
+- Reproduce: `julia --project validation/split_stepping_ffsl/biogeochemistry.jl` (CPU, Julia 1.12).
+- Total nitrogen ∫σ(N+P+Z+D) dV is conserved to ≤ 2.5e-15 for every N and vertical scheme.
+- Positivity: with first-order upwind (adaptive implicit) vertical advection the NPZD tracers stay positive up to
+  N = 16 (C ≈ 1.2). At N = 32 (C ≈ 2.4) the minimum is −3.0e-2 with AVID cfl = 0.5 and −1.1e-3 with cfl ≤ 0.2
+  (a more implicit vertical step), and at N = 64 (C truncated at 4) −8.8e-2 independent of cfl.
+  The residual undershoot comes from the horizontal FFSL step itself: a passive step-function tracer (0.5 / 1e-3) in
+  the same gyre undershoots to −3.1e-4 at C ≈ 2.4, identically for the split N = 32 run and for an unsplit FFSL run
+  with Δt = 96 minutes. The dimensionally split Lin–Rood scheme with the CW monotone limiter is not strictly
+  positivity-preserving at C > 1 in a two-dimensional flow (a Workstream B property). Nothing is clipped.
+- With WENO5 vertical advection D goes strongly negative (≈ −19) already at N = 1; an unsplit all-WENO5 model (no FFSL,
+  no splitting) gives −34 in the same setup: WENO5 vertical advection of the sinking detritus next to the immersed
+  bottom is not positivity-preserving (pre-existing, unrelated to this work).

@@ -66,24 +66,29 @@ function run_npzd(grid, ratio, vertical_scheme, Δt, steps)
     return (; nitrogen_drift, minimum_value, swept_courant, sinking_courant, outflow_courant)
 end
 
-grid = rectilinear_basin()
-Δt = 3minutes
-steps = 640
+function main()
+    grid = rectilinear_basin()
+    Δt = 3minutes
+    steps = 640
 
-println()
-println("## MinimalNPZD slow group with FFSL horizontal advection and Strang sub-cycled sources (M = 4)")
-println()
-println("Rectilinear basin 16×8×6 with an immersed ridge, z-star, non-divergent gyre, Δt = ", prettytime(Δt), ", ", steps, " steps, sinking 100 m/day")
-println()
-println("| vertical scheme (adaptive implicit, cfl 0.5) |  N | C swept (h) | C (v, with sinking) | D | total N drift | min(N, P, Z, D) |")
-println("|---|---:|---:|---:|---:|---:|---:|")
+    println()
+    println("## MinimalNPZD slow group with FFSL horizontal advection and Strang sub-cycled sources (M = 4)")
+    println()
+    println("Rectilinear basin 16×8×6 with an immersed ridge, z-star, non-divergent gyre, Δt = ", prettytime(Δt), ", ", steps, " steps, sinking 100 m/day")
+    println()
+    println("| vertical scheme (adaptive implicit, cfl 0.5) |  N | C swept (h) | C (v, with sinking) | D | total N drift | min(N, P, Z, D) |")
+    println("|---|---:|---:|---:|---:|---:|---:|")
 
-for (label, vertical_scheme) in (("UpwindBiased(order=1)", () -> UpwindBiased(order=1, time_discretization = adaptive_implicit())),
-                                 ("WENO(order=5)", () -> WENO(order=5, time_discretization = adaptive_implicit())))
-    for ratio in (1, 4, 16, 32, 64)
-        result = run_npzd(grid, ratio, vertical_scheme(), Δt, steps)
-        @printf("| %s | %2d | %.2f | %.2f | %.2f | %.2e | %.3e |\n", label, ratio, result.swept_courant, result.sinking_courant, result.outflow_courant,
-                result.nitrogen_drift, result.minimum_value)
-        flush(stdout)
+    for (label, vertical_scheme) in (("UpwindBiased(order=1)", () -> UpwindBiased(order=1, time_discretization = adaptive_implicit())),
+                                     ("WENO(order=5)", () -> WENO(order=5, time_discretization = adaptive_implicit())))
+        for ratio in (1, 4, 16, 32, 64)
+            result = run_npzd(grid, ratio, vertical_scheme(), Δt, steps)
+            @printf("| %s | %2d | %.2f | %.2f | %.2f | %.2e | %.3e |\n", label, ratio, result.swept_courant, result.sinking_courant, result.outflow_courant,
+                    result.nitrogen_drift, result.minimum_value)
+            flush(stdout)
+        end
     end
+    return nothing
 end
+
+abspath(PROGRAM_FILE) == @__FILE__() && main()
