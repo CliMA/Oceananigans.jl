@@ -48,6 +48,21 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
 
 @inline Base.eltype(::TKEDissipationVerticalDiffusivity{<:Any, <:Any, <:Any, <:Any, FT}) where FT = FT
 
+# Adapting the parameters lets them be device (or traced) numbers, eg for differentiating with respect to them
+function Adapt.adapt_structure(to, closure::TKEDissipationVerticalDiffusivity{TD}) where TD
+    return TKEDissipationVerticalDiffusivity{TD}(adapt(to, closure.tke_dissipation_equations),
+                                                 adapt(to, closure.stability_functions),
+                                                 adapt(to, closure.minimum_length_scale),
+                                                 adapt(to, closure.maximum_tracer_diffusivity),
+                                                 adapt(to, closure.maximum_tke_diffusivity),
+                                                 adapt(to, closure.maximum_dissipation_diffusivity),
+                                                 adapt(to, closure.maximum_viscosity),
+                                                 adapt(to, closure.minimum_tke),
+                                                 adapt(to, closure.minimum_stratification_number_safety_factor),
+                                                 adapt(to, closure.negative_tke_damping_time_scale),
+                                                 adapt(to, closure.tke_dissipation_time_step))
+end
+
 """
     TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
                                       FT = Oceananigans.defaults.FloatType;]
@@ -168,6 +183,8 @@ Base.@kwdef struct StratifiedDisplacementScale{FT}
     minimum_buoyancy_frequency :: FT = 1e-14
 end
 
+Adapt.@adapt_structure StratifiedDisplacementScale
+
 #####
 ##### Diffusivities and diffusivity fields utilities
 #####
@@ -247,6 +264,17 @@ end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
+
+function reset!(closure_fields, ::FlavorOfTD)
+    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.κϵ,
+              closure_fields.previous_velocities...)
+
+    for field in fields
+        fill!(field, 0)
+    end
+
+    return nothing
+end
 
 function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
     # Step TKE/dissipation equations with the provided timestep
