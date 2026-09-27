@@ -123,7 +123,7 @@ on the first stage the grid stretching at the beginning of the step is stored, a
 horizontal step is taken with the stage's transport velocities.
 
 With a [`TracerTimeStepSplitting`](@ref), only the tracers stepped every time step are advected here; the slow
-tracers are advected by [`slow_flux_form_semi_lagrangian_advection!`](@ref) during the long step.
+tracers are advected by `slow_flux_form_semi_lagrangian_advection!` during the long step.
 """
 flux_form_semi_lagrangian_advection!(model) =
     flux_form_semi_lagrangian_advection!(model, model.timestepper, flux_form_semi_lagrangian_workspace(model.advection))

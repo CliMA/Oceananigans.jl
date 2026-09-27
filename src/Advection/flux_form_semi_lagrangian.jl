@@ -91,6 +91,12 @@ Only the horizontal components of the model's transport velocities are used by t
 horizontal biogeochemical drift velocities, closure-induced velocities (for example Gent-McWilliams
 bolus velocities) and horizontal advective forcing are not supported for FFSL tracers.
 
+The horizontal step is split from the vertical one, so it is stable only while no cell loses more than
+its own volume horizontally during a step: the net horizontal outflow `Δt ∇ₕ⋅(Aₕ uₕ) / V` (by continuity,
+a vertical Courant number) must stay below one. Otherwise the cell thickness after the horizontal step is
+negative; this happens first next to immersed boundaries, where a strongly divergent flow leaves a cell
+whose upstream neighbour is dry.
+
 Example
 =======
 

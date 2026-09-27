@@ -48,7 +48,9 @@ Slow tracers may use [`FluxFormSemiLagrangian`](@ref) advection, which remains s
 horizontal Courant numbers larger than one that a long step reaches. Their horizontal step is taken
 once per long step, over the whole accumulated time `T`, with the long-step transports `ū, v̄` and the
 cell volumes at the beginning of the long step. The `maximum_courant_number` of the scheme (and the
-grid halo, which must be at least `maximum_courant_number + 3`) should cover the long-step Courant number.
+grid halo, which must be at least `maximum_courant_number + 3`) should cover the long-step Courant number,
+and the net horizontal outflow of any cell during a long step must stay below its volume (see
+[`FluxFormSemiLagrangian`](@ref)); reduce `ratio` if the long-step vertical Courant number approaches one.
 
 Keyword arguments
 =================
