@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+include(joinpath(@__DIR__, "..", "setup", "volume_integrals.jl"))
 
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -85,6 +86,7 @@ end
             set!(model, c = (x, y, z) -> exp(-((x - 0.2)^2 + (y - 0.5)^2) / 0.01) + rand() / 10, uniform = 1)
             wet = wet_cells(model.grid)
             c₀ = wet_values(model.tracers.c, wet)
+            ∫c₀ = volume_integral(model.tracers.c)
 
             maximum_uniform_error = 0.0
             for _ in 1:40
@@ -94,7 +96,7 @@ end
             c₁ = wet_values(model.tracers.c, wet)
 
             @test maximum_uniform_error < 1e-12
-            @test abs(sum(c₁) - sum(c₀)) / sum(c₀) < 1e-14
+            @test abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀ < 1e-14
             @test all(isfinite, c₁)
             @test minimum(c₁) ≥ minimum(c₀) - 1e-14
             @test maximum(c₁) ≤ maximum(c₀) + 1e-14
@@ -108,6 +110,7 @@ end
             set!(model, c = (x, z) -> exp(-((x - 0.3)^2 + (z + 0.3)^2) / 0.02) + rand() / 5, uniform = 1)
             wet = wet_cells(model.grid)
             c₀ = wet_values(model.tracers.c, wet)
+            ∫c₀ = volume_integral(model.tracers.c)
 
             maximum_uniform_error = 0.0
             for _ in 1:50
@@ -117,7 +120,7 @@ end
             c₁ = wet_values(model.tracers.c, wet)
 
             @test maximum_uniform_error < 1e-13
-            @test abs(sum(c₁) - sum(c₀)) / sum(c₀) < 1e-14
+            @test abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀ < 1e-14
             @test minimum(c₁) ≥ minimum(c₀)
             @test maximum(c₁) ≤ maximum(c₀)
         end

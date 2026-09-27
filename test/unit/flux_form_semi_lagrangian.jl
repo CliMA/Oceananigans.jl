@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+include(joinpath(@__DIR__, "..", "setup", "volume_integrals.jl"))
 
 using Oceananigans.Advection: MonotonePPMLimiter, maximum_courant_number
 using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
@@ -117,10 +118,10 @@ end
         @testset "Conservation, uniform tracer and bounds at C = $C" for C in (0.5, 1.5, 2.7)
             model = one_dimensional_ffsl_model(arch, N, (x, z, t) -> C)
             set!(model, c = (x, z) -> 1 + sin(2π * x / N) / 2 + rand() / 10)
-            c₀ = line(model.tracers.c)
+            ∫c₀ = volume_integral(model.tracers.c)
             time_step_n!(model, 1, 20)
-            c₁ = line(model.tracers.c)
-            @test abs(sum(c₁) - sum(c₀)) / sum(c₀) < 1e-14
+            ∫c₁ = volume_integral(model.tracers.c)
+            @test abs(∫c₁ - ∫c₀) / ∫c₀ < 1e-14
 
             set!(model, c = 1)
             time_step_n!(model, 1, 20)
@@ -145,10 +146,10 @@ end
             u(x, z, t) = 1.8 + 1.2 * sin(2π * x / N)
             model = one_dimensional_ffsl_model(arch, N, u)
             set!(model, c = (x, z) -> 1 / u(x, z, 0))
-            c₀ = line(model.tracers.c)
+            ∫c₀ = volume_integral(model.tracers.c)
             time_step_n!(model, 1, N)
             c₁ = line(model.tracers.c)
-            @test abs(sum(c₁) - sum(c₀)) / sum(c₀) < 1e-14
+            @test abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀ < 1e-14
             @test all(isfinite, c₁)
             @test minimum(c₁) > 0
         end
@@ -184,19 +185,19 @@ end
                 C = Δt * N * max(maximum(abs, interior(Field(u))), maximum(abs, interior(Field(v))))
                 @test C > 2
 
-                c₀ = plane(model.tracers.c)
+                ∫c₀ = volume_integral(model.tracers.c)
                 maximum_uniform_error = 0.0
                 for _ in 1:Nsteps
                     time_step!(model, Δt)
                     maximum_uniform_error = max(maximum_uniform_error, maximum(abs, plane(model.tracers.uniform) .- 1))
                 end
                 c₁ = plane(model.tracers.c)
+                mass_error = abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀
 
-                @info "    $flow at C = $C: uniform tracer error $maximum_uniform_error, " *
-                      "relative mass error $(abs(sum(c₁) - sum(c₀)) / sum(c₀))"
+                @info "    $flow at C = $C: uniform tracer error $maximum_uniform_error, relative mass error $mass_error"
 
                 @test maximum_uniform_error < 1e-13
-                @test abs(sum(c₁) - sum(c₀)) / sum(c₀) < 1e-13
+                @test mass_error < 1e-13
                 @test all(isfinite, c₁)
             end
         end

@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+include(joinpath(@__DIR__, "..", "setup", "volume_integrals.jl"))
 
 using Oceananigans.Grids: inactive_cell, MutableVerticalDiscretization, Face, Center
 using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Vᶜᶜᶜ
@@ -6,12 +7,6 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 wet_cells(grid) = [!inactive_cell(i, j, k, grid) for i in 1:size(grid, 1), j in 1:size(grid, 2), k in 1:size(grid, 3)]
 wet_values(c, wet) = Array(interior(c))[wet]
-
-function integral(c)
-    ∫c = Field(Integral(c))
-    compute!(∫c)
-    return Array(interior(∫c))[1, 1, 1]
-end
 
 # A shallow z-star channel with a strong divergent flow, so that the horizontal Courant number exceeds 1
 # while the free surface varies by several percent of the depth
@@ -82,7 +77,7 @@ end
                 @info "  Testing FluxFormSemiLagrangian with ZStarCoordinate at C ≈ 2 (immersed = $immersed) [$(typeof(arch))]..."
                 model = zstar_channel_model(arch; immersed)
                 wet = wet_cells(model.grid)
-                C₀ = integral(model.tracers.c)
+                C₀ = volume_integral(model.tracers.c)
                 Δt = 30minutes
 
                 maximum_uniform_error = 0.0
@@ -98,12 +93,12 @@ end
                 end
 
                 @info "    maximum Courant number $maximum_courant_number, uniform tracer error $maximum_uniform_error, " *
-                      "∫σc relative error $(abs(integral(model.tracers.c) - C₀) / C₀), free surface range $free_surface_range"
+                      "∫σc relative error $(abs(volume_integral(model.tracers.c) - C₀) / C₀), free surface range $free_surface_range"
 
                 @test maximum_courant_number > 1.5
                 @test free_surface_range > 0.1
                 @test maximum_uniform_error < 1e-12
-                @test abs(integral(model.tracers.c) - C₀) / C₀ < 1e-13
+                @test abs(volume_integral(model.tracers.c) - C₀) / C₀ < 1e-13
             end
         end
 
@@ -112,7 +107,7 @@ end
                 @info "  Testing FluxFormSemiLagrangian with ZStarCoordinate on a $fold_topology TripolarGrid [$(typeof(arch))]..."
                 model = tripolar_zstar_model(arch, fold_topology)
                 wet = wet_cells(model.grid)
-                C₀ = integral(model.tracers.c)
+                C₀ = volume_integral(model.tracers.c)
 
                 maximum_uniform_error = 0.0
                 for _ in 1:5
@@ -121,7 +116,7 @@ end
                 end
 
                 @test maximum_uniform_error < 1e-13
-                @test abs(integral(model.tracers.c) - C₀) / C₀ < 1e-13
+                @test abs(volume_integral(model.tracers.c) - C₀) / C₀ < 1e-13
                 @test all(isfinite, wet_values(model.tracers.c, wet))
             end
         end
@@ -156,9 +151,7 @@ end
             set!(model.tracers.uniform, 1)
             fill_halo_regions!(model.tracers)
 
-            V = [Vᶜᶜᶜ(i, j, k, cpu_grid) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
-            mass(c) = sum(Array(interior(c)) .* V)
-            M₀ = mass(model.tracers.c)
+            M₀ = volume_integral(model.tracers.c)
             c₀ = Array(interior(model.tracers.c))
 
             maximum_uniform_error = 0.0
@@ -169,7 +162,7 @@ end
             c₁ = Array(interior(model.tracers.c))
 
             @test maximum_uniform_error < 1e-13
-            @test abs(mass(model.tracers.c) - M₀) / M₀ < 1e-13
+            @test abs(volume_integral(model.tracers.c) - M₀) / M₀ < 1e-13
             @test minimum(c₁) ≥ minimum(c₀)
             @test maximum(c₁) ≤ maximum(c₀)
         end

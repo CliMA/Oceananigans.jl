@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+include(joinpath(@__DIR__, "..", "setup", "volume_integrals.jl"))
 
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.Fields: ZeroField
@@ -27,13 +28,6 @@ function sinking_velocity(grid, speed)
     return (u = ZeroField(), v = ZeroField(), w = w)
 end
 
-function center_of_mass(c)
-    grid = c.grid
-    z = reshape(znodes(grid, Center()), 1, 1, size(grid, 3))
-    data = Array(interior(c))
-    return sum(z .* data) / sum(data)
-end
-
 function sink_blob(arch, timestepper, Δt, steps; speed = 100 / day)
     grid = RectilinearGrid(arch; size = (4, 4, 40), extent = (1, 1, 400), halo = (4, 4, 4),
                            topology = (Periodic, Periodic, Bounded))
@@ -48,15 +42,15 @@ function sink_blob(arch, timestepper, Δt, steps; speed = 100 / day)
 
     set!(model, D = (x, y, z) -> exp(- (z + 100)^2 / 2 / 20^2))
 
-    inventory₀ = sum(Array(interior(model.tracers.D)))
-    z₀ = center_of_mass(model.tracers.D)
+    inventory₀ = volume_integral(model.tracers.D)
+    z₀ = center_of_mass_height(model.tracers.D)
 
     for step in 1:steps
         time_step!(model, Δt)
     end
 
-    inventory_drift = abs(sum(Array(interior(model.tracers.D))) - inventory₀) / inventory₀
-    descent = z₀ - center_of_mass(model.tracers.D)
+    inventory_drift = abs(volume_integral(model.tracers.D) - inventory₀) / inventory₀
+    descent = z₀ - center_of_mass_height(model.tracers.D)
     expected_descent = speed * Δt * steps
 
     return (; inventory_drift, descent, expected_descent)

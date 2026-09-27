@@ -28,7 +28,9 @@ function active_cells(grid)
     return Array(interior(mask)) .== 1
 end
 
-tracer_inventory(c) = sum(Array(interior(Field(Integral(c)))))
+include(joinpath(@__DIR__, "volume_integrals.jl"))
+
+tracer_inventory(c) = volume_integral(c)
 
 function maximum_uniform_deviation(c, value, active)
     data = Array(interior(c))
