@@ -443,7 +443,7 @@ NormalRadiation{Float64}
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{NormalRadiation{Float64, Nothing, Float64}}: 1
+NormalFlowBoundaryCondition{NormalRadiation{Float64, Nothing, Nothing, Float64}}: 1
 ```
 
 At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
