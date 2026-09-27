@@ -1,6 +1,7 @@
 # Reproduce: julia --project validation/ffsl/lauritzen_deformational_flow.jl
 
 using Oceananigans
+include(joinpath(@__DIR__, "..", "..", "test", "setup", "volume_integrals.jl"))
 using Printf
 using Random
 Random.seed!(42)
@@ -76,6 +77,7 @@ for (label, ψ, topology, Nsteps) in (("deformational", deformational_ψ, (Perio
     Δt = T / Nsteps
     C = max_courant(model, Δt, N)
     c₀ = interior2d(model.tracers.c)
+    ∫c₀ = volume_integral(model.tracers.c)
     maxerr = 0.0
     for n in 1:Nsteps
         time_step!(model, Δt)
@@ -83,7 +85,7 @@ for (label, ψ, topology, Nsteps) in (("deformational", deformational_ψ, (Perio
     end
     c₁ = interior2d(model.tracers.c)
     @printf("%-20s N = %d  max C = %.2f  max|1 - c| over run = %.2e  mass rel err = %.2e  min c = %.3e\n",
-            label, N, C, maxerr, abs(sum(c₁) - sum(c₀)) / sum(c₀), minimum(c₁))
+            label, N, C, maxerr, abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀, minimum(c₁))
 end
 
 

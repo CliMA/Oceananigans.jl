@@ -1,6 +1,7 @@
 # Reproduce: julia --project validation/ffsl/island_basin.jl immersed 2.5   (args: immersed|plain, target Courant number)
 
 using Oceananigans
+include(joinpath(@__DIR__, "..", "..", "test", "setup", "volume_integrals.jl"))
 using Oceananigans.Units
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Advection: swept_region, XSweep, YSweep, ffsl_volume_flux
@@ -78,6 +79,7 @@ c₀ = interior(model.tracers.c)[wet]
 naive_error, truncated_faces = lost_volumes(model, Δt)
 set!(model, c = bell, uniform = 1)
 c₀ = interior(model.tracers.c)[wet]
+∫c₀ = volume_integral(model.tracers.c)
 
 Nsteps = 200
 maximum_uniform_error = 0.0
@@ -90,5 +92,5 @@ c₁ = interior(model.tracers.c)[wet]
 @printf("Prescribed island basin: Cx = %.2f, Cy = %.2f, truncated faces per step = %d\n", Cx, Cy, truncated_faces)
 @printf("  naive truncation uniform-tracer error after one step = %.3e\n", naive_error)
 @printf("  renormalised: max uniform error = %.2e, mass rel error = %.2e, NaN = %s\n",
-        maximum_uniform_error, abs(sum(c₁) - sum(c₀)) / sum(c₀), any(isnan, c₁))
+        maximum_uniform_error, abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀, any(isnan, c₁))
 @printf("  min c - min c0 = %.3e, max c - max c0 = %.3e\n", minimum(c₁) - minimum(c₀), maximum(c₁) - maximum(c₀))

@@ -1,6 +1,7 @@
 # Reproduce: julia --project validation/ffsl/one_dimensional_advection.jl
 
 using Oceananigans
+include(joinpath(@__DIR__, "..", "..", "test", "setup", "volume_integrals.jl"))
 using Printf
 using Random
 Random.seed!(42)
@@ -28,8 +29,8 @@ square(x) = 0.25N < x < 0.5N ? 1.0 : 0.0
 for C in (0.5, 1.5, 2.7)
     m = model_1d(N, (x, z, t) -> C)
     set!(m, c = (x, z) -> rand())
-    c₀ = ctracer(m); run!(m, 50); c₁ = ctracer(m)
-    mass_error = abs(sum(c₁) - sum(c₀)) / sum(c₀)
+    ∫c₀ = volume_integral(m.tracers.c); run!(m, 50)
+    mass_error = abs(volume_integral(m.tracers.c) - ∫c₀) / ∫c₀
 
     m = model_1d(N, (x, z, t) -> C)
     set!(m, c = 1); run!(m, 50)
@@ -70,6 +71,6 @@ for N in (32, 64, 128)
     ufun(x, z, t) = 1.8 + 1.2 * sin(2π * x / N)
     m = model_1d(N, ufun)
     set!(m, c = (x, z) -> 1 / ufun(x, 0, 0))
-    c₀ = ctracer(m); run!(m, N); c₁ = ctracer(m)
-    @printf("N = %d  mass %.2e  max rel deviation from steady state %.3e\n", N, abs(sum(c₁) - sum(c₀)) / sum(c₀), maximum(abs, c₁ ./ c₀ .- 1))
+    c₀ = ctracer(m); ∫c₀ = volume_integral(m.tracers.c); run!(m, N); c₁ = ctracer(m)
+    @printf("N = %d  mass %.2e  max rel deviation from steady state %.3e\n", N, abs(volume_integral(m.tracers.c) - ∫c₀) / ∫c₀, maximum(abs, c₁ ./ c₀ .- 1))
 end

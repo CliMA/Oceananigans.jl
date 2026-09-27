@@ -1,6 +1,7 @@
 # Reproduce: julia --project validation/ffsl/immersed_overturning.jl
 
 using Oceananigans
+include(joinpath(@__DIR__, "..", "..", "test", "setup", "volume_integrals.jl"))
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Printf, Random
@@ -30,6 +31,7 @@ function run(vertical_scheme, Cx)
     set!(model, c = (x, z) -> exp(-((x - 0.3)^2 + (z + 0.3)^2) / 0.02) + 0.2 * rand(), uniform = 1)
     wet = [!inactive_cell(i, 1, k, grid) for i in 1:Nx, k in 1:Nz]
     c₀ = Array(interior(model.tracers.c))[:, 1, :][wet]
+    ∫c₀ = volume_integral(model.tracers.c)
     err = 0.0
     for n in 1:100
         time_step!(model, Δt)
@@ -37,7 +39,7 @@ function run(vertical_scheme, Cx)
     end
     c₁ = Array(interior(model.tracers.c))[:, 1, :][wet]
     @printf("%-8s Cx=%.1f Cz=%.2f uniform %.2e mass %.2e newmin %.3e newmax %.3e\n", first(summary(vertical_scheme), 6), Cx,
-            Δt * maximum(abs, wi) / Δz, err, abs(sum(c₁)-sum(c₀))/sum(c₀), minimum(c₁)-minimum(c₀), maximum(c₁)-maximum(c₀))
+            Δt * maximum(abs, wi) / Δz, err, abs(volume_integral(model.tracers.c) - ∫c₀) / ∫c₀, minimum(c₁)-minimum(c₀), maximum(c₁)-maximum(c₀))
 end
 
 for s in (WENO(order=5), UpwindBiased(order=1)), C in (0.8, 1.5, 2.5)
