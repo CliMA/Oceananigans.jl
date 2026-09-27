@@ -1,0 +1,71 @@
+
+## 1. Ridge gyre: split N = 32 vs unsplit FFSL with Δt = 96 minutes
+
+| run | time (hours) | smooth overshoot | uniform deviation |
+|---|---:|---:|---:|
+| unsplit FFSL, Δt = 96 min | 6.4 | 9.69e-03 | 2.46e-14 |
+| unsplit FFSL, Δt = 96 min | 12.8 | 7.53e-02 | 6.45e-14 |
+| unsplit FFSL, Δt = 96 min | 19.2 | 4.20e-01 | 2.01e-13 |
+| unsplit FFSL, Δt = 96 min | 25.6 | 1.56e+00 | 7.82e-13 |
+| unsplit FFSL, Δt = 96 min | 32.0 | 5.62e+00 | 2.93e-12 |
+| split FFSL, N = 32, Δt = 3 min | 6.4 | 9.67e-03 | 3.55e-15 |
+| split FFSL, N = 32, Δt = 3 min | 12.8 | 7.60e-02 | 2.18e-14 |
+| split FFSL, N = 32, Δt = 3 min | 19.2 | 4.25e-01 | 1.09e-13 |
+| split FFSL, N = 32, Δt = 3 min | 25.6 | 1.59e+00 | 4.19e-13 |
+| split FFSL, N = 32, Δt = 3 min | 32.0 | 5.76e+00 | 1.56e-12 |
+
+Thickness after the horizontal step of the first long step, relative to the initial one, 1 - T ∇ₕ⋅(Aₕū) / V:
+  cell (11, 1, 2): -0.97 (western neighbour active: false)
+  cell (12, 1, 1): -0.61 (western neighbour active: false)
+
+## 2. Passive step-function tracer (0.5 / 1e-3) in the non-divergent gyre, FFSL with vertical upwind (AVID)
+
+| run | swept C | minimum over long steps |
+|---|---:|---:|
+| split N = 1 | 0.07 | 1.000e-03 |
+| split N = 32 | 2.37 | -3.123e-04 |
+| split N = 64 | 4.00 | -6.469e-02 |
+| unsplit, Δt = 96 min | 2.37 | -3.123e-04 |
+
+## 3. NPZD positivity vs the adaptive implicit cfl of the vertical upwind scheme (FFSL slow NPZD, M = 4)
+
+| cfl | N | total N drift | min(N, P, Z, D) |
+|---:|---:|---:|---:|
+| 0.50 | 16 | 2.11e-15 | 1.471e-05 |
+| 0.50 | 32 | 2.11e-15 | -3.006e-02 |
+| 0.50 | 64 | 2.11e-15 | -8.773e-02 |
+| 0.20 | 16 | 2.11e-15 | 1.625e-05 |
+| 0.20 | 32 | 2.32e-15 | -1.059e-03 |
+| 0.20 | 64 | 1.27e-15 | -8.773e-02 |
+| 0.05 | 16 | 2.32e-15 | 1.831e-05 |
+| 0.05 | 32 | 1.48e-15 | -1.059e-03 |
+| 0.05 | 64 | 1.27e-15 | -8.773e-02 |
+
+Unsplit NPZD with WENO5 (horizontal and adaptive implicit vertical), no FFSL: min(N, P, Z, D) = -3.409e+01
+
+## 4. Swept Courant numbers at the fold of the TripolarGrids (maximum over long steps, 10 long steps)
+
+| fold topology | N | max C swept | max |sʸ| on the fold face j = Ny + 1 | max |sʸ| on face Ny | max |sʸ| on face Ny - 1 | max |sˣ| on rows Ny - 1, Ny |
+|---|---:|---:|---:|---:|---:|---:|
+| RightCenterFolded | 32 | 3.20 | 1.23 | 1.23 | 1.03 | 0.93 |
+| RightCenterFolded | 64 | 4.00 | 2.30 | 2.30 | 2.00 | 2.14 |
+| RightFaceFolded | 32 | 2.69 | 1.00 | 1.15 | 1.32 | 1.00 |
+| RightFaceFolded | 64 | 4.00 | 1.93 | 2.24 | 2.67 | 2.19 |
+
+## Notes
+
+- Reproduce: `julia --project validation/split_stepping_ffsl/discriminators.jl` (CPU, Julia 1.12).
+- 1: the split N = 32 and unsplit (Δt = 96 min) FFSL runs of the divergent ridge gyre diverge identically; the blow-up
+  cells lose about 1.6–2 times their volume horizontally per long step next to a dry western neighbour (negative
+  thickness after the horizontal step). The ridge case also runs unmodified on `jsw/ffsl-advection` with the same
+  numbers (vertical WENO5: overshoot 0.48, uniform deviation 2.84e-12; vertical first-order upwind: no overshoot,
+  4.2e-15), so the growth of the uniform-tracer deviation to ~1e-12 is a property of FFSL with vertical WENO5 in
+  this divergent setup, not of the long step.
+- 2: the passive undershoot at C ≈ 2.4 is identical split and unsplit: the horizontal FFSL scheme (Workstream B) is not
+  strictly positivity-preserving at C > 1 in a two-dimensional flow. It accounts for −3e-4 of the NPZD minimum at N = 32;
+  the rest (−1.1e-3 at cfl ≤ 0.2, −3e-2 at cfl = 0.5) comes from the explicit part of the vertical step or its coupling
+  with the sub-cycled sources and sinking detritus.
+- 4: the fold face j = Ny + 1 (for RightCenterFolded its sʸ mirrors the face Ny) carries a swept Courant number
+  above 1 at N = 32 on the RightCenterFolded grid (1.23) and at N = 64 on both grids (2.30, 1.93, not truncated there),
+  in runs whose uniform tracer and ∫σc stay at round-off (results_tripolar.txt).
+

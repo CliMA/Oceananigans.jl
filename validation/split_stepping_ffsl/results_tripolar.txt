@@ -54,4 +54,6 @@ Maximum stable N: WENO5 16, FFSL 64
   advected across the fold at C > 1 with uniform deviation ≤ 1.5e-14 and ∫σc drift ≤ 4e-15.
   Components at N = 32 (separate diagnostic): RightCenterFolded max |sʸ| = 1.03 (face Ny−1), 1.23 (face Ny);
   RightFaceFolded max |sʸ| = 1.32 (Ny−1), 1.15 (Ny), 1.00 (the fold face Ny+1), max |sˣ| = 1.00 (row Ny−1).
+  On the fold face itself (y-face Ny+1, results_discriminators.txt): 1.23 at N = 32 and 2.30 at N = 64 on
+  RightCenterFolded; 1.00 at N = 32 and 1.93 at N = 64 on RightFaceFolded.
 - WENO5 slow tracers fail at N = 32 (C proxy 2.8–3.2); FFSL is stable up to N = 64 (truncated at Cmax + 1 = 4).
