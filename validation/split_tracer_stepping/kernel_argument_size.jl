@@ -62,7 +62,7 @@ end
 fast_arguments = tendency_arguments(model, model.transport_velocities, model.biogeochemistry, model.closure_fields, :T, 1)
 slow_arguments = tendency_arguments(model, s.velocities, TransportOnlyBiogeochemistry(model.biogeochemistry), s.closure_fields, :D, 6)
 source_arguments = (s.slow_tracers, model.grid, model.biogeochemistry, s.clock, Oceananigans.fields(model),
-                    s.previous_tracers, 1.0, Val(keys(s.slow_tracers)))
+                    s.previous_tracers, 1.0, map(Val, keys(s.slow_tracers)))
 
 println("Estimated GPU kernel-parameter size, 24-tracer LatitudeLongitude ImmersedBoundaryGrid with z-star, CATKE and 22 slow tracers:")
 println("  fast tracer tendency kernel (`compute_hydrostatic_free_surface_Gc!`): ", kernel_argument_size(fast_arguments), " bytes")

@@ -656,7 +656,7 @@ function step_biogeochemical_sources!(splitting, model, substeps, start_time, Δ
     δt = Δt / substeps
     slow_tracers = splitting.slow_tracers
     cached_tracers = splitting.previous_tracers
-    names = Val(keys(slow_tracers))
+    val_tracer_names = map(Val, keys(slow_tracers))
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
@@ -673,7 +673,7 @@ function step_biogeochemical_sources!(splitting, model, substeps, start_time, Δ
         for β in (3, 2, 1)
             launch!(arch, grid, :xyz, _biogeochemical_source_substep!,
                     slow_tracers, grid, model.biogeochemistry, clock, fields(model),
-                    cached_tracers, convert(FT, δt / β), names)
+                    cached_tracers, convert(FT, δt / β), val_tracer_names)
 
             clock.time = substep_start_time
             clock.time = next_time(clock, δt / β)
@@ -685,11 +685,11 @@ function step_biogeochemical_sources!(splitting, model, substeps, start_time, Δ
     return nothing
 end
 
-@kernel function _biogeochemical_source_substep!(tracers, grid, biogeochemistry, clock, model_fields, cached_tracers, Δt, ::Val{names}) where names
+@kernel function _biogeochemical_source_substep!(tracers, grid, biogeochemistry, clock, model_fields, cached_tracers, Δt, val_tracer_names)
     i, j, k = @index(Global, NTuple)
 
-    N = length(names)
-    sources = ntuple(n -> biogeochemical_transition(i, j, k, grid, biogeochemistry, Val(names[n]), clock, model_fields), Val(N))
+    N = length(val_tracer_names)
+    sources = map(val_name -> biogeochemical_transition(i, j, k, grid, biogeochemistry, val_name, clock, model_fields), val_tracer_names)
     immersed = inactive_node(i, j, k, grid, Center(), Center(), Center())
 
     tracer_values = values(tracers)
