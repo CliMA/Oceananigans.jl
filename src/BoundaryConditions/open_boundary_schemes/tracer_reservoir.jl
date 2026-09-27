@@ -34,11 +34,12 @@ TracerReservoir{Float64}
 └── outflow_length_scale: 0.0
 ```
 """
-struct TracerReservoir{FT, S} <: AbstractRadiationScheme{FT}
+struct TracerReservoir{FT, S, A} <: AbstractRadiationScheme{FT}
     inflow_length_scale  :: FT
     outflow_length_scale :: FT
     cʳ  :: S  # anchor reservoir value (2D array or nothing)
     cʳˡ :: S  # latest reservoir value (2D array or nothing)
+    anchors :: A # iteration of the last anchored fill at each boundary point (2D array or nothing)
 end
 
 function TracerReservoir(FT = defaults.FloatType;
@@ -51,14 +52,15 @@ function TracerReservoir(FT = defaults.FloatType;
     inflow_length_scale  >= 0 || throw(ArgumentError("inflow_length_scale must be non-negative"))
     outflow_length_scale >= 0 || throw(ArgumentError("outflow_length_scale must be non-negative"))
 
-    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing, nothing)
+    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing, nothing, nothing)
 end
 
 Adapt.adapt_structure(to, r::TracerReservoir) =
     TracerReservoir(adapt(to, r.inflow_length_scale),
                     adapt(to, r.outflow_length_scale),
                     adapt(to, r.cʳ),
-                    adapt(to, r.cʳˡ))
+                    adapt(to, r.cʳˡ),
+                    adapt(to, r.anchors))
 
 Base.summary(::TracerReservoir{FT}) where FT = "TracerReservoir{$FT}"
 
@@ -75,12 +77,12 @@ const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 #####
 
 radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_size) =
-    ntuple(_ -> zeros(arch, FT, tangential_size...), 2) # cʳ, cʳˡ
+    (ntuple(_ -> zeros(arch, FT, tangential_size...), 2)..., anchor_buffer(arch, tangential_size)) # cʳ, cʳˡ, anchors
 
-radiation_buffers(reservoir::TracerReservoir) = (reservoir.cʳ, reservoir.cʳˡ)
+radiation_buffers(reservoir::TracerReservoir) = (reservoir.cʳ, reservoir.cʳˡ, reservoir.anchors)
 
-radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
-    TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, cʳ, cʳˡ)
+radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ, anchors)) =
+    TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, cʳ, cʳˡ, anchors)
 
 #####
 ##### The reservoir update
@@ -100,8 +102,8 @@ end
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
-    anchored = anchored_fill(clock)
     reservoir = bc.classification.scheme
+    anchored = anchored_fill(clock, reservoir.anchors, l, m)
 
     @inbounds begin
         cᵉˣᵗ = getbc(bc, l, m, grid, clock, model_fields)
@@ -115,6 +117,7 @@ end
         c[cᵇ...] = ifelse(closed, zero(grid), cʳⁿ⁺¹)
         reservoir.cʳ[l, m]  = cʳⁿ   # anchor for later stages
         reservoir.cʳˡ[l, m] = cʳⁿ⁺¹ # latest, promoted at the next anchored fill
+        record_anchor!(reservoir.anchors, l, m, clock, anchored, first_call)
     end
 
     return nothing
