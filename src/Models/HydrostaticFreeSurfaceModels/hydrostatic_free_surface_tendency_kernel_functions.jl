@@ -11,7 +11,7 @@ using Oceananigans.Utils: sum_of_velocities
 """
 $(TYPEDSIGNATURES)
 
-Return the velocities that advect the tracer named by `val_tracer_name`: the resolved transport velocities plus 
+Return the velocities that advect the tracer named by `val_tracer_name`: the resolved transport velocities plus
 any biogeochemical drift velocity, closure eddy velocity, and advective forcing.
 """
 @inline function tracer_advecting_velocities(velocities, closure, closure_fields, biogeochemistry, forcing, val_tracer_name)
