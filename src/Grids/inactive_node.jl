@@ -180,3 +180,12 @@ $(TYPEDSIGNATURES)
 Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
 """
 @inline bottommost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k - 1, grid, LX, LY, LZ)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return `true` when the location `(LX, LY, LZ)` is the active cell just below the top,
+i.e. the mirror image of `bottommost_active_node` for a ceiling (e.g. an ice shelf base)
+rather than a bottom boundary.
+"""
+@inline topmost_active_node(i, j, k, grid, LX, LY, LZ) = active_node(i, j, k, grid, LX, LY, LZ) & inactive_node(i, j, k + 1, grid, LX, LY, LZ)

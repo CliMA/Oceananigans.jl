@@ -1,5 +1,6 @@
 using Oceananigans.Fields: Field, set!
 using Oceananigans.Grids: Grids, constructor_arguments
+using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶠᶜᶜ, Δrᶜᶠᶜ
 
 """
     GridFittedBoundary(mask)
@@ -42,3 +43,15 @@ function Grids.constructor_arguments(grid::AGFBoundIBG)
 end
 
 Base.:(==)(gfb1::GridFittedBoundary, gfb2::GridFittedBoundary) = gfb1.mask == gfb2.mask
+
+# The generic fallback returns `grid.Lz`, which ignores the mask
+@inline function static_column_depthᶜᶜᵃ(i, j, ibg::AGFBoundIBG)
+    H = zero(ibg)
+    for k in 1:ibg.Nz
+        H += ifelse(peripheral_node(i, j, k, ibg, c, c, c), zero(ibg), Δrᶜᶜᶜ(i, j, k, ibg))
+    end
+    return H
+end
+
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBoundIBG) = active_column_depthᶠᶜᵃ(i, j, ibg)
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBoundIBG) = active_column_depthᶜᶠᵃ(i, j, ibg)

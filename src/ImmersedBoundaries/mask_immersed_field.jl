@@ -1,9 +1,11 @@
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Grids: interior_indices
+using Oceananigans.Grids: interior_indices, Center, Face
 using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: location, Field, ReducedField, instantiated_location
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
+
+using Oceananigans.Operators: Δzᶜᶜᶜ
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -163,3 +165,31 @@ const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 # Does not require a sweep
 mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))
+
+# Under a ceiling the top cell may be immersed while the column below is wet, so sweep the column
+function mask_immersed_field!(field::OnlyZReducedField, grid::CavityIBG, loc, value)
+    loc  = instantiate.(loc)
+    dims = reduced_dimensions(field)
+    launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
+    return nothing
+end
+
+const WField = Field{<:Center, <:Center, <:Face}
+
+# `immersed_peripheral_node` never masks the domain's top face, which is peripheral on the underlying grid too
+function mask_immersed_field!(field::WField, grid::CavityIBG, loc, value)
+    arch = architecture(field)
+    loc  = instantiate.(loc)
+    kp = KernelParameters(interior_indices(field)...)
+    launch!(arch, grid, kp, _mask_immersed_w_field!, field, loc, grid, value)
+    return nothing
+end
+
+@kernel function _mask_immersed_w_field!(field, (ℓx, ℓy, ℓz), grid, value)
+    i, j, k = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    ice_covered = immersed_cell(i, j, Nz, grid) | (Δzᶜᶜᶜ(i, j, Nz, grid) < Δzᶜᶜᶜ(i, j, Nz, grid.underlying_grid))
+    top_face_buried = (k == Nz + 1) & ice_covered
+    masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | top_face_buried
+    @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
+end

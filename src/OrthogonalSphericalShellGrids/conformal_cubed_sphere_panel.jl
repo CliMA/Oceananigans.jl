@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
 using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, GridFittedBoundary, GridFittedCavity, PartialCellCavity,
+                                       active_column_depthᶠᶜᵃ, active_column_depthᶜᶠᵃ
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian, spherical_area_quadrilateral
@@ -834,6 +835,25 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
 
 @inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
+
+# Masks and cavities bound each face column independently, so their face depth sums active cells
+for IB in (GridFittedBoundary, GridFittedCavity, PartialCellCavity)
+    @eval begin
+        @inline static_column_depthᶠᶜᵃ(i, j, grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid, <:$IB}) =
+            active_column_depthᶠᶜᵃ(i, j, grid)
+        @inline static_column_depthᶜᶠᵃ(i, j, grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid, <:$IB}) =
+            active_column_depthᶜᶠᵃ(i, j, grid)
+    end
+end
+
+for IB in (GridFittedCavity, PartialCellCavity)
+    @eval begin
+        @inline static_column_depthᶠᶜᵃ(i, j, grid::ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:ConformalCubedSpherePanelGrid, <:$IB}) =
+            static_column_depthᶜᶜᵃ(i, j, grid)
+        @inline static_column_depthᶜᶠᵃ(i, j, grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:ConformalCubedSpherePanelGrid, <:$IB}) =
+            static_column_depthᶜᶜᵃ(i, j, grid)
+    end
+end
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 

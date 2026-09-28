@@ -12,7 +12,8 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation,
-    BoundaryAdjacentMean, boundary_total_area
+    BoundaryAdjacentMean, boundary_total_area,
+    cavity_load_potential
 
 using DocStringExtensions: TYPEDSIGNATURES
 
@@ -138,6 +139,9 @@ using .HydrostaticFreeSurfaceModels:
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
+
+# Ice-shelf load for GridFittedCavity and PartialCellCavity
+include("cavity_load_potential.jl")
 
 # BulkDrag for quadratic drag boundary conditions
 include("BulkDragBoundaryConditions.jl")

@@ -66,7 +66,7 @@ using Oceananigans.Operators: Operators,
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tuple
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, CavityIBG
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
@@ -190,6 +190,9 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
 @inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
+# Under an ice shelf the top of the water column is the ice base
+@inline z_top(i, j, ibg::CavityIBG) = @inbounds ibg.immersed_boundary.ceiling_height[i, j, 1]
+
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
 
@@ -216,6 +219,7 @@ include("turbulence_closure_utils.jl")
 include("closure_kernel_operators.jl")
 include("velocity_tracer_gradients.jl")
 include("abstract_scalar_diffusivity_closure.jl")
+include("cavity_horizontal_viscosity.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
