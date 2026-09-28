@@ -69,6 +69,14 @@ end
 ##### Gathering of grid metrics
 #####
 
+# Metrics and masks are computed once at writer initialization; stripping the operand
+# leaves one plain `Field` type per location for the writers to specialize on.
+function materialized_field(operation, indices)
+    computed = Field(operation; indices)
+    loc = instantiated_location(computed)
+    return Field(loc, computed.grid, computed.data, computed.boundary_conditions, computed.indices)
+end
+
 """
     gather_grid_metrics(grid, indices, dim_name_generator)
 
@@ -84,8 +92,8 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
         Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
         Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
 
-        Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
-        Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
+        Δxᶠᵃᵃ_field = materialized_field(xspacings(grid, f), indices)
+        Δxᶜᵃᵃ_field = materialized_field(xspacings(grid, c), indices)
 
         metrics[Δxᶠᵃᵃ_name] = Δxᶠᵃᵃ_field
         metrics[Δxᶜᵃᵃ_name] = Δxᶜᵃᵃ_field
@@ -95,8 +103,8 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
         Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
         Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
 
-        Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
-        Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
+        Δyᵃᶠᵃ_field = materialized_field(yspacings(grid, f), indices)
+        Δyᵃᶜᵃ_field = materialized_field(yspacings(grid, c), indices)
 
         metrics[Δyᵃᶠᵃ_name] = Δyᵃᶠᵃ_field
         metrics[Δyᵃᶜᵃ_name] = Δyᵃᶜᵃ_field
@@ -124,7 +132,7 @@ end
 # `rspacings` (rather than `zspacings`) gives the *reference* spacing, which is what the
 # saved 1D vertical coordinate refers to for a `MutableVerticalDiscretization`, and which
 # coincides with the physical spacing for a `StaticVerticalDiscretization`.
-vertical_spacing_field(grid, lz, indices) = Field(rspacings(grid, lz); indices)
+vertical_spacing_field(grid, lz, indices) = materialized_field(rspacings(grid, lz), indices)
 
 function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
     TΛ, TΦ, TZ = topology(grid)
@@ -135,8 +143,8 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         Δλᶠᵃᵃ_name = dim_name_generator("Δλ", grid, f, nothing, nothing, Val(:x))
         Δλᶜᵃᵃ_name = dim_name_generator("Δλ", grid, c, nothing, nothing, Val(:x))
 
-        Δλᶠᵃᵃ_field = Field(λspacings(grid, f); indices)
-        Δλᶜᵃᵃ_field = Field(λspacings(grid, c); indices)
+        Δλᶠᵃᵃ_field = materialized_field(λspacings(grid, f), indices)
+        Δλᶜᵃᵃ_field = materialized_field(λspacings(grid, c), indices)
 
         metrics[Δλᶠᵃᵃ_name] = Δλᶠᵃᵃ_field
         metrics[Δλᶜᵃᵃ_name] = Δλᶜᵃᵃ_field
@@ -146,10 +154,10 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
         Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
 
-        Δxᶠᶠᵃ_field = Field(xspacings(grid, f, f); indices)
-        Δxᶠᶜᵃ_field = Field(xspacings(grid, f, c); indices)
-        Δxᶜᶠᵃ_field = Field(xspacings(grid, c, f); indices)
-        Δxᶜᶜᵃ_field = Field(xspacings(grid, c, c); indices)
+        Δxᶠᶠᵃ_field = materialized_field(xspacings(grid, f, f), indices)
+        Δxᶠᶜᵃ_field = materialized_field(xspacings(grid, f, c), indices)
+        Δxᶜᶠᵃ_field = materialized_field(xspacings(grid, c, f), indices)
+        Δxᶜᶜᵃ_field = materialized_field(xspacings(grid, c, c), indices)
 
         metrics[Δxᶠᶠᵃ_name] = Δxᶠᶠᵃ_field
         metrics[Δxᶠᶜᵃ_name] = Δxᶠᶜᵃ_field
@@ -161,8 +169,8 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         Δφᵃᶠᵃ_name = dim_name_generator("Δφ", grid, nothing, f, nothing, Val(:y))
         Δφᵃᶜᵃ_name = dim_name_generator("Δφ", grid, nothing, c, nothing, Val(:y))
 
-        Δφᵃᶠᵃ_field = Field(φspacings(grid, f); indices)
-        Δφᵃᶜᵃ_field = Field(φspacings(grid, c); indices)
+        Δφᵃᶠᵃ_field = materialized_field(φspacings(grid, f), indices)
+        Δφᵃᶜᵃ_field = materialized_field(φspacings(grid, c), indices)
 
         metrics[Δφᵃᶠᵃ_name] = Δφᵃᶠᵃ_field
         metrics[Δφᵃᶜᵃ_name] = Δφᵃᶜᵃ_field
@@ -172,10 +180,10 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
         Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
 
-        Δyᶠᶠᵃ_field = Field(yspacings(grid, f, f); indices)
-        Δyᶠᶜᵃ_field = Field(yspacings(grid, f, c); indices)
-        Δyᶜᶠᵃ_field = Field(yspacings(grid, c, f); indices)
-        Δyᶜᶜᵃ_field = Field(yspacings(grid, c, c); indices)
+        Δyᶠᶠᵃ_field = materialized_field(yspacings(grid, f, f), indices)
+        Δyᶠᶜᵃ_field = materialized_field(yspacings(grid, f, c), indices)
+        Δyᶜᶠᵃ_field = materialized_field(yspacings(grid, c, f), indices)
+        Δyᶜᶜᵃ_field = materialized_field(yspacings(grid, c, c), indices)
 
         metrics[Δyᶠᶠᵃ_name] = Δyᶠᶠᵃ_field
         metrics[Δyᶠᶜᵃ_name] = Δyᶠᶜᵃ_field
@@ -198,14 +206,14 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
         Δy_name = dim_name_generator("Δy", grid, lx, ly, nothing, Val(:y))
         Az_name = dim_name_generator("Az", grid, lx, ly, nothing, Val(:x))
 
-        metrics[Δx_name] = Field(xspacings(grid, lx, ly); indices)
-        metrics[Δy_name] = Field(yspacings(grid, lx, ly); indices)
+        metrics[Δx_name] = materialized_field(xspacings(grid, lx, ly), indices)
+        metrics[Δy_name] = materialized_field(yspacings(grid, lx, ly), indices)
         # Az is on the same horizontal stagger as Δx/Δy at (lx, ly). The `Az_at_node`
         # accessor returns `grid.Azᶜᶜᵃ[i, j]` (etc.) at the requested location; wrapping it
         # in a `KernelFunctionOperation` gives a 2D `Field` we can write through the normal
         # output path.
         Az_op = KernelFunctionOperation{typeof(lx), typeof(ly), Nothing}(Az_at_node, grid, lx, ly)
-        metrics[Az_name] = Field(Az_op; indices)
+        metrics[Az_name] = materialized_field(Az_op, indices)
     end
 
     add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
@@ -238,8 +246,8 @@ function immersed_node_fields(grid, indices)
         peripheral_nodes = KernelFunctionOperation{LX, LY, LZ}(peripheral_node, grid, lx, ly, lz)
         inactive_nodes = KernelFunctionOperation{LX, LY, LZ}(inactive_node, grid, lx, ly, lz)
 
-        node_fields["peripheral_nodes_" * letters] = Field(peripheral_nodes; indices)
-        node_fields["inactive_nodes_" * letters] = Field(inactive_nodes; indices)
+        node_fields["peripheral_nodes_" * letters] = materialized_field(peripheral_nodes, indices)
+        node_fields["inactive_nodes_" * letters] = materialized_field(inactive_nodes, indices)
     end
 
     return node_fields

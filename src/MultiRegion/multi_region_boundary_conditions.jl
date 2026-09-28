@@ -28,6 +28,7 @@ BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs..
                        kwargs...)
 
 BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
+BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, indices, loc, ::MultiRegionGrid, buffers, args...; kwargs...) = nothing
 
 #####
 ##### fill_halo_regions! for a MultiRegionObject

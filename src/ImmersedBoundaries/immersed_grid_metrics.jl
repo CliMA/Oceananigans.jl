@@ -23,6 +23,8 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 @inline Operators.Δrᵃᵃᶜ(i, j, k, ibg::IBG) = Δrᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δzᵃᵃᶠ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 # 1D Horizontal spacings
 
