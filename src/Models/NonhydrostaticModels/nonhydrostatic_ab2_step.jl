@@ -68,6 +68,7 @@ end
     Gⁿ = model.timestepper.Gⁿ[name]
     G⁻ = model.timestepper.G⁻[name]
     substep_velocity!(u, Gⁿ, G⁻)
+    mask_immersed_field!(u)
 
     implicit_step!(u,
                    model.timestepper.implicit_solver,
