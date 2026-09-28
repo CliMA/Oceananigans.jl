@@ -205,15 +205,9 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
-    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
-
-@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
-    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(Val(propertynames(tracers))) do val_tracer_index, val_tracer_name
+        rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 

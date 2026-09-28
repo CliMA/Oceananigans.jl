@@ -26,6 +26,22 @@ inside `f` are not mistaken for recursion by the compiler.
 @inline map_names(f, ::Tuple{}) = ()
 @inline map_names(f, names::Tuple) = (f(first(names)), map_names(f, Base.tail(names))...)
 
+"""
+$(TYPEDSIGNATURES)
+
+Call `f(Val(n), Val(name))` for each `name` in `names`, where `n` is the position of `name`.
+The calls are unrolled: the compiler widens a recursion over `Val`-wrapped names from its
+third level on, which boxes its arguments and dispatches the remaining calls dynamically.
+"""
+@generated function foreach_name(f::F, ::Val{names}) where {F, names}
+    calls = [:(f(Val($n), Val($(QuoteNode(name))))) for (n, name) in enumerate(names)]
+    return quote
+        Base.@_inline_meta
+        $(calls...)
+        return nothing
+    end
+end
+
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
 @inline datatuple(obj::Tuple) = Tuple(datatuple(o) for o in obj)

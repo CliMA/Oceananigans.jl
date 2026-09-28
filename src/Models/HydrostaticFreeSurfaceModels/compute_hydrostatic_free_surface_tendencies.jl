@@ -95,14 +95,18 @@ Launches the tracer tendency kernel for each tracer, computing advection, diffus
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
 
-compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing) =
-    launch_tracer_tendencies!(model, model.architecture, model.grid, kernel_parameters, active_cells_map, Val(1), Val(propertynames(model.tracers)))
+function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+    arch = model.architecture
+    grid = model.grid
 
-@inline launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
+    foreach_name(Val(propertynames(model.tracers))) do val_tracer_index, val_tracer_name
+        launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
+    end
 
-@inline function launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_names}) where {tracer_index, tracer_names}
+    return nothing
+end
 
-    tracer_name = first(tracer_names)
+@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
 
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
     @inbounds c_advection   = model.advection[tracer_name]
@@ -128,8 +132,6 @@ compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_ma
             model.clock,
             c_forcing;
             active_cells_map)
-
-    launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end
