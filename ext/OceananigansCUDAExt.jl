@@ -27,7 +27,6 @@ import Oceananigans.MultiRegion as MR
 import Oceananigans.Utils: apply_regionally!
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces as SE
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
 import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
@@ -175,76 +174,57 @@ function fast_inv_cuda(a::Float32)
 end
 
 #####
-##### Barotropic substepping as a replayed CUDA graph
+##### Kernel launches recorded in a CUDA graph and replayed
 #####
 
-# `Δτ` and the `clock` change at every step, so the captured kernels read them from the device buffer `step`
-struct BarotropicGraph{A, S}
+struct CapturedLaunches{L, A, S}
+    launches! :: L
     arguments :: A
     executable :: CUDA.CuGraphExec
     step :: S
 end
 
-const barotropic_graphs = BarotropicGraph[]
-const barotropic_graphs_lock = ReentrantLock()
-const MAXIMUM_CACHED_BAROTROPIC_GRAPHS = 16
+const captured_launches = CapturedLaunches[]
+const captured_launches_lock = ReentrantLock()
+const MAXIMUM_CAPTURED_LAUNCHES = 32
 
-# Δτᴮ is the third argument of both kernels and the clock the eighth argument of the free-surface kernel
-function SE.substep_barotropic_mode!(arch::CUDAGPU, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
-                                     converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function UT.launch_captured!(launches!, ::CUDAGPU, step_values, arguments...)
+    UT.capture_launches[] || return launches!(step_values, arguments...)
 
-    SE.capture_barotropic_graphs[] ||
-        return @invoke SE.substep_barotropic_mode!(arch::Any, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
-                                                   converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
-
-    step_values = (; Δτ = converted_U_args[3], clock = converted_η_args[8])
-
-    # A graph is replayed only if every kernel argument it captured, except `Δτ` and the clock, is unchanged
-    arguments = (barotropic_velocity_kernel!, free_surface_kernel!, weights, transport_weights,
-                 Base.setindex(converted_U_args, nothing, 3), Base.setindex(Base.setindex(converted_η_args, nothing, 3), nothing, 8))
-
-    graph = Base.@lock barotropic_graphs_lock begin
-        index = findfirst(g -> g.arguments === arguments && eltype(g.step) === typeof(step_values), barotropic_graphs)
-        isnothing(index) ? nothing : barotropic_graphs[index]
+    captured = Base.@lock captured_launches_lock begin
+        index = findfirst(captured_launches) do c
+            c.launches! === launches! && c.arguments === arguments && eltype(c.step) === typeof(step_values)
+        end
+        isnothing(index) ? nothing : captured_launches[index]
     end
 
-    if isnothing(graph)
-        graph = capture_barotropic_graph(arguments, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
-                                         converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
-        Base.@lock barotropic_graphs_lock begin
-            push!(barotropic_graphs, graph)
-            length(barotropic_graphs) > MAXIMUM_CACHED_BAROTROPIC_GRAPHS && popfirst!(barotropic_graphs)
+    if isnothing(captured)
+        captured = capture_launches(launches!, step_values, arguments)
+        Base.@lock captured_launches_lock begin
+            push!(captured_launches, captured)
+            length(captured_launches) > MAXIMUM_CAPTURED_LAUNCHES && popfirst!(captured_launches)
         end
     else
-        fill!(graph.step, step_values)
-        CUDA.launch(graph.executable)
+        fill!(captured.step, step_values)
+        CUDA.launch(captured.executable)
     end
 
     return nothing
 end
 
-function capture_barotropic_graph(arguments, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
-                                  converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
-
+function capture_launches(launches!, step_values, arguments)
     step = CuArray{typeof(step_values)}(undef, 1)
-
-    Δτ = SE.StepValue{:Δτ}(CUDA.cudaconvert(step))
-    clock = SE.StepValue{:clock}(CUDA.cudaconvert(step))
-    velocity_arguments = Base.setindex(converted_U_args, Δτ, 3)
-    free_surface_arguments = Base.setindex(Base.setindex(converted_η_args, Δτ, 3), clock, 8)
-
-    substeps! = () -> for substep in 1:Nsubsteps
-        barotropic_velocity_kernel!(transport_weights[substep], velocity_arguments...)
-        free_surface_kernel!(weights[substep], free_surface_arguments...)
-    end
-
     fill!(step, step_values)
 
-    # the uncaptured run advances this step and compiles the kernels before capture
-    substeps!()
-    executable = CUDA.instantiate(CUDA.capture(substeps!))
+    names = keys(step_values)
+    device_step = NamedTuple{names}(map(name -> UT.StepValue{name}(CUDA.cudaconvert(step)), names))
+    launch!() = launches!(device_step, arguments...)
 
-    return BarotropicGraph(arguments, executable, step)
+    # the uncaptured launch advances this call and compiles the kernels before capture
+    launch!()
+    executable = CUDA.instantiate(CUDA.capture(launch!))
+
+    return CapturedLaunches(launches!, arguments, executable, step)
 end
 
 end # module OceananigansCUDAExt

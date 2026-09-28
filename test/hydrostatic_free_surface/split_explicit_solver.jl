@@ -8,10 +8,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!,
-                                                                                  weights_from_substeps,
-                                                                                  capture_barotropic_graphs,
-                                                                                  StepValue
+                                                                                  weights_from_substeps
 using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Utils: capture_launches, StepValue
 
 @inline noforcing(args...) = 0
 
@@ -358,12 +357,12 @@ end
             set!(η, (x, y, z) -> 1e-2 * sin(x) * cos(y))
             fill_halo_regions!(η)
 
-            capture_barotropic_graphs[] = capture_graphs
+            capture_launches[] = capture_graphs
             try
                 iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, clock_dependent_forcing, clock,
                                         weights, transport_weights, Val(length(weights)))
             finally
-                capture_barotropic_graphs[] = true
+                capture_launches[] = true
             end
 
             return map(field -> Array(interior(field)), barotropic_fields)
