@@ -18,16 +18,19 @@ where `Γ` is the area-weighted circulation at the cell corners `z`, `D` the hor
 cell centres `c`, and `α_cz` couples each cell to its four corners with the weights `χ ε (a - b) + η (1 - 2 (a - b)²)`
 for the corner `(i + a, j + b)`. The increment does no work and has no curl for nondivergent flow for any `α`,
 and removes the null modes of the four-point average. The chirality `χ ∈ [-1, 1]` orients the stencil:
-`χ = 1` is the south-east stencil, `χ = -1` the north-west one. Every `update_interval` it relaxes, over
-`adjustment_time`, toward the sign of the vertical shear of `u - v` below the uppermost interface, smoothed over
-`smoothing` cells; `χ = -1` without shear. Pairs touching land, walls or a tripolar fold are excluded.
+`χ = 1` is the south-east stencil, `χ = -1` the north-west one. The chiral part converts potential energy of grid-scale
+waves at a rate proportional to `-χ (∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|²)`, where `p′ₓ` and `p′ᵧ` are the parts of the hydrostatic
+pressure, free surface included, at wavelengths of a few cells along x and along y. Every `update_interval`, `χ` relaxes over
+`adjustment_time` toward the sign of `∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|²` below the uppermost interface, smoothed over `smoothing`
+cells, which makes that conversion negative; `χ = -1` where there is no grid-scale pressure variance. Pairs touching land,
+walls or a tripolar fold are excluded.
 
 Keyword arguments
 =================
 
 - `ε`: chiral weight. Default: 1/8.
 - `η`: achiral weight. Default: 1/32.
-- `smoothing`: width [cells] of the Gaussian smoothing of the shear and of its sign. Default: 3.
+- `smoothing`: width [cells] of the Gaussian smoothing of the conversion density and of its sign. Default: 3.
 - `update_interval`: time [s] between updates of the chirality. Default: 1 day.
 - `adjustment_time`: time scale [s] of the relaxation of the chirality. Default: 30 days.
 """
@@ -51,7 +54,8 @@ function ShearSignedCoriolis(grid; ε=1/8, η=1/32, smoothing=3, update_interval
     fill_halo_regions!(chirality)
     pressure = CenterField(grid)
     streamfunction = Field{Face, Face, Center}(grid)
-    workspace = (; target = CenterField(grid), buffer = CenterField(grid), mask = CenterField(grid))
+    workspace = (; target = CenterField(grid), buffer = CenterField(grid), mask = CenterField(grid),
+                  zonal_grid_scale_pressure = CenterField(grid), meridional_grid_scale_pressure = CenterField(grid))
     return ShearSignedCoriolis(FT(ε), FT(η), chirality, pressure, streamfunction, workspace, round(Int, 2smoothing^2),
                                FT(update_interval), FT(adjustment_time), Ref(zero(FT)))
 end
@@ -135,42 +139,60 @@ end
 end
 
 #####
-##### Chirality: relaxed toward the smoothed sign of the smoothed shear of u - v
+##### Chirality: relaxed toward the sign of the chiral conversion density ∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|², with p′ₓ, p′ᵧ the
+##### grid-scale parts of the hydrostatic pressure along x and y, smoothed; χ = -1 where there is no grid-scale pressure variance
 #####
 
-# u - v averaged over the wet faces of the cell, and whether both averages have a wet face
-@inline function projected_velocity(i, j, k, grid, u, v)
+# u and v averaged over the wet faces of the cell, and whether both averages have a wet face
+@inline function cell_velocity(i, j, k, grid, u, v)
     wu⁻ = !peripheral_node(i,   j, k, grid, face, center, center)
     wu⁺ = !peripheral_node(i+1, j, k, grid, face, center, center)
     wv⁻ = !peripheral_node(i, j,   k, grid, center, face, center)
     wv⁺ = !peripheral_node(i, j+1, k, grid, center, face, center)
     ū = @inbounds (wu⁻ * u[i, j, k] + wu⁺ * u[i+1, j, k]) / max(wu⁻ + wu⁺, 1)
     v̄ = @inbounds (wv⁻ * v[i, j, k] + wv⁺ * v[i, j+1, k]) / max(wv⁻ + wv⁺, 1)
-    return ū - v̄, (wu⁻ | wu⁺) & (wv⁻ | wv⁺)
+    return ū, v̄, (wu⁻ | wu⁺) & (wv⁻ | wv⁺)
 end
 
-# Shear across the interface between levels k and k + 1; the uppermost interface lies in the surface Ekman layer
-@inline function interface_shear(i, j, k, grid, u, v)
-    lower, lower_defined = projected_velocity(i, j, k,   grid, u, v)
-    upper, upper_defined = projected_velocity(i, j, k+1, grid, u, v)
+# Across the interface between levels k and k + 1; the uppermost interface lies in the surface Ekman layer
+@inline function interface_conversion(i, j, k, grid, u, v, p′ₓ, p′ᵧ)
+    ū⁻, v̄⁻, lower_defined = cell_velocity(i, j, k,   grid, u, v)
+    ū⁺, v̄⁺, upper_defined = cell_velocity(i, j, k+1, grid, u, v)
     defined = (1 ≤ k ≤ size(grid, 3) - 2) & lower_defined & upper_defined &
               !inactive_node(i, j, k, grid, center, center, center) & !inactive_node(i, j, k+1, grid, center, center, center)
-    return (upper - lower) / Δrᵃᵃᶠ(i, j, k+1, grid), defined
+    zonal = @inbounds (ū⁺ - ū⁻) * (p′ₓ[i, j, k+1]^2 - p′ₓ[i, j, k]^2)
+    meridional = @inbounds (v̄⁺ - v̄⁻) * (p′ᵧ[i, j, k+1]^2 - p′ᵧ[i, j, k]^2)
+    return (zonal - meridional) / Δrᵃᵃᶠ(i, j, k+1, grid)^2, defined
 end
 
-@kernel function _compute_level_shear!(shear, sheared, grid, u, v)
+@kernel function _compute_level_conversion!(conversion, defined, grid, u, v, p′ₓ, p′ᵧ)
     i, j, k = @index(Global, NTuple)
     Nz = size(grid, 3)
     k⁻ = ifelse(k == Nz, Nz - 2, k - 1)
     k⁺ = ifelse(k == Nz, Nz - 2, k)
-    lower_shear, lower_defined = interface_shear(i, j, k⁻, grid, u, v)
-    upper_shear, upper_defined = interface_shear(i, j, k⁺, grid, u, v)
+    lower_conversion, lower_defined = interface_conversion(i, j, k⁻, grid, u, v, p′ₓ, p′ᵧ)
+    upper_conversion, upper_defined = interface_conversion(i, j, k⁺, grid, u, v, p′ₓ, p′ᵧ)
     n = lower_defined + upper_defined
-    @inbounds shear[i, j, k] = (lower_defined * lower_shear + upper_defined * upper_shear) / max(n, 1)
-    @inbounds sheared[i, j, k] = !inactive_node(i, j, k, grid, center, center, center) & (n > 0)
+    @inbounds conversion[i, j, k] = (lower_defined * lower_conversion + upper_defined * upper_conversion) / max(n, 1)
+    @inbounds defined[i, j, k] = !inactive_node(i, j, k, grid, center, center, center) & (n > 0)
 end
 
-@kernel function _sign_of_shear!(target, mask, grid)
+@kernel function _wet_mask!(mask, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds mask[i, j, k] = !inactive_node(i, j, k, grid, center, center, center)
+end
+
+@kernel function _total_pressure!(p, pHY′, η, g, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds p[i, j, k] = pHY′[i, j, k] + g * η[i, j, grid.Nz+1]
+end
+
+@kernel function _subtract_from!(p′, p, mask)
+    i, j, k = @index(Global, NTuple)
+    @inbounds p′[i, j, k] = (p[i, j, k] - p′[i, j, k]) * mask[i, j, k]
+end
+
+@kernel function _sign_of_conversion!(target, mask, grid)
     i, j, k = @index(Global, NTuple)
     @inbounds target[i, j, k] = ifelse((mask[i, j, k] > 0) & (target[i, j, k] > 0), 1, -1)
     @inbounds mask[i, j, k] = !inactive_node(i, j, k, grid, center, center, center)
@@ -221,13 +243,25 @@ end
     @inbounds χ[i, j, k] += rate * (target[i, j, k] - χ[i, j, k])
 end
 
-function update_chirality!(scheme::ShearSignedCoriolis, velocities)
+function update_chirality!(scheme::ShearSignedCoriolis, velocities, pressure_anomaly, displacement, g)
     (; target, buffer, mask) = scheme.workspace
+    p′ₓ, p′ᵧ = scheme.workspace.zonal_grid_scale_pressure, scheme.workspace.meridional_grid_scale_pressure
     grid = target.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_level_shear!, target, mask, grid, velocities.u, velocities.v)
+
+    # p = pHY′ + g η minus two masked (1, 2, 1) passes along x (p′ₓ) or along y (p′ᵧ): the pressure at wavelengths of a few cells
+    launch!(arch, grid, :xyz, _wet_mask!, mask, grid)
+    launch!(arch, grid, :xyz, _total_pressure!, target, pressure_anomaly, displacement, g, grid)
+    launch!(arch, grid, :xyz, _smooth_along_x!, buffer, target, mask, grid)
+    launch!(arch, grid, :xyz, _smooth_along_x!, p′ₓ, buffer, mask, grid)
+    launch!(arch, grid, :xyz, _subtract_from!, p′ₓ, target, mask)
+    launch!(arch, grid, :xyz, _smooth_along_y!, buffer, target, mask, grid)
+    launch!(arch, grid, :xyz, _smooth_along_y!, p′ᵧ, buffer, mask, grid)
+    launch!(arch, grid, :xyz, _subtract_from!, p′ᵧ, target, mask)
+
+    launch!(arch, grid, :xyz, _compute_level_conversion!, target, mask, grid, velocities.u, velocities.v, p′ₓ, p′ᵧ)
     masked_smooth!(target, buffer, mask, scheme.smoothing_passes)
-    launch!(arch, grid, :xyz, _sign_of_shear!, target, mask, grid)
+    launch!(arch, grid, :xyz, _sign_of_conversion!, target, mask, grid)
     masked_smooth!(target, buffer, mask, scheme.smoothing_passes)
     launch!(arch, grid, :xyz, _relax_chirality!, scheme.chirality, target, scheme.update_interval / scheme.adjustment_time)
     fill_halo_regions!(scheme.chirality)
@@ -242,7 +276,8 @@ function update_coriolis!(coriolis::SSC, model)
     u, v = model.velocities.u, model.velocities.v
 
     if model.clock.time ≥ scheme.next_update_time[]
-        update_chirality!(scheme, model.velocities)
+        free_surface = model.free_surface
+        update_chirality!(scheme, model.velocities, model.pressure.pHY′, free_surface.displacement, free_surface.gravitational_acceleration)
         scheme.next_update_time[] = (fld(model.clock.time, scheme.update_interval) + 1) * scheme.update_interval
     end
 

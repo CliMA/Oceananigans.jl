@@ -31,21 +31,25 @@ and `|m(π, 0)| = |m(0, π)| = 8ε = 1`: the null modes of the four-point averag
 wavenumber a real interpolation cannot restore rotation (`Re m(π, 0) = 0`), so it is the phase `Im m` that removes the null
 modes, and the phase has a sign.
 
-The chirality `χ(x, y, z)` sets that sign. The chiral part of the scheme converts available potential energy at a rate
-proportional to `χ` times the thermal-wind shear projected on the stencil diagonal; averaged over wave directions the
-conversion is non-positive when
+The chirality `χ(x, y, z)` sets that sign. For a balanced wave of wavevector `k`, the chiral part converts available
+potential energy at a rate proportional to `-χ (d̂·k̂)(∂zU·k̂) ∂z|p|²/N²`, with `d̂ = (1, -1)/√2` the direction of the
+chiral dipole: zonal waves see `∂z u`, meridional waves `-∂z v`, and the sign depends on where the wave's pressure variance
+sits in the vertical. The scheme measures that from its own state: with `p′ₓ` and `p′ᵧ` the parts of the hydrostatic
+pressure (free surface included) at wavelengths of a few cells along x and along y,
 
-    χ = smooth(sign(smooth(∂z (u - v)))),    sign(0) = -1,
+    χ → sign(∂z u ∂z|p′ₓ|² − ∂z v ∂z|p′ᵧ|²),    χ = -1 without grid-scale pressure variance,
 
-evaluated level by level, with the shear taken below the uppermost interface (surface Ekman layer), averaged over the two
-interfaces adjacent to each level, and smoothed over 3 cells with masked (1, 2, 1) passes. `χ` is updated daily and
-relaxed toward this target over 30 days; daily switching without relaxation produces grid-scale noise (LOG #30).
+evaluated level by level below the uppermost interface (surface Ekman layer), smoothed over 3 cells, updated daily and
+relaxed over 30 days. This makes the chiral conversion of the grid-scale field the model actually has negative, whatever
+closure or advection scheme sets where that field lives. The simpler rule `χ = sign(∂z(u − v))` assumes surface-intensified
+grid-scale modes; it holds in the 4-level global configuration but fails where upwind (WENO) damping, which scales with
+`|U|`, traps the grid-scale modes where the flow is weak, as in the Eady problem (LOG #31).
 
 ## Code
 
 - `src/Coriolis/shear_signed_coriolis.jl`: `ShearSignedCoriolis(grid; ε, η, smoothing, update_interval, adjustment_time)`.
   The potentials `A` and `B` are stored fields computed once per stage by `update_coriolis!`, which also updates `χ`
-  when the clock passes the next update time. The Coriolis term uses plain differences of `A` and `B` along the layer
+  from the velocities, `pHY′` and the free surface when the clock passes the next update time. The Coriolis term uses plain differences of `A` and `B` along the layer
   (the z⋆ slope correction of `∂x` would break the adjoint relations). `χ` and the next update time are part of the
   model's prognostic state, so checkpoints restart bit for bit. All operations are kernels (verified on Metal in Float32).
 - `src/Models/HydrostaticFreeSurfaceModels/update_hydrostatic_free_surface_model_state.jl`: calls
@@ -95,6 +99,17 @@ On tartarus (MIT VPN, `~/.juliaup/bin/julia`, `/home` nearly full): keep everyth
     CUDA_VISIBLE_DEVICES=1 CORIOLIS_ARCHITECTURE=GPU CORIOLIS_OUTPUT=<scratch>/output \
         julia --project=<scratch>/env validation/coriolis/global/run_global.jl ShearSigned 5
 
+`restart_global.jl <scheme> <checkpoint> <days> [name]` restarts from another run's checkpoint with a different scheme.
+
+## Eady slice (`eady/`)
+
+Zonal slice with uniform shear and stratification, the thermal-wind buoyancy gradient imposed by forcings, WENO advection:
+`eady_slice.jl [schemes] [R/Δ values]` runs the slices, `eady_growth.py` fits growth rates against Eady's analytic curve and
+the linear theory of the discrete schemes (`eady_theory.py`), `eady_movie.py` renders the buoyancy anomaly. The four-point
+average grows at 0.12–0.17/day beyond the Eady short-wave cutoff for R/Δ = 4 to 1, as fast as the physical maximum; C-D has no
+spurious growth but suppresses the resolved instability for R ≲ Δ; the oriented scheme with the measured orientation keeps the
+Eady curve and removes most of the spurious growth.
+
 ## Analysis (`global/analysis/`, Python with numpy, h5py, matplotlib, ffmpeg)
 
 Run where the outputs are, with `CORIOLIS_OUTPUT` pointing at them.
@@ -104,6 +119,9 @@ Run where the outputs are, with `CORIOLIS_OUTPUT` pointing at them.
 - `spin_up_figures.py <prefix> [FT]`: time series of the bands, barotropic streamfunction range and mean surface speed, and
   maps of the zonal 2Δ part of surface v.
 - `fields_movie.py <output.mp4> [FT]`: surface speed, SST and surface v every 30 days.
+- `tail_ratio.py [first day] [last day] [FT]`: grid-scale noise normalized by resolved activity, E(0.7–1π)/E(0.1–0.4π) for
+  u and v from zonal and meridional spectra. This is the noise metric; the band variances above also count physical
+  variability and see only zonal stripes in v.
 
 ## Results so far
 
