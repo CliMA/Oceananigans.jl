@@ -80,7 +80,7 @@ end
     Jʳ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
     Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) - Jʳ
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ))
+    return ifelse(Jᵇ > 0, convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ), zero(Jᵇ))
 end
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =

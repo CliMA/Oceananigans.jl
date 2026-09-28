@@ -97,7 +97,6 @@ end
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Jᵇ       = @inbounds closure_fields.Jᵇ[i, j, 1]
     Jʳ       = @inbounds closure_fields.Jʳ[i, j, 1]
-    hᶜ       = @inbounds closure_fields.hᶜ[i, j, 1]
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
     S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
@@ -106,7 +105,7 @@ end
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling, w★³ = W(h)
-    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, hᶜ, Jᵇᵋ)
+    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
     Jᵉ = effective_buoyancy_flux(i, j, grid, radiation, h, Jᵇ, Jʳ)
     ℓᶜ = Cᶜ * h
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
@@ -134,9 +133,9 @@ end
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
     =#
 
-    # Figure out which mixing length applies. Convection is driven by W′(0) = Jᵇ + Jʳ, the non-radiative flux
-    convecting = (Jᵇ + Jʳ > Jᵇᵋ) & (N² < 0)
-    entraining = (Jᵇ + Jʳ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
+    # Figure out which mixing length applies
+    convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
+    entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
@@ -154,7 +153,6 @@ end
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Jᵇ       = @inbounds closure_fields.Jᵇ[i, j, 1]
     Jʳ       = @inbounds closure_fields.Jʳ[i, j, 1]
-    hᶜ       = @inbounds closure_fields.hᶜ[i, j, 1]
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
     S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
@@ -163,13 +161,13 @@ end
 
     # "Convective length"
     # ℓᶜ ∼ boundary layer depth according to Deardorff scaling, w★³ = W(h)
-    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, hᶜ, Jᵇᵋ)
+    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
     Jᵉ = effective_buoyancy_flux(i, j, grid, radiation, h, Jᵇ, Jʳ)
     ℓᶜ = Cᶜ * h
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
-    # Figure out which mixing length applies. Convection is driven by W′(0) = Jᵇ + Jʳ, the non-radiative flux
-    convecting = (Jᵇ + Jʳ > Jᵇᵋ) & (N² < 0)
+    # Figure out which mixing length applies
+    convecting = (Jᵇ > Jᵇᵋ) & (N² < 0)
 
     # Model for shear-convection interaction
     # w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
@@ -191,7 +189,7 @@ end
     # ϵˢᵖ = 1 - Cˢᵖ * Riᶠ               # ϵ = Sheared convection factor
     # ℓᵉ = clip(ϵˢᵖ * ℓᵉ)
 
-    entraining = (Jᵇ + Jʳ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
+    entraining = (Jᵇ > Jᵇᵋ) & (N² > 0) & (N²_above < 0)
 
     ℓ = ifelse(convecting, ℓᶜ,
         ifelse(entraining, ℓᵉ, zero(grid)))
