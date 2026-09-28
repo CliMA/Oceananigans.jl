@@ -161,8 +161,7 @@ const c = Center()
 
     # Compute TKE diffusivity.
     closure_ij = getclosure(i, j, closure)
-    Jᵇ = closure_fields.Jᵇ
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
     κe★ = mask_diffusivity(i, j, k, grid, κe★)
     @inbounds κe[i, j, k] = κe★
 end

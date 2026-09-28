@@ -22,14 +22,13 @@ end
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,
-                                             buoyancy, surface_buoyancy_flux)
+                                             buoyancy, closure_fields)
 
     # Convective dissipation length
     Cᶜ = closure.turbulent_kinetic_energy_equation.CᶜD
     Cᵉ = closure.turbulent_kinetic_energy_equation.CᵉD
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    Jᵇ = surface_buoyancy_flux
-    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, Jᵇ)
+    ℓʰ = convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, closure_fields)
 
     # "Stable" dissipation length
     Cˡᵒ = closure.turbulent_kinetic_energy_equation.CˡᵒD
@@ -51,7 +50,7 @@ end
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
                                   velocities, tracers, buoyancy, closure_fields)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields.Jᵇ)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
@@ -96,7 +95,7 @@ end
                                tke::CATKEEquation, closure::CATKEVD,
                                buoyancy, top_tracer_bcs, top_velocity_bcs)
 
-    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    wΔ³ = top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, top_tracer_bcs, closure.penetrative_radiation)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
     Cᵂu★ = tke.Cᵂu★

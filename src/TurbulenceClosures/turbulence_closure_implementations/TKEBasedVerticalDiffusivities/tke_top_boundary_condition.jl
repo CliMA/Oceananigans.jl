@@ -75,11 +75,12 @@ end
     return sqrt(sqrt(τx^2 + τy^2))
 end
 
-""" Computes the convective velocity w★. """
-@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
-    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
+""" Computes the convective velocity w★ over the top cell, counting the `radiation` absorbed within it. """
+@inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs, radiation = nothing)
+    Jʳ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) - Jʳ
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(Jᵇ) * Δz
+    return clip(convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ))
 end
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
