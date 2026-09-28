@@ -23,7 +23,8 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
                                        LagrangianAveraging,
                                        AnisotropicMinimumDissipation,
                                        IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation, AdvectiveFormulation, ThreeDimensionalFormulation
+                                       DiffusiveFormulation, AdvectiveFormulation, ThreeDimensionalFormulation,
+                                       VerticalFormulation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -448,6 +449,28 @@ end
         @test required_halo_size_x(closure) == 1
         @test required_halo_size_y(closure) == 1
         @test required_halo_size_z(closure) == 1
+
+        @testset "ScalarDiffusivity architecture conversion preserves halo size" begin
+            time_discretization = VerticallyImplicitTimeDiscretization()
+            diffusivity_formulation = VerticalFormulation()
+            ν = (x, y, z, t) -> 0.3
+            κ = (x, y, z, t) -> 0.7
+            for tracer_diffusivities in (κ, (T=κ, S=κ))
+                closure = ScalarDiffusivity(time_discretization, diffusivity_formulation, Float32;
+                                            ν, κ=tracer_diffusivities, required_halo_size=3)
+                converted_closures = (Adapt.adapt_structure(identity, closure),
+                                      on_architecture(CPU(), closure))
+
+                for converted in converted_closures
+                    @test required_halo_size_x(converted) == 3
+                    @test required_halo_size_y(converted) == 3
+                    @test required_halo_size_z(converted) == 3
+                    @test converted.ν == closure.ν
+                    @test converted.κ == closure.κ
+                    @test typeof(converted).parameters[1:2] == typeof(closure).parameters[1:2]
+                end
+            end
+        end
 
         closure = ScalarBiharmonicDiffusivity(ν=0.3)
         @test required_halo_size_x(closure) == 2
