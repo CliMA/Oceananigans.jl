@@ -178,86 +178,73 @@ end
 ##### Barotropic substepping as a replayed CUDA graph
 #####
 
-struct BarotropicGraph{S, W}
-    owner :: WeakRef
-    weights :: W
+# `Δτ` and the `clock` change at every step, so the captured kernels read them from the device buffer `step`
+struct BarotropicGraph{A, S}
+    arguments :: A
     executable :: CUDA.CuGraphExec
-    step_pointer :: CuPtr{Nothing}
-    host_step :: Vector{S}
-    device_buffers :: Tuple{CuArray, CuArray, CuArray}
+    step :: S
 end
 
-const barotropic_graphs = Dict{Tuple{CuContext, CuPtr{Nothing}}, BarotropicGraph}()
+const barotropic_graphs = BarotropicGraph[]
 const barotropic_graphs_lock = ReentrantLock()
+const MAXIMUM_CACHED_BAROTROPIC_GRAPHS = 16
 
 # Δτᴮ is the third argument of both kernels and the clock the eighth argument of the free-surface kernel
-function SE.substep_barotropic_mode!(::CUDAGPU, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
+function SE.substep_barotropic_mode!(arch::CUDAGPU, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
                                      converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
 
+    SE.capture_barotropic_graphs[] ||
+        return @invoke SE.substep_barotropic_mode!(arch::Any, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
+                                                   converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
+
     step_values = (; Δτ = converted_U_args[3], clock = converted_η_args[8])
-    owner = parent(free_surface.displacement.data)
-    key = (context(), convert(CuPtr{Nothing}, pointer(owner)))
-    graph = Base.@lock barotropic_graphs_lock get(barotropic_graphs, key, nothing)
 
-    captured_weights = (weights, transport_weights)
-    CapturedGraph = BarotropicGraph{typeof(step_values), typeof(captured_weights)}
+    # A graph is replayed only if every kernel argument it captured, except `Δτ` and the clock, is unchanged
+    arguments = (barotropic_velocity_kernel!, free_surface_kernel!, weights, transport_weights,
+                 Base.setindex(converted_U_args, nothing, 3), Base.setindex(Base.setindex(converted_η_args, nothing, 3), nothing, 8))
 
-    if graph isa CapturedGraph && graph.owner.value === owner && graph.weights === captured_weights
-        replay_barotropic_graph!(graph, step_values)
-    else
-        graph = capture_barotropic_graph(owner, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
+    graph = Base.@lock barotropic_graphs_lock begin
+        index = findfirst(g -> g.arguments === arguments && eltype(g.step) === typeof(step_values), barotropic_graphs)
+        isnothing(index) ? nothing : barotropic_graphs[index]
+    end
+
+    if isnothing(graph)
+        graph = capture_barotropic_graph(arguments, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
                                          converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
         Base.@lock barotropic_graphs_lock begin
-            filter!(entry -> !isnothing(last(entry).owner.value), barotropic_graphs)
-            barotropic_graphs[key] = graph
+            push!(barotropic_graphs, graph)
+            length(barotropic_graphs) > MAXIMUM_CACHED_BAROTROPIC_GRAPHS && popfirst!(barotropic_graphs)
         end
+    else
+        fill!(graph.step, step_values)
+        CUDA.launch(graph.executable)
     end
 
     return nothing
 end
 
-function replay_barotropic_graph!(graph, step_values)
-    copy_step_values!(graph.step_pointer, graph.host_step, step_values)
-    CUDA.launch(graph.executable)
-    return nothing
-end
-
-# `host_step` stays pageable: the asynchronous copy stages it before returning, so it can be overwritten on the next step
-function copy_step_values!(step_pointer, host_step::Vector{S}, step_values::S) where S
-    @inbounds host_step[1] = step_values
-    GC.@preserve host_step unsafe_copyto!(convert(CuPtr{S}, step_pointer), pointer(host_step), 1; async=true)
-    return nothing
-end
-
-function capture_barotropic_graph(owner, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
+function capture_barotropic_graph(arguments, step_values, barotropic_velocity_kernel!, free_surface_kernel!,
                                   converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
 
     step = CuArray{typeof(step_values)}(undef, 1)
-    host_step = [step_values]
-    averaging_weights_array = CuArray(collect(weights))
-    transport_weights_array = CuArray(collect(transport_weights))
 
     Δτ = SE.StepValue{:Δτ}(CUDA.cudaconvert(step))
     clock = SE.StepValue{:clock}(CUDA.cudaconvert(step))
     velocity_arguments = Base.setindex(converted_U_args, Δτ, 3)
     free_surface_arguments = Base.setindex(Base.setindex(converted_η_args, Δτ, 3), clock, 8)
-    device_averaging_weights = CUDA.cudaconvert(averaging_weights_array)
-    device_transport_weights = CUDA.cudaconvert(transport_weights_array)
 
     substeps! = () -> for substep in 1:Nsubsteps
-        barotropic_velocity_kernel!(SE.SubstepWeight(substep, device_transport_weights), velocity_arguments...)
-        free_surface_kernel!(SE.SubstepWeight(substep, device_averaging_weights), free_surface_arguments...)
+        barotropic_velocity_kernel!(transport_weights[substep], velocity_arguments...)
+        free_surface_kernel!(weights[substep], free_surface_arguments...)
     end
 
-    step_pointer = convert(CuPtr{Nothing}, pointer(step))
-    copy_step_values!(step_pointer, host_step, step_values)
+    fill!(step, step_values)
 
     # the uncaptured run advances this step and compiles the kernels before capture
     substeps!()
     executable = CUDA.instantiate(CUDA.capture(substeps!))
 
-    return BarotropicGraph(WeakRef(owner), (weights, transport_weights), executable, step_pointer, host_step,
-                           (step, averaging_weights_array, transport_weights_array))
+    return BarotropicGraph(arguments, executable, step)
 end
 
 end # module OceananigansCUDAExt

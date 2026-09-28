@@ -34,11 +34,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
 @inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
-struct SubstepWeight{W}
-    substep :: Int
-    weights :: W
-end
-
 struct StepValue{S, N}
     step :: S
 end
@@ -46,10 +41,8 @@ end
 StepValue{N}(step) where N = StepValue{typeof(step), N}(step)
 
 @inline substep_value(value) = value
-@inline substep_value(w::SubstepWeight) = @inbounds w.weights[w.substep]
 @inline substep_value(v::StepValue{<:Any, N}) where N = @inbounds getproperty(v.step[1], N)
 
-Adapt.adapt_structure(to, w::SubstepWeight) = SubstepWeight(w.substep, Adapt.adapt(to, w.weights))
 Adapt.adapt_structure(to, v::StepValue{<:Any, N}) where N = StepValue{N}(Adapt.adapt(to, v.step))
 
 # Evolution Kernels
@@ -63,7 +56,6 @@ Adapt.adapt_structure(to, v::StepValue{<:Any, N}) where N = StepValue{N}(Adapt.a
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    transport_weight = substep_value(transport_weight)
     Δτ = substep_value(Δτ)
 
     cache_previous_velocities!(timestepper, i, j, 1, U, V)
@@ -90,7 +82,6 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    averaging_weight = substep_value(averaging_weight)
     Δτ = substep_value(Δτ)
     clock = substep_value(clock)
 
@@ -223,6 +214,14 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
 
     return nothing
 end
+
+"""
+    capture_barotropic_graphs
+
+Whether, on CUDA GPUs, the barotropic substepping loop is recorded in a CUDA graph that is replayed at
+every time step instead of launching its `2Nsubsteps` kernels one by one.
+"""
+const capture_barotropic_graphs = Ref(true)
 
 function substep_barotropic_mode!(arch, free_surface, barotropic_velocity_kernel!, free_surface_kernel!,
                                   converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
