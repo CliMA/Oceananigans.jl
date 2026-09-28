@@ -74,6 +74,7 @@ Keyword arguments
   * `WENO()`
   * `EnergyConserving()`
   * `EnstrophyConserving()`
+  * `EnergyConservingUpwinding(WENO())` (upwind-biased vorticity with a kinetic-energy-conserving flux)
 
 - `vorticity_stencil`: Stencil used for smoothness indicators for `WENO` schemes. Default: `VelocityStencil()`. Options:
   * `VelocityStencil()` (smoothness based on horizontal velocities)
