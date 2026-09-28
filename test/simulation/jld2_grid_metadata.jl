@@ -1,9 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-@testset "JLD2 included grid metadata" begin
-    grid = RectilinearGrid(CPU(); size=(4, 4, 4), extent=(1, 1, 1))
+@testset "JLD2 included grid metadata [$(typeof(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid)
-    output_grid = RectilinearGrid(CPU(); size=(6, 4, 4), extent=(2, 1, 1))
+    output_grid = RectilinearGrid(arch; size=(6, 4, 4), extent=(2, 1, 1))
     output_field = CenterField(output_grid)
     set!(output_field, 7)
 
@@ -66,7 +66,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
     end
 
     mktempdir() do dir
-        second_grid = RectilinearGrid(CPU(); size=(3, 4, 4), extent=(3, 1, 1))
+        second_grid = RectilinearGrid(arch; size=(3, 4, 4), extent=(3, 1, 1))
         writer = JLD2Writer(model, (; a=output_field, b=CenterField(second_grid));
                             dir, filename="multiple_output_grids.jld2",
                             schedule=IterationInterval(1), including=[:grid])
