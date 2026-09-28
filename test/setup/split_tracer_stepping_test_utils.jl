@@ -3,10 +3,10 @@ using Statistics: mean
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.Biogeochemistry: AbstractContinuousFormBiogeochemistry
+using Oceananigans.Biogeochemistry: AbstractBiogeochemistry
 using Oceananigans.Fields: ZeroField, interior
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: MutableVerticalDiscretization, znodes, topology
+using Oceananigans.Grids: MutableVerticalDiscretization, znode, znodes, topology
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.Biogeochemistry: required_biogeochemical_tracers, biogeochemical_drift_velocity
@@ -189,10 +189,10 @@ end
     MinimalNPZD(; growth_rate, grazing_rate, mortality_rate, remineralization_rate,
                   half_saturation, light_scale, sinking_velocity)
 
-A minimal nutrient-phytoplankton-zooplankton-detritus model whose sources sum to zero pointwise,
+A minimal discrete-form nutrient-phytoplankton-zooplankton-detritus model whose sources sum to zero pointwise,
 so that total nitrogen `N + P + Z + D` is conserved. Detritus sinks with `sinking_velocity`.
 """
-struct MinimalNPZD{FT, W} <: AbstractContinuousFormBiogeochemistry
+struct MinimalNPZD{FT, W} <: AbstractBiogeochemistry
     growth_rate :: FT
     grazing_rate :: FT
     mortality_rate :: FT
@@ -247,10 +247,28 @@ biogeochemical_drift_velocity(bgc::MinimalNPZD{<:Any, Nothing}, ::Val{:D}) = not
 @inline npzd_mortality(bgc, P) = bgc.mortality_rate * P
 @inline npzd_remineralization(bgc, D) = bgc.remineralization_rate * D
 
-@inline (bgc::MinimalNPZD)(::Val{:N}, x, y, z, t, N, P, Z, D) = - npzd_growth(bgc, z, N, P) + npzd_remineralization(bgc, D)
-@inline (bgc::MinimalNPZD)(::Val{:P}, x, y, z, t, N, P, Z, D) =   npzd_growth(bgc, z, N, P) - npzd_grazing(bgc, P, Z) - npzd_mortality(bgc, P)
-@inline (bgc::MinimalNPZD)(::Val{:Z}, x, y, z, t, N, P, Z, D) =   npzd_grazing(bgc, P, Z)
-@inline (bgc::MinimalNPZD)(::Val{:D}, x, y, z, t, N, P, Z, D) =   npzd_mortality(bgc, P) - npzd_remineralization(bgc, D)
+@inline npzd_state(i, j, k, grid, fields) =
+    @inbounds (znode(i, j, k, grid, Center(), Center(), Center()), fields.N[i, j, k], fields.P[i, j, k], fields.Z[i, j, k], fields.D[i, j, k])
+
+@inline function (bgc::MinimalNPZD)(i, j, k, grid, ::Val{:N}, clock, fields)
+    z, N, P, Z, D = npzd_state(i, j, k, grid, fields)
+    return - npzd_growth(bgc, z, N, P) + npzd_remineralization(bgc, D)
+end
+
+@inline function (bgc::MinimalNPZD)(i, j, k, grid, ::Val{:P}, clock, fields)
+    z, N, P, Z, D = npzd_state(i, j, k, grid, fields)
+    return npzd_growth(bgc, z, N, P) - npzd_grazing(bgc, P, Z) - npzd_mortality(bgc, P)
+end
+
+@inline function (bgc::MinimalNPZD)(i, j, k, grid, ::Val{:Z}, clock, fields)
+    z, N, P, Z, D = npzd_state(i, j, k, grid, fields)
+    return npzd_grazing(bgc, P, Z)
+end
+
+@inline function (bgc::MinimalNPZD)(i, j, k, grid, ::Val{:D}, clock, fields)
+    z, N, P, Z, D = npzd_state(i, j, k, grid, fields)
+    return npzd_mortality(bgc, P) - npzd_remineralization(bgc, D)
+end
 
 """
     npzd_model(grid; ratio, biogeochemistry_substeps, ...)
