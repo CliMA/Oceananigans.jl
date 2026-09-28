@@ -1,9 +1,11 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_normal_flow!, immersed_peripheral_node, peripheral_node
+using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation, VectorInvariantFormulation
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -358,19 +360,17 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     function build_settling_model(grid, w_settle)
         # Create settling velocity as a field with appropriate boundary conditions
         bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w_settle) : NormalFlowBoundaryCondition(nothing)
-        boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
+        immersed = ImmersedBoundaryCondition(bottom=bottom_boundary_conditions)
+        boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                                      bottom=bottom_boundary_conditions, immersed)
         w_settle_field = ZFaceField(grid; boundary_conditions)
+        if grid isa ImmersedBoundaryGrid
+            @test w_settle_field.boundary_conditions.immersed.bottom isa typeof(bottom_boundary_conditions)
+        end
 
         # Set the velocity and apply boundary conditions to domain boundaries
         set!(w_settle_field, w_settle)
         fill_halo_regions!(w_settle_field)
-
-        # Apply boundary condition to immersed boundaries
-        if open_bottom
-            mask_immersed_field!(w_settle_field, w_settle)
-        else
-            mask_immersed_field!(w_settle_field, 0)
-        end
 
         # Create settling forcing with the velocity field
         settling_forcing = AdvectiveForcing(w = w_settle_field)
@@ -423,6 +423,198 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
         @test isapprox(regular_integral[], regular_initial_integral[], rtol=1e-3)
         @test isapprox(immersed_integral[], immersed_initial_integral[], rtol=1e-3)
     end
+
+    return true
+end
+
+function test_immersed_advective_normal_flow(arch)
+    underlying = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 4), y=(0, 4), z=(0, 4),
+                                 topology=(Bounded, Bounded, Bounded))
+    grid = ImmersedBoundaryGrid(underlying, GridFittedBoundary((x, y, z) -> 1 < x < 2 && 1 < y < 2 && 1 < z < 2))
+    immersed = ImmersedBoundaryCondition(west=NormalFlowBoundaryCondition(11), east=NormalFlowBoundaryCondition(12),
+                                         south=NormalFlowBoundaryCondition(21), north=NormalFlowBoundaryCondition(22),
+                                         bottom=NormalFlowBoundaryCondition(31), top=NormalFlowBoundaryCondition(32))
+
+    for (loc, constructor, negative, positive, expected) in
+        (((Face(), Center(), Center()), XFaceField, (2, 2, 2), (3, 2, 2), (12, 11)),
+         ((Center(), Face(), Center()), YFaceField, (2, 2, 2), (2, 3, 2), (22, 21)),
+         ((Center(), Center(), Face()), ZFaceField, (2, 2, 2), (2, 2, 3), (32, 31)))
+
+        bcs = FieldBoundaryConditions(grid, loc; immersed)
+        velocity = constructor(grid; boundary_conditions=bcs)
+        set!(velocity, 9)
+        mask_immersed_normal_flow!(velocity, nothing, nothing)
+        @test velocity[negative...] == expected[1]
+        @test velocity[positive...] == expected[2]
+        @test velocity[4, 4, 4] == 9
+    end
+
+    block = ImmersedBoundaryGrid(underlying, GridFittedBoundary((x, y, z) -> 1 < x < 3 && 1 < y < 2 && 1 < z < 2))
+    bcs = FieldBoundaryConditions(block, (Face(), Center(), Center()); immersed)
+    velocity = XFaceField(block; boundary_conditions=bcs)
+    set!(velocity, 9)
+    mask_immersed_normal_flow!(velocity, nothing, nothing)
+    @test velocity[3, 2, 2] == 0
+
+    periodic = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 4), y=(0, 4), z=(0, 4),
+                               topology=(Periodic, Bounded, Bounded))
+    seam = ImmersedBoundaryGrid(periodic, GridFittedBoundary((x, y, z) -> x < 1 && 1 < y < 2 && 1 < z < 2))
+    bcs = FieldBoundaryConditions(seam, (Face(), Center(), Center()); immersed)
+    velocity = XFaceField(seam; boundary_conditions=bcs)
+    set!(velocity, 9)
+    mask_immersed_normal_flow!(velocity, nothing, nothing)
+    @test velocity[1, 2, 2] == 12
+
+    if arch isa CPU
+        callback = NormalFlowBoundaryCondition((i, j, k, grid, clock, fields) -> fields.c[i, j, k];
+                                               discrete_form=true)
+        bcs = FieldBoundaryConditions(seam, (Face(), Center(), Center());
+                                      immersed=ImmersedBoundaryCondition(east=callback))
+        velocity = XFaceField(seam; boundary_conditions=bcs)
+        set!(velocity, 2)
+        model = NonhydrostaticModel(seam; tracers=:c, forcing=(c=AdvectiveForcing(u=velocity),))
+        set!(model, c=(x, y, z) -> x)
+        model.tracers.c[0, 2, 2] = 999
+        update_state!(model)
+        @test model.forcing.c.u[1, 2, 2] == 3.5
+
+    end
+
+    @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                                        immersed=ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(1)))
+    @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                                        immersed=ImmersedBoundaryCondition(bottom=NormalFlowBoundaryCondition(1; scheme=:unsupported)))
+    for (constructor, classification) in ((FluxBoundaryCondition, Flux),
+                                          (ValueBoundaryCondition, Value),
+                                          (GradientBoundaryCondition, Gradient))
+        centered = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                            immersed=ImmersedBoundaryCondition(bottom=constructor(1)))
+        @test centered.immersed.bottom.classification isa classification
+        @test centered.immersed.bottom.condition == 1
+    end
+
+    return true
+end
+
+function test_immersed_advective_callbacks(arch)
+    underlying = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 1), y=(0, 1), z=(-1, 0))
+    grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(-0.6))
+    continuous = NormalFlowBoundaryCondition((x, y, z, t, c) -> 10 + t + c; field_dependencies=:c)
+    discrete = NormalFlowBoundaryCondition((i, j, k, grid, clock, fields) -> 100 + k + clock.time + fields.c[i, j, k];
+                                           discrete_form=true)
+
+    for (condition, first_value, second_value) in ((continuous, 15, 16), (discrete, 109, 110))
+        immersed = ImmersedBoundaryCondition(bottom=condition)
+        bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()); immersed)
+        velocity = ZFaceField(grid; boundary_conditions=bcs)
+        set!(velocity, 4)
+        model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=AdvectiveForcing(w=velocity),))
+        model.clock.time = 2
+        set!(model, c=3)
+        update_state!(model)
+        @test model.forcing.c.w[2, 2, 4] == first_value
+        @test model.forcing.c.w[2, 2, 5] == 4
+        set!(model, c=4)
+        update_state!(model)
+        @test model.forcing.c.w[2, 2, 4] == second_value
+    end
+
+    immersed = ImmersedBoundaryCondition(bottom=NormalFlowBoundaryCondition(-2))
+    bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()); immersed)
+    source = ZFaceField(grid)
+    set!(source, 4)
+    computed = Field(source + 1; boundary_conditions=bcs, compute=false)
+    model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=AdvectiveForcing(w=computed),))
+    set!(source, 7)
+    update_state!(model)
+    @test source[2, 2, 4] == 7
+    @test model.forcing.c.w[2, 2, 4] == -2
+    @test model.forcing.c.w[2, 2, 5] == 8
+
+    return true
+end
+
+function test_reject_immersed_prognostic_normal_flow(arch)
+    grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(-1, 0)),
+                                GridFittedBottom(-0.6))
+    open = FieldBoundaryConditions(immersed=ImmersedBoundaryCondition(west=NormalFlowBoundaryCondition(1)))
+    closed = FieldBoundaryConditions(immersed=ImmersedBoundaryCondition(west=NormalFlowBoundaryCondition(0)))
+
+    for constructor in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+        error = try
+            constructor(grid; boundary_conditions=(u=open,))
+            nothing
+        catch exception
+            exception
+        end
+        @test error isa ArgumentError && occursin("Prescribed immersed NormalFlow on prognostic velocity u", sprint(showerror, error))
+        @test constructor(grid; boundary_conditions=(u=closed,)) isa constructor
+    end
+
+    shallow_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size=(4, 4), x=(0, 1), y=(0, 1),
+                                                        halo=(4, 4), topology=(Bounded, Bounded, Flat)),
+                                         GridFittedBoundary((x, y) -> x < 0.3))
+    for (formulation, name) in ((ConservativeFormulation(), :uh), (VectorInvariantFormulation(), :u))
+        boundary_conditions = NamedTuple{(name,)}((open,))
+        error = try
+            ShallowWaterModel(shallow_grid; gravitational_acceleration=1, formulation,
+                              momentum_advection=VectorInvariant(), boundary_conditions)
+            nothing
+        catch exception
+            exception
+        end
+        @test error isa ArgumentError && occursin("Prescribed immersed NormalFlow on prognostic velocity $name", sprint(showerror, error))
+        boundary_conditions = NamedTuple{(name,)}((closed,))
+        @test ShallowWaterModel(shallow_grid; gravitational_acceleration=1, formulation,
+                                momentum_advection=VectorInvariant(), boundary_conditions) isa ShallowWaterModel
+    end
+
+    return true
+end
+
+function test_advective_forcing_derivative_halo(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 4), y=(0, 4), z=(0, 4),
+                           topology=(Periodic, Bounded, Bounded))
+    source = CenterField(grid)
+    velocity = Field(∂x(source); compute=false)
+    model = NonhydrostaticModel(grid; tracers=(c=source,), forcing=(c=AdvectiveForcing(u=velocity),))
+
+    for i in 1:4, j in 1:4, k in 1:4
+        source[i, j, k] = (1, 2, 4, 8)[i]
+    end
+    source[0, 2, 2] = 999
+    @test model.tracers.c.data === source.data
+
+    update_state!(model)
+    @test model.forcing.c.u[1, 2, 2] == -7
+    @test source[0, 2, 2] == 8
+
+    return true
+end
+
+function test_single_column_immersed_advective_callback(arch)
+    underlying = RectilinearGrid(arch, size=8, z=(-1, 0),
+                                 topology=(Flat, Flat, Bounded))
+    grid = ImmersedBoundaryGrid(underlying, GridFittedBottom(-0.6))
+    condition = NormalFlowBoundaryCondition((z, t, c) -> t + c; field_dependencies=:c)
+    bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                  immersed=ImmersedBoundaryCondition(bottom=condition))
+    velocity = ZFaceField(grid; boundary_conditions=bcs)
+    set!(velocity, 4)
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, forcing=(c=AdvectiveForcing(w=velocity),))
+    update_state!(model)
+    @test model.forcing.c.w[1, 1, 4] == 0
+
+    model.clock.time = 2
+    set!(model, c=3)
+    update_state!(model)
+    @test model.forcing.c.w[1, 1, 4] == 5
+    @test model.forcing.c.w[1, 1, 5] == 4
+
+    model.clock.time = 3
+    set!(model, c=4)
+    update_state!(model)
+    @test model.forcing.c.w[1, 1, 4] == 7
 
     return true
 end
@@ -870,6 +1062,11 @@ end
 
             @testset "Settling tracer comparison [$A]" begin
                 @info "      Testing settling tracer on regular vs immersed grids [$A]..."
+                @test test_immersed_advective_normal_flow(arch)
+                @test test_immersed_advective_callbacks(arch)
+                arch isa CPU && @test test_reject_immersed_prognostic_normal_flow(arch)
+                arch isa CPU && @test test_advective_forcing_derivative_halo(arch)
+                arch isa CPU && @test test_single_column_immersed_advective_callback(arch)
                 @test test_settling_tracer_comparison(arch, open_bottom=true)
                 @test test_settling_tracer_comparison(arch, open_bottom=false)
             end

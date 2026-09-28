@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, halo_size
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, reject_immersed_normal_flow_velocity_boundary_conditions
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
@@ -278,6 +278,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
+    reject_immersed_normal_flow_velocity_boundary_conditions(boundary_conditions)
 
     if !isnothing(free_surface) # replace top boundary condition for `w` with `nothing`
         w_bcs = boundary_conditions.w

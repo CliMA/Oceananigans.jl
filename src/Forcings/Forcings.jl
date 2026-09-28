@@ -6,6 +6,7 @@ using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans.Fields: field, location
+using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.OutputReaders: FlavorOfFTS
 using Oceananigans.Units: Time
 using Oceananigans.Utils: named_tuple

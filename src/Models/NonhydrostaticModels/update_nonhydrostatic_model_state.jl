@@ -6,7 +6,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
-using Oceananigans.Forcings: compute_forcing!
+using Oceananigans.Forcings: compute_forcing!, synchronize_advective_forcing_dependencies!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -38,6 +38,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # skip NormalFlow fills here with `fill_normal_flow_bcs=false`. Tracer open boundaries are
     # `Value` conditions, which are not gated by this flag, so they still fire.
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_normal_flow_bcs=false, async=true)
+    synchronize_advective_forcing_dependencies!(model.forcing, merge(model.velocities, model.tracers))
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -49,6 +50,8 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
     fill_halo_regions!(model.pressures.pHY′; only_local_halos=true)
+
+    compute_forcing!(model.forcing, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)

@@ -4,7 +4,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
-using Oceananigans.Forcings: compute_forcing!
+using Oceananigans.Forcings: compute_forcing!, synchronize_advective_forcing_dependencies!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
@@ -57,6 +57,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # free-surface variables and the horizontal velocities
     # are filled within the time-stepping after the state evolution.
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
+    @apply_regionally synchronize_advective_forcing_dependencies!(model.forcing, tracers)
 
     # Compute diagnostic quantities
     @apply_regionally begin
@@ -73,6 +74,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # above include regions inside the (horizontal) halos.
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
     fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
+
+    @apply_regionally compute_forcing!(model.forcing, model.clock, fields(model))
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
