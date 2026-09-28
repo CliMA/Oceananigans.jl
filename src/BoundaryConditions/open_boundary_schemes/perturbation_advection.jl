@@ -112,14 +112,8 @@ function PerturbationAdvection(FT = defaults.FloatType;
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
-    tt = if isnothing(target_transport)
-             nothing
-         elseif target_transport isa Number
-             convert(FT, target_transport)
-         else
-             target_transport  # callable of the grid; keep as-is
-         end
-    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, tt)
+    target_transport = convert_target_transport(FT, target_transport)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, target_transport)
 end
 
 # Support 2-positional-arg constructor

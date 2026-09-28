@@ -41,7 +41,7 @@ end
 ##### Tendency fields
 #####
 
-function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     η = free_surface_displacement_field(velocities, free_surface, grid)

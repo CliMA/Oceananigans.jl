@@ -3,7 +3,9 @@
 #####
 
 """
-    GravityWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
+    GravityWaveRadiation(FT = defaults.FloatType;
+                         gravitational_acceleration = defaults.gravitational_acceleration,
+                         target_transport = nothing)
 
 Flather (1976) characteristic boundary condition for the shallow water equations.
 Prescribes the incoming Riemann invariant while letting the outgoing one radiate freely:
@@ -25,6 +27,15 @@ This condition is applied to barotropic velocity fields at every barotropic subs
 the split-explicit free surface solver. It requires `model_fields` to contain `η` (the
 free surface displacement).
 
+`target_transport` pins the net transport through the boundary, `∮U·dl` [m³ s⁻¹] counted positive in the
+positive coordinate direction, to a prescribed value: after the Flather fill of every barotropic substep
+the face transport is shifted uniformly so that its integral along the boundary matches the target, so
+only the shape of the Flather profile survives and the free surface sees exactly the prescribed transport.
+It may be a number or a callable of the grid, and is supported on single-region, non-distributed grids. On an
+immersed grid only the wet columns of the side carry the target, and a fully dry side is left untouched. The
+default `nothing` leaves the transport to the Flather condition, which then adds `√(gH)` times the free-surface
+mismatch to `Uᵉˣᵗ`.
+
 References
 ==========
 * Flather, R. A. (1976). "A tidal model of the north-west European continental shelf."
@@ -38,19 +49,25 @@ GravityWaveRadiation()
 
 # output
 GravityWaveRadiation{Float64}
-└── gravitational_acceleration: 9.80665
+├── gravitational_acceleration: 9.80665
+└── target_transport: Nothing
 ```
 """
-struct GravityWaveRadiation{FT}
+struct GravityWaveRadiation{FT, TF}
     gravitational_acceleration :: FT
+    target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
-function GravityWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
-    return GravityWaveRadiation(gravitational_acceleration)
+function GravityWaveRadiation(FT = defaults.FloatType;
+                              gravitational_acceleration = defaults.gravitational_acceleration,
+                              target_transport = nothing)
+    gravitational_acceleration = convert(FT, gravitational_acceleration)
+    target_transport = convert_target_transport(FT, target_transport)
+    return GravityWaveRadiation(gravitational_acceleration, target_transport)
 end
 
 Adapt.adapt_structure(to, f::GravityWaveRadiation) =
-    GravityWaveRadiation(adapt(to, f.gravitational_acceleration))
+    GravityWaveRadiation(adapt(to, f.gravitational_acceleration), adapt(to, f.target_transport))
 
 const GWNFBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
 
@@ -58,8 +75,15 @@ Base.summary(::GravityWaveRadiation{FT}) where FT = "GravityWaveRadiation{$FT}"
 
 function Base.show(io::IO, f::GravityWaveRadiation)
     print(io, summary(f), '\n')
-    print(io, "└── gravitational_acceleration: ", prettysummary(f.gravitational_acceleration))
+    print(io, "├── gravitational_acceleration: ", prettysummary(f.gravitational_acceleration), '\n')
+    print(io, "└── target_transport: ", prettysummary(f.target_transport))
 end
+
+has_target_transport(::GravityWaveRadiation{<:Any, <:Nothing}) = false
+has_target_transport(::GravityWaveRadiation) = true
+
+get_target_transport(scheme::GravityWaveRadiation, grid) = _eval_tt(scheme.target_transport, grid)
+get_target_transport(scheme::GravityWaveRadiation) = scheme.target_transport
 
 """
     SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
@@ -125,11 +149,13 @@ end
 #####
 
 """
-    GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration, kwargs...)
+    GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration,
+                                          target_transport = nothing, kwargs...)
 
 Construct a `NormalFlowBoundaryCondition` with the [`GravityWaveRadiation`](@ref) scheme. `val` must be a 2-tuple `(U, η)` or a function
 returning a 2-tuple, where `U` is the external barotropic transport and `η` is the external free surface displacement. Each
-element of the tuple can be a number, array, or function (evaluated via `getbc`).
+element of the tuple can be a number, array, or function (evaluated via `getbc`). `target_transport` pins the net transport
+through the boundary; see [`GravityWaveRadiation`](@ref).
 
 Example
 =======
@@ -145,9 +171,10 @@ bc isa Oceananigans.BoundaryConditions.BoundaryCondition
 true
 ```
 """
-function GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration, kwargs...)
+function GravityWaveRadiationBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration,
+                                               target_transport = nothing, kwargs...)
     validate_gravity_wave_condition(val)
-    scheme = GravityWaveRadiation(; gravitational_acceleration)
+    scheme = GravityWaveRadiation(; gravitational_acceleration, target_transport)
     return NormalFlowBoundaryCondition(val; scheme, kwargs...)
 end
 

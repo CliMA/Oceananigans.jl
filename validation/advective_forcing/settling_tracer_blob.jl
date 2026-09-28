@@ -92,7 +92,7 @@ function build_simulation(grid;
         (c = model.tracers.c,),
         schedule = TimeInterval(0.5seconds),
         filename = output_filename,
-        overwrite_existing = true,
+        overwrite_files = true,
     )
 
     return simulation

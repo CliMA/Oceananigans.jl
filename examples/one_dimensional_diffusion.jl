@@ -114,7 +114,7 @@ simulation.output_writers[:temperature] =
     JLD2Writer(model, model.tracers,
                filename = "one_dimensional_diffusion.jld2",
                schedule=IterationInterval(100),
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # We run the simulation for 10,000 more iterations,
 
