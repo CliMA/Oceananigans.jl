@@ -101,6 +101,26 @@ end
             end
         end
 
+        @testset "Slow tracers are masked at the start of a cycle and by the long step only [$(typeof(arch))]" begin
+            @info "  Testing immersed masking of slow tracers [$(typeof(arch))]..."
+            immersed_grid = static_basin_grids(arch)[2]
+            dry = .!active_cells(immersed_grid)
+            model = overturning_model(immersed_grid; ratio = 3)
+            c = model.tracers.constant
+            dry_values(c) = Array(interior(c))[dry]
+
+            parent(c) .= 1
+            time_step!(model, 1minute)
+            @test all(iszero, dry_values(c))
+
+            parent(c) .= 1
+            time_step!(model, 1minute)
+            @test all(isone, dry_values(c))
+
+            time_step!(model, 1minute)
+            @test all(iszero, dry_values(c))
+        end
+
         @testset "Static z uniform tracer and inventory conservation [$(typeof(arch))]" begin
             for basin_grid in static_basin_grids(arch), timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3), ratio in (1, 4)
                 @info "  Testing static z conservation on $(summary(basin_grid)) with $timestepper and ratio $ratio [$(typeof(arch))]..."

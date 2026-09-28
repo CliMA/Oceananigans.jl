@@ -224,6 +224,17 @@ fast_tracers(model::HydrostaticFreeSurfaceModel) = fast_tracers(model.tracer_tim
 fast_tracers(::Nothing, tracers) = tracers
 fast_tracers(splitting::TracerTimeStepSplitting, tracers) = splitting.fast_tracers
 
+mask_immersed_tracers!(model::HydrostaticFreeSurfaceModel) = mask_immersed_tracers!(model.tracer_time_step_splitting, model)
+mask_immersed_tracers!(::Nothing, model) = mask_immersed_field!(model.tracers)
+
+# Slow tracers only change during their long step, which masks them; they are masked again at the start of every cycle
+# so that the state set before the first long step is masked too.
+function mask_immersed_tracers!(splitting::TracerTimeStepSplitting, model)
+    mask_immersed_field!(splitting.fast_tracers)
+    splitting.accumulated_steps == 0 && mask_immersed_field!(splitting.slow_tracers)
+    return nothing
+end
+
 #####
 ##### Accumulation of transports and closure fields
 #####

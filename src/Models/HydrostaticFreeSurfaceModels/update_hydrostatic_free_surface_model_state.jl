@@ -45,7 +45,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        mask_immersed_field!(model.tracers)
+        mask_immersed_tracers!(model)
         update_model_field_time_series!(model, model.clock)
         compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)
