@@ -146,7 +146,7 @@ end
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
-@inline function DC.record_event(::Distributed{CUDAGPU})
+@inline function DC.record_event(::CUDAGPU)
   event = CUDA.CuEvent()
   CUDA.record(event)
   return event
