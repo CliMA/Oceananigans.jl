@@ -113,7 +113,9 @@ function regularize_immersed_side(bc, grid, loc, dim, Side, names)
         return regularize_boundary_condition(bc, grid, loc, dim, Side, names)
     end
 
-    if !(bc isa NFBC && isnothing(bc.classification.scheme))
+    bc isa NFBC || return nothing
+
+    if !isnothing(bc.classification.scheme)
         throw(ArgumentError("Face-located immersed conditions must prescribe NormalFlow without a matching scheme."))
     end
 

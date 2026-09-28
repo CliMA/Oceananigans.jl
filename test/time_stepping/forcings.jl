@@ -480,8 +480,23 @@ function test_immersed_advective_normal_flow(arch)
 
     end
 
-    @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Center(), Face());
-                                                        immersed=ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(1)))
+    for (loc, face_sides, center_side) in
+        (((Face(), Center(), Center()), (:west, :east), :bottom),
+         ((Center(), Face(), Center()), (:south, :north), :bottom),
+         ((Center(), Center(), Face()), (:bottom, :top), :west))
+        for (constructor, classification) in ((FluxBoundaryCondition, Flux),
+                                              (ValueBoundaryCondition, Value),
+                                              (GradientBoundaryCondition, Gradient))
+            condition = constructor(1)
+            immersed = ImmersedBoundaryCondition(west=condition, east=condition,
+                                                 south=condition, north=condition,
+                                                 bottom=condition, top=condition)
+            regularized = FieldBoundaryConditions(grid, loc; immersed).immersed
+            @test all(side -> isnothing(getproperty(regularized, side)), face_sides)
+            @test getproperty(regularized, center_side).classification isa classification
+            @test getproperty(regularized, center_side).condition == 1
+        end
+    end
     @test_throws ArgumentError FieldBoundaryConditions(grid, (Center(), Center(), Face());
                                                         immersed=ImmersedBoundaryCondition(bottom=NormalFlowBoundaryCondition(1; scheme=:unsupported)))
     for (constructor, classification) in ((FluxBoundaryCondition, Flux),
