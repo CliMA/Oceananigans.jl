@@ -4,7 +4,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, Prescri
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Models: reset!
-using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding, EnergyConservingUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
@@ -298,6 +298,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             Centered(),
             WENO(),
             VectorInvariant(),
+            VectorInvariant(vorticity_scheme = EnergyConservingUpwinding(WENO())),
             WENOVectorInvariant(),
             WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
             WENOVectorInvariant(; multi_dimensional_stencil = true),
