@@ -161,27 +161,6 @@ function DC.sync_event(event::CUDA.CuEvent)
   return nothing
 end
 
-# If using CUDA GPUs for async distributed arch, we can synchronize the stream
-# when waiting for comms, allowing for extra work to be sent to the GPU which reduces latency.
-const CUDAAsyncDistributedArchitecture = Distributed{<:CUDAGPU, false}
-const CUDAAsyncDistributedGrid{FT, TX, TY, TZ}  = GD.AbstractGrid{FT, TX, TY, TZ, <:CUDAAsyncDistributedArchitecture}
-const CUDAAsyncDistributedField = FD.Field{<:Any, <:Any, <:Any, <:Any, <:CUDAAsyncDistributedGrid}
-
-function DC.synchronize_communication!(field::CUDAAsyncDistributedField)
-  comms_completion_event = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
-  errormonitor(Threads.@spawn begin
-    DC.wait_for_comms!(field)
-
-    DC.recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-    CUDA.record(comms_completion_event)
-  end)
-
-  # Synchronize the stream with the event, allowing the host to continue working
-  CUDA.wait(comms_completion_event)
-
-  return nothing
-end
-
 # Use faster versions of `newton_div` on Nvidia GPUs
 CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)
 
