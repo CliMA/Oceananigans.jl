@@ -87,12 +87,14 @@ fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) whe
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly
 maybe_distributed_fill_halo_regions!(arch, args...; kwargs...) = fill_halo_regions!(args...; kwargs...)
-maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_conditions, indices, loc, grid, buffers, args::Vararg{Any, N}; kwargs...) where N =
-    distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+function maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_conditions, indices, loc, grid, buffers, args::Vararg{Any, N}; kwargs...) where N
+    return distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+end
 
 # Otherwise we recover the architecture from the (still distributed) grid.
-fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N =
-    distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
+    return distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+end
 
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
