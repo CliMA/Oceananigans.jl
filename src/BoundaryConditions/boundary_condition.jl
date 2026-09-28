@@ -91,6 +91,7 @@ const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
 const UZBC = BoundaryCondition{<:Zipper{UPivot}}
+const TZBC = BoundaryCondition{<:Zipper{TPivot}}
 const FZBC = BoundaryCondition{<:Zipper{FPivot}}
 
 const NoFluxBoundaryCondition = ZFBC
@@ -102,6 +103,7 @@ const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:Distribute
             ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow(), nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
+            TPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{TPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
@@ -110,6 +112,7 @@ NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryConditio
 MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
+            TPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{TPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
