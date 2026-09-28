@@ -74,10 +74,10 @@ split_halo_filling(::DCBC, ::MCBC) = throw("Cannot split MultiRegion and Distrib
 ##### Halo filling order
 #####
 
-const PBCT  = Union{PBC,  Tuple{Vararg{PBC}}}
-const MCBCT = Union{MCBC, Tuple{Vararg{MCBC}}}
-const DCBCT = Union{DCBC, Tuple{Vararg{DCBC}}}
-const OBCTC = Union{NFBC, Tuple{Vararg{NFBC}}}
+const PBCT  = Union{PBC,  Tuple{PBC,  Vararg{PBC}}}
+const MCBCT = Union{MCBC, Tuple{MCBC, Vararg{MCBC}}}
+const DCBCT = Union{DCBC, Tuple{DCBC, Vararg{DCBC}}}
+const OBCTC = Union{NFBC, Tuple{NFBC, Vararg{NFBC}}}
 
 # Distributed halos have to be filled last to allow the
 # possibility of asynchronous communication:

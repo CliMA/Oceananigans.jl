@@ -109,7 +109,7 @@ end
 ##### Applying discrete transforms
 #####
 
-(transform::DiscreteTransform{<:Nothing})(A, buffer) = nothing
+(transform::DiscreteTransform{<:Nothing, <:Nothing})(A, buffer) = nothing
 
 apply_transforms!(::Tuple{}, A, buffer) = nothing
 

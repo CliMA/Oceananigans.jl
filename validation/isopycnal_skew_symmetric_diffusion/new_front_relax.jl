@@ -107,7 +107,7 @@ add_callback!(simulation, progress, IterationInterval(10))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename * "_fields",
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
 
 @info "Running the simulation..."
 

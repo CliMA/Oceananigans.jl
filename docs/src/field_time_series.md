@@ -39,7 +39,7 @@ simulation = Simulation(model; Δt=0.1, stop_iteration=10)
 simulation.output_writers[:fields] = JLD2Writer(model, model.velocities;
                                                 schedule = IterationInterval(1),
                                                 filename = "test.jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 run!(simulation)
 
 fts = FieldTimeSeries("test.jld2", "u")

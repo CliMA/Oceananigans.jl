@@ -212,7 +212,7 @@ simulation.output_writers[:fields] =
     JLD2Writer(model, fields_to_output,
                schedule = output_interval,
                filename = filename * "_fields.jld2",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # ## Run simulation
 #

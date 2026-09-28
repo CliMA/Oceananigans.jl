@@ -47,12 +47,30 @@ end
 
 const ConcreteLocationType = Union{Face, Center}
 
+# A location with at least one concrete direction, so that methods dispatching on it are not type piracy
+const LocatedTuple = Union{Tuple{<:ConcreteLocationType, <:Location, <:Location},
+                           Tuple{<:Location, <:ConcreteLocationType, <:Location},
+                           Tuple{<:Location, <:Location, <:ConcreteLocationType}}
+
 # Precedence rules for choosing operation location:
 choose_location(La, Lb, Lc) = Lc                              # Fallback to the specification Lc, but also...
 choose_location(::Face,   ::Face,   Lc) = Face()              # keep common locations; and
 choose_location(::Center, ::Center, Lc) = Center()            #
 choose_location(La::ConcreteLocationType, ::Nothing, Lc) = La # don't interpolate unspecified locations.
 choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
+
+"""
+$(TYPEDSIGNATURES)
+
+Create the binary operation `op(a, b)` at `Lc`, keeping the concrete locations of `a` and `b`.
+"""
+function binary_operation(Lc, op, a, b)
+    La = instantiated_location(a)
+    Lb = instantiated_location(b)
+    Lab = choose_location.(La, Lb, Lc)
+    grid = validate_grid(a, b)
+    return _binary_operation(Lab, op, a, b, La, Lb, grid)
+end
 
 # Apply the function if the inputs are scalars, otherwise broadcast it over the inputs
 # This can occur in the binary operator code if we index into with an array, e.g. array[1:10]
@@ -110,18 +128,11 @@ function define_binary_operator(op)
         the location of the dimension in question is supplied either by `location(b)` or
         if that is also Nothing, `Lc`.
         """
-        function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::BinaryOperand, b::BinaryOperand)
-            La = $(Oceananigans.Fields).instantiated_location(a)
-            Lb = $(Oceananigans.Fields).instantiated_location(b)
-            Lab = $(choose_location).(La, Lb, Lc)
-
-            grid = $(validate_grid)(a, b)
-
-            return $(_binary_operation)(Lab, $op, a, b, La, Lb, grid)
-        end
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, b::Union{Number, AbstractField}) = $(binary_operation)(Lc, $op, a, b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::Number, b::AbstractField) = $(binary_operation)(Lc, $op, a, b)
 
         # Numbers are not fields...
-        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::Number, b::Number) = $op(a, b)
+        $op(Lc::$(LocatedTuple), a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
@@ -131,7 +142,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
-        $op(Lc::Tuple, a::BinaryOperand, b::BinaryOperand) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, a::AbstractField, b::Union{Number, AbstractField}) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, a::Number, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), f, b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, f)

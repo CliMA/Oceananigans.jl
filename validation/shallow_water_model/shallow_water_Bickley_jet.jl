@@ -93,7 +93,7 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
         simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
                                                           filename = fields_filename,
                                                           schedule = TimeInterval(1),
-                                                          overwrite_existing = true)
+                                                          overwrite_files = true)
 
         # Build the `output_writer` for the growth rate, which is a scalar field.
         # Output every time step.
@@ -103,7 +103,7 @@ for form in [:conservative, :vorticitystencil, :velocitystencil]
                                                           filename = growth_filename,
                                                           schedule = IterationInterval(1),
                                                           dimensions = (; perturbation_norm = ()),
-                                                          overwrite_existing = true)
+                                                          overwrite_files = true)
 
         # And finally run the simulation.
         run!(simulation)

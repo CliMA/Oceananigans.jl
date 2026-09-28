@@ -96,6 +96,11 @@ end
 Base.@constprop :aggressive hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
+for FS in (:ExplicitFreeSurface, :SplitExplicitFreeSurface)
+    @eval Base.@constprop :aggressive hydrostatic_tendency_fields(velocities::PrescribedVelocityFields, ::$FS, grid, tracer_names, bcs) =
+        hydrostatic_tendency_fields(velocities, nothing, grid, tracer_names, bcs)
+end
+
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
@@ -113,6 +118,12 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
 @inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
 @inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
+
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3) = sum_of_velocities(velocities(U1), velocities(U2), U3)
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), U2, velocities(U3))
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2), velocities(U3))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2::PrescribedVelocityFields, U3::PrescribedVelocityFields) = sum_of_velocities(velocities(U1), velocities(U2), velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
@@ -158,8 +169,9 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
+    update_lagrangian_particle_state!(model)
+    step_lagrangian_particles!(model, Δt)
 end
 
 update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =

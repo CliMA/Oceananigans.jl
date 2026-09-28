@@ -16,7 +16,7 @@ using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_hal
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
 const ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} =
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
 
 const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
@@ -439,7 +439,7 @@ function Grids.with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}
     return new_grid
 end
 
-function Grids.with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
+function Grids.with_halo(halo, ibg::ImmersedConformalCubedSphereGrid)
     active_cells_map = has_active_cells_map(getregion(ibg, 1))
     active_z_columns = has_active_z_columns(getregion(ibg, 1))
     underlying_grid = with_halo(halo, ibg.underlying_grid)

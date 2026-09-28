@@ -35,7 +35,7 @@ function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
-step_closure_prognostics!(model, Δt) = nothing
+step_closure_prognostics!(model, Δt::Number) = nothing
 
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
@@ -53,6 +53,7 @@ end
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
+update_lagrangian_particle_state!(model) = nothing
 
 # Materialize clock fields to avoid aliasing issues with Reactant.
 # For QAB2, last_Δt and last_stage_Δt must be distinct objects.
