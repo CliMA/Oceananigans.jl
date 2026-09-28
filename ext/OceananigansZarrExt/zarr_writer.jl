@@ -2,26 +2,26 @@
 ##### Zarr output writer for Oceananigans
 #####
 
-function ZarrWriter(model::AbstractModel, outputs;
-                    filename = nothing,
-                    schedule,
-                    dir = ".",
-                    indices = (:, :, :),
-                    with_halos = false,
-                    array_type = Array{Float32},
-                    global_attributes = Dict(),
-                    output_attributes = Dict(),
-                    file_splitting = NoFileSplitting(),
-                    overwrite_files = false,
-                    verbose = false,
-                    part = 1,
-                    store = nothing,
-                    chunks = nothing,
-                    compressor = nothing,
-                    dimensions = Dict{String, Any}(),
-                    include_grid_metrics = true,
-                    dimension_name_generator = trilocation_dim_name,
-                    dimension_type = Float64)
+function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
+                                  filename = nothing,
+                                  schedule,
+                                  dir = ".",
+                                  indices = (:, :, :),
+                                  with_halos = false,
+                                  array_type = Array{Float32},
+                                  global_attributes = Dict(),
+                                  output_attributes = Dict(),
+                                  file_splitting = NoFileSplitting(),
+                                  overwrite_files = false,
+                                  verbose = false,
+                                  part = 1,
+                                  store = nothing,
+                                  chunks = nothing,
+                                  compressor = nothing,
+                                  dimensions = Dict{String, Any}(),
+                                  include_grid_metrics = true,
+                                  dimension_name_generator = trilocation_dim_name,
+                                  dimension_type = Float64)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -124,6 +124,7 @@ zarr_attribute_dict(attributes) =
 # outputs return nothing.
 output_grid(field::AbstractField)                            = grid(field)
 output_grid(wta::WindowedTimeAverage{<:AbstractField})       = grid(wta.operand)
+output_grid(output::TimeFilteredOutput)                      = grid(output.operand)
 output_grid(other)                                           = nothing
 
 #####
@@ -136,7 +137,7 @@ output_grid(other)                                           = nothing
 Create the Zarr store, output arrays, root-level coordinate arrays, and a growing
 one-dimensional `time` array. Private grid reconstruction metadata is stored in subgroups.
 """
-function initialize!(writer::ZarrWriter, model)
+function Oceananigans.initialize!(writer::ZarrWriter, model)
     writer.initialized && return nothing
 
     distributed = is_distributed_arch(model)
@@ -205,6 +206,8 @@ end
 
 rank_global_offsets(output::WindowedTimeAverage{<:AbstractField}) =
     rank_global_offsets(output.operand)
+
+rank_global_offsets(output::TimeFilteredOutput) = rank_global_offsets(output.operand)
 
 # Global shape of a Field on a (possibly distributed) grid.
 function global_field_size(field::AbstractField)
@@ -451,6 +454,10 @@ define_zarr_output_variable!(g, writer::ZarrWriter, output::WindowedTimeAverage{
 define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeDerivative, name, model) =
     define_zarr_output_variable!(g, writer, output.operand, name, model)
 
+# TimeFilteredOutput over a Field: delegate to operand (matches NetCDFWriter).
+define_zarr_output_variable!(g, writer::ZarrWriter, output::TimeFilteredOutput, name, model) =
+    define_zarr_output_variable!(g, writer, output.operand, name, model)
+
 # Function / generic custom output: requires `writer.dimensions[name]` to be set.
 function define_zarr_output_variable!(g, writer::ZarrWriter, output, name, model)
     if !haskey(writer.dimensions, name)
@@ -503,7 +510,9 @@ end
 ##### Per-step write
 #####
 
-function write_output!(writer::ZarrWriter, model::AbstractModel)
+function Oceananigans.write_output!(writer::ZarrWriter, model::AbstractModel)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
     distributed = is_distributed_arch(model)
     is_root = !distributed || mpi_rank(global_communicator()) == 0
 
@@ -531,17 +540,22 @@ end
 
 function write_output_serial!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
-    time = zarr_time_value(model.clock.time, writer.dimension_type)
-    Zarr.append!(g["time"], [time]; dims=1)
-    for (name, output) in pairs(writer.outputs)
-        data = fetch_and_convert_output(output, model, writer)
+
+    # Fetch every output before computing the output time: for a schedule like `FilteredTimeInterval`,
+    # `output_time` advances internal state that fetching still depends on (which frame's
+    # accumulated sum is "current").
+    fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
+
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
+    append!(g["time"], [time]; dims=1)
+    for (name, output, data) in fetched
         data = squeeze_reduced_dimensions(output, data)
         arr = g[string(name)]
         data_arr = data isa AbstractArray ? data : fill(data)
         if eltype(data_arr) === Bool
             data_arr = Int8.(data_arr)
         end
-        Zarr.append!(arr, data_arr; dims=ndims(arr))
+        append!(arr, data_arr; dims=ndims(arr))
     end
     Zarr.consolidate_metadata(g)
     return nothing
@@ -567,10 +581,17 @@ function write_output_distributed!(writer::ZarrWriter, model)
     is_root = mpi_rank(global_communicator()) == 0
     g = Zarr.zopen(writer.store, "w")
 
-    # Bump the time axis and write the new time value (root only).
+    # Fetch every output before computing the output time: for a schedule like `FilteredTimeInterval`,
+    # `output_time` advances internal state that fetching still depends on (which frame's
+    # accumulated sum is "current").
+    fetched = [(name, output, fetch_and_convert_output(output, model, writer)) for (name, output) in pairs(writer.outputs)]
+
+    # Every rank calls `output_time`, not just root: for a schedule like `FilteredTimeInterval` this
+    # also advances internal state, which has to stay in step across every rank's own copy of
+    # the schedule. Persisting the value, though, is still root-only.
+    time = zarr_time_value(output_time(model.clock, writer.schedule), writer.dimension_type)
     if is_root
-        time = zarr_time_value(model.clock.time, writer.dimension_type)
-        Zarr.append!(g["time"], [time]; dims=1)
+        append!(g["time"], [time]; dims=1)
     end
     zarr_barrier()
 
@@ -578,9 +599,8 @@ function write_output_distributed!(writer::ZarrWriter, model)
     g = Zarr.zopen(writer.store, "w")
     new_time_index = length(g["time"])
 
-    for (name, output) in pairs(writer.outputs)
+    for (name, output, data) in fetched
         arr = g[string(name)]
-        data = fetch_and_convert_output(output, model, writer)
         data = squeeze_reduced_dimensions(output, data)
         data_arr = data isa AbstractArray ? data : fill(data)
         if eltype(data_arr) === Bool
@@ -592,7 +612,7 @@ function write_output_distributed!(writer::ZarrWriter, model)
         old_shape = size(arr)
         new_shape = ntuple(d -> d == length(old_shape) ? new_time_index : old_shape[d], length(old_shape))
         if is_root
-            Zarr.resize!(arr, new_shape)
+            resize!(arr, new_shape)
         else
             arr.metadata.shape[] = new_shape
         end

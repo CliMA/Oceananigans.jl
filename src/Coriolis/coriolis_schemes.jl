@@ -194,9 +194,9 @@ const TS = AbstractRotation{<:TriadScheme}
     @inbounds begin
         return - Ay⁻¹ᶠᶜᶜ(i, j, k, grid) / 12 * (
             𝒯⁺⁺(i-1, j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i-1, j+1, k, grid, U[2]) +
-            𝒯⁻⁺(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j,   k, grid, U[2]) +
+            𝒯⁻⁻(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j,   k, grid, U[2]) +
             𝒯⁺⁻(i-1, j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i-1, j,   k, grid, U[2]) +
-            𝒯⁻⁻(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j+1, k, grid, U[2]))
+            𝒯⁻⁺(i,   j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i,   j+1, k, grid, U[2]))
     end
 end
 
