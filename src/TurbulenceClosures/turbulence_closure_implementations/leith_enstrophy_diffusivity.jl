@@ -61,7 +61,7 @@ Fox‐Kemper, B., & D. Menemenlis (2008). "Can large eddy simulation techniques 
 TwoDimensionalLeith(FT=Oceananigans.defaults.FloatType; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSlopeIsopycnalTensor()) =
     TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model)
 
-function Utils.with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
     C_GM = tracer_diffusivities(tracers, closure.C_GM)
 

@@ -162,7 +162,8 @@ end
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    just_above_bottom = bottommost_active_node(i, j, k, ibg, c, c, f)
+    # The face at k is just above the bottom when the cell below it (k-1) is the partial cell
+    just_above_bottom = bottommost_active_node(i, j, k-1, ibg, c, c, c)
     rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 
@@ -182,8 +183,9 @@ end
 
 # Make sure Δz works for horizontally-Flat topologies.
 # (There's no point in using z-Flat with PartialCellBottom).
-XFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:PartialCellBottom}
-YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:PartialCellBottom}
+const XFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:PartialCellBottom}
+const YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:PartialCellBottom}
+const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:PartialCellBottom}
 
 @inline Δrᶠᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶜᶠ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
@@ -192,6 +194,7 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δrᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
 @inline Δrᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
+@inline Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
 VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellBottom}

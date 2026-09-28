@@ -71,7 +71,7 @@ end
 ##### Utilities
 #####
 
-Utils.with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+Base.@constprop :aggressive Utils.with_tracers(tracers, closure_tuple::Tuple) = map(closure -> with_tracers(tracers, closure), closure_tuple)
 
 compute_closure_fields!(::Tuple{}, ::Tuple{}, args...; kwargs...) = nothing
 
@@ -86,6 +86,14 @@ step_closure_prognostics!(::Tuple{}, ::Tuple{}, args...) = nothing
 function step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, args...)
     step_closure_prognostics!(first(closure_fields_tuple), first(closure_tuple), args...)
     step_closure_prognostics!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple), args...)
+    return nothing
+end
+
+reset!(::Tuple{}, ::Tuple{}) = nothing
+
+function reset!(closure_fields_tuple, closure_tuple::Tuple)
+    reset!(first(closure_fields_tuple), first(closure_tuple))
+    reset!(Base.tail(closure_fields_tuple), Base.tail(closure_tuple))
     return nothing
 end
 

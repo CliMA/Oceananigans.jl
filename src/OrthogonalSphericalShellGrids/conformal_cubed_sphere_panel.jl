@@ -296,7 +296,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = if !isnothing(provided_conformal_mapping)
+    ξη_coordinates = if !isnothing(provided_conformal_mapping)
         (on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ),
          on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ),
          on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ),
@@ -316,6 +316,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
              ynodes(ξη_grid, Center()))
         end
     end
+
+    # Collected so that a uniform and a non-uniform mapping share one concrete
+    # `CubedSphereConformalMapping` type; these are never indexed inside a kernel.
+    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = map(coordinate -> collect(FT, coordinate), ξη_coordinates)
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
     zc = ξη_grid.z

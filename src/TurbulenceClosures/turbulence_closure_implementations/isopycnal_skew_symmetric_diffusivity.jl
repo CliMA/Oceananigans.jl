@@ -86,11 +86,11 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A, N} =
+Base.@constprop :aggressive Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A, N} =
     IsopycnalSkewSymmetricDiffusivity{TD, A, N}(closure.κ_skew, closure.κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 
 # For ensembles of closures
-function Utils.with_tracers(tracers, closure_vector::ISSDVector)
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
 
     _closure_vector = arch isa Architectures.GPU ? Vector(closure_vector) : closure_vector

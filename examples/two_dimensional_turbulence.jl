@@ -112,7 +112,7 @@ filename = "two_dimensional_turbulence"
 simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
                                                 schedule = TimeInterval(0.6),
                                                 filename = filename * ".jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 # ## Running the simulation
 #
