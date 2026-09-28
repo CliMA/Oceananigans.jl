@@ -2,13 +2,13 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, set!
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, KernelParameters
 using Oceananigans.Grids: inactive_node, topology, Periodic, RightCenterFolded, RightFaceFolded
 using Oceananigans.Operators: δxᶠᶠᶜ, δyᶠᶠᶜ, δxᶠᶜᶜ, δyᶠᶜᶜ, δxᶜᶠᶜ, δyᶜᶠᶜ, flux_div_xyᶜᶜᶜ, Ax_qᶜᶠᶜ, Ay_qᶠᶜᶜ,
                               Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δzᶠᶠᶜ, Δxᶠᶜᶜ, Δyᶠᶜᶜ, Δxᶜᶠᶜ, Δyᶜᶠᶜ, Δrᵃᵃᶠ
 
 """
-    ShearSignedCoriolis(grid; ε=1/8, η=1/32, smoothing=3, update_interval=86400, adjustment_time=30*86400)
+    ShearSignedCoriolis(grid; ε=1/8, η=1/32, saturation=1/2, smoothing=3, update_interval=86400, adjustment_time=30*86400)
 
 Energy-conserving Coriolis scheme plus the increment `grad A + curl* B`, with
 
@@ -18,25 +18,28 @@ where `Γ` is the area-weighted circulation at the cell corners `z`, `D` the hor
 cell centres `c`, and `α_cz` couples each cell to its four corners with the weights `χ ε (a - b) + η (1 - 2 (a - b)²)`
 for the corner `(i + a, j + b)`. The increment does no work and has no curl for nondivergent flow for any `α`,
 and removes the null modes of the four-point average. The chirality `χ ∈ [-1, 1]` orients the stencil:
-`χ = 1` is the south-east stencil, `χ = -1` the north-west one. The chiral part converts potential energy of grid-scale
-waves at a rate proportional to `-χ (∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|²)`, where `p′ₓ` and `p′ᵧ` are the parts of the hydrostatic
-pressure, free surface included, at wavelengths of a few cells along x and along y. Every `update_interval`, `χ` relaxes over
-`adjustment_time` toward the sign of `∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|²` below the uppermost interface, smoothed over `smoothing`
-cells, which makes that conversion negative; `χ = -1` where there is no grid-scale pressure variance. Pairs touching land,
-walls or a tripolar fold are excluded.
+`χ = 1` is the south-east stencil, `χ = -1` the north-west one, and `χ(x, y)` is uniform along each column. The chiral part
+converts potential energy of grid-scale waves at a rate proportional to `-χ ∫ (∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|²) / N² dz`, where
+`p′ₓ` and `p′ᵧ` are the parts of the hydrostatic pressure, free surface included, at wavelengths of a few cells along x and
+along y. Every `update_interval`, `χ` relaxes over `adjustment_time` toward the sign of that integral over the stably
+stratified interfaces below the uppermost one, smoothed over `smoothing` cells, which makes the conversion negative; `χ = -1`
+where there is no grid-scale pressure variance. The couplings use `clamp(χ / saturation, -1, 1)`, so the stencil keeps its
+full chirality except where the smoothed `χ` changes sign. Pairs touching land, walls or a tripolar fold are excluded.
 
 Keyword arguments
 =================
 
 - `ε`: chiral weight. Default: 1/8.
 - `η`: achiral weight. Default: 1/32.
-- `smoothing`: width [cells] of the Gaussian smoothing of the conversion density and of its sign. Default: 3.
+- `saturation`: value of `|χ|` above which the couplings use the full chirality. Default: 1/2.
+- `smoothing`: width [cells] of the Gaussian smoothing of the conversion and of its sign. Default: 3.
 - `update_interval`: time [s] between updates of the chirality. Default: 1 day.
 - `adjustment_time`: time scale [s] of the relaxation of the chirality. Default: 30 days.
 """
 struct ShearSignedCoriolis{FT, C, P, S, W, U}
     ε :: FT
     η :: FT
+    saturation :: FT
     chirality :: C
     pressure :: P
     streamfunction :: S
@@ -47,22 +50,24 @@ struct ShearSignedCoriolis{FT, C, P, S, W, U}
     next_update_time :: U
 end
 
-function ShearSignedCoriolis(grid; ε=1/8, η=1/32, smoothing=3, update_interval=86400, adjustment_time=30*86400)
+function ShearSignedCoriolis(grid; ε=1/8, η=1/32, saturation=1/2, smoothing=3, update_interval=86400, adjustment_time=30*86400)
     FT = eltype(grid)
-    chirality = CenterField(grid)
+    chirality = Field{Center, Center, Nothing}(grid)
     set!(chirality, -1)
     fill_halo_regions!(chirality)
     pressure = CenterField(grid)
     streamfunction = Field{Face, Face, Center}(grid)
-    workspace = (; target = CenterField(grid), buffer = CenterField(grid), mask = CenterField(grid),
-                  zonal_grid_scale_pressure = CenterField(grid), meridional_grid_scale_pressure = CenterField(grid))
-    return ShearSignedCoriolis(FT(ε), FT(η), chirality, pressure, streamfunction, workspace, round(Int, 2smoothing^2),
+    workspace = (; target = CenterField(grid), mask = CenterField(grid),
+                  zonal_grid_scale_pressure = CenterField(grid), meridional_grid_scale_pressure = CenterField(grid),
+                  column_target = Field{Center, Center, Nothing}(grid), column_buffer = Field{Center, Center, Nothing}(grid),
+                  column_mask = Field{Center, Center, Nothing}(grid))
+    return ShearSignedCoriolis(FT(ε), FT(η), FT(saturation), chirality, pressure, streamfunction, workspace, round(Int, 2smoothing^2),
                                FT(update_interval), FT(adjustment_time), Ref(zero(FT)))
 end
 
 Base.summary(scheme::ShearSignedCoriolis) = "ShearSignedCoriolis(ε=$(scheme.ε), η=$(scheme.η))"
 
-Adapt.adapt_structure(to, scheme::ShearSignedCoriolis) = ShearSignedCoriolis(scheme.ε, scheme.η, Adapt.adapt(to, scheme.chirality),
+Adapt.adapt_structure(to, scheme::ShearSignedCoriolis) = ShearSignedCoriolis(scheme.ε, scheme.η, scheme.saturation, Adapt.adapt(to, scheme.chirality),
                                                                              Adapt.adapt(to, scheme.pressure), Adapt.adapt(to, scheme.streamfunction),
                                                                              nothing, scheme.smoothing_passes, scheme.update_interval,
                                                                              scheme.adjustment_time, nothing)
@@ -94,7 +99,7 @@ end
 @inline function pair_coupling(ic, jc, a, b, k, grid, coriolis)
     iz, jz = ic + a, jc + b
     scheme = coriolis.scheme
-    χ = @inbounds scheme.chirality[ic, jc, k]
+    χ = clamp(@inbounds(scheme.chirality[ic, jc, 1]) / scheme.saturation, -1, 1)
     w = χ * scheme.ε * (a - b) + scheme.η * (1 - 2 * (a - b)^2)
     excluded = folded_row(jc, grid) | folded_row(jz, grid) | coastal_corner(iz, jz, k, grid) | inactive_node(ic, jc, k, grid, center, center, center)
     Δx = Δxᶜᶜᶜ(ic, jc, k, grid)
@@ -139,8 +144,8 @@ end
 end
 
 #####
-##### Chirality: relaxed toward the sign of the chiral conversion density ∂z u ∂z|p′ₓ|² - ∂z v ∂z|p′ᵧ|², with p′ₓ, p′ᵧ the
-##### grid-scale parts of the hydrostatic pressure along x and y, smoothed; χ = -1 where there is no grid-scale pressure variance
+##### Chirality χ(x, y): relaxed toward the sign of the column-integrated chiral conversion Σ (∂z u Δ|p′ₓ|² - ∂z v Δ|p′ᵧ|²) / N²,
+##### with p′ₓ, p′ᵧ the grid-scale parts of the hydrostatic pressure along x and y, smoothed; χ = -1 without grid-scale variance
 #####
 
 # u and v averaged over the wet faces of the cell, and whether both averages have a wet face
@@ -154,7 +159,8 @@ end
     return ū, v̄, (wu⁻ | wu⁺) & (wv⁻ | wv⁺)
 end
 
-# Across the interface between levels k and k + 1; the uppermost interface lies in the surface Ekman layer
+# ∂z u Δ|p′ₓ|² - ∂z v Δ|p′ᵧ|² across the interface between levels k and k + 1; the uppermost interface lies in the surface
+# Ekman layer
 @inline function interface_conversion(i, j, k, grid, u, v, p′ₓ, p′ᵧ)
     ū⁻, v̄⁻, lower_defined = cell_velocity(i, j, k,   grid, u, v)
     ū⁺, v̄⁺, upper_defined = cell_velocity(i, j, k+1, grid, u, v)
@@ -162,19 +168,40 @@ end
               !inactive_node(i, j, k, grid, center, center, center) & !inactive_node(i, j, k+1, grid, center, center, center)
     zonal = @inbounds (ū⁺ - ū⁻) * (p′ₓ[i, j, k+1]^2 - p′ₓ[i, j, k]^2)
     meridional = @inbounds (v̄⁺ - v̄⁻) * (p′ᵧ[i, j, k+1]^2 - p′ᵧ[i, j, k]^2)
-    return (zonal - meridional) / Δrᵃᵃᶠ(i, j, k+1, grid)^2, defined
+    return (zonal - meridional) / Δrᵃᵃᶠ(i, j, k+1, grid), defined
 end
 
-@kernel function _compute_level_conversion!(conversion, defined, grid, u, v, p′ₓ, p′ᵧ)
-    i, j, k = @index(Global, NTuple)
+# b = ∂z pHY′ on the face below the center k
+@inline function face_buoyancy(i, j, k, grid, p)
+    Δz = znode(i, j, k, grid, center, center, center) - znode(i, j, k-1, grid, center, center, center)
+    return @inbounds (p[i, j, k] - p[i, j, k-1]) / Δz
+end
+
+# N² on the interface between levels k and k + 1, from b on the nearest faces that lie in the water
+@inline function interface_stratification(i, j, k, grid, p)
     Nz = size(grid, 3)
-    k⁻ = ifelse(k == Nz, Nz - 2, k - 1)
-    k⁺ = ifelse(k == Nz, Nz - 2, k)
-    lower_conversion, lower_defined = interface_conversion(i, j, k⁻, grid, u, v, p′ₓ, p′ᵧ)
-    upper_conversion, upper_defined = interface_conversion(i, j, k⁺, grid, u, v, p′ₓ, p′ᵧ)
-    n = lower_defined + upper_defined
-    @inbounds conversion[i, j, k] = (lower_defined * lower_conversion + upper_defined * upper_conversion) / max(n, 1)
-    @inbounds defined[i, j, k] = !inactive_node(i, j, k, grid, center, center, center) & (n > 0)
+    below = (k ≥ 2) & !inactive_node(i, j, k-1, grid, center, center, center)
+    above = (k + 2 ≤ Nz) & !inactive_node(i, j, k+2, grid, center, center, center)
+    k⁻ = ifelse(below, k, k + 1)
+    k⁺ = ifelse(above, k + 2, k + 1)
+    Δb = face_buoyancy(i, j, k⁺, grid, p) - face_buoyancy(i, j, k⁻, grid, p)
+    Δz = znode(i, j, k⁺, grid, center, center, face) - znode(i, j, k⁻, grid, center, center, face)
+    return Δb / Δz, k⁻ < k⁺
+end
+
+@kernel function _compute_column_conversion!(conversion, defined, grid, u, v, pHY′, p′ₓ, p′ᵧ)
+    i, j, _ = @index(Global, NTuple)
+    C = zero(grid)
+    n = 0
+    for k in 1:size(grid, 3) - 2
+        density, interface_defined = interface_conversion(i, j, k, grid, u, v, p′ₓ, p′ᵧ)
+        N², resolved = interface_stratification(i, j, k, grid, pHY′)
+        stable = interface_defined & resolved & (N² > 0)
+        C += ifelse(stable, density / N², zero(grid))
+        n += stable
+    end
+    @inbounds conversion[i, j, 1] = C
+    @inbounds defined[i, j, 1] = n > 0
 end
 
 @kernel function _wet_mask!(mask, grid)
@@ -193,9 +220,9 @@ end
 end
 
 @kernel function _sign_of_conversion!(target, mask, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds target[i, j, k] = ifelse((mask[i, j, k] > 0) & (target[i, j, k] > 0), 1, -1)
-    @inbounds mask[i, j, k] = !inactive_node(i, j, k, grid, center, center, center)
+    i, j, _ = @index(Global, NTuple)
+    @inbounds target[i, j, 1] = ifelse((mask[i, j, 1] > 0) & (target[i, j, 1] > 0), 1, -1)
+    @inbounds mask[i, j, 1] = !inactive_node(i, j, size(grid, 3), grid, center, center, center)
 end
 
 # Masked (1, 2, 1) passes; x is periodic when the grid is, walls otherwise
@@ -228,42 +255,42 @@ end
     end
 end
 
-function masked_smooth!(ψ, buffer, mask, passes)
+function masked_smooth!(ψ, buffer, mask, passes, workspec)
     grid = ψ.grid
     arch = architecture(grid)
     for _ in 1:passes
-        launch!(arch, grid, :xyz, _smooth_along_x!, buffer, ψ, mask, grid)
-        launch!(arch, grid, :xyz, _smooth_along_y!, ψ, buffer, mask, grid)
+        launch!(arch, grid, workspec, _smooth_along_x!, buffer, ψ, mask, grid)
+        launch!(arch, grid, workspec, _smooth_along_y!, ψ, buffer, mask, grid)
     end
     return nothing
 end
 
 @kernel function _relax_chirality!(χ, target, rate)
-    i, j, k = @index(Global, NTuple)
-    @inbounds χ[i, j, k] += rate * (target[i, j, k] - χ[i, j, k])
+    i, j, _ = @index(Global, NTuple)
+    @inbounds χ[i, j, 1] += rate * (target[i, j, 1] - χ[i, j, 1])
 end
 
 function update_chirality!(scheme::ShearSignedCoriolis, velocities, pressure_anomaly, displacement, g)
-    (; target, buffer, mask) = scheme.workspace
+    (; target, mask) = scheme.workspace
     p′ₓ, p′ᵧ = scheme.workspace.zonal_grid_scale_pressure, scheme.workspace.meridional_grid_scale_pressure
     grid = target.grid
     arch = architecture(grid)
 
-    # p = pHY′ + g η minus two masked (1, 2, 1) passes along x (p′ₓ) or along y (p′ᵧ): the pressure at wavelengths of a few cells
+    # p = pHY′ + g η minus one masked (1, 2, 1) pass along x (p′ₓ) or along y (p′ᵧ): a quarter of the second difference of p
     launch!(arch, grid, :xyz, _wet_mask!, mask, grid)
     launch!(arch, grid, :xyz, _total_pressure!, target, pressure_anomaly, displacement, g, grid)
-    launch!(arch, grid, :xyz, _smooth_along_x!, buffer, target, mask, grid)
-    launch!(arch, grid, :xyz, _smooth_along_x!, p′ₓ, buffer, mask, grid)
+    launch!(arch, grid, :xyz, _smooth_along_x!, p′ₓ, target, mask, grid)
     launch!(arch, grid, :xyz, _subtract_from!, p′ₓ, target, mask)
-    launch!(arch, grid, :xyz, _smooth_along_y!, buffer, target, mask, grid)
-    launch!(arch, grid, :xyz, _smooth_along_y!, p′ᵧ, buffer, mask, grid)
+    launch!(arch, grid, :xyz, _smooth_along_y!, p′ᵧ, target, mask, grid)
     launch!(arch, grid, :xyz, _subtract_from!, p′ᵧ, target, mask)
 
-    launch!(arch, grid, :xyz, _compute_level_conversion!, target, mask, grid, velocities.u, velocities.v, p′ₓ, p′ᵧ)
-    masked_smooth!(target, buffer, mask, scheme.smoothing_passes)
-    launch!(arch, grid, :xyz, _sign_of_conversion!, target, mask, grid)
-    masked_smooth!(target, buffer, mask, scheme.smoothing_passes)
-    launch!(arch, grid, :xyz, _relax_chirality!, scheme.chirality, target, scheme.update_interval / scheme.adjustment_time)
+    (; column_target, column_buffer, column_mask) = scheme.workspace
+    columns = KernelParameters(1:size(grid, 1), 1:size(grid, 2), 1:1)
+    launch!(arch, grid, columns, _compute_column_conversion!, column_target, column_mask, grid, velocities.u, velocities.v, pressure_anomaly, p′ₓ, p′ᵧ)
+    masked_smooth!(column_target, column_buffer, column_mask, scheme.smoothing_passes, columns)
+    launch!(arch, grid, columns, _sign_of_conversion!, column_target, column_mask, grid)
+    masked_smooth!(column_target, column_buffer, column_mask, scheme.smoothing_passes, columns)
+    launch!(arch, grid, columns, _relax_chirality!, scheme.chirality, column_target, scheme.update_interval / scheme.adjustment_time)
     fill_halo_regions!(scheme.chirality)
     return nothing
 end
