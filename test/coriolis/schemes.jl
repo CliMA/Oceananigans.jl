@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
-using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ
+using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ
 
 #####
 ##### Helpers
@@ -173,6 +173,28 @@ function test_coriolis_antisymmetry(FT, scheme)
     # Northern hemisphere: f > 0, so x-tendency = -fv < 0, y-tendency = +fu > 0
     @test fx < 0
     @test fy > 0
+end
+
+#####
+##### 5b. Energy neutrality of the discrete Coriolis operator: Σ V u (f×u)ˣ + Σ V v (f×u)ʸ = 0 for any u, v, f
+#####
+
+function test_coriolis_energy_neutrality(FT, scheme)
+    # Bounded in y so that the β-plane f is single-valued at every vertex
+    grid = RectilinearGrid(CPU(), FT, size = (8, 8, 1),
+                           x = [0, 1, 3, 4, 6, 7, 9, 10, 12], y = (0, 8), z = (0, 1),
+                           topology = (Periodic, Bounded, Bounded))
+
+    coriolis = BetaPlane(FT, f₀ = 1, β = 0.3, scheme = scheme)
+    U = make_velocity_fields(grid, FT)
+    interior(U.u) .= rand(FT, 8, 8, 1)
+    interior(U.v, :, 2:8, :) .= rand(FT, 8, 7, 1)
+    fill_halo_regions!((U.u, U.v))
+
+    Wu = [Vᶠᶜᶜ(i, j, 1, grid) * U.u[i, j, 1] * x_f_cross_U(i, j, 1, grid, coriolis, U) for i in 1:8, j in 1:8]
+    Wv = [Vᶜᶠᶜ(i, j, 1, grid) * U.v[i, j, 1] * y_f_cross_U(i, j, 1, grid, coriolis, U) for i in 1:8, j in 1:9]
+
+    @test abs(sum(Wu) + sum(Wv)) / (sum(abs, Wu) + sum(abs, Wv)) < 100 * eps(FT)
 end
 
 #####
@@ -423,6 +445,14 @@ for arch in archs
             end
         end
 
+
+        if scheme isa Union{EnergyConserving, TriadScheme}
+            @testset "Energy neutrality [$FT]" begin
+                @testset "scheme=$(summary(scheme))" begin
+                    test_coriolis_energy_neutrality(FT, scheme)
+                end
+            end
+        end
 
         @testset "Energy conservation" begin
             @testset "scheme=$(summary(scheme))" begin
