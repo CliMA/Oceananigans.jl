@@ -3,7 +3,7 @@ module Coriolis
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
     SphericalCoriolis, HydrostaticSphericalCoriolis,
-    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, CDScheme,
+    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme, CDScheme, ShearSignedCoriolis,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf: @sprintf
@@ -39,5 +39,6 @@ include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
 include("spherical_coriolis.jl")
 include("cd_scheme.jl")
+include("shear_signed_coriolis.jl")
 
 end # module

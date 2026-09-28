@@ -3,6 +3,7 @@ using Oceananigans.Advection: update_advection!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
+using Oceananigans.Coriolis: update_coriolis!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -73,6 +74,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # above include regions inside the (horizontal) halos.
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
     fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
+
+    update_coriolis!(model.coriolis, model)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 

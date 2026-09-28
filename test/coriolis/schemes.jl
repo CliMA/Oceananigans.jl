@@ -1,9 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, CDScheme
+using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, CDScheme, ShearSignedCoriolis
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
-using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ
+using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ
 
 #####
 ##### Helpers
@@ -406,6 +406,68 @@ function test_cd_scheme_checkpoint_restart(FT, arch)
 end
 
 #####
+##### ShearSignedCoriolis: the 2Δx meridional velocity feels the full Coriolis force, and the Coriolis term does no work
+#####
+
+function test_shear_signed_null_mode(FT, arch)
+    grid = RectilinearGrid(arch, FT, size=(8, 4, 1), x=(0, 8e4), y=(0, 4e4), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+    f₀ = FT(1e-4)
+    v₀ = FT(0.1)
+    model = HydrostaticFreeSurfaceModel(grid; coriolis=FPlane(FT, f=f₀, scheme=ShearSignedCoriolis(grid)),
+                                        momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+    set!(model, v=[isodd(i) ? v₀ : -v₀ for i in 1:8, j in 1:4, k in 1:1])
+    @test all(G -> isapprox(abs(G), f₀ * v₀, rtol=1e-3), Array(interior(model.timestepper.Gⁿ.u)))
+end
+
+@inline x_coriolis_work(i, j, k, grid, coriolis, U) = @inbounds - U[1][i, j, k] * x_f_cross_U(i, j, k, grid, coriolis, U) * Vᶠᶜᶜ(i, j, k, grid) * !peripheral_node(i, j, k, grid, Face(), Center(), Center())
+@inline y_coriolis_work(i, j, k, grid, coriolis, U) = @inbounds - U[2][i, j, k] * y_f_cross_U(i, j, k, grid, coriolis, U) * Vᶜᶠᶜ(i, j, k, grid) * !peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
+function test_shear_signed_coriolis_does_no_work(FT, arch)
+    underlying_grid = LatitudeLongitudeGrid(arch, FT, size=(16, 16, 3), latitude=(-40, 40), longitude=(0, 60), z=(-3000, 0),
+                                            topology=(Periodic, Bounded, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((λ, φ) -> ifelse((20 < λ < 30) & (φ > 0), 0, -3000)))
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=ShearSignedCoriolis(grid; update_interval=60, adjustment_time=60))
+    model = HydrostaticFreeSurfaceModel(grid; coriolis, momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+    set!(model, u=(λ, φ, z) -> sind(12λ) * cosd(7φ) * (1 + z / 1000) / 10, v=(λ, φ, z) -> cosd(6λ + 4φ) * z / 30000)
+    time_step!(model, 60)
+
+    U = model.velocities
+    x_work = Field(KernelFunctionOperation{Face, Center, Center}(x_coriolis_work, grid, coriolis, U))
+    y_work = Field(KernelFunctionOperation{Center, Face, Center}(y_coriolis_work, grid, coriolis, U))
+    work = sum(x_work) + sum(y_work)
+    magnitude = sum(abs, x_work) + sum(abs, y_work)
+    χ = Array(interior(coriolis.scheme.chirality))
+    @test minimum(χ) < 0 < maximum(χ)
+    @test abs(work) / magnitude < 100 * eps(FT)
+end
+
+function test_shear_signed_checkpoint_restart(FT, arch)
+    grid = RectilinearGrid(arch, FT, size=(8, 8, 3), x=(0, 8e4), y=(0, 8e4), z=(-300, 0), topology=(Periodic, Periodic, Bounded))
+
+    function shear_signed_simulation(stop_iteration)
+        coriolis = FPlane(FT, f=1e-4, scheme=ShearSignedCoriolis(grid; smoothing=1, update_interval=300, adjustment_time=600))
+        model = HydrostaticFreeSurfaceModel(grid; coriolis, timestepper=:SplitRungeKutta3,
+                                            momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+        set!(model, u=(x, y, z) -> sin(2π * y / 8e4) * (1 + z / 100) / 10, v=(x, y, z) -> cos(2π * x / 8e4) / 10)
+        simulation = Simulation(model; Δt=100, stop_iteration)
+        simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), prefix="shear_signed_$FT", cleanup=false)
+        return simulation
+    end
+
+    uninterrupted = shear_signed_simulation(10)
+    run!(uninterrupted)
+
+    restarted = shear_signed_simulation(10)
+    run!(restarted, pickup=5)
+
+    @test Array(interior(restarted.model.velocities.u)) == Array(interior(uninterrupted.model.velocities.u))
+    @test Array(interior(restarted.model.velocities.v)) == Array(interior(uninterrupted.model.velocities.v))
+    @test Array(interior(restarted.model.coriolis.scheme.chirality)) == Array(interior(uninterrupted.model.coriolis.scheme.chirality))
+
+    foreach(rm, filter(startswith("shear_signed_$FT"), readdir()))
+end
+
+#####
 ##### 1. Instantiation tests for new scheme types
 #####
 
@@ -497,6 +559,18 @@ for arch in archs
 
         @testset "CDScheme checkpoint restart [$FT]" begin
             test_cd_scheme_checkpoint_restart(FT, arch)
+        end
+
+        @testset "ShearSignedCoriolis null mode [$FT]" begin
+            test_shear_signed_null_mode(FT, arch)
+        end
+
+        @testset "ShearSignedCoriolis does no work [$FT]" begin
+            test_shear_signed_coriolis_does_no_work(FT, arch)
+        end
+
+        @testset "ShearSignedCoriolis checkpoint restart [$FT]" begin
+            test_shear_signed_checkpoint_restart(FT, arch)
         end
     end
 end
