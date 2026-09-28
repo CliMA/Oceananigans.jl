@@ -3,22 +3,20 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using LinearAlgebra: Tridiagonal
 using Oceananigans.Coriolis: ConstantCartesianCoriolis
 using Oceananigans.Fields: interior
-using Oceananigans.Grids: architecture
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, ImmersedBoundaryGrid
-using Oceananigans.Models.NonhydrostaticModels: step_velocities!
-using Oceananigans.TimeSteppers: _ab2_step_field!, update_state!
+using Oceananigans.Models.NonhydrostaticModels: step_velocities!, ab2_substep_velocity!, rk3_substep_velocity!
+using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.TurbulenceClosures: VerticalScalarDiffusivity, VerticallyImplicitTimeDiscretization
-using Oceananigans.Utils: launch!
 
 @testset "Implicit velocity step next to an immersed bottom" begin
     Nz = 16
     kb = 5
     Δz = 1 / Nz
 
-    for arch in archs, c in (1.0, 10.0)
+    for arch in archs, c in (1.0, 10.0), active_cells_map in (false, true)
         underlying_grid = RectilinearGrid(arch; size=(2, 2, Nz), x=(0, 1), y=(0, 1), z=(0, 1),
                                           topology=(Periodic, Periodic, Bounded))
-        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> (kb - 1) * Δz))
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> (kb - 1) * Δz); active_cells_map)
         closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1)
         Δt = c * Δz^2
 
@@ -35,8 +33,7 @@ using Oceananigans.Utils: launch!
             w★ = Ref{Any}(nothing)
 
             function substep_velocity!(u, Gⁿ, G⁻)
-                launch!(architecture(grid), grid, :xyz, _ab2_step_field!,
-                        u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+                ab2_substep_velocity!(u, grid, Δt, χ, Gⁿ, G⁻, model.timestepper.implicit_solver)
                 u === model.velocities.w && (w★[] = Array(interior(u)))
                 return nothing
             end
@@ -56,6 +53,33 @@ using Oceananigans.Utils: launch!
             @test iszero(w_after_implicit_step[1, 1, end])
         end
     end
+end
+
+@testset "RK3 first stage ignores stale previous tendencies" begin
+    Nz = 16
+    kb = 5
+    underlying_grid = RectilinearGrid(CPU(); size=(2, 2, Nz), x=(0, 1), y=(0, 1), z=(0, 1),
+                                      topology=(Periodic, Periodic, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> (kb - 1) / Nz);
+                                active_cells_map=true)
+    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1)
+    model = NonhydrostaticModel(grid; closure, advection=nothing, timestepper=:RungeKutta3)
+    w = model.velocities.w
+    set!(w, 0)
+    set!(model.timestepper.Gⁿ.w, 1)
+    set!(model.timestepper.G⁻.w, NaN)
+    w[1, 1, Nz+1] = 13
+
+    @test isnan(model.timestepper.G⁻.w[1, 1, kb+2])
+
+    γ¹ = model.timestepper.γ¹
+    Δt = 0.01
+    rk3_substep_velocity!(w, grid, Δt, γ¹, nothing, model.timestepper.Gⁿ.w,
+                          model.timestepper.G⁻.w, model.timestepper.implicit_solver)
+
+    @test w[1, 1, kb] == 0
+    @test w[1, 1, kb+2] ≈ Δt * γ¹
+    @test w[1, 1, Nz+1] == 13
 end
 
 @testset "AB2 and RK3 forcing does not cross an immersed bottom" begin

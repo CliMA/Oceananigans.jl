@@ -1,5 +1,37 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
+using Oceananigans: instantiated_location
+using Oceananigans.Fields: Field
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
 import Oceananigans.TimeSteppers: ab2_step!
+
+@kernel function _ab2_step_immersed_velocity!(u, grid, (ℓx, ℓy, ℓz), Δt, χ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    FT = eltype(u)
+    Δt = convert(FT, Δt)
+    α = convert(FT, 3/2) + χ
+    β = convert(FT, 1/2) + χ
+    not_euler = χ != convert(FT, -0.5)
+
+    @inbounds begin
+        Gu = α * Gⁿ[i, j, k] - β * G⁻[i, j, k] * not_euler
+        value = u[i, j, k] + Δt * Gu
+        masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+        u[i, j, k] = ifelse(masked, zero(FT), value)
+    end
+end
+
+@inline function ab2_substep_velocity!(u, grid, Δt, χ, Gⁿ, G⁻, implicit_solver)
+    if grid isa ImmersedBoundaryGrid && implicit_solver !== nothing && u isa Field
+        launch!(architecture(grid), grid, :xyz, _ab2_step_immersed_velocity!,
+                u, grid, instantiated_location(u), Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    else
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!,
+                u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    end
+
+    return nothing
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -32,7 +64,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
 
     # Prognostic variables stepping
     χ = model.timestepper.χ
-    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, kernel_Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = ab2_substep_velocity!(u, grid, kernel_Δt, χ, Gⁿ, G⁻, model.timestepper.implicit_solver)
     @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, kernel_Δt, χ, Gⁿ, G⁻)
 
     step_prognostic_fields!(model, substep_velocity!, substep_tracer!, kernel_Δt)
@@ -68,9 +100,6 @@ end
     Gⁿ = model.timestepper.Gⁿ[name]
     G⁻ = model.timestepper.G⁻[name]
     substep_velocity!(u, Gⁿ, G⁻)
-    if model.timestepper.implicit_solver !== nothing
-        mask_immersed_field!(u)
-    end
 
     implicit_step!(u,
                    model.timestepper.implicit_solver,
