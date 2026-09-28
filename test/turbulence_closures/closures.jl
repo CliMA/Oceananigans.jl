@@ -5,7 +5,9 @@ using Random
 using Oceananigans.Grids: znode
 using Oceananigans.Grids: ZDirection
 using Oceananigans.ImmersedBoundaries: immersed_cell
+using Oceananigans.Operators: Δz
 using Oceananigans.Solvers: get_coefficient
+using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
                                        VerticallyImplicitDiffusionUpperDiagonal
@@ -14,14 +16,14 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
                                        cell_diffusion_timescale, formulation, min_Δxyz,
                                        diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz, ∂ⱼ_τ₃ⱼ,
                                        ScalarDiffusivity, ScalarBiharmonicDiffusivity,
                                        TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
                                        Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly,
                                        LagrangianAveraging,
                                        AnisotropicMinimumDissipation,
                                        IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation, AdvectiveFormulation
+                                       DiffusiveFormulation, AdvectiveFormulation, ThreeDimensionalFormulation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -665,14 +667,16 @@ end
 
 
     @testset "Vertically-implicit diffusion operator" begin
-        @info "  Testing that the vertically-implicit stencil reproduces ∂z(ν ∂z ϕ)..."
+        @info "  Testing that the vertically-implicit stencil reproduces ∂z(νz ∂z ϕ), boundary rows included..."
 
-        function implicit_operator_rows(arch, LX, LZ, Nz, z, Lz)
-            grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
-                                   topology=(Periodic, Periodic, Bounded))
+        function implicit_operator_rows(arch, closure_constructor, LX, LZ, Nz, z, Lz, immersed_boundary)
+            underlying_grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
+                                              topology=(Periodic, Periodic, Bounded))
+
+            grid = isnothing(immersed_boundary) ? underlying_grid : ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 
             ν(x, y, z, t) = 1 + 0.8 * sinpi(2z / Lz)
-            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν)
+            closure = closure_constructor(VerticallyImplicitTimeDiscretization(); ν)
             clock = Clock(time=0.0)
             Δt = 1
 
@@ -685,10 +689,12 @@ end
             # Assembling the rows on the host reads grid metrics one level at a time, which on a
             # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in
             # `CUDA.allowscalar`, but say so locally rather than lean on that.
-            dl, d, du = @allowscalar begin
+            dl, d, du, Δzᶜ, Δzᶠ = @allowscalar begin
                 ([coefficient(VerticallyImplicitDiffusionLowerDiagonal(), k) for k in 1:Nz],
                  [coefficient(VerticallyImplicitDiffusionDiagonal(),      k) for k in 1:Nz],
-                 [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz])
+                 [coefficient(VerticallyImplicitDiffusionUpperDiagonal(), k) for k in 1:Nz],
+                 [Δz(1, 1, k, grid, LX(), Center(), Center()) for k in 1:Nz],  # of cell k, which a partial cell shortens
+                 [Δz(1, 1, k, grid, LX(), Center(), Face())   for k in 2:Nz])  # around face k, indexed k-1
             end
 
             L = zeros(Nz, Nz) # the coefficients are linear in Δt, so Δt = 1 gives L = I - A exactly
@@ -699,38 +705,150 @@ end
 
             zᶜ = Array(znodes(grid, Center()))
             zᶠ = Array(znodes(grid, Face()))
-            Δzᶜ = diff(zᶠ)
-            Δzᶠ = diff(zᶜ)
 
+            immersed_cells = compute!(Field(KernelFunctionOperation{Center, Center, Center}(immersed_cell, grid)))
+            immersed = Array(interior(immersed_cells))[1, 1, :] .== 1
+            wet(k) = 1 <= k <= Nz && !immersed[k]
+
+            # The vertical flux of w under a three-dimensional closure is -2ν ∂z w, so the solver's νz for w is 2ν,
+            # while -2ν Σ₁₃ = -ν ∂z u - ν ∂x w leaves only ν ∂z u to the solver
+            νz(x, y, z, t) = (formulation(closure) isa ThreeDimensionalFormulation && LZ === Face ? 2 : 1) * ν(x, y, z, t)
+
+            # An inactive cell, or a face on a domain or immersed boundary where w = 0, gets an identity row (L̂ = 0).
+            # Elsewhere the row carries the flux to each neighbor: for ϕ at centers the flux through face k or k+1 is
+            # absent when that face is a boundary, while ϕ at an interior face exchanges flux through both cells k-1 and k.
             L̂ = zeros(Nz, Nz)
-            for k in 2:Nz-1
-                if LZ === Face      # ϕ at faces, ν and Δzᶜ at centers, row spacing Δzᶠ
-                    a = ν(0, 0, zᶜ[k-1], 0) / (Δzᶠ[k-1] * Δzᶜ[k-1])
-                    b = ν(0, 0, zᶜ[k],   0) / (Δzᶠ[k-1] * Δzᶜ[k])
-                else                # ϕ at centers, ν and Δzᶠ at faces, row spacing Δzᶜ
-                    a = ν(0, 0, zᶠ[k],   0) / (Δzᶜ[k] * Δzᶠ[k-1])
-                    b = ν(0, 0, zᶠ[k+1], 0) / (Δzᶜ[k] * Δzᶠ[k])
+            for k in 1:Nz
+                if LZ === Face      # νz and Δzᶜ at centers, row spacing Δzᶠ
+                    wet(k-1) && wet(k) || continue
+                    a = νz(0, 0, zᶜ[k-1], 0) / (Δzᶠ[k-1] * Δzᶜ[k-1])
+                    b = νz(0, 0, zᶜ[k],   0) / (Δzᶠ[k-1] * Δzᶜ[k])
+                else                # νz and Δzᶠ at faces, row spacing Δzᶜ
+                    wet(k) || continue
+                    a = wet(k-1) ? νz(0, 0, zᶠ[k],   0) / (Δzᶜ[k] * Δzᶠ[k-1]) : 0
+                    b = wet(k+1) ? νz(0, 0, zᶠ[k+1], 0) / (Δzᶜ[k] * Δzᶠ[k])   : 0
                 end
-                L̂[k, k-1] = a
-                L̂[k, k+1] = b
-                L̂[k, k]   = -(a + b)
+                k > 1  && (L̂[k, k-1] = a)
+                k < Nz && (L̂[k, k+1] = b)
+                L̂[k, k] = -(a + b)
             end
 
-            rows = 2:Nz-1
-            return maximum(abs, L[rows, :] .- L̂[rows, :]) / maximum(abs, L̂[rows, :])
+            return maximum(abs, L .- L̂) / maximum(abs, L̂)
         end
 
         Nz, Lz = 32, 1000.0
         uniform = (0, Lz)
         stretched = [Lz * (k / Nz)^1.3 for k in 0:Nz]
 
+        immersed_boundaries = (nothing,
+                               GridFittedBottom((x, y) -> 0.3 * Lz),
+                               PartialCellBottom((x, y) -> 0.3 * Lz),
+                               GridFittedBoundary((x, y, z) -> z > 0.7 * Lz))
+
         for arch in archs,
+            closure_constructor in (VerticalScalarDiffusivity, ScalarDiffusivity),
             (LX, LZ) in ((Face, Center), (Center, Face)),
-            z in (uniform, stretched)
+            z in (uniform, stretched),
+            immersed_boundary in immersed_boundaries
 
             grid_kind = z isa Tuple ? "uniform" : "stretched"
-            @info "    Testing implicit diffusion operator [$arch, ($LX, Center, $LZ), $grid_kind]..."
-            @test implicit_operator_rows(arch, LX, LZ, Nz, z, Lz) < 1e-12
+            boundary_kind = isnothing(immersed_boundary) ? "" : ", $(nameof(typeof(immersed_boundary)))"
+            @info "    Testing implicit diffusion operator [$arch, $closure_constructor, ($LX, Center, $LZ), $grid_kind$boundary_kind]..."
+            @test implicit_operator_rows(arch, closure_constructor, LX, LZ, Nz, z, Lz, immersed_boundary) < 1e-12
+        end
+    end
+
+    @testset "Vertically-implicit viscous stress on w" begin
+        @info "  Testing that the vertically-implicit viscous operator on w matches the explicit one..."
+
+        # The viscous tendency of w: the explicit −∂ⱼτ₃ⱼ plus the increment of the implicit solve
+        function w_viscous_tendency(grid, closure, u₀, v₀, w₀, Δt)
+            model = NonhydrostaticModel(grid; closure, advection=nothing)
+            set!(model, u=u₀, v=v₀, w=w₀)
+            w = model.velocities.w
+            w⁰ = Array(interior(w))
+
+            ∂ⱼτ₃ⱼ = KernelFunctionOperation{Center, Center, Face}(∂ⱼ_τ₃ⱼ, grid, model.closure, model.closure_fields,
+                                                                 model.clock, fields(model), model.buoyancy)
+
+            explicit_tendency = - Array(interior(compute!(Field(∂ⱼτ₃ⱼ))))
+
+            implicit_step!(w, model.timestepper.implicit_solver, model.closure, model.closure_fields,
+                           nothing, model.clock, fields(model), Δt)
+
+            implicit_tendency = (Array(interior(w)) .- w⁰) ./ Δt
+
+            return explicit_tendency .+ implicit_tendency, w⁰
+        end
+
+        for arch in archs
+            Nx, Ny, Nz = 8, 8, 8
+            Lx, Ly, Lz = 2, 2, 1
+            grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz),
+                                   topology=(Periodic, Periodic, Bounded))
+            Δx, Δy, Δz = Lx / Nx, Ly / Ny, Lz / Nz
+
+            # A vortex between free-slip walls whose amplitudes use the discrete wavenumbers, so that it is
+            # exactly divergence-free on the C-grid and an eigenmode of the discrete Laplacian with eigenvalue -(k² + l² + m²)
+            kx, ky, kz = 2π / Lx, 2π / Ly, π / Lz
+            k, l, m = 2sin(kx * Δx / 2) / Δx, 2sin(ky * Δy / 2) / Δy, 2sin(kz * Δz / 2) / Δz
+            u₀(x, y, z) = - m / (2k) * sin(kx * x) * cos(ky * y) * cos(kz * z)
+            v₀(x, y, z) = - m / (2l) * cos(kx * x) * sin(ky * y) * cos(kz * z)
+            w₀(x, y, z) =              cos(kx * x) * cos(ky * y) * sin(kz * z)
+
+            ν = 1
+            Δt = 1e-5 * Δz^2 / ν    # small enough that the implicit increment is the implicit operator to O(Δt)
+            VITD = VerticallyImplicitTimeDiscretization()
+
+            G, w⁰ = w_viscous_tendency(grid, ScalarDiffusivity(; ν), u₀, v₀, w₀, Δt)
+            @test view(G, :, :, 2:Nz) ≈ -ν * (k^2 + l^2 + m^2) .* view(w⁰, :, :, 2:Nz)
+
+            # Face 1 is the boundary, where w vanishes and no tendency is computed
+            faces = 2:Nz
+            for (name, explicit, implicit) in (("ScalarDiffusivity",             ScalarDiffusivity(; ν),          ScalarDiffusivity(VITD; ν)),
+                                               ("SmagorinskyLilly",              SmagorinskyLilly(),              SmagorinskyLilly(VITD)),
+                                               ("AnisotropicMinimumDissipation", AnisotropicMinimumDissipation(), AnisotropicMinimumDissipation(VITD)))
+                @info "    Testing the vertically-implicit viscous stress on w [$arch, $name]..."
+                Gₑ, _ = w_viscous_tendency(grid, explicit, u₀, v₀, w₀, Δt)
+                Gᵢ, _ = w_viscous_tendency(grid, implicit, u₀, v₀, w₀, Δt)
+                Gₑ, Gᵢ = view(Gₑ, :, :, faces), view(Gᵢ, :, :, faces)
+                @test maximum(abs, Gᵢ .- Gₑ) < 1e-4 * maximum(abs, Gₑ)
+            end
+        end
+    end
+
+    @testset "Vertically-implicit diffusion of a vortex between free-slip walls" begin
+        @info "  Testing that a vertically-implicit step of a vortex between free-slip walls is a backward Euler step of its eigenmode..."
+
+        for arch in archs
+            Nx, Nz = 16, 16
+            Lx, Lz = 2, 1
+            grid = RectilinearGrid(arch, size=(Nx, Nz), x=(0, Lx), z=(0, Lz), topology=(Periodic, Flat, Bounded))
+            Δx, Δz = Lx / Nx, Lz / Nz
+
+            # Built from the discrete wavenumbers, the vortex is an exact eigenmode of the discrete Laplacian with
+            # w = 0 and ∂z u = 0 at the walls, so it stays divergence-free and the pressure correction does nothing
+            kx, kz = 2π / Lx, π / Lz
+            k, m = 2sin(kx * Δx / 2) / Δx, 2sin(kz * Δz / 2) / Δz
+            u₀(x, z) = - m / k * sin(kx * x) * cos(kz * z)
+            w₀(x, z) =           cos(kx * x) * sin(kz * z)
+
+            ν = 1
+            closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν)
+
+            for c in (1, 10)  # νΔt/Δz²
+                Δt = c * Δz^2 / ν
+                model = NonhydrostaticModel(grid; closure, advection=nothing, timestepper=:QuasiAdamsBashforth2)
+                set!(model, u=u₀, w=w₀)
+                u⁰, w⁰ = Array(interior(model.velocities.u)), Array(interior(model.velocities.w))
+                time_step!(model, Δt)
+                u¹, w¹ = Array(interior(model.velocities.u)), Array(interior(model.velocities.w))
+
+                # Nothing is stepped explicitly, so the step is backward Euler on ∂t ϕ = ν ∂z² ϕ: ϕ¹ = ϕ⁰ / (1 + Δt ν m²) everywhere
+                factor = 1 / (1 + Δt * ν * m^2)
+                @test maximum(abs, w¹ .- factor .* w⁰) < 1e-10 * maximum(abs, w⁰)
+                @test maximum(abs, u¹ .- factor .* u⁰) < 1e-10 * maximum(abs, u⁰)
+            end
         end
     end
 
