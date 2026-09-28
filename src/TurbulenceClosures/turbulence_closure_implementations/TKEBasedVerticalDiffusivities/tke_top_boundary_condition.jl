@@ -78,7 +78,7 @@ end
 """ Computes the convective velocity w★ over the top cell, counting the `radiation` absorbed within it. """
 @inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs, radiation = nothing)
     Jʳ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
-    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) - Jʳ
+    Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields) + Jʳ
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
     return ifelse(Jᵇ > 0, convective_buoyancy_production(i, j, grid, radiation, Δz, Jᵇ, Jʳ), zero(Jᵇ))
 end

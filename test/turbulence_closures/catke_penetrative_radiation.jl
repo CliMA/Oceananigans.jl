@@ -6,7 +6,8 @@ const TKEClosures = Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivitie
 
 using .TKEClosures: convective_buoyancy_production, convective_layer_depth, effective_buoyancy_flux
 
-# Beer's law in two bands: a surface radiative buoyancy flux, a fraction ϵ of which is absorbed over 1 / κ₁ and the rest over 1 / κ₂
+# Beer's law in two bands: a surface radiative buoyancy flux (≤ 0, positive upward), a fraction ϵ of which is absorbed over
+# 1 / κ₁ and the rest over 1 / κ₂
 struct TwoBandRadiation{FT}
     surface_buoyancy_flux :: FT
     first_band_fraction :: FT
@@ -66,9 +67,9 @@ end
 @testset "CATKE with penetrating radiation" begin
     @info "Testing CATKE with penetrating radiation..."
 
-    # Surface cooling Jᵇᴮᶜ stronger than the sun Jʳ: the column loses buoyancy on net and convects, Jᵇ > 0
-    Jᵇᴮᶜ, Jʳ = 5e-8, 2e-8
-    Jᵇ = Jᵇᴮᶜ - Jʳ
+    # Fluxes positive upward: surface cooling Jᵇᴮᶜ > 0 stronger than the sun Jʳ < 0, so the column loses buoyancy on net, Jᵇ > 0
+    Jᵇᴮᶜ, Jʳ = 5e-8, -2e-8
+    Jᵇ = Jᵇᴮᶜ + Jʳ
     Jᵇᵋ = 1e-11
     grid = RectilinearGrid(size = 100, z = (-500, 0), topology = (Flat, Flat, Bounded))
 
@@ -87,9 +88,9 @@ end
 
     @testset "Convective layer depth" begin
         # A single band, and two bands with the red one absorbed in the top meter under a sun that nearly offsets the cooling
-        for (R, cooling) in ((SingleBandRadiation(Jʳ, 1 / 10), Jᵇᴮᶜ), (TwoBandRadiation(1.41e-7, 0.58, 1 / 0.35, 1 / 23), 1.44e-7))
+        for (R, cooling) in ((SingleBandRadiation(Jʳ, 1 / 10), Jᵇᴮᶜ), (TwoBandRadiation(-1.41e-7, 0.58, 1 / 0.35, 1 / 23), 1.44e-7))
             sun = R.surface_buoyancy_flux
-            net = cooling - sun
+            net = cooling + sun
 
             for depth in (0.1, 2, 10, 50, 200, 1000)
                 w★³ = convective_buoyancy_production(1, 1, grid, R, depth, net, sun) + depth * Jᵇᵋ
@@ -108,11 +109,11 @@ end
             @test Array(interior(dark.tracers.e)) ≈ Array(interior(stock.tracers.e)) rtol = 1e-10
 
             # Cooled on net, and warmed on net by a sun stronger than the cooling
-            for (sun, cooling) in ((Jʳ, Jᵇᴮᶜ), (Jᵇᴮᶜ, Jʳ))
+            for (sun, cooling) in ((Jʳ, Jᵇᴮᶜ), (-Jᵇᴮᶜ, -Jʳ))
                 sunny = sunny_column(arch, SingleBandRadiation(sun, 1 / 10); Jᵇᴮᶜ = cooling)
                 @test all(isfinite, Array(interior(sunny.tracers.e)))
                 @test Array(interior(sunny.closure_fields.Jʳ))[1] ≈ sun
-                @test Array(interior(sunny.closure_fields.Jᵇ))[1] ≈ cooling - sun
+                @test Array(interior(sunny.closure_fields.Jᵇ))[1] ≈ cooling + sun
             end
         end
     end
