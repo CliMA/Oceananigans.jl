@@ -231,13 +231,10 @@ end
     launch!(architecture(grid), grid, :xyz,
             _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
-    @inbounds c_forcing = model.forcing[tracer_name]
-
-    # The advecting velocities must match the ones used in the tendency, so that an adaptive-implicit
-    # vertical advection scheme splits the flux of the *total* velocity between its two halves.
-    advecting_velocities = tracer_advecting_velocities(model.transport_velocities, closure, model.closure_fields,
-                                                       model.biogeochemistry, c_forcing, Val(tracer_name))
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
 
     implicit_step!(c,
                    model.timestepper.implicit_solver,
@@ -248,7 +245,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   advecting_velocities)
+                   c_velocities)
     return nothing
 end
 

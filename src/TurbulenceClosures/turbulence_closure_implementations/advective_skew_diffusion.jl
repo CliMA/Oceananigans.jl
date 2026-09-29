@@ -67,7 +67,8 @@ end
 # Isopycnal slope, floored and switched off in unstable stratification exactly like the
 # slope entering the isopycnal rotation tensor of the diffusive formulation.
 @inline function isopycnal_slope(bh, bz, ∂h_z, grid, slope_model)
-    bz = max(bz, slope_model.minimum_bz)
+    FT = eltype(grid)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
     return ifelse(bz <= 0, zero(grid), -bh / bz) + ∂h_z
 end
 
