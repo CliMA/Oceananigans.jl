@@ -35,7 +35,7 @@
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Coriolis: CDScheme
+using Oceananigans.Coriolis: DualGridScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
 using Oceananigans.Operators: Az
@@ -326,10 +326,10 @@ end
 coriolis_title(rotation_rate) = "f = $(round(Int, 2rotation_rate / Ω))Ω sin φ"
 
 rotation_rates = (Ω, 2Ω)
-filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate, scheme=CDScheme(grid)), @sprintf("omega_%d", rotation_rate / Ω))
+filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate, scheme=DualGridScheme(grid)), @sprintf("omega_%d", rotation_rate / Ω))
                  for rotation_rate in rotation_rates)
 
-f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=CDScheme(grid)), "f_plane")
+f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=DualGridScheme(grid)), "f_plane")
 
 # ## Gyre transports
 #
