@@ -54,20 +54,20 @@ function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::
     # `SV` and `ST` force specializing on the closures, which are only passed through: otherwise,
     # when this function is not inlined, they are boxed and the calls below are dispatched dynamically
     implicit_advecting_velocities(model)
-    step_velocities!(model, substep_velocity!, implicit_Δt, Val(keys(model.velocities)))
-    step_tracers!(model, substep_tracer!, implicit_Δt, Val(keys(model.tracers)))
+    step_velocities!(model, substep_velocity!, implicit_Δt)
+    step_tracers!(model, substep_tracer!, implicit_Δt)
     return nothing
 end
 
-function step_velocities!(model, substep_velocity!::SV, implicit_Δt, names::Val) where SV
-    foreach_name(names) do _, val_name
+function step_velocities!(model, substep_velocity!::SV, implicit_Δt) where SV
+    foreach_name(model.velocities) do _, val_name
         step_velocity!(model, substep_velocity!, implicit_Δt, val_name)
     end
     return nothing
 end
 
-function step_tracers!(model, substep_tracer!::ST, implicit_Δt, names::Val) where ST
-    foreach_name(names) do val_tracer_index, val_name
+function step_tracers!(model, substep_tracer!::ST, implicit_Δt) where ST
+    foreach_name(model.tracers) do val_tracer_index, val_name
         step_tracer!(model, substep_tracer!, implicit_Δt, val_tracer_index, val_name)
     end
     return nothing
