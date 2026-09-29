@@ -140,6 +140,18 @@ Keyword Arguments
     ```
     See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
+!!! info "Zipper and fold line"
+    The zipper and the fold line are two distinct objects. The [`Zipper`](@ref) is the north boundary condition:
+    its pivot (`UPivot`, `TPivot` or `FPivot`) sets where the two north singularities sit and how columns are
+    mirrored across them when the halos are filled. The fold line is the row that the fold maps onto itself, and
+    its location is set by `fold_topology`: the `Center` row `j = Ny` for `RightCenterFolded`, the `Face` row
+    `j = Ny + 1` for `RightFaceFolded`. Each pivot requires one fold topology: `FPivot` requires `RightFaceFolded`,
+    while `UPivot` and `TPivot` require `RightCenterFolded`. `UPivot` and `TPivot` share the same fold line and
+    differ only in the halo-filling kernels.
+
+    Besides filling the halos, the zipper reconciles the fold line: it overwrites the redundant half of the
+    fold-line row with the mirror image of the other half.
+
 !!! info "North boundary condition"
     The north boundary of a tripolar grid is topologically required to be a
     [`Zipper`](@ref) fold. Supplying any other north boundary condition (other than a
