@@ -212,13 +212,11 @@ end
 @inline ϵy⁻⁺(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * stably_stratified(i, j, k+1, grid, b, C) * tapering_factor(zero(grid), Sy⁻⁺(i, j, k, grid, b, C), sl)
 @inline ϵy⁻⁻(i, j, k, grid, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * stably_stratified(i, j, k,   grid, b, C) * tapering_factor(zero(grid), Sy⁻⁻(i, j, k, grid, b, C), sl)
 
-@inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure, clock, C) =
-    (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C),
-     κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_skew,      clock, C))
+@inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure, clock, C) = (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C),
+                                                           κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_skew,      clock, C))
 
 # The eddy-induced velocity already carries the skew flux
-@inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure::SkewAdvectionISSD, clock, C) =
-    (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C), zero(grid))
+@inline κˢ_κᴬᶜᶜᶜ(i, j, k, grid, loc, closure::SkewAdvectionISSD, clock, C) = (κᶜᶜᶜ(i, j, k, grid, loc, closure.κ_symmetric, clock, C), zero(grid))
 
 # Triad diagram key
 # =================
