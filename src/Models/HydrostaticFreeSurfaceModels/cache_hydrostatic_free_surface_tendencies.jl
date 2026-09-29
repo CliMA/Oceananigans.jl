@@ -1,6 +1,5 @@
 using KernelAbstractions: @index, @kernel
 using Oceananigans: prognostic_fields
-using Oceananigans.Coriolis: cache_coriolis_fields!
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
 
@@ -100,7 +99,6 @@ are cached directly without modification.
 """
 function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
     cache_current_fields!(model, Val(keys(prognostic_fields(model))))
-    cache_coriolis_fields!(model.coriolis)
     return nothing
 end
 
