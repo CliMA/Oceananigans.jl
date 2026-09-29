@@ -93,7 +93,7 @@ end
 
 # Convenience outer constructor: splat arguments into a tuple.
 # T defaults to eltype(grid) via the inner constructor.
-function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:,:,:)) where {LX, LY, LZ}
+function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:, :, :)) where {LX, LY, LZ}
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...); indices)
 end
 
