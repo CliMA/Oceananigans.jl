@@ -50,7 +50,9 @@ Advance the velocities of `model` with `substep_velocity!(u, Gⁿ, G⁻)` and it
 `substep_tracer!(c, Gⁿ, G⁻)`, then apply implicit vertical diffusion over `implicit_Δt`.
 The recursions over `Val`-wrapped field names keep each launch type stable.
 """
-function step_prognostic_fields!(model, substep_velocity!, substep_tracer!, implicit_Δt)
+function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::ST, implicit_Δt) where {SV, ST}
+    # `SV` and `ST` force specializing on the closures, which are only passed through: otherwise,
+    # when this function is not inlined, they are boxed and the calls below are dispatched dynamically
     implicit_advecting_velocities(model)
     step_velocities!(model, substep_velocity!, implicit_Δt, Val(keys(model.velocities)))
     step_tracers!(model, substep_tracer!, implicit_Δt, Val(1), Val(keys(model.tracers)))
@@ -68,7 +70,6 @@ end
     Gⁿ = model.timestepper.Gⁿ[name]
     G⁻ = model.timestepper.G⁻[name]
     substep_velocity!(u, Gⁿ, G⁻)
-    mask_immersed_field!(u)
 
     implicit_step!(u,
                    model.timestepper.implicit_solver,
