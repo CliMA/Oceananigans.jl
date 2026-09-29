@@ -32,10 +32,10 @@ struct DualGridScheme{D, S, FT}
 end
 
 function DualGridScheme(grid; relaxation_time = 10 * 86400)
-    xface_velocity_boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :u)
-    yface_velocity_boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :v)
-    velocity_deviations, tendencies, timestepper_cache = Tuple((u = YFaceField(grid; boundary_conditions=yface_velocity_boundary_conditions),
-                                                                v = XFaceField(grid; boundary_conditions=xface_velocity_boundary_conditions)) for _ in 1:3)
+    vbcs = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :u)
+    ubcs = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :v)
+    velocity_deviations, tendencies, timestepper_cache = Tuple((u = YFaceField(grid; boundary_conditions=ubcs),
+                                                                v = XFaceField(grid; boundary_conditions=vbcs)) for _ in 1:3)
 
     relaxation_rate = convert(eltype(grid), 1 / relaxation_time)
 
