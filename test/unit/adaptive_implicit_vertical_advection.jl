@@ -437,3 +437,48 @@ end
         end
     end
 end
+
+struct SinkingParticles{W} <: Oceananigans.Biogeochemistry.AbstractBiogeochemistry
+    sinking_velocity :: W
+end
+
+Adapt.adapt_structure(to, bgc::SinkingParticles) = SinkingParticles(Adapt.adapt(to, bgc.sinking_velocity))
+Oceananigans.Biogeochemistry.required_biogeochemical_tracers(::SinkingParticles) = (:D,)
+Oceananigans.Biogeochemistry.biogeochemical_drift_velocity(bgc::SinkingParticles, ::Val{:D}) = bgc.sinking_velocity
+
+@testset "AIVA carries the biogeochemical drift velocity through the implicit solve" begin
+    speed = 100 / day
+    Δt = 0.4day # sinking Courant number 4, so most of the flux goes through the implicit part
+    nsteps = 3
+
+    for arch in archs, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        grid = RectilinearGrid(arch; size=40, z=(-400, 0), topology=(Flat, Flat, Bounded))
+
+        # w = 0 on the top and bottom faces keeps the sinking tracer inside the domain
+        w = ZFaceField(grid)
+        set!(w, z -> ifelse((z == 0) | (z == -400), 0, -speed))
+        biogeochemistry = SinkingParticles((u=Oceananigans.Fields.ZeroField(), v=Oceananigans.Fields.ZeroField(), w))
+
+        tracer_advection = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+        model = HydrostaticFreeSurfaceModel(grid; biogeochemistry, timestepper, tracer_advection,
+                                            momentum_advection=nothing, free_surface=nothing)
+
+        set!(model, D = z -> exp(-(z + 100)^2 / 800))
+
+        z = znodes(grid, Center())
+        center_of_mass(D) = sum(z .* D) / sum(D)
+        D₀ = Array(interior(model.tracers.D, 1, 1, :))
+
+        for _ in 1:nsteps
+            time_step!(model, Δt)
+        end
+
+        D = Array(interior(model.tracers.D, 1, 1, :))
+        descent = center_of_mass(D₀) - center_of_mass(D)
+
+        @testset "Sinking tracer [$(typeof(arch)), $timestepper]" begin
+            @test sum(D) ≈ sum(D₀) rtol=1e-12
+            @test descent ≈ speed * Δt * nsteps rtol=0.05
+        end
+    end
+end
