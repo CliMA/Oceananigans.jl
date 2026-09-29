@@ -109,8 +109,9 @@ export
     # Output writers
     NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
-    PrecedingIterations,
+    PrecedingIterations, TimeOffset,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,

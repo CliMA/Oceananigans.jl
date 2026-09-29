@@ -214,13 +214,14 @@ end
 end
 
 @inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
-
-    bz = max(bz, slope_model.minimum_bz)
+    FT = eltype(grid)
+    Sₘ = convert(FT, slope_limiter.max_slope)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
 
     Sx = - bx / bz + ∂x_z
     Sy = - by / bz + ∂y_z
 
-    return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
+    return ifelse(bz <= 0, zero(grid), min(one(grid), Sₘ^2 / (Sx^2 + Sy^2)))
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
