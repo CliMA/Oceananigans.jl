@@ -83,12 +83,8 @@ end
 function ssp_euler_substep_velocities!(velocities, model, Δt)
     ssp_euler_substep_velocity!(velocities, model, Δt, Val(:u))
     ssp_euler_substep_velocity!(velocities, model, Δt, Val(:v))
-
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
-
     return nothing
 end
 
