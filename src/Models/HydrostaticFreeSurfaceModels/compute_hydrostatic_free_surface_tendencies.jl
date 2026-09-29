@@ -4,7 +4,9 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Biogeochemistry: update_tendencies!
+using Oceananigans.Biogeochemistry: update_tendencies!, tendency_biogeochemistry,
+                                    separate_transition_tracers, add_biogeochemical_transitions!,
+                                    biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Utils: get_active_cells_map
@@ -47,9 +49,10 @@ Compute tendencies for all tracer fields.
 This function:
 1. Computes interior tracer tendencies (advection, diffusion, forcing, biogeochemistry sources)
 2. Completes halo communication and computes buffer tendencies for distributed grids
-3. Computes flux boundary condition contributions
-4. Scales tendencies by the grid stretching factor for z-star coordinates
-5. Updates biogeochemistry tendencies
+3. Adds biogeochemical transitions computed in separate kernels (`separate_transition_tracers`)
+4. Computes flux boundary condition contributions
+5. Scales tendencies by the grid stretching factor for z-star coordinates
+6. Updates biogeochemistry tendencies
 
 Tracers are advected using `model.transport_velocities` which may differ from `model.velocities`
 when using split-explicit free surfaces (transport velocities include barotropic correction).
@@ -66,6 +69,18 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
+
+    # Transitions of `separate_transition_tracers` are added in place after all interior and buffer
+    # tendencies are computed (buffer regions overlap at corners, so adding inside them would double count)
+    # and before the flux boundary conditions and stretching factor are applied.
+    if !isempty(separate_transition_tracers(model.biogeochemistry))
+        model_fields = merge(hydrostatic_fields(model.transport_velocities, model.free_surface, model.tracers),
+                             model.auxiliary_fields,
+                             biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+        add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry, grid, model.clock, model_fields)
+    end
+
     compute_tracer_flux_bcs!(model)
 
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
@@ -123,7 +138,7 @@ end
             model.closure,
             c_immersed_bc,
             model.buoyancy,
-            model.biogeochemistry,
+            tendency_biogeochemistry(model.biogeochemistry, Val(tracer_name)),
             model.transport_velocities,
             model.free_surface,
             model.tracers,
