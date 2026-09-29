@@ -24,8 +24,8 @@ Keyword arguments
 - `relaxation_time`: time scale `τ` [s] over which the D-grid velocities relax toward the averaged C-grid velocities.
   Default: 10 days. `Inf` disables the relaxation.
 """
-struct DualGridScheme{D, S, FT}
-    velocity_deviations :: D
+struct DualGridScheme{S, FT}
+    velocity_deviations :: S
     tendencies :: S
     timestepper_cache :: S
     relaxation_rate :: FT
