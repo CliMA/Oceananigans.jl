@@ -209,15 +209,9 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
-    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
-
-@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
-    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 
@@ -234,7 +228,11 @@ end
     launch!(architecture(grid), grid, :xyz,
             _rk_substep_tracer_field!, c, grid, Δt, Gⁿ, Ψ⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(c,
                    model.timestepper.implicit_solver,
                    closure,
@@ -244,7 +242,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
     return nothing
 end
 

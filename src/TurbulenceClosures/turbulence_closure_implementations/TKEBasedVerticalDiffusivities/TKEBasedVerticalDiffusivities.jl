@@ -26,6 +26,7 @@ using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, Ve
 using Oceananigans.Utils: Utils, launch!, prettysummary, get_active_cells_map, named_tuple, f32_safe_cbrt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.TimeSteppers: reset!
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
