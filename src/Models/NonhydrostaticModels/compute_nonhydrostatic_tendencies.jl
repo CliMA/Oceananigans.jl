@@ -81,7 +81,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
             active_cells_map, exclude_periphery)
 
-    foreach_name(Val(propertynames(tracers))) do val_tracer_index, val_tracer_name
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
         launch_tracer_tendency!(model, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
     end
 

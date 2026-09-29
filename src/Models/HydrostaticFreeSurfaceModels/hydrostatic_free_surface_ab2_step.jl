@@ -219,7 +219,7 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 as they are handled separately. Implicit vertical diffusion is applied if configured.
 """
 function ab2_step_tracers!(tracers, model, Δt, χ)
-    foreach_name(Val(propertynames(tracers))) do val_tracer_index, val_tracer_name
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
     return nothing

@@ -99,7 +99,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     arch = model.architecture
     grid = model.grid
 
-    foreach_name(Val(propertynames(model.tracers))) do val_tracer_index, val_tracer_name
+    foreach_name(model.tracers) do val_tracer_index, val_tracer_name
         launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
     end
 

@@ -67,6 +67,20 @@ foreach_name_allocations(counts, weights, names) =
         foreach_name_allocations(counts, weights, names)
         @test foreach_name_allocations(counts, weights, names) == 0
         @test counts == 2 .* [1, 2, 3, 4]
+
+        # A `NamedTuple` is iterated over its property names
+        empty!(visited)
+        @test foreach_name((n, name) -> record_name!(visited, n, name), (a=1, b=2, c=3, d=4)) === nothing
+        @test visited == [(1, :a), (2, :b), (3, :c), (4, :d)]
+
+        empty!(visited)
+        @test foreach_name((n, name) -> record_name!(visited, n, name), NamedTuple()) === nothing
+        @test isempty(visited)
+
+        counts .= 0
+        foreach_name_allocations(counts, weights, weights)
+        @test foreach_name_allocations(counts, weights, weights) == 0
+        @test counts == 2 .* [1, 2, 3, 4]
     end
 
     @testset "TabulatedFunction" begin
