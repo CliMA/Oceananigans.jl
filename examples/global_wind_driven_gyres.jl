@@ -21,14 +21,15 @@
 #
 # ## Install dependencies
 #
-# Besides Oceananigans, this example needs NCDatasets to read the bathymetry and CairoMakie
-# to make the plots. To run on a GPU you also need the Julia package for your GPU: CUDA for
-# NVIDIA, Metal for Apple silicon, or AMDGPU for AMD. On a machine without a GPU, skip that
-# package and the example runs on the CPU.
+# Besides Oceananigans, this example needs NCDatasets to read the bathymetry, CairoMakie
+# to make the plots, and ConservativeRegridding to regrid the zoomed maps. To run on a GPU
+# you also need the Julia package for your GPU: CUDA for NVIDIA, Metal for Apple silicon,
+# or AMDGPU for AMD. On a machine without a GPU, skip that package and the example runs
+# on the CPU.
 #
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, NCDatasets, CairoMakie"
+# pkg"add Oceananigans, NCDatasets, CairoMakie, ConservativeRegridding"
 # pkg"add CUDA" # or Metal, or AMDGPU
 # ```
 
@@ -42,6 +43,7 @@ using NCDatasets
 using Downloads
 using Printf
 using CairoMakie
+using ConservativeRegridding
 
 # We run on the GPU if there is one: Metal on Apple silicon, CUDA if an NVIDIA driver is
 # installed, AMDGPU if a ROCm driver is installed, and the CPU otherwise.
@@ -136,9 +138,9 @@ land = depth .≤ 0
 
 longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
-map_axis(figure_position; title="") =
+map_axis(figure_position; title="", limits=((70, 430), (-80, 70)), xticks=longitude_ticks) =
     Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
-         aspect=DataAspect(), limits=((70, 430), (-80, 70)), xticks=longitude_ticks)
+         aspect=DataAspect(), limits, xticks)
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title="Ocean depth")
@@ -449,40 +451,74 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 #
 # ## Currents and temperature
 #
-# Finally we animate the surface speed and the departure of the surface temperature from
-# its restoring profile, ``T - T^\star``, for the three Coriolis parameters. With
-# ``f = 2Ω \sin φ`` the western boundary currents appear within the first weeks and then
-# sharpen and speed up at the surface over the following years; with ``f = 4Ω \sin φ``
-# they are half as fast. On the ``f``-plane there are no boundary currents at all: the
-# whole gyre circulates at a few tens of centimeters per second. The temperature spends
-# its first two months relaxing from the uniform initial 10 °C toward ``T^\star``. After
-# that it stays within a few degrees of ``T^\star`` on the ``β``-planes, cooler along the
-# equator where the Ekman divergence brings deeper water to the surface and warmer under
-# the subtropical convergence and along the western boundaries, while the fast ``f``-plane
-# gyres stir it into lobes several degrees warm and cold.
+# Finally we animate the global surface speed and, zoomed on the Gulf Stream and the
+# Kuroshio, the departure of the surface temperature from its restoring profile,
+# ``T - T^\star``, for the three Coriolis parameters. With ``f = 2Ω \sin φ`` the western
+# boundary currents appear within the first weeks and then sharpen and speed up at the
+# surface over the following years; with ``f = 4Ω \sin φ`` they are half as fast. On the
+# ``f``-plane there are no boundary currents at all: the whole gyre circulates at a few
+# tens of centimeters per second. The temperature spends its first two months relaxing
+# from the uniform initial 10 °C toward ``T^\star``. After that, on the ``β``-planes, the
+# boundary currents carry a tongue of water a degree or two warmer than ``T^\star``
+# poleward along the coast, while the fast ``f``-plane gyres stir the whole basin into
+# lobes several degrees warm and cold.
 
 restoring_profile = restoring_temperature.(φ)
 
+gulf_stream_view = (limits = ((260, 320), (15, 55)), xticks = (270:15:315, ["90°W", "75°W", "60°W", "45°W"]))
+kuroshio_view = (limits = ((115, 175), (15, 55)), xticks = (120:15:165, ["120°E", "135°E", "150°E", "165°E"]))
+
+# For the zoomed maps we regrid ``T - T^\star`` conservatively from the tripolar grid onto
+# ½° latitude-longitude grids with ConservativeRegridding. A `Regridder` computes the
+# overlap areas between the cells of two grids once, and `regrid!` then maps any field on
+# one grid onto the other. We store the regridded snapshots in a `FieldTimeSeries` on
+# each latitude-longitude grid and draw them with `heatmap!`, one flat color per cell.
+
+tripolar_grid = TripolarGrid(CPU(), Float64; size=(Nx, Ny, 1), z=(0, 1)) ## the regridder needs Float64 coordinates
+
+latitude_longitude_grid((longitude, latitude)) =
+    LatitudeLongitudeGrid(CPU(), Float64; longitude, latitude, topology=(Bounded, Bounded, Flat),
+                          size=(2 * (longitude[2] - longitude[1]), 2 * (latitude[2] - latitude[1])))
+
+regions = ("Gulf Stream" => gulf_stream_view, "Kuroshio" => kuroshio_view)
+regional_grids = [latitude_longitude_grid(zoom.limits) for (_, zoom) in regions]
+regridders = [ConservativeRegridding.Regridder(grid, tripolar_grid) for grid in regional_grids]
+
+function regrid_temperature_anomaly(temperatures)
+    anomaly = Field{Center, Center, Nothing}(tripolar_grid)
+    regional_anomalies = [FieldTimeSeries{Center, Center, Nothing}(grid, temperatures.times) for grid in regional_grids]
+
+    for n in eachindex(temperatures.times)
+        set!(anomaly, ifelse.(land, NaN, interior(temperatures[n], :, :, 1) .- restoring_profile))
+        for (anomalies, regridder) in zip(regional_anomalies, regridders)
+            ConservativeRegridding.regrid!(anomalies[n], regridder, anomaly)
+        end
+    end
+
+    return regional_anomalies
+end
+
 n = Observable(1)
 
-fig = Figure(size=(1400, 1000))
-Label(fig[1, 1:4], @lift(@sprintf("After %.1f years", times[$n] / year)); fontsize=22, tellwidth=false)
+fig = Figure(size=(1800, 1000))
+Label(fig[1, 1:5], @lift(@sprintf("After %.1f years", times[$n] / year)); fontsize=22, tellwidth=false)
 
 for (row, (filename, title, _)) in enumerate(experiments)
     speeds = FieldTimeSeries(filename, "surface_speed")
-    temperatures = FieldTimeSeries(filename, "surface_temperature")
     speed = @lift ifelse.(land, NaN, interior(speeds[$n], :, :, 1))
-    anomaly = @lift ifelse.(land, NaN, interior(temperatures[$n], :, :, 1) .- restoring_profile)
 
     ax = map_axis(fig[row + 1, 1]; title="Surface speed, " * title)
     sf = surface!(ax, λ, φ, 0 * λ; color=speed, colormap=:magma, colorrange=(0, 0.3),
                   shading=NoShading, nan_color=:gray)
     row == 1 && Colorbar(fig[2:4, 2], sf, label="Speed [m s⁻¹]")
 
-    ax = map_axis(fig[row + 1, 3]; title="T − T*, " * title)
-    sf = surface!(ax, λ, φ, 0 * λ; color=anomaly, colormap=:balance, colorrange=(-2, 2),
-                  shading=NoShading, nan_color=:gray)
-    row == 1 && Colorbar(fig[2:4, 4], sf, label="T − T* [°C]")
+    regional_anomalies = regrid_temperature_anomaly(FieldTimeSeries(filename, "surface_temperature"))
+
+    for (column, ((region, zoom), anomalies)) in enumerate(zip(regions, regional_anomalies))
+        ax = map_axis(fig[row + 1, column + 2]; title="T − T*, $region, " * title, zoom...)
+        sf = heatmap!(ax, @lift(anomalies[$n]); colormap=:balance, colorrange=(-2, 2), nan_color=:gray)
+        row == 1 && column == 2 && Colorbar(fig[2:4, 5], sf, label="T − T* [°C]")
+    end
 end
 
 CairoMakie.record(fig, "global_wind_driven_gyres.mp4", 1:2:length(times), framerate=12) do frame
