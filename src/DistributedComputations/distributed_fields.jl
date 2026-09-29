@@ -1,5 +1,5 @@
 using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, instantiated_location
+using Oceananigans.Fields: Fields, validate_field_data, indices, validate_boundary_conditions, instantiated_location
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using GPUArraysCore: @allowscalar
 
@@ -15,7 +15,7 @@ using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, set!, conditional_length, dot!
+import Oceananigans.Fields: Field, set!, conditional_length
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
@@ -268,7 +268,7 @@ end
 end
 
 # The local dot products are summed across ranks on the host, so the result is copied back into `r`
-dot!(r, u::DistributedField, v::DistributedField; condition=nothing) = fill!(r, dot(u, v; condition))
+Fields.dot!(r, u::DistributedField, v::DistributedField; condition=nothing) = fill!(r, dot(u, v; condition))
 
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)

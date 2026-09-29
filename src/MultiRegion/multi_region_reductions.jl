@@ -1,3 +1,4 @@
+using Oceananigans.Fields: Fields
 using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra, dot
 
