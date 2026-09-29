@@ -2,16 +2,16 @@
 ##### FieldTimeSeries reader for Zarr stores
 #####
 
+using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, cpu_architecture, architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
-using Oceananigans.Fields: instantiated_location, set!, location, indices, interior
+using Oceananigans.Fields: Fields, Field, set!, location, indices, interior
 using Oceananigans.OutputReaders:
+    OutputReaders,
+    FieldTimeSeries,
     InMemoryFTS,
     InMemory, Linear, UnspecifiedBoundaryConditions,
     new_data, time_indices, time_indices_length, ZarrPath
-
-import Oceananigans.OutputReaders: set_from_zarr!, FieldTimeSeries
-import Oceananigans.Fields: Field
 
 #####
 ##### FieldTimeSeries from Zarr
@@ -31,6 +31,7 @@ using Oceananigans.Grids: Center, Face
 
 # Parse a location string like "Center" or "Face" back to a type.
 function _parse_location(s::AbstractString)
+    s = last(split(s, '.')) # tolerate module-qualified names
     s == "Nothing" && return Nothing
     s == "Center"  && return Center
     s == "Face"    && return Face
@@ -48,16 +49,16 @@ function _parse_index(s::AbstractString)
     end
 end
 
-function FieldTimeSeries(typed_path::ZarrPath, name::String;
-                         backend = InMemory(),
-                         architecture = CPU(),
-                         grid = nothing,
-                         location = nothing,
-                         boundary_conditions = UnspecifiedBoundaryConditions(),
-                         time_indexing = Linear(),
-                         iterations = nothing,
-                         times = nothing,
-                         reader_kw = NamedTuple())
+function OutputReaders.FieldTimeSeries(typed_path::ZarrPath, name::String;
+                                       backend = InMemory(),
+                                       architecture = CPU(),
+                                       grid = nothing,
+                                       location = nothing,
+                                       boundary_conditions = UnspecifiedBoundaryConditions(),
+                                       time_indexing = Linear(),
+                                       iterations = nothing,
+                                       times = nothing,
+                                       reader_kw = NamedTuple())
 
     path  = typed_path.path
     group = _open_zarr_for_read(path)
@@ -100,7 +101,7 @@ end
 ##### set! / set_from_zarr!
 #####
 
-function set_from_zarr!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
+function OutputReaders.set_from_zarr!(fts::InMemoryFTS, path::String, name; warn_missing_data=true)
     group = _open_zarr_for_read(path)
     arr   = group[name]
     file_times = group["time"][:]
@@ -135,11 +136,11 @@ end
 # Load a single timestep from a Zarr array into a Field. The on-disk data may have been
 # saved with halos (`with_halos=true`) or interior-only (`with_halos=false`). Distinguish
 # by shape and copy into either the parent array or interior view.
-function Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
-               grid,
-               architecture = CPU(),
-               indices = (:, :, :),
-               boundary_conditions = nothing)
+function Fields.Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
+                      grid,
+                      architecture = CPU(),
+                      indices = (:, :, :),
+                      boundary_conditions = nothing)
 
     nd = ndims(arr)
     time_slice = (ntuple(_ -> :, nd - 1)..., time_index)
