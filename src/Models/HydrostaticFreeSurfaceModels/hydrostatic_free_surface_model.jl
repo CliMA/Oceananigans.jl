@@ -3,7 +3,6 @@ using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.Coriolis: AbstractRotation, CDScheme, reconcile_coriolis!
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
@@ -181,10 +180,6 @@ function HydrostaticFreeSurfaceModel(grid;
         You can also construct your own TimeStepper and pass it to the constructor.
         """
         throw(ArgumentError(msg))
-    end
-
-    if coriolis isa AbstractRotation{<:CDScheme} && !(timestepper_name(timestepper) isa SplitRungeKutta)
-        throw(ArgumentError("CDScheme requires a SplitRungeKutta timestepper, got timestepper = $timestepper."))
     end
 
     if arch isa Distributed{ReactantState} && momentum_advection isa WENOVectorInvariant && weno_order(momentum_advection.vertical_advection_scheme) == 3
@@ -438,7 +433,6 @@ function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
-    reconcile_coriolis!(model.coriolis, model.velocities)
     return nothing
 end
 
