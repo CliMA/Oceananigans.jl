@@ -1,7 +1,7 @@
 using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
 """
-    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:,:,:))
+    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:, :, :))
 
 Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with `arguments`.
 
