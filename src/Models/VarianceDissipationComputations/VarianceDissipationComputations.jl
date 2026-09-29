@@ -17,7 +17,10 @@ using Oceananigans.Grids: architecture, AbstractGrid
 using Oceananigans.Operators
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
-                                 SplitRungeKuttaTimeStepper
+                                 SplitRungeKuttaTimeStepper,
+                                 SSPRungeKuttaTimeStepper,
+                                 MultiStageTimeStepper,
+                                 ssp_quadrature_weights
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
@@ -70,8 +73,8 @@ Keyword Arguments
 - `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
 
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
-    and a [`SplitRungeKuttaTimeStepper`](@ref).
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref),
+    a [`SplitRungeKuttaTimeStepper`](@ref) and an [`SSPRungeKuttaTimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),
@@ -85,7 +88,11 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
 
-    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
+    # σ at the stage the fluxes are cached; it stays at unity for the SSP sums, which are not σ-weighted
+    specific_thickness = (x = Field{Face, Center, Nothing}(grid), y = Field{Center, Face, Nothing}(grid), z = Field{Center, Center, Nothing}(grid))
+    foreach(σ -> fill!(parent(σ), 1), specific_thickness)
+
+    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ, specific_thickness)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 

@@ -17,6 +17,7 @@ function cache_fluxes!(dissipation, model, tracer_name)
     stage = model.clock.stage
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
+    store_specific_thickness!(dissipation.previous_state.specific_thickness, grid, params, timestepper, stage)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
@@ -39,7 +40,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    U = model.velocities
+    U = model isa HydrostaticFreeSurfaceModel ? model.transport_velocities : model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
     timestepper = model.timestepper
@@ -71,7 +72,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa SplitRungeKuttaTimeStepper) && (stage == timestepper.Nstages)
+    elseif (timestepper isa MultiStageTimeStepper) && (stage == timestepper.Nstages)
         parent(cⁿ⁻¹) .= parent(c)
     end
 
@@ -87,6 +88,19 @@ function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKu
     end
 end
 
+# Weight of the flux in the running sum Σₘ βₘ Fᵐ, and whether the sum is kept. Stage m ends on the state that stage
+# m+1 differentiates, and the last stage, whose sum is already assembled, seeds the next time step.
+@inline function ssp_accumulation_weights(ts::SSPRungeKuttaTimeStepper, stage, FT)
+    β = ssp_quadrature_weights(ts.coefficients)
+    last_stage = stage == ts.Nstages
+    return convert(FT, last_stage ? β[1] : β[stage+1]), convert(FT, !last_stage)
+end
+
+function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, advection, U, c)
+    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
+    launch!(architecture(grid), grid, params, _accumulate_ssp_advective_fluxes!, Fⁿ, grid, advection, U, c, β, keep)
+end
+
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
@@ -96,6 +110,11 @@ function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKut
     end
 end
 
+function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
+    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
+    launch!(architecture(grid), grid, params, _accumulate_ssp_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields, β, keep)
+end
+
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
@@ -103,6 +122,11 @@ function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTim
     if stage == ts.Nstages-1
         launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
     end
+end
+
+function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, U)
+    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
+    launch!(architecture(grid), grid, params, _accumulate_ssp_transport!, Uⁿ, grid, U, β, keep)
 end
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
@@ -124,4 +148,22 @@ end
     @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
     @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
     @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+end
+
+store_specific_thickness!(σ, grid, params, timestepper, stage) = nothing
+
+function store_specific_thickness!(σ, grid, params, ts::SplitRungeKuttaTimeStepper, stage)
+    if stage == ts.Nstages-1
+        launch!(architecture(grid), grid, params, _store_specific_thickness!, σ, grid)
+    end
+    return nothing
+end
+
+@kernel function _store_specific_thickness!(σ, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        σ.x[i, j, 1] = σⁿ(i, j, k, grid, f, c, c)
+        σ.y[i, j, 1] = σⁿ(i, j, k, grid, c, f, c)
+        σ.z[i, j, 1] = σⁿ(i, j, k, grid, c, c, f)
+    end
 end
