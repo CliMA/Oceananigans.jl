@@ -4,6 +4,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl")
 using Metal
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using Oceananigans.Fields: interpolate!
 
 Oceananigans.defaults.FloatType = Float32
 
@@ -218,4 +219,19 @@ end
 
     @test maximum(model.tracers.e) > 1f-6
     @test maximum(model.tracers.T) < 20
+end
+
+@testset "MetalGPU: interpolate! on LatitudeLongitudeGrid" begin
+    arch = GPU(Metal.MetalBackend())
+    source_grid = LatitudeLongitudeGrid(arch; size=(8, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
+    target_grid = LatitudeLongitudeGrid(arch; size=(6, 8, 1), longitude=(0, 360), latitude=(-60, 60), z=(0, 1))
+
+    source = CenterField(source_grid)
+    target = CenterField(target_grid)
+    expected = CenterField(target_grid)
+    set!(source, (λ, φ, z) -> φ)
+    set!(expected, (λ, φ, z) -> φ)
+
+    interpolate!(target, source)
+    @test Array(interior(target)) ≈ Array(interior(expected))
 end
