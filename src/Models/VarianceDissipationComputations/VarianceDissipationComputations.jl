@@ -18,7 +18,7 @@ using Oceananigans.Operators
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper,
-                                 SSPRungeKuttaTimeStepper,
+                                 SSPRungeKutta3TimeStepper,
                                  MultiStageTimeStepper,
                                  ssp_quadrature_weights
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
@@ -74,7 +74,7 @@ Keyword Arguments
 
 !!! compat "Time stepper compatibility"
     At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref),
-    a [`SplitRungeKuttaTimeStepper`](@ref) and an [`SSPRungeKuttaTimeStepper`](@ref).
+    a [`SplitRungeKuttaTimeStepper`](@ref) and an [`SSPRungeKutta3TimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),

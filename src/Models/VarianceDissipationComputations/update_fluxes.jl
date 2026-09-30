@@ -90,13 +90,13 @@ end
 
 # Weight of the flux in the running sum Σₘ βₘ Fᵐ, and whether the sum is kept. Stage m ends on the state that stage
 # m+1 differentiates, and the last stage, whose sum is already assembled, seeds the next time step.
-@inline function ssp_accumulation_weights(ts::SSPRungeKuttaTimeStepper, stage, FT)
+@inline function ssp_accumulation_weights(ts::SSPRungeKutta3TimeStepper, stage, FT)
     β = ssp_quadrature_weights(ts.coefficients)
     last_stage = stage == ts.Nstages
     return convert(FT, last_stage ? β[1] : β[stage+1]), convert(FT, !last_stage)
 end
 
-function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, advection, U, c)
+function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, advection, U, c)
     β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
     launch!(architecture(grid), grid, params, _accumulate_ssp_advective_fluxes!, Fⁿ, grid, advection, U, c, β, keep)
 end
@@ -110,7 +110,7 @@ function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKut
     end
 end
 
-function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
+function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
     β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
     launch!(architecture(grid), grid, params, _accumulate_ssp_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields, β, keep)
 end
@@ -124,7 +124,7 @@ function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTim
     end
 end
 
-function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SSPRungeKuttaTimeStepper, stage, U)
+function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SSPRungeKutta3TimeStepper, stage, U)
     β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
     launch!(architecture(grid), grid, params, _accumulate_ssp_transport!, Uⁿ, grid, U, β, keep)
 end

@@ -20,7 +20,7 @@ end
 # For AB2 and for an SSP stage, `transport_velocities` holds the prognostic velocities at `tⁿ` and at the stage input respectively
 @inline baseline_velocities(model, ::SplitRungeKuttaTimeStepper) = model.timestepper.Ψ⁻
 @inline baseline_velocities(model, ::QuasiAdamsBashforth2TimeStepper) = model.transport_velocities
-@inline baseline_velocities(model, ::SSPRungeKuttaTimeStepper) = model.transport_velocities
+@inline baseline_velocities(model, ::SSPRungeKutta3TimeStepper) = model.transport_velocities
 
 function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface, Δt)
     GUⁿ = model.timestepper.Gⁿ.U

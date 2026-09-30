@@ -2,7 +2,7 @@ using Oceananigans: fields
 using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper, MultiStageTimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper, MultiStageTimeStepper
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -159,14 +159,14 @@ const c = Center()
 
 # Split stages restart from the (σe)ⁿ cached in σe⁻, SSP stages advance the previous stage σ⁻ e
 @inline stage_start_turbulent_kinetic_energy(::SplitRungeKuttaTimeStepper, σe⁻) = σe⁻
-@inline stage_start_turbulent_kinetic_energy(::SSPRungeKuttaTimeStepper, σe⁻) = nothing
+@inline stage_start_turbulent_kinetic_energy(::SSPRungeKutta3TimeStepper, σe⁻) = nothing
 
 @inline stage_start_turbulent_kinetic_energy(i, j, k, grid, σe⁻, e) = @inbounds σe⁻[i, j, k]
 @inline stage_start_turbulent_kinetic_energy(i, j, k, grid, ::Nothing, e) = @inbounds σ⁻(i, j, k, grid, c, c, c) * e[i, j, k]
 
 blend_turbulent_kinetic_energy!(e, timestepper, σe⁻, arch, grid, stage, active_cells_map) = nothing
 
-function blend_turbulent_kinetic_energy!(e, timestepper::SSPRungeKuttaTimeStepper, σe⁻, arch, grid, stage, active_cells_map)
+function blend_turbulent_kinetic_energy!(e, timestepper::SSPRungeKutta3TimeStepper, σe⁻, arch, grid, stage, active_cells_map)
     FT = eltype(grid)
     a, b = timestepper.coefficients[stage]
     launch!(arch, grid, :xyz, _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b); active_cells_map)

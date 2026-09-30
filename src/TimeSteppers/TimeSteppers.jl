@@ -4,7 +4,7 @@ export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
-    SSPRungeKuttaTimeStepper,
+    SSPRungeKutta3TimeStepper,
     time_step!,
     Clock,
     convert_time,
@@ -68,7 +68,7 @@ include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
-include("ssp_runge_kutta.jl")
+include("ssp_runge_kutta_3.jl")
 
 """
 $(TYPEDSIGNATURES)
@@ -104,7 +104,7 @@ for stages in 2:5
               SplitRungeKuttaTimeStepper(args...; coefficients=$coefficients, kwargs...)
 end
 
-TimeStepper(::Val{:SSPRungeKutta3}, args...; kwargs...) = SSPRungeKuttaTimeStepper(args...; kwargs...)
+TimeStepper(::Val{:SSPRungeKutta3}, args...; kwargs...) = SSPRungeKutta3TimeStepper(args...; kwargs...)
 
 TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =
     SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)

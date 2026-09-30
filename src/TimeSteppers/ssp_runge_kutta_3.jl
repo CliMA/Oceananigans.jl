@@ -1,5 +1,5 @@
 """
-    SSPRungeKuttaTimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
+    SSPRungeKutta3TimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
 
 Hold the coefficients, tendencies and cached states of the three-stage strong-stability-preserving Runge-Kutta
 scheme, coupled to the barotropic mode as in [Lan et al. (2022)](@cite Lan2022).
@@ -14,7 +14,7 @@ Fields
 - `Ψᵐ⁻¹`: free-surface fields at the previous stage
 - `Ĝ`: stage-weighted barotropic slow forcing `Σₘ βₘ Ĝᵐ` of a split-explicit free surface
 """
-struct SSPRungeKuttaTimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
+struct SSPRungeKutta3TimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
     Nstages :: Int
     coefficients :: C
     Gⁿ :: TG
@@ -25,7 +25,7 @@ struct SSPRungeKuttaTimeStepper{C, TG, PF, TI, B, S} <: AbstractTimeStepper
 end
 
 """
-    SSPRungeKuttaTimeStepper(grid, prognostic_fields;
+    SSPRungeKutta3TimeStepper(grid, prognostic_fields;
                              implicit_solver = nothing,
                              Gⁿ = map(similar, prognostic_fields),
                              Ψ⁻ = map(similar, prognostic_fields))
@@ -36,7 +36,7 @@ Return the three-stage strong-stability-preserving Runge-Kutta time stepper in i
     Ψ²   = 3/4 Ψⁿ + 1/4 (Ψ¹ + Δt G(Ψ¹))
     Ψⁿ⁺¹ = 1/3 Ψⁿ + 2/3 (Ψ² + Δt G(Ψ²))
 """
-function SSPRungeKuttaTimeStepper(grid, prognostic_fields, args...;
+function SSPRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                   implicit_solver::TI = nothing,
                                   Gⁿ::TG = map(similar, prognostic_fields),
                                   Ψ⁻::PF = map(similar, prognostic_fields),
@@ -46,7 +46,7 @@ function SSPRungeKuttaTimeStepper(grid, prognostic_fields, args...;
     Ψᵐ⁻¹ = map(similar, haskey(Ψ⁻, :U) ? (; Ψ⁻.η, Ψ⁻.U, Ψ⁻.V) : haskey(Ψ⁻, :η) ? (; Ψ⁻.η) : NamedTuple())
     Ĝ = map(similar, haskey(Gⁿ, :U) ? (; Gⁿ.U, Gⁿ.V) : NamedTuple())
 
-    return SSPRungeKuttaTimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹, Ĝ)
+    return SSPRungeKutta3TimeStepper(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver, Ψᵐ⁻¹, Ĝ)
 end
 
 """
@@ -57,11 +57,11 @@ coefficients of stage `m` and of every later stage: `(1/6, 1/6, 2/3)` for the th
 """
 ssp_quadrature_weights(coefficients) = ntuple(m -> prod(coefficients[j][2] for j in m:length(coefficients)), length(coefficients))
 
-prognostic_state(::SSPRungeKuttaTimeStepper) = nothing
+prognostic_state(::SSPRungeKutta3TimeStepper) = nothing
 
-Base.summary(ts::SSPRungeKuttaTimeStepper) = "SSPRungeKuttaTimeStepper($(ts.Nstages) stages)"
+Base.summary(::SSPRungeKutta3TimeStepper) = "SSPRungeKutta3TimeStepper"
 
-function Base.show(io::IO, ts::SSPRungeKuttaTimeStepper)
+function Base.show(io::IO, ts::SSPRungeKutta3TimeStepper)
     print(io, summary(ts), "\n")
     print(io, "├── coefficients: ", ts.coefficients, "\n")
     print(io, "└── implicit_solver: ", summary(ts.implicit_solver))
@@ -73,7 +73,7 @@ $(TYPEDSIGNATURES)
 Step forward `model` one time step `Δt` with the strong-stability-preserving Runge-Kutta scheme: every stage
 advances the previous stage by `Δt` and blends the result with the state cached at `tⁿ`.
 """
-function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callbacks=[])
+function time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt; callbacks=[])
 
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
@@ -115,7 +115,7 @@ blended with the state cached at `tⁿ` by the Shu-Osher pair `(a, b)`. Implemen
 """
 function ssp_substep! end
 
-function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt, callbacks)
+function maybe_prepare_first_time_step!(model::AbstractModel{<:SSPRungeKutta3TimeStepper}, Δt, callbacks)
     if model.clock.iteration == 0
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt
@@ -135,4 +135,4 @@ end
     @inbounds field[i, j, k] = a * Ψ⁻[i, j, k] + b * field[i, j, k]
 end
 
-const MultiStageTimeStepper = Union{SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper}
+const MultiStageTimeStepper = Union{SplitRungeKuttaTimeStepper, SSPRungeKutta3TimeStepper}

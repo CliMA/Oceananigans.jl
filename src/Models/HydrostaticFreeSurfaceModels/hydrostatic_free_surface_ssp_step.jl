@@ -1,10 +1,10 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.TimeSteppers: SSPRungeKuttaTimeStepper, ssp_quadrature_weights, _ssp_euler_substep_field!, _ssp_blend_field!
+using Oceananigans.TimeSteppers: SSPRungeKutta3TimeStepper, ssp_quadrature_weights, _ssp_euler_substep_field!, _ssp_blend_field!
 
 import Oceananigans.TimeSteppers: ssp_substep!
 
-step_free_surface!(::ImplicitFreeSurface, model, ::SSPRungeKuttaTimeStepper, Δt) =
-    throw(ArgumentError("SSPRungeKuttaTimeStepper does not support ImplicitFreeSurface"))
+step_free_surface!(::ImplicitFreeSurface, model, ::SSPRungeKutta3TimeStepper, Δt) =
+    throw(ArgumentError("SSPRungeKutta3TimeStepper does not support ImplicitFreeSurface"))
 
 """
 $(TYPEDSIGNATURES)
