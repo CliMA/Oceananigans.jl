@@ -91,6 +91,8 @@ end
 @inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
+# TODO: use `fld(λ, 360)` once Oceananigans can use a Metal release with JuliaGPU/Metal.jl#975.
+# On Julia ≥ 1.12, `fld(::Float32, ::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#972.
 @inline find_λ_range(λ) = floor(λ / 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic

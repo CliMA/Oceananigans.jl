@@ -221,15 +221,6 @@ end
     @test maximum(model.tracers.T) < 20
 end
 
-@testset "MetalGPU: fld(::Float32, ::Float32)" begin
-    # On Julia ≥ 1.12, `div` and `fld` on Float32 compile to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#972.
-    # The fix, JuliaGPU/Metal.jl#975, needs GPUCompiler 2, which Enzyme and Reactant don't support yet.
-    # TODO once a Metal release with that fix is allowed: raise the Metal compat, write `find_λ_range(λ) = fld(λ, 360)`
-    # in src/Fields/interpolate.jl, and make this `@test_broken` a `@test`.
-    λ = MtlArray([-1f0, 359f0, 360f0])
-    @test_broken Array(fld.(λ, 360f0)) == [-1f0, 0f0, 1f0]
-end
-
 @testset "MetalGPU: interpolate! on LatitudeLongitudeGrid" begin
     arch = GPU(Metal.MetalBackend())
     source_grid = LatitudeLongitudeGrid(arch; size=(8, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
