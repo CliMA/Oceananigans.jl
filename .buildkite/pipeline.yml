@@ -79,6 +79,11 @@ steps:
     env:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
+    if_changed:
+      - "ext/**"
+      - "src/**"
+      - "test/**"
+      - "Project.toml"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -141,6 +146,12 @@ steps:
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     timeout_in_minutes: 120
+    if_changed:
+      - "docs/**"
+      - "examples/**"
+      - "ext/**"
+      - "src/**"
+      - "Project.toml"
     command: |
       cd "$OCEANANIGANS_DIR"
 
@@ -170,6 +181,11 @@ steps:
     env:
       JULIA_CPU_THREADS: "4"
     timeout_in_minutes: 45
+    if_changed:
+      - "ext/**"
+      - "src/**"
+      - "test/**"
+      - "Project.toml"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
