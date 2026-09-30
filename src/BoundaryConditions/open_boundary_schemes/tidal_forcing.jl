@@ -74,9 +74,7 @@ Adapt.adapt_structure(to, harmonics::TidalHarmonics) =
                    harmonics.species,
                    harmonics.ramp_time)
 
-Base.summary(harmonics::TidalHarmonics) =
-    string("TidalHarmonics with ", join(harmonics.constituents, ", "))
-
+Base.summary(harmonics::TidalHarmonics) = string("TidalHarmonics with ", join(harmonics.constituents, ", "))
 Base.show(io::IO, harmonics::TidalHarmonics) = print(io, summary(harmonics))
 
 @inline tidal_ramp(harmonics, t) = ifelse(harmonics.ramp_time > 0, tanh(t / harmonics.ramp_time), one(t))
