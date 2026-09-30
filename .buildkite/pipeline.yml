@@ -80,10 +80,18 @@ steps:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
     if_changed: &path_tests
-      - "ext/**"
-      - "src/**"
-      - "test/**"
-      - "Project.toml"
+      include:
+        - "ext/**"
+        - "src/**"
+        - "test/**"
+        - "Project.toml"
+      exclude:
+        - "test/amdgpu/**"
+        - "test/makie/**"
+        - "test/metal/**"
+        - "test/mpi/**"
+        - "test/oneapi/**"
+        - "test/sharding/**"
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
