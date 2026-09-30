@@ -12,6 +12,15 @@ agents:
 with:
   coverage: false
 
+# Path groups for `if_changed`
+paths:
+  code:     &code_paths     "{ext,src}/**"
+  project:  &project_paths  "Project.toml"
+  tests:    &test_paths     "test/**"
+  no_tests: &no_test_paths  "test/{amdgpu,makie,metal,mpi,oneapi,sharding}/**"
+  docs:     &docs_paths     "{docs,examples}/**"
+  agents:   &agents_paths   "AGENTS.md"
+
 steps:
   - label: "🏕️ initialize general environment"
     concurrency_group: gate
@@ -22,6 +31,9 @@ steps:
     env:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
+    if_changed:
+      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION
 
@@ -52,6 +64,9 @@ steps:
     env:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
+    if_changed:
+      include: [*code_paths, *project_paths, *test_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
@@ -79,19 +94,9 @@ steps:
     env:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
-    if_changed: &path_tests
-      include:
-        - "ext/**"
-        - "src/**"
-        - "test/**"
-        - "Project.toml"
-      exclude:
-        - "test/amdgpu/**"
-        - "test/makie/**"
-        - "test/metal/**"
-        - "test/mpi/**"
-        - "test/oneapi/**"
-        - "test/sharding/**"
+    if_changed:
+      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      exclude: [*no_test_paths, "test/{enzyme,reactant}"]
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -154,13 +159,7 @@ steps:
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     timeout_in_minutes: 120
-    if_changed:
-      - "docs/**"
-      - "examples/**"
-      - "ext/**"
-      - "src/**"
-      - "AGENTS.md"
-      - "Project.toml"
+    if_changed: [*code_paths, *project_paths, *docs_paths, *agents_paths]
     command: |
       cd "$OCEANANIGANS_DIR"
 
@@ -190,7 +189,9 @@ steps:
     env:
       JULIA_CPU_THREADS: "4"
     timeout_in_minutes: 45
-    if_changed: *path_tests
+    if_changed:
+      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      exclude: *no_test_paths
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
