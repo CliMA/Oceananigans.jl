@@ -581,6 +581,50 @@ function test_oblique_radiation_mirror_symmetry()
     return c ≈ reverse(c_mirrored, dims = 2)
 end
 
+# The same symmetry for a flow leaving through open boundaries whose tangential velocity radiates with the normal
+# velocity's phase speed: mirroring the initial flow along the boundaries, with the velocity along them reversed,
+# mirrors the solution. `normal` is the direction across the open boundaries.
+function test_oblique_tangential_mirror_symmetry(normal)
+    across = NormalFlowBoundaryCondition(0; scheme = ObliqueRadiation())
+    along  = ValueBoundaryCondition(0; scheme = ObliqueRadiation())
+
+    if normal === :x
+        topology = (Bounded, Periodic, Bounded)
+        boundary_conditions = (u = FieldBoundaryConditions(east = across, west = across),
+                               v = FieldBoundaryConditions(east = along, west = along))
+    else
+        topology = (Periodic, Bounded, Bounded)
+        boundary_conditions = (u = FieldBoundaryConditions(north = along, south = along),
+                               v = FieldBoundaryConditions(north = across, south = across))
+    end
+
+    grid = RectilinearGrid(size = (16, 16, 1), x = (0, 1), y = (0, 1), z = (0, 1); topology)
+
+    function velocities_after_outflow(u₀, v₀)
+        model = HydrostaticFreeSurfaceModel(grid; momentum_advection = Centered(), free_surface = nothing,
+                                            buoyancy = nothing, tracers = (), boundary_conditions)
+        set!(model, u = u₀, v = v₀)
+        for _ in 1:60 # long enough for the bump to reach the open boundary
+            time_step!(model, 0.005)
+        end
+        return Array(interior(model.velocities.u, :, :, 1)), Array(interior(model.velocities.v, :, :, 1))
+    end
+
+    # A bump carried out through the far boundary, and its mirror image along the boundaries. It is periodic
+    # along them, because the mirror of the face at t = 0 is the face at t = 1, which is the same face.
+    bump(n, t) = exp(-(n - 0.6)^2 / 0.02 + 4 * (cos(2π * (t - 0.3)) - 1))
+    if normal === :x
+        u, v   = velocities_after_outflow((x, y, z) -> 1 + bump(x, y),     (x, y, z) ->  bump(x, y))
+        uᵐ, vᵐ = velocities_after_outflow((x, y, z) -> 1 + bump(x, 1 - y), (x, y, z) -> -bump(x, 1 - y))
+        # v lives on periodic y faces: the mirror of face j is face Ny + 2 - j, and face 1 maps to itself
+        return u ≈ reverse(uᵐ, dims = 2) && v ≈ -circshift(reverse(vᵐ, dims = 2), (0, 1))
+    else
+        u, v   = velocities_after_outflow((x, y, z) ->  bump(y, x),     (x, y, z) -> 1 + bump(y, x))
+        uᵐ, vᵐ = velocities_after_outflow((x, y, z) -> -bump(y, 1 - x), (x, y, z) -> 1 + bump(y, 1 - x))
+        return u ≈ -circshift(reverse(uᵐ, dims = 1), (1, 0)) && v ≈ reverse(vᵐ, dims = 1)
+    end
+end
+
 #####
 ##### Test: TracerReservoir
 #####
@@ -777,6 +821,9 @@ end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
         @test test_oblique_radiation_mirror_symmetry()
+        @test test_oblique_tangential_mirror_symmetry(:x)
+        @test test_oblique_tangential_mirror_symmetry(:y)
+        @test occursin("phase_speed_weight", sprint(show, ObliqueRadiation()))
     end
 
     @testset "TracerReservoir length-scale regimes" begin
