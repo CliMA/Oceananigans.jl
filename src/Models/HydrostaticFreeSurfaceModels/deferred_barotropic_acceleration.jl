@@ -14,8 +14,7 @@ function add_deferred_barotropic_acceleration!(velocities, grid, free_surface::U
     u, v = velocities.u, velocities.v
     needs_implicit_solver(u.boundary_conditions) | needs_implicit_solver(v.boundary_conditions) || return nothing
 
-    g  = free_surface.gravitational_acceleration
-    Δt = convert(eltype(grid), Δt)
+    g = free_surface.gravitational_acceleration
 
     launch!(architecture(grid), grid, :xyz, _add_deferred_barotropic_acceleration!, u, v, grid, free_surface.displacement, g, Δt; exclude_periphery=true)
 
