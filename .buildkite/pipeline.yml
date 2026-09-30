@@ -159,6 +159,7 @@ steps:
       - "examples/**"
       - "ext/**"
       - "src/**"
+      - "AGENTS.md"
       - "Project.toml"
     command: |
       cd "$OCEANANIGANS_DIR"
