@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
+# Refresh the diff base used by `if_changed` in `buildkite-agent pipeline upload`:
+# the persistent agent checkout otherwise keeps a stale origin/main.
+export BUILDKITE_FETCH_DIFF_BASE=true
