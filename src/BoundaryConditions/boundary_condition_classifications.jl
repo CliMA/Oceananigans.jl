@@ -30,8 +30,16 @@ domain; for example, a positive, upwards flux of heat at the top of the domain a
 the interior of the domain. Conversely, a positive flux applied to the bottom boundary leads
 to an increase of the quantity in the interior of the domain. The same logic holds for east,
 west, north, and south boundaries.
+
+The type parameter `TD` records the `time_discretization` of the flux: `ExplicitTimeDiscretization`
+for an ordinary flux, or `IMEXFluxTimeDiscretization` for an affine flux whose linear part
+is integrated implicitly by the vertical solver.
 """
-struct Flux <: AbstractBoundaryConditionClassification end
+struct Flux{TD} <: AbstractBoundaryConditionClassification
+    time_discretization :: TD
+end
+
+Flux() = Flux(ExplicitTimeDiscretization())
 
 """
     struct Gradient <: AbstractBoundaryConditionClassification
@@ -120,21 +128,31 @@ abstract type AbstractPivot end
 """
     struct UPivot <: AbstractPivot
 
-The type representing a U-point pivot for Zipper boundary conditions.
+The type representing a U-point pivot for Zipper boundary conditions, pivots at (Face, Center) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct UPivot <: AbstractPivot end
 
 """
+    struct TPivot <: AbstractPivot
+
+The type representing a T-point pivot for Zipper boundary conditions, pivots at (Center, Center) locations
+
+See [`TripolarGrid`](@ref) for examples.
+"""
+struct TPivot <: AbstractPivot end
+
+"""
     struct FPivot <: AbstractPivot
 
-The type representing a F-point pivot for Zipper boundary conditions.
+The type representing a F-point pivot for Zipper boundary conditions, pivots at (Face, Face) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct FPivot <: AbstractPivot end
 
+@inline pivot_shift(P) = ifelse(P === TPivot, -1, 0)
 
 """
     Zipper{P} <: AbstractBoundaryConditionClassification
@@ -144,6 +162,7 @@ The points where the zipper starts and ends act as "pivots", and the grid cell l
 is encoded in the type parameter `P`.
 `P` can be set to either:
 - `UPivot`: pivots on (Face, Center)
+- `TPivot`: pivots on (Center, Center)
 - `FPivot`: pivots on (Face, Face)
 
 See [`TripolarGrid`](@ref) for examples.

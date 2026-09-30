@@ -20,14 +20,14 @@ using Oceananigans.Solvers: GridWithFFTSolver, ConjugateGradientPoissonSolver,
                             no_gauge_enforcement!, MultigridPreconditioner,
                             update_free_surface_correction!
 using Oceananigans.Utils
-using Oceananigans.Utils: sum_of_velocities
+using Oceananigans.Utils: foreach_name, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!, update_lagrangian_particle_state!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
@@ -90,6 +90,7 @@ function naive_solver_with_warning(arch, ibg, free_surface)
 
               using Oceananigans.Solvers: ConjugateGradientPoissonSolver
               pressure_solver = ConjugateGradientPoissonSolver(grid)
+              model = NonhydrostaticModel(grid; pressure_solver)
 
           Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
           """
@@ -142,6 +143,7 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("cache_nonhydrostatic_tendencies.jl")
 include("nonhydrostatic_ab2_step.jl")

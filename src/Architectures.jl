@@ -1,17 +1,17 @@
 module Architectures
 
-export AbstractArchitecture, AbstractSerialArchitecture
-export CPU, GPU, ReactantState
-export device, device!, ndevices, synchronize, architecture, unified_array, device_copy_to!
-export array_type, on_architecture
-export child_architecture
+export
+    AbstractArchitecture, AbstractSerialArchitecture,
+    CPU, GPU, ReactantState,
+    device, device!, ndevices, synchronize, device_copy_to!,
+    array_type, unified_array,
+    architecture, child_architecture, on_architecture
 
-using Adapt
+using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
-using OffsetArrays
-using SparseArrays
-
-import KernelAbstractions as KA
+using KernelAbstractions: KernelAbstractions as KA
+using OffsetArrays: OffsetArrays, OffsetArray
+using SparseArrays: SparseArrays, SparseMatrixCSC
 
 """
     AbstractArchitecture
@@ -39,7 +39,7 @@ struct CPU <: AbstractSerialArchitecture end
     GPU(device)
 
 Return a GPU architecture using `device`.
-`device` defauls to CUDA.CUDABackend(always_inline=true)
+`device` defauls to `CUDA.CUDABackend(always_inline=true)`
 if CUDA is loaded.
 """
 struct GPU{D} <: AbstractSerialArchitecture
@@ -127,8 +127,18 @@ unified_array(::GPU, a) = a
 
 @inline unsafe_free!(a) = nothing
 
-# Convert arguments to GPU-compatible types
+# CPU kernel arguments are adapted to `CPU()`. Like on GPUs this strips fields down to their data, so
+# that kernels do not specialize on field metadata that kernels never use (e.g. boundary conditions:
+# without this every distinct combination of boundary-condition types recompiles every kernel).
+# Unlike on GPUs, objects that are already CPU-ready are passed through as they are:
+#   * grids (see `Grids`): rebuilding them buys nothing on the CPU and only makes the kernel-launching
+#     code larger, which can defeat inlining and cause allocations in tight launch loops;
+#   * user functions: Adapt recurses into the captured variables of closures, which never terminates
+#     for closures that are self-referential through a `Core.Box`.
+@inline Adapt.adapt(::CPU, f::Function) = f
+
+# Convert arguments to device-compatible types
 @inline convert_to_device(arch, args)  = args
-@inline convert_to_device(::CPU, args) = args
+@inline convert_to_device(::CPU, args) = Adapt.adapt(CPU(), args)
 
 end # module

@@ -158,6 +158,7 @@ end
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")

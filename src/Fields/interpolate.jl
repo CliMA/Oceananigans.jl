@@ -48,10 +48,11 @@ end
     @inbounds x₂ = vec[i₂]
 
     ii = (i₂ - i₁) / (x₂ - x₁) * (val - x₁) + i₁
-    ii = ifelse(i₁ == i₂, i₁, ii)
+    ii = oftype(val, ii)
+    i₁ft = oftype(val, i₁)
+    ii = ifelse(i₁ == i₂, i₁ft, ii)
 
-    FT = typeof(val) # convert "fractional index" to type of `val`
-    return convert(FT, ii)
+    return ii
 end
 
 #####
@@ -102,16 +103,27 @@ end
     return x + 360 * n
 end
 
+# The 360° window that a queried longitude is folded into. On a `Periodic` grid every
+# longitude belongs to some cell, so the window starts at the western edge. A `Bounded` grid
+# may cover only part of the globe: a query just west of its western edge must stay just west
+# of it rather than reappear at the eastern edge, so the window is centered on the grid. Without
+# this a node one cell west of λ = 0 folds to λ ≈ 360 and indexes far past the grid. Centering
+# on the grid leaves a `Bounded` grid that spans the full globe unchanged.
+@inline longitude_window_start(::Periodic, λᵂ, λᴱ) = λᵂ
+@inline longitude_window_start(topo, λᵂ, λᴱ) = (λᵂ + λᴱ) / 2 - 180
+
 # When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
-# of the interpolating grid.
+# of the interpolating grid. Uses grid.Δλᶜᵃᵃ: subtracting ~180° nodes cancels significant digits in Float32.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    λ₁ = λnode(2, 1, 1, grid, locs...)
-    Δλ = λ₁ - λ₀
-    λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
+    Δλ = grid.Δλᶜᵃᵃ
+    TX = topology(grid, 1)()
+    λᵂ = λ₀ - Δλ/2
+    λᴱ = λᵂ + grid.Nx * Δλ
+    λc = convert_to_λ₀_λ₀_plus360(λ, longitude_window_start(TX, λᵂ, λᴱ))
     FT = eltype(grid)
-    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing
+    return convert(FT, (λc - λ₀) / Δλ) + 1 # 1 - based indexing
 end
 
 # When interpolating longitude values, we convert the longitude to
@@ -125,7 +137,8 @@ end
      λ₀ = @inbounds λn[1]
      λ₁ = @inbounds λn[2]
      Δλ = λ₁ - λ₀
-     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2)
+     λᴺ = @inbounds λn[Nλ]
+     λc = convert_to_λ₀_λ₀_plus360(λ, longitude_window_start(Tλ, λ₀ - Δλ/2, λᴺ + Δλ/2))
      FT = eltype(grid)
     return convert(FT, fractional_index(λc, λn, Nλ))
 end
@@ -141,9 +154,9 @@ end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
-    φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing
+    # From the grid, not `φnode(1, 2, 1) - φ₀`; see `fractional_x_index` above.
+    return convert(FT, (φ - φ₀) / grid.Δφᵃᶜᵃ) + 1 # 1 - based indexing
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -436,8 +449,10 @@ end
 $(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
+`args...` (eg `clock, model_fields`) is forwarded to the halo fill, so `to_field`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
 """
-function interpolate!(to_field::Field, from_field::AbstractField)
+function interpolate!(to_field::Field, from_field::AbstractField, args...)
     to_grid   = to_field.grid
     from_grid = from_field.grid
 
@@ -464,7 +479,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    fill_halo_regions!(to_field)
+    fill_halo_regions!(to_field, args...)
 
     return to_field
 end

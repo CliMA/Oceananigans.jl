@@ -19,8 +19,8 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Field
-using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.Fields: Field, TracerFields, ZeroField
+using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
@@ -93,11 +93,20 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+# Tracer names are passed separately so that they are compile-time constants
+materialize_tracers(tracers::NamedTuple, tracer_names, grid, boundary_conditions) = TracerFields(tracers, grid, boundary_conditions)
+materialize_tracers(tracers, tracer_names, grid, boundary_conditions) = TracerFields(tracer_names, grid, boundary_conditions)
+
+timestepper_name(timestepper::Symbol) = Val(timestepper)
+timestepper_name(timestepper) = timestepper
+
 # Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
 function materialize_free_surface end
 
 # Used in NonhydrostaticModels; skips building the hydrostatic implicit step solver
 function materialize_nonhydrostatic_free_surface end
+
+default_free_surface_boundary_conditions(free_surface, user_boundary_conditions) = NamedTuple()
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
@@ -178,19 +187,24 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     return nothing
 end
 
+zero_field!(field) = fill!(field, 0)
+zero_field!(::ZeroField) = nothing # eg the vertical velocity of single column models
+
 function reset!(model::OceananigansModels)
 
     for field in fields(model)
-        fill!(field, 0)
+        zero_field!(field)
     end
 
     for field in model.timestepper.G⁻
-        fill!(field, 0)
+        zero_field!(field)
     end
 
     for field in model.timestepper.Gⁿ
-        fill!(field, 0)
+        zero_field!(field)
     end
+
+    reset!(model.closure_fields, model.closure)
 
     return nothing
 end

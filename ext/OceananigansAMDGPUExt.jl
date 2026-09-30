@@ -14,6 +14,8 @@ import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
 import Oceananigans.Fields as FD
+import Oceananigans.MultiRegion as MR
+import Oceananigans.Utils: apply_regionally!
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
@@ -37,7 +39,7 @@ const ROCGPU = AC.GPU{ROCBackend}
 ROCGPU() = AC.GPU(AMDGPU.ROCBackend())
 
 Base.summary(::ROCGPU) = "ROCGPU"
-AC.device!(::ROCGPU, i) = AMDGPU.device_id!(id+1) # AMD devices are numbered 1..ndevices
+AC.device!(::ROCGPU, i) = AMDGPU.device_id!(i + 1) # AMD devices are numbered 1..ndevices
 
 AC.architecture(::ROCArray) = ROCGPU()
 AC.architecture(::Type{ROCArray}) = ROCGPU()
@@ -92,6 +94,7 @@ end
 
 FD.set!(v::Field, a::ROCArray) = FD.set_to_array!(v, a)
 DC.set!(v::DC.DistributedField, a::ROCArray) = DC.set_to_array!(v, a)
+FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
