@@ -181,7 +181,7 @@ end
 
     eⁱʲᵏ = @inbounds e[i, j, k]
     eᵐⁱⁿ = closure_ij.minimum_tke
-    wb⁻_e = wb⁻ / eⁱʲᵏ * (eⁱʲᵏ > eᵐⁱⁿ)
+    wb⁻_e = ifelse(eⁱʲᵏ > eᵐⁱⁿ, wb⁻ / eⁱʲᵏ, zero(grid))
 
     # Treat the divergence of TKE flux at solid bottoms implicitly.
     # This will damp TKE near boundaries. The bottom-localized TKE flux may be written
@@ -263,10 +263,12 @@ end
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
+    closure_ij = getclosure(i, j, closure)
 
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active / σᶜᶜⁿ
+        e★ = e[i, j, k] + Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active / σᶜᶜⁿ
+        e[i, j, k] = ifelse(active, max(closure_ij.minimum_tke, e★), e★)
         G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
@@ -286,10 +288,12 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
+    closure_ij = getclosure(i, j, closure)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e★ = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e[i, j, k] = ifelse(active, max(closure_ij.minimum_tke, e★), e★)
     end
 end
 
@@ -308,13 +312,15 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
+    closure_ij = getclosure(i, j, closure)
 
     FT = eltype(grid)
     Δτ = convert(FT, Δτ)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] += Δτ * total_Gⁿ * active / σᶜᶜⁿ
+        e★ = e[i, j, k] + Δτ * total_Gⁿ * active / σᶜᶜⁿ
+        e[i, j, k] = ifelse(active, max(closure_ij.minimum_tke, e★), e★)
     end
 end
 
