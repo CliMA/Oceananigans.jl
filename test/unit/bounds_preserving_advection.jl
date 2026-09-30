@@ -8,7 +8,9 @@ function periodic_advection_setup(order, bounds, N; maximum_courant_number=5//18
     grid = RectilinearGrid(CPU(), size=(N, N, N), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Periodic, Periodic), halo=(6, 6, 6))
 
-    scheme = materialize_advection(WENO(; order, bounds, maximum_courant_number), grid)
+    bounds = isnothing(bounds) ? nothing : BoundsPreservation(bounds...; maximum_courant_number)
+
+    scheme = materialize_advection(WENO(; order, bounds), grid)
 
     return grid, scheme, CenterField(grid), (u = XFaceField(grid), v = YFaceField(grid), w = ZFaceField(grid))
 end
