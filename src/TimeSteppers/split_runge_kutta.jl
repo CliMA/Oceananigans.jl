@@ -166,8 +166,6 @@ After all substeps, Lagrangian particles are stepped and the `model.clock` itera
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
-    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
-
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
@@ -188,15 +186,14 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
         # Update the clock stage
         Δτ = Δt / β
-        kernel_Δτ = kernel_Δt / β
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δτ
 
         # Perform the substep
-        rk_substep!(model, kernel_Δτ, callbacks)
+        rk_substep!(model, Δτ, callbacks)
 
         # Step closure prognostics
-        step_closure_prognostics!(model, kernel_Δτ)
+        step_closure_prognostics!(model, Δτ)
 
         # Advance the clock to the stage time before evaluating time-dependent terms
         model.clock.time = stage_times[stage]
@@ -210,7 +207,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     end
 
     # Step particles
-    step_lagrangian_particles!(model, kernel_Δt)
+    step_lagrangian_particles!(model, Δt)
 
     model.clock.iteration += 1
 

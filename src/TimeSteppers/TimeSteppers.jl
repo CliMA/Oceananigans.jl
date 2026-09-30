@@ -18,11 +18,9 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
-using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
-                          AdaptiveVerticallyImplicitDiscretization,
-                          kernel_time_step
+                          AdaptiveVerticallyImplicitDiscretization
 
 """
     abstract type AbstractTimeStepper

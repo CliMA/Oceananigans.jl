@@ -253,6 +253,7 @@ end
 
     # Advance TKE and store tendency
     FT = eltype(χ)
+    Δτ = convert(FT, Δτ)
     e  = tracers.e
 
     # See below.
@@ -307,6 +308,9 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
+
+    FT = eltype(grid)
+    Δτ = convert(FT, Δτ)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
