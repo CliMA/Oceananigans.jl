@@ -14,12 +14,13 @@ with:
 
 # Path groups for `if_changed`
 paths:
-  code:     &code_paths     "{ext,src}/**"
-  project:  &project_paths  "Project.toml"
-  tests:    &test_paths     "test/**"
-  no_tests: &no_test_paths  "test/{amdgpu,makie,metal,mpi,oneapi,sharding}/**"
-  docs:     &docs_paths     "{docs,examples}/**"
-  agents:   &agents_paths   "AGENTS.md"
+  buildkite:     &buildkite_paths      ".buildkite/{pipeline.yml,hooks/**}"
+  code:          &code_paths           "{ext,src}/**"
+  project:       &project_paths        "Project.toml"
+  tests:         &test_paths           "test/**"
+  no_tests:      &no_test_paths        "test/{amdgpu,makie,metal,mpi,oneapi,sharding}/**"
+  docs:          &docs_paths           "{docs,examples}/**"
+  agents:        &agents_paths         "AGENTS.md"
 
 steps:
   - label: "🏕️ initialize general environment"
@@ -32,7 +33,7 @@ steps:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
     if_changed:
-      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
       exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION
@@ -65,7 +66,7 @@ steps:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
     if_changed:
-      include: [*code_paths, *project_paths, *test_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
       exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION_ENZYME
@@ -95,7 +96,7 @@ steps:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
     if_changed:
-      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
       exclude: [*no_test_paths, "test/{enzyme,reactant}"]
     command: |
       # Add matrix-specific environment variables
@@ -159,7 +160,7 @@ steps:
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     timeout_in_minutes: 120
-    if_changed: [*code_paths, *project_paths, *docs_paths, *agents_paths]
+    if_changed: [*buildkite_paths, *code_paths, *project_paths, *docs_paths, *agents_paths]
     command: |
       cd "$OCEANANIGANS_DIR"
 
@@ -190,7 +191,7 @@ steps:
       JULIA_CPU_THREADS: "4"
     timeout_in_minutes: 45
     if_changed:
-      include: [*code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
       exclude: *no_test_paths
     command: |
       # Add matrix-specific environment variables
