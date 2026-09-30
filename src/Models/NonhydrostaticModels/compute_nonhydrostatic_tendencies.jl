@@ -81,15 +81,14 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
             active_cells_map, exclude_periphery)
 
-    launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, Val(1), Val(propertynames(tracers)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        launch_tracer_tendency!(model, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
+    end
 
     return nothing
 end
 
-@inline launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
-
-@inline function launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_names}) where {tracer_index, tracer_names}
-    tracer_name = first(tracer_names)
+@inline function launch_tracer_tendency!(model, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     arch = model.architecture
     grid = model.grid
 
@@ -104,8 +103,6 @@ end
             model.biogeochemistry, model.background_fields, model.velocities, model.tracers, model.auxiliary_fields,
             model.closure_fields, model.clock, forcing;
             active_cells_map)
-
-    launch_tracer_tendencies!(model, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end

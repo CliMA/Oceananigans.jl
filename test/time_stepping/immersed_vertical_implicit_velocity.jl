@@ -38,7 +38,7 @@ using Oceananigans.TurbulenceClosures: VerticalScalarDiffusivity, VerticallyImpl
                 return nothing
             end
 
-            step_velocities!(model, substep_velocity!, Δt, Val(keys(model.velocities)))
+            step_velocities!(model, substep_velocity!, Δt)
 
             n_active = Nz - kb
             implicit_matrix = Tridiagonal(fill(-c, n_active - 1),
