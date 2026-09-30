@@ -165,6 +165,7 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("penetrative_radiation.jl")
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
