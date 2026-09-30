@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!
+using Oceananigans.Advection: div_Uc, materialize_advection, update_advection!, bounds_preserving_limiter
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Random
 
