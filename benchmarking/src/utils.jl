@@ -103,6 +103,8 @@ function benchmark_time_stepping(model;
         window_seconds[s] = (time_ns() - start_time) / 1e9
     end
 
+    hasnan(model) && error("Benchmark $name: the model state contains NaN after $(warmup_steps + samples * time_steps) time steps")
+
     total_time_seconds = sum(window_seconds)
     step_seconds = window_seconds ./ time_steps
     time_per_step_seconds = minimum(step_seconds)
