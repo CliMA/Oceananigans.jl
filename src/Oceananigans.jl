@@ -28,7 +28,7 @@ export
 
     # Immersed boundaries
     ImmersedBoundaryGrid,
-    GridFittedBoundary, GridFittedBottom, GridFittedCavity, PartialCellBottom, PartialCellCavity, CavityLoad,
+    GridFittedBoundary, GridFittedBottom, GridFittedBottomAndTop, PartialCellBottom, PartialCellBottomAndTop, TopLoad,
     ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
@@ -92,7 +92,7 @@ export
     PressureField, fields, ZCoordinate, ZStarCoordinate,
     BulkDrag, LinearFormulation, QuadraticFormulation,
     BoundaryConditionOperation,
-    cavity_load_potential,
+    top_load_potential,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,

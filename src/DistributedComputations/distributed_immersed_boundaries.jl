@@ -4,9 +4,9 @@ using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
     GridFittedBottom,
     PartialCellBottom,
-    GridFittedCavity,
-    PartialCellCavity,
-    CavityLoad,
+    GridFittedBottomAndTop,
+    PartialCellBottomAndTop,
+    TopLoad,
     GridFittedBoundary,
     bottom_height_interior,
     compute_mask,
@@ -49,25 +49,25 @@ function reconstruct_global_immersed_boundary(ib::PartialCellBottom, arch, grid)
     return PartialCellBottom(global_bottom_height, ib.minimum_fractional_cell_height)
 end
 
-function reconstruct_global_immersed_boundary(ib::GridFittedCavity, arch, grid)
+function reconstruct_global_immersed_boundary(ib::GridFittedBottomAndTop, arch, grid)
     Nx, Ny, _ = size(grid)
     global_bottom_height  = construct_global_array(bottom_height_interior(ib.bottom_height), arch, (Nx, Ny, 1))
-    global_ceiling_height = construct_global_array(bottom_height_interior(ib.ceiling_height), arch, (Nx, Ny, 1))
-    global_ice_load       = global_cavity_ice_load(ib.ice_load, arch, (Nx, Ny, 1))
-    return GridFittedCavity(global_bottom_height, global_ceiling_height, global_ice_load)
+    global_top_height     = construct_global_array(bottom_height_interior(ib.top_height), arch, (Nx, Ny, 1))
+    global_top_load       = global_top_load_array(ib.top_load, arch, (Nx, Ny, 1))
+    return GridFittedBottomAndTop(global_bottom_height, global_top_height, global_top_load)
 end
 
-function reconstruct_global_immersed_boundary(ib::PartialCellCavity, arch, grid)
+function reconstruct_global_immersed_boundary(ib::PartialCellBottomAndTop, arch, grid)
     Nx, Ny, _ = size(grid)
     global_bottom_height  = construct_global_array(bottom_height_interior(ib.bottom_height), arch, (Nx, Ny, 1))
-    global_ceiling_height = construct_global_array(bottom_height_interior(ib.ceiling_height), arch, (Nx, Ny, 1))
-    global_ice_load       = global_cavity_ice_load(ib.ice_load, arch, (Nx, Ny, 1))
-    return PartialCellCavity(global_bottom_height, global_ceiling_height,
-                             ib.minimum_fractional_cell_height, ib.minimum_cell_height, global_ice_load)
+    global_top_height     = construct_global_array(bottom_height_interior(ib.top_height), arch, (Nx, Ny, 1))
+    global_top_load       = global_top_load_array(ib.top_load, arch, (Nx, Ny, 1))
+    return PartialCellBottomAndTop(global_bottom_height, global_top_height,
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height, global_top_load)
 end
 
-global_cavity_ice_load(::Nothing, arch, global_size) = nothing
-global_cavity_ice_load(ice_load, arch, global_size) = construct_global_array(bottom_height_interior(ice_load), arch, global_size)
+global_top_load_array(::Nothing, arch, global_size) = nothing
+global_top_load_array(top_load, arch, global_size) = construct_global_array(bottom_height_interior(top_load), arch, global_size)
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
     global_mask = construct_global_array(ib.mask, arch, size(grid))
@@ -104,24 +104,24 @@ function partition_immersed_boundary(ib, arch, local_size)
     return ImmersedBoundaryConstructor(local_bottom_height)
 end
 
-function partition_immersed_boundary(ib::GridFittedCavity, arch, local_size)
+function partition_immersed_boundary(ib::GridFittedBottomAndTop, arch, local_size)
     local_bottom_height  = partition(bottom_height_interior(ib.bottom_height), arch, local_size)
-    local_ceiling_height = partition(bottom_height_interior(ib.ceiling_height), arch, local_size)
-    local_ice_load       = partition_cavity_ice_load(ib.ice_load, arch, local_size)
-    return GridFittedCavity(local_bottom_height, local_ceiling_height, local_ice_load)
+    local_top_height     = partition(bottom_height_interior(ib.top_height), arch, local_size)
+    local_top_load       = partition_top_load(ib.top_load, arch, local_size)
+    return GridFittedBottomAndTop(local_bottom_height, local_top_height, local_top_load)
 end
 
-function partition_immersed_boundary(ib::PartialCellCavity, arch, local_size)
+function partition_immersed_boundary(ib::PartialCellBottomAndTop, arch, local_size)
     local_bottom_height  = partition(bottom_height_interior(ib.bottom_height), arch, local_size)
-    local_ceiling_height = partition(bottom_height_interior(ib.ceiling_height), arch, local_size)
-    local_ice_load       = partition_cavity_ice_load(ib.ice_load, arch, local_size)
-    return PartialCellCavity(local_bottom_height, local_ceiling_height,
-                             ib.minimum_fractional_cell_height, ib.minimum_cell_height, local_ice_load)
+    local_top_height     = partition(bottom_height_interior(ib.top_height), arch, local_size)
+    local_top_load       = partition_top_load(ib.top_load, arch, local_size)
+    return PartialCellBottomAndTop(local_bottom_height, local_top_height,
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height, local_top_load)
 end
 
-partition_cavity_ice_load(::Nothing, arch, local_size) = nothing
-partition_cavity_ice_load(ice_load::CavityLoad, arch, local_size) = ice_load
-partition_cavity_ice_load(ice_load, arch, local_size) = partition(bottom_height_interior(ice_load), arch, local_size)
+partition_top_load(::Nothing, arch, local_size) = nothing
+partition_top_load(top_load::TopLoad, arch, local_size) = top_load
+partition_top_load(top_load, arch, local_size) = partition(bottom_height_interior(top_load), arch, local_size)
 
 """
     function resize_immersed_boundary!(ib, grid)
@@ -161,25 +161,25 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     return ib
 end
 
-function resize_immersed_boundary(ib::GridFittedCavity{<:OffsetArray}, grid)
-    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.ceiling_height, grid)
+function resize_immersed_boundary(ib::GridFittedBottomAndTop{<:OffsetArray}, grid)
+    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.top_height, grid)
     consistent && return ib
-    @warn "Resizing the bottom and ceiling heights to match the grid's halos"
-    return GridFittedCavity(resize_height(ib.bottom_height, grid), resize_height(ib.ceiling_height, grid),
-                            resize_cavity_ice_load(ib.ice_load, grid))
+    @warn "Resizing the bottom and top heights to match the grid's halos"
+    return GridFittedBottomAndTop(resize_height(ib.bottom_height, grid), resize_height(ib.top_height, grid),
+                                  resize_top_load(ib.top_load, grid))
 end
 
-function resize_immersed_boundary(ib::PartialCellCavity{<:OffsetArray}, grid)
-    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.ceiling_height, grid)
+function resize_immersed_boundary(ib::PartialCellBottomAndTop{<:OffsetArray}, grid)
+    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.top_height, grid)
     consistent && return ib
-    @warn "Resizing the bottom and ceiling heights to match the grid's halos"
-    return PartialCellCavity(resize_height(ib.bottom_height, grid), resize_height(ib.ceiling_height, grid),
-                             ib.minimum_fractional_cell_height, ib.minimum_cell_height,
-                             resize_cavity_ice_load(ib.ice_load, grid))
+    @warn "Resizing the bottom and top heights to match the grid's halos"
+    return PartialCellBottomAndTop(resize_height(ib.bottom_height, grid), resize_height(ib.top_height, grid),
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height,
+                             resize_top_load(ib.top_load, grid))
 end
 
-resize_cavity_ice_load(::Nothing, grid) = nothing
-resize_cavity_ice_load(ice_load, grid) = resize_height(ice_load, grid)
+resize_top_load(::Nothing, grid) = nothing
+resize_top_load(top_load, grid) = resize_height(top_load, grid)
 
 function consistent_height_size(height, grid)
     Nx, Ny, _ = size(grid)

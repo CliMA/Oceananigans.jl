@@ -1,25 +1,25 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.ImmersedBoundaries: PartialCellCavity, CavityLoad, immersed_cell, _immersed_cell, mask_immersed_field!, bottom_height_interior
-using Oceananigans.Models: cavity_load_potential
+using Oceananigans.ImmersedBoundaries: PartialCellBottomAndTop, TopLoad, immersed_cell, _immersed_cell, mask_immersed_field!, bottom_height_interior
+using Oceananigans.Models: top_load_potential
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.BuoyancyFormulations: materialize_buoyancy
 using Oceananigans.Operators: Δrᶜᶜᶜ
 
-cavity_values(op, grid, args...) =
+bottom_and_top_values(op, grid, args...) =
     Array(interior(compute!(Field(KernelFunctionOperation{Center, Center, Center}(op, grid, args...)))))
 
 underlying_immersed_cell(i, j, k, ibg) = _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
 
-wet_cells(grid) = dropdims(sum(1 .- cavity_values(immersed_cell, grid), dims=3), dims=3)
+wet_cells(grid) = dropdims(sum(1 .- bottom_and_top_values(immersed_cell, grid), dims=3), dims=3)
 
-function test_partial_cavity_grid_construction(FT, arch)
+function test_partial_cell_bottom_and_top_grid_construction(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
 
     bottom(x, y) = -1 + 0.1 * sin(2π * x) * cos(2π * y)
-    ceiling(x, y) = -0.5 + 0.4 * x
+    top(x, y) = -0.5 + 0.4 * x
 
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(bottom, ceiling))
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(bottom, top))
     ib = ibg.immersed_boundary
 
     @test architecture(ibg) === arch
@@ -28,7 +28,7 @@ function test_partial_cavity_grid_construction(FT, arch)
     @test halo_size(ibg) == halo_size(underlying_grid)
     @test topology(ibg) == topology(underlying_grid)
     @test eltype(ib.bottom_height) === FT
-    @test eltype(ib.ceiling_height) === FT
+    @test eltype(ib.top_height) === FT
     @test ib.minimum_fractional_cell_height isa FT
     @test ib.minimum_cell_height isa FT
 
@@ -37,26 +37,26 @@ function test_partial_cavity_grid_construction(FT, arch)
 
     Nx, Ny = size(underlying_grid)[1:2]
     bottom_array  = on_architecture(arch, fill(FT(-0.8), Nx, Ny))
-    ceiling_array = on_architecture(arch, fill(FT(-0.2), Nx, Ny))
-    @test ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(bottom_array, ceiling_array)) isa ImmersedBoundaryGrid
-    @test ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.8, -0.2; minimum_fractional_cell_height=0.1)) isa ImmersedBoundaryGrid
+    top_array = on_architecture(arch, fill(FT(-0.2), Nx, Ny))
+    @test ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(bottom_array, top_array)) isa ImmersedBoundaryGrid
+    @test ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.8, -0.2; minimum_fractional_cell_height=0.1)) isa ImmersedBoundaryGrid
 
     return nothing
 end
 
-function test_partial_cavity_immersed_cell_pattern(FT, arch)
+function test_partial_cell_bottom_and_top_immersed_cell_pattern(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 10), extent=(1, 1, 1))
 
-    # Partial cells of height 0.05 at the bottom (k = 2) and the ceiling (k = 8)
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.85, -0.25))
+    # Partial cells of height 0.05 at the bottom (k = 2) and the top (k = 8)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.85, -0.25))
 
-    immersed = cavity_values(immersed_cell, ibg) .== 1
-    @test immersed == (cavity_values(underlying_immersed_cell, ibg) .== 1)
+    immersed = bottom_and_top_values(immersed_cell, ibg) .== 1
+    @test immersed == (bottom_and_top_values(underlying_immersed_cell, ibg) .== 1)
     @test all(immersed[:, :, 1])
     @test all(immersed[:, :, 9:10])
     @test !any(immersed[:, :, 2:8])
 
-    Δr = cavity_values(Δrᶜᶜᶜ, ibg)
+    Δr = bottom_and_top_values(Δrᶜᶜᶜ, ibg)
     @test all(Δr[:, :, 2] .≈ FT(0.05))
     @test all(Δr[:, :, 8] .≈ FT(0.05))
     @test all(Δr[:, :, 3:7] .≈ FT(0.1))
@@ -64,23 +64,23 @@ function test_partial_cavity_immersed_cell_pattern(FT, arch)
     return nothing
 end
 
-function test_partial_cavity_minimum_thickness(FT, arch)
+function test_partial_cell_bottom_and_top_minimum_thickness(FT, arch)
     Nz = 10
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, Nz), extent=(1, 1, 1))
     ϵ = 0.2
 
     # Fractions of 0.15, between ϵ / 2 and ϵ, are raised to ϵ
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.815, -0.285; minimum_fractional_cell_height=ϵ))
-    immersed = cavity_values(immersed_cell, ibg) .== 1
-    Δr = cavity_values(Δrᶜᶜᶜ, ibg)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.815, -0.285; minimum_fractional_cell_height=ϵ))
+    immersed = bottom_and_top_values(immersed_cell, ibg) .== 1
+    Δr = bottom_and_top_values(Δrᶜᶜᶜ, ibg)
     @test !any(immersed[:, :, 2:8])
     @test all(Δr[:, :, 2] .≈ FT(ϵ * 0.1))
     @test all(Δr[:, :, 8] .≈ FT(ϵ * 0.1))
 
     # Fractions of 0.05, below ϵ / 2, are removed
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.805, -0.295; minimum_fractional_cell_height=ϵ))
-    immersed = cavity_values(immersed_cell, ibg) .== 1
-    Δr = cavity_values(Δrᶜᶜᶜ, ibg)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.805, -0.295; minimum_fractional_cell_height=ϵ))
+    immersed = bottom_and_top_values(immersed_cell, ibg) .== 1
+    Δr = bottom_and_top_values(Δrᶜᶜᶜ, ibg)
     @test all(immersed[:, :, 2])
     @test all(immersed[:, :, 8])
     @test !any(immersed[:, :, 3:7])
@@ -88,23 +88,23 @@ function test_partial_cavity_minimum_thickness(FT, arch)
     @test all(Δr[:, :, 7] .≈ FT(0.1))
 
     # A minimum_cell_height larger than ϵ Δz sets the floor
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.818, -0.282; minimum_cell_height=0.03))
-    Δr = cavity_values(Δrᶜᶜᶜ, ibg)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.818, -0.282; minimum_cell_height=0.03))
+    Δr = bottom_and_top_values(Δrᶜᶜᶜ, ibg)
     @test all(Δr[:, :, 2] .≈ FT(0.03))
     @test all(Δr[:, :, 8] .≈ FT(0.03))
 
-    # A cavity thinner than one floored cell closes
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.501, -0.499))
+    # A column thinner than one floored cell closes
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.501, -0.499))
     @test all(wet_cells(ibg) .== 0)
 
     return nothing
 end
 
-function test_partial_cavity_volume(FT, arch)
+function test_partial_cell_bottom_and_top_volume(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(8, 8, 8), extent=(1, 1, 1))
 
     # Neither -0.7 nor -0.3 is a cell face
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.7, -0.3))
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.7, -0.3))
 
     c_ibg = CenterField(ibg)
     c_udl = CenterField(underlying_grid)
@@ -119,12 +119,12 @@ function test_partial_cavity_volume(FT, arch)
     return nothing
 end
 
-function test_partial_cavity_reduced_field_masking(FT, arch)
+function test_partial_cell_bottom_and_top_reduced_field_masking(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, topology=(Periodic, Flat, Bounded), size=(3, 10), extent=(1, 1))
 
     bottom  = fill(FT(-0.85), 3)
-    ceiling = FT[0, -0.45, -0.95] # open ocean, wet cavity, land
-    ib = PartialCellCavity(on_architecture(arch, bottom), on_architecture(arch, ceiling))
+    top = FT[0, -0.45, -0.95] # open, wet beneath the top, land
+    ib = PartialCellBottomAndTop(on_architecture(arch, bottom), on_architecture(arch, top))
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
 
     η = Field{Center, Center, Nothing}(ibg)
@@ -136,35 +136,35 @@ function test_partial_cavity_reduced_field_masking(FT, arch)
     return nothing
 end
 
-function test_partial_cavity_load_potential(FT, arch)
+function test_partial_cell_top_load_potential(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(5, 3, 4), x=(0, 5), y=(0, 1), z=(-1, 0),
                                       topology=(Bounded, Periodic, Bounded))
 
-    # Open, face-aligned ceiling, closed, open with a raised bottom, partial ceiling
+    # Open, face-aligned top, closed, open with a raised bottom, partial top
     bottom(x, y) = 3 ≤ x < 4 ? -0.6 : -1
-    ceiling(x, y) = x < 1 ? 0 :
+    top(x, y) = x < 1 ? 0 :
                     x < 2 ? -0.5 :
                     x < 3 ? -0.99 :
                     x < 4 ? 0 : -0.6
 
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(bottom, ceiling))
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(bottom, top))
 
-    Φ = Array(interior(cavity_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> z))))
+    Φ = Array(interior(top_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> z))))
 
     @test all(Φ[1, :, 1] .== 0)
     @test all(Φ[3, :, 1] .== 0)
     @test all(Φ[4, :, 1] .== 0)
 
-    # -Σ b Δz over the ice-covered whole cells and the ice-covered part of k = 2
+    # -Σ b Δz over the top-covered whole cells and the top-covered part of k = 2
     @test all(Φ[2, :, 1] .≈ FT(0.125))
     @test all(Φ[5, :, 1] .≈ FT(0.1875))
 
-    Φ² = Array(interior(cavity_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> 2z))))
+    Φ² = Array(interior(top_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> 2z))))
     @test all(isapprox.(Φ², 2 .* Φ; atol=100 * eps(FT)))
 
     T(x, y, z) = 20 + 2z
     S(x, y, z) = 35
-    Φˢʷ = Array(interior(cavity_load_potential(ibg, SeawaterBuoyancy(FT), (; T, S))))
+    Φˢʷ = Array(interior(top_load_potential(ibg, SeawaterBuoyancy(FT), (; T, S))))
     @test all(Φˢʷ[[1, 3, 4], :, 1] .== 0)
     @test all(abs.(Φˢʷ[[2, 5], :, 1]) .> 0)
 
@@ -180,15 +180,15 @@ function test_partial_cavity_load_potential(FT, arch)
     return nothing
 end
 
-function test_partial_cavity_equality_and_show(FT, arch)
-    ib = PartialCellCavity(-0.8, -0.2)
-    @test ib == PartialCellCavity(-0.8, -0.2)
-    @test ib != PartialCellCavity(-0.8, -0.3)
-    @test ib != PartialCellCavity(-0.7, -0.2)
-    @test ib != PartialCellCavity(-0.8, -0.2; minimum_fractional_cell_height=0.1)
-    @test ib != PartialCellCavity(-0.8, -0.2; minimum_cell_height=0.01)
-    @test isnothing(ib.ice_load)
-    @test ib != PartialCellCavity(-0.8, -0.2; ice_load=1)
+function test_partial_cell_bottom_and_top_equality_and_show(FT, arch)
+    ib = PartialCellBottomAndTop(-0.8, -0.2)
+    @test ib == PartialCellBottomAndTop(-0.8, -0.2)
+    @test ib != PartialCellBottomAndTop(-0.8, -0.3)
+    @test ib != PartialCellBottomAndTop(-0.7, -0.2)
+    @test ib != PartialCellBottomAndTop(-0.8, -0.2; minimum_fractional_cell_height=0.1)
+    @test ib != PartialCellBottomAndTop(-0.8, -0.2; minimum_cell_height=0.01)
+    @test isnothing(ib.top_load)
+    @test ib != PartialCellBottomAndTop(-0.8, -0.2; top_load=1)
 
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
@@ -199,11 +199,11 @@ function test_partial_cavity_equality_and_show(FT, arch)
     return nothing
 end
 
-function test_partial_cavity_model_at_rest(FT, arch)
+function test_partial_cell_bottom_and_top_model_at_rest(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, topology=(Periodic, Flat, Bounded), size=(8, 10), extent=(1, 1))
 
-    ceiling(x) = min(-0.6 + x, 0)
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.9, ceiling))
+    top(x) = min(-0.6 + x, 0)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.9, top))
     model = HydrostaticFreeSurfaceModel(ibg; buoyancy=nothing, tracers=())
 
     for _ in 1:3
@@ -232,24 +232,24 @@ function rest_state_max_velocity(ibg; Δt=0.01, Nt=10)
     return max_u, max_w, max_η
 end
 
-function test_partial_cavity_rest_state(FT, arch)
+function test_partial_cell_bottom_and_top_rest_state(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(16, 20), x=(0, 1), z=(-1, 0),
                                       topology=(Bounded, Flat, Bounded))
 
-    # Partial cells at the bottom everywhere and along the sloping ice base
-    ceiling(x) = min(0, -0.93 + 1.7x)
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.98, ceiling))
+    # Partial cells at the bottom everywhere and along the sloping top
+    top(x) = min(0, -0.93 + 1.7x)
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.98, top))
 
     max_u, _, _ = rest_state_max_velocity(ibg)
     @test max_u > 1e-3
 
     b(x, z) = z / 2
-    Φ = cavity_load_potential(ibg, BuoyancyTracer(), (; b))
-    field_loaded_ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.98, ceiling; ice_load=Φ))
+    Φ = top_load_potential(ibg, BuoyancyTracer(), (; b))
+    field_loaded_ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.98, top; top_load=Φ))
 
-    ice_load = CavityLoad(BuoyancyTracer(), (; b))
-    loaded_ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellCavity(-0.98, ceiling; ice_load))
-    @test Array(bottom_height_interior(loaded_ibg.immersed_boundary.ice_load)) == Array(interior(Φ))
+    top_load = TopLoad(BuoyancyTracer(), (; b))
+    loaded_ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottomAndTop(-0.98, top; top_load))
+    @test Array(bottom_height_interior(loaded_ibg.immersed_boundary.top_load)) == Array(interior(Φ))
     @test loaded_ibg.immersed_boundary == field_loaded_ibg.immersed_boundary
 
     max_u, max_w, max_η = rest_state_max_velocity(loaded_ibg)
@@ -261,17 +261,17 @@ function test_partial_cavity_rest_state(FT, arch)
     return nothing
 end
 
-@testset "PartialCellCavity" begin
+@testset "PartialCellBottomAndTop" begin
     for arch in archs, FT in float_types
-        @info "  Testing PartialCellCavity [$FT, $(typeof(arch))]..."
-        @testset "Construction [$FT, $(typeof(arch))]"                   test_partial_cavity_grid_construction(FT, arch)
-        @testset "Immersed cell pattern [$FT, $(typeof(arch))]"          test_partial_cavity_immersed_cell_pattern(FT, arch)
-        @testset "Minimum fractional cell height [$FT, $(typeof(arch))]" test_partial_cavity_minimum_thickness(FT, arch)
-        @testset "Cavity volume [$FT, $(typeof(arch))]"                  test_partial_cavity_volume(FT, arch)
-        @testset "Reduced field masking [$FT, $(typeof(arch))]"          test_partial_cavity_reduced_field_masking(FT, arch)
-        @testset "Ice-load potential [$FT, $(typeof(arch))]"             test_partial_cavity_load_potential(FT, arch)
-        @testset "Equality and show [$FT, $(typeof(arch))]"              test_partial_cavity_equality_and_show(FT, arch)
-        @testset "Model at rest [$FT, $(typeof(arch))]"                  test_partial_cavity_model_at_rest(FT, arch)
-        @testset "Rest state under ice shelf [$FT, $(typeof(arch))]"     test_partial_cavity_rest_state(FT, arch)
+        @info "  Testing PartialCellBottomAndTop [$FT, $(typeof(arch))]..."
+        @testset "Construction [$FT, $(typeof(arch))]"                   test_partial_cell_bottom_and_top_grid_construction(FT, arch)
+        @testset "Immersed cell pattern [$FT, $(typeof(arch))]"          test_partial_cell_bottom_and_top_immersed_cell_pattern(FT, arch)
+        @testset "Minimum fractional cell height [$FT, $(typeof(arch))]" test_partial_cell_bottom_and_top_minimum_thickness(FT, arch)
+        @testset "Volume [$FT, $(typeof(arch))]"                  test_partial_cell_bottom_and_top_volume(FT, arch)
+        @testset "Reduced field masking [$FT, $(typeof(arch))]"          test_partial_cell_bottom_and_top_reduced_field_masking(FT, arch)
+        @testset "Top-load potential [$FT, $(typeof(arch))]"             test_partial_cell_top_load_potential(FT, arch)
+        @testset "Equality and show [$FT, $(typeof(arch))]"              test_partial_cell_bottom_and_top_equality_and_show(FT, arch)
+        @testset "Model at rest [$FT, $(typeof(arch))]"                  test_partial_cell_bottom_and_top_model_at_rest(FT, arch)
+        @testset "Rest state beneath an immersed top [$FT, $(typeof(arch))]"     test_partial_cell_bottom_and_top_rest_state(FT, arch)
     end
 end

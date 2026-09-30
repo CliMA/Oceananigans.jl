@@ -166,8 +166,8 @@ const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))
 
-# Under a ceiling the top cell may be immersed while the column below is wet, so sweep the column
-function mask_immersed_field!(field::OnlyZReducedField, grid::CavityIBG, loc, value)
+# Under an immersed top the top cell may be immersed while the column below is wet, so sweep the column
+function mask_immersed_field!(field::OnlyZReducedField, grid::BottomAndTopIBG, loc, value)
     loc  = instantiate.(loc)
     dims = reduced_dimensions(field)
     launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
@@ -177,7 +177,7 @@ end
 const WField = Field{<:Center, <:Center, <:Face}
 
 # `immersed_peripheral_node` never masks the domain's top face, which is peripheral on the underlying grid too
-function mask_immersed_field!(field::WField, grid::CavityIBG, loc, value)
+function mask_immersed_field!(field::WField, grid::BottomAndTopIBG, loc, value)
     arch = architecture(field)
     loc  = instantiate.(loc)
     kp = KernelParameters(interior_indices(field)...)
@@ -188,8 +188,8 @@ end
 @kernel function _mask_immersed_w_field!(field, (ℓx, ℓy, ℓz), grid, value)
     i, j, k = @index(Global, NTuple)
     Nz = size(grid, 3)
-    ice_covered = immersed_cell(i, j, Nz, grid) | (Δzᶜᶜᶜ(i, j, Nz, grid) < Δzᶜᶜᶜ(i, j, Nz, grid.underlying_grid))
-    top_face_buried = (k == Nz + 1) & ice_covered
+    top_covered = immersed_cell(i, j, Nz, grid) | (Δzᶜᶜᶜ(i, j, Nz, grid) < Δzᶜᶜᶜ(i, j, Nz, grid.underlying_grid))
+    top_face_buried = (k == Nz + 1) & top_covered
     masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | top_face_buried
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end

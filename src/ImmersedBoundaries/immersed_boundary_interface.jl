@@ -84,7 +84,7 @@ the activity of any individual cell.
 $(TYPEDSIGNATURES)
 
 Return the sum of `Δr` over the active cells of the face column at `(i, j)`. Unlike the minimum
-of the neighbouring center depths, this holds when the bottom and the ceiling vary independently.
+of the neighbouring center depths, this holds when the bottom and the top vary independently.
 """
 @inline function active_column_depthᶠᶜᵃ(i, j, ibg::IBG)
     H = zero(ibg)
@@ -132,8 +132,8 @@ $(TYPEDSIGNATURES)
 Return `inactive_node`, except at the topmost `Face` node in `z`, where the column is consulted
 instead of the cell below.
 
-The free surface lives at `k = Nz + 1` of every wet column, including columns capped by an ice
-shelf, where `inactive_node` is `true` and would zero every consumer of `∇η`. This anchors the
+The free surface lives at `k = Nz + 1` of every wet column, including columns capped by an
+immersed top, where `inactive_node` is `true` and would zero every consumer of `∇η`. This anchors the
 free surface to the top of the water column.
 """
 @inline top_inactive_node(i, j, k, grid, LX, LY, LZ) = inactive_node(i, j, k, grid, LX, LY, LZ)

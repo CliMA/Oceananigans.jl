@@ -1,9 +1,9 @@
 using Oceananigans.Advection: conditional_flux_fcc, conditional_flux_cfc, conditional_flux_ccf
-using Oceananigans.ImmersedBoundaries: CavityIBG, inactive_cell
+using Oceananigans.ImmersedBoundaries: BottomAndTopIBG, inactive_cell
 using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ, V⁻¹ᶜᶜᶜ
 
-@inline cavity_advective_form_correctionᶜᶜᶜ(i, j, k, grid, advection, velocities, c) = zero(grid)
-@inline cavity_advective_form_correctionᶜᶜᶜ(i, j, k, grid::CavityIBG, ::Nothing, velocities, c) = zero(grid)
+@inline bottom_and_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid, advection, velocities, c) = zero(grid)
+@inline bottom_and_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid::BottomAndTopIBG, ::Nothing, velocities, c) = zero(grid)
 
 @inline masked_Ax_uᶠᶜᶜ(i, j, k, grid, u) = conditional_flux_fcc(i, j, k, grid, zero(grid), Ax_qᶠᶜᶜ(i, j, k, grid, u))
 @inline masked_Ay_vᶜᶠᶜ(i, j, k, grid, v) = conditional_flux_cfc(i, j, k, grid, zero(grid), Ay_qᶜᶠᶜ(i, j, k, grid, v))
@@ -16,7 +16,7 @@ using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ, Ax_qᶠ�
 end
 
 # Add c ∇⋅𝐔: the masked transports do not close in the topmost wet cell
-@inline function cavity_advective_form_correctionᶜᶜᶜ(i, j, k, grid::CavityIBG, advection, velocities, c)
+@inline function bottom_and_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid::BottomAndTopIBG, advection, velocities, c)
     correction = @inbounds c[i, j, k] * masked_transport_divergenceᶜᶜᶜ(i, j, k, grid, velocities)
     return ifelse(inactive_cell(i, j, k, grid), zero(grid), correction)
 end

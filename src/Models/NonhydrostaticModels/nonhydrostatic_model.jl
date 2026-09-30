@@ -321,7 +321,7 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
-    pressure_solver = cavity_free_surface_solver(pressure_solver, grid, free_surface)
+    pressure_solver = bottom_and_top_free_surface_solver(pressure_solver, grid, free_surface)
 
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracer_names, grid, clock)
