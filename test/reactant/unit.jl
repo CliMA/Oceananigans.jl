@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical
+using Oceananigans.Units: Time
 
 arch = ReactantState()
 
@@ -381,7 +382,23 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum(c) ≈ -0.95
         @test maximum(c) ≈ -0.05
     end
+
+    @testset "Compiled Field reductions return numbers" begin
+        grid = RectilinearGrid(arch; size = (2, 2, 4), extent = (1, 1, 1))
+        c = CenterField(grid)
+        set!(c, 2)
+
+        # With Reactant on Julia 1.13, linear indexing into a traced view returns a one-element
+        # array, so reductions to a number must extract their result with Cartesian indexing
+        for reduction in (sum, maximum, minimum, mean)
+            compiled_reduction = @compile sync=true reduction(c)
+            @test compiled_reduction(c) isa Number
+        end
+    end
 end
+
+select_snapshot!(c, fts, n) = set!(c, fts[n])
+interpolate_in_time!(c, fts, t) = set!(c, fts[Time(t)])
 
 @testset "Reactant FieldTimeSeries tests" begin
     @info "Testing the use of a `FieldTimeSeries` on a `ReactantState` arch..."
@@ -393,6 +410,33 @@ end
 
     # Test I can index into a Reactant FieldTimeSeries
     @test fts[5] isa Field
+
+    # Index and interpolate in time with a traced index and time, as a compiled model does
+    # with `clock.time`, and compare with the CPU
+    cpu_grid = on_architecture(CPU(), grid)
+    for times in (0:3600.0:7200.0, [0.0, 1000.0, 7200.0]), time_indexing in (Clamp(), Cyclical())
+        fts     = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing)
+        cpu_fts = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; time_indexing)
+        for (n, value) in enumerate((1, 4, 2))
+            set!(fts[n], value)
+            set!(cpu_fts[n], value)
+        end
+
+        c = CenterField(grid)
+        cpu_c = CenterField(cpu_grid)
+
+        r_select! = @compile select_snapshot!(c, fts, Reactant.ConcreteRNumber(1))
+        r_select!(c, fts, Reactant.ConcreteRNumber(2))
+        select_snapshot!(cpu_c, cpu_fts, 2)
+        @test Array(interior(c)) == Array(interior(cpu_c))
+
+        r_interpolate! = @compile interpolate_in_time!(c, fts, Reactant.ConcreteRNumber(0.0))
+        for t in (-1800.0, 900.0, 3600.0, 5400.0, 9000.0)
+            r_interpolate!(c, fts, Reactant.ConcreteRNumber(t))
+            interpolate_in_time!(cpu_c, cpu_fts, t)
+            @test Array(interior(c)) ≈ Array(interior(cpu_c))
+        end
+    end
 end
 
 @testset "Field materialize traced" begin

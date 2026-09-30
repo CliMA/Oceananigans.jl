@@ -81,9 +81,10 @@ end
     Δz⁻¹ᶠₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, f)
     dl     = - Δt * κᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
 
-    # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
-    # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
-    return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, c)
+    # The flux through face k vanishes when that face lies on a boundary, which also makes the diagonal
+    # correct. (Note we use LinearAlgebra.Tridiagonal indexing convention, so that lower_diagonal
+    # should be defined for k′ = 1 ⋯ N-1.)
+    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
 end
 
 #####
@@ -98,7 +99,8 @@ end
     Δz⁻¹ᶜₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, f)
     du     = - Δt * νᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
-    return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
+    # w = 0 on a face that lies on the bottom or on an immersed boundary, so its row is an identity row
+    return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
 end
 
 # `dl(m)` multiplies `ϕ[m]` in row `m + 1`, and the viscous flux between faces `m` and `m + 1` sits at center `m`
@@ -108,7 +110,7 @@ end
     Δz⁻¹ᶜₘ   = Δz⁻¹(i, j, m,   grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₘ₊₁ = Δz⁻¹(i, j, m+1, grid, ℓx, ℓy, f)
     dl       = - Δt * νᵐ * (Δz⁻¹ᶜₘ * Δz⁻¹ᶠₘ₊₁)
-    return dl * !peripheral_node(i, j, m, grid, ℓx, ℓy, c)
+    return dl * !peripheral_node(i, j, m+1, grid, ℓx, ℓy, f)
 end
 
 ### Diagonal terms
@@ -139,6 +141,11 @@ end
 #####
 
 @inline function boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
+    # Constant-folds away unless a boundary condition is implicit-explicit
+    if !(needs_implicit_solver(top_bc) | needs_implicit_solver(bottom_bc) | needs_implicit_solver(immersed_bc))
+        return zero(grid)
+    end
+
     Nz  = size(grid, 3)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     λᵗ  = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
@@ -198,8 +205,10 @@ and
 where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
 
-On an `ImmersedBoundaryGrid`, the off-diagonals vanish across the immersed boundary, so the
-rows of the inactive cells are decoupled from the active part of the column.
+The row of ``w`` on the bottom face, and on any immersed face, is an identity row since ``w = 0``
+there; the top face is not part of the system. On an `ImmersedBoundaryGrid`, the off-diagonals
+vanish across the immersed boundary, so the rows of the inactive cells are decoupled from the
+active part of the column.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)

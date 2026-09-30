@@ -21,6 +21,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    timeout_in_minutes: 60
     command: |
       # Download julia binaries
       wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
@@ -40,6 +41,7 @@ steps:
     concurrency_group: "oceananigans-benchmarks/gpu"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 120
     command: |
       # Instantiate, precompile, and pre-download bathymetry data (before parallel GPU runs)
       $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
@@ -160,6 +162,7 @@ steps:
     key: "merge-compare"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 10
     command: |
       # Download all artifacts from this build
       buildkite-agent artifact download "*.json" .
@@ -232,6 +235,7 @@ steps:
     key: "notify-github"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 10
     command: |
       # Trigger the Publish Benchmarks workflow via repository_dispatch.
       # Requires GITHUB_DISPATCH_TOKEN (a GitHub PAT with repo scope) in Buildkite secrets.
