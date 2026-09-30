@@ -138,20 +138,16 @@ unified_array(::GPU, a) = a
 @inline Adapt.adapt(::CPU, f::Function) = f
 
 """
-    FloatTypeAdaptor{FT}
+    Float32Adaptor
 
-`Adapt` adaptor that converts every floating point number in a structure to `FT`.
+`Adapt` adaptor that converts every `Float64` in a structure to `Float32`.
 """
-struct FloatTypeAdaptor{FT} end
+struct Float32Adaptor end
 
-Adapt.adapt_storage(::FloatTypeAdaptor{FT}, x::AbstractFloat) where FT = convert(FT, x)
+Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
 
 # Convert arguments to device-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = Adapt.adapt(CPU(), args)
-
-# Convert arguments to the device, then floating point numbers in them to `FT`
-@inline convert_to_device(arch, FT, args) = Adapt.adapt(FloatTypeAdaptor{FT}(), convert_to_device(arch, args))
-@inline convert_to_device(::CPU, FT, args) = convert_to_device(CPU(), args)
 
 end # module

@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Adapt: adapt
-using Oceananigans.Architectures: FloatTypeAdaptor
+using Oceananigans.Architectures: Float32Adaptor
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function has_float64(T, seen=Set{Any}())
@@ -93,7 +93,7 @@ end
         @info "  Testing that Float64 model components are converted to Float32 for kernels..."
         for model in models(Float64)
             components = merge(kernel_visible_components(model), (; boundary_conditions=field_boundary_conditions(model)))
-            unconverted = [name for (name, c) in pairs(components) if has_float64(typeof(adapt(FloatTypeAdaptor{Float32}(), c)))]
+            unconverted = [name for (name, c) in pairs(components) if has_float64(typeof(adapt(Float32Adaptor(), c)))]
             @test isempty(unconverted)
         end
 

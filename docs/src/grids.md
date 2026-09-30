@@ -966,11 +966,11 @@ Setting the global default is a good approach for building pure Float32
 simulations, because this will change _all_ default constructor
 float types to Float32.
 
-Numbers held by boundary conditions, forcings, closures, and other model components
-are converted to the grid's float type when kernels are launched on a GPU, so `BulkDrag(coefficient=2.5e-3)`
-or `FluxBoundaryCondition(1e-4)` may be used with a `Float32` grid as is.
+Metal GPUs have no `Float64`, so `Float64` numbers held by boundary conditions, forcings, closures,
+and other model components are converted to `Float32` when kernels are launched on Metal:
+`BulkDrag(coefficient=2.5e-3)` or `FluxBoundaryCondition(1e-4)` may be used there as is.
 Literals inside user-defined functions are not converted: `2π * t` promotes to `Float64`,
-which fails to compile on Metal GPUs, whereas `2f0 * π * t` or a parameter `p.ω * t` stays `Float32`.
+which fails to compile on Metal, whereas `2f0 * π * t` or a parameter `p.ω * t` stays `Float32`.
 
 !!! warn "Using single precision"
     Single precision should be used with care.
