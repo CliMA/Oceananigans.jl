@@ -134,6 +134,8 @@ end
 radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_size) =
     ntuple(_ -> zeros(arch, FT, tangential_size...), 3) # φᵇ, φ₁, φ₁ˡ
 
+radiation_buffers(radiation::AbstractRadiationScheme) = (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ)
+
 radiation_storage(radiation::AbstractRadiationScheme, (φᵇ, φ₁, φ₁ˡ)) =
     getnamewrapper(radiation)(radiation.outflow_timescale, radiation.inflow_timescale,
                               radiation.use_boundary_velocity, φᵇ, φ₁, φ₁ˡ)
@@ -153,6 +155,15 @@ function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
     classification = rebuild_classification(bc.classification, materialized_radiation)
     return BoundaryCondition(classification, regularized_condition)
 end
+
+Oceananigans.prognostic_state(bc::RBC) = map(b -> on_architecture(CPU(), b), radiation_buffers(bc.classification.scheme))
+
+function Oceananigans.restore_prognostic_state!(bc::RBC, from)
+    foreach(copyto!, radiation_buffers(bc.classification.scheme), from)
+    return bc
+end
+
+Oceananigans.restore_prognostic_state!(::RBC, ::Nothing) = nothing
 
 #####
 ##### NormalRadiation halo filling — Orlanski (1976) with Marchesiello et al. (2001) nudging
