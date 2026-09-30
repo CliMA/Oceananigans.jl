@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: div_Uc, materialize_advection
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: GridFittedBottomAndTop, PartialCellBottomAndTop, TopLoad, bottom_height_interior, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: GridFittedBottomAndTop, PartialCellBottomAndTop, TopLoad, bottom_height_interior, immersed_cell, mask_immersed_field!
 using Oceananigans.Models: top_load_potential
 using Oceananigans.Grids: znode
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: bottom_and_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!,
@@ -198,6 +198,144 @@ function test_bottom_and_top_zstar_rest_state(FT, arch)
     return nothing
 end
 
+function test_bottom_and_top_zstar_conservation(FT, arch)
+    Lx = 20kilometers
+    z = MutableVerticalDiscretization(collect(-5:0))
+    underlying_grid = RectilinearGrid(arch, FT; size=(8, 4, 5), x=(0, Lx), y=(0, 2kilometers), z,
+                                      topology=(Bounded, Periodic, Bounded))
+
+    top(x, y) = x < Lx / 2 ? -1.5 - 2x / Lx : 0
+    bᵢ(x, y, z) = x < Lx / 4 ? 0.06 : 0.01
+
+    for BottomAndTop in (GridFittedBottomAndTop, PartialCellBottomAndTop)
+        ibg = ImmersedBoundaryGrid(underlying_grid, BottomAndTop(-4.5, top))
+
+        for (free_surface, Δt) in ((ExplicitFreeSurface(), 10), (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes))
+            model = HydrostaticFreeSurfaceModel(ibg; free_surface,
+                                                tracers = (:b, :c, :constant),
+                                                timestepper = :SplitRungeKutta3,
+                                                buoyancy = BuoyancyTracer(),
+                                                vertical_coordinate = ZStarCoordinate())
+
+            set!(model, b=bᵢ, c=(x, y, z) -> x / Lx, constant=1)
+
+            Bᵢ = Array(interior(compute!(Field(Integral(model.tracers.b)))))[1]
+            Cᵢ = Array(interior(compute!(Field(Integral(model.tracers.c)))))[1]
+
+            for _ in 1:20
+                time_step!(model, Δt)
+            end
+
+            η = Array(interior(model.free_surface.displacement))
+            Bₙ = Array(interior(compute!(Field(Integral(model.tracers.b)))))[1]
+            Cₙ = Array(interior(compute!(Field(Integral(model.tracers.c)))))[1]
+            constant = Array(interior(model.tracers.constant))
+            active = bottom_and_top_values(immersed_cell, ibg) .== 0
+
+            @test maximum(abs, η) > 0
+            @test Bₙ ≈ Bᵢ
+            @test Cₙ ≈ Cᵢ
+            @test all(constant[active] .≈ 1)
+        end
+    end
+
+    return nothing
+end
+
+function top_wet_cell_values(c, grid)
+    wet = bottom_and_top_values(immersed_cell, grid) .== 0
+    values = Array(interior(c))
+    Nx, Ny, _ = size(grid)
+    return [values[i, j, findlast(wet[i, j, :])] for i in 1:Nx, j in 1:Ny]
+end
+
+integrated(c) = Array(interior(compute!(Field(Integral(c)))))[1]
+
+function test_bottom_and_top_zstar_freshwater_flux(FT, arch)
+    Lx, Ly = 20kilometers, 2kilometers
+    z = MutableVerticalDiscretization(collect(-5:0))
+    underlying_grid = RectilinearGrid(arch, FT; size=(8, 4, 5), x=(0, Lx), y=(0, Ly), z,
+                                      topology=(Bounded, Periodic, Bounded))
+    Nx, Ny, _ = size(underlying_grid)
+    Az = Lx / Nx * Ly / Ny
+
+    F₀ = convert(FT, 1e-4)
+    Fη(x, y, z, t) = ifelse(x < Lx / 2, F₀, zero(F₀))
+    top(x, y) = x < Lx / 2 ? -1.5 - 2x / Lx : 0
+
+    for BottomAndTop in (GridFittedBottomAndTop, PartialCellBottomAndTop)
+        ibg = ImmersedBoundaryGrid(underlying_grid, BottomAndTop(-4.5, top))
+        free_surfaces = ((ExplicitFreeSurface(), 10),
+                         (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes),
+                         (ImplicitFreeSurface(), 2minutes))
+
+        for (free_surface, Δt) in free_surfaces
+            model = HydrostaticFreeSurfaceModel(ibg; free_surface,
+                                                forcing = (; η = Forcing(Fη)),
+                                                tracers = (:c, :constant),
+                                                timestepper = :SplitRungeKutta3,
+                                                vertical_coordinate = ZStarCoordinate())
+
+            set!(model, c=(x, y, z) -> 1 + z / 5, constant=1)
+
+            volume = CenterField(ibg)
+            set!(volume, 1)
+            Vᵢ = integrated(volume)
+            Cᵢ = integrated(model.tracers.c)
+            cᵢ = top_wet_cell_values(model.tracers.c, ibg)
+
+            Nt = 20
+            for _ in 1:Nt
+                time_step!(model, Δt)
+            end
+
+            t = Nt * Δt
+            F = [Fη(x, 0, 0, 0) for x in Array(xnodes(ibg, Center())), _ in 1:Ny]
+            Vₙ = integrated(volume)
+            Cₙ = integrated(model.tracers.c)
+            cₙ = top_wet_cell_values(model.tracers.c, ibg)
+            constant = Array(interior(model.tracers.constant))
+            active = bottom_and_top_values(immersed_cell, ibg) .== 0
+
+            # The added water carries the concentration of the topmost wet cell, which drifts between cᵢ and cₙ
+            carriedᵢ = sum(F .* cᵢ) * Az * t
+            carriedₙ = sum(F .* cₙ) * Az * t
+
+            @test Vₙ - Vᵢ ≈ sum(F) * Az * t
+            @test all(constant[active] .≈ 1)
+            @test min(carriedᵢ, carriedₙ) ≤ Cₙ - Cᵢ ≤ max(carriedᵢ, carriedₙ)
+        end
+    end
+
+    return nothing
+end
+
+function test_bottom_and_top_zstar_freshwater_flux_rest_state(FT, arch)
+    z = MutableVerticalDiscretization(collect(-5:0))
+    underlying_grid = RectilinearGrid(arch, FT; size=(8, 4, 5), x=(0, 20kilometers), y=(0, 2kilometers), z,
+                                      topology=(Bounded, Periodic, Bounded))
+    F₀ = convert(FT, 1e-4)
+
+    for BottomAndTop in (GridFittedBottomAndTop, PartialCellBottomAndTop)
+        ibg = ImmersedBoundaryGrid(underlying_grid, BottomAndTop(-4.5, -1.5))
+        model = HydrostaticFreeSurfaceModel(ibg; free_surface = SplitExplicitFreeSurface(ibg; substeps=8),
+                                            forcing = (; η = Forcing((x, y, z, t) -> F₀)),
+                                            timestepper = :SplitRungeKutta3,
+                                            vertical_coordinate = ZStarCoordinate())
+
+        for _ in 1:20
+            time_step!(model, 2minutes)
+        end
+
+        η = Array(interior(model.free_surface.displacement))
+        @test all(η .≈ F₀ * 40minutes)
+        @test maximum(abs, interior(model.velocities.u)) ≤ 5000 * eps(FT)
+        @test maximum(abs, interior(model.velocities.v)) ≤ 5000 * eps(FT)
+    end
+
+    return nothing
+end
+
 function test_bottom_and_top_zstar_znode(FT, arch)
     z = MutableVerticalDiscretization(collect(range(-1, 0, length=11)))
     underlying_grid = RectilinearGrid(arch, FT; size=(4, 10), x=(0, 1), z, topology=(Bounded, Flat, Bounded))
@@ -230,6 +368,9 @@ end
         @testset "CATKE beneath an immersed top [$FT, $(typeof(arch))]"      test_bottom_and_top_catke(FT, arch)
         @testset "Uniform tracer beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_uniform_tracer(FT, arch)
         @testset "z★ rest state beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_rest_state(FT, arch)
+        @testset "z★ conservation beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_conservation(FT, arch)
+        @testset "z★ freshwater flux beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_freshwater_flux(FT, arch)
+        @testset "z★ freshwater flux rest state beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_freshwater_flux_rest_state(FT, arch)
         @testset "z★ znode beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_znode(FT, arch)
     end
 end

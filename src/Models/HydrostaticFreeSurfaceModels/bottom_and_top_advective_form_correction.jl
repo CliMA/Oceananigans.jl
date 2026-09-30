@@ -1,6 +1,6 @@
 using Oceananigans.Advection: conditional_flux_fcc, conditional_flux_cfc, conditional_flux_ccf
 using Oceananigans.ImmersedBoundaries: BottomAndTopIBG, inactive_cell
-using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ, V⁻¹ᶜᶜᶜ
+using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ, Azᶜᶜᶜ, Δrᶜᶜᶜ, V⁻¹ᶜᶜᶜ, ∂t_σ
 
 @inline bottom_and_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid, advection, velocities, c) = zero(grid)
 @inline bottom_and_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid::BottomAndTopIBG, ::Nothing, velocities, c) = zero(grid)
@@ -12,7 +12,8 @@ using Oceananigans.Operators: δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ, Ax_qᶠ�
 @inline function masked_transport_divergenceᶜᶜᶜ(i, j, k, grid, velocities)
     return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, masked_Ax_uᶠᶜᶜ, velocities.u) +
                                     δyᵃᶜᵃ(i, j, k, grid, masked_Ay_vᶜᶠᶜ, velocities.v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, masked_Az_wᶜᶜᶠ, velocities.w))
+                                    δzᵃᵃᶜ(i, j, k, grid, masked_Az_wᶜᶜᶠ, velocities.w) +
+                                    Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid) * ∂t_σ(i, j, k, grid))
 end
 
 # Add c ∇⋅𝐔: the masked transports do not close in the topmost wet cell
