@@ -4,7 +4,9 @@ using Oceananigans.Advection: div_Uc, materialize_advection
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: GridFittedBottomAndTop, PartialCellBottomAndTop, TopLoad, bottom_height_interior, mask_immersed_field!
 using Oceananigans.Models: top_load_potential
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: bottom_and_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!
+using Oceananigans.Grids: znode
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: bottom_and_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!,
+                                                        update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: z_top, z_bottom, depthᶜᶜᶠ, height_above_bottomᶜᶜᶠ, wall_vertical_distanceᶜᶜᶠ
 
 bottom_and_top_values(op, grid, args...) =
@@ -46,8 +48,8 @@ function test_top_load_potential(FT, arch)
     return nothing
 end
 
-function rest_state_model(ibg; Δt=0.01, Nt=10)
-    model = HydrostaticFreeSurfaceModel(ibg; buoyancy=BuoyancyTracer(), tracers=:b)
+function rest_state_model(ibg; Δt=0.01, Nt=10, kw...)
+    model = HydrostaticFreeSurfaceModel(ibg; buoyancy=BuoyancyTracer(), tracers=:b, kw...)
     set!(model, b=(x, z) -> z / 2)
 
     for _ in 1:Nt
@@ -175,6 +177,50 @@ function test_bottom_and_top_uniform_tracer(FT, arch)
     return nothing
 end
 
+function test_bottom_and_top_zstar_rest_state(FT, arch)
+    z = MutableVerticalDiscretization(collect(range(-1, 0, length=21)))
+    underlying_grid = RectilinearGrid(arch, FT; size=(16, 20), x=(0, 1), z, topology=(Bounded, Flat, Bounded))
+
+    top(x) = min(0, -0.95 + 1.6x)
+    b(x, z) = z / 2
+    top_load = TopLoad(BuoyancyTracer(), (; b))
+
+    for BottomAndTop in (GridFittedBottomAndTop, PartialCellBottomAndTop)
+        ibg = ImmersedBoundaryGrid(underlying_grid, BottomAndTop(-1, top; top_load))
+        model = rest_state_model(ibg; vertical_coordinate=ZStarCoordinate(), timestepper=:SplitRungeKutta3)
+
+        tol = 5000 * eps(FT)
+        @test maximum(abs, interior(model.velocities.u)) ≤ tol
+        @test maximum(abs, interior(model.velocities.w)) ≤ tol
+        @test maximum(abs, interior(model.free_surface.displacement)) ≤ tol
+    end
+
+    return nothing
+end
+
+function test_bottom_and_top_zstar_znode(FT, arch)
+    z = MutableVerticalDiscretization(collect(range(-1, 0, length=11)))
+    underlying_grid = RectilinearGrid(arch, FT; size=(4, 10), x=(0, 1), z, topology=(Bounded, Flat, Bounded))
+    Nx, _, Nz = size(underlying_grid)
+    top(x) = x < 1/2 ? -1/2 : 0
+    η₀ = FT(0.01)
+
+    for BottomAndTop in (GridFittedBottomAndTop, PartialCellBottomAndTop)
+        ibg = ImmersedBoundaryGrid(underlying_grid, BottomAndTop(-1, top))
+        model = HydrostaticFreeSurfaceModel(ibg; vertical_coordinate=ZStarCoordinate())
+        set!(model.free_surface.displacement, η₀)
+        update_zstar_scaling!(ibg, model.free_surface.displacement)
+
+        zᶠ = Array(interior(compute!(Field(KernelFunctionOperation{Center, Center, Face}(znode, ibg, Center(), Center(), Face())))))
+        covered_columns = 1:Nx÷2
+        open_columns = Nx÷2+1:Nx
+        @test all(zᶠ[:, 1, 1] .≈ -1)
+        @test all(zᶠ[covered_columns, 1, Nz÷2+1] .≈ -FT(1/2) + η₀)
+        @test all(zᶠ[open_columns, 1, Nz+1] .≈ η₀)
+    end
+    return nothing
+end
+
 @testset "Bottom and top dynamics" begin
     for arch in archs, FT in float_types
         @info "  Testing bottom and top dynamics [$FT, $(typeof(arch))]..."
@@ -183,5 +229,7 @@ end
         @testset "Wall distances [$FT, $(typeof(arch))]"             test_bottom_and_top_wall_distances(FT, arch)
         @testset "CATKE beneath an immersed top [$FT, $(typeof(arch))]"      test_bottom_and_top_catke(FT, arch)
         @testset "Uniform tracer beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_uniform_tracer(FT, arch)
+        @testset "z★ rest state beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_rest_state(FT, arch)
+        @testset "z★ znode beneath an immersed top [$FT, $(typeof(arch))]" test_bottom_and_top_zstar_znode(FT, arch)
     end
 end
