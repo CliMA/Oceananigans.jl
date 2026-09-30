@@ -25,20 +25,19 @@ This predictor-corrector scheme:
 """
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
-    kernel_Δt = convert(eltype(grid), Δt)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
 
     # Prognostic variables stepping
     χ = model.timestepper.χ
-    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, kernel_Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
-    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, kernel_Δt, χ, Gⁿ, G⁻)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, Δt, χ, Gⁿ, G⁻)
 
-    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, kernel_Δt)
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δt)
 
-    compute_pressure_correction!(model, kernel_Δt)
-    make_pressure_correction!(model, kernel_Δt)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
 
     return nothing
 end
