@@ -18,7 +18,7 @@ paths:
   code:          &code_paths           "{ext,src}/**"
   project:       &project_paths        "Project.toml"
   tests:         &test_paths           "test/**"
-  no_tests:      &no_test_paths        "test/{amdgpu,makie,metal,mpi,oneapi,sharding}/**"
+  no_tests:      &no_test_paths        "test/{ProjectDistributed.toml,amdgpu/**,distributed/**,convergence/**,makie/**,manual/**,metal/**,mpi/**,oneapi/**,sharding/**}"
   docs:          &docs_paths           "{docs,examples}/**"
   agents:        &agents_paths         "AGENTS.md"
 
@@ -96,8 +96,8 @@ steps:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
     if_changed:
-      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
-      exclude: [*no_test_paths, "test/{enzyme,reactant}"]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: [*no_test_paths, "test/{enzyme,reactant}/**"]
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -191,7 +191,7 @@ steps:
       JULIA_CPU_THREADS: "4"
     timeout_in_minutes: 45
     if_changed:
-      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
       exclude: *no_test_paths
     command: |
       # Add matrix-specific environment variables
