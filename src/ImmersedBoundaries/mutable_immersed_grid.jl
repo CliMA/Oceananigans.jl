@@ -162,12 +162,12 @@ end
 
 import Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶜᶠᶜ, ∂xᶠᶠᶜ
 import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶜᶜ, ∂yᶠᶠᶜ
-import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ
-import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ
+import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ
+import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶠᶜᶠ
 
-using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶠᶜ
+using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
+using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
+using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
 using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
 using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
@@ -234,6 +234,7 @@ const MBTIBG = MutableBottomAndTopImmersedGrid
 @inline ∂x_zᶜᶠᶜ(i, j, k, grid::AMG) = δxᶜᶠᶜ(i, j, k, grid, znode, F(), F(), C()) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
 @inline ∂x_zᶠᶠᶜ(i, j, k, grid::AMG) = δxᶠᶠᶜ(i, j, k, grid, znode, C(), F(), C()) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
 @inline ∂x_zᶜᶜᶠ(i, j, k, grid::AMG) = δxᶜᶜᶠ(i, j, k, grid, znode, F(), C(), F()) * Δx⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline ∂x_zᶜᶠᶠ(i, j, k, grid::AMG) = δxᶜᶠᶠ(i, j, k, grid, znode, F(), F(), F()) * Δx⁻¹ᶜᶠᶠ(i, j, k, grid)
 
 # y-direction slopes at different staggerings
 @inline ∂y_zᶜᶠᶜ(i, j, k, grid::AMG) = δyᶜᶠᶜ(i, j, k, grid, znode, C(), C(), C()) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
@@ -242,6 +243,7 @@ const MBTIBG = MutableBottomAndTopImmersedGrid
 @inline ∂y_zᶠᶜᶜ(i, j, k, grid::AMG) = δyᶠᶜᶜ(i, j, k, grid, znode, F(), F(), C()) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline ∂y_zᶠᶠᶜ(i, j, k, grid::AMG) = δyᶠᶠᶜ(i, j, k, grid, znode, F(), C(), C()) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
 @inline ∂y_zᶜᶜᶠ(i, j, k, grid::AMG) = δyᶜᶜᶠ(i, j, k, grid, znode, C(), F(), F()) * Δy⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline ∂y_zᶠᶜᶠ(i, j, k, grid::AMG) = δyᶠᶜᶠ(i, j, k, grid, znode, F(), F(), F()) * Δy⁻¹ᶠᶜᶠ(i, j, k, grid)
 
 #####
 ##### Disambiguation for Number arguments (derivative of a constant is zero)

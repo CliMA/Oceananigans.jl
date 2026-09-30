@@ -26,6 +26,30 @@ inside `f` are not mistaken for recursion by the compiler.
 @inline map_names(f, ::Tuple{}) = ()
 @inline map_names(f, names::Tuple) = (f(first(names)), map_names(f, Base.tail(names))...)
 
+"""
+$(TYPEDSIGNATURES)
+
+Call `f(Val(n), Val(name))` for each `name` in `names`, where `n` is the position of `name`.
+The recursion goes over the splatted `Val(name)`s rather than over `Val(names)`: the compiler
+widens a recursion over `Val`-wrapped tuples of names from its third level on, which boxes
+its arguments and dispatches the remaining calls dynamically.
+"""
+@inline foreach_name(f::F, ::Val{names}) where {F, names} = _foreach_name(f, Val(1), map(Val, names)...)
+
+"""
+$(TYPEDSIGNATURES)
+
+Call `f(Val(n), Val(name))` for each property `name` of `nt`, where `n` is the position of `name`.
+"""
+@inline foreach_name(f::F, nt::NamedTuple) where F = foreach_name(f, Val(propertynames(nt)))
+
+@inline _foreach_name(f, ::Val) = nothing
+
+@inline function _foreach_name(f::F, ::Val{n}, val_name, val_names...) where {F, n}
+    f(Val(n), val_name)
+    return _foreach_name(f, Val(n + 1), val_names...)
+end
+
 @inline datatuple(obj::Nothing) = nothing
 @inline datatuple(obj::AbstractArray) = obj
 @inline datatuple(obj::Tuple) = Tuple(datatuple(o) for o in obj)
