@@ -79,6 +79,7 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.local_index,
                           mpi_arch.connectivity,
                           nccl_communicator,
+                          mpi_arch.field_count,
                           mpi_arch.devices)
 end
 
