@@ -114,6 +114,8 @@ Grids.nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location
 for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
+    @eval Base.$f(ϕ::StaticArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
+    @eval Base.$f(ϕ::AbstractField, ψ::StaticArray) = $f(interior(ϕ), ψ)
 end
 
 const XReducedAF = AbstractField{Nothing}

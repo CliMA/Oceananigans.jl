@@ -114,7 +114,7 @@ end
 ##### Coordinate generation for grid constructors
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
+generate_coordinate(FT, ::Tuple{<:Any, <:Any, Type{Periodic}}, size, halo, ::MutableVerticalDiscretization, coordinate_name, dim::Int, arch) =
     throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.

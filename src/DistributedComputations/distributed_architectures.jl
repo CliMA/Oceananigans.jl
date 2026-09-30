@@ -131,6 +131,10 @@ Sizes(args...) = Sizes(tuple(args...))
 Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
+Partition(x::Equal, y::Equal, z) = Partition(validate_partition(x, y, z)...)
+Partition(x::Equal, y, z::Equal) = Partition(validate_partition(x, y, z)...)
+Partition(x, y::Equal, z::Equal) = Partition(validate_partition(x, y, z)...)
+Partition(x::Equal, y::Equal, z::Equal) = Partition(validate_partition(x, y, z)...)
 
 Base.summary(s::Sizes)      = string("Sizes", s.sizes)
 Base.summary(f::Fractional) = string("Fractional", f.sizes)
@@ -154,6 +158,12 @@ validate_partition(::Equal, y, z) = remaining_workers(y, z), y, z
 
 validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
 validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
+
+validate_partition(::Equal, ::Equal, z) = throw_multiple_equal()
+validate_partition(::Equal, y, ::Equal) = throw_multiple_equal()
+validate_partition(x, ::Equal, ::Equal) = throw_multiple_equal()
+validate_partition(::Equal, ::Equal, ::Equal) = throw_multiple_equal()
+throw_multiple_equal() = throw(ArgumentError("Equal() can be used for only one direction"))
 
 function remaining_workers(r1, r2)
     MPI.Initialized() || MPI.Init()
