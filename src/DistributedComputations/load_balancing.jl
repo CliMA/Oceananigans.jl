@@ -3,10 +3,10 @@ using Oceananigans.Architectures: on_architecture
 abstract type BalancingStrategy end
 
 # x and y partitioning optimised together to produce balanced loads
-struct GeneralisedBlockDistribution <: BalancingStrategy end
+struct GeneralizedBlockDistribution <: BalancingStrategy end
 
 # x and y partitioning balanced separately
-struct SimplifiedGeneralisedBlockDistribution <: BalancingStrategy end
+struct SimplifiedGeneralizedBlockDistribution <: BalancingStrategy end
 
 create_balanced_partition(strategy, partition, cost_map) = partition
 
@@ -27,7 +27,7 @@ function ends_to_sizes(ends)
   return sizes
 end
 
-function create_balanced_partition(strategy::SimplifiedGeneralisedBlockDistribution, ranks, cost_map)
+function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribution, ranks, cost_map)
   costs = on_architecture(CPU(), interior(cost_map))
 
   # Partition each direction independently
@@ -43,7 +43,7 @@ function create_balanced_partition(strategy::SimplifiedGeneralisedBlockDistribut
 
 end
 
-function create_balanced_partition(strategy::GeneralisedBlockDistribution, ranks, cost_map)
+function create_balanced_partition(strategy::GeneralizedBlockDistribution, ranks, cost_map)
   # Iterative algorithm based on "Manne, F., Sørevik, T. (1996). Partitioning an array onto a mesh of processors"
   costs = on_architecture(CPU(), interior(cost_map))
 

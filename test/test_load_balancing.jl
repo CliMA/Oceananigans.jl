@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_cells_per_column
-using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, GeneralisedBlockDistribution, SimplifiedGeneralisedBlockDistribution
+using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
 
 sizes = [ (6, 6, 3) ]
 halos = [ (4, 4, 4) ]
@@ -55,7 +55,7 @@ ib_constructors = [
   bottom_height -> PartialCellBottom(bottom_height)
 ]
 
-strategies = [nothing, SimplifiedGeneralisedBlockDistribution(), GeneralisedBlockDistribution()]
+strategies = [nothing, SimplifiedGeneralizedBlockDistribution(), GeneralizedBlockDistribution()]
 
 partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
