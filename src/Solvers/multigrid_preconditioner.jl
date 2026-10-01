@@ -1,20 +1,11 @@
+using LinearAlgebra: pinv, mul!
+
 #####
 ##### A geometric multigrid preconditioner for the ConjugateGradientPoissonSolver
 #####
-##### The symmetric volume-weighted Laplacian V∇² is represented in "conductance form": each
-##### face carries a conductance C = (face area) / (center-to-center distance), zeroed across
-##### immersed and domain boundaries, so that
-#####
-#####     (V∇²ϕ)ᵢⱼₖ = Σ_faces C (ϕ_neighbor - ϕ) .
-#####
-##### Coarse levels agglomerate cells in the horizontal only (never in z). Vertical conductances
-##### are summed over each agglomerate; horizontal conductances are summed over the fine faces
-##### making up each coarse face and halved for the doubled center-to-center distance, so that
-##### every level discretizes the same operator and immersed boundaries, partial cells and
-##### stretching are carried by the coefficients alone. Transfers are bilinear interpolation in
-##### the horizontal and its transpose. The smoother is red-black line relaxation that solves each
-##### vertical column exactly with a Thomas sweep, which absorbs vertical stretching and the
-##### Δz ≪ Δx anisotropy of ocean grids. The coarsest level is a single column, solved exactly.
+##### The symmetric volume-weighted Laplacian V∇² is stored in "conductance form": each face
+##### carries a conductance C = (face area) / (center-to-center distance), zeroed across immersed
+##### and domain boundaries, so that (V∇²ϕ)ᵢⱼₖ = Σ_faces C (ϕ_neighbor - ϕ).
 #####
 
 struct MultigridLevel{A, E}
@@ -24,19 +15,21 @@ struct MultigridLevel{A, E}
     D  :: A
     E  :: E
     T  :: E
+    β⁻¹ :: A
+    t  :: A
     ϕ  :: A
     b  :: A
     r  :: A
-    t  :: A
     coarsen_x :: Bool
     coarsen_y :: Bool
 end
 
 Base.size(level::MultigridLevel) = size(level.D)
 
-struct MultigridPreconditioner{G, L, S}
+struct MultigridPreconditioner{G, L, M, S}
     grid :: G
     levels :: Vector{L}
+    coarse_inverse :: M
     smoothing_sweeps :: Int
     cached_free_surface_timestep :: Base.RefValue{S}
 end
@@ -243,10 +236,28 @@ end
     @inbounds bᶜ[I, J, k] = s
 end
 
+# Thomas factorization of every vertical column: inverse pivots β⁻¹ and multipliers t
+@kernel function _factorize_columns!(β⁻¹, t, Cz, D, E, T, Nz)
+    i, j = @index(Global, NTuple)
+    @inbounds begin
+        ε = E[i, j]
+        top = T[i, j]
+        β = (D[i, j, 1] - ifelse(Nz == 1, top, zero(top))) * (1 + ε)
+        β⁻¹[i, j, 1] = 1 / β
+        for k in 2:Nz
+            Dᵏ = D[i, j, k] - ifelse(k == Nz, top, zero(top))
+            tᵏ = Cz[i, j, k] / β
+            β = Dᵏ * (1 + ε) - Cz[i, j, k] * tᵏ
+            t[i, j, k] = tᵏ
+            β⁻¹[i, j, k] = 1 / β
+        end
+    end
+end
+
 # Red-black line relaxation: for each column (i, j) of the given color, solve the vertical
-# tridiagonal sub-system exactly (Thomas algorithm, cprime stored in t) with the horizontal
-# couplings moved to the right-hand side using the current iterate.
-@kernel function _smooth_columns!(ϕ, t, b, Cx, Cy, Cz, D, E, T, color, Nx, Ny, Nz)
+# tridiagonal sub-system exactly with the horizontal couplings moved to the right-hand side
+# using the current iterate.
+@kernel function _smooth_columns!(ϕ, b, Cx, Cy, Cz, β⁻¹, t, color, Nx, Ny, Nz)
     m, j = @index(Global, NTuple)
     i = 2m - (color + j) % 2
     if i <= Nx
@@ -256,26 +267,17 @@ end
         j⁺ = ifelse(j == Ny, 1, j + 1)
 
         @inbounds begin
-            ε = E[i, j]
-            top = T[i, j]
-
-            D¹ = D[i, j, 1] - ifelse(Nz == 1, top, zero(top))
-            β = D¹ * (1 + ε)
-            rhs = b[i, j, 1] - (Cx[i, j, 1] * ϕ[i⁻, j, 1] + Cx[i+1, j, 1] * ϕ[i⁺, j, 1] +
-                                Cy[i, j, 1] * ϕ[i, j⁻, 1] + Cy[i, j+1, 1] * ϕ[i, j⁺, 1])
-            ϕ[i, j, 1] = rhs / β
-
-            for k in 2:Nz
-                Dᵏ = D[i, j, k] - ifelse(k == Nz, top, zero(top))
-                t[i, j, k] = Cz[i, j, k] / β
-                β = Dᵏ * (1 + ε) - Cz[i, j, k] * t[i, j, k]
+            y = zero(eltype(ϕ))
+            for k in 1:Nz
                 rhs = b[i, j, k] - (Cx[i, j, k] * ϕ[i⁻, j, k] + Cx[i+1, j, k] * ϕ[i⁺, j, k] +
                                     Cy[i, j, k] * ϕ[i, j⁻, k] + Cy[i, j+1, k] * ϕ[i, j⁺, k])
-                ϕ[i, j, k] = (rhs - Cz[i, j, k] * ϕ[i, j, k-1]) / β
+                y = (rhs - Cz[i, j, k] * y) * β⁻¹[i, j, k]
+                ϕ[i, j, k] = y
             end
 
             for k in Nz-1:-1:1
-                ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
+                y = ϕ[i, j, k] - t[i, j, k+1] * y
+                ϕ[i, j, k] = y
             end
         end
     end
@@ -331,6 +333,53 @@ function update_free_surface_correction!(mg::MultigridPreconditioner, free_surfa
                 levelᶠ.coarsen_x, levelᶠ.coarsen_y, nxᶠ, nyᶠ)
     end
 
+    factorize_columns!(mg)
+    compute_coarse_inverse!(mg)
+
+    return nothing
+end
+
+#####
+##### Direct solve on the coarsest level with the pseudo-inverse of its operator
+#####
+
+function coarsest_operator_matrix(level)
+    Cx, Cy, Cz, D, T = (Array{Float64}(on_architecture(CPU(), a)) for a in (level.Cx, level.Cy, level.Cz, level.D, level.T))
+    nx, ny, nz = size(D)
+    cell(i, j, k) = i + nx * (j - 1 + ny * (k - 1))
+    A = zeros(Float64, nx * ny * nz, nx * ny * nz)
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        c = cell(i, j, k)
+        i⁻ = ifelse(i == 1, nx, i - 1)
+        i⁺ = ifelse(i == nx, 1, i + 1)
+        j⁻ = ifelse(j == 1, ny, j - 1)
+        j⁺ = ifelse(j == ny, 1, j + 1)
+        A[c, c] = D[i, j, k] - ifelse(k == nz, T[i, j], 0.0)
+        A[c, cell(i⁻, j, k)] += Cx[i, j, k]
+        A[c, cell(i⁺, j, k)] += Cx[i+1, j, k]
+        A[c, cell(i, j⁻, k)] += Cy[i, j, k]
+        A[c, cell(i, j⁺, k)] += Cy[i, j+1, k]
+        k > 1  && (A[c, cell(i, j, k-1)] += Cz[i, j, k])
+        k < nz && (A[c, cell(i, j, k+1)] += Cz[i, j, k+1])
+    end
+    return A
+end
+
+# singular values below the cycle's rounding level, the rigid-lid null space among them, are dropped
+function compute_coarse_inverse!(mg::MultigridPreconditioner)
+    FT = eltype(mg.coarse_inverse)
+    A⁺ = pinv(coarsest_operator_matrix(last(mg.levels)); rtol = 100 * eps(FT))
+    copyto!(mg.coarse_inverse, Matrix{FT}(A⁺))
+    return nothing
+end
+
+function factorize_columns!(mg::MultigridPreconditioner)
+    grid = mg.grid
+    arch = architecture(grid)
+    for level in mg.levels
+        nx, ny, nz = size(level)
+        launch!(arch, grid, (nx, ny), _factorize_columns!, level.β⁻¹, level.t, level.Cz, level.D, level.E, level.T, nz)
+    end
     return nothing
 end
 
@@ -360,8 +409,12 @@ function allocate_multigrid_level(arch, FT, nx, ny, nz, cx, cy)
                           level_array(nx, ny, nz),
                           level_array(nx, ny, nz),
                           level_array(nx, ny, nz),
+                          level_array(nx, ny, nz),
                           cx, cy)
 end
+
+# the coarsest level is solved directly, so it is kept small enough for a dense inverse
+const coarsest_level_size = 512
 
 """
     MultigridPreconditioner(grid; smoothing_sweeps = 2, float_type = eltype(grid))
@@ -371,8 +424,9 @@ that approximates `(V∇²)⁻¹` with one V-cycle per application.
 
 The symmetric volume-weighted Laplacian `V∇²` is stored in conductance form (face area ×
 inverse center-to-center distance, zeroed across immersed and domain boundaries). Coarse
-levels agglomerate cells `2 × 2` in the horizontal, never in the vertical, down to a single
-column that is solved exactly; grid sizes need not be powers of two. Immersed boundaries,
+levels agglomerate cells `2 × 2` in the horizontal, never in the vertical, until the coarsest
+level has at most $coarsest_level_size cells, where it is solved directly with the dense
+pseudo-inverse of its operator; grid sizes need not be powers of two. Immersed boundaries,
 partial cells and stretching in any direction enter every level through the coefficients, so
 no FFT-solvability of the grid is required. Transfers between levels are bilinear
 interpolation and its transpose. The smoother is red-black line relaxation that solves each
@@ -387,6 +441,8 @@ whenever the time step changes.
 
 With `float_type = Float32` the level hierarchy is stored and smoothed in `Float32` while the
 conjugate gradient iteration stays in the grid's precision, halving the V-cycle's memory traffic.
+This suits stretched rectilinear grids; on strongly anisotropic grids such as deep latitude-longitude
+basins the horizontal modes fall below `Float32` resolution and the iteration count grows.
 
 Example
 =======
@@ -399,12 +455,9 @@ grid = RectilinearGrid(size=(16, 16, 8), extent=(1, 1, 1))
 preconditioner = MultigridPreconditioner(grid)
 
 # output
-MultigridPreconditioner with 5 levels
+MultigridPreconditioner with 2 levels
 ├── level 1: 16×16×8
-├── level 2: 8×8×8
-├── level 3: 4×4×8
-├── level 4: 2×2×8
-└── level 5: 1×1×8
+└── level 2: 8×8×8
 ```
 """
 function MultigridPreconditioner(grid::AbstractGrid; smoothing_sweeps = 2, float_type = eltype(grid))
@@ -422,7 +475,7 @@ function MultigridPreconditioner(grid::AbstractGrid; smoothing_sweeps = 2, float
         nx, ny = last(sizes)
         cx = TX !== Flat && nx > 1
         cy = TY !== Flat && ny > 1
-        (cx || cy) || break
+        (cx || cy) && nx * ny * Nz > coarsest_level_size || break
         push!(coarsenings, (cx, cy))
         push!(sizes, (cx ? cld(nx, 2) : nx, cy ? cld(ny, 2) : ny))
     end
@@ -459,7 +512,13 @@ function MultigridPreconditioner(grid::AbstractGrid; smoothing_sweeps = 2, float
         launch!(arch, grid, (nx, ny), _compute_column_regularization!, level.E, level.Cx, level.Cy, nz, ε, εᶠ)
     end
 
-    return MultigridPreconditioner(grid, levels, smoothing_sweeps, Ref(convert(eltype(grid), NaN)))
+    n = prod(size(last(levels)))
+    coarse_inverse = on_architecture(arch, zeros(FT, n, n))
+    mg = MultigridPreconditioner(grid, levels, coarse_inverse, smoothing_sweeps, Ref(convert(eltype(grid), NaN)))
+    factorize_columns!(mg)
+    compute_coarse_inverse!(mg)
+
+    return mg
 end
 
 #####
@@ -472,8 +531,8 @@ function smooth_level!(mg::MultigridPreconditioner, level, colors...)
     nx, ny, nz = size(level)
     for color in colors
         launch!(arch, grid, (cld(nx, 2), ny),
-                _smooth_columns!, level.ϕ, level.t, level.b, level.Cx, level.Cy, level.Cz,
-                level.D, level.E, level.T, color, nx, ny, nz)
+                _smooth_columns!, level.ϕ, level.b, level.Cx, level.Cy, level.Cz,
+                level.β⁻¹, level.t, color, nx, ny, nz)
     end
     return nothing
 end
@@ -484,10 +543,12 @@ function vcycle!(mg::MultigridPreconditioner, ℓ)
     level = mg.levels[ℓ]
     nx, ny, nz = size(level)
 
-    fill!(level.ϕ, zero(eltype(level.ϕ)))
+    if ℓ == length(mg.levels)
+        mul!(vec(level.ϕ), mg.coarse_inverse, vec(level.b))
+        return nothing
+    end
 
-    # the coarsest level is a single column, which one Thomas sweep solves exactly
-    ℓ == length(mg.levels) && return smooth_level!(mg, level, 0)
+    fill!(level.ϕ, zero(eltype(level.ϕ)))
 
     for _ in 1:mg.smoothing_sweeps
         smooth_level!(mg, level, 0, 1)

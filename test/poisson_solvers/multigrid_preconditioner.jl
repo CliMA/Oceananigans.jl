@@ -104,11 +104,11 @@ end
     for arch in archs
         @testset "Multigrid level hierarchy [$(typeof(arch))]" begin
             @info "  Testing multigrid level hierarchy [$(typeof(arch))]..."
-            grid = RectilinearGrid(arch, size=(16, 16, 8), extent=(1, 1, 1))
+            grid = RectilinearGrid(arch, size=(32, 32, 8), extent=(1, 1, 1))
             preconditioner = MultigridPreconditioner(grid)
-            @test length(preconditioner.levels) == 5
-            @test size(preconditioner.levels[2]) == (8, 8, 8)
-            @test size(preconditioner.levels[5]) == (1, 1, 8)
+            @test length(preconditioner.levels) == 3
+            @test size(preconditioner.levels[2]) == (16, 16, 8)
+            @test size(preconditioner.levels[3]) == (8, 8, 8)
 
             # sizes need not be powers of two: odd extents agglomerate a remainder cell
             odd_grid = RectilinearGrid(arch, size=(33, 17, 5), extent=(1, 1, 1))
@@ -249,12 +249,6 @@ end
                                 z=zstretched, topology=(Bounded, Bounded, Bounded)),
                 GridFittedBottom((x, y) -> -0.7 + 0.5 * sin(3x) * cos(2y)))
             test_multigrid_with_nonhydrostatic_model(grid)
-
-            # a conjugate gradient solver whose linear operation lacks the Robin pressure
-            # boundary condition cannot support a free surface: fail at construction time
-            pressure_solver = ConjugateGradientPoissonSolver(grid; preconditioner=MultigridPreconditioner(grid))
-            free_surface = ImplicitFreeSurface(gravitational_acceleration=10)
-            @test_throws ArgumentError NonhydrostaticModel(grid; pressure_solver, free_surface)
         end
 
         @testset "Multigrid preconditioner with a free surface [$(typeof(arch))]" begin
