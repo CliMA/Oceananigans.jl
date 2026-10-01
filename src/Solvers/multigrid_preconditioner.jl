@@ -1,5 +1,3 @@
-using Oceananigans.Utils: KernelParameters
-
 #####
 ##### A geometric multigrid preconditioner for the ConjugateGradientPoissonSolver
 #####
@@ -9,12 +7,14 @@ using Oceananigans.Utils: KernelParameters
 #####
 #####     (V∇²ϕ)ᵢⱼₖ = Σ_faces C (ϕ_neighbor - ϕ) .
 #####
-##### Coarse levels agglomerate cells in the horizontal only (never in z) and sum the fine
-##### conductances crossing each coarse face, which is the Galerkin operator RAP for
-##### piecewise-constant transfers. Vertical stretching, immersed boundaries, and partial cells
-##### therefore propagate to all levels through the coefficients alone. The smoother is
-##### red-black line relaxation that solves each vertical column exactly with a Thomas sweep,
-##### which is the appropriate smoother for large-aspect-ratio (Δz ≪ Δx) ocean grids.
+##### Coarse levels agglomerate cells in the horizontal only (never in z). Vertical conductances
+##### are summed over each agglomerate; horizontal conductances are summed over the fine faces
+##### making up each coarse face and halved for the doubled center-to-center distance, so that
+##### every level discretizes the same operator and immersed boundaries, partial cells and
+##### stretching are carried by the coefficients alone. Transfers are bilinear interpolation in
+##### the horizontal and its transpose. The smoother is red-black line relaxation that solves each
+##### vertical column exactly with a Thomas sweep, which absorbs vertical stretching and the
+##### Δz ≪ Δx anisotropy of ocean grids. The coarsest level is a single column, solved exactly.
 #####
 
 struct MultigridLevel{A, E}
@@ -34,13 +34,10 @@ end
 
 Base.size(level::MultigridLevel) = size(level.D)
 
-struct MultigridPreconditioner{G, L, T, S}
+struct MultigridPreconditioner{G, L, S}
     grid :: G
     levels :: Vector{L}
-    presmoothing_sweeps :: Int
-    postsmoothing_sweeps :: Int
-    coarsest_sweeps :: Int
-    regularization :: T
+    smoothing_sweeps :: Int
     cached_free_surface_timestep :: Base.RefValue{S}
 end
 
@@ -94,7 +91,8 @@ end
 end
 
 #####
-##### Galerkin coarsening: sum the fine conductances crossing each coarse face
+##### Coarsening: sum the fine conductances crossing each coarse face, halved in a coarsened
+##### direction for the doubled center-to-center distance
 #####
 
 @kernel function _coarsen_x_conductance!(Cxᶜ, Cxᶠ, cx, cy, Nxᶠ, Nyᶠ)
@@ -106,7 +104,7 @@ end
     @inbounds for j in j₁:j₂
         s += Cxᶠ[f, j, k]
     end
-    @inbounds Cxᶜ[I, J, k] = s
+    @inbounds Cxᶜ[I, J, k] = ifelse(cx, s / 2, s)
 end
 
 @kernel function _coarsen_y_conductance!(Cyᶜ, Cyᶠ, cx, cy, Nxᶠ, Nyᶠ)
@@ -118,7 +116,7 @@ end
     @inbounds for i in i₁:i₂
         s += Cyᶠ[i, f, k]
     end
-    @inbounds Cyᶜ[I, J, k] = s
+    @inbounds Cyᶜ[I, J, k] = ifelse(cy, s / 2, s)
 end
 
 @kernel function _coarsen_z_conductance!(Czᶜ, Czᶠ, cx, cy, Nxᶠ, Nyᶠ)
@@ -134,24 +132,19 @@ end
     @inbounds Czᶜ[I, J, k] = s
 end
 
-# Cells with no conductances (immersed or isolated) get D = -1 so the smoother acts as the
-# identity there; their right-hand side is always zero so the correction stays zero.
+# Cells with no conductances (immersed or isolated) get D = 1, so the smoother keeps them at zero
 @kernel function _compute_diagonal!(D, Cx, Cy, Cz)
     i, j, k = @index(Global, NTuple)
     @inbounds s = -(Cx[i, j, k] + Cx[i+1, j, k] +
                     Cy[i, j, k] + Cy[i, j+1, k] +
                     Cz[i, j, k] + Cz[i, j, k+1])
-    @inbounds D[i, j, k] = ifelse(s == 0, -one(s), s)
+    @inbounds D[i, j, k] = ifelse(s == 0, one(s), s)
 end
 
-# A column with no horizontal conductance anywhere is a sealed Neumann sub-system whose
-# tridiagonal is singular; there the diagonal is shifted by ε. Coupled columns are strictly
-# diagonally dominant but only by the horizontal couplings, which can be ~10⁻⁶ of the
-# diagonal on strongly anisotropic grids — comparable to Float32 roundoff, where an
-# unregularized Thomas pivot can round to zero (observed on GPU, where fused-multiply-add
-# contraction rounds differently than the CPU). The floor εᶠ ~ Nz·eps keeps every pivot
-# above accumulated rounding noise while staying far below the couplings the coarse-grid
-# correction relies on in Float64.
+# A column with no horizontal conductance is a singular Neumann sub-system whose diagonal is
+# shifted by ε. Coupled columns are diagonally dominant only by their horizontal conductances,
+# which can be ~10⁻⁶ of the diagonal on ocean grids; the floor εᶠ ~ Nz·eps keeps every Thomas
+# pivot above rounding noise in Float32.
 @kernel function _compute_column_regularization!(E, Cx, Cy, Nz, ε, εᶠ)
     i, j = @index(Global, NTuple)
     h = zero(eltype(E))
@@ -162,7 +155,7 @@ end
 end
 
 #####
-##### Level operations: residual, restriction, prolongation, smoothing
+##### Level operations: residual, transfers, smoothing
 #####
 
 @kernel function _compute_level_residual!(r, ϕ, b, Cx, Cy, Cz, D, T, Nx, Ny, Nz)
@@ -174,38 +167,89 @@ end
     k⁻ = max(k - 1, 1)
     k⁺ = min(k + 1, Nz)
     @inbounds Dᵏ = D[i, j, k] - ifelse(k == Nz, T[i, j], zero(eltype(T)))
-    @inbounds r[i, j, k] = b[i, j, k] - (Dᵏ            * ϕ[i, j, k] +
-                                         Cx[i, j, k]   * ϕ[i⁻, j, k] + Cx[i+1, j, k] * ϕ[i⁺, j, k] +
-                                         Cy[i, j, k]   * ϕ[i, j⁻, k] + Cy[i, j+1, k] * ϕ[i, j⁺, k] +
-                                         Cz[i, j, k]   * ϕ[i, j, k⁻] + Cz[i, j, k+1] * ϕ[i, j, k⁺])
+    @inbounds active = D[i, j, k] < 0
+    @inbounds r[i, j, k] = active * (b[i, j, k] - (Dᵏ            * ϕ[i, j, k] +
+                                                   Cx[i, j, k]   * ϕ[i⁻, j, k] + Cx[i+1, j, k] * ϕ[i⁺, j, k] +
+                                                   Cy[i, j, k]   * ϕ[i, j⁻, k] + Cy[i, j+1, k] * ϕ[i, j⁺, k] +
+                                                   Cz[i, j, k]   * ϕ[i, j, k⁻] + Cz[i, j, k+1] * ϕ[i, j, k⁺]))
 end
 
-@kernel function _restrict_residual!(bᶜ, r, cx, cy, Nxᶠ, Nyᶠ)
+# In a coarsened direction, fine cell i interpolates between its parent coarse cell (weight 3/4)
+# and the neighboring coarse cell on its other side (weight 1/4); in a direction that is not
+# coarsened its parent is the cell itself.
+@inline parent_index(i, coarsened) = ifelse(coarsened, (i + 1) >> 1, i)
+
+# 0 when there is no neighbor beyond a non-periodic boundary
+@inline function neighbor_index(i, nᶜ, coarsened, periodic)
+    Iₙ = ifelse(isodd(i), (i + 1) >> 1 - 1, (i + 1) >> 1 + 1)
+    Iₙ = ifelse(periodic & (Iₙ == 0), nᶜ, Iₙ)
+    Iₙ = ifelse(periodic & (Iₙ == nᶜ + 1), 1, Iₙ)
+    return ifelse(coarsened & (1 <= Iₙ <= nᶜ), Iₙ, 0)
+end
+
+# The weights of inactive or absent neighbors are given to the parent, so the weights sum to one
+# and the correction extrapolates across immersed and domain boundaries.
+@inline function interpolation_weights(Dᶜ, i, j, k, nxᶜ, nyᶜ, cx, cy, px, py)
+    FT = eltype(Dᶜ)
+    I = parent_index(i, cx)
+    J = parent_index(j, cy)
+    Iₙ = neighbor_index(i, nxᶜ, cx, px)
+    Jₙ = neighbor_index(j, nyᶜ, cy, py)
+    ax = ifelse(cx, FT(1//4), zero(FT))
+    ay = ifelse(cy, FT(1//4), zero(FT))
+    @inbounds begin
+        wx  = ax * (1 - ay) * (Iₙ > 0) * (Dᶜ[max(Iₙ, 1), J, k] < 0)
+        wy  = (1 - ax) * ay * (Jₙ > 0) * (Dᶜ[I, max(Jₙ, 1), k] < 0)
+        wxy = ax * ay * (Iₙ > 0) * (Jₙ > 0) * (Dᶜ[max(Iₙ, 1), max(Jₙ, 1), k] < 0)
+    end
+    # absent neighbors have zero weight, so their index is only made valid
+    return I, J, max(Iₙ, 1), max(Jₙ, 1), wx, wy, wxy
+end
+
+@kernel function _prolong_and_correct!(ϕᶠ, ϕᶜ, Dᶜ, Dᶠ, nxᶜ, nyᶜ, cx, cy, px, py)
+    i, j, k = @index(Global, NTuple)
+    I, J, Iₙ, Jₙ, wx, wy, wxy = interpolation_weights(Dᶜ, i, j, k, nxᶜ, nyᶜ, cx, cy, px, py)
+    @inbounds begin
+        active = Dᶠ[i, j, k] < 0
+        ϕᶠ[i, j, k] += active * ((1 - wx - wy - wxy) * ϕᶜ[I, J, k] + wx  * ϕᶜ[Iₙ, J, k] +
+                                 wy                  * ϕᶜ[I, Jₙ, k] + wxy * ϕᶜ[Iₙ, Jₙ, k])
+    end
+end
+
+# The fine cells whose interpolation stencil can include coarse cell I: its two children and the
+# cell just outside each; 0 marks a cell beyond a non-periodic boundary.
+@inline function fine_index(I, m, nᶠ, coarsened, periodic)
+    i = ifelse(coarsened, 2I - 3 + m, I)
+    i = ifelse(periodic & (i < 1), i + nᶠ, i)
+    i = ifelse(periodic & (i > nᶠ), i - nᶠ, i)
+    return ifelse((1 <= i <= nᶠ) & (coarsened | (m == 1)), i, 0)
+end
+
+# Transpose of `_prolong_and_correct!`
+@kernel function _restrict_residual!(bᶜ, r, Dᶜ, nxᶠ, nyᶠ, nxᶜ, nyᶜ, cx, cy, px, py)
     I, J, k = @index(Global, NTuple)
-    i₁ = ifelse(cx, 2I - 1, I)
-    i₂ = ifelse(cx, min(2I, Nxᶠ), I)
-    j₁ = ifelse(cy, 2J - 1, J)
-    j₂ = ifelse(cy, min(2J, Nyᶠ), J)
     s = zero(eltype(bᶜ))
-    @inbounds for j in j₁:j₂, i in i₁:i₂
-        s += r[i, j, k]
+    @inbounds if Dᶜ[I, J, k] < 0
+        for n in 1:4, m in 1:4
+            i = fine_index(I, m, nxᶠ, cx, px)
+            j = fine_index(J, n, nyᶠ, cy, py)
+            (i == 0) | (j == 0) && continue
+            Iᵖ, Jᵖ, Iₙ, Jₙ, wx, wy, wxy = interpolation_weights(Dᶜ, i, j, k, nxᶜ, nyᶜ, cx, cy, px, py)
+            w = (Iᵖ == I) * (Jᵖ == J) * (1 - wx - wy - wxy) + (Iₙ == I) * (Jᵖ == J) * wx +
+                (Iᵖ == I) * (Jₙ == J) * wy                  + (Iₙ == I) * (Jₙ == J) * wxy
+            s += w * r[i, j, k]
+        end
     end
     @inbounds bᶜ[I, J, k] = s
-end
-
-@kernel function _prolong_and_correct!(ϕᶠ, ϕᶜ, cx, cy)
-    i, j, k = @index(Global, NTuple)
-    I = ifelse(cx, (i + 1) >> 1, i)
-    J = ifelse(cy, (j + 1) >> 1, j)
-    @inbounds ϕᶠ[i, j, k] += ϕᶜ[I, J, k]
 end
 
 # Red-black line relaxation: for each column (i, j) of the given color, solve the vertical
 # tridiagonal sub-system exactly (Thomas algorithm, cprime stored in t) with the horizontal
 # couplings moved to the right-hand side using the current iterate.
 @kernel function _smooth_columns!(ϕ, t, b, Cx, Cy, Cz, D, E, T, color, Nx, Ny, Nz)
-    i, j = @index(Global, NTuple)
-    if (i + j) % 2 == color
+    m, j = @index(Global, NTuple)
+    i = 2m - (color + j) % 2
+    if i <= Nx
         i⁻ = ifelse(i == 1, Nx, i - 1)
         i⁺ = ifelse(i == Nx, 1, i + 1)
         j⁻ = ifelse(j == 1, Ny, j - 1)
@@ -242,8 +286,8 @@ end
 #####
 ##### An implicit free surface turns the rigid-lid Neumann condition at the top into a Robin
 ##### condition that subtracts Az / (g Δt² + Δzᶠ/2) from the diagonal at k = Nz (matching
-##### `FreeSurfaceLaplacian`). Like the conductances, the correction is Galerkin-coarsened by
-##### summing over agglomerated columns.
+##### `FreeSurfaceLaplacian`). Like the vertical conductances, the correction is summed over
+##### agglomerated columns.
 #####
 
 @kernel function _fine_top_correction!(T, grid, g, Δt, Nz)
@@ -277,15 +321,13 @@ function update_free_surface_correction!(mg::MultigridPreconditioner, free_surfa
 
     fine = first(mg.levels)
     nx, ny, _ = size(fine)
-    launch!(arch, grid, KernelParameters((nx, ny), (0, 0)),
-            _fine_top_correction!, fine.T, grid, g, Δt, Nz)
+    launch!(arch, grid, (nx, ny), _fine_top_correction!, fine.T, grid, g, Δt, Nz)
 
     for ℓ in 1:length(mg.levels)-1
         levelᶠ, levelᶜ = mg.levels[ℓ], mg.levels[ℓ+1]
         nxᶠ, nyᶠ, _ = size(levelᶠ)
         nxᶜ, nyᶜ, _ = size(levelᶜ)
-        launch!(arch, grid, KernelParameters((nxᶜ, nyᶜ), (0, 0)),
-                _coarsen_top_correction!, levelᶜ.T, levelᶠ.T,
+        launch!(arch, grid, (nxᶜ, nyᶜ), _coarsen_top_correction!, levelᶜ.T, levelᶠ.T,
                 levelᶠ.coarsen_x, levelᶠ.coarsen_y, nxᶠ, nyᶠ)
     end
 
@@ -322,43 +364,29 @@ function allocate_multigrid_level(arch, FT, nx, ny, nz, cx, cy)
 end
 
 """
-    MultigridPreconditioner(grid;
-                            maxlevels = 99,
-                            presmoothing_sweeps = 1,
-                            postsmoothing_sweeps = 1,
-                            coarsest_sweeps = 4,
-                            float_type = eltype(grid))
+    MultigridPreconditioner(grid; smoothing_sweeps = 2, float_type = eltype(grid))
 
 Construct a geometric multigrid preconditioner for the [`ConjugateGradientPoissonSolver`](@ref)
 that approximates `(V∇²)⁻¹` with one V-cycle per application.
 
 The symmetric volume-weighted Laplacian `V∇²` is stored in conductance form (face area ×
 inverse center-to-center distance, zeroed across immersed and domain boundaries). Coarse
-levels are built by agglomerating cells `2 × 2` in the horizontal — never in the vertical —
-and summing the fine-level conductances that cross each coarse face, which is the Galerkin
-coarse operator for piecewise-constant transfers. Immersed boundaries, partial cells, and
-grid stretching in any direction therefore enter every level through the coefficients, and
-no FFT-solvability of the underlying grid is required: the preconditioner applies to grids
-stretched in one, two, or three directions.
-
-The smoother is red-black line relaxation that solves each vertical column exactly with a
-Thomas sweep, so strong vertical grid anisotropy (`Δz ≪ Δx`) and vertical stretching are
-absorbed by the smoother rather than degrading the multigrid convergence rate. Coarsening
-continues (per direction, for non-`Flat` directions with at least 4 cells) until both
-horizontal extents are smaller than 4 or `maxlevels` is reached; grid sizes need not be
-powers of two. On the coarsest level the smoother is applied `coarsest_sweeps` times in a
-symmetric red-black/black-red pattern, keeping the preconditioner symmetric as conjugate
-gradient iteration requires.
+levels agglomerate cells `2 × 2` in the horizontal, never in the vertical, down to a single
+column that is solved exactly; grid sizes need not be powers of two. Immersed boundaries,
+partial cells and stretching in any direction enter every level through the coefficients, so
+no FFT-solvability of the grid is required. Transfers between levels are bilinear
+interpolation and its transpose. The smoother is red-black line relaxation that solves each
+vertical column exactly, applied `smoothing_sweeps` times before and after the coarse-grid
+correction (in reversed color order afterwards, so the preconditioner is symmetric). Strong
+vertical anisotropy (`Δz ≪ Δx`) is absorbed by the smoother; where the horizontal spacing is
+instead much finer than the vertical, convergence degrades.
 
 With an implicit free surface (a [`FreeSurfaceLaplacian`](@ref) linear operation), the Robin
 condition's `Δt`-dependent top-row diagonal correction is carried on every level and refreshed
-automatically whenever the time step changes.
+whenever the time step changes.
 
-The V-cycle can run in reduced precision independently of the grid: with `float_type =
-Float32` the level hierarchy is stored and smoothed in `Float32` while the conjugate gradient
-iteration stays in the grid's precision. Because the preconditioner only approximates
-`(V∇²)⁻¹`, reduced cycle precision leaves the achievable residual set by the outer iteration
-and typically costs few or no extra iterations while halving the V-cycle's memory traffic.
+With `float_type = Float32` the level hierarchy is stored and smoothed in `Float32` while the
+conjugate gradient iteration stays in the grid's precision, halving the V-cycle's memory traffic.
 
 Example
 =======
@@ -371,35 +399,15 @@ grid = RectilinearGrid(size=(16, 16, 8), extent=(1, 1, 1))
 preconditioner = MultigridPreconditioner(grid)
 
 # output
-MultigridPreconditioner with 4 levels
+MultigridPreconditioner with 5 levels
 ├── level 1: 16×16×8
 ├── level 2: 8×8×8
 ├── level 3: 4×4×8
-└── level 4: 2×2×8
-```
-
-```jldoctest
-using Oceananigans
-using Oceananigans.Solvers: MultigridPreconditioner
-
-grid = RectilinearGrid(size=(16, 16, 8), extent=(1, 1, 1))
-preconditioner = MultigridPreconditioner(grid, float_type=Float32)
-
-# output
-MultigridPreconditioner with 4 levels (Float32 cycle)
-├── level 1: 16×16×8
-├── level 2: 8×8×8
-├── level 3: 4×4×8
-└── level 4: 2×2×8
+├── level 4: 2×2×8
+└── level 5: 1×1×8
 ```
 """
-function MultigridPreconditioner(grid::AbstractGrid;
-                                 maxlevels = 99,
-                                 presmoothing_sweeps = 1,
-                                 postsmoothing_sweeps = 1,
-                                 coarsest_sweeps = 4,
-                                 float_type = eltype(grid))
-
+function MultigridPreconditioner(grid::AbstractGrid; smoothing_sweeps = 2, float_type = eltype(grid))
     TX, TY, TZ = topology(grid)
     TZ === Bounded ||
         throw(ArgumentError("MultigridPreconditioner requires a Bounded z-direction (got $TZ)"))
@@ -410,10 +418,10 @@ function MultigridPreconditioner(grid::AbstractGrid;
 
     sizes = [(Nx, Ny)]
     coarsenings = NTuple{2, Bool}[]
-    while length(sizes) < maxlevels
+    while true
         nx, ny = last(sizes)
-        cx = TX !== Flat && nx >= 4
-        cy = TY !== Flat && ny >= 4
+        cx = TX !== Flat && nx > 1
+        cy = TY !== Flat && ny > 1
         (cx || cy) || break
         push!(coarsenings, (cx, cy))
         push!(sizes, (cx ? cld(nx, 2) : nx, cy ? cld(ny, 2) : ny))
@@ -425,51 +433,45 @@ function MultigridPreconditioner(grid::AbstractGrid;
 
     fine = first(levels)
     TX === Flat ||
-        launch!(arch, grid, KernelParameters((Nx + 1, Ny, Nz), (0, 0, 0)),
-                _fine_x_conductance!, fine.Cx, grid, TX === Periodic, Nx)
+        launch!(arch, grid, (Nx + 1, Ny, Nz), _fine_x_conductance!, fine.Cx, grid, TX === Periodic, Nx)
     TY === Flat ||
-        launch!(arch, grid, KernelParameters((Nx, Ny + 1, Nz), (0, 0, 0)),
-                _fine_y_conductance!, fine.Cy, grid, TY === Periodic, Ny)
-    launch!(arch, grid, KernelParameters((Nx, Ny, Nz + 1), (0, 0, 0)),
-            _fine_z_conductance!, fine.Cz, grid, Nz)
+        launch!(arch, grid, (Nx, Ny + 1, Nz), _fine_y_conductance!, fine.Cy, grid, TY === Periodic, Ny)
+    launch!(arch, grid, (Nx, Ny, Nz + 1), _fine_z_conductance!, fine.Cz, grid, Nz)
 
     for ℓ in 1:length(levels)-1
         levelᶠ, levelᶜ = levels[ℓ], levels[ℓ+1]
         nxᶠ, nyᶠ, _ = size(levelᶠ)
         nxᶜ, nyᶜ, _ = size(levelᶜ)
         cx, cy = levelᶠ.coarsen_x, levelᶠ.coarsen_y
-        launch!(arch, grid, KernelParameters((nxᶜ + 1, nyᶜ, Nz), (0, 0, 0)),
-                _coarsen_x_conductance!, levelᶜ.Cx, levelᶠ.Cx, cx, cy, nxᶠ, nyᶠ)
-        launch!(arch, grid, KernelParameters((nxᶜ, nyᶜ + 1, Nz), (0, 0, 0)),
-                _coarsen_y_conductance!, levelᶜ.Cy, levelᶠ.Cy, cx, cy, nxᶠ, nyᶠ)
-        launch!(arch, grid, KernelParameters((nxᶜ, nyᶜ, Nz + 1), (0, 0, 0)),
-                _coarsen_z_conductance!, levelᶜ.Cz, levelᶠ.Cz, cx, cy, nxᶠ, nyᶠ)
+        launch!(arch, grid, (nxᶜ + 1, nyᶜ, Nz), _coarsen_x_conductance!, levelᶜ.Cx, levelᶠ.Cx, cx, cy, nxᶠ, nyᶠ)
+        launch!(arch, grid, (nxᶜ, nyᶜ + 1, Nz), _coarsen_y_conductance!, levelᶜ.Cy, levelᶠ.Cy, cx, cy, nxᶠ, nyᶠ)
+        launch!(arch, grid, (nxᶜ, nyᶜ, Nz + 1), _coarsen_z_conductance!, levelᶜ.Cz, levelᶠ.Cz, cx, cy, nxᶠ, nyᶠ)
+        # a single periodic cell couples only to itself
+        nxᶜ == 1 && TX === Periodic && fill!(levelᶜ.Cx, zero(FT))
+        nyᶜ == 1 && TY === Periodic && fill!(levelᶜ.Cy, zero(FT))
     end
 
     ε = convert(FT, 1//100)
     εᶠ = 32 * Nz * eps(FT)
     for level in levels
         nx, ny, nz = size(level)
-        launch!(arch, grid, KernelParameters((nx, ny, nz), (0, 0, 0)),
-                _compute_diagonal!, level.D, level.Cx, level.Cy, level.Cz)
-        launch!(arch, grid, KernelParameters((nx, ny), (0, 0)),
-                _compute_column_regularization!, level.E, level.Cx, level.Cy, nz, ε, εᶠ)
+        launch!(arch, grid, (nx, ny, nz), _compute_diagonal!, level.D, level.Cx, level.Cy, level.Cz)
+        launch!(arch, grid, (nx, ny), _compute_column_regularization!, level.E, level.Cx, level.Cy, nz, ε, εᶠ)
     end
 
-    return MultigridPreconditioner(grid, levels, presmoothing_sweeps, postsmoothing_sweeps,
-                                   coarsest_sweeps, ε, Ref(convert(eltype(grid), NaN)))
+    return MultigridPreconditioner(grid, levels, smoothing_sweeps, Ref(convert(eltype(grid), NaN)))
 end
 
 #####
 ##### The V-cycle
 #####
 
-function smooth_level!(mg::MultigridPreconditioner, level, first_color, second_color)
+function smooth_level!(mg::MultigridPreconditioner, level, colors...)
     grid = mg.grid
     arch = architecture(grid)
     nx, ny, nz = size(level)
-    for color in (first_color, second_color)
-        launch!(arch, grid, KernelParameters((nx, ny), (0, 0)),
+    for color in colors
+        launch!(arch, grid, (cld(nx, 2), ny),
                 _smooth_columns!, level.ϕ, level.t, level.b, level.Cx, level.Cy, level.Cz,
                 level.D, level.E, level.T, color, nx, ny, nz)
     end
@@ -484,34 +486,30 @@ function vcycle!(mg::MultigridPreconditioner, ℓ)
 
     fill!(level.ϕ, zero(eltype(level.ϕ)))
 
-    if ℓ == length(mg.levels)
-        # palindromic red-black/black-red sweeps keep the coarsest solve symmetric
-        for _ in 1:mg.coarsest_sweeps
-            smooth_level!(mg, level, 0, 1)
-            smooth_level!(mg, level, 1, 0)
-        end
-        return nothing
-    end
+    # the coarsest level is a single column, which one Thomas sweep solves exactly
+    ℓ == length(mg.levels) && return smooth_level!(mg, level, 0)
 
-    for _ in 1:mg.presmoothing_sweeps
+    for _ in 1:mg.smoothing_sweeps
         smooth_level!(mg, level, 0, 1)
     end
 
-    launch!(arch, grid, KernelParameters((nx, ny, nz), (0, 0, 0)),
-            _compute_level_residual!, level.r, level.ϕ, level.b,
+    launch!(arch, grid, (nx, ny, nz), _compute_level_residual!, level.r, level.ϕ, level.b,
             level.Cx, level.Cy, level.Cz, level.D, level.T, nx, ny, nz)
 
     levelᶜ = mg.levels[ℓ+1]
     nxᶜ, nyᶜ, _ = size(levelᶜ)
-    launch!(arch, grid, KernelParameters((nxᶜ, nyᶜ, nz), (0, 0, 0)),
-            _restrict_residual!, levelᶜ.b, level.r, level.coarsen_x, level.coarsen_y, nx, ny)
+    TX, TY, _ = topology(grid)
+    px, py = TX === Periodic, TY === Periodic
+    cx, cy = level.coarsen_x, level.coarsen_y
+    launch!(arch, grid, (nxᶜ, nyᶜ, nz), _restrict_residual!, levelᶜ.b, level.r, levelᶜ.D,
+            nx, ny, nxᶜ, nyᶜ, cx, cy, px, py)
 
     vcycle!(mg, ℓ + 1)
 
-    launch!(arch, grid, KernelParameters((nx, ny, nz), (0, 0, 0)),
-            _prolong_and_correct!, level.ϕ, levelᶜ.ϕ, level.coarsen_x, level.coarsen_y)
+    launch!(arch, grid, (nx, ny, nz), _prolong_and_correct!, level.ϕ, levelᶜ.ϕ, levelᶜ.D, level.D,
+            nxᶜ, nyᶜ, cx, cy, px, py)
 
-    for _ in 1:mg.postsmoothing_sweeps
+    for _ in 1:mg.smoothing_sweeps
         smooth_level!(mg, level, 1, 0)
     end
 

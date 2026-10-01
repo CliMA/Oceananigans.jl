@@ -156,7 +156,6 @@ update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
 update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt) = nothing
 update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-update_fourier_tridiagonal_solver!(preconditioner::MultigridPreconditioner, ::Nothing, Ũ, Δt) = nothing
 update_fourier_tridiagonal_solver!(preconditioner::MultigridPreconditioner, free_surface, Ũ, Δt) =
     update_free_surface_correction!(preconditioner, free_surface, Δt)
 
