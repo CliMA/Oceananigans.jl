@@ -59,9 +59,11 @@ Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
+const LocationInstance = Union{Face, Center, Nothing}
+
 # "Indices-aware" length
-Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
+Base.length(loc::LocationInstance, topo::AT, N, ::Colon) = length(loc, topo, N)
+Base.length(loc::LocationInstance, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -71,26 +73,22 @@ one dimension of `topo`logy with `N` centered cells and
 `H` halo cells. If `ind` is provided the total_length
 is restricted by `length(ind)`.
 """
-total_length(::Face,    ::AT,              N, H=0) = N + 2H
-total_length(::Center,  ::AT,              N, H=0) = N + 2H
-total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
-total_length(::Nothing, ::AT,              N, H=0) = 1
-total_length(::Nothing, ::Flat,            N, H=0) = N
-total_length(::Face,    ::Flat,            N, H=0) = N
-total_length(::Center,  ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::AT,              N, H=0) = N + 2H
+@inline total_length(::Center,  ::AT,              N, H=0) = N + 2H
+@inline total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
+@inline total_length(::Nothing, ::AT,              N, H=0) = 1
+@inline total_length(::Nothing, ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::Flat,            N, H=0) = N
+@inline total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
-total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+@inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
+@inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
+@inline function Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc))))
+    topo = topology(grid)
+    sz = size(grid)
+    return ntuple(Val(length(loc))) do d
         Base.@_inline_meta
         length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
     end
@@ -106,7 +104,7 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
+@inline function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     N = ntuple(Val(D)) do d
         Base.@_inline_meta
@@ -115,7 +113,7 @@ function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(l
     return N
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
+@inline total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -209,12 +207,15 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::Flat, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::AT, halo) = Colon()
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Colon, args...) = Colon()
 
 parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)

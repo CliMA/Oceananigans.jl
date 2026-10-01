@@ -71,20 +71,20 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:DiffusiveFormulation, N}
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:DiffusiveFormulation, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:AdvectiveFormulation, N}
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:AdvectiveFormulation, N}
     κ_skew = closure.κ_skew
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 # For ensembles of closures
-function Utils.with_tracers(tracers, closure_vector::ISSDVector)
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure_vector::ISSDVector)
     arch = architecture(closure_vector)
 
     _closure_vector = arch isa Architectures.GPU ? Vector(closure_vector) : closure_vector
@@ -214,13 +214,14 @@ end
 end
 
 @inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
-
-    bz = max(bz, slope_model.minimum_bz)
+    FT = eltype(grid)
+    Sₘ = convert(FT, slope_limiter.max_slope)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
 
     Sx = - bx / bz + ∂x_z
     Sy = - by / bz + ∂y_z
 
-    return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
+    return ifelse(bz <= 0, zero(grid), min(one(grid), Sₘ^2 / (Sx^2 + Sy^2)))
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to

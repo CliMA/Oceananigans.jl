@@ -25,36 +25,92 @@ This predictor-corrector scheme:
 """
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
-    kernel_Δt = convert(eltype(grid), Δt)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
-    model_fields = prognostic_fields(model)
 
     # Prognostic variables stepping
-    advecting_velocities = implicit_advecting_velocities(model)
+    χ = model.timestepper.χ
+    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, Δt, χ, Gⁿ, G⁻)
 
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        field_advection = exclude_periphery ? model.advection.momentum : model.advection[name]
-        kernel_args = (field, kernel_Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery)
+    step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δt)
 
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
-                       model.clock,
-                       fields(model),
-                       kernel_Δt,
-                       field_advection,
-                       advecting_velocities)
+    compute_pressure_correction!(model, Δt)
+    make_pressure_correction!(model, Δt)
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Advance the velocities of `model` with `substep_velocity!(u, Gⁿ, G⁻)` and its tracers with
+`substep_tracer!(c, Gⁿ, G⁻)`, then apply implicit vertical diffusion over `implicit_Δt`.
+Unrolling the loops over `Val`-wrapped field names keeps each launch type stable.
+"""
+function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::ST, implicit_Δt) where {SV, ST}
+    # `SV` and `ST` force specializing on the closures, which are only passed through: otherwise,
+    # when this function is not inlined, they are boxed and the calls below are dispatched dynamically
+    implicit_advecting_velocities(model)
+    step_velocities!(model, substep_velocity!, implicit_Δt)
+    step_tracers!(model, substep_tracer!, implicit_Δt)
+    return nothing
+end
+
+function step_velocities!(model, substep_velocity!::SV, implicit_Δt) where SV
+    foreach_name(model.velocities) do _, val_name
+        step_velocity!(model, substep_velocity!, implicit_Δt, val_name)
     end
+    return nothing
+end
 
-    compute_pressure_correction!(model, kernel_Δt)
-    make_pressure_correction!(model, kernel_Δt)
+function step_tracers!(model, substep_tracer!::ST, implicit_Δt) where ST
+    foreach_name(model.tracers) do val_tracer_index, val_name
+        step_tracer!(model, substep_tracer!, implicit_Δt, val_tracer_index, val_name)
+    end
+    return nothing
+end
+
+# `fields(model)` and `advecting_velocities(model)` are rebuilt for every field below:
+# passing the tuples down to each call allocates
+
+@inline function step_velocity!(model, substep_velocity!, implicit_Δt, ::Val{name}) where name
+    u  = model.velocities[name]
+    Gⁿ = model.timestepper.Gⁿ[name]
+    G⁻ = model.timestepper.G⁻[name]
+    substep_velocity!(u, Gⁿ, G⁻)
+
+    implicit_step!(u,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   nothing,
+                   model.clock,
+                   fields(model),
+                   implicit_Δt,
+                   model.advection.momentum,
+                   advecting_velocities(model))
+
+    return nothing
+end
+
+@inline function step_tracer!(model, substep_tracer!, implicit_Δt, ::Val{tracer_index}, ::Val{name}) where {tracer_index, name}
+    c  = model.tracers[name]
+    Gⁿ = model.timestepper.Gⁿ[name]
+    G⁻ = model.timestepper.G⁻[name]
+    substep_tracer!(c, Gⁿ, G⁻)
+
+    implicit_step!(c,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   Val(tracer_index),
+                   model.clock,
+                   fields(model),
+                   implicit_Δt,
+                   model.advection[name],
+                   advecting_velocities(model))
 
     return nothing
 end

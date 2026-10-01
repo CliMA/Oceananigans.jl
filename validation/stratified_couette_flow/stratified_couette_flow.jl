@@ -131,11 +131,15 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
 
     # Add a bit of surface-concentrated noise to the initial condition
-    ε(σ, z) = σ * randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
+    # Capture the extents as plain numbers so that the initial-condition functions stay isbits
+    # (kernel arguments cannot reference `model`).
+    Lx, Lz = grid.Lx, grid.Lz
+
+    ε(σ, z) = σ * randn() * z/Lz * (1 + z/Lz)
 
     # We add a sinusoidal initial condition to u to encourage instability.
-    T₀(x, y, z) = 2Θ_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z))
-    u₀(x, y, z) = 2U_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
+    T₀(x, y, z) = 2Θ_wall * (1/2 + z/Lz) * (1 + ε(5e-1, z))
+    u₀(x, y, z) = 2U_wall * (1/2 + z/Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
@@ -192,7 +196,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
                               init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
-                              overwrite_existing=true, verbose=true)
+                              overwrite_files=true, verbose=true)
 
     #####
     ##### Set up profile output writer
@@ -215,7 +219,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     profile_writer = JLD2Writer(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
                                 init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
-                                overwrite_existing=true, verbose=true)
+                                overwrite_files=true, verbose=true)
 
     #####
     ##### Set up statistic output writer
@@ -232,7 +236,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     statistics_writer = JLD2Writer(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
                                    init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
-                                   overwrite_existing=true, verbose=true)
+                                   overwrite_files=true, verbose=true)
 
     #####
     ##### Time stepping
@@ -247,7 +251,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     cfl(t) = min(0.01t, 0.1)
 
     function print_progress(simulation)
-        model = simulation.model
         clock = model.clock
 
         wizard.cfl = cfl(model.clock.time)

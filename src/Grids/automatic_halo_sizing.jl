@@ -68,16 +68,14 @@ required_halo_size_z(::Nothing) = 0
 inflate_halo_size_one_dimension(req_H, old_H, _, grid)            = max(req_H, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, grid) = 0
 
-function inflate_halo_size(Hx, Hy, Hz, grid, tendency_terms...)
-    topo = topology(grid)
-    for term in tendency_terms
-        Hx_required = required_halo_size_x(term)
-        Hy_required = required_halo_size_y(term)
-        Hz_required = required_halo_size_z(term)
-        Hx = inflate_halo_size_one_dimension(Hx_required, Hx, topo[1], grid)
-        Hy = inflate_halo_size_one_dimension(Hy_required, Hy, topo[2], grid)
-        Hz = inflate_halo_size_one_dimension(Hz_required, Hz, topo[3], grid)
-    end
+# Recursive over `tendency_terms` so that the result constant-folds when the required halo sizes
+# are compile-time constants
+@inline inflate_halo_size(Hx, Hy, Hz, grid) = (Hx, Hy, Hz)
 
-    return Hx, Hy, Hz
+Base.@constprop :aggressive @inline function inflate_halo_size(Hx, Hy, Hz, grid, term, tendency_terms...)
+    topo = topology(grid)
+    Hx = inflate_halo_size_one_dimension(required_halo_size_x(term), Hx, topo[1], grid)
+    Hy = inflate_halo_size_one_dimension(required_halo_size_y(term), Hy, topo[2], grid)
+    Hz = inflate_halo_size_one_dimension(required_halo_size_z(term), Hz, topo[3], grid)
+    return inflate_halo_size(Hx, Hy, Hz, grid, tendency_terms...)
 end

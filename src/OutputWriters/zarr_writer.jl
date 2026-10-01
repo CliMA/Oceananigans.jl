@@ -19,7 +19,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWri
     dimensions :: Dict{String, Any}
     with_halos :: Bool
     include_grid_metrics :: Bool
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     part :: Int
     file_splitting :: FS
@@ -44,7 +44,7 @@ end
                file_splitting = NoFileSplitting(),
                dimension_name_generator = trilocation_dim_name,
                dimension_type = Float64,
-               overwrite_existing = false,
+               overwrite_files = false,
                verbose = false,
                part = 1,
                store = nothing,
@@ -59,8 +59,8 @@ Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output`
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols
 or strings that name output data. The values of `outputs` are `AbstractField`s,
-`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, or functions that take a
-`model` and return data.
+`AbstractOperation`s, `Reduction`s, `WindowedTimeAverage`s, `TimeDerivative`s, or functions
+that take a `model` and return data.
 
 Each output is stored as a chunked Zarr array of shape `(field_dims..., time)`, growing
 along the time axis. A top-level `time` array tracks simulation time at each step. Grid
@@ -121,9 +121,9 @@ Keyword arguments
                     include `NoFileSplitting()` (default), `FileSizeLimit(sz)`,
                     `TimeInterval(Δt)`.
 
-- `overwrite_existing`: Remove an existing store before writing. Default: `false`. When
-                        `false` and the store already exists, the writer appends new
-                        timesteps to the existing time axis.
+- `overwrite_files`: Remove an existing store before writing. Default: `false`. When
+                     `false` and the store already exists, the writer appends new
+                     timesteps to the existing time axis.
 
 ## Miscellaneous
 

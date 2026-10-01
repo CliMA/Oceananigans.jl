@@ -132,6 +132,14 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin–Helmholtz braids at high Reynolds number](https://doi.org/10.1017/jfm.2026.12012), _Journal of Fluid Mechanics_, **1043**, R2. DOI: [10.1017/jfm.2026.12012](https://doi.org/10.1017/jfm.2026.12012)
+
+1. Gui, W., Bhadouriya, A., Vreugdenhil, C. A., and Gayen, B. (2026). [The impact of fronts and eddies under various melt conditions on Antarctic ice shelves](https://doi.org/10.1029/2026GL123024), _Geophysical Research Letters_, **53(17)**, e2026GL123024. DOI: [10.1029/2026GL123024](https://doi.org/10.1029/2026GL123024)
+
+1. Liu, F. and Zemskova, V. E. (2026). [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions and internal wave drag](https://doi.org/10.5194/tc-20-4721-2026), _The Cryosphere_, **20**, 4721–4746. DOI: [10.5194/tc-20-4721-2026](https://doi.org/10.5194/tc-20-4721-2026)
+
+1. Li, X., Klingbeil, K., and Burchard, H. (2026). [Introducing the coincidence index: A novel diagnostic and production-based framework for water body interaction analysis and its application to study the interaction of river plumes](https://doi.org/10.1029/2026MS005737), _Journal of Advances in Modeling Earth Systems_, **18(8)**, e2026MS005737. DOI: [10.1029/2026MS005737](https://doi.org/10.1029/2026MS005737)
+
 1. Liang, H., Zakem, E. J., Lauderdale, J. M., and Ferrari, R. (2026). [Beyond the Martin Curve: A mechanistic yet simple model for dynamic ocean particulate organic carbon fluxes](https://doi.org/10.1029/2026GB009184), _Global Biogeochemical Cycles_, **40(8)**, e2026GB009184. DOI: [10.1029/2026GB009184](https://doi.org/10.1029/2026GB009184)
 
 1. Wu, W. (2026). [Ageostrophic velocities of curved ocean fronts](https://doi.org/10.1029/2025JC023961), _Journal of Geophysical Research: Oceans_, **131(8)**, e2025JC023961. DOI: [10.1029/2025JC023961](https://doi.org/10.1029/2025JC023961)
@@ -153,10 +161,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
 1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
-
-1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin-Helmholtz braids at high Reynolds number](https://doi.org/10.48550/arXiv.2604.16173), _arXiv preprint_, arXiv:2604.16173. DOI: [10.48550/arXiv.2604.16173](https://doi.org/10.48550/arXiv.2604.16173)
-
-1. Gui, W., Bhadouriya, A., Vreugdenhil, C. A., and Gayen, B. (2026). [The impact of fronts and submesoscale eddies under various melt conditions on Antarctic ice shelves](https://doi.org/10.22541/essoar.15002095/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15002095/v1](https://doi.org/10.22541/essoar.15002095/v1)
 
 1. Plotzki, T. and Peitz, S. (2026). [Koopman-based surrogate modeling for reinforcement-learning-control of Rayleigh-Bénard convection](https://doi.org/10.48550/arXiv.2603.28074), _arXiv preprint_, arXiv:2603.28074. DOI: [10.48550/arXiv.2603.28074](https://doi.org/10.48550/arXiv.2603.28074)
 
@@ -213,8 +217,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a Unified Data-Driven Boundary Layer Momentum Flux Parameterization for Ocean and Atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
 
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
-
-1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI: [10.31223/X51N08](https://doi.org/10.31223/X51N08).
 
 1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
 

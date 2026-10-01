@@ -116,7 +116,7 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),
                                         Tuple(Adapt.adapt(to, a) for a in κ.arguments),
-                                        eltype(κ))
+                                        unwrapped_eltype(eltype(κ)))
 
 Architectures.on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
