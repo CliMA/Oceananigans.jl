@@ -146,19 +146,29 @@ end
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
-@inline function DC.record_event(::CUDAGPU)
-  event = CUDA.CuEvent()
-  CUDA.record(event)
-  return event
+struct StreamEvent
+    event  :: CUDA.CuEvent
+    stream :: CUDA.CuStream
 end
 
-function DC.sync_event(event::CUDA.CuEvent)
-  event_complete = CUDA.isdone(event)
-  while !event_complete
-    event_complete = CUDA.isdone(event)
-    yield()
-  end
-  return nothing
+# We record both event and stream so that the task can operate
+# on the same stream as the record.
+@inline function DC.record_event(::CUDAGPU)
+    stream = CUDA.stream()
+    event  = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
+    CUDA.record(event, stream)
+    return StreamEvent(event, stream)
+end
+
+# Adopt the recording stream: otherwise CUDA.jl gives this task a new stream (and synchronizes)
+function DC.sync_event(stream_event::StreamEvent)
+    CUDA.stream!(stream_event.stream)
+    event_complete = CUDA.isdone(stream_event.event)
+    while !event_complete
+        event_complete = CUDA.isdone(stream_event.event)
+        yield()
+    end
+    return nothing
 end
 
 # Use faster versions of `newton_div` on Nvidia GPUs
