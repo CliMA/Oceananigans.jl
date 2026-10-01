@@ -76,6 +76,23 @@ end
     end
 end
 
+@testset "Float32 third-order WENO weights beside a large jump" begin
+    # Third order is the fallback near immersed boundaries. A jump of 3e6 gives τ / (β + ϵ) ≈ 9e20, whose
+    # square overflows Float32. The weight of the rough sub-stencil is then a subnormal, so compare absolutely.
+    S = (0f0, 0f0, 3f6)
+    δ = (S[2] - S[1], S[3] - S[2])
+
+    for weight_computation in (Oceananigans.Utils.NormalDivision,
+                               Oceananigans.Utils.BackendOptimizedDivision)
+        ω = biased_weno_weights(δ, nothing, WENO(Float32; order=3, weight_computation))
+        reference = biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order=3, weight_computation))
+
+        @test all(isfinite, ω)
+        @test sum(ω) ≈ 1
+        @test all(isapprox.(ω, reference; atol=1e-6))
+    end
+end
+
 @testset "Float32 WENO weights where the flow is smooth" begin
     for order in (5, 7, 9)
         buffer = Int((order + 1) ÷ 2)
