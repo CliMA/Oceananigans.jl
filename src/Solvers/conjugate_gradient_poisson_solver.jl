@@ -79,12 +79,7 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
 end
 
 # Linear operator for the free-surface pressure Poisson equation.
-# Applies V∇² with Neumann BC at the top, then adds the Robin BC diagonal correction
-# -Az(Nz+1)/den * ϕ[Nz] at k=Nz (where den = g*Δt² + Δzᶠ/2).
-#
-# The top ghost is explicitly set to Neumann (ϕ[Nz+1] = ϕ[Nz]) before computing V∇².
-# This prevents the MixedBoundaryCondition on p_Δt (set at model construction) from
-# polluting the operator during CG iterations with a stale coefficient/inhomogeneity.
+# V∇² with a Neumann top halo plus the Robin diagonal correction -Az / (g Δt² + Δzᶠ/2) at k = Nz
 struct FreeSurfaceLaplacian end
 
 @kernel function _fill_top_neumann_halo!(ϕ, grid)

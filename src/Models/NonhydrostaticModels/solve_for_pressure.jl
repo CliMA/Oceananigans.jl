@@ -147,19 +147,19 @@ end
 # Note that Δt is unused here.
 function solve_for_pressure!(pressure, solver, free_surface, Ũ, Δt)
     compute_source_term!(solver, free_surface, Ũ, Δt)
-    update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+    update_pressure_solver!(solver, free_surface, Ũ, Δt)
     solve!(pressure, solver)
     return pressure
 end
 
-update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
-update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt) = nothing
-update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
+update_pressure_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+update_pressure_solver!(solver, free_surface, Ũ, Δt) = nothing
+update_pressure_solver!(solver::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-update_fourier_tridiagonal_solver!(preconditioner::MultigridPreconditioner, free_surface, Ũ, Δt) =
+update_pressure_solver!(preconditioner::MultigridPreconditioner, free_surface, Ũ, Δt) =
     update_free_surface_correction!(preconditioner, free_surface, Δt)
 
-update_fourier_tridiagonal_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt) =
+update_pressure_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt) =
     update_tridiagonal_formulation!(solver, solver.tridiagonal_formulation, free_surface, Ũ, Δt)
 
 update_tridiagonal_formulation!(solver, ::AbstractHomogeneousNeumannFormulation, free_surface, Ũ, Δt) = nothing
@@ -174,10 +174,10 @@ function update_tridiagonal_formulation!(solver, ::InhomogeneousFormulation, fre
     grid = solver.grid
     arch = grid.architecture
     diagonal = solver.batched_tridiagonal_solver.b
-    launch!(arch, grid, :xy, _update_fourier_tridiagonal_solver!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
+    launch!(arch, grid, :xy, _update_tridiagonal_formulation!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
 end
 
-@kernel function _update_fourier_tridiagonal_solver!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
+@kernel function _update_tridiagonal_formulation!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
@@ -235,7 +235,7 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     add_cg_free_surface_rhs!(rhs, free_surface, grid, Ũ, Δt)
 
     preconditioner = solver.conjugate_gradient_solver.preconditioner
-    update_fourier_tridiagonal_solver!(preconditioner, free_surface, Ũ, Δt)
+    update_pressure_solver!(preconditioner, free_surface, Ũ, Δt)
 
     return solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
 end
