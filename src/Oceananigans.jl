@@ -44,6 +44,7 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -109,8 +110,9 @@ export
     # Output writers
     NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
-    PrecedingIterations,
+    PrecedingIterations, TimeOffset,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,

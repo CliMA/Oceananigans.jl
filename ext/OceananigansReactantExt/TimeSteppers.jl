@@ -14,6 +14,7 @@ using Oceananigans.TimeSteppers:
     tick!,
     tick_stage!,
     step_lagrangian_particles!,
+    step_closure_prognostics!,
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
@@ -136,6 +137,7 @@ function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler
 
     tick!(model.clock, Δt)
 
+    step_closure_prognostics!(model, Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, Δt)
 
