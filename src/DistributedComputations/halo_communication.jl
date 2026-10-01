@@ -188,6 +188,7 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
     !isnothing(reqnw) && push!(reqs, reqnw...)
     !isnothing(reqne) && push!(reqs, reqne...)
 
+    progress_comms!(reqs)
     add_comm_requests!(buffers, reqs)
     complete_fill_event!(buffers)
 
@@ -195,8 +196,19 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
 
 end
 
+# Keep testing the requests instead of deferring all progress to `Waitall`. (for MPI implementations without asynchronous progress)
+function progress_comms!(requests::Array{MPI.Request})
+    request_set = MPI.RequestSet(requests)
+    while !MPI.Testall(request_set)
+        yield()
+    end
+    return nothing
+end
+
+progress_comms!(requests) = nothing
+
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
-cooperative_waitall!(req::MPI.Request)            = MPI.Waitall(req)
+cooperative_waitall!(req::MPI.Request)        = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 function cooperative_waitall!(request_channel::Channel)
   # If there are no requests, skip the waitall
@@ -237,12 +249,14 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 end
 
 function perform_comms(fill_event, c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args...)
-        sync_event(fill_event)
+    sync_event(fill_event)
 
-        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        add_comm_requests!(buffers, requests)
-        complete_fill_event!(buffers)
+    requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+    progress_comms!(requests)
+    add_comm_requests!(buffers, requests)
+    complete_fill_event!(buffers)
 end
+
 #####
 ##### fill_$corner_halo! where corner = [:southwest, :southeast, :northwest, :northeast]
 #####
