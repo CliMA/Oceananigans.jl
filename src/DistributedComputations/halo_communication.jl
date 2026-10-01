@@ -141,22 +141,22 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers; async
     fill_send_buffers!(c, buffers, grid, Val(:corners))
 
     if async && (arch isa AsynchronousDistributed)
-      async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+      async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     else
-      sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+      sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     end
 
     return nothing
 end
 
-function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
+function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
   sync_device!(arch)
   requests = MPI.Request[]
 
-  reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
-  reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
-  reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
-  reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
+  reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
+  reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
+  reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
+  reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
 
   !isnothing(reqsw) && push!(requests, reqsw...)
   !isnothing(reqse) && push!(requests, reqse...)
@@ -167,31 +167,45 @@ function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffe
 
 end
 
-function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers, args...; kw...)
-  fill_event = record_event(arch)
-  add_fill_event!(buffers)
+function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
+    fill_event = record_event(arch)
 
-  errormonitor(Threads.@spawn begin
-    sync_event(fill_event)
+    async_comms!(fill_event, buffers) do
+        reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
+        reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
+        reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
+        reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
+        requests = MPI.Request[]
 
-    reqs = MPI.Request[]
+        !isnothing(reqsw) && push!(requests, reqsw...)
+        !isnothing(reqse) && push!(requests, reqse...)
+        !isnothing(reqnw) && push!(requests, reqnw...)
+        !isnothing(reqne) && push!(requests, reqne...)
 
-    !isnothing(reqsw) && push!(reqs, reqsw...)
-    !isnothing(reqse) && push!(reqs, reqse...)
-    !isnothing(reqnw) && push!(reqs, reqnw...)
-    !isnothing(reqne) && push!(reqs, reqne...)
+        return requests
+    end
 
-    progress_comms!(reqs)
-    add_comm_requests!(buffers, reqs)
-    complete_fill_event!(buffers)
+    return nothing
+end
 
-  end)
-
+# Post the MPI requests returned by `post_requests()` once `fill_event` is done, without waiting for them to complete; `wait_for_comms!`
+# completes them later. With more than one Julia thread the requests are posted and progressed by a separate task, while with a single thread
+# a separate task would compete with main, so the requests are posted right away by the main thread and completed by `wait_for_comms!`.
+function async_comms!(post_requests, fill_event, buffers)
+    if Threads.nthreads() > 1
+        add_fill_event!(buffers)
+        errormonitor(Threads.@spawn begin
+            sync_event(fill_event)
+            requests = post_requests()
+            progress_comms!(requests)
+            complete_fill_event!(buffers)
+        end)
+    else
+        sync_event(fill_event)
+        add_pending_requests!(buffers, post_requests())
+    end
+    return nothing
 end
 
 # Keep testing the requests instead of deferring all progress to `Waitall`. (for MPI implementations without asynchronous progress)
@@ -205,16 +219,9 @@ end
 
 progress_comms!(requests) = nothing
 
-cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
+cooperative_waitall!(::Nothing)               = nothing
 cooperative_waitall!(req::MPI.Request)        = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
-function cooperative_waitall!(request_channel::Channel)
-  # If there are no requests, skip the waitall
-  # For distributed fields, use wait_for_comms to ensure correct behaviour
-  while !isempty(request_channel)
-    cooperative_waitall!(take!(request_channel))
-  end
-end
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
@@ -232,27 +239,20 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
     fill_event = record_event(arch)
-    add_fill_event!(buffers)
 
     if async && (arch isa AsynchronousDistributed)
-      errormonitor(Threads.@spawn perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...))
+        async_comms!(fill_event, buffers) do
+            kernel!(c, bcs..., loc, grid, arch, buffers)
+        end
     else
-      perform_comms(fill_event, c, kernel!, bcs, loc, arch, grid, buffers, args...)
-      # Need to synchronize communications
-      wait_for_comms!(buffers)
-      recv_from_buffers!(c, buffers, grid, kernel!.side)
+        sync_event(fill_event)
+        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
+        cooperative_waitall!(requests)
+        wait_for_comms!(buffers)
+        recv_from_buffers!(c, buffers, grid, buffer_side)
     end
 
     return nothing
-end
-
-function perform_comms(fill_event, c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args...)
-    sync_event(fill_event)
-
-    requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-    progress_comms!(requests)
-    add_comm_requests!(buffers, requests)
-    complete_fill_event!(buffers)
 end
 
 #####
