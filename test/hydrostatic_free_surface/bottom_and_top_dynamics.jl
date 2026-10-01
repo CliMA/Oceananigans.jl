@@ -121,7 +121,7 @@ function test_bottom_and_top_catke(FT, arch)
     ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottomAndTop(-1, top))
 
     model = HydrostaticFreeSurfaceModel(ibg; buoyancy=BuoyancyTracer(), tracers=:b,
-                                        closure=CATKEVerticalDiffusivity())
+                                        closure=CATKEVerticalDiffusivity(FT))
     set!(model, b=(x, z) -> z / 2)
 
     for _ in 1:3
