@@ -350,6 +350,19 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
                 @test view( v.data, iᶜ, jᶠ, 1) == -view( v.data, iᶜ′, jᶠ′, 1)
             end
 
+            # The fold row is its own mirror at every level, vertical halos included
+            @testset "Test fold row vertical halos" begin
+                if fold_topology == RightFaceFolded
+                    @test view(CF.data, iᶜ, Ny+1, :) ==  view(CF.data, iᶜ′, Ny+1, :)
+                    @test view(FF.data, iᶠ, Ny+1, :) ==  view(FF.data, iᶠ′, Ny+1, :)
+                    @test view( v.data, iᶜ, Ny+1, :) == -view( v.data, iᶜ′, Ny+1, :)
+                else
+                    @test view(CC.data, iᶜ, Ny, :) ==  view(CC.data, iᶜ′, Ny, :)
+                    @test view(FC.data, iᶠ, Ny, :) ==  view(FC.data, iᶠ′, Ny, :)
+                    @test view( u.data, iᶠ, Ny, :) == -view( u.data, iᶠ′, Ny, :)
+                end
+            end
+
             # Test that bottom height for an immersed boundary grid is also
             # correctly rotated and symmetric around the pivot point
             @testset "Test GridFittedBottom halo fill" begin
