@@ -11,6 +11,7 @@ export interpolate
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArray
+using StaticArrays: StaticArray
 
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture

@@ -140,6 +140,8 @@ coefficients.
 """
 function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callbacks=[])
 
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
+
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
@@ -149,8 +151,8 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δt
 
-        ssp_substep!(model, Δt, a, b, callbacks)
-        step_closure_prognostics!(model, Δt)
+        ssp_substep!(model, kernel_Δt, a, b, callbacks)
+        step_closure_prognostics!(model, kernel_Δt)
 
         if stage == model.timestepper.Nstages
             tick_time!(model.clock, Δt)
@@ -159,7 +161,7 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
         update_state!(model, callbacks)
     end
 
-    step_lagrangian_particles!(model, Δt)
+    step_lagrangian_particles!(model, kernel_Δt)
 
     model.clock.iteration += 1
 

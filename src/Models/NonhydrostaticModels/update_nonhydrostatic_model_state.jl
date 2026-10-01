@@ -82,5 +82,5 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt::Number) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

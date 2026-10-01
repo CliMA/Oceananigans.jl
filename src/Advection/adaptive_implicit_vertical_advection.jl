@@ -149,9 +149,16 @@ end
 @inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²
 @inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ³ + ts.ζ³
 
+# `RungeKutta3TimeStepper` ticks the clock *before* `update_state!`, so here `clock.stage` is the stage
+# about to be taken and `clock.last_stage_Δt` is the Δt of the stage that just finished.
 @inline function adaptive_advection_timestep(timestepper::RungeKutta3TimeStepper, clock)
-    stage  = clock.stage
-    nstage = stage == 3 ? 1 : stage + 1
-    Δt     = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
-    return Δt * sum_rk3_coefficients(timestepper, Val(nstage))
+    stage = clock.stage
+
+    if stage == 1
+        Δt = clock.last_Δt
+    else
+        Δt = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage - 1))
+    end
+
+    return Δt * sum_rk3_coefficients(timestepper, Val(stage))
 end

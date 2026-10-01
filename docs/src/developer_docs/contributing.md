@@ -125,21 +125,27 @@ Oceananigans or by requesting something you think is missing.
   file. Your development environment is now ready!
 
 * You can test to make sure Oceananigans works by typing in `] test`. (This is equivalent to
-  `using Pkg; Pkg.test()`.) Doing so will run all the tests (and this can take a while).
-  Alternatively, we can run only one test script file by providing its name as an environment
-  variable. For example, to run the tests only from the `test_coriolis.jl` file we call:
+  `using Pkg; Pkg.test()`.) Doing so will run the default test suite (and this can take a while).
+  The tests live in `test/<group>/<name>.jl` and are run in parallel by
+  [ParallelTestRunner.jl](https://github.com/JuliaTesting/ParallelTestRunner.jl); a test is
+  selected by a prefix of its `group/name`. For example, to run only `test/coriolis/coriolis.jl`:
 
   ```bash
-  $ TEST_FILE=test_coriolis.jl julia --project -e"using Pkg; Pkg.test()"
+  $ julia --project -e 'using Pkg; Pkg.test(; test_args=["coriolis/coriolis"])'
   ```
 
-  We can also run all the tests within a certain test group, as they are defined in [`test/runtest.jl`](https://github.com/CliMA/Oceananigans.jl/blob/main/test/runtests.jl).
-  For example, to run all unit tests we call:
+  To run all the unit tests, i.e. every file in `test/unit/`:
 
   ```bash
-  $ TEST_GROUP=unit julia --project -e"using Pkg; Pkg.test()"
+  $ julia --project -e 'using Pkg; Pkg.test(; test_args=["unit"])'
   ```
 
+  The same selection is available through the `TEST_GROUP` environment variable
+  (`TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'`). Other useful options are
+  `--list` to print every test with its last measured duration, `--jobs=N` to choose the number
+  of worker processes, `--verbose`, and `--quickfail`; see `Pkg.test(; test_args=["--help"])`.
+  Every test file includes `test/setup/dependencies_for_runtests.jl`, so a single file can also be
+  run directly with `julia --project=test test/coriolis/coriolis.jl`.
 
 ## Pull Requests
 

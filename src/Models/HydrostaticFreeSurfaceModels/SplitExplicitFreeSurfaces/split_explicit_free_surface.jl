@@ -4,7 +4,7 @@ using Oceananigans.Grids: RightCenterFolded, RightFaceFolded
 using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Utils: prettytime, worksize, KernelParameters
+using Oceananigans.Utils: prettytime, KernelParameters
 using Adapt: Adapt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -40,7 +40,7 @@ function substep_halo_filling(extend_halos::Bool, bcs)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W, B} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -49,9 +49,10 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, W} <: AbstractFreeSurfa
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
     slow_forcing :: W # How the slow forcing is represented across the barotropic sub-cycle
+    boundary_transport :: B # Target transports of the sides with a targeted `GravityWaveRadiation` condition (or `nothing`)
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, w::W) where {E, H, U, M, FT, K, S, T, W}
-        return new{E, H, U, M, FT, K, S, T, W}(η, u, m, g, k, s, t, w)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, w::W, b::B) where {E, H, U, M, FT, K, S, T, W, B}
+        return new{E, H, U, M, FT, K, S, T, W, B}(η, u, m, g, k, s, t, w, b)
     end
 end
 
@@ -110,6 +111,10 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 
 - `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
   contains no auxiliary fields).
+
+- `boundary_transport`: `nothing`, or a `NamedTuple` `(; west, east, south, north)` holding the `target_transport` of each
+  side whose `GravityWaveRadiation` boundary condition carries one (`nothing` on the other sides). After every substep each
+  targeted face is integrated over its wet columns and shifted uniformly by a single kernel so its transport equals the target.
 
 Keyword Arguments
 =================
@@ -196,7 +201,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   nothing,
                                                   substepping,
                                                   timestepper,
-                                                  slow_forcing)
+                                                  slow_forcing,
+                                                  nothing)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -291,6 +297,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
+    boundary_transport = materialize_barotropic_boundary_transport(U, V, maybe_extended_grid)
 
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)
@@ -309,7 +316,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                       kernel_parameters,
                                                       substepping,
                                                       timestepper,
-                                                      slow_forcing)
+                                                      slow_forcing,
+                                                      boundary_transport)
 end
 
 #####
@@ -456,7 +464,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
                                            Adapt.adapt(to, free_surface.timestepper),
-                                           Adapt.adapt(to, free_surface.slow_forcing))
+                                           Adapt.adapt(to, free_surface.slow_forcing),
+                                           Adapt.adapt(to, free_surface.boundary_transport))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,

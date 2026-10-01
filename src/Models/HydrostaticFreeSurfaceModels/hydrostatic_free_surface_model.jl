@@ -265,6 +265,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # Next, we form a list of default boundary conditions:
     field_names = constructor_field_names(velocities, tracer_names, free_surface, auxiliary_fields, biogeochemistry, grid)
     default_boundary_conditions = NamedTuple{field_names}(ntuple(_ -> FieldBoundaryConditions(), Val(length(field_names))))
+    validate_free_surface_boundary_conditions(free_surface, boundary_conditions, grid)
     default_boundary_conditions = merge(default_boundary_conditions, default_free_surface_boundary_conditions(free_surface, boundary_conditions))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
@@ -404,7 +405,7 @@ stash_vertical_velocity!(transport_velocities, velocities, free_surface) = updat
 stash_vertical_velocity!(transport_velocities, velocities, ::Union{SplitExplicitFreeSurface, ImplicitFreeSurface}) = nothing
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
-update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst::Field, src::Field) = copyto!(parent(dst), parent(src))
 update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
@@ -459,6 +460,7 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             free_surface = prognostic_state(model.free_surface),
+            coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
             vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
@@ -469,6 +471,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.coriolis, from.coriolis)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)

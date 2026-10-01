@@ -22,6 +22,8 @@ Base.@kwdef struct ConstantStabilityFunctions{FT} <: AbstractConstantSchmidtStab
     𝕊u₀ :: FT = 0.53 # √3
 end
 
+Adapt.@adapt_structure ConstantStabilityFunctions
+
 Base.summary(s::ConstantStabilityFunctions{FT}) where FT = "ConstantStabilityFunctions{$FT}"
 
 summarize_stability_functions(s::ConstantStabilityFunctions{FT}, prefix="", sep="│   ") where FT =
@@ -54,6 +56,8 @@ struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctio
     Cd₅ :: FT
     𝕊u₀ :: FT
 end
+
+Adapt.@adapt_structure VariableStabilityFunctions
 
 VariableStabilityFunctions{FT}(; kw...) where FT = VariableStabilityFunctions(FT; kw...)
 
