@@ -2043,7 +2043,9 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
         grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
-        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+        reservoir = ValueBoundaryCondition(1, scheme=Oceananigans.BoundaryConditions.TracerReservoir(inflow_length_scale=1))
+        c_bcs = FieldBoundaryConditions(west=reservoir, east=reservoir)
+        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
         set!(model, c=1)
         return Simulation(model; Δt=Δt, stop_iteration=stop_iteration, verbose=false)
     end
@@ -2077,6 +2079,11 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
         restored_field = getproperty(restored_bt, field_name)
         @test original_field == restored_field
     end
+
+    @test prognostic_state(restored_simulation.model.velocities.u.boundary_conditions) ==
+          prognostic_state(simulation.model.velocities.u.boundary_conditions)
+    @test prognostic_state(restored_simulation.model.tracers.c.boundary_conditions) ==
+          prognostic_state(simulation.model.tracers.c.boundary_conditions)
 
     # Test that the restored simulation can continue running
     @test_nowarn run!(restored_simulation)
@@ -2425,6 +2432,8 @@ for arch in archs
 
     schemes = [
         PerturbationAdvection(inflow_timescale=2, outflow_timescale=1),
+        NormalRadiation(),
+        Oceananigans.BoundaryConditions.ObliqueRadiation(),
     ]
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes

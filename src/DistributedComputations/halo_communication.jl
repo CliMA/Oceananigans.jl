@@ -73,7 +73,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(field::DistributedField, args...; kwargs...)
+fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -82,34 +82,33 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                        field.communication_buffers,
                        args...;
                        kwargs...)
-end
 
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly
 maybe_distributed_fill_halo_regions!(arch, args...; kwargs...) = fill_halo_regions!(args...; kwargs...)
-maybe_distributed_fill_halo_regions!(arch::Distributed, args...; kwargs...) = distributed_fill_halo_regions!(arch, args...; kwargs...)
+function maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_conditions, indices, loc, grid, buffers, args::Vararg{Any, N}; kwargs...) where N
+    return distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+end
 
 # Otherwise we recover the architecture from the (still distributed) grid.
-fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...) =
-    distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
+    return distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+end
 
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
-
-    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args...; kwargs...)
-
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
-
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers; kwargs...)
     return nothing
 end
 
-@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, arch, grid, args...; kwargs...) = nothing
+@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, arch, grid, buffers, args; kwargs...) = nothing
 
-@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, arch, grid, args...; kwargs...)
-    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, arch, grid, args...; kwargs...)
-    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, arch, grid, args...; kwargs...)
+@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, arch, grid, buffers, args; kwargs...)
+    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, arch, grid, buffers, args; kwargs...)
+    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, arch, grid, buffers, args; kwargs...)
     return nothing
 end
 
@@ -129,8 +128,7 @@ end
 end
 
 # corner passing routine
-function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...;
-                       async=false, only_local_halos=false, kw...)
+function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers; async=false, only_local_halos=false, kw...)
 
     # No corner filling needed!
     only_local_halos && return nothing
@@ -176,10 +174,10 @@ function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buff
   errormonitor(Threads.@spawn begin
     sync_event(fill_event)
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
 
     reqs = MPI.Request[]
 
@@ -220,12 +218,12 @@ end
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
-distributed_fill_halo_event!(c, kernel!, bcs, loc, arch, grid, buffers, args...; kwargs...) = fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
+distributed_fill_halo_event!(c, kernel!, bcs, loc, arch, grid, buffers, args; kwargs...) = fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args...;
+function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, arch, grid, buffers, args;
                                       async = false, only_local_halos = false, kwargs...)
 
     only_local_halos && return nothing # No need to do anything here
@@ -267,10 +265,9 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_side_halo! = Symbol("recv_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing) = nothing
 
-        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...)
-            child_arch = child_architecture(arch)
+        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd)
             local_rank = arch.local_rank
 
             recv_req = $recv_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
