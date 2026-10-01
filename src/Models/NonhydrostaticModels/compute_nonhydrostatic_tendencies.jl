@@ -30,13 +30,7 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
-
-    # Add transitions of `separate_transition_tracers` in place, after all interior and buffer
-    # tendencies are computed (buffer regions overlap at corners, so adding inside them would double count)
-    if !isempty(separate_transition_tracers(model.biogeochemistry))
-        model_fields = merge(model.velocities, model.tracers, model.auxiliary_fields)
-        add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry, grid, model.clock, model_fields)
-    end
+    compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
@@ -114,6 +108,15 @@ end
             active_cells_map)
 
     return nothing
+end
+
+function compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map=nothing)
+    model_fields = merge(model.velocities, model.tracers, model.auxiliary_fields,
+                         biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+    return add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry, 
+                                           model.grid, model.clock, model_fields; 
+                                           kernel_parameters, active_cells_map)
 end
 
 #####

@@ -69,17 +69,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
-
-    # Transitions of `separate_transition_tracers` are added in place after all interior and buffer
-    # tendencies are computed (buffer regions overlap at corners, so adding inside them would double count)
-    # and before the flux boundary conditions and stretching factor are applied.
-    if !isempty(separate_transition_tracers(model.biogeochemistry))
-        model_fields = merge(hydrostatic_fields(model.transport_velocities, model.free_surface, model.tracers),
-                             model.auxiliary_fields,
-                             biogeochemical_auxiliary_fields(model.biogeochemistry))
-
-        add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry, grid, model.clock, model_fields)
-    end
+    compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map)
 
     compute_tracer_flux_bcs!(model)
 
@@ -146,7 +136,7 @@ end
             model.auxiliary_fields,
             model.clock,
             c_forcing;
-            active_cells_map)
+            active_cells_map) 
 
     return nothing
 end
@@ -202,6 +192,16 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             v_forcing; active_cells_map)
 
     return nothing
+end
+
+function compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map=nothing)
+    model_fields = merge(hydrostatic_fields(model.transport_velocities, model.free_surface, model.tracers),
+                         model.auxiliary_fields,
+                         biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+    return add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry, 
+                                           model.grid, model.clock, model_fields; 
+                                           kernel_parameters, active_cells_map)
 end
 
 #####

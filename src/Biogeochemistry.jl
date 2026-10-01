@@ -217,11 +217,27 @@ Adapt.adapt_structure(to, t::TransitionFree) = TransitionFree(Adapt.adapt(to, t.
 """
 $(TYPEDSIGNATURES)
 
-Return the biogeochemistry argument passed to the tendency kernel for tracer `name`:
-`TransitionFree(bgc)` if `name` is in `separate_transition_tracers(bgc)`, otherwise `bgc`.
+Add the biogeochemical transition of each tracer in `separate_transition_tracers(bgc)` in place to
+the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `model_fields` must be the
+same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
+Does nothing when `separate_transition_tracers(bgc)` is empty.
 """
-@inline tendency_biogeochemistry(bgc, ::Val{name}) where name =
-    name in separate_transition_tracers(bgc) ? TransitionFree(bgc) : bgc
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields;
+                                kernel_parameters=:xyz, active_cells_map=nothing) =
+    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_transition_tracers(bgc);
+                                    kernel_parameters, active_cells_map)
+
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{};
+                                kwargs...) = nothing
+
+@inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple;
+                                                 kernel_parameters=:xyz, active_cells_map=nothing)
+    name = first(names)
+    launch!(architecture(grid), grid, kernel_parameters, _add_biogeochemical_transition!,
+            Gⁿ[name], grid, bgc, Val(name), clock, model_fields; active_cells_map)
+    return add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, Base.tail(names);
+                                           kernel_parameters, active_cells_map)
+end
 
 @kernel function _add_biogeochemical_transition!(Gc, grid, bgc, val_tracer_name, clock, fields)
     i, j, k = @index(Global, NTuple)
@@ -231,22 +247,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Add the biogeochemical transition of each tracer in `separate_transition_tracers(bgc)` in place to
-the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `model_fields` must be the
-same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
-Does nothing when `separate_transition_tracers(bgc)` is empty.
+Return the biogeochemistry argument passed to the tendency kernel for tracer `name`:
+`TransitionFree(bgc)` if `name` is in `separate_transition_tracers(bgc)`, otherwise `bgc`.
 """
-add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields) =
-    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_transition_tracers(bgc))
-
-add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{}) = nothing
-
-@inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple)
-    name = first(names)
-    launch!(architecture(grid), grid, :xyz, _add_biogeochemical_transition!,
-            Gⁿ[name], grid, bgc, Val(name), clock, model_fields)
-    return add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, Base.tail(names))
-end
+@inline tendency_biogeochemistry(bgc, ::Val{name}) where name =
+    name in separate_transition_tracers(bgc) ? TransitionFree(bgc) : bgc
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()
