@@ -89,7 +89,7 @@ function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryCond
     nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    state = communication_state(arch)
+    state = communication_state(arch, west, east, south, north, sw, se, nw, ne)
 
     return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end

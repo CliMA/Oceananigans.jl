@@ -187,7 +187,7 @@ function communication_buffers(grid::MPITripolarGridOfSomeKind, data, bcs, loc)
     nw = northwest_tripolar_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = northeast_tripolar_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    state = communication_state(arch)
+    state = communication_state(arch, west, east, south, north, sw, se, nw, ne)
 
     return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end
