@@ -163,10 +163,8 @@ end
 # Adopt the recording stream: otherwise CUDA.jl gives this task a new stream (and synchronizes)
 function DC.sync_event(stream_event::StreamEvent)
     CUDA.stream!(stream_event.stream)
-    event_complete = CUDA.isdone(stream_event.event)
-    while !event_complete
-        event_complete = CUDA.isdone(stream_event.event)
-        yield()
+    while !CUDA.isdone(stream_event.event)
+        Threads.nthreads() > 1 && yield()
     end
     return nothing
 end
