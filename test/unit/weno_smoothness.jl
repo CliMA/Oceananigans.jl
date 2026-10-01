@@ -89,7 +89,7 @@ end
 
         @test all(isfinite, ω)
         @test sum(ω) ≈ 1
-        @test all(isapprox.(ω, reference; atol=1e-6))
+        @test all(isapprox.(ω, reference))
     end
 end
 
