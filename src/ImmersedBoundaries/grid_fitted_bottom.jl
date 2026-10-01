@@ -225,28 +225,12 @@ values, which usually makes the simulation blow up soon after the restart.
 validate_checkpoint_bottom_height(grid, ::Nothing) = nothing
 
 function validate_checkpoint_bottom_height(grid, checkpoint_bottom_height)
-    bottom_height = bottom_height_checkpoint_state(grid)
-
-    if isnothing(bottom_height)
-        throw(ArgumentError("The checkpoint was saved on a grid with a bottom height, but the current grid does not have one."))
+    if bottom_height_checkpoint_state(grid) != checkpoint_bottom_height
+        msg = string("The bottom height of the grid differs from the bottom height saved in the checkpoint.", '\n',
+                     "Restoring would give newly active cells the zero values of cells that were immersed in the checkpoint.", '\n',
+                     "Use the same bathymetry as the run that wrote the checkpoint.")
+        throw(ArgumentError(msg))
     end
 
-    if size(bottom_height) != size(checkpoint_bottom_height)
-        throw(ArgumentError(string("The bottom height in the checkpoint has size ", size(checkpoint_bottom_height),
-                                   " but the bottom height of the current grid has size ", size(bottom_height), ".")))
-    end
-
-    changed_columns = findall(bottom_height .!= checkpoint_bottom_height)
-    isempty(changed_columns) && return nothing
-
-    largest_change = maximum(abs.(bottom_height[changed_columns] .- checkpoint_bottom_height[changed_columns]))
-    first_column = Tuple(first(changed_columns))
-
-    msg = string("The bottom height of the grid differs from the bottom height saved in the checkpoint", '\n',
-                 "in ", length(changed_columns), " of ", length(bottom_height), " columns ",
-                 "(largest change: ", prettysummary(largest_change), ", first changed column: ", first_column, ").", '\n',
-                 "Restoring would give newly active cells the zero values of cells that were immersed in the checkpoint.", '\n',
-                 "Use the same bathymetry as the run that wrote the checkpoint.")
-
-    throw(ArgumentError(msg))
+    return nothing
 end
