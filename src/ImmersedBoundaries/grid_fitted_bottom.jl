@@ -224,8 +224,14 @@ values, which usually makes the simulation blow up soon after the restart.
 """
 validate_checkpoint_bottom_height(grid, ::Nothing) = nothing
 
+# Add up `n` over all processes. Distributed architectures extend this so that every process
+# throws the same error together, instead of some processes waiting forever for the others.
+sum_over_processes(n, arch) = n
+
 function validate_checkpoint_bottom_height(grid, checkpoint_bottom_height)
-    if bottom_height_checkpoint_state(grid) != checkpoint_bottom_height
+    local_mismatch = Int(bottom_height_checkpoint_state(grid) != checkpoint_bottom_height)
+
+    if sum_over_processes(local_mismatch, architecture(grid)) > 0
         msg = string("The bottom height of the grid differs from the bottom height saved in the checkpoint.", '\n',
                      "Restoring would give newly active cells the zero values of cells that were immersed in the checkpoint.", '\n',
                      "Use the same bathymetry as the run that wrote the checkpoint.")
