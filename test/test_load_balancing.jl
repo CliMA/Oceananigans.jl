@@ -83,9 +83,9 @@ end
 @testset "Partitioning consistent" begin
 
   @testset "1d - len:$len, ranks:$ranks" for (len, ranks) in Iterators.product((10, 100, 1000), (2,4,8))
-    weights = rand(len)
+    costs = rand(len)
 
-    partitions = partition_1d(weights, ranks)
+    partitions = partition_1d(costs, ranks)
 
     sizes = ends_to_sizes(partitions)
 
@@ -101,8 +101,8 @@ end
 
     bottom_height = -30.0 .* rand(Float64, (Nx, Ny)) .+ 15.0
     ib = ibc(bottom_height)
-    weight_map = create_weight_map(grid, ib)
-    balanced_partition = create_balanced_partition(strategy, partition, weight_map)
+    cost_map = create_cost_map(grid, ib)
+    balanced_partition = create_balanced_partition(strategy, partition, cost_map)
 
     @test sum(balanced_partition.x) == Nx
     @test sum(balanced_partition.y) == Ny
