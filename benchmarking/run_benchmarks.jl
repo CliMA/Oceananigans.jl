@@ -143,7 +143,7 @@ function parse_commandline()
         "--samples"
             help = "Number of timing windows of `time_steps` steps each; the minimum is reported (benchmark mode only)"
             arg_type = Int
-            default = 5
+            default = 1
 
         "--dt"
             help = "Time step size in seconds"
