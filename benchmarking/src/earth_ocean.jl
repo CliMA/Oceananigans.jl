@@ -20,7 +20,7 @@ using Oceananigans.DistributedComputations: SimplifiedGeneralizedBlockDistributi
                 closure = CATKEVerticalDiffusivity(),
                 timestepper = :SplitRungeKutta3,
                 tracers = (:T, :S),
-                load_balancing = false)
+                load_balanced_partition = false)
 
 Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case
 with realistic Earth bathymetry.
@@ -38,7 +38,7 @@ with realistic Earth bathymetry.
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
 - `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
 - `tracers`: Tuple of tracer names (default: `(:T, :S)`)
-- `load_balancing`: Whether to create a load balanced partition
+- `load_balanced_partition`: Whether to create a load balanced partition
 """
 function earth_ocean(arch = CPU();
                      float_type = Float32,
@@ -50,14 +50,14 @@ function earth_ocean(arch = CPU();
                      closure = CATKEVerticalDiffusivity(),
                      timestepper = :SplitRungeKutta3,
                      tracers = (:T, :S),
-                     load_balancing = false)
+                     load_balanced_partition = false)
 
     Oceananigans.defaults.FloatType = float_type
 
     grid_type in ("tripolar", "lat_lon", "immersed_lat_lon") ||
         error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"immersed_lat_lon\".")
 
-    if load_balancing
+    if load_balanced_partition
         underlying_grid = create_underlying_grid(arch.child_architecture, grid_type, (Nx, Ny, Nz), zstar_coordinate)
     else
         underlying_grid = create_underlying_grid(arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
@@ -74,7 +74,7 @@ function earth_ocean(arch = CPU();
             ndims(bh) == 3 ? dropdims(bh, dims=3) : bh
         end
 
-        if load_balancing
+        if load_balanced_partition
             ib = PartialCellBottom(bottom_height)
             partition = arch.partition
             cost_map = create_cost_map(underlying_grid, ib)
