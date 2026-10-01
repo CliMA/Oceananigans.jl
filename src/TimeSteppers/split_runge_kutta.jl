@@ -158,16 +158,27 @@ fields are cached. Then, for each stage `m`:
 
 1. Compute the `m`-th substep time increment: `Δτ = Δt / βᵐ` (where `β = model.timestepper.β`)
 2. Advance the state: `Uᵐ⁺¹ = U⁰ + Δτ * Gᵐ` (where `U⁰` is the cached initial state)
-3. Update the `model` state (fill halos, compute diagnostics, etc.)
+3. Advance the clock to the stage time `tⁿ + Δτ`, which is the time that `Uᵐ⁺¹` approximates
+   (the last stage, with `βⁿ = 1`, lands on `tⁿ + Δt`)
+4. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the `model.clock`s is advanced.
+After all substeps, Lagrangian particles are stepped and the `model.clock` iteration is incremented.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
+
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
 
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
     grid = model.grid
+
+    # Every stage restarts from the state cached at tⁿ, so the state after stage m approximates
+    # the solution at the absolute time tⁿ + Δt / βᵐ. Compute these stage times now, before the clock moves.
+    stage_times = map(model.timestepper.β) do β
+        Δτ = Δt / β
+        return next_time(model.clock, Δτ)
+    end
 
     ####
     #### Loop over the stages
@@ -177,18 +188,21 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
         # Update the clock stage
         Δτ = Δt / β
+        kernel_Δτ = kernel_Δt / β
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δτ
 
         # Perform the substep
-        rk_substep!(model, Δτ, callbacks)
+        rk_substep!(model, kernel_Δτ, callbacks)
 
         # Step closure prognostics
-        step_closure_prognostics!(model, Δτ)
+        step_closure_prognostics!(model, kernel_Δτ)
 
-        # Tick the clock if we ended the stages
+        # Advance the clock to the stage time before evaluating time-dependent terms
+        model.clock.time = stage_times[stage]
+
         if stage == model.timestepper.Nstages
-            tick_time!(model.clock, Δt)
+            model.clock.last_Δt = Δt
         end
 
         # Update the state
@@ -196,7 +210,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     end
 
     # Step particles
-    step_lagrangian_particles!(model, Δt)
+    step_lagrangian_particles!(model, kernel_Δt)
 
     model.clock.iteration += 1
 

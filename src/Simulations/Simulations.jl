@@ -7,6 +7,7 @@ export
     run!,
     Callback,
     add_callback!,
+    TimeDerivativeCallback,
     iteration
 
 using DocStringExtensions: TYPEDSIGNATURES

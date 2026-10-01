@@ -48,10 +48,11 @@ end
     @inbounds x₂ = vec[i₂]
 
     ii = (i₂ - i₁) / (x₂ - x₁) * (val - x₁) + i₁
-    ii = ifelse(i₁ == i₂, i₁, ii)
+    ii = oftype(val, ii)
+    i₁ft = oftype(val, i₁)
+    ii = ifelse(i₁ == i₂, i₁ft, ii)
 
-    FT = typeof(val) # convert "fractional index" to type of `val`
-    return convert(FT, ii)
+    return ii
 end
 
 #####
@@ -90,7 +91,9 @@ end
 @inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
-@inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
+# TODO: use `fld(λ, 360)` once Oceananigans can use a Metal release with JuliaGPU/Metal.jl#975.
+# On Julia ≥ 1.12, `fld(::Float32, ::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#972.
+@inline find_λ_range(λ) = floor(λ / 360)
 
 # Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate.
@@ -113,12 +116,7 @@ end
 
 # When interpolating longitude values, we convert the longitude to
 # interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
-# of the interpolating grid.
-#
-# The spacing is read from the grid rather than differenced from two adjacent nodes:
-# subtracting nodes of magnitude ~180 discards most of their significant digits in Float32,
-# and the resulting relative error is multiplied by the cell index. Every longitude spacing
-# on an x-regular grid is `Δλᶜᵃᵃ`.
+# of the interpolating grid. Uses grid.Δλᶜᵃᵃ: subtracting ~180° nodes cancels significant digits in Float32.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = grid.Δλᶜᵃᵃ
@@ -453,8 +451,10 @@ end
 $(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
+`args...` (eg `clock, model_fields`) is forwarded to the halo fill, so `to_field`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`).
 """
-function interpolate!(to_field::Field, from_field::AbstractField)
+function interpolate!(to_field::Field, from_field::AbstractField, args...)
     to_grid   = to_field.grid
     from_grid = from_field.grid
 
@@ -481,7 +481,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
-    fill_halo_regions!(to_field)
+    fill_halo_regions!(to_field, args...)
 
     return to_field
 end

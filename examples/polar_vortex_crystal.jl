@@ -133,7 +133,7 @@ filename = "polar_vortex_crystal.jld2"
 simulation.output_writers[:fields] = JLD2Writer(model, (; η, ζ, s);
                                                 filename,
                                                 schedule = TimeInterval(12hours),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 ## Fail the docs build if this simulation produces NaNs #hide
 Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide

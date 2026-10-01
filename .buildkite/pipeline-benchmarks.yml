@@ -14,6 +14,7 @@ env:
   OUTPUT_FILE: "benchmark_results.json"
   OUTPUT_FILE_GPU2: "benchmark_results_gpu2.json"
   JULIA_CUDA_USE_COMPAT: false
+  CUDA_AWARE_OPENMPI: "/storage4/simone/TestsScaling/openmpi"
 
 steps:
   - label: "🏕️ Initialize tartarus environment"
@@ -21,6 +22,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    timeout_in_minutes: 60
     command: |
       # Download julia binaries
       wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
@@ -40,7 +42,11 @@ steps:
     concurrency_group: "oceananigans-benchmarks/gpu"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 120
     command: |
+      # Point MPI.jl at the CUDA-aware Open MPI before precompiling: the MPI-dependent artifacts follow this choice
+      JULIA_PKG_PRECOMPILE_AUTO=0 $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using MPIPreferences; MPIPreferences.use_system_binary(library_names=[ENV["CUDA_AWARE_OPENMPI"] * "/lib/libmpi"], mpiexec=ENV["CUDA_AWARE_OPENMPI"] * "/bin/mpiexec")'
+
       # Instantiate, precompile, and pre-download bathymetry data (before parallel GPU runs)
       $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
 
@@ -148,6 +154,21 @@ steps:
         echo "Merged GPU 2 results into $OUTPUT_FILE"
       fi
 
+      # ==========================================
+      #  Distributed benchmark on GPUs 0 and 2 (both free now)
+      # ==========================================
+      export CUDA_VISIBLE_DEVICES=0,2
+
+      echo "========================================"
+      echo "  Default configuration, 1x2 partition [GPUs 0 and 2]"
+      echo "========================================"
+      $CUDA_AWARE_OPENMPI/bin/mpiexec --map-by socket --bind-to socket -n 2 \
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
+
+      # All ranks time the same synchronized steps: keep rank 0 only
+      jq 'map(select((.rank // 0) == 0))' $OUTPUT_FILE > rank_zero_tmp.json
+      mv rank_zero_tmp.json $OUTPUT_FILE
+
     artifact_paths:
       - "benchmark_results.json"
       - "benchmark_results.md"
@@ -160,6 +181,7 @@ steps:
     key: "merge-compare"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 10
     command: |
       # Download all artifacts from this build
       buildkite-agent artifact download "*.json" .
@@ -232,6 +254,7 @@ steps:
     key: "notify-github"
     agents:
       queue: "Oceananigans-benchmarks"
+    timeout_in_minutes: 10
     command: |
       # Trigger the Publish Benchmarks workflow via repository_dispatch.
       # Requires GITHUB_DISPATCH_TOKEN (a GitHub PAT with repo scope) in Buildkite secrets.
