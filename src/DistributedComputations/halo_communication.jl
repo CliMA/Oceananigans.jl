@@ -112,20 +112,6 @@ end
     return nothing
 end
 
-@inline function complete_comm!(c, arch, grid, buffers, requests, async, side)
-
-    # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
-    if isnothing(requests)
-        return nothing
-    end
-
-    # Syncronous MPI fill_halo_event!
-    cooperative_waitall!(requests)
-
-    recv_from_buffers!(c, buffers, grid, side)
-
-    return nothing
-end
 
 # corner passing routine
 function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers; async=false, only_local_halos=false, kw...)
@@ -150,78 +136,50 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers; async
 end
 
 function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
-  sync_device!(arch)
-  requests = MPI.Request[]
-
-  reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
-  reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
-  reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
-  reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
-
-  !isnothing(reqsw) && push!(requests, reqsw...)
-  !isnothing(reqse) && push!(requests, reqse...)
-  !isnothing(reqnw) && push!(requests, reqnw...)
-  !isnothing(reqne) && push!(requests, reqne...)
-
-  complete_comm!(c, arch, grid, buffers, requests, false, Val(:corners))
-
+    sync_device!(arch)
+    slots = post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
+    waitall_comms!(buffers.state, slots)
+    recv_from_buffers!(c, buffers, grid, Val(:corners))
+    return nothing
 end
 
 function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     fill_event = record_event(arch)
 
     async_comms!(fill_event, buffers) do
-        reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
-        reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
-        reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
-        reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
-
-        requests = MPI.Request[]
-
-        !isnothing(reqsw) && push!(requests, reqsw...)
-        !isnothing(reqse) && push!(requests, reqse...)
-        !isnothing(reqnw) && push!(requests, reqnw...)
-        !isnothing(reqne) && push!(requests, reqne...)
-
-        return requests
+        post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
     end
 
     return nothing
 end
 
-# Post the MPI requests returned by `post_requests()` once `fill_event` is done, without waiting for them to complete; `wait_for_comms!`
-# completes them later. With more than one Julia thread the requests are posted and progressed by a separate task, while with a single thread
-# a separate task would compete with main, so the requests are posted right away by the main thread and completed by `wait_for_comms!`.
+function post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
+    fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest)
+    fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast)
+    fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest)
+    fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
+    return first(REQUEST_SLOTS.southwest):last(REQUEST_SLOTS.northeast)
+end
+
+# Post the MPI requests of `post_requests()`, which returns the request slots it used, once `fill_event` is done, without waiting for them
+# to complete; `wait_for_comms!` completes them later. With more than one Julia thread the requests are posted and progressed by a separate task,
+# while with a single thread a separate task would compete with main, so the requests are posted right away by the main thread and completed by
+# `wait_for_comms!`.
 function async_comms!(post_requests, fill_event, buffers)
     if Threads.nthreads() > 1
         add_fill_event!(buffers)
         errormonitor(Threads.@spawn begin
             sync_event(fill_event)
-            requests = post_requests()
-            progress_comms!(requests)
+            slots = post_requests()
+            progress_comms!(buffers.state, slots)
             complete_fill_event!(buffers)
         end)
     else
         sync_event(fill_event)
-        add_pending_requests!(buffers, post_requests())
+        post_requests()
     end
     return nothing
 end
-
-# Keep testing the requests instead of deferring all progress to `Waitall`. (for MPI implementations without asynchronous progress)
-function progress_comms!(requests::Array{MPI.Request})
-    request_set = MPI.RequestSet(requests)
-    while !MPI.Testall(request_set)
-        yield()
-    end
-    return nothing
-end
-
-progress_comms!(requests) = nothing
-
-cooperative_waitall!(::Nothing)               = nothing
-cooperative_waitall!(req::MPI.Request)        = MPI.Waitall(req)
-cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
@@ -246,8 +204,8 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
         end
     else
         sync_event(fill_event)
-        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        cooperative_waitall!(requests)
+        slots = kernel!(c, bcs..., loc, grid, arch, buffers)
+        waitall_comms!(buffers.state, slots)
         wait_for_comms!(buffers)
         recv_from_buffers!(c, buffers, grid, buffer_side)
     end
@@ -270,10 +228,10 @@ for side in [:southwest, :southeast, :northwest, :northeast]
         function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd)
             local_rank = arch.local_rank
 
-            recv_req = $recv_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
-            send_req = $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
+            $recv_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
+            $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
 
-            return [send_req, recv_req]
+            return nothing
         end
     end
 end
@@ -286,26 +244,26 @@ function (::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, 
     @assert west_bc.condition.from == east_bc.condition.from  # Extra protection in case of bugs
     local_rank = west_bc.condition.from
 
-    recv_req1 = recv_west_halo!(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
-    recv_req2 = recv_east_halo!(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
+    recv_west_halo!(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
+    recv_east_halo!(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
 
-    send_req1 = send_west_halo(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
-    send_req2 = send_east_halo(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
+    send_west_halo(c, grid, arch, loc, local_rank, west_bc.condition.to, buffers)
+    send_east_halo(c, grid, arch, loc, local_rank, east_bc.condition.to, buffers)
 
-    return [send_req1, send_req2, recv_req1, recv_req2]
+    return first(REQUEST_SLOTS.west):last(REQUEST_SLOTS.east)
 end
 
 function (::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, grid, arch, buffers)
     @assert south_bc.condition.from == north_bc.condition.from  # Extra protection in case of bugs
     local_rank = south_bc.condition.from
 
-    recv_req1 = recv_south_halo!(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
-    recv_req2 = recv_north_halo!(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
+    recv_south_halo!(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
+    recv_north_halo!(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
 
-    send_req1 = send_south_halo(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
-    send_req2 = send_north_halo(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
+    send_south_halo(c, grid, arch, loc, local_rank, south_bc.condition.to, buffers)
+    send_north_halo(c, grid, arch, loc, local_rank, north_bc.condition.to, buffers)
 
-    return [send_req1, send_req2, recv_req1, recv_req2]
+    return first(REQUEST_SLOTS.south):last(REQUEST_SLOTS.north)
 end
 
 #####
@@ -314,30 +272,30 @@ end
 
 function (::DistributedFillHalo{<:West})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_west_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    send_req = send_west_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    return [send_req, recv_req]
+    recv_west_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    send_west_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    return REQUEST_SLOTS.west
 end
 
 function (::DistributedFillHalo{<:East})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_east_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    send_req = send_east_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    return [send_req, recv_req]
+    recv_east_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    send_east_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    return REQUEST_SLOTS.east
 end
 
 function (::DistributedFillHalo{<:South})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_south_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    send_req = send_south_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    return [send_req, recv_req]
+    recv_south_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    send_south_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    return REQUEST_SLOTS.south
 end
 
 function (::DistributedFillHalo{<:North})(c, bc, loc, grid, arch, buffers)
     local_rank = bc.condition.from
-    recv_req = recv_north_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    send_req = send_north_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
-    return [send_req, recv_req]
+    recv_north_halo!(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    send_north_halo(c, grid, arch, loc, local_rank, bc.condition.to, buffers)
+    return REQUEST_SLOTS.north
 end
 
 #####
@@ -365,9 +323,10 @@ for side in sides
             send_tag = $side_send_tag(arch, grid, get_comm_tag(buffers.state),  location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
+            send_request = buffers.state.requests[send_slot($(QuoteNode(side)))]
+            MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator, send_request)
 
-            return send_req
+            return nothing
         end
 
         @inline $get_side_send_buffer(c, grid, buffers, arch) = buffers.$side.send
@@ -391,9 +350,10 @@ for side in sides
             recv_tag = $side_recv_tag(arch, grid, get_comm_tag(buffers.state), location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
+            recv_request = buffers.state.requests[recv_slot($(QuoteNode(side)))]
+            MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator, recv_request)
 
-            return recv_req
+            return nothing
         end
 
         @inline $get_side_recv_buffer(c, grid, buffers, arch) = buffers.$side.recv

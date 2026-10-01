@@ -25,6 +25,8 @@ MPI.Barrier(c::NCCLCommunicator) = MPI.Barrier(c.mpi)
 MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs...)
 MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
 MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
+MPI.Isend(buf, dest, tag, c::NCCLCommunicator, req) = MPI.Isend(buf, dest, tag, c.mpi, req)
+MPI.Irecv!(buf, src, tag, c::NCCLCommunicator, req) = MPI.Irecv!(buf, src, tag, c.mpi, req)
 
 # The host MPI library need not be CUDA-aware: device buffers reaching these forwarded
 # collectives (e.g. the tiny result arrays of distributed field reductions) must be
