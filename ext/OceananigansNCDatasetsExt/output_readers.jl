@@ -61,6 +61,8 @@ end
 iterations_from_file(file::NCDataset) = 1:length(keys(file["time"][:]))
 
 function find_time_index(t, file_times, Δt)
+    isnothing(Δt) && return t == file_times[1] ? 1 : nothing
+
     # Find the index in file_times that is closest to t
     for (i, file_time) in enumerate(file_times)
         if abs(file_time - t) < Δt / 2
@@ -76,7 +78,7 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
     file_times = file["time"]
 
     # Compute a timescale for comparisons
-    Δt = mean(diff(file_times))
+    Δt = length(file_times) == 1 ? nothing : mean(diff(file_times))
 
     arch = architecture(fts)
 
@@ -94,7 +96,7 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
         if isnothing(file_index) # the time does not exist in the file
             if warn_missing_data
                 msg = @sprintf("No data found for time %.1e and time index %d\n", t, n)
-                msg *= @sprintf("for field %s at path %s", file.path, name)
+                msg *= @sprintf("for field %s at path %s", name, path)
                 @warn msg
             end
         else
