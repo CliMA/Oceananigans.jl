@@ -26,6 +26,7 @@ Diagnostics.cell_diffusion_timescale(::Nothing, closure_fields, grid, clock, fie
 
 maximum_numeric_diffusivity(κ::Number, grid, clock, fields) = κ
 maximum_numeric_diffusivity(κ::FunctionField, grid, clock, fields) = maximum(κ)
+maximum_numeric_diffusivity(κ::Oceananigans.Fields.AbstractField, grid, clock, fields) = maximum(κ)
 maximum_numeric_diffusivity(κ_tuple::NamedTuple, grid, clock, fields) =
     maximum(maximum_numeric_diffusivity(κ, grid, clock, fields) for κ in κ_tuple)
 maximum_numeric_diffusivity(κ::NamedTuple{()}, grid, clock, fields) = 0 # tracers=nothing means empty diffusivity tuples
