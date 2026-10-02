@@ -854,7 +854,9 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
-                return @allowscalar first(r)
+                # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
+                # into a view returns a one-element array rather than a number
+                return @allowscalar interior(r)[1, 1, 1]
             else
                 return r
             end
@@ -997,12 +999,14 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = on_architecture(CPU(), parent(field)))
+    return (; data = on_architecture(CPU(), parent(field)),
+              boundary_conditions = prognostic_state(field.boundary_conditions))
 end
 
 function restore_prognostic_state!(restored::Field, from)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
+    haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
     return restored
 end
 
