@@ -11,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, ShavedCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
 using Oceananigans.Utils: configure_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -49,7 +49,8 @@ Types = (HydrostaticFreeSurfaceModel,
          OnlySelfUpwinding,
          GridFittedBoundary,
          GridFittedBottom,
-         PartialCellBottom)
+         PartialCellBottom,
+         ShavedCellBottom)
 
 for T in Types
     @eval begin
