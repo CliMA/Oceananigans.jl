@@ -137,10 +137,10 @@ steps:
       #  Wait for GPU 2 and merge results
       # ==========================================
       echo "Waiting for GPU 2 benchmarks to finish..."
-      wait $GPU2_PID
-      GPU2_STATUS=$$?
-      if [ $GPU2_STATUS -ne 0 ]; then
-        echo "WARNING: GPU 2 benchmarks exited with status $GPU2_STATUS"
+      GPU2_STATUS=0
+      wait $$GPU2_PID || GPU2_STATUS=$$?
+      if [ $$GPU2_STATUS -ne 0 ]; then
+        echo "WARNING: GPU 2 benchmarks exited with status $$GPU2_STATUS"
       fi
 
       if [ -f "$OUTPUT_FILE_GPU2" ]; then
