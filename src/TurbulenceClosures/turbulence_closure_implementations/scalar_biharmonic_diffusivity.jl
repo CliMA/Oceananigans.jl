@@ -130,3 +130,20 @@ function Architectures.on_architecture(to, closure::ScalarBiharmonicDiffusivity{
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
+
+#####
+##### No tracer diffusivity
+#####
+
+# With `κ = nothing` the closure acts on momentum only. Skipping the tracer fluxes, rather than multiplying
+# the biharmonic stencil by a zero diffusivity, removes that stencil from every tracer tendency kernel.
+const NoTracerDiffusivityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
+const NoTracerDiffusivityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,       <:Any, <:Any, Nothing}
+const NoTracerDiffusivityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,         <:Any, <:Any, Nothing}
+
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityHBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityHBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityVBD, K, id, c, clk, fields, b) = zero(grid)
