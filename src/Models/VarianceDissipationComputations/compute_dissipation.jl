@@ -27,6 +27,7 @@ function compute_dissipation!(dissipation, model, tracer_name)
     # General velocities
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
+    σ    = dissipation.previous_state.specific_thickness
 
     cⁿ⁺¹ = model.tracers[tracer_name]
     cⁿ   = dissipation.previous_state.cⁿ⁻¹
@@ -43,7 +44,7 @@ function compute_dissipation!(dissipation, model, tracer_name)
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
 
     !(scheme isa Nothing) &&
-        assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+        assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σ, cⁿ⁺¹, cⁿ)
 
     ####
     #### Assemble the diffusive dissipation
@@ -58,12 +59,12 @@ function compute_dissipation!(dissipation, model, tracer_name)
     return nothing
 end
 
-assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ) =
+assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σ, cⁿ⁺¹, cⁿ) =
     launch!(architecture(grid), grid, :xyz, _assemble_ab2_advective_dissipation!, P, grid, ts.χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
-function assemble_advective_dissipation!(P, grid, ts::SplitRungeKuttaTimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+function assemble_advective_dissipation!(P, grid, ts::MultiStageTimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σ, cⁿ⁺¹, cⁿ)
     if substep == ts.Nstages
-        launch!(architecture(grid), grid, :xyz, _assemble_rk3_advective_dissipation!, P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
+        launch!(architecture(grid), grid, :xyz, _assemble_rk3_advective_dissipation!, P, grid, Fⁿ, Uⁿ, σ, cⁿ⁺¹, cⁿ)
     end
     return nothing
 end
@@ -71,7 +72,7 @@ end
 assemble_diffusive_dissipation!(K, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ) =
     launch!(architecture(grid), grid, :xyz, _assemble_ab2_diffusive_dissipation!, K, grid, ts.χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
-function assemble_diffusive_dissipation!(K, grid, ts::SplitRungeKuttaTimeStepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
+function assemble_diffusive_dissipation!(K, grid, ts::MultiStageTimeStepper, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
     if substep == ts.Nstages
         launch!(architecture(grid), grid, :xyz, _assemble_rk3_diffusive_dissipation!, K, grid, Vⁿ, cⁿ⁺¹, cⁿ)
     end
