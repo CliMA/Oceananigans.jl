@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving
+using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving, DualGridScheme
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
 using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ
 
@@ -353,6 +353,59 @@ function test_inertial_oscillation(FT, arch, scheme)
 end
 
 #####
+##### C-D scheme: the 2Δx meridional velocity, invisible to the averaged C-grid Coriolis, oscillates inertially
+#####
+
+function test_dual_grid_scheme_inertial_oscillations(FT, arch, timestepper)
+    grid = RectilinearGrid(arch, FT, size=(8, 4, 1), x=(0, 8e4), y=(0, 4e4), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+
+    f₀ = FT(1e-4)
+    T = 2π / f₀
+    Δt = T / 400
+
+    model = HydrostaticFreeSurfaceModel(grid; coriolis=FPlane(FT, f=f₀, scheme=DualGridScheme(grid)), timestepper,
+                                        momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+
+    v₀ = FT(0.1)
+    set!(model, v=[isodd(i) ? v₀ : -v₀ for i in 1:8, j in 1:4, k in 1:1])
+    run!(Simulation(model; Δt, stop_time=T/4))
+    @test maximum(abs, interior(model.velocities.v)) / v₀ < 0.01
+
+    model = HydrostaticFreeSurfaceModel(grid; coriolis=FPlane(FT, f=f₀, scheme=DualGridScheme(grid)), timestepper,
+                                        momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+
+    u₀ = FT(0.1)
+    set!(model, u=u₀)
+    run!(Simulation(model; Δt, stop_time=T/4))
+    @test maximum(abs, interior(model.velocities.u)) / u₀ < 0.01
+    @test all(v -> abs(v + u₀) / u₀ < 0.01, Array(interior(model.velocities.v)))
+end
+
+function test_dual_grid_scheme_checkpoint_restart(FT, arch, timestepper)
+    grid = RectilinearGrid(arch, FT, size=(8, 4, 1), x=(0, 8e4), y=(0, 4e4), z=(-100, 0), topology=(Periodic, Periodic, Bounded))
+
+    function dual_grid_simulation(stop_iteration)
+        model = HydrostaticFreeSurfaceModel(grid; coriolis=FPlane(FT, f=1e-4, scheme=DualGridScheme(grid)), timestepper,
+                                            momentum_advection=nothing, buoyancy=nothing, tracers=nothing, closure=nothing)
+        set!(model, u=(x, y, z) -> sin(2π * x / 8e4) / 10, v=(x, y, z) -> cos(2π * y / 4e4) / 10)
+        simulation = Simulation(model; Δt=100, stop_iteration)
+        simulation.output_writers[:checkpointer] = Checkpointer(model; schedule=IterationInterval(5), prefix="dual_grid_scheme_$(timestepper)_$FT", cleanup=false)
+        return simulation
+    end
+
+    uninterrupted = dual_grid_simulation(10)
+    run!(uninterrupted)
+
+    restarted = dual_grid_simulation(10)
+    run!(restarted, pickup=5)
+
+    @test Array(interior(restarted.model.velocities.u)) == Array(interior(uninterrupted.model.velocities.u))
+    @test Array(interior(restarted.model.velocities.v)) == Array(interior(uninterrupted.model.velocities.v))
+
+    foreach(rm, filter(startswith("dual_grid_scheme_$(timestepper)_$FT"), readdir()))
+end
+
+#####
 ##### 1. Instantiation tests for new scheme types
 #####
 
@@ -434,6 +487,16 @@ for arch in archs
             @testset "scheme=$(summary(scheme))" begin
                 test_inertial_oscillation(FT, arch, scheme)
             end
+        end
+    end
+
+    for FT in float_types, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        @testset "DualGridScheme inertial oscillations [$FT, $timestepper]" begin
+            test_dual_grid_scheme_inertial_oscillations(FT, arch, timestepper)
+        end
+
+        @testset "DualGridScheme checkpoint restart [$FT, $timestepper]" begin
+            test_dual_grid_scheme_checkpoint_restart(FT, arch, timestepper)
         end
     end
 end
