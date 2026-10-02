@@ -102,8 +102,9 @@ function earth_ocean(arch = CPU();
         timestepper
     )
 
-    # Initial conditions: baroclinic wave excitation
-    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+    # Initial conditions: baroclinic wave excitation, with the meridional
+    # temperature contrast confined to a thermocline of e-folding depth 500 m
+    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 * exp(z / 500) + rand()
     Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 
     ic = Dict{Symbol,Any}()
