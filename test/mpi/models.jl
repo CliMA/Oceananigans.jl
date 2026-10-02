@@ -24,7 +24,8 @@ MPI.Init()
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
 using Oceananigans.Fields: AbstractField, interior
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior, mask_immersed_normal_flow!
+using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -593,6 +594,54 @@ end
         gfm = reconstruct_global_grid(ibg_gfm)
         @test gfm.immersed_boundary isa GridFittedBoundary
         @test size(gfm.immersed_boundary.mask) == (Nx, Ny, Nz)
+    end
+
+    @testset "Immersed normal flow at distributed edges" begin
+        for (partition, axis) in ((Partition(4, 1), :x), (Partition(1, 4), :y))
+            arch = Distributed(CPU(); partition)
+            size = axis === :x ? (16, 4, 4) : (4, 16, 4)
+            regular = RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size, halo=(4, 4, 4),
+                                      x=(0, size[1]), y=(0, size[2]), z=(0, 4))
+            solid = axis === :x ? (x, y, z) -> 4 < x < 5 && 1 < y < 2 && 1 < z < 2 :
+                                  (x, y, z) -> 1 < x < 2 && 4 < y < 5 && 1 < z < 2
+            grid = ImmersedBoundaryGrid(regular, GridFittedBoundary(solid))
+            tracer = CenterField(grid)
+            set!(tracer, axis === :x ? (x, y, z) -> x : (x, y, z) -> y)
+            fill_halo_regions!(tracer)
+            discrete = NormalFlowBoundaryCondition((i, j, k, grid, clock, fields) -> fields.c[i, j, k];
+                                                   discrete_form=true)
+            continuous = NormalFlowBoundaryCondition((x, y, z, t) -> axis === :x ? x : y)
+            loc = axis === :x ? (Face(), Center(), Center()) : (Center(), Face(), Center())
+            constructor = axis === :x ? XFaceField : YFaceField
+            clock = Clock(grid)
+
+            for condition in (discrete, continuous)
+                immersed = axis === :x ? ImmersedBoundaryCondition(east=condition) :
+                                         ImmersedBoundaryCondition(north=condition)
+                bcs = FieldBoundaryConditions(grid, loc; immersed)
+                velocity = constructor(grid; boundary_conditions=bcs)
+                set!(velocity, 9)
+                mask_immersed_normal_flow!(velocity, clock, (c=tracer,))
+                index = axis === :x ? (1, 2, 2) : (2, 1, 2)
+                adjacent = axis === :x ? (0, 2, 2) : (2, 0, 2)
+                if arch.local_rank == 1
+                    @test tracer[adjacent...] == 3.5
+                    @test velocity[index...] == (condition === discrete ? 3.5 : 4.0)
+                end
+
+                forcing = axis === :x ? AdvectiveForcing(u=velocity) : AdvectiveForcing(v=velocity)
+                model = NonhydrostaticModel(grid; tracers=(c=tracer,), forcing=(c=forcing,))
+                if arch.local_rank == 1
+                    model.tracers.c[adjacent...] = 999
+                end
+                update_state!(model)
+                if arch.local_rank == 1
+                    @test model.tracers.c[adjacent...] == 3.5
+                    updated = axis === :x ? model.forcing.c.u : model.forcing.c.v
+                    @test updated[index...] == (condition === discrete ? 3.5 : 4.0)
+                end
+            end
+        end
     end
 
     @testset "Distributed reductions" begin

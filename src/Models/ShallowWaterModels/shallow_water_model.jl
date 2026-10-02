@@ -8,7 +8,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, reject_immersed_normal_flow_velocity_boundary_conditions
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.Advection: materialize_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
@@ -193,6 +193,7 @@ function ShallowWaterModel(grid;
     end
 
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
+    reject_immersed_normal_flow_velocity_boundary_conditions(boundary_conditions, prognostic_field_names[1:2])
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
     solution = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
