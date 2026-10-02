@@ -48,7 +48,7 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
                 @test sum(ω_f32) ≈ 1
 
                 for r in 1:buffer
-                    @test ω_f32[r] ≈ ω_f64[r] atol=1e-3
+                    @test ω_f32[r] ≈ ω_f64[r] rtol=2e-3
                 end
             end
         end
