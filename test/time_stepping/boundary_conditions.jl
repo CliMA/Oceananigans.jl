@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.BoundaryConditions: BoundaryAdjacent,
-                                       fill_halo_regions!
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjacent,
+                                       fill_halo_regions!, getbc
 
 using Oceananigans: prognostic_fields
 using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation
@@ -18,6 +18,13 @@ function test_boundary_condition(arch, FT, Model, topo, side, field_name, bounda
     bcs = (; field_name => field_boundary_conditions)
     model = Model(grid; boundary_conditions=bcs,
                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), model_kwargs...)
+
+    # Type instabilities in field-dependent boundary conditions fail to compile on GPUs,
+    # check them on CPU too
+    condition = getproperty(fields(model)[field_name].boundary_conditions, side).condition
+    if arch isa CPU && condition isa ContinuousBoundaryFunction
+        @test @inferred(getbc(condition, 1, 1, grid, model.clock, fields(model))) isa FT
+    end
 
     success = try
         time_step!(model, 1e-16)
