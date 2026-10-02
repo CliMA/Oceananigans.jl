@@ -341,6 +341,21 @@ end
 @inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 
+# Nothing: no momentum or tracer closure. Fluxes are skipped by dispatch; these cover coefficient queries
+# (for example from the vertically implicit solver).
+
+@inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+@inline νᶠᶠᶜ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
+
+@inline κᶜᶜᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶠᶜᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶠᶜ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶜᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+@inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Nothing, clk, fields) = zero(grid)
+
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline νᶜᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, ν::AbstractArray, clk, fields) = @inbounds ν[i, j, k]
