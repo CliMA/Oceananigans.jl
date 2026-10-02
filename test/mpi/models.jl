@@ -23,8 +23,9 @@ MPI.Init()
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
-using Oceananigans.Fields: AbstractField, interior
+using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
+using Oceananigans.Solvers: ZeroMeanGaugeCondition
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -641,6 +642,19 @@ end
             # The four equal rank-blocks hold 1, 2, 3, 4, so the global mean is 2.5
             # regardless of the local block size N.
             @test mean(c) == (1 + 2 + 3 + 4) / 4
+
+            # The in-place counterparts used by ConjugateGradientSolver also reduce across ranks
+            r = zeros(grid, 1)
+            @test @allowscalar(dot!(r, c, c)[1]) == (1^2 + 2^2 + 3^2 + 4^2) * N
+
+            gauge = ZeroMeanGaugeCondition(grid)
+            @test gauge.number_of_active_cells == Ntot
+
+            d = CenterField(grid)
+            set!(d, 2 * (arch.local_rank + 1))
+            gauge(c, d)
+            @test all(Array(interior(c)) .== arch.local_rank + 1 - 5/2)
+            @test all(Array(interior(d)) .== 2 * (arch.local_rank + 1) - 5)
         end
     end
 

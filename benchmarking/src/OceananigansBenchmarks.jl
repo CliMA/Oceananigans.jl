@@ -3,6 +3,7 @@ module OceananigansBenchmarks
 export
     # Benchmark cases
     earth_ocean,
+    nonhydrostatic_box,
 
     # Benchmark utilities
     many_time_steps!,
@@ -66,5 +67,6 @@ include("utils.jl")
 
 # Benchmark cases
 include("earth_ocean.jl")
+include("nonhydrostatic_box.jl")
 
 end # module

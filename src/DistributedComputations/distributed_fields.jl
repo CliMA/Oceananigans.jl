@@ -1,5 +1,5 @@
 using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, instantiated_location
+using Oceananigans.Fields: Fields, validate_field_data, indices, validate_boundary_conditions, instantiated_location
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using GPUArraysCore: @allowscalar
 
@@ -266,6 +266,9 @@ end
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end
+
+# The local dot products are summed across ranks on the host, so the result is copied back into `r`
+Fields.dot!(r, u::DistributedField, v::DistributedField; condition=nothing) = fill!(r, dot(u, v; condition))
 
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)

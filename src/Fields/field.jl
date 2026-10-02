@@ -694,15 +694,26 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-# TODO: needs test
-function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing)
+"""
+    dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
+
+Store the dot product of `a` and `b` in the one-element array `r`, which lives on the same
+architecture as `a` and `b`, and return `r`. Unlike `LinearAlgebra.dot`, `dot!` does not copy
+the result to the host, so on a GPU it does not make the host wait for the device.
+"""
+function dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
 
     B = ca * cb # Binary operation
-    r = zeros(a.grid, 1)
+    fill!(r, 0)
 
     Base.mapreducedim!(identity, +, r, B)
+    return r
+end
+
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition = nothing)
+    r = dot!(zeros(a.grid, 1), a, b; condition)
     return @allowscalar r[1]
 end
 

@@ -8,6 +8,7 @@ using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
+using Oceananigans.Fields: dot!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -1310,6 +1311,40 @@ end
             @test norm(Φ) ≈ sqrt(2 * 9 * 64)
             # dot: 2 · 3 · 3 · 4³ = 1152
             @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
+        end
+    end
+
+    @testset "In-place dot product" begin
+        @info "  Testing dot! on fields..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            a = CenterField(grid)
+            b = CenterField(grid)
+            set!(a, 2)
+            set!(b, 3)
+
+            # `dot!` overwrites `r` rather than accumulating into it
+            r = zeros(grid, 1)
+            fill!(r, 7)
+            @test dot!(r, a, b) === r
+            @test @allowscalar(r[1]) == 2 * 3 * 64
+            @test dot(a, b) == 2 * 3 * 64
+
+            # Immersed cells, here the bottom half of the domain, are excluded
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2))
+            c = CenterField(immersed_grid)
+            d = CenterField(immersed_grid)
+            set!(c, 2)
+            set!(d, 3)
+            @test @allowscalar(dot!(r, c, d)[1]) == 2 * 3 * 32
+            @test dot(c, d) == 2 * 3 * 32
+
+            # A windowed field, like the free surface displacement at the top face
+            η = ZFaceField(grid, indices=(:, :, grid.Nz+1))
+            set!(η, 5)
+            @test @allowscalar(dot!(r, η, η)[1]) == 5 * 5 * 16
+            @test dot(η, η) == 5 * 5 * 16
         end
     end
 end
