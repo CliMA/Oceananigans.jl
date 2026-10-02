@@ -29,7 +29,7 @@ function test_diffusion_simple(arch, fieldname, timestepper, time_discretization
     return !any(@. !isapprox(value, field_data))
 end
 
-function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
+function test_diffusion_budget(field, model, κ, Δ, order=2)
     init_mean = mean(field)
     update_state!(model)
     Δt = 1e-4 * Δ^order / κ # small to suppress non-conservative time-discretization error
@@ -39,8 +39,9 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     end
 
     final_mean = mean(field)
+    @test final_mean ≈ init_mean
 
-    return isapprox(init_mean, final_mean)
+    return nothing
 end
 
 function test_ScalarDiffusivity_budget(fieldname, model)
@@ -48,14 +49,14 @@ function test_ScalarDiffusivity_budget(fieldname, model)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
     ν = viscosity(model.closure, nothing)
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.z.Δᵃᵃᶜ)
+    return test_diffusion_budget(field, model, ν, model.grid.z.Δᵃᵃᶜ)
 end
 
 function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
 
 # The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
@@ -254,7 +255,10 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     v_rel_err = abs.((Array(interior(model.velocities.v)) .- v.(xC, yF, zC, t)) ./ v.(xC, yF, zC, t))
     v_rel_err_max = maximum(v_rel_err)
 
-    return u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
+    @test u_rel_err_max < 5e-6
+    @test v_rel_err_max < 5e-6
+
+    return nothing
 end
 
 function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
@@ -415,7 +419,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         td = typeof(time_discretization).name.wrapper
 
                         @testset "$fieldname budget in a $topology domain [$timestepper, $td, $closurename]" for fieldname in fieldnames
-                            @test test_ScalarDiffusivity_budget(fieldname, model)
+                            test_ScalarDiffusivity_budget(fieldname, model)
                         end
                     end
                 end
@@ -443,7 +447,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                       closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1))
 
                     @testset "$fieldname budget in a $topology domain with $formulation [$timestepper]" for fieldname in fieldnames
-                        @test test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
+                        test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
                     end
                 end
             end
@@ -649,7 +653,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Taylor-Green vortex" begin
         time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
         @testset "[$(typeof(arch)), $timestepper, $(nameof(typeof(td)))]" for arch in archs, timestepper in (:QuasiAdamsBashforth2,), td in time_discretizations #timesteppers
-            @test taylor_green_vortex_test(arch, timestepper, td)
+            taylor_green_vortex_test(arch, timestepper, td)
         end
     end
 
