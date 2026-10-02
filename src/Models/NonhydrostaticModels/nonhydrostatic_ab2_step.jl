@@ -8,7 +8,6 @@ import Oceananigans.TimeSteppers: ab2_step!
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
-    Δt = convert(FT, Δt)
     α = convert(FT, 3/2) + χ
     β = convert(FT, 1/2) + χ
     not_euler = χ != convert(FT, -0.5)
@@ -22,7 +21,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 end
 
 @inline function ab2_substep_velocity!(u, grid, Δt, χ, Gⁿ, G⁻, implicit_solver)
-    if grid isa ImmersedBoundaryGrid && implicit_solver !== nothing && u isa Field
+    if implicit_solver !== nothing && u isa Field
         launch!(architecture(grid), grid, :xyz, _ab2_step_immersed_velocity!,
                 u, grid, instantiated_location(u), Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
     else
