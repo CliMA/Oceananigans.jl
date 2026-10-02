@@ -352,19 +352,36 @@ end
 function test_immersed_boundary_grid_show(FT, arch, boundary_type)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
 
-    bottom_function(x, y) = 0.2
-    ib = boundary_type(bottom_function)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+    bottom_function(x, y) = -0.5
+    ibg = ImmersedBoundaryGrid(underlying_grid, boundary_type(bottom_function))
+    ib = ibg.immersed_boundary
 
-    @test try
-        show(ibg); println()
-        show(ibg.immersed_boundary); println()
-        true
-    catch err
-        println("error in show functions")
-        println(sprint(showerror, err))
-        false
+    if boundary_type === GridFittedBottom
+        ib_summary = "GridFittedBottom(mean(z)=-0.5, min(z)=-0.5, max(z)=-0.5)"
+        bottom_height_prefix = "└── bottom_height: "
+        ib_suffix = "\n"
+    else
+        ib_summary = "PartialCellBottom(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
+        bottom_height_prefix = "├── bottom_height: "
+        ib_suffix = "\n└── minimum_fractional_cell_height: 0.2"
     end
+
+    ibg_summary = "4×4×4 ImmersedBoundaryGrid{$FT, Periodic, Periodic, Bounded} on $(summary(arch)) with 3×3×3 halo"
+
+    @test summary(ib) == ib_summary
+    @test summary(ibg) == ibg_summary
+
+    @test sprint(show, ibg) == string(ibg_summary, ":\n",
+                                      "├── immersed_boundary: ", ib_summary, "\n",
+                                      "├── underlying_grid: ", summary(underlying_grid), "\n",
+                                      "├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.25\n",
+                                      "├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.25\n",
+                                      "└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=0.25")
+
+    # The array type in the bottom height summary depends on the architecture
+    ib_shown = sprint(show, ib)
+    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 OffsetArray("))
+    @test endswith(ib_shown, string("with eltype $FT with indices -2:7×-2:7×1:1", ib_suffix))
 
     return nothing
 end
