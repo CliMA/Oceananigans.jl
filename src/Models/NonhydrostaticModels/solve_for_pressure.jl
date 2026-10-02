@@ -3,6 +3,8 @@ using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: AbstractHomogeneousNeumannFormulation, InhomogeneousFormulation,
+                            RobinEigenbasisFormulation, update_robin_eigenbasis!
 using Oceananigans.Solvers: solve!
 
 #####
@@ -68,9 +70,9 @@ function compute_source_term!(solver::DistributedFourierTridiagonalPoissonSolver
     return nothing
 end
 
-add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
+add_inhomogeneous_boundary_terms!(rhs, ::Nothing, tdir, grid, Ũ, Δt) = nothing
 
-@kernel function _add_inhomogeneous_boundary_terms!(rhs, grid, w̃, Δt, g, η)
+@kernel function _add_inhomogeneous_boundary_terms!(rhs, ::ZDirection, grid, w̃, Δt, g, η)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
@@ -82,12 +84,37 @@ add_inhomogeneous_boundary_terms!(rhs, ::Nothing, grid, Ũ, Δt) = nothing
     end
 end
 
-# function add_inhomogeneous_boundary_terms!(rhs, free_surface::ImplicitFreeSurface, grid, Ũ, Δt)
-function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
+# For horizontal tridiagonal directions the equation at k = Nz is scaled by Δx or Δy
+# instead of Δz, so the Robin term retains the 1/Δzᶜ from its per-volume form.
+@kernel function _add_inhomogeneous_boundary_terms!(rhs, ::XDirection, grid, w̃, Δt, g, η)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+
+    @inbounds begin
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        den = g * Δt^2 + Δzᶠ / 2
+        rhs[i, j, Nz] -= Δxᶜᶜᶜ(i, j, Nz, grid) * g * Δt * η★ / (den * Δzᵃᵃᶜ(i, j, Nz, grid))
+    end
+end
+
+@kernel function _add_inhomogeneous_boundary_terms!(rhs, ::YDirection, grid, w̃, Δt, g, η)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+
+    @inbounds begin
+        η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+        den = g * Δt^2 + Δzᶠ / 2
+        rhs[i, j, Nz] -= Δyᶜᶜᶜ(i, j, Nz, grid) * g * Δt * η★ / (den * Δzᵃᵃᶜ(i, j, Nz, grid))
+    end
+end
+
+function add_inhomogeneous_boundary_terms!(rhs, free_surface, tdir, grid, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     arch = grid.architecture
-    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
+    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, tdir, grid, Ũ.w, Δt, g, η)
     return nothing
 end
 
@@ -100,7 +127,7 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver, free_surf
 
     # Add the inhomgeneous terms on the top boundary associated with an implicit
     # free surface formulation represneting a Robin boundary condition on pressure.
-    add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
+    add_inhomogeneous_boundary_terms!(rhs, free_surface, tdir, grid, Ũ, Δt)
 
     return nothing
 end
@@ -120,30 +147,79 @@ end
 # Note that Δt is unused here.
 function solve_for_pressure!(pressure, solver, free_surface, Ũ, Δt)
     compute_source_term!(solver, free_surface, Ũ, Δt)
-    update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+    update_pressure_solver!(solver, free_surface, Ũ, Δt)
     solve!(pressure, solver)
     return pressure
 end
 
-update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+update_pressure_solver!(solver, ::Nothing, Ũ, Δt) = nothing
+update_pressure_solver!(solver, free_surface, Ũ, Δt) = nothing
+update_pressure_solver!(solver::FourierTridiagonalPoissonSolver, ::Nothing, Ũ, Δt) = nothing
 
-function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+update_pressure_solver!(preconditioner::MultigridPreconditioner, free_surface, Ũ, Δt) =
+    update_free_surface_correction!(preconditioner, free_surface, Δt)
+
+update_pressure_solver!(solver::FourierTridiagonalPoissonSolver, free_surface, Ũ, Δt) =
+    update_tridiagonal_formulation!(solver, solver.tridiagonal_formulation, free_surface, Ũ, Δt)
+
+update_tridiagonal_formulation!(solver, ::AbstractHomogeneousNeumannFormulation, free_surface, Ũ, Δt) = nothing
+
+update_tridiagonal_formulation!(solver, ::RobinEigenbasisFormulation, free_surface, Ũ, Δt) =
+    update_robin_eigenbasis!(solver, free_surface.gravitational_acceleration, Δt)
+
+function update_tridiagonal_formulation!(solver, ::InhomogeneousFormulation, free_surface, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues
     grid = solver.grid
     arch = grid.architecture
     diagonal = solver.batched_tridiagonal_solver.b
-    launch!(arch, grid, :xy, _update_fourier_tridiagonal_solver!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
+    launch!(arch, grid, :xy, _update_tridiagonal_formulation!, diagonal, grid, Ũ, Δt, g, η, λx, λy)
 end
 
-@kernel function _update_fourier_tridiagonal_solver!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
+@kernel function _update_tridiagonal_formulation!(diagonal, grid, Ũ, Δt, g, η, λx, λy)
     i, j, = @index(Global, NTuple)
     Nz = grid.Nz
     Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
     Δzᶜ = Δzᵃᵃᶜ(i, j, Nz, grid)
     den = g * Δt^2 + Δzᶠ / 2
     @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
+end
+
+#####
+##### CG free-surface source term: subtracts the Robin BC inhomogeneous term Az*g*Δt*η★/den at k=Nz.
+#####
+
+@kernel function _add_cg_free_surface_rhs!(rhs, grid, w̃, Δt, g, η)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    den = g * Δt^2 + Δzᶠ / 2
+    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+    @inbounds rhs[i, j, Nz] -= Az * g * Δt * η★ / den
+end
+
+function add_cg_free_surface_rhs!(rhs, free_surface, grid, Ũ, Δt)
+    g = free_surface.gravitational_acceleration
+    η = free_surface.displacement
+    arch = grid.architecture
+    launch!(arch, grid, :xy, _add_cg_free_surface_rhs!, rhs, grid, Ũ.w, Δt, g, η)
+    return nothing
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, ::Nothing, Ũ, Δt)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
+
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
+
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
@@ -156,6 +232,10 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     grid = solver.grid
     arch = architecture(grid)
     launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
+    add_cg_free_surface_rhs!(rhs, free_surface, grid, Ũ, Δt)
 
-    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
+    preconditioner = solver.conjugate_gradient_solver.preconditioner
+    update_pressure_solver!(preconditioner, free_surface, Ũ, Δt)
+
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
 end

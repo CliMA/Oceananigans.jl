@@ -103,6 +103,8 @@ timestepper_name(timestepper) = timestepper
 # Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
 function materialize_free_surface end
 
+function materialize_nonhydrostatic_free_surface end
+
 default_free_surface_boundary_conditions(free_surface, user_boundary_conditions) = NamedTuple()
 
 # Communication - Computation overlap in distributed models

@@ -13,7 +13,7 @@ free_surface = ImplicitFreeSurface(gravitational_acceleration=g)
 model = NonhydrostaticModel(grid; free_surface)
 
 ηᵢ(x, z) = 0.1 * exp(-x^2 / 2)
-set!(model, η=ηᵢ)
+set!(model.free_surface.displacement, ηᵢ)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
