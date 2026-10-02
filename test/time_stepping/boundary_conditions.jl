@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjacent,
+using Oceananigans.BoundaryConditions: BoundaryAdjacent,
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
@@ -10,14 +10,14 @@ using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.Units: Time
 
-function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
+function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition; model_kwargs...)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
     model = Model(grid; boundary_conditions=bcs,
-                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), model_kwargs...)
 
     success = try
         time_step!(model, 1e-16)
@@ -668,19 +668,20 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             topo = (Bounded, Bounded, Bounded)
 
+            # The barotropic velocities of `SplitExplicitFreeSurface` make `model_fields` heterogeneous,
+            # which used to break field-dependent boundary conditions on GPUs, see
+            # https://github.com/CliMA/Oceananigans.jl/issues/4165
+            free_surface = SplitExplicitFreeSurface(; substeps=10)
+
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
                 @info "  Testing that time-stepping with $boundary_condition works [$(typeof(arch)), $FT]..."
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
 
-                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
-                    @info "Test skipped because of issue #4165"
-                else
-                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
-                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
-                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
-                end
+                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition; free_surface)
+                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition; free_surface)
+                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition; free_surface)
             end
 
             for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
@@ -688,12 +689,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
 
-                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
-                    @info "Test skipped because of issue #4165"
-                else
-                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
-                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
-                end
+                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition; free_surface)
+                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition; free_surface)
             end
         end
     end

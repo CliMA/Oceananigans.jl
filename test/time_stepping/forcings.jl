@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition, getbc
+using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
@@ -460,38 +460,27 @@ function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
     return all(Gc .≈ Gd) && all(Gc .≈ -3)
 end
 
-# Verify that `ContinuousForcing` and `ContinuousBoundaryFunction` with field dependencies
-# are type-stable and compile on GPUs when `model_fields` holds fields of different types,
-# here the barotropic velocities of `SplitExplicitFreeSurface`.
-# Regression test for https://github.com/CliMA/Oceananigans.jl/issues/4165.
+# Verify that `ContinuousForcing` with field dependencies is type-stable and compiles on GPUs
+# when `model_fields` holds fields of different types, here the barotropic velocities of
+# `SplitExplicitFreeSurface`. Regression test for https://github.com/CliMA/Oceananigans.jl/issues/4165.
 function test_heterogeneous_model_fields_dependencies(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 
     @inline continuous_forcing_func(x, y, z, t, T, u) = - T * u
-    @inline continuous_flux_func(x, y, t, T, u) = T * u
     continuous_forcing = Forcing(continuous_forcing_func; field_dependencies=(:T, :u))
-    continuous_flux = FluxBoundaryCondition(continuous_flux_func; field_dependencies=(:T, :u))
 
     @inline discrete_forcing_func(i, j, k, grid, clock, model_fields) =
         @inbounds - model_fields.T[i, j, k] * model_fields.u[i, j, k]
-    @inline discrete_flux_func(i, j, grid, clock, model_fields) =
-        @inbounds model_fields.T[i, j, grid.Nz] * model_fields.u[i, j, grid.Nz]
     discrete_forcing = Forcing(discrete_forcing_func; discrete_form=true)
-    discrete_flux = FluxBoundaryCondition(discrete_flux_func; discrete_form=true)
 
     model_c = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T, buoyancy=nothing,
-                                          forcing=(; T=continuous_forcing),
-                                          boundary_conditions=(; T=FieldBoundaryConditions(top=continuous_flux)))
+                                          forcing=(; T=continuous_forcing))
     model_d = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T, buoyancy=nothing,
-                                          forcing=(; T=discrete_forcing),
-                                          boundary_conditions=(; T=FieldBoundaryConditions(top=discrete_flux)))
+                                          forcing=(; T=discrete_forcing))
 
     if arch isa CPU
-        model_fields = fields(model_c)
-        @test @inferred(model_c.forcing.T(1, 1, 1, grid, model_c.clock, model_fields)) isa Float64
-        top_bc = model_c.tracers.T.boundary_conditions.top.condition
-        @test @inferred(getbc(top_bc, 1, 1, grid, model_c.clock, model_fields)) isa Float64
+        @test @inferred(model_c.forcing.T(1, 1, 1, grid, model_c.clock, fields(model_c))) isa Float64
     end
 
     for model in (model_c, model_d)
