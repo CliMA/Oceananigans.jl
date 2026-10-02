@@ -76,16 +76,29 @@ function Utils.with_tracers(tracers, closure_vector::TISSDVector)
     return on_architecture(arch, vec)
 end
 
-# Note: computing diffusivities at cell centers for now.
+# The triad slopes and their tapering factors depend only on buoyancy and the grid, so they are computed
+# once per `update_state!` (once per RK stage) into cell-centred fields rather than on every face of every
+# tracer. ϵ and S are stored separately (not as products) so that the fluxes keep the original
+# floating-point expression order.
+#
+# The precompute kernel fills every index the fluxes read except the vertical halo levels k = 0 and
+# k = Nz+1, which only enter the bottom and top z-fluxes; those fluxes are zeroed by the conditional
+# (peripheral) flux, and the fields there stay zero. The triad fields get no boundary conditions:
+# with the default (auxiliary) ones, the closure-field halo fill would overwrite the horizontal halo
+# values the kernel computed, e.g. the tripolar fold row j = Ny+1 with its mirror image.
+const triad_field_names = (:ϵx⁺⁺, :ϵx⁺⁻, :ϵx⁻⁺, :ϵx⁻⁻, :ϵy⁺⁺, :ϵy⁺⁻, :ϵy⁻⁺, :ϵy⁻⁻,
+                           :Sx⁺⁺, :Sx⁺⁻, :Sx⁻⁺, :Sx⁻⁻, :Sy⁺⁺, :Sy⁺⁻, :Sy⁻⁺, :Sy⁻⁻)
+
 function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfTISSD{TD}) where TD
+    triads = NamedTuple{triad_field_names}(Tuple(Field{Center, Center, Center}(grid; boundary_conditions = nothing)
+                                                 for _ in triad_field_names))
+
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        K = (; ϵκR₃₃ = ZFaceField(grid))
+        return merge((; ϵκR₃₃ = ZFaceField(grid)), triads)
     else
-        return nothing
+        return triads
     end
-
-    return K
 end
 
 # Build closure fields for model initialization
@@ -100,6 +113,10 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, mod
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
+    launch!(arch, grid, parameters,
+            triad_compute_tapered_slopes!,
+            closure_fields, grid, closure, buoyancy, tracers)
+
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
@@ -107,6 +124,33 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, mod
     end
 
     return nothing
+end
+
+# One thread per cell writes the 8 triad slopes and 8 tapering factors that live at that cell.
+@kernel function triad_compute_tapered_slopes!(K, grid, closure, b, C)
+    i, j, k, = @index(Global, NTuple)
+    closure = getclosure(i, j, closure)
+    sl = closure.slope_limiter
+
+    @inbounds begin
+        K.ϵx⁺⁺[i, j, k] = ϵx⁺⁺(i, j, k, grid, sl, b, C)
+        K.ϵx⁺⁻[i, j, k] = ϵx⁺⁻(i, j, k, grid, sl, b, C)
+        K.ϵx⁻⁺[i, j, k] = ϵx⁻⁺(i, j, k, grid, sl, b, C)
+        K.ϵx⁻⁻[i, j, k] = ϵx⁻⁻(i, j, k, grid, sl, b, C)
+        K.ϵy⁺⁺[i, j, k] = ϵy⁺⁺(i, j, k, grid, sl, b, C)
+        K.ϵy⁺⁻[i, j, k] = ϵy⁺⁻(i, j, k, grid, sl, b, C)
+        K.ϵy⁻⁺[i, j, k] = ϵy⁻⁺(i, j, k, grid, sl, b, C)
+        K.ϵy⁻⁻[i, j, k] = ϵy⁻⁻(i, j, k, grid, sl, b, C)
+
+        K.Sx⁺⁺[i, j, k] = Sx⁺⁺(i, j, k, grid, b, C)
+        K.Sx⁺⁻[i, j, k] = Sx⁺⁻(i, j, k, grid, b, C)
+        K.Sx⁻⁺[i, j, k] = Sx⁻⁺(i, j, k, grid, b, C)
+        K.Sx⁻⁻[i, j, k] = Sx⁻⁻(i, j, k, grid, b, C)
+        K.Sy⁺⁺[i, j, k] = Sy⁺⁺(i, j, k, grid, b, C)
+        K.Sy⁺⁻[i, j, k] = Sy⁺⁻(i, j, k, grid, b, C)
+        K.Sy⁻⁺[i, j, k] = Sy⁻⁺(i, j, k, grid, b, C)
+        K.Sy⁻⁻[i, j, k] = Sy⁻⁻(i, j, k, grid, b, C)
+    end
 end
 
 @kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C)
@@ -203,10 +247,18 @@ end
     κˢ⁺, κᴬ⁺ = κˢ_κᴬᶜᶜᶜ(i-1, j, k, grid, loc, closure, clock, C)
     κˢ⁻, κᴬ⁻ = κˢ_κᴬᶜᶜᶜ(i,   j, k, grid, loc, closure, clock, C)
 
-    ϵ⁺⁺ = ϵx⁺⁺(i-1, j, k, grid, sl, b, C)
-    ϵ⁺⁻ = ϵx⁺⁻(i-1, j, k, grid, sl, b, C)
-    ϵ⁻⁺ = ϵx⁻⁺(i,   j, k, grid, sl, b, C)
-    ϵ⁻⁻ = ϵx⁻⁻(i,   j, k, grid, sl, b, C)
+    # precomputed by `triad_compute_tapered_slopes!`
+    @inbounds begin
+        ϵ⁺⁺ = K.ϵx⁺⁺[i-1, j, k]
+        ϵ⁺⁻ = K.ϵx⁺⁻[i-1, j, k]
+        ϵ⁻⁺ = K.ϵx⁻⁺[i,   j, k]
+        ϵ⁻⁻ = K.ϵx⁻⁻[i,   j, k]
+
+        S⁺⁺ = K.Sx⁺⁺[i-1, j, k]
+        S⁺⁻ = K.Sx⁺⁻[i-1, j, k]
+        S⁻⁺ = K.Sx⁻⁺[i,   j, k]
+        S⁻⁻ = K.Sx⁻⁻[i,   j, k]
+    end
 
     # Small slope approximation
     ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
@@ -218,10 +270,10 @@ end
     #           |      |
     # k   ------|------|
 
-    Fx = (ϵ⁺⁺ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
-          ϵ⁺⁻ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
-          ϵ⁻⁺ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
-          ϵ⁻⁻ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
+    Fx = (ϵ⁺⁺ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * S⁺⁺ * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
+          ϵ⁺⁻ * (κˢ⁺ * ∂x_c + (κˢ⁺ - κᴬ⁺) * S⁺⁻ * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
+          ϵ⁻⁺ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * S⁻⁺ * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
+          ϵ⁻⁻ * (κˢ⁻ * ∂x_c + (κˢ⁻ - κᴬ⁻) * S⁻⁻ * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
 
     return - Fx
 end
@@ -237,17 +289,25 @@ end
     κˢ⁺, κᴬ⁺ = κˢ_κᴬᶜᶜᶜ(i, j-1, k, grid, loc, closure, clock, C)
     κˢ⁻, κᴬ⁻ = κˢ_κᴬᶜᶜᶜ(i, j,   k, grid, loc, closure, clock, C)
 
-    ϵ⁺⁺ = ϵy⁺⁺(i, j-1, k, grid, sl, b, C)
-    ϵ⁺⁻ = ϵy⁺⁻(i, j-1, k, grid, sl, b, C)
-    ϵ⁻⁺ = ϵy⁻⁺(i, j,   k, grid, sl, b, C)
-    ϵ⁻⁻ = ϵy⁻⁻(i, j,   k, grid, sl, b, C)
+    # precomputed by `triad_compute_tapered_slopes!`
+    @inbounds begin
+        ϵ⁺⁺ = K.ϵy⁺⁺[i, j-1, k]
+        ϵ⁺⁻ = K.ϵy⁺⁻[i, j-1, k]
+        ϵ⁻⁺ = K.ϵy⁻⁺[i, j,   k]
+        ϵ⁻⁻ = K.ϵy⁻⁻[i, j,   k]
+
+        S⁺⁺ = K.Sy⁺⁺[i, j-1, k]
+        S⁺⁻ = K.Sy⁺⁻[i, j-1, k]
+        S⁻⁺ = K.Sy⁻⁺[i, j,   k]
+        S⁻⁻ = K.Sy⁻⁻[i, j,   k]
+    end
 
     ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
-    Fy = (ϵ⁺⁺ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
-          ϵ⁺⁻ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
-          ϵ⁻⁺ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
-          ϵ⁻⁻ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c))) / 4
+    Fy = (ϵ⁺⁺ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * S⁺⁺ * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
+          ϵ⁺⁻ * (κˢ⁺ * ∂y_c + (κˢ⁺ - κᴬ⁺) * S⁺⁻ * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
+          ϵ⁻⁺ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * S⁻⁺ * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
+          ϵ⁻⁻ * (κˢ⁻ * ∂y_c + (κˢ⁻ - κᴬ⁻) * S⁻⁻ * ∂zᶜᶜᶠ(i, j,   k,   grid, c))) / 4
 
     return - Fy
 end
@@ -263,15 +323,28 @@ end
     κˢ⁻, κᴬ⁻ = κˢ_κᴬᶜᶜᶜ(i, j, k,   grid, loc, closure, clock, C)
     κˢ⁺, κᴬ⁺ = κˢ_κᴬᶜᶜᶜ(i, j, k-1, grid, loc, closure, clock, C)
 
-    ϵˣ⁻⁻ = ϵx⁻⁻(i, j, k,   grid, sl, b, C)
-    ϵˣ⁺⁻ = ϵx⁺⁻(i, j, k,   grid, sl, b, C)
-    ϵˣ⁻⁺ = ϵx⁻⁺(i, j, k-1, grid, sl, b, C)
-    ϵˣ⁺⁺ = ϵx⁺⁺(i, j, k-1, grid, sl, b, C)
+    # precomputed by `triad_compute_tapered_slopes!`
+    @inbounds begin
+        ϵˣ⁻⁻ = K.ϵx⁻⁻[i, j, k]
+        ϵˣ⁺⁻ = K.ϵx⁺⁻[i, j, k]
+        ϵˣ⁻⁺ = K.ϵx⁻⁺[i, j, k-1]
+        ϵˣ⁺⁺ = K.ϵx⁺⁺[i, j, k-1]
 
-    ϵʸ⁻⁻ = ϵy⁻⁻(i, j, k,   grid, sl, b, C)
-    ϵʸ⁺⁻ = ϵy⁺⁻(i, j, k,   grid, sl, b, C)
-    ϵʸ⁻⁺ = ϵy⁻⁺(i, j, k-1, grid, sl, b, C)
-    ϵʸ⁺⁺ = ϵy⁺⁺(i, j, k-1, grid, sl, b, C)
+        ϵʸ⁻⁻ = K.ϵy⁻⁻[i, j, k]
+        ϵʸ⁺⁻ = K.ϵy⁺⁻[i, j, k]
+        ϵʸ⁻⁺ = K.ϵy⁻⁺[i, j, k-1]
+        ϵʸ⁺⁺ = K.ϵy⁺⁺[i, j, k-1]
+
+        Sˣ⁻⁻ = K.Sx⁻⁻[i, j, k]
+        Sˣ⁺⁻ = K.Sx⁺⁻[i, j, k]
+        Sˣ⁻⁺ = K.Sx⁻⁺[i, j, k-1]
+        Sˣ⁺⁺ = K.Sx⁺⁺[i, j, k-1]
+
+        Sʸ⁻⁻ = K.Sy⁻⁻[i, j, k]
+        Sʸ⁺⁻ = K.Sy⁺⁻[i, j, k]
+        Sʸ⁻⁺ = K.Sy⁻⁺[i, j, k-1]
+        Sʸ⁺⁺ = K.Sy⁺⁺[i, j, k-1]
+    end
 
     # Triad diagram:
     #
@@ -286,15 +359,15 @@ end
     # |     |     |     |
     # --------------------
 
-    κR₃₁_∂x_c = ((κˢ⁻ + κᴬ⁻) * ϵˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k,   grid, c) +
-                 (κˢ⁻ + κᴬ⁻) * ϵˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k,   grid, c) +
-                 (κˢ⁺ + κᴬ⁺) * ϵˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k-1, grid, c) +
-                 (κˢ⁺ + κᴬ⁺) * ϵˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+    κR₃₁_∂x_c = ((κˢ⁻ + κᴬ⁻) * ϵˣ⁻⁻ * Sˣ⁻⁻ * ∂xᵣᶠᶜᶜ(i,   j, k,   grid, c) +
+                 (κˢ⁻ + κᴬ⁻) * ϵˣ⁺⁻ * Sˣ⁺⁻ * ∂xᵣᶠᶜᶜ(i+1, j, k,   grid, c) +
+                 (κˢ⁺ + κᴬ⁺) * ϵˣ⁻⁺ * Sˣ⁻⁺ * ∂xᵣᶠᶜᶜ(i,   j, k-1, grid, c) +
+                 (κˢ⁺ + κᴬ⁺) * ϵˣ⁺⁺ * Sˣ⁺⁺ * ∂xᵣᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
-    κR₃₂_∂y_c = ((κˢ⁻ + κᴬ⁻) * ϵʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k,   grid, c) +
-                 (κˢ⁻ + κᴬ⁻) * ϵʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k,   grid, c) +
-                 (κˢ⁺ + κᴬ⁺) * ϵʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k-1, grid, c) +
-                 (κˢ⁺ + κᴬ⁺) * ϵʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+    κR₃₂_∂y_c = ((κˢ⁻ + κᴬ⁻) * ϵʸ⁻⁻ * Sʸ⁻⁻ * ∂yᵣᶜᶠᶜ(i, j,   k,   grid, c) +
+                 (κˢ⁻ + κᴬ⁻) * ϵʸ⁺⁻ * Sʸ⁺⁻ * ∂yᵣᶜᶠᶜ(i, j+1, k,   grid, c) +
+                 (κˢ⁺ + κᴬ⁺) * ϵʸ⁻⁺ * Sʸ⁻⁺ * ∂yᵣᶜᶠᶜ(i, j,   k-1, grid, c) +
+                 (κˢ⁺ + κᴬ⁺) * ϵʸ⁺⁺ * Sʸ⁺⁺ * ∂yᵣᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
     κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), clock, c, closure, b, C)
 
