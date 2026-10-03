@@ -188,6 +188,11 @@ Grids.grid(output::TimeFilteredOutput) = grid(output.operand)
 Fields.location(output::TimeFilteredOutput) = location(output.operand)
 Fields.indices(output::TimeFilteredOutput) = indices(output.operand)
 
+# Like its `FilteredTimeInterval`, the output is not checkpointed: it holds no state worth restoring,
+# and serializing it would store its operand, grid and any functions it references.
+Oceananigans.prognostic_state(::TimeFilteredOutput) = nothing
+Oceananigans.restore_prognostic_state!(::TimeFilteredOutput, ::Nothing) = nothing
+
 function time_average_outputs(filter::FilteredTimeInterval, outputs::NamedTuple, model)
     filtered_outputs = NamedTuple(name => TimeFilteredOutput(outputs[name], filter, model) for name in keys(outputs))
     return filter, filtered_outputs
