@@ -24,7 +24,6 @@ const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:Distributed
 const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
-
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
