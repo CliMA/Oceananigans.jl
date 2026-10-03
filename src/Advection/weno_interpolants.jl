@@ -375,11 +375,32 @@ end
     return :($(elem...),)
 end
 
+# The same weights divided by M² where M = max(1, τ₂ᵣ₋₁ / dmin) and dmin = minᵣ(βᵣ + ϵ), so that no term can
+# overflow. M² cancels when the weights are normalized.
+@inline function metaprogrammed_rescaled_zweno_alpha_loop(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (a^2 + (b * newton_div(WCT, dmin, β[$stencil] + ϵ))^2))
+    end
+
+    return quote
+        dmin = minimum(β) + ϵ
+        a = newton_div(WCT, dmin, max(τ, dmin))    # 1 / M, without dividing by τ
+        b = min(one(FT), newton_div(WCT, τ, dmin)) # τ / (M * dmin)
+        ($(elem...),)
+    end
+end
+
 for buffer in advection_buffers[2:end]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer, FT}, δ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_rescaled_zweno_alpha_loop(buffer))
+    end
+
+    # (τ / ϵ)² overflows only beyond ≈ 1e154 in Float64, so the cheaper unscaled weights are safe there
+    for FT in (Float64, BigFloat)
+        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
