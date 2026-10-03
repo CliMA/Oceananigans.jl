@@ -1,7 +1,11 @@
 module Biogeochemistry
 
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @kernel, @index
+using Adapt: Adapt
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Center, xnode, ynode, znode
+using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: CenterField
 
@@ -166,6 +170,88 @@ contains biogeochemical auxiliary fields.
     # define their own special auxiliary fields
     return tracers, auxiliary_fields
 end
+
+#####
+##### Optionally computing biogeochemical transitions in separate kernels
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a tuple of tracer names whose biogeochemical transition is computed in a separate kernel,
+launched after the tracer tendency kernels, rather than inline with advection and diffusion.
+The separately computed transition is added in place to the tracer tendency `Gⁿ[name]`, so no extra
+storage is required.
+
+The default is `()`, for which the transition is computed inline in the tracer tendency kernel.
+Splitting can make tendency kernels for complex biogeochemical models substantially cheaper to
+compile and faster to run (especially on GPUs). Opt in by extending this function, e.g.
+
+```julia
+Oceananigans.Biogeochemistry.separate_transition_tracers(bgc::MyBGC) = required_biogeochemical_tracers(bgc)
+```
+"""
+separate_transition_tracers(bgc) = ()
+
+"""
+    TransitionFree(biogeochemistry)
+
+Wrapper around `biogeochemistry` used in the tracer tendency kernels for tracers whose transition is
+computed separately (see [`separate_transition_tracers`](@ref)). `biogeochemical_transition` is zero,
+while the drift velocity and auxiliary fields are forwarded to the wrapped `biogeochemistry`.
+
+`TransitionFree` is deliberately not a subtype of `AbstractBiogeochemistry`, so that the
+`AbstractBiogeochemistry` and `AbstractContinuousFormBiogeochemistry` methods of
+`biogeochemical_transition` do not apply to it.
+"""
+struct TransitionFree{B}
+    biogeochemistry :: B
+end
+
+Adapt.adapt_structure(to, t::TransitionFree) = TransitionFree(Adapt.adapt(to, t.biogeochemistry))
+
+@inline biogeochemical_transition(i, j, k, grid, ::TransitionFree, val_tracer_name, clock, fields) = zero(grid)
+@inline biogeochemical_drift_velocity(t::TransitionFree, val_tracer_name) = biogeochemical_drift_velocity(t.biogeochemistry, val_tracer_name)
+@inline biogeochemical_auxiliary_fields(t::TransitionFree) = biogeochemical_auxiliary_fields(t.biogeochemistry)
+
+"""
+$(TYPEDSIGNATURES)
+
+Add the biogeochemical transition of each tracer in `separate_transition_tracers(bgc)` in place to
+the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `model_fields` must be the
+same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
+Does nothing when `separate_transition_tracers(bgc)` is empty.
+"""
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields;
+                                kernel_parameters=:xyz, active_cells_map=nothing) =
+    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_transition_tracers(bgc);
+                                    kernel_parameters, active_cells_map)
+
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{};
+                                kwargs...) = nothing
+
+@inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple;
+                                                 kernel_parameters=:xyz, active_cells_map=nothing)
+    name = first(names)
+    launch!(architecture(grid), grid, kernel_parameters, _add_biogeochemical_transition!,
+            Gⁿ[name], grid, bgc, Val(name), clock, model_fields; active_cells_map)
+    return add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, Base.tail(names);
+                                           kernel_parameters, active_cells_map)
+end
+
+@kernel function _add_biogeochemical_transition!(Gc, grid, bgc, val_tracer_name, clock, fields)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gc[i, j, k] += biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the biogeochemistry argument passed to the tendency kernel for tracer `name`:
+`TransitionFree(bgc)` if `name` is in `separate_transition_tracers(bgc)`, otherwise `bgc`.
+"""
+@inline tendency_biogeochemistry(bgc, ::Val{name}) where name =
+    name in separate_transition_tracers(bgc) ? TransitionFree(bgc) : bgc
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()
