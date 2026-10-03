@@ -3,11 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
 using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.Utils: KernelParameters, contiguousrange
+using Oceananigans.Utils: KernelParameters
 using Statistics
-
-Oceananigans.Utils.contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} =
-    contiguousrange(spec, offset)
 
 fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
 
@@ -129,22 +126,16 @@ end
             model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             η = model.free_surface.displacement
-            P = model.free_surface.kernel_parameters
-
-            range = contiguousrange(P)
-
             Hx, Hy, _ = halo_size(η.grid)
             Nx, Ny, _ = size(grid)
 
             # The halos are not extended: the fold is an index transformation, not a halo to substep into.
-            @test P isa KernelParameters
             @test Hx == halo_size(grid, 1)
             @test Hy == halo_size(grid, 2)
-            @test range[1] == 1:Nx
 
             # A face-pivot fold lies on the y-face row Ny + 1, which belongs to the domain and is computed.
-            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
-            @test range[2] == 1:northernmost_row
+            expected_kernel_parameters = fold_topology === RightFaceFolded ? KernelParameters(1:Nx, 1:Ny+1) : Val(:xy)
+            @test model.free_surface.kernel_parameters == expected_kernel_parameters
 
             @test begin
                 time_step!(model, 1.0)
