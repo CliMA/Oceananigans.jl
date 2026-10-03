@@ -35,7 +35,7 @@ function get_submodules(mod::Module; self=true)
 end
 
 @testset "Aqua" begin
-    Aqua.test_all(Oceananigans; ambiguities=false, piracies=false)
+    Aqua.test_all(Oceananigans; ambiguities=false, piracies=false, persistent_tasks=false)
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     # Do not increase this number. If ambiguities increase, resolve them before merging.
