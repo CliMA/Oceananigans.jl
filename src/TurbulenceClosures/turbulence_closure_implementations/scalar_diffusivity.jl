@@ -35,10 +35,12 @@ Arguments
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
+* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, `Function`, or `nothing`.
+       With `ν = nothing` the closure does not act on momentum and no viscous fluxes are computed.
 
-* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, `nothing`, or
        `NamedTuple` of diffusivities with entries for each tracer.
+       With `κ = nothing` the closure does not act on tracers and no diffusive fluxes are computed.
 
 * `discrete_form`: `Boolean`; default: `false`.
 
@@ -221,3 +223,48 @@ function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N})
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
+
+#####
+##### No viscosity or no tracer diffusivity
+#####
+
+# With `ν = nothing` (`κ = nothing`) the closure acts on tracers (momentum) only. Skipping the fluxes, rather than
+# multiplying the stencil by a zero coefficient, removes that stencil from every tendency kernel.
+const NoViscosityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation,       <:Any, Nothing}
+const NoViscosityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,              <:Any, Nothing}
+const NoViscosityDD = ScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation,    <:Any, Nothing}
+const NoViscosityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,                <:Any, Nothing}
+
+const NoTracerDiffusivityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
+const NoTracerDiffusivityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,       <:Any, <:Any, Nothing}
+const NoTracerDiffusivityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,         <:Any, <:Any, Nothing}
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy, :uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityID, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityHD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:ux, :vy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityDD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityVD, K, clk, fields, b) = zero(grid)
+end
+
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityHD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityHD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityVD, K, id, c, clk, fields, b) = zero(grid)
+
+# `κ = nothing` is not indexed by tracer
+@inline diffusivity(::ScalarDiffusivity{<:Any, <:Any, <:Any, <:Any, Nothing}, K, ::Val) = nothing
