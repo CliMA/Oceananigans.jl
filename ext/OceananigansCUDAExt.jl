@@ -18,7 +18,7 @@ end
 using GPUArraysCore: allowscalar
 using MPI: MPI
 using Base.Libc.Libdl: dllist, dlopen, dlsym
-using KernelAbstractions: KernelAbstractions, __iterspace, __dynamic_checkbounds
+using KernelAbstractions: KernelAbstractions
 using SparseArrays: SparseMatrixCSC
 
 using Oceananigans.Architectures: Architectures as AC
@@ -28,7 +28,7 @@ using Oceananigans.Fields: Fields as FD
 using Oceananigans.Grids: Grids as GD
 using Oceananigans.MultiRegion: MultiRegion as MR
 using Oceananigans.Solvers: Solvers as SO
-using Oceananigans.Utils: Utils as UT, apply_regionally!, linear_expand, __linear_ndrange, MappedCompilerMetadata
+using Oceananigans.Utils: Utils as UT, apply_regionally!
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
@@ -143,17 +143,6 @@ FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return cuFFT.plan_ifft!(A, dims)
-end
-
-# CUDA version, the indices are passed implicitly
-# You must not use KA here as this code is executed in another scope
-CUDA.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
-    if __dynamic_checkbounds(ctx)
-        index = @inbounds linear_expand(__iterspace(ctx), CUDA.blockIdx().x, CUDA.threadIdx().x)
-        return index ≤ __linear_ndrange(ctx)
-    else
-        return true
-    end
 end
 
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()

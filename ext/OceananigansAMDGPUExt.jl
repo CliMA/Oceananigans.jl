@@ -3,7 +3,7 @@ module OceananigansAMDGPUExt
 using AMDGPU: AMDGPU, ROCArray, ROCBackend
 using AMDGPU.rocSPARSE: ROCSparseMatrixCSC
 using AbstractFFTs: plan_fft!, plan_ifft!
-using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
+using KernelAbstractions: KernelAbstractions
 using SparseArrays: SparseMatrixCSC
 
 using Oceananigans.Architectures: Architectures as AC
@@ -13,7 +13,7 @@ using Oceananigans.Fields: Fields as FD, Field
 using Oceananigans.Grids: Grids as GD
 using Oceananigans.MultiRegion: MultiRegion as MR
 using Oceananigans.Solvers: Solvers as SO
-using Oceananigans.Utils: Utils as UT, apply_regionally!, linear_expand, __linear_ndrange, MappedCompilerMetadata
+using Oceananigans.Utils: Utils as UT, apply_regionally!
 
 const GPUVar = Union{ROCArray, Ptr}
 
@@ -88,15 +88,6 @@ FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.BoundaryTopology, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return plan_ifft!(A, dims)
-end
-
-AMDGPU.Device.@device_override @inline function KernelAbstractions.__validindex(ctx::MappedCompilerMetadata)
-    if __dynamic_checkbounds(ctx)
-        index = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
-        return index ≤ __linear_ndrange(ctx)
-    else
-        return true
-    end
 end
 
 @inline UT.sync_device!(::ROCGPU)     = AMDGPU.synchronize()
