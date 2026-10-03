@@ -60,7 +60,6 @@ using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_fiel
 using Oceananigans.Utils: prettysummary
 
 import Oceananigans.Utils: launch!, getnamewrapper
-Logging.global_logger(OceananigansLogger())
 
 # Legacy tests index GPU arrays with scalars; the process-wide default is the only setting
 # that reaches every task ParallelTestRunner spawns. The warning discouraging this is silenced.
