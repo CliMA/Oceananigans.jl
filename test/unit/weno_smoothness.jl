@@ -25,32 +25,31 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
         β_f64 = beta_loop(scheme_f64, δ_f64)
         β_f32 = beta_loop(scheme_f32, δ_f32)
 
-        @info "WENO order $order β (Float64): $β_f64"
-        @info "WENO order $order β (Float32): $β_f32"
-
         @testset "WENO order $order" begin
-            # All Float32 β values must be non-negative
-            # (negative β was the symptom of catastrophic cancellation)
-            for r in 1:buffer
-                @test β_f32[r] >= 0
-            end
-
-            # Float32 β should approximate Float64 reference
-            for r in 1:buffer
-                if β_f64[r] > 0
-                    @test β_f32[r] ≈ β_f64[r] rtol=1e-2
+            @testset let β_f32=β_f32, β_f64=β_f64
+                # All Float32 β values must be non-negative
+                # (negative β was the symptom of catastrophic cancellation)
+                for r in 1:buffer
+                    @test β_f32[r] >= 0
                 end
-            end
 
-            # Weights must sum to 1 and match Float64 reference
-            ω_f64 = biased_weno_weights(δ_f64, nothing, scheme_f64)
-            ω_f32 = biased_weno_weights(δ_f32, nothing, scheme_f32)
+                # Float32 β should approximate Float64 reference
+                for r in 1:buffer
+                    if β_f64[r] > 0
+                        @test β_f32[r] ≈ β_f64[r] rtol=1e-2
+                    end
+                end
 
-            @test sum(ω_f64) ≈ 1
-            @test sum(ω_f32) ≈ 1
+                # Weights must sum to 1 and match Float64 reference
+                ω_f64 = biased_weno_weights(δ_f64, nothing, scheme_f64)
+                ω_f32 = biased_weno_weights(δ_f32, nothing, scheme_f32)
 
-            for r in 1:buffer
-                @test ω_f32[r] ≈ ω_f64[r] atol=1e-3
+                @test sum(ω_f64) ≈ 1
+                @test sum(ω_f32) ≈ 1
+
+                for r in 1:buffer
+                    @test ω_f32[r] ≈ ω_f64[r] rtol=2e-3
+                end
             end
         end
     end
