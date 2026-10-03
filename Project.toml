@@ -98,4 +98,4 @@ Zarr = "0.10"
 julia = "1.10"
 
 [sources]
-KernelAbstractions = {url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git", rev = "0534c7336ea0ef7a178836cbb6268b1250ff65b2"}
+KernelAbstractions = {rev = "e444fb916b5527f942cf2f84438acdb6bec646c0", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
