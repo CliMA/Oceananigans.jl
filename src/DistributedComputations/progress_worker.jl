@@ -13,14 +13,14 @@ struct PostedExchange{R, B}
     buffers :: B
 end
 
-const progress_queue = Ref{Union{Nothing, Channel{Any}}}(nothing)
+const pending_exchanges = Ref{Union{Nothing, Channel{Any}}}(nothing)
 const progress_failure = Ref{Any}(nothing)
 const progress_worker_enabled = Ref{Union{Nothing, Bool}}(nothing)
 
-# The worker needs a thread besides the main one, and calls MPI concurrently with it (`MPI_THREAD_MULTIPLE`)
+# The worker needs more than one default thread, and calls MPI concurrently with the main thread (`MPI_THREAD_MULTIPLE`)
 function use_progress_worker()
     if isnothing(progress_worker_enabled[])
-        spare_thread = Threads.nthreads(:default) + Threads.nthreads(:interactive) > 1
+        spare_thread = Threads.nthreads() > 1
         progress_worker_enabled[] = spare_thread && MPI.Query_thread() == MPI.THREAD_MULTIPLE
     end
     return progress_worker_enabled[]::Bool
@@ -30,18 +30,17 @@ end
 progress_worker_threadpool() = Threads.nthreads(:interactive) > 1 ? :interactive : :default
 
 function submit_exchange!(exchange::HaloExchange)
-    queue = progress_queue[]
-
-    if isnothing(queue)
-        queue = Channel{Any}(Inf)
-        pool = progress_worker_threadpool()
-        errormonitor(Threads.@spawn pool progress_exchanges!(queue))
-        MPI.add_finalize_hook!(() -> put!(queue, nothing))
-        progress_queue[] = queue
-    end
-
-    put!(queue, exchange)
+    isnothing(pending_exchanges[]) && (pending_exchanges[] = start_progress_worker())
+    put!(pending_exchanges[], exchange)
     return nothing
+end
+
+function start_progress_worker()
+    exchanges = Channel{Any}(Inf)
+    pool = progress_worker_threadpool()
+    errormonitor(Threads.@spawn pool progress_exchanges!(exchanges))
+    MPI.add_finalize_hook!(() -> put!(exchanges, nothing))
+    return exchanges
 end
 
 function post!(exchange::HaloExchange)
@@ -60,13 +59,13 @@ function complete!(exchange::PostedExchange)
     return true
 end
 
-function progress_exchanges!(queue)
+function progress_exchanges!(exchanges)
     in_flight = PostedExchange[]
     try
         while true
-            # block on the queue only when no exchange is in flight
-            while isready(queue) || isempty(in_flight)
-                exchange = take!(queue)
+            # block on new exchanges only when none is in flight
+            while isready(exchanges) || isempty(in_flight)
+                exchange = take!(exchanges)
                 isnothing(exchange) && return nothing
                 push!(in_flight, post!(exchange))
             end

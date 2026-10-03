@@ -27,7 +27,7 @@ opposite_side = Dict(
     :northeast => :southwest,
 )
 
-const ID_DIGITS   = 2
+const ID_DIGITS   = 4
 
 # A Hashing function which returns a unique
 # integer between 0 and 26 for a combination of
