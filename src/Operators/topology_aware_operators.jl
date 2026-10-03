@@ -83,8 +83,8 @@ const AGYFF = AbstractUnderlyingGrid{FT, <:Any, RightFaceFolded} where FT
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXR, u::AbstractArray) = @inbounds ifelse(i == 1, u[2, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, v::AbstractArray) = @inbounds ifelse(j == 1, v[i, 2, k], δyᵃᶜᵃ(i, j, k, grid, v))
 
-# Enforce the north fold of a serial tripolar grid.
-@inline north_fold_index(i, grid) = grid.Nx - i + 1
+# Enforce the north fold of a serial tripolar grid: `north_fold_index(i, grid)` mirrors the Center-x column `i` about the fold pivot.
+function north_fold_index end
 
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYCF{FT}, f, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYCF{FT}, c::AbstractArray) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, c))
