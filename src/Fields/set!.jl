@@ -104,7 +104,7 @@ function set_to_function!(u, f, clock=nothing)
 
     # Try to set the FunctionField to cpu_u
     try
-        set!(cpu_u, f_field)
+        evaluate_on_host!(cpu_u, f_field)
     catch err
         u_loc = Tuple(L() for L in location(u))
 
@@ -120,7 +120,7 @@ function set_to_function!(u, f, clock=nothing)
                      "callable via", '\n', '\n',
                      "     func(", arg_str, ")", '\n')
         @warn msg
-        throw(err)
+        throw(task_error(err))
     end
 
     # Transfer data to GPU if u is on the GPU
@@ -129,6 +129,27 @@ function set_to_function!(u, f, clock=nothing)
     end
     return u
 end
+
+# Evaluate `f_field` at the points of the CPU field `u` with a threaded loop rather than a kernel,
+# so that `set!(field, func)` accepts any Julia function, e.g. closures capturing arrays or types.
+# It covers the same indices as `u .= f_field`.
+function evaluate_on_host!(u, f_field)
+    offsets = map(offset_index, indices(u))
+    Nx, Ny, Nz = size(u)
+    Threads.@threads for jk in CartesianIndices((Ny, Nz))
+        j, k = Tuple(jk)
+        for i in 1:Nx
+            i′, j′, k′ = (i, j, k) .+ offsets
+            @inbounds u[i′, j′, k′] = f_field[i′, j′, k′]
+        end
+    end
+    return u
+end
+
+# The error thrown by `func` rather than the exceptions `Threads.@threads` wraps it in
+task_error(err::CompositeException) = task_error(first(err.exceptions))
+task_error(err::TaskFailedException) = task_error(err.task.result)
+task_error(err) = err
 
 function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
