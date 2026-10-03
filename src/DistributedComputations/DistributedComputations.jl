@@ -6,7 +6,8 @@ export
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
-    @root, @onrank, @distribute, @handshake
+    @root, @onrank, @distribute, @handshake,
+    record_event, sync_event
 
 using MPI
 
@@ -28,8 +29,11 @@ include("distributed_grids.jl")
 include("distributed_immersed_boundaries.jl")
 include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
+include("events.jl")
 include("halo_communication_bcs.jl")
+include("communication_state.jl")
 include("communication_buffers.jl")
+include("progress_worker.jl")
 include("distributed_fields.jl")
 include("halo_communication.jl")
 include("transposable_field.jl")

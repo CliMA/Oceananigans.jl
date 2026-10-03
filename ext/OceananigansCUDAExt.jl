@@ -146,6 +146,29 @@ end
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
+struct StreamEvent
+    event  :: CUDA.CuEvent
+    stream :: CUDA.CuStream
+end
+
+# We record both event and stream so that the task can operate
+# on the same stream as the record.
+@inline function DC.record_event(::CUDAGPU)
+    stream = CUDA.stream()
+    event  = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
+    CUDA.record(event, stream)
+    return StreamEvent(event, stream)
+end
+
+# Adopt the recording stream: otherwise CUDA.jl gives this task a new stream (and synchronizes)
+function DC.sync_event(stream_event::StreamEvent)
+    CUDA.stream!(stream_event.stream)
+    while !CUDA.isdone(stream_event.event)
+        Threads.nthreads() > 1 && yield()
+    end
+    return nothing
+end
+
 # Use faster versions of `newton_div` on Nvidia GPUs
 CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)
 

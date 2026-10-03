@@ -94,7 +94,7 @@ function rectilinear_mpi_script(config, filename)
 
     return """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     using Oceananigans
     using Oceananigans.DistributedComputations: Distributed, Partition
@@ -188,7 +188,7 @@ function lat_lon_mpi_script(config, filename)
 
     return """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     using Oceananigans
     using Oceananigans.DistributedComputations: Distributed, Partition
@@ -269,7 +269,7 @@ function tripolar_mpi_script(config, filename)
 
     return """
     using MPI
-    MPI.Init()
+    MPI.Init(threadlevel=:multiple)
 
     using Oceananigans
     using Oceananigans.DistributedComputations: Distributed, Partition
