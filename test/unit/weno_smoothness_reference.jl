@@ -49,9 +49,8 @@ end
 
     for buffer in 2:6
         order = 2buffer - 1
-        @info "Testing WENO$order smoothness indicators against the reference tables..."
 
-        for stencil in 0:buffer-1, FT in (Float64, Float32)
+        @testset "WENO order $(order)" for stencil in 0:buffer-1, FT in (Float64, Float32)
             scheme = WENO(FT; order)
             rtol = 20eps(FT)
 

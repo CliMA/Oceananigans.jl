@@ -13,8 +13,6 @@ foreach_name_allocations(counts, weights, names) =
     @allocated foreach_name((n, name) -> add_name_index!(counts, weights, n, name), names)
 
 @testset "Utils" begin
-    @info "Testing utils..."
-
     @testset "prettytime" begin
         @test prettytime(0) == "0 seconds"
         @test prettytime(35e-15) == "3.500e-14 seconds"
@@ -85,7 +83,6 @@ foreach_name_allocations(counts, weights, names) =
 
     @testset "TabulatedFunction" begin
         GC.gc()
-        @info "  Testing TabulatedFunction..."
 
         #####
         ##### 1D TabulatedFunction
