@@ -12,6 +12,13 @@ end
 foreach_name_allocations(counts, weights, names) =
     @allocated foreach_name((n, name) -> add_name_index!(counts, weights, n, name), names)
 
+# Counts the visits of every cell and records the linear index of the work item that visited it
+@kernel function _record_mapped_visit!(visits, positions)
+    i, j, k = @index(Global, NTuple)
+    @inbounds visits[i, j, k] += 1
+    @inbounds positions[i, j, k] = @index(Global, Linear)
+end
+
 @testset "Utils" begin
     @testset "prettytime" begin
         @test prettytime(0) == "0 seconds"
@@ -79,6 +86,28 @@ foreach_name_allocations(counts, weights, names) =
         foreach_name_allocations(counts, weights, weights)
         @test foreach_name_allocations(counts, weights, weights) == 0
         @test counts == 2 .* [1, 2, 3, 4]
+    end
+
+    @testset "Launching over an active cells map [$(summary(arch))]" for arch in archs
+        Nx, Ny, Nz = 20, 10, 4
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+
+        # More than one workgroup of 256 work items, the last one only partially filled
+        listed = [(i, j, k) for i in 1:Nx, j in 1:Ny, k in 1:Nz if isodd(i + j + k)]
+        map = shuffle(Random.Xoshiro(1), [UInt8.(index) for index in listed])
+        @test length(map) == 400
+
+        visits = on_architecture(arch, zeros(Int, Nx, Ny, Nz))
+        positions = on_architecture(arch, zeros(Int, Nx, Ny, Nz))
+        launch!(arch, grid, on_architecture(arch, map), _record_mapped_visit!, visits, positions)
+
+        visits = Array(visits)
+        positions = Array(positions)
+        is_listed = falses(Nx, Ny, Nz)
+        foreach(index -> is_listed[index...] = true, listed)
+        @test all(visits[is_listed] .== 1)
+        @test all(visits[.!is_listed] .== 0)
+        @test [positions[index...] for index in map] == 1:length(map)
     end
 
     @testset "TabulatedFunction" begin
