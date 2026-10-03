@@ -61,18 +61,18 @@ const serial_memory_cpu = Dict(
     (:hydrostatic,    :flat)            => 64,
     (:hydrostatic,    :immersed)        => 64,
     (:hydrostatic,    :active_immersed) => 64,
-    (:nonhydrostatic, :flat)            => 128,
-    (:nonhydrostatic, :immersed)        => 128,
-    (:nonhydrostatic, :active_immersed) => 128,
+    (:nonhydrostatic, :flat)            => 32,
+    (:nonhydrostatic, :immersed)        => 32,
+    (:nonhydrostatic, :active_immersed) => 32,
 )
 
 const serial_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 7.6e5,
-    (:hydrostatic,    :immersed)        => 8.2e5,
-    (:hydrostatic,    :active_immersed) => 8.3e5,
-    (:nonhydrostatic, :flat)            => 6.9e5,
-    (:nonhydrostatic, :immersed)        => 7.9e5,
-    (:nonhydrostatic, :active_immersed) => 8.0e5,
+    (:hydrostatic,    :flat)            => 3.0e5,
+    (:hydrostatic,    :immersed)        => 3.2e5,
+    (:hydrostatic,    :active_immersed) => 3.7e5,
+    (:nonhydrostatic, :flat)            => 3.1e5,
+    (:nonhydrostatic, :immersed)        => 3.4e5,
+    (:nonhydrostatic, :active_immersed) => 3.8e5,
 )
 
 # Distributed allocations depend on the partition, so baselines are keyed by `ranks(arch)`.
