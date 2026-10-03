@@ -10,6 +10,7 @@ export
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
+using KernelInterface: KernelInterface
 using OffsetArrays: OffsetArrays, OffsetArray
 using SparseArrays: SparseArrays, SparseMatrixCSC
 
@@ -61,8 +62,8 @@ device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
 device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-ndevices(a::CPU) = KA.ndevices(KA.CPU())
-ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
+ndevices(a::CPU) = KernelInterface.ndevices(KA.CPU())
+ndevices(a::AbstractArchitecture) = KernelInterface.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
 synchronize(a::AbstractArchitecture) = KA.synchronize(a.device)
 
