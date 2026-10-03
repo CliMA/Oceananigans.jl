@@ -30,7 +30,7 @@ steps:
       wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
       tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
 
-      # Build MPIwrapper against the CUDA-aware Open MPI. This is a one-time build, cached in $TARTARUS_HOME across builds. 
+      # Build MPIwrapper against the CUDA-aware Open MPI. This is a one-time build, cached in $TARTARUS_HOME across builds.
       if [ ! -f "$MPIWRAPPER_HOME/lib/libmpiwrapper.so" ]; then
         rm -rf $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION $MPIWRAPPER_HOME
         wget -N -P $TARTARUS_HOME https://github.com/eschnett/MPIwrapper/archive/refs/tags/v$MPIWRAPPER_VERSION.tar.gz
