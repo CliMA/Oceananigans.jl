@@ -114,11 +114,6 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 @test interior(super_fine_1d_regular_c)[5] ≈ c₂
             end
 
-            #=
-            # This test does not work, because we can only regrid in one direction.
-            # To make this work, we have to transfer the reduced data to a "reduced" grid
-            # (ie with one grid point in each reduced direction).
-
             # Fine-graining from reduction
             ind1 = dim == :x ? (1, :, :) : dim == :y ? (:, 1, :) : (:, :, 1)
             ind2 = dim == :x ? (2, :, :) : dim == :y ? (:, 2, :) : (:, :, 2)
@@ -130,19 +125,15 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
             fine_stretched_c_mean_xy = Field(Reduction(mean!, fine_stretched_c; dims))
             compute!(fine_stretched_c_mean_xy)
 
-            @show size(fine_stretched_c_mean_xy.grid)
-            @show size(super_fine_from_reduction_regular_c.grid)
-
             regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
 
             @allowscalar begin
-            @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
-            @test interior(super_fine_from_reduction_regular_c)[2] ≈ c₁
-            @test interior(super_fine_from_reduction_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁
-            @test interior(super_fine_from_reduction_regular_c)[4] ≈ c₂
-            @test interior(super_fine_from_reduction_regular_c)[5] ≈ c₂
+                @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
+                @test interior(super_fine_from_reduction_regular_c)[2] ≈ c₁
+                @test interior(super_fine_from_reduction_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁
+                @test interior(super_fine_from_reduction_regular_c)[4] ≈ c₂
+                @test interior(super_fine_from_reduction_regular_c)[5] ≈ c₂
             end
-            =#
         end
     end
 end
