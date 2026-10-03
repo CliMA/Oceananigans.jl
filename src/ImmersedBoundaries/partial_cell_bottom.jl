@@ -162,7 +162,8 @@ end
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    just_above_bottom = bottommost_active_node(i, j, k, ibg, c, c, f)
+    # The face at k is just above the bottom when the cell below it (k-1) is the partial cell
+    just_above_bottom = bottommost_active_node(i, j, k-1, ibg, c, c, c)
     rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 

@@ -6,7 +6,8 @@ using Oceananigans.Grids: halo_size,
 
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
-using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
+                                                  non_uniform_conformal_mapping_coordinates
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
     FixedSubstepNumber, ConnectedTopology
@@ -224,6 +225,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
         push!(region_ξ, (-1 + Lξᵢⱼ * (pᵢ - 1), -1 + Lξᵢⱼ * pᵢ))
         push!(region_η, (-1 + Lηᵢⱼ * (pⱼ - 1), -1 + Lηᵢⱼ * pⱼ))
         push!(region_rotation, connectivity.rotations[panel_index(r, partition)])
+    end
+
+    # The optimization of the non-uniform coordinates depends only on the region size and
+    # spacing, so it is carried out once and shared by all regions.
+    if non_uniform_conformal_mapping && isnothing(provided_conformal_mapping) && allequal(region_size)
+        Nξ, Nη, _ = first(region_size)
+        provided_conformal_mapping = CubedSphereConformalMapping(nothing, non_uniform_conformal_mapping_coordinates(FT, Nξ, Nη, spacing)...)
     end
 
     region_size = MultiRegionObject(tuple(region_size...))
@@ -454,9 +462,9 @@ function Grids.nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; 
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
-    TX, TY, TZ = topology(grid)
+    nTX, nTY, nTZ = map(nameof, topology(grid))
     return string(size_summary(grid),
-                  " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " ConformalCubedSphereGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 

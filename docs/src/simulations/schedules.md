@@ -149,6 +149,23 @@ add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
 
+### `TimeOffset`
+
+[`TimeOffset`](@ref Oceananigans.Utils.TimeOffset) actuates when the parent schedule does and once more
+at a time `offset` away from it. A positive `offset` places the extra actuation after each parent actuation, and
+a negative `offset` places it before the next parent actuation. The time step is aligned so that the extra
+actuation lands exactly on the requested time. This is useful, for example, to sample a quantity a fixed time
+before each output is written, so that a time difference over that interval can be formed at writing time.
+
+```@example schedules
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
+
+schedule = TimeOffset(TimeInterval(1), -0.2)
+add_callback!(simulation, dummy, schedule, name=:dummy)
+run!(simulation)
+```
+
 ### `AndSchedule` and `OrSchedule`
 
 Use [`AndSchedule`](@ref Oceananigans.OutputWriters.AndSchedule) when an action should fire only if _every_ child
@@ -167,7 +184,7 @@ run!(simulation)
 ```
 
 !!! warning "Stateful schedules"
-    Stateful schedules such as `TimeInterval`, `SpecifiedTimes`, and `ConsecutiveIterations` store
+    Stateful schedules such as `TimeInterval`, `SpecifiedTimes`, `ConsecutiveIterations`, and `TimeOffset` store
     their own counters, so we need to create a _fresh_ instance (or call `copy`) for each callback or
     output writer that needs an identical pattern.
 
@@ -186,6 +203,16 @@ and samples every `stride` iterations inside the window.
 [`AveragedSpecifiedTimes`](@ref Oceananigans.OutputWriters.AveragedSpecifiedTimes) behaves like
 [`SpecifiedTimes`](@ref Oceananigans.OutputWriters.SpecifiedTimes) but with a trailing averaging window.
 Pass either a `SpecifiedTimes` instance or raw times.
+
+### `FilteredTimeInterval`
+
+[`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write time-filtered output: a
+weighted average over the `window` of a kernel, centered on the output time, with weights from the kernel:
+[`LanczosKernel`](@ref Oceananigans.OutputWriters.LanczosKernel)`(window; cutoff)`, which removes periods shorter than `cutoff`,
+[`HanningKernel`](@ref Oceananigans.OutputWriters.HanningKernel) or [`BoxcarKernel`](@ref Oceananigans.OutputWriters.BoxcarKernel) (a running mean).
+Any [`AbstractFilterKernel`](@ref Oceananigans.OutputWriters.AbstractFilterKernel) can be supplied.
+Because the window is centered, the output carries no phase shift, unlike the trailing window of `AveragedTimeInterval`;
+each output is therefore written `window / 2` after its time.
 
 ### `FileSizeLimit`
 

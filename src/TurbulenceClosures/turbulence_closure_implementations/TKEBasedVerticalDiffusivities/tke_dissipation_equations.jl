@@ -14,6 +14,8 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     minimum_roughness_length :: FT = 1e-4
 end
 
+Adapt.@adapt_structure TKEDissipationEquations
+
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
 function time_step_tke_dissipation_equations!(model, Δt)
@@ -42,7 +44,6 @@ function time_step_tke_dissipation_equations!(model, Δt)
     active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(model.tracers.e)
-    Δt = convert(FT, Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -175,7 +176,6 @@ end
 
     # Advance TKE and store tendency
     FT = eltype(e)
-    Δτ = convert(FT, Δτ)
     χ = convert(FT, χ)
 
     # See below.
