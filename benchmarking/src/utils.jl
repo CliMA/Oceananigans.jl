@@ -39,6 +39,18 @@ function zarr_chunk_shape(zarr_path::AbstractString, variable_name::AbstractStri
     end
 end
 
+"""
+    used_gpu_memory()
+
+Bytes of GPU memory currently allocated by this process on the active device. Reads the stream-ordered memory pool
+when one is active, and CUDA's own live-allocation accounting when the pool is disabled
+(`JULIA_CUDA_MEMORY_POOL=none`, as required by CUDA-aware MPI).
+"""
+function used_gpu_memory()
+    pool_used_bytes = CUDACore.MemoryInfo().pool_used_bytes
+    return something(pool_used_bytes, CUDACore.memory_stats().live)
+end
+
 
 """
     benchmark_time_stepping(model;
@@ -111,7 +123,7 @@ function benchmark_time_stepping(model;
     steps_per_second = 1 / time_per_step_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = BenchmarkResult(
@@ -262,7 +274,7 @@ function run_benchmark_simulation(model;
     steps_per_second = time_steps / wall_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = SimulationResult(
@@ -446,7 +458,7 @@ function run_io_benchmark(model;
                   zarr_chunk_shape(output_filename, "T") :
                   nothing
 
-    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = IOBenchmarkResult(
