@@ -1,7 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.Grids: total_extent, xspacings, yspacings, zspacings, rspacings, xnode, ynode, znode, inactive_node, static_column_depthᶜᶜᵃ
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, immersed_cell, _immersed_cell, CenterImmersedCondition, InterfaceImmersedCondition, bottom_height_interior, dry_columnᶜᶜᵃ, top_inactive_node
+using Oceananigans.Operators: ∂xᵣᶠᶜᶠ, δxᶜᶜᵃ, δzᶜᶜᶜ
 
 #####
 ##### Basic immersed boundary grid construction tests
@@ -534,6 +536,75 @@ function test_immersed_boundary_equality(FT, arch)
 end
 
 #####
+##### Free surface at the top of the water column
+#####
+
+# 3-argument, so it needs a wrapper to be a `KernelFunctionOperation`.
+column_depth_at(i, j, k, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
+
+top_face_inactive_node(i, j, k, grid) = inactive_node(i, j, k, grid, Center(), Center(), Face())
+top_face_top_inactive_node(i, j, k, grid) = top_inactive_node(i, j, k, grid, Center(), Center(), Face())
+top_dry_column(i, j, k, grid) = dry_columnᶜᶜᵃ(i, j, grid)
+
+device_values(op, LX, LY, LZ, grid, args...) =
+    Array(interior(compute!(Field(KernelFunctionOperation{LX, LY, LZ}(op, grid, args...)))))
+
+function test_free_surface_column_masking(FT, arch)
+    Nx, Ny, Nz, Ntop = 4, 4, 8, 3
+
+    underlying_grid = RectilinearGrid(arch, FT, size = (Nx, Ny, Nz), extent = (1, 1, 1),
+                                      topology = (Periodic, Periodic, Bounded))
+
+    mask = zeros(Bool, Nx, Ny, Nz)
+    mask[:, :, Nz-Ntop+1:Nz] .= true    # an immersed top over every column
+    mask[1, 1, :] .= true                   # one column blocked all the way down
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(on_architecture(arch, mask)))
+
+    wet_depth = FT((Nz - Ntop) / Nz)
+
+    depth = device_values(column_depth_at, Center, Center, Center, grid)
+    @test depth[3, 3, 1] ≈ wet_depth
+    @test depth[1, 1, 1] ≈ 0
+
+    dry = device_values(top_dry_column, Center, Center, Center, grid)
+    @test dry[1, 1, 1] == 1
+    @test dry[3, 3, 1] == 0
+
+    inactive = device_values(top_face_inactive_node, Center, Center, Face, grid)
+    top_inactive = device_values(top_face_top_inactive_node, Center, Center, Face, grid)
+
+    # Identical everywhere except the free-surface node, where the column decides.
+    @test inactive[:, :, 1:Nz] == top_inactive[:, :, 1:Nz]
+    @test inactive[3, 3, Nz+1] == 1
+    @test top_inactive[3, 3, Nz+1] == 0
+    @test top_inactive[1, 1, Nz+1] == 1
+
+    η = Field{Center, Center, Face}(grid)
+    U = Field{Face, Center, Face}(grid)
+    w = Field{Center, Center, Face}(grid)
+    set!(η, (x, y, z) -> sin(2π * x))
+    set!(U, (x, y, z) -> sin(2π * x))
+    set!(w, (x, y, z) -> 1)
+    for field in (η, U, w)
+        fill_halo_regions!(field)
+    end
+
+    # The free-surface gradient and the barotropic transport divergence must survive the immersed top.
+    ∂xη = device_values(∂xᵣᶠᶜᶠ, Face, Center, Face, grid, η)
+    δxU = device_values(δxᶜᶜᵃ, Center, Center, Face, grid, U)
+    @test ∂xη[3, 3, Nz+1] ≈ device_values(∂xᵣᶠᶜᶠ, Face, Center, Face, underlying_grid, η)[3, 3, Nz+1]
+    @test δxU[3, 3, Nz] ≈ device_values(δxᶜᶜᵃ, Center, Center, Face, underlying_grid, U)[3, 3, Nz]
+    @test ∂xη[3, 3, Nz+1] != 0
+    @test δxU[3, 3, Nz] != 0
+
+    # δz is still cell-wise, so it must stay zeroed at the immersed top.
+    @test device_values(δzᶜᶜᶜ, Center, Center, Center, grid, w)[3, 3, Nz] == 0
+
+    return nothing
+end
+
+#####
 ##### Main test sets
 #####
 
@@ -620,6 +691,15 @@ end
         for arch in archs, FT in float_types
             @testset "Equality [$FT, $(typeof(arch))]" begin
                 test_immersed_boundary_equality(FT, arch)
+            end
+        end
+    end
+
+    @testset "Free surface at the top of the water column" begin
+        for arch in archs, FT in float_types
+            @info "  Testing free surface column masking [$FT, $(typeof(arch))]..."
+            @testset "Column masking [$FT, $(typeof(arch))]" begin
+                test_free_surface_column_masking(FT, arch)
             end
         end
     end

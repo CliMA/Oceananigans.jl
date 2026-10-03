@@ -4,6 +4,9 @@ using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
     GridFittedBottom,
     PartialCellBottom,
+    GridFittedBottomAndTop,
+    PartialCellBottomAndTop,
+    TopLoad,
     GridFittedBoundary,
     bottom_height_interior,
     compute_mask,
@@ -46,6 +49,26 @@ function reconstruct_global_immersed_boundary(ib::PartialCellBottom, arch, grid)
     return PartialCellBottom(global_bottom_height, ib.minimum_fractional_cell_height)
 end
 
+function reconstruct_global_immersed_boundary(ib::GridFittedBottomAndTop, arch, grid)
+    Nx, Ny, _ = size(grid)
+    global_bottom_height  = construct_global_array(bottom_height_interior(ib.bottom_height), arch, (Nx, Ny, 1))
+    global_top_height     = construct_global_array(bottom_height_interior(ib.top_height), arch, (Nx, Ny, 1))
+    global_top_load       = global_top_load_array(ib.top_load, arch, (Nx, Ny, 1))
+    return GridFittedBottomAndTop(global_bottom_height, global_top_height, global_top_load)
+end
+
+function reconstruct_global_immersed_boundary(ib::PartialCellBottomAndTop, arch, grid)
+    Nx, Ny, _ = size(grid)
+    global_bottom_height  = construct_global_array(bottom_height_interior(ib.bottom_height), arch, (Nx, Ny, 1))
+    global_top_height     = construct_global_array(bottom_height_interior(ib.top_height), arch, (Nx, Ny, 1))
+    global_top_load       = global_top_load_array(ib.top_load, arch, (Nx, Ny, 1))
+    return PartialCellBottomAndTop(global_bottom_height, global_top_height,
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height, global_top_load)
+end
+
+global_top_load_array(::Nothing, arch, global_size) = nothing
+global_top_load_array(top_load, arch, global_size) = construct_global_array(bottom_height_interior(top_load), arch, global_size)
+
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
     global_mask = construct_global_array(ib.mask, arch, size(grid))
     return GridFittedBoundary(global_mask)
@@ -70,13 +93,35 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     local_ug = scatter_local_grids(ug, arch, local_size)
 
     nx, ny, _ = local_size
-    bottom_interior = bottom_height_interior(ib.bottom_height)
-    local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
-    ImmersedBoundaryConstructor = getnamewrapper(ib)
-    local_ib = ImmersedBoundaryConstructor(local_bottom_height)
+    local_ib = partition_immersed_boundary(ib, arch, (nx, ny, 1))
 
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
+
+function partition_immersed_boundary(ib, arch, local_size)
+    local_bottom_height = partition(bottom_height_interior(ib.bottom_height), arch, local_size)
+    ImmersedBoundaryConstructor = getnamewrapper(ib)
+    return ImmersedBoundaryConstructor(local_bottom_height)
+end
+
+function partition_immersed_boundary(ib::GridFittedBottomAndTop, arch, local_size)
+    local_bottom_height  = partition(bottom_height_interior(ib.bottom_height), arch, local_size)
+    local_top_height     = partition(bottom_height_interior(ib.top_height), arch, local_size)
+    local_top_load       = partition_top_load(ib.top_load, arch, local_size)
+    return GridFittedBottomAndTop(local_bottom_height, local_top_height, local_top_load)
+end
+
+function partition_immersed_boundary(ib::PartialCellBottomAndTop, arch, local_size)
+    local_bottom_height  = partition(bottom_height_interior(ib.bottom_height), arch, local_size)
+    local_top_height     = partition(bottom_height_interior(ib.top_height), arch, local_size)
+    local_top_load       = partition_top_load(ib.top_load, arch, local_size)
+    return PartialCellBottomAndTop(local_bottom_height, local_top_height,
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height, local_top_load)
+end
+
+partition_top_load(::Nothing, arch, local_size) = nothing
+partition_top_load(top_load::TopLoad, arch, local_size) = top_load
+partition_top_load(top_load, arch, local_size) = partition(bottom_height_interior(top_load), arch, local_size)
 
 """
     function resize_immersed_boundary!(ib, grid)
@@ -107,22 +152,48 @@ end
 
 function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
 
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    bottom_height_size = (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
-
     # Check that the size of the bottom height is consistent with the grid's halos
-    if any(size(ib.bottom_height) .!= bottom_height_size)
+    if !consistent_height_size(ib.bottom_height, grid)
         @warn "Resizing the bottom height to match the grid's halos"
-        bottom_field = Field{Center, Center, Nothing}(grid)
-        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny, :]
-        set!(bottom_field, cpu_bottom)
-        fill_halo_regions!(bottom_field)
-        return getnamewrapper(ib)(bottom_field.data)
+        return getnamewrapper(ib)(resize_height(ib.bottom_height, grid))
     end
 
     return ib
+end
+
+function resize_immersed_boundary(ib::GridFittedBottomAndTop{<:OffsetArray}, grid)
+    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.top_height, grid)
+    consistent && return ib
+    @warn "Resizing the bottom and top heights to match the grid's halos"
+    return GridFittedBottomAndTop(resize_height(ib.bottom_height, grid), resize_height(ib.top_height, grid),
+                                  resize_top_load(ib.top_load, grid))
+end
+
+function resize_immersed_boundary(ib::PartialCellBottomAndTop{<:OffsetArray}, grid)
+    consistent = consistent_height_size(ib.bottom_height, grid) & consistent_height_size(ib.top_height, grid)
+    consistent && return ib
+    @warn "Resizing the bottom and top heights to match the grid's halos"
+    return PartialCellBottomAndTop(resize_height(ib.bottom_height, grid), resize_height(ib.top_height, grid),
+                                   ib.minimum_fractional_cell_height, ib.minimum_cell_height,
+                             resize_top_load(ib.top_load, grid))
+end
+
+resize_top_load(::Nothing, grid) = nothing
+resize_top_load(top_load, grid) = resize_height(top_load, grid)
+
+function consistent_height_size(height, grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    return size(height) == (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
+end
+
+function resize_height(height, grid)
+    Nx, Ny, _ = size(grid)
+    height_field = Field{Center, Center, Nothing}(grid)
+    cpu_height   = on_architecture(CPU(), height)[1:Nx, 1:Ny, :]
+    set!(height_field, cpu_height)
+    fill_halo_regions!(height_field)
+    return height_field.data
 end
 
 # In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:

@@ -24,7 +24,8 @@ MPI.Init()
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
 using Oceananigans.Fields: AbstractField, interior
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBottomAndTop, PartialCellBottomAndTop,
+                                       GridFittedBoundary, bottom_height_interior
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -588,6 +589,37 @@ end
         @test pcb.immersed_boundary isa PartialCellBottom
         @test size(bottom_height_interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
         @test pcb.immersed_boundary.minimum_fractional_cell_height == 0.3
+
+        local_bottom = on_architecture(child_arch, fill(0.05 + 0.1 * rank, Nx, local_Ny))
+        local_top = on_architecture(child_arch, fill(0.95 - 0.1 * rank, Nx, local_Ny))
+
+        ibg_gfc = ImmersedBoundaryGrid(ug, GridFittedBottomAndTop(local_bottom, local_top))
+        gfc = reconstruct_global_grid(ibg_gfc)
+        gfc_bh = Array(bottom_height_interior(gfc.immersed_boundary.bottom_height))
+        gfc_ch = Array(bottom_height_interior(gfc.immersed_boundary.top_height))
+        @test gfc.immersed_boundary isa GridFittedBottomAndTop
+        @test size(gfc_bh) == size(gfc_ch) == (Nx, Ny, 1)
+        for r in 0:3
+            j_lo = r * local_Ny + 1
+            j_hi = (r + 1) * local_Ny
+            @test all(gfc_bh[:, j_lo:j_hi, 1] .== (0.0, 0.25, 0.25, 0.25)[r + 1])
+            @test all(gfc_ch[:, j_lo:j_hi, 1] .== (1.0, 0.75, 0.75, 0.75)[r + 1])
+        end
+
+        pcc_ib = PartialCellBottomAndTop(local_bottom, local_top; minimum_fractional_cell_height=0.3, minimum_cell_height=0.01)
+        ibg_pcc = ImmersedBoundaryGrid(ug, pcc_ib)
+        pcc = reconstruct_global_grid(ibg_pcc)
+        pcc_bh = Array(bottom_height_interior(pcc.immersed_boundary.bottom_height))
+        pcc_ch = Array(bottom_height_interior(pcc.immersed_boundary.top_height))
+        @test pcc.immersed_boundary isa PartialCellBottomAndTop
+        @test pcc.immersed_boundary.minimum_fractional_cell_height == 0.3
+        @test pcc.immersed_boundary.minimum_cell_height == 0.01
+        for r in 0:3
+            j_lo = r * local_Ny + 1
+            j_hi = (r + 1) * local_Ny
+            @test all(pcc_bh[:, j_lo:j_hi, 1] .≈ 0.05 + 0.1 * r)
+            @test all(pcc_ch[:, j_lo:j_hi, 1] .≈ 0.95 - 0.1 * r)
+        end
 
         # GridFittedBoundary: 3-D mask path
         gfm = reconstruct_global_grid(ibg_gfm)

@@ -1,6 +1,6 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition, bottom_height_field
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, GridFittedBottomAndTop, PartialCellBottom, PartialCellBottomAndTop, TopLoad, ImmersedBoundaryCondition, bottom_height_field
 
 using Printf: @sprintf
 
@@ -34,7 +34,12 @@ include("immersed_grid_metrics.jl")
 include("abstract_grid_fitted_boundary.jl")
 include("grid_fitted_boundary.jl")
 include("grid_fitted_bottom.jl")
+include("grid_fitted_bottom_and_top.jl")
 include("partial_cell_bottom.jl")
+include("partial_cell_bottom_and_top.jl")
+
+const BottomAndTopIBG = Union{GFBTIBG, PCBTIBG}
+
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")

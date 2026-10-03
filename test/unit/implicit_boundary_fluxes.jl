@@ -132,6 +132,12 @@ end
             @test isfinite(implicit_no_closure.cmax)
             @test isapprox(implicit_no_closure.csurf, c★; atol=1e-3)
 
+            # ... and with a tuple of explicit closures, which filters down to `()` rather than `nothing`.
+            explicit_closures = (VerticalScalarDiffusivity(κ=0), HorizontalScalarDiffusivity(κ=0))
+            implicit_explicit_closures = relaxed_column(arch, 100.0, 8; implicit=true, closure=explicit_closures)
+            @test isfinite(implicit_explicit_closures.cmax)
+            @test isapprox(implicit_explicit_closures.csurf, c★; atol=1e-3)
+
             # An implicit-explicit flux BC is only valid on vertical boundaries.
             @test_throws ErrorException HydrostaticFreeSurfaceModel(
                 RectilinearGrid(arch; size=(1, 1, 4), extent=(1, 1, 4), topology=(Bounded, Periodic, Bounded));

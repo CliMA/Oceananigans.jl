@@ -88,6 +88,9 @@ compute_w_from_continuity!(velocities, grid; parameters = surface_kernel_paramet
         w̃ = ifelse(immersed, zero(grid), w̃)
 
         wᵏ -= (δ + w̃)
+
+        # Reset the running integral in immersed cells, so w vanishes inside an immersed top
+        wᵏ = ifelse(immersed, zero(grid), wᵏ)
         @inbounds w[i, j, k] = wᵏ
     end
 end
