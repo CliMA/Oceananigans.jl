@@ -21,7 +21,8 @@ function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     set!(model, T=30, S=35)
     simulation = Simulation(model; Δt, stop_iteration=100, verbose=false)
 
-    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
+    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers;
+                                                             dir = mktempdir(),
                                                              filename = "constant_fields",
                                                              schedule = IterationInterval(10),
                                                              array_type = Array{FT},
@@ -67,15 +68,16 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     # Determine file extension based on output writer type
     file_ext = output_writer == JLD2Writer ? ".jld2" : ".nc"
+    dir = mktempdir()
 
-    filepath3d = "test_3d_output_with_halos" * file_ext
+    filepath3d = joinpath(dir, "test_3d_output_with_halos" * file_ext)
     simulation.output_writers[:writer_3d_with_halos] = output_writer(model, fields_to_output,
                                                                      filename = filepath3d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
                                                                      overwrite_files = true)
 
-    filepath2d = "test_2d_output_with_halos" * file_ext
+    filepath2d = joinpath(dir, "test_2d_output_with_halos" * file_ext)
     # NetCDFWriter does not support non-default indices with `with_halos = true`
     if output_writer == JLD2Writer
         simulation.output_writers[:writer_2d_with_halos] = output_writer(model, fields_to_output,
@@ -88,21 +90,21 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    filepath1d = "test_1d_output_with_halos" * file_ext
+    filepath1d = joinpath(dir, "test_1d_output_with_halos" * file_ext)
     simulation.output_writers[:writer_1d_with_halos] = output_writer(model, profiles,
                                                                      filename = filepath1d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
                                                                      overwrite_files = true)
 
-    unsplit_filepath = "test_unsplit_output" * file_ext
+    unsplit_filepath = joinpath(dir, "test_unsplit_output" * file_ext)
     simulation.output_writers[:unsplit_writer] = output_writer(model, profiles,
                                                                filename = unsplit_filepath,
                                                                with_halos = true,
                                                                schedule = TimeInterval(10seconds),
                                                                overwrite_files = true)
 
-    split_filepath = "test_split_output" * file_ext
+    split_filepath = joinpath(dir, "test_split_output" * file_ext)
     simulation.output_writers[:split_writer] = output_writer(model, profiles,
                                                              filename = split_filepath,
                                                              with_halos = true,
@@ -119,7 +121,7 @@ function test_pickup_with_inaccurate_times()
     # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
     grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
     times = collect(0:0.1:3)
-    filename = "fts_inaccurate_times_test.jld2"
+    filename = joinpath(mktempdir(), "fts_inaccurate_times_test.jld2")
     f_tmp = Field{Center,Center,Center}(grid)
     f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
 
@@ -386,6 +388,8 @@ function test_field_time_series_pickup(arch)
                 @test all(interior(Tfts[t]) .== 30)
                 @test all(interior(Sfts[t]) .== 35)
             end
+
+            rm(dirname(filename); recursive=true)
         end
     end
 
@@ -407,16 +411,19 @@ function test_field_time_series_array_boundary_conditions(arch)
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs, v=v_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
+    dir = mktempdir()
     filename = arch isa GPU ? "test_cuarray_bc.jld2" : "test_array_bc.jld2"
 
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
+                                                  dir,
                                                   filename,
                                                   schedule=IterationInterval(1),
                                                   overwrite_files = true)
     run!(simulation)
 
-    ut = FieldTimeSeries(filename, "u")
-    vt = FieldTimeSeries(filename, "v")
+    filepath = simulation.output_writers[:jld2].filepath
+    ut = FieldTimeSeries(filepath, "u")
+    vt = FieldTimeSeries(filepath, "v")
     @test ut.boundary_conditions.top.classification isa Flux
     @test ut.boundary_conditions.top.condition isa Array
 
@@ -424,7 +431,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     @test τy_ow isa Field{Center, Face, Nothing}
     @test architecture(τy_ow) isa CPU
     @test parent(τy_ow) isa Array
-    rm(filename)
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -438,15 +445,16 @@ function test_field_time_series_function_boundary_conditions(arch)
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
-    filename = "test_function_bc.jld2"
+    dir = mktempdir()
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
-                                                  filename,
+                                                  dir,
+                                                  filename = "test_function_bc.jld2",
                                                   schedule=IterationInterval(1),
                                                   overwrite_files = true)
     run!(simulation)
 
-    @test FieldTimeSeries(filename, "u") isa FieldTimeSeries
-    rm(filename)
+    @test FieldTimeSeries(simulation.output_writers[:jld2].filepath, "u") isa FieldTimeSeries
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -926,9 +934,7 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
             end
         end
 
-        rm(filepath1d)
-        rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
-        rm(filepath3d)
+        rm(dirname(filepath3d); recursive=true)
     end
 
     @testset "FieldTimeSeries reductions with dims" begin
@@ -973,7 +979,7 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
         end
     end
 
-    filepath_sine = "one_dimensional_sine.jld2"
+    filepath_sine = joinpath(mktempdir(), "one_dimensional_sine.jld2")
     @testset "Test interpolation using `InMemory` backend" begin
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
