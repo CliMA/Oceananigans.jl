@@ -166,7 +166,7 @@ validate_partition(::Equal, ::Equal, ::Equal) = throw_multiple_equal()
 throw_multiple_equal() = throw(ArgumentError("Equal() can be used for only one direction"))
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init()
+    MPI.Initialized() || MPI.Init(; threadlevel=:multiple)
     r12 = ranks(r1) * ranks(r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end

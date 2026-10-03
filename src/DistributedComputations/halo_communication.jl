@@ -127,9 +127,9 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers; async
     fill_send_buffers!(c, buffers, grid, Val(:corners))
 
     if async && (arch isa AsynchronousDistributed)
-      async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
+        async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     else
-      sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
+        sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     end
 
     return nothing
@@ -145,9 +145,7 @@ end
 function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     fill_event = record_event(arch)
 
-    async_comms!(fill_event, buffers) do
-        post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
-    end
+    async_comms!(post_corner_requests!, fill_event, buffers, c, connectivity, indices, loc, arch, grid)
 
     return nothing
 end
@@ -161,33 +159,16 @@ function post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffer
     return (requests.southwest, requests.southeast, requests.northwest, requests.northeast)
 end
 
-# Post the MPI requests of `post_requests()`, which returns the requests it used, once `fill_event` is done, without waiting for them
-# to complete; `wait_for_comms!` completes them later. With more than one Julia thread the requests are posted and progressed by a separate task,
-# while with a single thread a separate task would compete with main, so the requests are posted right away by the main thread and completed by
-# `wait_for_comms!`.
-function async_comms!(post_requests, fill_event, buffers)
-    if Threads.nthreads() > 1
+# Post the MPI requests of `post_requests!(args..., buffers)` once `fill_event` is done, without waiting for them to complete.
+# With the progress worker the requests are posted and completed by the worker; otherwise they are posted right away by the
+# main thread and completed by `wait_for_comms!`.
+function async_comms!(post_requests!, fill_event, buffers, args...)
+    if use_progress_worker()
         add_fill_event!(buffers)
-        errormonitor(Threads.@spawn begin
-            sync_event(fill_event)
-            requests = post_requests()
-            progress_comms!(requests)
-            complete_fill_event!(buffers)
-        end)
+        submit_exchange!(HaloExchange(post_requests!, fill_event, buffers, args))
     else
         sync_event(fill_event)
-        post_requests()
-    end
-    return nothing
-end
-
-# Keep testing the requests instead of deferring all progress to `Waitall` (for MPI implementations without asynchronous progress)
-progress_comms!(requests::Tuple) = foreach(progress_comms!, requests)
-progress_comms!(::Nothing) = nothing
-
-function progress_comms!(requests::MPI.UnsafeMultiRequest)
-    while !MPI.Testall(requests)
-        yield()
+        post_requests!(args..., buffers)
     end
     return nothing
 end
@@ -214,9 +195,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     fill_event = record_event(arch)
 
     if async && (arch isa AsynchronousDistributed)
-        async_comms!(fill_event, buffers) do
-            kernel!(c, bcs..., loc, grid, arch, buffers)
-        end
+        async_comms!(kernel!, fill_event, buffers, c, bcs..., loc, grid, arch)
     else
         sync_event(fill_event)
         requests = kernel!(c, bcs..., loc, grid, arch, buffers)
