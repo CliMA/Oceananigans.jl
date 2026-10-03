@@ -297,6 +297,31 @@ for arch in archs
             three_index_kernel_function(i, j, k, grid) = i + j
             op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
             @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            profile_grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(1, 1, 1), halo=(2, 2, 2), topology=(Periodic, Periodic, Bounded))
+            profile = CenterField(profile_grid)
+            set!(profile, 1)
+            surface = view(profile, :, :, 1)
+            add_surface(i, j, k, grid, profile, surface) = profile[i, j, k] + surface[i, j, 1]
+            full_profile = KernelFunctionOperation{Center, Center, Center}(add_surface, profile_grid, profile, surface)
+            @test Oceananigans.Fields.indices(full_profile) == (:, :, :)
+            @test size(interior(Field(full_profile))) == (2, 2, 4)
+            @test all(==(2), interior(Field(full_profile)))
+
+            selected_profile = KernelFunctionOperation{Center, Center, Center}(
+                add_surface, profile_grid, (profile, surface); indices=(:, :, 2:3))
+            @test Oceananigans.Fields.indices(selected_profile) == (:, :, 2:3)
+            selected_field = Field(selected_profile)
+            @test size(interior(selected_field)) == (2, 2, 2)
+            @test all(==(2), interior(selected_field))
+            @test_throws ArgumentError KernelFunctionOperation{Center, Center, Center}(
+                add_surface, profile_grid, profile, surface; indices=(:, :, 1:10))
+            @test KernelFunctionOperation{Center, Center, Nothing}(
+                two_index_kernel_function, profile_grid; indices=(2, 1, 1)).indices == (2:2, 1:1, 1:1)
+            @test eltype(KernelFunctionOperation{Center, Center, Center}(
+                add_surface, profile_grid, (profile, surface), Float32; indices=(:, :, :))) == Float32
+            @test Oceananigans.Fields.indices(on_architecture(CPU(), selected_profile)) == (:, :, 2:3)
+            @test Oceananigans.Fields.indices(Adapt.adapt(Array, selected_profile)) == (:, :, 2:3)
         end
 
         @testset "InterpolatedOperations [$A]" begin

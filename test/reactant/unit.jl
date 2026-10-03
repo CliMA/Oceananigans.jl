@@ -208,6 +208,12 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum_xspacing(grid) ≈ minimum(xspacings(grid))
         @test minimum_yspacing(grid) ≈ minimum(yspacings(grid))
         @test minimum_zspacing(grid) ≈ minimum(zspacings(grid))
+
+        return_vertical_index(i, j, k, grid) = k
+        windowed_kfo = KernelFunctionOperation{Center, Center, Center}(
+            return_vertical_index, grid; indices=(:, :, 2:3))
+        @test @jit minimum(windowed_kfo) == 2
+        @test @jit maximum(windowed_kfo) == 3
     end
 
     @testset "KernelFunctionOperation reductions on RectilinearGrid" begin
