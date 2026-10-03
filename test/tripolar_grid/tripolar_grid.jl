@@ -3,11 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
 using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.Utils: KernelParameters, contiguousrange
+using Oceananigans.Utils: KernelParameters
 using Statistics
-
-Oceananigans.Utils.contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} =
-    contiguousrange(spec, offset)
 
 fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
 
@@ -121,29 +118,24 @@ end
         @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
             grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology, pivot)
 
-            # Wrong free surface
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
+            # A serial fold is applied by the topology-aware operators rather than substepped into, so the
+            # default CFL-based free surface, whose substep count follows Δt, is now supported here.
+            @test HydrostaticFreeSurfaceModel(grid) isa HydrostaticFreeSurfaceModel
 
             free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
             model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
-            # Tests the grid has been extended
             η = model.free_surface.displacement
-            P = model.free_surface.kernel_parameters
-
-            range = contiguousrange(P)
-
-            # Should have extended halos in the north
             Hx, Hy, _ = halo_size(η.grid)
             Nx, Ny, _ = size(grid)
 
-            @test P isa KernelParameters
-            @test range[1] == 1:Nx
-            @test range[2] == 1:Ny+Hy-1
-
+            # The halos are not extended: the fold is an index transformation, not a halo to substep into.
             @test Hx == halo_size(grid, 1)
-            @test Hy != halo_size(grid, 2)
-            @test Hy == length(free_surface.substepping.averaging_weights) + 2
+            @test Hy == halo_size(grid, 2)
+
+            # A face-pivot fold lies on the y-face row Ny + 1, which belongs to the domain and is computed.
+            expected_kernel_parameters = fold_topology === RightFaceFolded ? KernelParameters(1:Nx, 1:Ny+1) : Val(:xy)
+            @test model.free_surface.kernel_parameters == expected_kernel_parameters
 
             @test begin
                 time_step!(model, 1.0)

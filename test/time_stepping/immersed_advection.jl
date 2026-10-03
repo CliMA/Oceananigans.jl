@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
 using Oceananigans.Advection:
+        GhostCells,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -143,6 +144,24 @@ for arch in archs
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)
             end
+        end
+    end
+
+    @testset "GhostCells boundary reconstruction" begin
+        @info "Running GhostCells boundary reconstruction tests..."
+
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+
+        c = CenterField(ibg)
+        set!(c, 1)
+        mask_immersed_field!(c)
+        fill_halo_regions!(c)
+
+        weno = materialize_advection(WENO(order=7; boundary_scheme=GhostCells()), ibg)
+        for j in 6:19, i in 6:19
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, weno, LeftBias,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, weno, RightBias, c) ≈ 1.0
         end
     end
 
