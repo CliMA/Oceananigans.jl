@@ -56,17 +56,16 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
 end
 
 @testset "Float32 WENO weights beside a large jump" begin
-    # A flat sub-stencil beside a jump of 3e5: τ / (β + ϵ) ≈ 3e19, whose square overflows Float32
-    for order in (5, 7, 9)
+    # A flat sub-stencil beside a jump of 3e5 gives τ / (β + ϵ) ≈ 3e19, whose square overflows Float32; 1e15 gives ≈ 1e38
+    for order in (5, 7, 9), jump in (3f5, 1f15)
         buffer = Int((order + 1) ÷ 2)
-        S = ntuple(i -> i < buffer + 1 ? 0f0 : 3f5 * (i - buffer), 2buffer - 1)
+        S = ntuple(i -> i < buffer + 1 ? 0f0 : jump * (i - buffer), 2buffer - 1)
         δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
 
         for weight_computation in (Oceananigans.Utils.NormalDivision,
                                    Oceananigans.Utils.BackendOptimizedDivision)
             ω = biased_weno_weights(δ, nothing, WENO(Float32; order, weight_computation))
-            reference = biased_weno_weights(Float64.(δ), nothing,
-                                            WENO(Float64; order, weight_computation))
+            reference = Float32.(biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order, weight_computation)))
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
