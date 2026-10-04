@@ -173,4 +173,58 @@ function fast_inv_cuda(a::Float32)
     return inv_a
 end
 
+#####
+##### Kernel launches recorded in a CUDA graph and replayed
+#####
+
+struct CapturedLaunches{L, A, S}
+    launches! :: L
+    arguments :: A
+    executable :: CUDA.CuGraphExec
+    step :: S
+end
+
+const captured_launches = CapturedLaunches[]
+const captured_launches_lock = ReentrantLock()
+const MAXIMUM_CAPTURED_LAUNCHES = 32
+
+function UT.launch_captured!(launches!, ::CUDAGPU, step_values, arguments...)
+    UT.capture_launches[] || return launches!(step_values, arguments...)
+
+    captured = Base.@lock captured_launches_lock begin
+        index = findfirst(captured_launches) do c
+            c.launches! === launches! && c.arguments === arguments && eltype(c.step) === typeof(step_values)
+        end
+        isnothing(index) ? nothing : captured_launches[index]
+    end
+
+    if isnothing(captured)
+        captured = capture_launches(launches!, step_values, arguments)
+        Base.@lock captured_launches_lock begin
+            push!(captured_launches, captured)
+            length(captured_launches) > MAXIMUM_CAPTURED_LAUNCHES && popfirst!(captured_launches)
+        end
+    else
+        fill!(captured.step, step_values)
+        CUDA.launch(captured.executable)
+    end
+
+    return nothing
+end
+
+function capture_launches(launches!, step_values, arguments)
+    step = CuArray{typeof(step_values)}(undef, 1)
+    fill!(step, step_values)
+
+    names = keys(step_values)
+    device_step = NamedTuple{names}(map(name -> UT.StepValue{name}(CUDA.cudaconvert(step)), names))
+    launch!() = launches!(device_step, arguments...)
+
+    # the uncaptured launch advances this call and compiles the kernels before capture
+    launch!()
+    executable = CUDA.instantiate(CUDA.capture(launch!))
+
+    return CapturedLaunches(launches!, arguments, executable, step)
+end
+
 end # module OceananigansCUDAExt
