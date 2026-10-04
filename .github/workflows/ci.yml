@@ -50,11 +50,22 @@ jobs:
             using Pkg
             Pkg.instantiate()
           '
+      - name: Install earlyoom
+        shell: bash
+        run: |
+          sudo apt-get install -y earlyoom
+      - name: Start earlyoom
+        id: earlyoom
+        run: |
+          earlyoom -m 2 -s 100 -r 60 --prefer 'julia'
+        background: true
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: --verbose --quickfail
         env:
           TEST_GROUP: "distributed/tripolar,distributed/output_combining"
+      - name: Stop earlyoom
+        cancel: earlyoom
       - uses: julia-actions/julia-processcoverage@v1
         with:
           # default is src,ext — include others if you need them
@@ -113,17 +124,16 @@ jobs:
             using Pkg
             Pkg.instantiate()
           '
-      - name: Run tests
-        shell: bash
+      - name: Start earlyoom
+        id: earlyoom
         run: |
-          earlyoom -m 2 -s 100 -r 60 --prefer 'julia' &
-          julia --project --color=yes --check-bounds=auto -e '
-            using Pkg
-            Pkg.test(; coverage=true,
-                       julia_args=["--check-bounds=auto", "-O0", "--color=yes"],
-                       test_args=["--verbose", " --quickfail"],
-                       force_latest_compatible_version=false,
-                       allow_reresolve=true)'
+          earlyoom -m 2 -s 100 -r 60 --prefer 'julia'
+        background: true
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: "auto"
+          optimize: "0"
+          test_args: --verbose --quickfail
         env:
           TEST_GROUP: "makie,reactant,sharding"
           JULIA_DEBUG: "Reactant, Reactant_jll"
@@ -131,6 +141,8 @@ jobs:
           REACTANT_TEST: true
           XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
 
+      - name: Stop earlyoom
+        cancel: earlyoom
       - name: Upload XLA dump
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         timeout-minutes: 10
