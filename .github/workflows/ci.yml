@@ -39,7 +39,7 @@ jobs:
             julia_version: '1.13'
             julia_arch: 'default'
             os: 'ubuntu-latest'
-            test_group: 'distributed/tripolar,distributed/output_combining'
+            test_group: 'makie,reactant,sharding'
             check_bounds: 'auto'
           - label: 'Metal'
             julia_version: '1.13'
