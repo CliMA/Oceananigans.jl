@@ -135,6 +135,11 @@ end
 @inline _ivd_upper_diagonal(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline _ivd_lower_diagonal(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
+# `vertically_implicit_closures` filters an all-explicit closure tuple down to `()`, not `nothing`.
+@inline _implicit_linear_coefficient(i, j, k, grid, ::Tuple{}, args...) = zero(grid)
+@inline _ivd_upper_diagonal(i, j, k, grid, ::Tuple{}, args...) = zero(grid)
+@inline _ivd_lower_diagonal(i, j, k, grid, ::Tuple{}, args...) = zero(grid)
+
 #####
 ##### Implicit-explicit flux boundary conditions: the linear flux coefficient λ is embedded in the
 ##### boundary-cell diagonal (top: k = Nz, bottom: k = 1).
