@@ -143,12 +143,10 @@ function run_reference_iterates_test(grid)
     return nothing
 end
 
-@testset "ConjugateGradientSolver [$(summary(arch))]]" begin
-    for arch in archs
-        grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
-        run_identity_operator_test(grid)
-        run_poisson_equation_test(grid)
-        run_operator_count_test(grid)
-        run_reference_iterates_test(grid)
-    end
+@testset "ConjugateGradientSolver [$(summary(arch))]]" for arch in archs
+    grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
+    run_identity_operator_test(grid)
+    run_poisson_equation_test(grid)
+    run_operator_count_test(grid)
+    run_reference_iterates_test(grid)
 end
