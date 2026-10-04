@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation,
-                              InterpolatedFieldTarget, FlowDependentRelaxation, MaterializedRelaxationTarget
+                              InterpolatedFieldTarget, InflowOutflowRelaxation, MaterializedRelaxationTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -566,18 +566,18 @@ end
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
             end
 
-            @testset "Relaxation with FlowDependentRate [$A]" begin
-                @info "      Testing Relaxation with FlowDependentRate [$A]..."
+            @testset "Relaxation with InflowOutflowRate [$A]" begin
+                @info "      Testing Relaxation with InflowOutflowRate [$A]..."
 
                 grid = RectilinearGrid(arch, size=(4, 4, 1), extent=(4, 4, 1), topology=(Bounded, Bounded, Bounded))
                 c_ref = 5
                 west_edge, east_edge = extrema(xnodes(grid, Center(), Center(), Center()))
 
-                # Spatial shaping is `mask`'s job, same as any other `Relaxation`; `FlowDependentRate`
-                # only chooses between `rate_in` and `rate_out`. One `Relaxation` per sponged edge.
-                west_relaxation = Relaxation(rate=FlowDependentRate{:west}(rate_in=1/60, rate_out=1/6000),
+                # Spatial shaping is `mask`'s job, same as any other `Relaxation`; `InflowOutflowRate`
+                # only chooses between `inflow_rate` and `outflow_rate`. One `Relaxation` per sponged edge.
+                west_relaxation = Relaxation(rate=InflowOutflowRate{:west}(inflow_rate=1/60, outflow_rate=1/6000),
                                               mask=GaussianMask{:x}(center=west_edge, width=0.3), target=c_ref)
-                east_relaxation = Relaxation(rate=FlowDependentRate{:east}(rate_in=1/60, rate_out=1/6000),
+                east_relaxation = Relaxation(rate=InflowOutflowRate{:east}(inflow_rate=1/60, outflow_rate=1/6000),
                                               mask=GaussianMask{:x}(center=east_edge, width=0.3), target=c_ref)
                 model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=(west_relaxation, east_relaxation),))
 
@@ -585,11 +585,11 @@ end
                 # and wires in the field index + location directly.
                 rm = model.forcing.c
                 @test rm isa MultipleForcings
-                @test all(f isa FlowDependentRelaxation for f in rm.forcings)
+                @test all(f isa InflowOutflowRelaxation for f in rm.forcings)
                 @test all(f.target isa MaterializedRelaxationTarget for f in rm.forcings)
 
-                # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ rate_in),
-                # east edge sees outflow (u_n < 0 is false ⇒ rate_out).
+                # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ inflow_rate),
+                # east edge sees outflow (u_n < 0 is false ⇒ outflow_rate).
                 # enforce_incompressibility=false: the pressure correction otherwise
                 # drives this uniform flow back to zero against the default open
                 # boundary condition on u.
