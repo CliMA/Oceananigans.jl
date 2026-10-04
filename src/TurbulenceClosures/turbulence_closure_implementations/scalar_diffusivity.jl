@@ -9,8 +9,8 @@ end
 """
     ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
                       formulation = ThreeDimensionalFormulation(), FT = Float64;
-                      ν = 0,
-                      κ = 0,
+                      ν = nothing,
+                      κ = nothing,
                       discrete_form = false,
                       loc = (nothing, nothing, nothing),
                       parameters = nothing)
@@ -115,7 +115,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(),
                            FT=Oceananigans.defaults.FloatType;
-                           ν=0, κ=0,
+                           ν=nothing, κ=nothing,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
@@ -228,12 +228,10 @@ end
 ##### No viscosity or no tracer diffusivity
 #####
 
-# With `ν = nothing` (`κ = nothing`) the closure acts on tracers (momentum) only. Skipping the fluxes, rather than
-# multiplying the stencil by a zero coefficient, removes that stencil from every tendency kernel.
-const NoViscosityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation,       <:Any, Nothing}
-const NoViscosityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,              <:Any, Nothing}
-const NoViscosityDD = ScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation,    <:Any, Nothing}
-const NoViscosityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,                <:Any, Nothing}
+const NoViscosityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation,     <:Any, Nothing}
+const NoViscosityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,           <:Any, Nothing}
+const NoViscosityDD = ScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation, <:Any, Nothing}
+const NoViscosityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,             <:Any, Nothing}
 
 const NoTracerDiffusivityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
 const NoTracerDiffusivityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,       <:Any, <:Any, Nothing}
