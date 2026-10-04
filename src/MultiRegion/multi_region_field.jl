@@ -114,7 +114,7 @@ Base.fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 Fields.set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
 Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
-Fields.set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+Fields.set!(mrf::MultiRegionField, f::Function, args...) = apply_regionally!(set!, mrf, f)
 Fields.set!(mrf::MultiRegionField, a::Union{Array, OffsetArray}) = apply_regionally!(set!, mrf, a)
 Fields.set!(mrf::MultiRegionField, v::Field) = apply_regionally!(set!, mrf, v)
 Fields.set!(mrf::MultiRegionField, z::ZeroField) = apply_regionally!(set!, mrf, z)
