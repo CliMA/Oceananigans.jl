@@ -645,7 +645,7 @@ end
 
             # The in-place counterparts used by ConjugateGradientSolver also reduce across ranks
             r = zeros(grid, 1)
-            @test @allowscalar(dot!(r, c, c)[1]) == (1^2 + 2^2 + 3^2 + 4^2) * N
+            @test Array(dot!(r, c, c))[1] == (1^2 + 2^2 + 3^2 + 4^2) * N
 
             gauge = ZeroMeanGaugeCondition(grid)
             @test gauge.number_of_active_cells == Ntot

@@ -1326,7 +1326,7 @@ end
             r = zeros(grid, 1)
             fill!(r, 7)
             @test dot!(r, a, b) === r
-            @test @allowscalar(r[1]) == 2 * 3 * 64
+            @test Array(r)[1] == 2 * 3 * 64
             @test dot(a, b) == 2 * 3 * 64
 
             # Immersed cells, here the bottom half of the domain, are excluded
@@ -1335,13 +1335,13 @@ end
             d = CenterField(immersed_grid)
             set!(c, 2)
             set!(d, 3)
-            @test @allowscalar(dot!(r, c, d)[1]) == 2 * 3 * 32
+            @test Array(dot!(r, c, d))[1] == 2 * 3 * 32
             @test dot(c, d) == 2 * 3 * 32
 
             # A windowed field, like the free surface displacement at the top face
             η = ZFaceField(grid, indices=(:, :, grid.Nz+1))
             set!(η, 5)
-            @test @allowscalar(dot!(r, η, η)[1]) == 5 * 5 * 16
+            @test Array(dot!(r, η, η))[1] == 5 * 5 * 16
             @test dot(η, η) == 5 * 5 * 16
         end
     end
