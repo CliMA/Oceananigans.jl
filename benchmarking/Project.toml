@@ -20,7 +20,7 @@ MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 
 [sources]
-Oceananigans = {path = ".."}
+Oceananigans = {rev = "ml/zweno-float32-overflow", url = "https://github.com/masonlee277/Oceananigans.jl.git"}
 
 [compat]
 ArgParse = "1"
