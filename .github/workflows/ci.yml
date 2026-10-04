@@ -125,5 +125,5 @@ jobs:
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          flags: distributed_tripolar   # optional but strongly recommended
+          flags: "${{ matrix.test_group }}"    # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
