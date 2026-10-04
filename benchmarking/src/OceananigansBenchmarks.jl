@@ -24,7 +24,7 @@ using Printf
 using Statistics
 
 using Oceananigans
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, child_architecture
 using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!

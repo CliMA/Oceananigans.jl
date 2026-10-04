@@ -153,7 +153,7 @@ function parse_commandline()
         "--samples"
             help = "Number of timing windows of `time_steps` steps each; the minimum is reported (benchmark mode only)"
             arg_type = Int
-            default = 5
+            default = 1
 
         "--dt"
             help = "Time step size in seconds"
@@ -295,13 +295,13 @@ end
 
 function make_closure(name, FT)
     name == "nothing" && return nothing
-    name == "CATKE" && return CATKEVerticalDiffusivity()
+    name == "CATKE" && return CATKEVerticalDiffusivity(FT)
     name == "SmagorinskyLilly" && return SmagorinskyLilly(FT)
-    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                          HorizontalScalarBiharmonicDiffusivity(ν=1e12))
-    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                              IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
-                                              HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                          HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
+    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                              IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
+                                              HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
@@ -435,6 +435,10 @@ function run_benchmarks(args)
             "Nonhydrostatic_$(pressure_solver)_$(size_str)_$(ft_str)_WENO5"
         else
             "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
+        end
+
+        if distributed_enabled
+            name *= "_" * join(partition_ranks, "x") * "ranks"
         end
 
         @root begin

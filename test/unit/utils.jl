@@ -1,10 +1,18 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Utils: TabulatedFunction
+using Oceananigans.Utils: TabulatedFunction, foreach_name
+
+record_name!(visited, ::Val{n}, ::Val{name}) where {n, name} = push!(visited, (n, name))
+
+function add_name_index!(counts, weights, ::Val{n}, ::Val{name}) where {n, name}
+    counts[n] += weights[name]
+    return nothing
+end
+
+foreach_name_allocations(counts, weights, names) =
+    @allocated foreach_name((n, name) -> add_name_index!(counts, weights, n, name), names)
 
 @testset "Utils" begin
-    @info "Testing utils..."
-
     @testset "prettytime" begin
         @test prettytime(0) == "0 seconds"
         @test prettytime(35e-15) == "3.500e-14 seconds"
@@ -41,9 +49,40 @@ using Oceananigans.Utils: TabulatedFunction
         @test contains(prettysummary(x -> x, true), r"^#\d+ \(generic function with 1 method\)$")
     end
 
+    @testset "foreach_name" begin
+        visited = Tuple{Int, Symbol}[]
+        foreach_name((n, name) -> record_name!(visited, n, name), Val((:a, :b, :c, :d)))
+        @test visited == [(1, :a), (2, :b), (3, :c), (4, :d)]
+
+        empty!(visited)
+        @test foreach_name((n, name) -> record_name!(visited, n, name), Val(())) === nothing
+        @test isempty(visited)
+
+        # Four names: a recursion over `Val`-wrapped names is widened from its third level on
+        names   = Val((:a, :b, :c, :d))
+        counts  = zeros(Int, 4)
+        weights = (a=1, b=2, c=3, d=4)
+        foreach_name_allocations(counts, weights, names)
+        @test foreach_name_allocations(counts, weights, names) == 0
+        @test counts == 2 .* [1, 2, 3, 4]
+
+        # A `NamedTuple` is iterated over its property names
+        empty!(visited)
+        @test foreach_name((n, name) -> record_name!(visited, n, name), (a=1, b=2, c=3, d=4)) === nothing
+        @test visited == [(1, :a), (2, :b), (3, :c), (4, :d)]
+
+        empty!(visited)
+        @test foreach_name((n, name) -> record_name!(visited, n, name), NamedTuple()) === nothing
+        @test isempty(visited)
+
+        counts .= 0
+        foreach_name_allocations(counts, weights, weights)
+        @test foreach_name_allocations(counts, weights, weights) == 0
+        @test counts == 2 .* [1, 2, 3, 4]
+    end
+
     @testset "TabulatedFunction" begin
         GC.gc()
-        @info "  Testing TabulatedFunction..."
 
         #####
         ##### 1D TabulatedFunction

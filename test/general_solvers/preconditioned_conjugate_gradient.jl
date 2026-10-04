@@ -143,9 +143,8 @@ function run_reference_iterates_test(grid)
     return nothing
 end
 
-@testset "ConjugateGradientSolver" begin
+@testset "ConjugateGradientSolver [$(summary(arch))]]" begin
     for arch in archs
-        @info "Testing ConjugateGradientSolver [$(typeof(arch))]..."
         grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)

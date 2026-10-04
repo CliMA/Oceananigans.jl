@@ -17,6 +17,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 
 [sources]
 Oceananigans = {path = ".."}
@@ -35,3 +36,4 @@ Statistics = "<0.0.1, 1"
 Zarr = "0.10"
 julia = "1.10"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
+MPIPreferences = "0.1"
