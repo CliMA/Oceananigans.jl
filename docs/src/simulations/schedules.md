@@ -166,6 +166,20 @@ add_callback!(simulation, dummy, schedule, name=:dummy)
 run!(simulation)
 ```
 
+The `offset` may also be a [`TimeStepProportionalPeriod`](@ref Oceananigans.Utils.TimeStepProportionalPeriod),
+which lasts a number of time steps and follows the time step when it changes. It is converted into time from
+the most recent time step that did not end on an actuation of the schedule. Here the extra actuation happens
+two time steps before each actuation of the parent:
+
+```@example schedules
+Oceananigans.Simulations.reset!(simulation)
+simulation.stop_time = 2.5
+
+schedule = TimeOffset(TimeInterval(1), -TimeStepProportionalPeriod(2))
+add_callback!(simulation, dummy, schedule, name=:dummy)
+run!(simulation)
+```
+
 ### `AndSchedule` and `OrSchedule`
 
 Use [`AndSchedule`](@ref Oceananigans.OutputWriters.AndSchedule) when an action should fire only if _every_ child

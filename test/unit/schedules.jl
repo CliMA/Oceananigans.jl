@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations, TimeOffset
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations, TimeOffset,
+                          PrecedingIterations, TimeStepProportionalPeriod
 using Oceananigans.Utils: schedule_aligned_time_step, next_actuation_time
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -114,6 +115,13 @@ using Dates: Second, Minute
     @test ti_or_ii(fake_model_at_time_4) # triggers TimeInterval but not IterationInterval
     @test !(ti_or_ii(fake_model_at_time_5))
 
+    restored_ti_or_ii = OrSchedule(TimeInterval(2), IterationInterval(3))
+    restore_prognostic_state!(restored_ti_or_ii, prognostic_state(ti_or_ii))
+    @test restored_ti_or_ii.schedules[1].actuations == ti_or_ii.schedules[1].actuations
+    @test isnothing(restore_prognostic_state!(restored_ti_or_ii, nothing))
+    @test summary(ti_or_ii) == "OrSchedule(TimeInterval(2 seconds), IterationInterval(3))"
+    @test summary(ti_and_ii) == "AndSchedule(TimeInterval(2 seconds), IterationInterval(3))"
+
     ii_plus_one = ConsecutiveIterations(IterationInterval(3))
     @test !(ii_plus_one(fake_model_at_iter_2))
     @test ii_plus_one(fake_model_at_iter_3)
@@ -124,6 +132,17 @@ using Dates: Second, Minute
     @test ti_plus_one(fake_model_at_time_2) # and iter 3
     @test ti_plus_one(fake_model_at_iter_4)
     @test !(ti_plus_one(fake_model_at_iter_5))
+
+    # PrecedingIterations anticipates iteration schedules, and actuates every iteration otherwise
+    ii_minus_one = PrecedingIterations(IterationInterval(3))
+    @test !(ii_minus_one((; clock=Clock(time=0.0, iteration=1))))
+    @test ii_minus_one(fake_model_at_iter_2)
+    @test ii_minus_one(fake_model_at_iter_3)
+    @test summary(ii_minus_one) == "PrecedingIterations(IterationInterval(3))"
+
+    ti_minus_one = PrecedingIterations(TimeInterval(2))
+    @test initialize!(ti_minus_one, fake_model_at_iter_0)
+    @test ti_minus_one((; clock=Clock(time=0.5, iteration=1)))
 
     # TimeOffset with a positive offset: actuates with the parent and again `offset` later
     ii_then_later = TimeOffset(IterationInterval(3), 0.5)
@@ -210,6 +229,48 @@ using Dates: Second, Minute
     @test summary(minute_and_before) == "TimeOffset(TimeInterval(1 minute), -10 seconds)"
     @test_throws ArgumentError initialize!(TimeOffset(TimeInterval(Minute(1)), -10), datetime_model(0))
 
+    # TimeStepProportionalPeriod
+    @test summary(-TimeStepProportionalPeriod(2)) == "TimeStepProportionalPeriod(-2)"
+    @test_throws ArgumentError TimeStepProportionalPeriod(0)
+    @test_throws ArgumentError TimeStepProportionalPeriod(Inf)
+
+    # A time step proportional offset is resolved from steps that do not end on an actuation
+    ti_and_two_steps_before = TimeOffset(TimeInterval(1), -TimeStepProportionalPeriod(2))
+    @test initialize!(ti_and_two_steps_before, fake_model_at_iter_0)
+    @test 1 ≈ schedule_aligned_time_step(ti_and_two_steps_before, fake_model_at_iter_0.clock, Inf) # no step recorded yet
+    @test !(ti_and_two_steps_before((; clock=Clock(time=0.3, iteration=1, last_Δt=0.3))))
+    @test 0.1 ≈ schedule_aligned_time_step(ti_and_two_steps_before, Clock(time=0.3, iteration=1), Inf)
+    @test ti_and_two_steps_before((; clock=Clock(time=0.4, iteration=2, last_Δt=0.1))) # offset actuation at t = 1 - 2 × 0.3
+    @test ti_and_two_steps_before.time_step == 0.3
+    @test !(ti_and_two_steps_before((; clock=Clock(time=0.7, iteration=3, last_Δt=0.3))))
+    @test 0.3 ≈ schedule_aligned_time_step(ti_and_two_steps_before, Clock(time=0.7, iteration=3), Inf) # aligned with the parent
+    @test ti_and_two_steps_before((; clock=Clock(time=1.0, iteration=4, last_Δt=0.3))) # parent actuation
+    @test 0.4 ≈ schedule_aligned_time_step(ti_and_two_steps_before, Clock(time=1.0, iteration=4), Inf)
+    @test summary(ti_and_two_steps_before) == "TimeOffset(TimeInterval(1 second), -TimeStepProportionalPeriod(2))"
+
+    restored_ti_and_two_steps_before = TimeOffset(TimeInterval(1), -TimeStepProportionalPeriod(2))
+    restore_prognostic_state!(restored_ti_and_two_steps_before, prognostic_state(ti_and_two_steps_before))
+    @test restored_ti_and_two_steps_before.time_step == ti_and_two_steps_before.time_step
+
+    # Checkpoints written before the time step was stored leave it unchanged
+    state_without_time_step = (parent = prognostic_state(TimeInterval(1)), parent_actuation_time = 0.0, offset_actuated = false)
+    restore_prognostic_state!(restored_ti_and_two_steps_before, state_without_time_step)
+    @test restored_ti_and_two_steps_before.time_step == ti_and_two_steps_before.time_step
+
+    # The extra actuation is skipped when it would reach back past the previous parent actuation
+    ti_and_long_before = TimeOffset(TimeInterval(1), -TimeStepProportionalPeriod(2))
+    @test initialize!(ti_and_long_before, fake_model_at_iter_0)
+    @test !(ti_and_long_before((; clock=Clock(time=0.6, iteration=1, last_Δt=0.6))))
+    @test 0.4 ≈ schedule_aligned_time_step(ti_and_long_before, Clock(time=0.6, iteration=1), Inf)
+    @test ti_and_long_before((; clock=Clock(time=1.0, iteration=2, last_Δt=0.4))) # parent actuation
+    @test !(ti_and_long_before((; clock=Clock(time=1.6, iteration=3, last_Δt=0.6))))
+
+    minute_and_two_steps_before = TimeOffset(TimeInterval(Minute(1)), -TimeStepProportionalPeriod(2))
+    @test initialize!(minute_and_two_steps_before, datetime_model(0))
+    @test !(minute_and_two_steps_before((; clock=Clock(time=start_time + Second(10), iteration=1, last_Δt=10.0))))
+    @test 30 ≈ schedule_aligned_time_step(minute_and_two_steps_before, datetime_model(10).clock, Inf)
+    @test minute_and_two_steps_before((; clock=Clock(time=start_time + Second(40), iteration=2, last_Δt=30.0)))
+
     # WallTimeInterval
     wti = WallTimeInterval(1e-9)
 
@@ -244,10 +305,13 @@ end
 @testset "TimeOffset time step alignment" begin
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-    for (offset, expected_times) in [(-0.2, [0.0, 0.8, 1.0, 1.8, 2.0]),
-                                     (+0.3, [0.0, 0.3, 1.0, 1.3, 2.0])]
+    for (Δt, offset, expected_times) in [(0.3, -0.2, [0.0, 0.8, 1.0, 1.8, 2.0]),
+                                         (0.3, +0.3, [0.0, 0.3, 1.0, 1.3, 2.0]),
+                                         (0.3, -TimeStepProportionalPeriod(2), [0.0, 0.4, 1.0, 1.4, 2.0]),
+                                         (0.3, TimeStepProportionalPeriod(2), [0.0, 0.6, 1.0, 1.6, 2.0]),
+                                         (0.6, -TimeStepProportionalPeriod(2), [0.0, 1.0, 2.0])]
         model = NonhydrostaticModel(grid)
-        simulation = Simulation(model; Δt=0.3, stop_time=2, verbose=false)
+        simulation = Simulation(model; Δt, stop_time=2, verbose=false)
 
         actuation_times = Float64[]
         record_time(sim) = push!(actuation_times, time(sim))

@@ -350,43 +350,32 @@ restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 ##### PrecedingIterations
 #####
 
-struct PrecedingIterations{S, FT} <: AbstractSchedule
+struct PrecedingIterations{S} <: AbstractSchedule
     parent :: S
-    expected_max_time_step_growth :: FT
 end
 
 """
-    PrecedingIterations(parent_schedule; expected_max_time_step_growth=1.2)
+    PrecedingIterations(parent_schedule)
 
 Return a `schedule::PrecedingIterations` that actuates both when `parent_schedule` actuates,
 and at the iteration immediately preceding the actuation of `parent_schedule`. This is the
 mirror of [`ConsecutiveIterations`](@ref), and can be used to evaluate a quantity at the two
 times needed to difference it across one time step, without evaluating it every iteration.
 
-Anticipating the next actuation is only possible for schedules that report a
-`next_actuation_time` or a next actuation iteration. For any other `parent_schedule` this
-schedule actuates every iteration, which costs extra evaluations but never misses one.
+The preceding iteration is only known in advance when `parent_schedule` actuates on iterations,
+as `IterationInterval` does. For any other `parent_schedule` this schedule actuates every iteration,
+which costs extra evaluations but never misses one. To actuate shortly before a schedule that
+actuates on time, such as `TimeInterval`, use a [`TimeOffset`](@ref) with a
+[`TimeStepProportionalPeriod`](@ref) offset instead.
 
 `parent_schedule` is copied, because actuating a schedule advances it: sharing one with an
 output writer would consume the writer's actuation before it fires.
-
-For a time-based `parent_schedule`, the next actuation is anticipated by assuming that the
-time step grows by at most a factor `expected_max_time_step_growth` in one iteration:
-`TimeStepWizard` limits this growth to `max_change`, which defaults to `1.1`, and the default
-`expected_max_time_step_growth = 1.2` exceeds it with margin for the floating point comparison.
-A larger value only costs extra actuations, whereas one that is too small widens the interval
-a difference is taken over.
 """
-function PrecedingIterations(parent_schedule::AbstractSchedule; expected_max_time_step_growth = 1.2)
-    S = typeof(parent_schedule)
-    FT = typeof(expected_max_time_step_growth)
-    return PrecedingIterations{S, FT}(deepcopy(parent_schedule), expected_max_time_step_growth)
-end
+PrecedingIterations(parent_schedule::AbstractSchedule) =
+    PrecedingIterations{typeof(parent_schedule)}(deepcopy(parent_schedule))
 
-function (schedule::PrecedingIterations)(model)
-    schedule.parent(model) && return true
-    return actuates_next_iteration(schedule.parent, model.clock, schedule.expected_max_time_step_growth)
-end
+(schedule::PrecedingIterations)(model) =
+    schedule.parent(model) || actuates_next_iteration(schedule.parent, model.clock)
 
 # Delegate so that the copied parent is initialized exactly as the schedule it was copied
 # from, and the two stay in step
@@ -395,17 +384,10 @@ initialize!(schedule::PrecedingIterations, model) = initialize!(schedule.parent,
 # Actuating more often than necessary is harmless, while missing the iteration before the
 # parent actuates silently widens the interval a difference is taken over. Schedules whose
 # next actuation cannot be anticipated therefore fall back to actuating every iteration.
-actuates_next_iteration(schedule, clock, expected_max_time_step_growth) = true
+actuates_next_iteration(schedule, clock) = true
 
-actuates_next_iteration(schedule::IterationInterval, clock, expected_max_time_step_growth) =
+actuates_next_iteration(schedule::IterationInterval, clock) =
     (clock.iteration + 1 - schedule.offset) % schedule.interval == 0
-
-function actuates_next_iteration(schedule::Union{TimeInterval, SpecifiedTimes}, clock, expected_max_time_step_growth)
-    t★ = next_actuation_time(schedule)
-    t★ === Inf && return false
-
-    return time_difference_seconds(t★, clock.time) <= expected_max_time_step_growth * clock.last_Δt
-end
 
 schedule_aligned_time_step(schedule::PrecedingIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
@@ -422,14 +404,56 @@ restore_prognostic_state!(::PrecedingIterations, ::Nothing) = nothing
 Base.summary(schedule::PrecedingIterations) = string("PrecedingIterations(", summary(schedule.parent), ")")
 
 #####
+##### TimeStepProportionalPeriod
+#####
+
+struct TimeStepProportionalPeriod{FT}
+    factor :: FT
+end
+
+"""
+    TimeStepProportionalPeriod(factor)
+
+Return a period that lasts `factor` time steps. As the offset of a [`TimeOffset`](@ref), or the
+`time_interval` of a `TimeDerivative`, the period is converted into time while the simulation
+runs, using the most recent time step that did not end on an actuation of the schedule, so that
+it follows changes of the time step such as those made by a `TimeStepWizard`.
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+
+schedule = TimeOffset(TimeInterval(10), -TimeStepProportionalPeriod(2))
+
+# output
+TimeOffset(TimeInterval(10 seconds), -TimeStepProportionalPeriod(2))
+```
+"""
+function TimeStepProportionalPeriod(factor::Number)
+    isfinite(factor) && !iszero(factor) ||
+        throw(ArgumentError("The factor of a TimeStepProportionalPeriod must be finite and nonzero; got $factor."))
+    return TimeStepProportionalPeriod{typeof(factor)}(factor)
+end
+
+Base.:-(period::TimeStepProportionalPeriod) = TimeStepProportionalPeriod(-period.factor)
+Base.summary(period::TimeStepProportionalPeriod) = string("TimeStepProportionalPeriod(", period.factor, ")")
+Base.show(io::IO, period::TimeStepProportionalPeriod) = print(io, summary(period))
+
+period_sign(interval) = sign(period_to_seconds(interval))
+period_sign(period::TimeStepProportionalPeriod) = sign(period.factor)
+
+#####
 ##### TimeOffset
 #####
 
-mutable struct TimeOffset{S, O, TT} <: AbstractSchedule
+mutable struct TimeOffset{S, O, TT, DT} <: AbstractSchedule
     parent :: S
     offset :: O
     parent_actuation_time :: TT
     offset_actuated :: Bool
+    time_step :: DT
 end
 
 """
@@ -443,7 +467,10 @@ the next actuation of `parent_schedule`, which must then have a finite `next_act
 interval between actuations of `parent_schedule`.
 
 `offset` is measured in units of `model.clock.time`, or is a `Dates.Period` when the clock
-keeps a `DateTime`.
+keeps a `DateTime`. It may also be a [`TimeStepProportionalPeriod`](@ref), which is converted into
+time from the most recent time step that did not end on an actuation of this schedule. Such an
+offset is unknown until the first time step, and when it reaches back past the previous actuation
+of `parent_schedule` the extra actuation is skipped.
 
 Example
 =======
@@ -461,15 +488,27 @@ function TimeOffset(parent_schedule, offset)
     O = period_type(offset)
     offset = convert(O, offset)
     validate_offset(parent_schedule, offset)
-    TT = time_type(offset)
+    TT = offset_time_type(parent_schedule, offset)
     parent_actuation_time = zero(TT)
     # A positive offset has nothing to actuate until the parent actuates
-    offset_actuated = period_to_seconds(offset) > 0
-    return TimeOffset{typeof(parent_schedule), O, TT}(parent_schedule, offset, parent_actuation_time, offset_actuated)
+    offset_actuated = period_sign(offset) > 0
+    time_step = initial_time_step(offset)
+    S, DT = typeof(parent_schedule), typeof(time_step)
+    return TimeOffset{S, O, TT, DT}(parent_schedule, offset, parent_actuation_time, offset_actuated, time_step)
 end
 
+const TimeStepProportionalOffset = TimeOffset{<:Any, <:TimeStepProportionalPeriod}
+
+offset_time_type(parent, offset) = time_type(offset)
+offset_time_type(::TimeInterval{<:Any, TT}, ::TimeStepProportionalPeriod) where TT = TT
+offset_time_type(::SpecifiedTimes{T}, ::TimeStepProportionalPeriod) where T = T
+offset_time_type(parent, ::TimeStepProportionalPeriod) = Oceananigans.defaults.FloatType
+
+initial_time_step(offset) = nothing
+initial_time_step(::TimeStepProportionalPeriod) = Inf
+
 function validate_offset(parent, offset)
-    period_to_seconds(offset) < 0 || return nothing
+    period_sign(offset) < 0 || return nothing
     finite_next_actuation = applicable(next_actuation_time, parent) && next_actuation_time(parent) !== Inf
     finite_next_actuation || throw(ArgumentError("A negative offset requires a parent schedule with a finite " *
                                                  "next actuation time, such as TimeInterval or SpecifiedTimes."))
@@ -484,11 +523,24 @@ function validate_offset(parent::TimeInterval{<:Union{Number, Period}}, offset)
     return nothing
 end
 
+# The magnitude of a time step proportional offset is only known while the simulation runs
+validate_offset(::TimeInterval{<:Union{Number, Period}}, ::TimeStepProportionalPeriod) = nothing
+
+offset_interval(schedule::TimeOffset) = schedule.offset
+
+function offset_interval(schedule::TimeStepProportionalOffset)
+    isfinite(schedule.time_step) || return nothing
+    return schedule.offset.factor * schedule.time_step
+end
+
 function offset_time(schedule::TimeOffset)
-    if period_to_seconds(schedule.offset) > 0
-        return add_time_interval(schedule.parent_actuation_time, schedule.offset)
+    offset = offset_interval(schedule)
+    isnothing(offset) && return Inf
+
+    if period_sign(schedule.offset) > 0
+        return add_time_interval(schedule.parent_actuation_time, offset)
     else
-        return add_time_interval(next_actuation_time(schedule.parent), schedule.offset)
+        return add_time_interval(next_actuation_time(schedule.parent), offset)
     end
 end
 
@@ -500,7 +552,7 @@ end
 
 function reset_offset!(schedule::TimeOffset, t, parent_actuated=true)
     schedule.parent_actuation_time = t
-    positive = period_to_seconds(schedule.offset) > 0
+    positive = period_sign(schedule.offset) > 0
     schedule.offset_actuated = (positive && !parent_actuated) || offset_reached(schedule, t)
     return nothing
 end
@@ -514,19 +566,29 @@ function (schedule::TimeOffset)(model)
         schedule.offset_actuated = true
         return true
     else
+        # A step that ends on an actuation may have been shortened to land on it, so it is not recorded
+        record_time_step!(schedule, model.clock)
         return false
     end
 end
 
+record_time_step!(schedule::TimeOffset, clock) = nothing
+
+function record_time_step!(schedule::TimeStepProportionalOffset, clock)
+    schedule.time_step = clock.last_Δt
+    return nothing
+end
+
 function initialize!(schedule::TimeOffset, model)
     t = model.clock.time
+    parent_actuated = initialize!(schedule.parent, model) === true
 
     if schedule.parent_actuation_time isa Number && t isa Dates.AbstractDateTime
         O = typeof(schedule.offset)
         throw(ArgumentError("Cannot use a $O offset with a DateTime clock. Use a Dates.Period instead."))
     end
 
-    parent_actuated = initialize!(schedule.parent, model) === true
+    schedule.time_step = initial_time_step(schedule.offset)
     reset_offset!(schedule, t, parent_actuated)
 
     return parent_actuated
@@ -545,17 +607,53 @@ end
 function prognostic_state(schedule::TimeOffset)
     return (parent = prognostic_state(schedule.parent),
             parent_actuation_time = schedule.parent_actuation_time,
-            offset_actuated = schedule.offset_actuated)
+            offset_actuated = schedule.offset_actuated,
+            time_step = schedule.time_step)
 end
 
 function restore_prognostic_state!(restored::TimeOffset, from)
     restore_prognostic_state!(restored.parent, from.parent)
     restored.parent_actuation_time = from.parent_actuation_time
     restored.offset_actuated = from.offset_actuated
+    hasproperty(from, :time_step) && restore_time_step!(restored, from.time_step)
     return restored
 end
 
 restore_prognostic_state!(::TimeOffset, ::Nothing) = nothing
+
+restore_time_step!(schedule::TimeOffset, time_step) = nothing
+
+function restore_time_step!(schedule::TimeStepProportionalOffset, time_step::Number)
+    schedule.time_step = time_step
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Bring `schedule`, built anew after picking a simulation up from a checkpoint, in step with the
+schedule it replaces, given the `latest_actuation_time` of the replaced schedule. Schedules other
+than [`TimeOffset`](@ref) have no state that this concerns, and are left unchanged.
+"""
+resume_offset!(schedule, latest_actuation_time) = nothing
+
+function resume_offset!(schedule::TimeOffset, latest_actuation_time)
+    parent_actuation_time = latest_scheduled_actuation_time(schedule.parent)
+    isnothing(parent_actuation_time) && return nothing
+    schedule.parent_actuation_time = parent_actuation_time
+    schedule.offset_actuated = time_difference_seconds(latest_actuation_time, parent_actuation_time) > 0
+    return nothing
+end
+
+latest_scheduled_actuation_time(schedule) = nothing
+
+latest_scheduled_actuation_time(schedule::TimeInterval{<:Union{Number, Period}}) =
+    add_time_interval(schedule.first_actuation_time, schedule.interval, schedule.actuations)
+
+function latest_scheduled_actuation_time(schedule::SpecifiedTimes)
+    schedule.previous_actuation > 0 || return nothing
+    return schedule.times[schedule.previous_actuation]
+end
 
 #####
 ##### Any and AndSchedule
@@ -599,6 +697,18 @@ schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, 
     minimum(schedule_aligned_time_step(schedule, clock, Δt)
             for schedule in any_or_all_schedule.schedules)
 
+prognostic_state(schedule::Union{OrSchedule, AndSchedule}) =
+    (; schedules = Tuple(prognostic_state(child) for child in schedule.schedules))
+
+function restore_prognostic_state!(restored::Union{OrSchedule, AndSchedule}, from)
+    for (child, child_state) in zip(restored.schedules, from.schedules)
+        restore_prognostic_state!(child, child_state)
+    end
+    return restored
+end
+
+restore_prognostic_state!(::Union{OrSchedule, AndSchedule}, ::Nothing) = nothing
+
 #####
 ##### Show methods
 #####
@@ -619,10 +729,16 @@ Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
 
 offset_string(offset::Number) = string(offset < 0 ? "-" : "+", prettytime(abs(offset)))
 offset_string(offset::Period) = string(offset)
+offset_string(offset::TimeStepProportionalPeriod) =
+    string(offset.factor < 0 ? "-" : "+", "TimeStepProportionalPeriod(", abs(offset.factor), ")")
 
 Base.summary(schedule::TimeOffset) = string("TimeOffset(", summary(schedule.parent), ", ",
                                             offset_string(schedule.offset), ")")
 Base.show(io::IO, schedule::TimeOffset) = print(io, summary(schedule))
+
+children_summary(schedule) = join((prettysummary(child, false) for child in schedule.schedules), ", ")
+Base.summary(schedule::OrSchedule) = string("OrSchedule(", children_summary(schedule), ")")
+Base.summary(schedule::AndSchedule) = string("AndSchedule(", children_summary(schedule), ")")
 
 const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations, TimeOffset}
 

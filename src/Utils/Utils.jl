@@ -10,6 +10,7 @@ export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplici
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
+export TimeStepProportionalPeriod
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
