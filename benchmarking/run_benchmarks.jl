@@ -419,6 +419,10 @@ function run_benchmarks(args)
         n_tracers = length(tracers)
         name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
 
+        if distributed_enabled
+            name *= "_" * join(partition_ranks, "x") * "ranks"
+        end
+
         @root begin
             println("\n", "-" ^ 70)
             println("Running: $name")
