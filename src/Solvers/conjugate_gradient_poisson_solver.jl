@@ -82,9 +82,9 @@ end
 ##### Zero-mean gauge condition
 #####
 
-struct ZeroMeanGaugeCondition{M, N}
-    solution_mean :: M
-    residual_mean :: M
+struct ZeroMeanGaugeCondition{S, N}
+    solution_sum :: S
+    residual_sum :: S
     number_of_active_cells :: N
 end
 
@@ -96,39 +96,38 @@ subtracts the mean over the active cells of `grid` from the solution and from th
 after every iteration.
 """
 function ZeroMeanGaugeCondition(grid)
-    solution_mean = Field{Nothing, Nothing, Nothing}(grid)
-    residual_mean = Field{Nothing, Nothing, Nothing}(grid)
+    solution_sum = Field{Nothing, Nothing, Nothing}(grid)
+    residual_sum = Field{Nothing, Nothing, Nothing}(grid)
 
     # The normalization of `mean(c)` for a field `c` at cell centers
     c = CenterField(grid)
     number_of_active_cells = conditional_length(condition_operand(identity, c, nothing, 0))
 
-    return ZeroMeanGaugeCondition(solution_mean, residual_mean, number_of_active_cells)
+    return ZeroMeanGaugeCondition(solution_sum, residual_sum, number_of_active_cells)
 end
 
 function (gauge::ZeroMeanGaugeCondition)(x, r)
-    subtract_mean_and_mask!(x, gauge.solution_mean, gauge.number_of_active_cells)
-    subtract_mean_and_mask!(r, gauge.residual_mean, gauge.number_of_active_cells)
-    return nothing
-end
-
-function subtract_mean_and_mask!(c, c̄, number_of_active_cells)
-    grid = c.grid
+    grid = x.grid
     arch = architecture(grid)
 
-    # c̄ = mean of c over the active cells
-    sum!(c̄, c)
-    parent(c̄) ./= number_of_active_cells
+    Σx = sum!(gauge.solution_sum, x)
+    Σr = sum!(gauge.residual_sum, r)
 
-    launch!(arch, grid, :xyz, _subtract_mean_and_mask!, c, grid, c̄)
+    launch!(arch, grid, :xyz, _subtract_means_and_mask!, x, r, grid, Σx, Σr, gauge.number_of_active_cells)
 
     return nothing
 end
 
-@kernel function _subtract_mean_and_mask!(c, grid, c̄)
+@kernel function _subtract_means_and_mask!(x, r, grid, Σx, Σr, number_of_active_cells)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    @inbounds c[i, j, k] = (c[i, j, k] - c̄[1, 1, 1]) * active
+
+    @inbounds begin
+        x̄ = Σx[1, 1, 1] / number_of_active_cells
+        r̄ = Σr[1, 1, 1] / number_of_active_cells
+        x[i, j, k] = (x[i, j, k] - x̄) * active
+        r[i, j, k] = (r[i, j, k] - r̄) * active
+    end
 end
 
 @kernel function cell_volume!(V, grid)
