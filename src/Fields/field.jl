@@ -701,7 +701,11 @@ Store the dot product of `a` and `b` in the one-element array `r`, which lives o
 architecture as `a` and `b`, and return `r`. Unlike `LinearAlgebra.dot`, `dot!` does not copy
 the result to the host, so on a GPU it does not make the host wait for the device.
 """
-function dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
+dot!(r, a::AbstractField, b::AbstractField; condition = nothing) = local_dot!(r, a, b; condition)
+
+# The dot product over the cells of `a` and `b` that live on this rank; distributed fields
+# extend `dot!` to reduce it across ranks
+function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
 

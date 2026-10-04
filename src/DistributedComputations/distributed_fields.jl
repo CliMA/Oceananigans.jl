@@ -10,14 +10,14 @@ using Oceananigans.Fields: ReducedAbstractField,
                            filltype,
                            reduced_dimensions,
                            reduced_location
-using Oceananigans.Fields: condition_operand, conditional_length
+using Oceananigans.Fields: condition_operand, conditional_length, local_dot!
 using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
 import Oceananigans.Fields: Field, set!, conditional_length
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import LinearAlgebra: norm, dot
+import LinearAlgebra: norm
 import Statistics: mean
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
@@ -253,22 +253,14 @@ end
     return sqrt(n²)
 end
 
-# Distributed dot product
-@inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
-    cu = condition_operand(u, condition, 0)
-    cv = condition_operand(v, condition, 0)
-
-    B = cu * cv # Binary operation
-    r = zeros(u.grid, 1)
-
-    Base.mapreducedim!(identity, +, r, B)
+# Distributed dot product: the local dot products are summed across ranks on the host,
+# so the result is copied back into `r`. `LinearAlgebra.dot` is built on `dot!`.
+function Fields.dot!(r, u::DistributedField, v::DistributedField; condition=nothing)
+    local_dot!(r, u, v; condition)
     dot_local = @allowscalar r[1]
     arch = architecture(u)
-    return all_reduce(+, dot_local, arch)
+    return fill!(r, all_reduce(+, dot_local, arch))
 end
-
-# The local dot products are summed across ranks on the host, so the result is copied back into `r`
-Fields.dot!(r, u::DistributedField, v::DistributedField; condition=nothing) = fill!(r, dot(u, v; condition))
 
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)
     operand = condition_operand(f, c, condition, mask)
