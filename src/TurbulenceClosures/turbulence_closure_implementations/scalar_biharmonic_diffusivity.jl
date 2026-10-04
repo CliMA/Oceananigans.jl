@@ -20,8 +20,8 @@ HorizontalVectorInvariantScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.d
 
 """
     ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
-                                ν = 0,
-                                κ = 0,
+                                ν = nothing,
+                                κ = nothing,
                                 discrete_form = false,
                                 loc = (nothing, nothing, nothing),
                                 parameters = nothing)
@@ -77,8 +77,8 @@ value of keyword argument `discrete_form`, the constructor expects:
 For examples see [`ScalarDiffusivity`](@ref).
 """
 function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
-                                     ν = 0,
-                                     κ = 0,
+                                     ν = nothing,
+                                     κ = nothing,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
@@ -154,11 +154,11 @@ const NoTracerDiffusivityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation
 # `κ = nothing` is not indexed by tracer
 @inline diffusivity(::ScalarBiharmonicDiffusivity{<:Any, <:Any, <:Any, Nothing}, K, ::Val) = nothing
 
-const NoViscosityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation,             <:Any, Nothing}
-const NoViscosityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,                    <:Any, Nothing}
-const NoViscosityDBD = ScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulation,          <:Any, Nothing}
-const NoViscosityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,                      <:Any, Nothing}
-const NoViscosityZBD = ScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantFormulation,     <:Any, Nothing}
+const NoViscosityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation,          <:Any, Nothing}
+const NoViscosityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,                <:Any, Nothing}
+const NoViscosityDBD = ScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulation,      <:Any, Nothing}
+const NoViscosityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,                  <:Any, Nothing}
+const NoViscosityZBD = ScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantFormulation, <:Any, Nothing}
 
 for flux in (:ux, :vx, :wx, :uy, :vy, :wy, :uz, :vz, :wz)
     viscous_flux = Symbol(:viscous_flux_, flux)
