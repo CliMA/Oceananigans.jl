@@ -1315,8 +1315,6 @@ end
     end
 
     @testset "In-place dot product" begin
-        @info "  Testing dot! on fields..."
-
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
             a = CenterField(grid)
