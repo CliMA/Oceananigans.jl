@@ -137,9 +137,6 @@ end
 ##### No viscosity or no tracer diffusivity
 #####
 
-# With `κ = nothing` the closure acts on momentum only. Skipping the tracer fluxes, rather than multiplying
-# the biharmonic stencil by a zero diffusivity, removes that stencil from every tracer tendency kernel.
-# The same holds for `ν = nothing` and the momentum fluxes.
 const NoTracerDiffusivityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
 const NoTracerDiffusivityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,       <:Any, <:Any, Nothing}
 const NoTracerDiffusivityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,         <:Any, <:Any, Nothing}
