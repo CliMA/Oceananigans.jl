@@ -207,12 +207,13 @@ end
                            topology=(Bounded, Periodic, Bounded))
 
     # Boundary conditions are evaluated in kernels, so the times are recorded in an array, at
-    # the position of each substep. Substep clocks have `stage = 0` and `last_stage_Δt = Δτ`.
+    # the position of each substep (substep clocks have `last_stage_Δt = Δτ`). In kernels both
+    # clocks are `NamedTuple`s, but only the model clock has a `last_Δt`.
     times = on_architecture(arch, fill(NaN, 100))
     recording_η_ext(i, j, grid, clock, model_fields) = 0.0
 
     function recording_U_ext(i, j, grid, clock, model_fields, times)
-        if clock.stage == 0
+        if !hasproperty(clock, :last_Δt)
             n = clamp(unsafe_trunc(Int, round(clock.time / clock.last_stage_Δt)) + 1, 1, length(times))
             @inbounds times[n] = clock.time
         end
