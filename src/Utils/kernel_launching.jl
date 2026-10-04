@@ -2,6 +2,10 @@
 ##### Utilities for launching kernels
 #####
 
+# Δt for kernel arguments: Metal cannot load Float64 ones. Reactant needs it unconverted,
+# and overrides this in OceananigansReactantExt.
+@inline kernel_time_step(arch, grid, Δt) = convert(eltype(grid), Δt)
+
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel,

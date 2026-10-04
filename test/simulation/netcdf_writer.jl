@@ -15,6 +15,25 @@ using Oceananigans.OutputWriters: trilocation_dim_name, vertical_coordinate_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
 using Oceananigans.Fields: interpolate!
 
+# Messages logged by verbose NetCDF `writers`, which write in turn at each of `time_indices`
+function netcdf_writing_logs(writers, time_indices)
+    return [log for n in time_indices
+                for writer in writers
+                for log in ((:info, "Writing to NetCDF: $(writer.filepath)..."),
+                            (:info, "Writing NetCDF outputs at time index $n: $(keys(writer.outputs))..."),
+                            (:info, r"^Writing done: time=.+, size=.+, Δsize=.+$"))]
+end
+
+appending_log(filepath) = (:warn, "$filepath already exists and `overwrite_files = false`. Mode will be set to append to existing file. " *
+                                  "You might experience errors when writing output if the existing file belonged to a different simulation!")
+
+# The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
+pressure_solver_logs(grid) = grid isa ImmersedBoundaryGrid ?
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),) : ()
+
+boundary_conditions_log = (:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
+                                  "Using default FieldBoundaryConditions for `grid` and `location`.")
+
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
@@ -26,7 +45,7 @@ function test_datetime_netcdf_output(arch)
                                 tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
-    simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
+    simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1), verbose=false)
 
     Arch = typeof(arch)
     filepath = "test_datetime_$Arch.nc"
@@ -67,7 +86,7 @@ function test_timedate_netcdf_output(arch)
                                 tracers = (:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
-    simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
+    simulation = Simulation(model; Δt=Δt, stop_time=TimeDate(2021, 2, 1), verbose=false)
 
     Arch = typeof(arch)
     filepath = "test_timedate_$Arch.nc"
@@ -114,7 +133,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
                                 tracers = (:T, :S))
 
     Nt = 10
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_metrics_halos = "test_grid_metrics_rectilinear_halos_$(Arch)_$FT.nc"
@@ -170,7 +189,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with metrics and halos
     ds_mh = NCDataset(filepath_metrics_halos)
@@ -371,7 +390,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
                                         tracers = (:T, :S))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     outputs = merge(model.velocities, model.tracers)
 
@@ -433,7 +452,7 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with metrics and halos
     ds_mh = NCDataset(filepath_metrics_halos)
@@ -663,13 +682,13 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
 
     grid = ImmersedBoundaryGrid(underlying_grid, bottom_boundary_type(bottom))
 
-    model = NonhydrostaticModel(grid;
+    model = @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid;
                                 closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
     Nt = 10
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_with_halos = "test_immersed_grid_rectilinear_with_halos_$Arch.nc"
@@ -714,7 +733,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -834,7 +853,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
                                         tracers = (:T, :S))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     outputs = merge(model.velocities, model.tracers)
 
@@ -884,7 +903,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -992,7 +1011,7 @@ function test_netcdf_rectilinear_flat_xy(arch)
                                 tracers = (:T, :S))
 
     Nt = 7
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_with_halos = "test_netcdf_rectilinear_flat_xy_$Arch.nc"
@@ -1024,7 +1043,7 @@ function test_netcdf_rectilinear_flat_xy(arch)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -1124,13 +1143,13 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    model = NonhydrostaticModel(grid;
+    model = @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid;
                                 closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
     Nt = 7
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_with_halos = "test_netcdf_rectilinear_flat_xz_$Arch.nc"
@@ -1162,7 +1181,7 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
                                                       include_grid_metrics = true,
                                                       verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -1262,13 +1281,13 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
     end
 
-    model = NonhydrostaticModel(grid;
+    model = @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid;
                                 closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
     Nt = 7
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_with_halos = "test_netcdf_rectilinear_flat_yz_$Arch.nc"
@@ -1302,7 +1321,7 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
             include_grid_metrics = true,
             verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -1397,7 +1416,7 @@ function test_netcdf_rectilinear_column(arch)
                                 tracers = (:T, :S))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_with_halos = "test_netcdf_rectilinear_column_$Arch.nc"
@@ -1428,7 +1447,7 @@ function test_netcdf_rectilinear_column(arch)
             include_grid_metrics = true,
             verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
@@ -1515,7 +1534,7 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=6, stop_iteration=10)
+    simulation = Simulation(model; Δt=6, stop_iteration=10, verbose=false)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -1562,7 +1581,7 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
         include_grid_metrics = false,
         verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:2)... run!(simulation)
 
     ds = NCDataset(nc_filepath)
 
@@ -1747,7 +1766,7 @@ function test_netcdf_size_file_splitting(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=1, stop_iteration=10)
+    simulation = Simulation(model; Δt=1, stop_iteration=10, verbose=false)
 
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
@@ -1802,7 +1821,7 @@ function test_netcdf_time_file_splitting(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers=(:T, :S))
 
-    simulation = Simulation(model, Δt=1, stop_time=12seconds)
+    simulation = Simulation(model; Δt=1, stop_time=12seconds, verbose=false)
 
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
@@ -1850,7 +1869,7 @@ function test_netcdf_deferred_file_creation(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
 
-    simulation = Simulation(model, Δt=1, stop_time=2seconds)
+    simulation = Simulation(model; Δt=1, stop_time=2seconds, verbose=false)
 
     writer = NetCDFWriter(model, model.tracers;
         dir = dir,
@@ -1889,7 +1908,7 @@ function test_netcdf_duplicate_times(arch, overwrite_snapshots)
     model = NonhydrostaticModel(grid, tracers=:c)
 
     function simulation_to(stop_iteration)
-        simulation = Simulation(model, Δt=1, stop_iteration=stop_iteration)
+        simulation = Simulation(model; Δt=1, stop_iteration=stop_iteration, verbose=false)
 
         simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
             dir = dir,
@@ -1913,9 +1932,13 @@ function test_netcdf_duplicate_times(arch, overwrite_snapshots)
     # up rewinds the clock behind output the file already holds. The tracer marks which run
     # wrote a record: it is 0 everywhere in the first run and -1 after the pickup.
     simulation = simulation_to(16)
-    set!(simulation; checkpoint=:latest)
+    @test_logs (:info, r"^Picking up simulation from checkpoint file .+/checkpoint_iteration10\.jld2; last modified \(UTC\): ") set!(simulation; checkpoint=:latest)
     set!(model, c=-1)
-    run!(simulation)
+    # Without overwriting snapshots, the output already in the file is kept
+    skipping_logs = overwrite_snapshots ? () :
+        Tuple((:warn, "Time $t is already covered by $filepath. Skipping output writing.") for t in (11.0, 12.0))
+
+    @test_logs skipping_logs... run!(simulation)
 
     ds = NCDataset(filepath, "r")
 
@@ -1947,7 +1970,7 @@ function test_netcdf_file_splitting_while_appending(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
 
-    simulation = Simulation(model, Δt=1, stop_time=2seconds)
+    simulation = Simulation(model; Δt=1, stop_time=2seconds, verbose=false)
 
     simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
         dir = dir,
@@ -1959,7 +1982,7 @@ function test_netcdf_file_splitting_while_appending(arch)
 
     # Splitting has to create every new part file, including when the writer appends
     # to an existing file rather than overwriting it.
-    simulation = Simulation(model, Δt=1, stop_time=8seconds)
+    simulation = Simulation(model; Δt=1, stop_time=8seconds, verbose=false)
 
     simulation.output_writers[:nc_writer] = NetCDFWriter(model, model.tracers;
         dir = dir,
@@ -1968,7 +1991,7 @@ function test_netcdf_file_splitting_while_appending(arch)
         file_splitting = TimeInterval(3seconds),
         overwrite_files = false)
 
-    run!(simulation)
+    @test_logs appending_log(simulation.output_writers[:nc_writer].filepath) run!(simulation)
 
     part_filenames = filter(f -> occursin(Regex("^$(base_filename)_part\\d+\\.nc\$"), f), readdir(dir))
     sort!(part_filenames, by = f -> parse(Int, match(r"_part(\d+)\.nc$", f)[1]))
@@ -2011,7 +2034,7 @@ function test_netcdf_function_output(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=iters, verbose=false)
 
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
@@ -2055,7 +2078,7 @@ function test_netcdf_function_output(arch)
             verbose = true,
             overwrite_files = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:iters+1)... run!(simulation)
 
     ds = NCDataset(nc_filepath, "r")
 
@@ -2144,7 +2167,7 @@ function test_netcdf_function_output(arch)
     #####
 
     iters += 1
-    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=iters, verbose=false)
 
     simulation.output_writers[:food] =
         NetCDFWriter(model, outputs;
@@ -2157,7 +2180,8 @@ function test_netcdf_function_output(arch)
             dimensions = dims,
             verbose = true)
 
-    run!(simulation)
+    writer = simulation.output_writers[:food]
+    @test_logs appending_log(writer.filepath) netcdf_writing_logs((writer,), iters+1)... run!(simulation)
 
     ds = NCDataset(nc_filepath, "r")
 
@@ -2192,7 +2216,7 @@ function test_netcdf_spatial_average(arch)
 
     Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
 
-    simulation = Simulation(model, Δt=Δt, stop_iteration=10)
+    simulation = Simulation(model; Δt=Δt, stop_iteration=10, verbose=false)
 
     ∫c_dx = Field(Average(model.tracers.c, dims=(1)))
     ∫∫c_dxdy = Field(Average(model.tracers.c, dims=(1, 2)))
@@ -2210,7 +2234,7 @@ function test_netcdf_spatial_average(arch)
             schedule = IterationInterval(2),
             include_grid_metrics = false)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:6)... run!(simulation)
 
     ds = NCDataset(nc_filepath)
 
@@ -2237,10 +2261,7 @@ function test_netcdf_time_averaging(arch)
         # the iteration number.
         # Can add stride > 1 cases to the following line to test them.
         # for (stride, rtol) in zip((1, 2), (1e-5, 1e-3))
-        for (stride, rtol) in zip((1), (1e-5))
-            @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with " *
-                  "timestep of $(Δt), stride of $(stride), and relative tolerance of $(rtol)."
-
+        @testset "Time averaging [Δt=$Δt, stride=$stride, rtol=$rtol]" for (stride, rtol) in zip((1), (1e-5))
             topo = (Periodic, Periodic, Periodic)
             domain = (x=(0, 1), y=(0, 1), z=(0, 1))
             grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
@@ -2261,7 +2282,7 @@ function test_netcdf_time_averaging(arch)
             set!(model, c1=1, c2=1)
 
             # Floating point number chosen conservatively to flag rounding errors
-            simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+            simulation = Simulation(model; Δt=Δt, stop_time=50Δt, verbose=false)
 
             ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
             ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
@@ -2310,7 +2331,7 @@ function test_netcdf_time_averaging(arch)
                              include_grid_metrics = false,
                              overwrite_files = true)
 
-            run!(simulation)
+            @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:6)... run!(simulation)
 
             ##### For each λ, the horizontal average should evaluate to
             #####
@@ -2358,8 +2379,6 @@ function test_netcdf_time_averaging(arch)
 
             window_size = Int(window/Δt)
 
-            @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
-
             for (n, t) in enumerate(single_ds["time"][2:end])
                 averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
                 @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
@@ -2373,8 +2392,6 @@ function test_netcdf_time_averaging(arch)
             #####
 
             ds = NCDataset(multiple_time_average_nc_filepath)
-
-            @info "    Testing time-averaging of multiple NetCDF outputs [$(typeof(arch))]..."
 
             for (n, t) in enumerate(ds["time"][2:end])
                 averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
@@ -2400,7 +2417,7 @@ function test_netcdf_output_alignment(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=0.2, stop_time=40)
+    simulation = Simulation(model; Δt=0.2, stop_time=40, verbose=false)
 
     Arch = typeof(arch)
     test_filename1 = "test_output_alignment1_$Arch.nc"
@@ -2455,7 +2472,7 @@ function test_netcdf_output_just_particles(arch)
     set!(model, u=1, v=1)
 
     Nt = 10
-    simulation = Simulation(model, Δt=1e-2, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=1e-2, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath = "test_just_particles_$Arch.nc"
@@ -2512,7 +2529,7 @@ function test_netcdf_output_particles_and_fields(arch)
     set!(model, u=1, v=1)
 
     Nt = 10
-    simulation = Simulation(model, Δt=1e-2, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=1e-2, stop_iteration=Nt, verbose=false)
 
     outputs = (particles = model.particles,
                u = model.velocities.u,
@@ -2575,7 +2592,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=1.25, stop_iteration=3)
+    simulation = Simulation(model; Δt=1.25, stop_iteration=3, verbose=false)
 
     Arch = typeof(arch)
     nc_filepath = "test_netcdf_vertically_stretched_grid_output_$Arch.nc"
@@ -2589,7 +2606,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
             include_grid_metrics = false,
             verbose = true)
 
-    run!(simulation)
+    @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:4)... run!(simulation)
 
     ds = NCDataset(nc_filepath)
 
@@ -2660,7 +2677,7 @@ function test_netcdf_overriding_attributes(arch)
         output_attributes)
 
     # The writer creates its file when the run starts.
-    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
     simulation.output_writers[:nc_writer] = nc_writer
     run!(simulation)
 
@@ -2728,7 +2745,7 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
                                         tracers = (:T, :S))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2791,14 +2808,14 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
 
     grid = immersed ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-50)) : underlying_grid
 
-    model = NonhydrostaticModel(grid;
+    model = @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid;
                                 free_surface = ImplicitFreeSurface(),
                                 closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2872,7 +2889,7 @@ function test_netcdf_buoyancy_force(arch)
                                     tracers = (:T, :S))
 
         Nt = 7
-        simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+        simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
         simulation.output_writers[:b_eos] = NetCDFWriter(model, fields(model),
                                                          filename = string(eos)*"_.nc",
@@ -2883,7 +2900,7 @@ function test_netcdf_buoyancy_force(arch)
         # only tests that the writer builds, produces a file at filepath and sets attributes
         @test simulation.output_writers[:b_eos] isa NetCDFWriter
 
-        run!(simulation)
+        @test_logs netcdf_writing_logs(values(simulation.output_writers), 1:Nt+1)... run!(simulation)
 
         @test isfile(simulation.output_writers[:b_eos].filepath)
         ds = NCDataset(simulation.output_writers[:b_eos].filepath)
@@ -3076,7 +3093,7 @@ function test_netcdf_writer_different_grid(arch)
                                  overwrite_files = true)
 
     # Run simulation to write output
-    simulation = Simulation(model, Δt=0.1, stop_iteration=2)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=2, verbose=false)
     simulation.output_writers[:coarse] = output_writer
     run!(simulation)
 
@@ -3117,7 +3134,7 @@ function test_singleton_dimension_behavior(arch)
     u_xavg = Field(Average(model.velocities.u, dims=(1)))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_full = "test_singleton_full_u_$Arch.nc"
@@ -3182,7 +3199,7 @@ function test_netcdf_reduced_field_time_series(arch)
     cyz = Field(Average(model.tracers.c, dims=(2, 3)))   # (Center, Nothing, Nothing) → 1D on disk
 
     Nt = 3
-    sim = Simulation(model; Δt=1e-3, stop_iteration=Nt)
+    sim = Simulation(model; Δt=1e-3, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_reduced_fts_$Arch.nc"
@@ -3208,7 +3225,7 @@ function test_netcdf_reduced_field_time_series(arch)
     for (name, ref_loc, ref) in (("cx",  (Nothing, Center, Center), snaps.cx),
                                  ("cxy", (Nothing, Nothing, Center), snaps.cxy),
                                  ("cyz", (Center, Nothing, Nothing), snaps.cyz))
-        fts = FieldTimeSeries(fp, name; architecture=arch)
+        fts = @test_logs boundary_conditions_log FieldTimeSeries(fp, name; architecture=arch)
         @test fts isa FieldTimeSeries
         @test location(fts) == ref_loc
         @test fts.times ≈ save_times
@@ -3229,7 +3246,7 @@ function test_netcdf_dimension_type(arch)
     model = NonhydrostaticModel(grid)
 
     Nt = 3
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model; Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
 
@@ -3300,7 +3317,7 @@ function test_netcdf_tripolar_grid_output(arch)
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
 
-    simulation = Simulation(model; Δt=1, stop_iteration=2)
+    simulation = Simulation(model; Δt=1, stop_iteration=2, verbose=false)
 
     Arch = typeof(arch)
     filepath = "test_tripolar_netcdf_$Arch.nc"
@@ -3381,8 +3398,8 @@ function test_netcdf_rotated_llg_matches_llg(arch)
     set!(m_llg.tracers.T,  T0)
     set!(m_rllg.tracers.T, T0)
 
-    s_llg  = Simulation(m_llg;  Δt=1, stop_iteration=2)
-    s_rllg = Simulation(m_rllg; Δt=1, stop_iteration=2)
+    s_llg  = Simulation(m_llg;  Δt=1, stop_iteration=2, verbose=false)
+    s_rllg = Simulation(m_rllg; Δt=1, stop_iteration=2, verbose=false)
 
     Arch = typeof(arch)
     p_llg  = "test_llg_$(Arch).nc"
@@ -3441,7 +3458,7 @@ function test_netcdf_tripolar_field_time_series(arch)
     # Smooth, bounded initial condition.
     set!(model.tracers.T, (λ, φ, z) -> sin(deg2rad(λ)) * cos(deg2rad(φ)))
 
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_tripolar_fts_$Arch.nc"
@@ -3466,7 +3483,7 @@ function test_netcdf_tripolar_field_time_series(arch)
     # saved λ/φ/Δx/Δy/Az/z arrays back directly (bypassing the user-facing constructor)
     # plus the serialized `conformal_mapping`, which preserves the TripolarGrid type
     # alias so default boundary conditions still pick `Zipper` for the north fold.
-    fts = FieldTimeSeries(fp, "T"; architecture=arch)
+    fts = @test_logs boundary_conditions_log FieldTimeSeries(fp, "T"; architecture=arch)
     @test fts.grid isa TripolarGrid
     @test size(fts.grid) == size(grid)
     @test (fts.grid.Hx, fts.grid.Hy, fts.grid.Hz) == (grid.Hx, grid.Hy, grid.Hz)
@@ -3504,7 +3521,7 @@ function test_netcdf_tripolar_variable_z_output(arch)
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=z_faces)
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_tripolar_variable_z_$Arch.nc"
@@ -3542,7 +3559,7 @@ function test_netcdf_tripolar_mvd_output(arch)
     ZStar = Oceananigans.Models.HydrostaticFreeSurfaceModels.ZStarCoordinate
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,),
                                         vertical_coordinate=ZStar())
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_tripolar_mvd_$Arch.nc"
@@ -3581,7 +3598,7 @@ function test_netcdf_tripolar_immersed_output(arch)
 
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_tripolar_ibg_$Arch.nc"
@@ -3599,7 +3616,7 @@ function test_netcdf_tripolar_immersed_output(arch)
 
     # Reconstruct via FieldTimeSeries: underlying TripolarGrid is rebuilt + wrapped
     # in an `ImmersedBoundaryGrid`, with the saved `bottom_height` populated.
-    fts = FieldTimeSeries(fp, "T"; architecture=arch)
+    fts = @test_logs boundary_conditions_log FieldTimeSeries(fp, "T"; architecture=arch)
     @test fts.grid isa ImmersedBoundaryGrid
     @test fts.grid.underlying_grid isa TripolarGrid
     @test size(fts.grid) == size(grid)
@@ -3617,7 +3634,7 @@ function test_netcdf_cubed_sphere_panel_output(arch)
     Nx, Ny, Nz = 8, 8, 3
     grid = ConformalCubedSpherePanelGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0), halo=(2, 2, 2))
     model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,))
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_ccspg_$Arch.nc"
@@ -3663,7 +3680,7 @@ function test_netcdf_cubed_sphere_panel_immersed_output(arch)
     ug = ConformalCubedSpherePanelGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0), halo=(2, 2, 2))
     grid = ImmersedBoundaryGrid(ug, GridFittedBottom((λ, φ) -> -50))
     model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,))
-    sim = Simulation(model; Δt=1, stop_iteration=1)
+    sim = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_ccspg_ibg_$Arch.nc"
@@ -3694,7 +3711,7 @@ function test_netcdf_rectilinear_mvd_output(arch)
                                         free_surface=SplitExplicitFreeSurface(grid; substeps=10),
                                         tracers=(:T,),
                                         vertical_coordinate=ZStar())
-    sim = Simulation(model; Δt=0.5, stop_iteration=2)
+    sim = Simulation(model; Δt=0.5, stop_iteration=2, verbose=false)
 
     Arch = typeof(arch)
     fp = "test_rect_mvd_$Arch.nc"
@@ -3754,7 +3771,7 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
     fs = SplitExplicitFreeSurface(grid; substeps=10)
     model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
-    simulation = Simulation(model; Δt=1, stop_iteration=1)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
     Arch = typeof(arch)
     filepath = "test_tripolar_reconstruct_$Arch.nc"
@@ -3798,8 +3815,6 @@ function test_materialize_from_netcdf_strings()
 end
 
 @testset "NetCDF output writer" begin
-    @info "Testing NetCDF output writer..."
-
     for arch in archs
         A = typeof(arch)
 
@@ -3813,14 +3828,12 @@ end
         latlon_grid2 = LatitudeLongitudeGrid(arch, size=(8, 6, 4), longitude=(-120, 60), latitude=(-60, 60), z=(-2, 0))
 
         @testset "DateTime and TimeDate output [$A]" begin
-            @info "  Testing DateTime and TimeDate output [$A]..."
             test_datetime_netcdf_output(arch)
             test_timedate_netcdf_output(arch)
             test_netcdf_dimension_type(arch)
         end
 
         @testset "Grid metrics [$A]" begin
-            @info "  Testing grid metrics [$A]..."
 
             @testset "Rectilinear grid metrics [$A]" begin
                 test_netcdf_grid_metrics_rectilinear(arch, Float64)
@@ -3834,7 +3847,6 @@ end
         end
 
         @testset "Immersed boundary grids [$A]" begin
-            @info "  Testing immersed boundary grids [$A]..."
 
             @testset "Rectilinear grid fitted bottom [$A]" begin
                 test_netcdf_rectilinear_grid_fitted_bottom(arch, GridFittedBottom)
@@ -3848,7 +3860,6 @@ end
         end
 
         @testset "Flat dimensions [$A]" begin
-            @info "  Testing flat dimensions [$A]..."
             test_netcdf_rectilinear_flat_xy(arch)
             test_netcdf_rectilinear_flat_xz(arch, immersed=false)
             test_netcdf_rectilinear_flat_xz(arch, immersed=true)
@@ -3858,7 +3869,6 @@ end
         end
 
         @testset "Thermal bubble output [$A]" begin
-            @info "  Testing thermal bubble output [$A]..."
             test_thermal_bubble_netcdf_output(arch, Float64)
             test_thermal_bubble_netcdf_output(arch, Float32)
             test_thermal_bubble_netcdf_output(arch, Float64, with_halos=true)
@@ -3866,53 +3876,44 @@ end
         end
 
         @testset "Deferred file creation [$A]" begin
-            @info "  Testing deferred file creation [$A]..."
             test_netcdf_deferred_file_creation(arch)
         end
 
         @testset "Duplicate times [$A]" begin
-            @info "  Testing duplicate times [$A]..."
             test_netcdf_duplicate_times(arch, true)
             test_netcdf_duplicate_times(arch, false)
         end
 
         @testset "File splitting [$A]" begin
-            @info "  Testing file splitting [$A]..."
             test_netcdf_size_file_splitting(arch)
             test_netcdf_time_file_splitting(arch)
             test_netcdf_file_splitting_while_appending(arch)
         end
 
         @testset "Function and alignment output [$A]" begin
-            @info "  Testing function and alignment output [$A]..."
             test_netcdf_function_output(arch)
             test_netcdf_output_alignment(arch)
         end
 
         @testset "Averaging [$A]" begin
-            @info "  Testing averaging [$A]..."
             test_netcdf_spatial_average(arch)
             test_netcdf_time_averaging(arch)
         end
 
         @testset "Lagrangian particles [$A]" begin
-            @info "  Testing Lagrangian particles [$A]..."
             test_netcdf_output_just_particles(arch)
             test_netcdf_output_particles_and_fields(arch)
         end
 
         @testset "Vertically stretched grid [$A]" begin
-            @info "  Testing vertically stretched grid [$A]..."
             test_netcdf_vertically_stretched_grid_output(arch)
         end
 
         @testset "Overriding attributes [$A]" begin
-            @info "  Testing overriding attributes [$A]..."
             test_netcdf_overriding_attributes(arch)
         end
 
         @testset "Free surface output [$A]" begin
-            @info "  Testing free surface output [$A]..."
             for immersed in (false, true), vertically_stretched in (false, true)
                 test_netcdf_hydrostatic_free_surface_output(arch; immersed, vertically_stretched)
                 test_netcdf_nonhydrostatic_free_surface_output(arch; immersed, vertically_stretched)
@@ -3920,27 +3921,22 @@ end
         end
 
         @testset "Buoyancy force [$A]" begin
-            @info "  Testing buoyancy force [$A]..."
             test_netcdf_buoyancy_force(arch)
         end
 
         @testset "Different grid output [$A]" begin
-            @info "  Testing different grid output [$A]..."
             test_netcdf_writer_different_grid(arch)
         end
 
         @testset "Singleton dimension behavior [$A]" begin
-            @info "  Testing singleton dimension behavior [$A]..."
             test_singleton_dimension_behavior(arch)
         end
 
         @testset "Reduced FieldTimeSeries round-trip [$A]" begin
-            @info "  Testing reduced FieldTimeSeries round-trip [$A]..."
             test_netcdf_reduced_field_time_series(arch)
         end
 
         @testset "Field defvar and dimension validation [$A]" begin
-            @info "  Testing field defvar and dimension validation [$A]..."
             for grids in ((rectilinear_grid1, rectilinear_grid2),
                           (latlon_grid1, latlon_grid2))
                 grid1, grid2 = grids
@@ -3954,7 +3950,6 @@ end
         end
 
         @testset "OrthogonalSphericalShellGrid output [$A]" begin
-            @info "  Testing OrthogonalSphericalShellGrid output [$A]..."
             test_netcdf_tripolar_grid_output(arch)
             test_netcdf_rotated_llg_matches_llg(arch)
             test_netcdf_tripolar_grid_reconstruction(arch)
@@ -3967,14 +3962,12 @@ end
         end
 
         @testset "Non-static vertical coordinate output [$A]" begin
-            @info "  Testing non-static vertical coordinate output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
             test_netcdf_abstract_vertical_coordinate_name(arch)
         end
     end
 
-    @testset "Materialize grid-reconstruction strings from NetCDF" begin
-        @info "  Testing materialize_from_netcdf with qualified and bare type names..."
+    @testset "Materialize grid-reconstruction strings from NetCDF with qualified and bare type names" begin
         test_materialize_from_netcdf_strings()
     end
 end

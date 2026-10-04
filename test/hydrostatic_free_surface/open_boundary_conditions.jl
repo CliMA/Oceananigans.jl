@@ -3,7 +3,10 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
 using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
+using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
+using Oceananigans.Units
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
+using Statistics: mean
 using Test
 
 #####
@@ -550,6 +553,132 @@ function test_oblique_radiation_mirror_symmetry()
 end
 
 #####
+##### Test: tidal forcing and boundary conditions
+#####
+
+function test_tidal_body_force()
+    grid = LatitudeLongitudeGrid(size = (20, 12, 1),
+                                 longitude = (-78, -68),
+                                 latitude = (35, 41),
+                                 z = (-4000, 0),
+                                 topology = (Bounded, Bounded, Bounded))
+
+    # One semidiurnal constituent, at the frequency and equilibrium amplitude of M2.
+    ω = 1.405189e-4
+    period = 2π / ω
+
+    harmonics = TidalHarmonics(constituents = (:M2,),
+                               frequencies = (ω,),
+                               phases = (1.7,),
+                               equilibrium_amplitudes = (0.168,),
+                               species = (2,),
+                               ramp_time = period)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        forcing = tidal_forcing(harmonics),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 30),
+                                        coriolis = HydrostaticSphericalCoriolis(),
+                                        momentum_advection = nothing,
+                                        tracer_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = (),
+                                        closure = nothing)
+
+    simulation = Simulation(model; Δt = 120, stop_time = 5period)
+
+    times = Float64[]
+    elevation = Matrix{Float64}[]
+    function sample!(sim)
+        push!(times, sim.model.clock.time)
+        push!(elevation, Array(interior(sim.model.free_surface.displacement, :, :, 1)))
+    end
+    add_callback!(simulation, sample!, TimeInterval(period / 24))
+
+    run!(simulation)
+
+    # The equilibrium tide of one semidiurnal constituent, written out from its own harmonic
+    # constants: η = f A cos²φ cos(ω t + Θ + 2λ).
+    ω, f, A, Θ = (first(harmonics.frequencies), first(harmonics.nodal_factors),
+                  first(harmonics.equilibrium_amplitudes), first(harmonics.phases))
+    λ, φ = λnodes(grid, Center()), φnodes(grid, Center())
+    equilibrium(t) = [f * A * cosd(φⱼ)^2 * cos(ω * t + Θ + 2 * deg2rad(λᵢ)) for λᵢ in λ, φⱼ in φ]
+
+    anomaly(field) = field .- mean(field)
+    analyzed = findall(t -> t > 3period, times)
+    modeled = [anomaly(elevation[n]) for n in analyzed]
+    expected = [anomaly(equilibrium(times[n])) for n in analyzed]
+
+    # A basin this small responds statically, so it fills to the equilibrium tide itself.
+    gain = sum(sum(m .* e) for (m, e) in zip(modeled, expected)) / sum(sum(abs2, e) for e in expected)
+    return 0.9 < gain < 1.15
+end
+
+#####
+##### Test: TracerReservoir
+#####
+
+# The instant (L = 0), finite and frozen (L = Inf) regimes of the reservoir update.
+function test_tracer_reservoir_regimes()
+    cᴵ, cᵉˣᵗ, cʳ = 10.0, 0.0, 3.0
+    d = 500.0
+
+    memoryless = TracerReservoir()
+    finite     = TracerReservoir(inflow_length_scale = 500.0)
+    frozen     = TracerReservoir(inflow_length_scale = Inf)
+
+    instant_out = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, true,  memoryless) == cᴵ
+    instant_in  = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, memoryless) == cᵉˣᵗ
+    is_frozen   = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, frozen) == cʳ
+    relaxed     = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, d, false, finite) ≈ (cʳ + cᵉˣᵗ) / 2
+    still       = reservoir_update(cʳ, cᴵ, cᵉˣᵗ, 0.0, false, finite) == cʳ
+
+    return instant_out && instant_in && is_frozen && relaxed && still
+end
+
+# An oscillating flow carries water out through the open boundary and back again. Over one
+# period the net displacement is zero: a frozen reservoir returns exactly the water that left,
+# a memoryless boundary imports the exterior value instead, and a finite length scale sits
+# between the two. With the boundary on the west and the flow reversed, the result is the same.
+function test_tracer_reservoir_recovers_exported_water()
+    T = 1day
+
+    function mean_tracer(scheme, side)
+        grid = RectilinearGrid(size = (100, 4), x = (0, 200kilometers), z = (-100.0, 0),
+                               halo = (5, 4), topology = (Bounded, Flat, Bounded))
+
+        U = side == :east ? 0.5 : -0.5
+        bc = ValueBoundaryCondition(0; scheme)
+        c_bcs = side == :east ? FieldBoundaryConditions(east = bc) : FieldBoundaryConditions(west = bc)
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            velocities = PrescribedVelocityFields(u = (x, z, t) -> U * sin(2π * t / T)),
+                                            momentum_advection = nothing,
+                                            tracer_advection = WENO(order = 5),
+                                            buoyancy = nothing,
+                                            tracers = :c,
+                                            boundary_conditions = (; c = c_bcs))
+        set!(model, c = 1)
+
+        for _ in 1:round(Int, T / 60)
+            time_step!(model, 60)
+        end
+
+        c = Array(interior(model.tracers.c))
+        return sum(c) / length(c)
+    end
+
+    memoryless = mean_tracer(TracerReservoir(), :east)
+    frozen     = mean_tracer(TracerReservoir(inflow_length_scale = Inf), :east)
+    partial    = mean_tracer(TracerReservoir(inflow_length_scale = 40kilometers), :east)
+    mirrored   = mean_tracer(TracerReservoir(inflow_length_scale = 40kilometers), :west)
+
+    return isapprox(frozen, 1, atol = 1e-6) &&
+           memoryless < 0.99 &&
+           memoryless < partial < frozen + 1e-12 &&
+           isapprox(mirrored, partial, rtol = 1e-10)
+end
+
+#####
 ##### Test: GravityWaveRadiation with a target transport
 #####
 # With every side pinned, `U`, `V` and their filtered counterparts carry exactly the prescribed transports, so
@@ -676,5 +805,17 @@ end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
         @test test_oblique_radiation_mirror_symmetry()
+    end
+
+    @testset "Equilibrium tidal body force" begin
+        @test test_tidal_body_force()
+    end
+
+    @testset "TracerReservoir length-scale regimes" begin
+        @test test_tracer_reservoir_regimes()
+    end
+
+    @testset "TracerReservoir recovers exported water" begin
+        @test test_tracer_reservoir_recovers_exported_water()
     end
 end

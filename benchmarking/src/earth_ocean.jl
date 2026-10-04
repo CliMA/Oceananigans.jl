@@ -12,10 +12,10 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 float_type = Float32,
                 Nx = 360, Ny = 180, Nz = 50,
                 grid_type = "tripolar",
-                momentum_advection = WENOVectorInvariant(),
-                tracer_advection = WENO(order=7),
+                momentum_advection = WENOVectorInvariant(float_type),
+                tracer_advection = WENO(float_type; order=7),
                 zstar_coordinate = false,
-                closure = CATKEVerticalDiffusivity(),
+                closure = CATKEVerticalDiffusivity(float_type),
                 timestepper = :SplitRungeKutta3,
                 tracers = (:T, :S))
 
@@ -30,9 +30,9 @@ with realistic Earth bathymetry.
 - `Nx, Ny, Nz`: Grid resolution (longitude, latitude, vertical)
 - `grid_type`: `"tripolar"` for a TripolarGrid, `"lat_lon"` for a plain LatitudeLongitudeGrid, or `"immersed_lat_lon"` for a LatitudeLongitudeGrid with bathymetry
 - `zstar_coordinate`: zstar if `true`, z coordinate if `false`
-- `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant()`)
-- `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
-- `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
+- `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(float_type)`)
+- `tracer_advection`: Tracer advection scheme (default: `WENO(float_type; order=7)`)
+- `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity(float_type)`)
 - `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
 - `tracers`: Tuple of tracer names (default: `(:T, :S)`)
 """
@@ -41,9 +41,9 @@ function earth_ocean(arch = CPU();
                      Nx = 360, Ny = 180, Nz = 50,
                      grid_type = "tripolar",
                      zstar_coordinate = false,
-                     momentum_advection = WENOVectorInvariant(),
-                     tracer_advection = WENO(order=7),
-                     closure = CATKEVerticalDiffusivity(),
+                     momentum_advection = WENOVectorInvariant(float_type),
+                     tracer_advection = WENO(float_type; order=7),
+                     closure = CATKEVerticalDiffusivity(float_type),
                      timestepper = :SplitRungeKutta3,
                      tracers = (:T, :S))
 
@@ -102,8 +102,9 @@ function earth_ocean(arch = CPU();
         timestepper
     )
 
-    # Initial conditions: baroclinic wave excitation
-    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+    # Initial conditions: baroclinic wave excitation, with the meridional
+    # temperature contrast confined to a thermocline of e-folding depth 500 m
+    Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 * exp(z / 500) + rand()
     Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
 
     ic = Dict{Symbol,Any}()

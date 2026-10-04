@@ -3,6 +3,7 @@ module OceananigansBenchmarks
 export
     # Benchmark cases
     earth_ocean,
+    nonhydrostatic_box,
 
     # Benchmark utilities
     many_time_steps!,
@@ -23,7 +24,7 @@ using Printf
 using Statistics
 
 using Oceananigans
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, child_architecture
 using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
@@ -66,5 +67,6 @@ include("utils.jl")
 
 # Benchmark cases
 include("earth_ocean.jl")
+include("nonhydrostatic_box.jl")
 
 end # module
