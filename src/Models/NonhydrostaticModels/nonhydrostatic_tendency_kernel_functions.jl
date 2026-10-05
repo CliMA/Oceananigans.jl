@@ -266,13 +266,14 @@ velocity components, tracer fields, and precalculated closure_fields where appli
                                  c_immersed_bc,
                                  buoyancy,
                                  biogeochemistry,
+                                 ::Val{include_biogeochemistry_transitions},
                                  background_fields,
                                  velocities,
                                  tracers,
                                  auxiliary_fields,
                                  closure_fields,
                                  clock,
-                                 forcing) where tracer_index
+                                 forcing) where {tracer_index, include_biogeochemistry_transitions}
 
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
@@ -293,10 +294,14 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
+    bgc_tendency = include_biogeochemistry_transitions ?
+                   biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
+                   zero(grid)
+
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_index, closure_c, clock, closure_model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, closure_fields, val_index, clock, model_fields)
-             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end

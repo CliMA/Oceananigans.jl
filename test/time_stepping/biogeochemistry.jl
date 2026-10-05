@@ -8,9 +8,14 @@ using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Biogeochemistry: AbstractBiogeochemistry,
                                     AbstractContinuousFormBiogeochemistry,
-                                    TransitionFree,
                                     biogeochemical_transition,
-                                    tendency_biogeochemistry
+                                    include_biogeochemistry_transitions
+
+using Oceananigans.Models.NonhydrostaticModels: compute_interior_tendency_contributions!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_hydrostatic_tracer_tendencies!
+
+import Oceananigans.Models.NonhydrostaticModels
+import Oceananigans.Models.HydrostaticFreeSurfaceModels
 
 import Oceananigans.Biogeochemistry:
        required_biogeochemical_tracers,
@@ -240,6 +245,41 @@ function test_separate_transitions(ModelType, build_grid, BGCType, timestepper)
     return nothing
 end
 
+compute_inline_tendencies!(model::NonhydrostaticModel) = compute_interior_tendency_contributions!(model, :xyz)
+compute_inline_tendencies!(model::HydrostaticFreeSurfaceModel) = compute_hydrostatic_tracer_tendencies!(model, :xyz)
+
+compute_separate_transitions!(model::NonhydrostaticModel) = NonhydrostaticModels.compute_biogeochemical_transitions!(model, :xyz)
+compute_separate_transitions!(model::HydrostaticFreeSurfaceModel) = HydrostaticFreeSurfaceModels.compute_biogeochemical_transitions!(model, :xyz)
+
+# Check that the tracer tendency kernel omits the transition of `:P` when it is split off,
+# and that the separate kernel adds exactly the omitted transition (and nothing for `:Z`)
+function test_transition_computed_separately(ModelType, grid, BGCType)
+    reference = separable_model(ModelType, grid, BGCType, false, :QuasiAdamsBashforth2)
+    split     = separable_model(ModelType, grid, BGCType, true,  :QuasiAdamsBashforth2)
+
+    compute_inline_tendencies!(reference)
+    compute_inline_tendencies!(split)
+
+    Gʳ = reference.timestepper.Gⁿ
+    Gˢ = split.timestepper.Gⁿ
+
+    # Only the transition of `:P` is missing from the inline tendency
+    @test same(Gʳ.Z, Gˢ.Z)
+    @test !same(Gʳ.P, Gˢ.P)
+
+    inline_GZ = Array(interior(Gˢ.Z))
+
+    compute_separate_transitions!(reference)
+    compute_separate_transitions!(split)
+
+    # The separate kernel adds the transition of `:P` only, and nothing for the inline model
+    @test same(Gʳ.P, Gˢ.P)
+    @test Array(interior(Gˢ.Z)) == inline_GZ
+    @test same(Gʳ.Z, Gˢ.Z)
+
+    return nothing
+end
+
 #####
 ##### Run the tests
 #####
@@ -265,26 +305,34 @@ end
     @testset "Separately computed biogeochemical transitions" begin
         @info "Testing separately computed biogeochemical transitions..."
 
-        @testset "TransitionFree and tendency_biogeochemistry" begin
+        @testset "include_biogeochemistry_transitions" begin
             grid = RectilinearGrid(size = (2, 2, 2), extent = (1, 1, 1))
             for BGCType in (SeparableDiscreteBGC, SeparableContinuousBGC)
                 inline = separable_bgc(BGCType, grid, false)
                 split  = separable_bgc(BGCType, grid, true)
 
-                @test @inferred(tendency_biogeochemistry(inline, Val(:P))) === inline
-                @test @inferred(tendency_biogeochemistry(split, Val(:Z))) === split
-                @test @inferred(tendency_biogeochemistry(split, Val(:P))) isa TransitionFree
-                @test @inferred(tendency_biogeochemistry(nothing, Val(:P))) === nothing
+                @test @inferred(include_biogeochemistry_transitions(inline, Val(:P)))
+                @test @inferred(include_biogeochemistry_transitions(inline, Val(:Z)))
+                @test !@inferred(include_biogeochemistry_transitions(split, Val(:P)))
+                @test @inferred(include_biogeochemistry_transitions(split, Val(:Z)))
+                @test @inferred(include_biogeochemistry_transitions(nothing, Val(:P)))
 
-                tf = tendency_biogeochemistry(split, Val(:P))
-                @test !(tf isa AbstractBiogeochemistry)
-                @test tf.biogeochemistry === split
-                @test biogeochemical_drift_velocity(tf, Val(:P)) === biogeochemical_drift_velocity(split, Val(:P))
-                @test biogeochemical_auxiliary_fields(tf) === biogeochemical_auxiliary_fields(split)
-                @test adapt_structure(nothing, tf) isa TransitionFree
+                # The result is known at compile time, so the kernel argument `Val(...)` is concretely inferred
+                @test @inferred((bgc -> Val(include_biogeochemistry_transitions(bgc, Val(:P))))(split)) === Val(false)
+                @test @inferred((bgc -> Val(include_biogeochemistry_transitions(bgc, Val(:Z))))(split)) === Val(true)
+            end
+        end
 
-                fields = (; P = CenterField(grid), Z = CenterField(grid), Iᴾᴬᴿ = CenterField(grid))
-                @test biogeochemical_transition(1, 1, 1, grid, tf, Val(:P), Clock(grid), fields) == 0
+        for arch in archs
+            grid = RectilinearGrid(arch; size = (6, 6, 6), x = (0, 2π), y = (0, 2π), z = (-2, 0),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            for ModelType in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
+                BGCType in (SeparableDiscreteBGC, SeparableContinuousBGC)
+
+                @testset "Transition is computed separately: $(nameof(ModelType)), $(nameof(BGCType)) [$(typeof(arch))]" begin
+                    test_transition_computed_separately(ModelType, grid, BGCType)
+                end
             end
         end
 

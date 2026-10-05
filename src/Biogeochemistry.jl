@@ -2,7 +2,6 @@ module Biogeochemistry
 
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
-using Adapt: Adapt
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Center, xnode, ynode, znode
 using Oceananigans.Utils: launch!
@@ -194,27 +193,6 @@ Oceananigans.Biogeochemistry.separate_transition_tracers(bgc::MyBGC) = required_
 separate_transition_tracers(bgc) = ()
 
 """
-    TransitionFree(biogeochemistry)
-
-Wrapper around `biogeochemistry` used in the tracer tendency kernels for tracers whose transition is
-computed separately (see [`separate_transition_tracers`](@ref)). `biogeochemical_transition` is zero,
-while the drift velocity and auxiliary fields are forwarded to the wrapped `biogeochemistry`.
-
-`TransitionFree` is deliberately not a subtype of `AbstractBiogeochemistry`, so that the
-`AbstractBiogeochemistry` and `AbstractContinuousFormBiogeochemistry` methods of
-`biogeochemical_transition` do not apply to it.
-"""
-struct TransitionFree{B}
-    biogeochemistry :: B
-end
-
-Adapt.adapt_structure(to, t::TransitionFree) = TransitionFree(Adapt.adapt(to, t.biogeochemistry))
-
-@inline biogeochemical_transition(i, j, k, grid, ::TransitionFree, val_tracer_name, clock, fields) = zero(grid)
-@inline biogeochemical_drift_velocity(t::TransitionFree, val_tracer_name) = biogeochemical_drift_velocity(t.biogeochemistry, val_tracer_name)
-@inline biogeochemical_auxiliary_fields(t::TransitionFree) = biogeochemical_auxiliary_fields(t.biogeochemistry)
-
-"""
 $(TYPEDSIGNATURES)
 
 Add the biogeochemical transition of each tracer in `separate_transition_tracers(bgc)` in place to
@@ -247,11 +225,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return the biogeochemistry argument passed to the tendency kernel for tracer `name`:
-`TransitionFree(bgc)` if `name` is in `separate_transition_tracers(bgc)`, otherwise `bgc`.
+Return `false` if the biogeochemical transition of tracer `name` is computed in a separate kernel
+(that is, if `name` is in [`separate_transition_tracers`](@ref)), so that the tracer tendency kernel
+does not include it; otherwise return `true`.
 """
-@inline tendency_biogeochemistry(bgc, ::Val{name}) where name =
-    name in separate_transition_tracers(bgc) ? TransitionFree(bgc) : bgc
+@inline include_biogeochemistry_transitions(biogeochemistry, ::Val{name}) where name =
+    !(name in separate_transition_tracers(biogeochemistry))
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()

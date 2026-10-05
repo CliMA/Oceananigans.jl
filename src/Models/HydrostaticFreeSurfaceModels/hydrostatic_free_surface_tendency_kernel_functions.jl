@@ -127,13 +127,14 @@ where `c = C[tracer_index]`.
                                                           c_immersed_bc,
                                                           buoyancy,
                                                           biogeochemistry,
+                                                          ::Val{include_biogeochemistry_transitions},
                                                           velocities,
                                                           free_surface,
                                                           tracers,
                                                           closure_fields,
                                                           auxiliary_fields,
                                                           clock,
-                                                          forcing) where tracer_index
+                                                          forcing) where {tracer_index, include_biogeochemistry_transitions}
 
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers),
@@ -142,9 +143,13 @@ where `c = C[tracer_index]`.
 
     total_velocities = tracer_advecting_velocities(velocities, biogeochemistry, closure, closure_fields, forcing, val_tracer_name)
 
+    bgc_tendency = include_biogeochemistry_transitions ?
+                   biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
+                   zero(grid)
+
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, closure_fields, val_tracer_index, clock, model_fields)
-             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end
