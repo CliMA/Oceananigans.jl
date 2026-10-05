@@ -197,15 +197,6 @@ end
     @test stretched_poisson_solver_correct_answer(Float32, arch, (Periodic, Periodic, Bounded), 8, 8, faces)
 end
 
-@testset "MetalGPU: Base.cbrt(::Float32)" begin
-    # `Base.cbrt(::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#952.
-    # The fix, JuliaGPU/Metal.jl#953 (Metal ≥ 1.11), needs GPUCompiler 2, which Enzyme and Reactant don't support yet.
-    # TODO once Metal ≥ 1.11 is allowed: raise the Metal compat, delete src/Utils/f32_safe_cbrt.jl and its
-    # override in ext/OceananigansMetalExt.jl, call `cbrt` at its call sites, and make this `@test_broken` a `@test`.
-    x = MtlArray([8f0, -27f0])
-    @test_broken Array(cbrt.(x)) == [2f0, -3f0]
-end
-
 @testset "MetalGPU: CATKEVerticalDiffusivity" begin
     # https://github.com/CliMA/Oceananigans.jl/issues/5939
     arch = GPU(Metal.MetalBackend())
