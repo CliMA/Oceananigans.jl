@@ -59,6 +59,9 @@ partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
 grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constructors, tripolar_constructors])
 
+sum_sizes(x) = sum(x)
+sum_sizes(x::Sizes) = sum(x.sizes)
+
 @testset "Total active cells consistent" for (arch, grid_constructor, ib_constructor) in
     Iterators.product(archs, grid_constructors, ib_constructors)
 
@@ -102,8 +105,8 @@ end
     cost_map = create_cost_map(underlying_grid, ib)
     balanced_partition = create_balanced_partition(strategy, partition, cost_map)
 
-    @test sum(balanced_partition.x.sizes) == Nx
-    @test sum(balanced_partition.y.sizes) == Ny
+    @test sum_sizes(balanced_partition.x.sizes) == Nx
+    @test sum_sizes(balanced_partition.y.sizes) == Ny
 
     @test length(balanced_partition.x.sizes) == partition.x
     @test length(balanced_partition.y.sizes) == partition.y
