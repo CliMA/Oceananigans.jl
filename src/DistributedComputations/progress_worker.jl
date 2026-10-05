@@ -20,7 +20,7 @@ const progress_worker_enabled = Ref{Union{Nothing, Bool}}(nothing)
 # The worker needs more than one default thread, and calls MPI concurrently with the main thread (`MPI_THREAD_MULTIPLE`)
 function use_progress_worker()
     if isnothing(progress_worker_enabled[])
-        spare_thread = Threads.nthreads() > 1
+        spare_thread = any(>(1), Threads.nthreads.((:default, :interactive)))
         progress_worker_enabled[] = spare_thread && MPI.Query_thread() == MPI.THREAD_MULTIPLE
     end
     return progress_worker_enabled[]::Bool
