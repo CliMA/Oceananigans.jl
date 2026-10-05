@@ -1,7 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, create_cost_map, GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
+using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, create_cost_map, Sizes,
+                                            GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
 
 sizes = [ (60, 60, 30) ]
 halos = [ (4, 4, 4) ]
@@ -52,17 +53,11 @@ ib_constructors = [
   bottom_height -> PartialCellBottom(bottom_height)
 ]
 
-strategies = [nothing, SimplifiedGeneralizedBlockDistribution(), GeneralizedBlockDistribution()]
+strategies = [SimplifiedGeneralizedBlockDistribution(), GeneralizedBlockDistribution()]
 
 partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
 grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constructors, tripolar_constructors])
-
-partition_size(x::Int, l) = x*l
-partition_size(x::Sizes, _) = sum(x.sizes)
-
-partition_length(x) = x
-partition_length(x::Sizes) = length(x.sizes)
 
 @testset "Total active cells consistent" for (arch, grid_constructor, ib_constructor) in
     Iterators.product(archs, grid_constructors, ib_constructors)
@@ -107,11 +102,19 @@ end
     cost_map = create_cost_map(underlying_grid, ib)
     balanced_partition = create_balanced_partition(strategy, partition, cost_map)
 
-    @test partition_length(balanced_partition.x) == partition.x
-    @test partition_length(balanced_partition.y) == partition.y
+    # If partitioning in x
+    if !isnothing(partition.x)
+      @test balanced_partition.x isa Sizes
+      @test length(balanced_partition.x.sizes) == partition.x
+      @test sum(balanced_partition.x.sizes) == Nx
+    end
 
-    @test partition_size(balanced_partition.x, Nx) == Nx
-    @test partition_size(balanced_partition.y, Ny) == Ny
+    # If partitioning in y
+    if !isnothing(partition.y)
+      @test balanced_partition.y isa Sizes
+      @test length(balanced_partition.y.sizes) == partition.y
+      @test sum(balanced_partition.y.sizes) == Ny
+    end
 
   end
 end

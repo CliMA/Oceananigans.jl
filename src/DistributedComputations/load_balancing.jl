@@ -27,33 +27,35 @@ function ends_to_sizes(ends)
   return sizes
 end
 
-function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribution, ranks, cost_map)
+function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribution, unbalanced_partition, cost_map)
+  Rx, Ry, _ = ranks(unbalanced_partition)
   costs = on_architecture(CPU(), interior(cost_map))
 
   # Partition each direction independently
   x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
-  x_ends = partition_1d(x_costs, ranks.x)
+  x_ends = partition_1d(x_costs, Rx)
   x_sizes = ends_to_sizes(x_ends)
 
   y_costs = Iterators.flatten(sum(costs; dims=(1,3)))
-  y_ends = partition_1d(y_costs, ranks.y)
+  y_ends = partition_1d(y_costs, Ry)
   y_sizes = ends_to_sizes(y_ends)
 
   return Partition(; x=Sizes(x_sizes...), y=Sizes(y_sizes...))
 
 end
 
-function create_balanced_partition(strategy::GeneralizedBlockDistribution, ranks, cost_map)
+function create_balanced_partition(strategy::GeneralizedBlockDistribution, unbalanced_partition, cost_map)
   # Iterative algorithm based on "Manne, F., Sørevik, T. (1996). Partitioning an array onto a mesh of processors"
+  Rx, Ry, _ = ranks(unbalanced_partition)
   costs = on_architecture(CPU(), interior(cost_map))
 
   # Partition x first
   x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
-  x_ends = partition_1d(x_costs, ranks.x)
+  x_ends = partition_1d(x_costs, Rx)
 
   # Reduce map from mxn to pxn
   y_costs = Iterators.flatten(maximum([sum(costs[l:r,j]) for (l,r) in x_ends, j in axes(costs, 2)]; dims=1))
-  y_ends = partition_1d(y_costs, ranks.y)
+  y_ends = partition_1d(y_costs, Ry)
 
   x_sizes = ends_to_sizes(x_ends)
   y_sizes = ends_to_sizes(y_ends)
@@ -65,10 +67,10 @@ function create_balanced_partition(strategy::GeneralizedBlockDistribution, ranks
 
   while !optimized
     x_costs = Iterators.flatten(maximum([sum(costs[i,l:r]) for i in axes(costs, 1), (l,r) in y_ends]; dims=2))
-    x_ends = partition_1d(x_costs, ranks.x)
+    x_ends = partition_1d(x_costs, Rx)
 
     y_costs = Iterators.flatten(maximum([sum(costs[l:r,j]) for (l,r) in x_ends, j in axes(costs, 2)]; dims=1))
-    y_ends = partition_1d(y_costs, ranks.y)
+    y_ends = partition_1d(y_costs, Ry)
 
     x_sizes = ends_to_sizes(x_ends)
     y_sizes = ends_to_sizes(y_ends)
