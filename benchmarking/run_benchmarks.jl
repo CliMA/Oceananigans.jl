@@ -8,6 +8,7 @@
 #####   - benchmark: Quick performance benchmarks (default)
 #####   - simulate: Full runs with output for validation
 #####   - io: IO-heavy benchmarks measuring 3D output performance
+#####   - read: Benchmark reading a previously-written store (across jld2 / netcdf / zarr)
 #####
 ##### Usage (benchmark mode):
 #####   julia --project run_benchmarks.jl                                    # Default: 360x180x50, GPU, Float32
@@ -15,17 +16,27 @@
 #####   julia --project run_benchmarks.jl --size="180x90x25, 360x180x50"     # Multiple sizes
 #####   julia --project run_benchmarks.jl --device=CPU --size=90x45x10       # CPU benchmark
 #####
+##### Usage (nonhydrostatic case):
+#####   julia --project run_benchmarks.jl --case=nonhydrostatic --size=64x64x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient"
+#####
 ##### Usage (simulate mode):
 #####   julia --project run_benchmarks.jl --mode=simulate --size=360x180x50 --stop_time=24.0
 #####
 ##### Usage (io mode):
 #####   julia --project run_benchmarks.jl --mode=io --size=360x180x50 --output_iteration_interval=1
 #####   julia --project run_benchmarks.jl --mode=io --device=CPU --size=90x45x10 --time_steps=10 --output_iteration_interval=2
-#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=120x60x25
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=auto
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=45x45x10
+#####
+##### Usage (read mode):
+#####   julia --project run_benchmarks.jl --mode=read --format=zarr --size=90x45x10 --time_steps=10
+#####   julia --project run_benchmarks.jl --mode=read --format=jld2
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
+using OceananigansBenchmarks: earth_ocean, nonhydrostatic_box, benchmark_time_stepping, run_benchmark_simulation,
+    run_io_benchmark, run_read_benchmark,
+    BenchmarkResult, SimulationResult, IOBenchmarkResult, ReadBenchmarkResult
 using JSON: JSON
 using Oceananigans
 using Oceananigans.DistributedComputations: Distributed, Partition, @root, @onrank, @handshake, mpi_rank, mpi_size
@@ -35,7 +46,7 @@ using CUDA
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
     IsopycnalSkewSymmetricDiffusivity, HorizontalScalarBiharmonicDiffusivity
 
-using Printf: @printf
+using Printf: @printf, @sprintf
 using Dates: DateTime, now, UTC
 
 #####
@@ -51,7 +62,7 @@ function parse_commandline()
 
     @add_arg_table! s begin
         "--mode"
-            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks"
+            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks, 'read' for read-performance benchmarks"
             arg_type = String
             default = "benchmark"
 
@@ -76,9 +87,16 @@ function parse_commandline()
             default = "2x2x1"
 
         "--case"
-            help = "Benchmark case: earth_ocean"
+            help = "Benchmark case: earth_ocean or nonhydrostatic"
             arg_type = String
             default = "earth_ocean"
+
+        "--pressure_solver"
+            help = "Pressure solver (nonhydrostatic case only): FFT (uniform grid), " *
+                   "FourierTridiagonal (grid stretched in z), or ConjugateGradient (immersed seamount). " *
+                   "Multiple solvers can be specified as comma-separated list."
+            arg_type = String
+            default = "FFT"
 
         "--grid_type"
             help = "Grid type: tripolar, lat_lon (no bathymetry), or immersed_lat_lon (with bathymetry)"
@@ -132,6 +150,11 @@ function parse_commandline()
             arg_type = Int
             default = 5
 
+        "--samples"
+            help = "Number of timing windows of `time_steps` steps each; the minimum is reported (benchmark mode only)"
+            arg_type = Int
+            default = 1
+
         "--dt"
             help = "Time step size in seconds"
             arg_type = Float64
@@ -167,10 +190,21 @@ function parse_commandline()
             arg_type = String
             default = "jld2"
 
-        "--zarr_chunks"
-            help = "Zarr spatial chunk size for IO mode as NxxNyxNz (e.g., 120x60x25), or 'default' for default spatial chunking (grid size, 1)"
+        "--format"
+            help = "File format for read benchmark mode: jld2, netcdf, or zarr"
             arg_type = String
-            default = "default"
+            default = "zarr"
+
+        "--zarr_chunks"
+            help = "Spatial chunk shape for ZarrWriter when output_format=zarr. " *
+                   "Either 'auto' (default; let the writer choose) or 'NxxNyxNz' (e.g. '64x64x16')."
+            arg_type = String
+            default = "auto"
+
+        "--read_variable"
+            help = "Variable name to construct as FieldTimeSeries in read mode"
+            arg_type = String
+            default = "T"
 
         "--tracers"
             help = "Tracer names as comma-separated list (e.g., T,S or T,S,C1,C2,C3)"
@@ -215,6 +249,17 @@ function parse_size(size_str)
     return Tuple(parse(Int, p) for p in parts)
 end
 
+"""
+    parse_zarr_chunks(chunks_str)
+
+Parse a Zarr chunk-shape string into either `nothing` (auto) or a tuple `(Nx, Ny, Nz)`.
+Accepts `"auto"` or `"NxxNyxNz"` (e.g., `"64x64x16"`).
+"""
+function parse_zarr_chunks(chunks_str::AbstractString)
+    lowercase(strip(chunks_str)) == "auto" && return nothing
+    return parse_size(chunks_str)
+end
+
 #####
 ##### Factory functions to create schemes from names
 #####
@@ -250,13 +295,13 @@ end
 
 function make_closure(name, FT)
     name == "nothing" && return nothing
-    name == "CATKE" && return CATKEVerticalDiffusivity()
+    name == "CATKE" && return CATKEVerticalDiffusivity(FT)
     name == "SmagorinskyLilly" && return SmagorinskyLilly(FT)
-    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                          HorizontalScalarBiharmonicDiffusivity(ν=1e12))
-    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                              IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
-                                              HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                          HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
+    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                              IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
+                                              HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
@@ -301,6 +346,7 @@ function run_benchmarks(args)
     zstar_coordinates = [lowercase(s) == "true" for s in parse_list(args["zstar_coordinate"])]
     timestepper = make_timestepper(args["timestepper"])
     tracers = Tuple(Symbol(strip(s)) for s in split(args["tracers"], ","))
+    pressure_solvers = case == "nonhydrostatic" ? parse_list(args["pressure_solver"]) : [nothing]
 
     group = args["group"]
 
@@ -308,17 +354,15 @@ function run_benchmarks(args)
     Δt = args["dt"]
     time_steps = args["time_steps"]
     warmup_steps = args["warmup_steps"]
+    samples = args["samples"]
     stop_time = args["stop_time"] * 3600  # Convert hours to seconds
     output_interval = args["output_interval"] * 3600  # Convert hours to seconds
     output_dir = args["output_dir"]
     output_iteration_interval = args["output_iteration_interval"]
     output_format = args["output_format"]
-    zarr_chunks = if mode == "io" && output_format == "zarr"
-        chunks_arg = strip(args["zarr_chunks"])
-        chunks_arg == "default" ? nothing : parse_size(chunks_arg)
-    else
-        nothing
-    end
+    read_format = args["format"]
+    zarr_chunks = parse_zarr_chunks(args["zarr_chunks"])
+    read_variable = args["read_variable"]
 
     # Default to 1440 time steps for IO mode when the user hasn't explicitly set it
     if mode == "io" && time_steps == 100
@@ -334,6 +378,9 @@ function run_benchmarks(args)
         println("Date: ", now(UTC))
         println("Mode: ", mode)
         println("Case: ", case)
+        if case == "nonhydrostatic"
+            println("Pressure solvers: ", pressure_solvers)
+        end
         println("Grid types: ", grid_types)
         println("Architecture: ", arch)
         println("Distributed: ", distributed_enabled ? "true" : "false")
@@ -348,12 +395,23 @@ function run_benchmarks(args)
         println("Tracers: ", tracers)
         println("Timestepper: ", timestepper)
         if mode == "benchmark"
-            println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Time steps: ", time_steps, " × ", samples, " windows (warmup: ", warmup_steps, ")")
         elseif mode == "io"
             println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
             println("Output format: ", output_format)
             println("Output iteration interval: ", output_iteration_interval)
             println("Output fields: u, v, w, T, S (full 3D)")
+            if output_format == "zarr"
+                println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+            end
+        elseif mode == "read"
+            println("Time steps to write: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Read format: ", read_format)
+            println("Output iteration interval: ", output_iteration_interval)
+            println("Read variable: ", read_variable)
+            if read_format == "zarr"
+                println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+            end
         else
             println("Stop time: ", args["stop_time"], " hours")
             println("Output interval: ", args["output_interval"], " hours")
@@ -365,15 +423,23 @@ function run_benchmarks(args)
 
     # Loop over all combinations using Iterators.product
     # Advection pairs are zipped (not crossed) when both lists have the same length
-    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, (mom_adv_name, trc_adv_name), cls_name) in
-            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, advection_pairs, closures)
+    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, (mom_adv_name, trc_adv_name), cls_name, pressure_solver) in
+            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, advection_pairs, closures, pressure_solvers)
 
         # Build benchmark name
         size_str = "$(Nx)x$(Ny)x$(Nz)"
         ft_str = FT == Float32 ? "F32" : "F64"
         zst_str = zstar_coordinate ? "_zstar" : ""
         n_tracers = length(tracers)
-        name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
+        name = if case == "nonhydrostatic"
+            "Nonhydrostatic_$(pressure_solver)_$(size_str)_$(ft_str)_WENO5"
+        else
+            "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
+        end
+
+        if distributed_enabled
+            name *= "_" * join(partition_ranks, "x") * "ranks"
+        end
 
         @root begin
             println("\n", "-" ^ 70)
@@ -399,8 +465,10 @@ function run_benchmarks(args)
                 tracers,
                 timestepper
             )
+        elseif case == "nonhydrostatic"
+            model = nonhydrostatic_box(arch; Nx, Ny, Nz, float_type = FT, pressure_solver)
         else
-            error("Unknown case: $case")
+            error("Unknown case: $case. Use earth_ocean or nonhydrostatic.")
         end
 
         # Verbose only for root/rank 0
@@ -408,15 +476,20 @@ function run_benchmarks(args)
         @root is_rank_0 = true
         # Run based on mode
         result = if mode == "benchmark"
-            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=is_rank_0)
+            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, samples, name, group, verbose=is_rank_0)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
                 stop_time, Δt, output_interval, output_dir, name, group, verbose=is_rank_0)
         elseif mode == "io"
             run_io_benchmark(model;
-                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, group, verbose=is_rank_0)
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format,
+                output_dir, name, group, zarr_chunks, verbose=is_rank_0)
+        elseif mode == "read"
+            run_read_benchmark(model;
+                time_steps, Δt, warmup_steps, output_iteration_interval, format=read_format,
+                output_dir, name, group, zarr_chunks, read_variable, verbose=is_rank_0)
         else
-            error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
+            error("Unknown mode: $mode. Use 'benchmark', 'simulate', 'io', or 'read'.")
         end
 
         push!(results, result)
@@ -439,27 +512,45 @@ function main()
     #####
 
     @root begin
-        println("\n", "=" ^ 105)
+        println("\n", "=" ^ 135)
         println("BENCHMARK SUMMARY")
-        println("=" ^ 105)
+        println("=" ^ 135)
         println()
 
-        @printf("%-55s %8s %12s %12s %10s %15s\n", "Benchmark", "Float", "Grid", "Time/Step", "Steps/s", "Points/s")
-        println("-" ^ 105)
+        @printf("%-55s %8s %12s %14s %10s %15s %10s %16s\n",
+                "Benchmark", "Float", "Grid", "Time/unit (ms)", "Units/s", "Points/s", "Size", "Chunks")
+        println("-" ^ 135)
 
         for r in results
             grid_str = "$(r.grid_size[1])×$(r.grid_size[2])×$(r.grid_size[3])"
-            @printf("%-55s %8s %12s %10.4f ms %10.2f %15.2e\n",
+            time_per_unit, units_per_second, grid_points_per_second, size_bytes, chunks =
+                if r isa ReadBenchmarkResult
+                    (r.time_per_snapshot_seconds, r.snapshots_per_second, r.grid_points_per_second,
+                     r.file_size_bytes, r.chunk_shape)
+                elseif r isa IOBenchmarkResult
+                    (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                     r.total_output_size_bytes, r.chunk_shape)
+                else
+                    (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                     0, nothing)
+                end
+
+            size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+            chunks_str = isnothing(chunks) ? "—" : string(Tuple(chunks))
+
+            @printf("%-55s %8s %12s %14.4f %10.2f %15.2e %10s %16s\n",
                 r.name,
                 r.float_type,
                 grid_str,
-                r.time_per_step_seconds * 1000,
-                r.steps_per_second,
-                r.grid_points_per_second
+                time_per_unit * 1000,
+                units_per_second,
+                grid_points_per_second,
+                size_str,
+                chunks_str,
             )
         end
 
-        println("=" ^ 105)
+        println("=" ^ 135)
     end
 
     #####
@@ -539,13 +630,16 @@ function generate_markdown_report(filename, entries)
                 println(io, "| CUDA | ", metadata["cuda_version"], " |")
             end
             println(io, "| Hostname | ", metadata["hostname"], " |")
+            for (name, version) in sort!(collect(get(metadata, "package_versions", Dict{String, Any}())))
+                println(io, "| ", name, " | ", version, " |")
+            end
             println(io)
         end
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Distributed | Float | Grid | Time/Step (ms) | Steps/s | Points/s | Timestamp |")
-        println(io, "|-----------|-------------|-------|------|----------------|---------|----------|-----------|")
+        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Spread | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------------|-------|------|----------------|--------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
@@ -553,14 +647,36 @@ function generate_markdown_report(filename, entries)
             timestamp = entry["metadata"]["timestamp"]
             distributed_str = haskey(entry, "rank") ? "rank $(entry["rank"])" : "false"
 
-            @printf(io, "| `%s` | %s | %s | %s | %.2f | %.2f | %.2e | %s |\n",
+            time_per_unit_seconds, units_per_second = if haskey(entry, "time_per_snapshot_seconds")
+                (entry["time_per_snapshot_seconds"], entry["snapshots_per_second"])
+            else
+                (entry["time_per_step_seconds"], entry["steps_per_second"])
+            end
+
+            size_bytes = get(entry, "total_output_size_bytes", get(entry, "file_size_bytes", 0))
+            size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+
+            chunks_raw = get(entry, "chunk_shape", nothing)
+            chunks_str = isnothing(chunks_raw) ? "—" : string(Tuple(Int.(chunks_raw)))
+
+            # Spread of the timing windows relative to the reported minimum
+            spread_str = if haskey(entry, "time_per_step_max_seconds")
+                @sprintf("+%.1f%%", 100 * (entry["time_per_step_max_seconds"] / entry["time_per_step_seconds"] - 1))
+            else
+                "—"
+            end
+
+            @printf(io, "| `%s` | %s | %s | %s | %.2f | %s | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
                     distributed_str,
                     entry["float_type"],
                     grid_str,
-                    entry["time_per_step_seconds"] * 1000,
-                    entry["steps_per_second"],
+                    time_per_unit_seconds * 1000,
+                    spread_str,
+                    units_per_second,
                     entry["grid_points_per_second"],
+                    size_str,
+                    chunks_str,
                     timestamp)
         end
     end

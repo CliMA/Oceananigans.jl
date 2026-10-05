@@ -4,30 +4,26 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        assumed_field_location,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
-                                       RightBoundary
-using Oceananigans.Grids: Grids, Center, Face,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
-                          SerialFoldedTopology
+                                       RightBoundary,
+                                       pivot_shift
+using Oceananigans.Grids: Grids, SerialFoldedTopology
 using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Operators: Operators
 
 # A tripolar grid is always between 0 and 360 in longitude
 # and always caps at the north pole (90°N)
 Grids.x_domain(grid::TripolarGridOfSomeKind) = 0, 360
 Grids.y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ)), 90
 
-# Determine the appropriate north fold boundary condition based on grid topology.
-# Non-fold topologies (FullyConnected, RightConnected, etc.) default to UPivot — this
-# value is only used as a placeholder; these ranks get their north BC overridden by
-# inject_halo_communication_boundary_conditions or regularize_field_boundary_conditions.
-north_fold_boundary_condition(::Type{<:AbstractTopology})                = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightCenterFolded})                 = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightCenterFolded})    = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightCenterConnected}) = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightFaceFolded})                   = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})      = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
+fold_pivot(grid::TripolarGrid) = fold_pivot(grid.conformal_mapping)
+fold_pivot(grid::ImmersedBoundaryGrid) = fold_pivot(grid.underlying_grid)
+
+@inline function Operators.north_fold_index(i, grid::TripolarGridOfSomeKind)
+    i′ = grid.Nx - i + 1 + pivot_shift(fold_pivot(grid))
+    return ifelse(i′ < 1, i′ + grid.Nx, i′) # i′ = 0 only for the T-pivot column i = Nx
+end
+
+north_fold_boundary_condition(grid::TripolarGridOfSomeKind, sign = 1) = BoundaryCondition(Zipper{fold_pivot(grid)}(), sign)
 
 const SerialTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:SerialFoldedTopology}
 
@@ -39,11 +35,15 @@ const SerialTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:SerialFoldedTopology}
 
 # DefaultBC on a serial tripolar → local `Zipper` with sign
 BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) =
-    north_fold_boundary_condition(grid)(sign)
+    north_fold_boundary_condition(grid, sign)
 
 # User-supplied BC on a serial tripolar → pass through (Field validates later).
 # `bc::BoundaryCondition` disambiguates against the generic method at BoundaryConditions.jl:244.
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
+
+# Only to solve the ambiguities (this method should never be used)
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.TRVBC, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
 
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
@@ -69,5 +69,5 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = north_fold_boundary_condition(grid)(1)
+BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = north_fold_boundary_condition(grid)
 BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc::Tuple{<:Any, Nothing, <:Any}) = nothing

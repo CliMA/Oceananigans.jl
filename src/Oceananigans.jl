@@ -41,14 +41,16 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
-    PerturbationAdvection,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
+    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
+    PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, RegriddedOperation,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
@@ -100,21 +102,24 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, iteration,
+    Simulation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
+    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer, TimeDerivative,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
+    PrecedingIterations, TimeOffset,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel,
 
     # Output readers
-    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
+    ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
     # MultiRegion and Cubed sphere
     MultiRegionGrid, MultiRegionField,
@@ -130,14 +135,6 @@ export
 using DocStringExtensions
 
 function __init__()
-    if VERSION >= v"1.13.0"
-        @warn """You are using Julia v1.13 or later!"
-                 Oceananigans is currently tested on Julia v1.12."
-                 If you find issues with Julia v1.13 or later,"
-                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
-
-    end
-
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 

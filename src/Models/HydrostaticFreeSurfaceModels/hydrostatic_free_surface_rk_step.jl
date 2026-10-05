@@ -31,38 +31,35 @@ The order of operations for explicit free surfaces is:
 8. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
-    # Compute barotropic and baroclinic tendencies
-    @apply_regionally compute_momentum_flux_bcs!(model)
-
-    # Advance the free surface first
-    compute_free_surface_tendency!(grid, model, free_surface)
-    step_free_surface!(free_surface, model, model.timestepper, Δτ)
-
     @apply_regionally begin
-        compute_transport_velocities!(model, free_surface)
+        update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
+
+        compute_momentum_flux_bcs!(model)
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
-    # Mask and fill velocity halos
+    # Advance the free surface with the change the column actually underwent, boundary drain included
+    compute_free_surface_tendency!(grid, model, free_surface, Δτ)
+    step_free_surface!(free_surface, model, model.timestepper, Δτ)
+
+    @apply_regionally compute_transport_velocities!(model, free_surface)
+
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
-        # compute tracer tendencies
         compute_tracer_tendencies!(model)
 
-        # Advance grid
+        # The barotropic correction integrates over the column, so it must follow the grid update
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
-        # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
     return nothing
 end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -79,8 +76,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
+        update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
@@ -102,7 +98,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
-    # Mask and fill velocity halos
+    # Fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
@@ -151,19 +147,30 @@ If an implicit solver is configured, implicit vertical diffusion is applied afte
 function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
+
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    implicit_substep_velocity!(model, Δt, Val(:u))
+    implicit_substep_velocity!(model, Δt, Val(:v))
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+
     return nothing
 end
 
 @inline function rk_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[name]
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     velocity_field = velocities[name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
+            _rk_substep_field!, velocity_field, Δt, Gⁿ, Ψ⁻; exclude_periphery=true)
+
+    return nothing
+end
+
+@inline function implicit_substep_velocity!(model, Δt, ::Val{name}) where name
+    velocity_field = model.velocities[name]
 
     implicit_step!(velocity_field,
                    model.timestepper.implicit_solver,
@@ -197,15 +204,9 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
-    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
-
-@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
-    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 
@@ -214,16 +215,19 @@ end
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
 
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
     c  = model.tracers[tracer_name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+            _rk_substep_tracer_field!, c, grid, Δt, Gⁿ, Ψ⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(c,
                    model.timestepper.implicit_solver,
                    closure,
@@ -233,7 +237,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
     return nothing
 end
 

@@ -6,6 +6,13 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
 
+# True for topologies whose buffer region is owned locally (no MPI-communicating side in that direction).
+@inline is_local_dimension(T) = T === Bounded           ||
+                                T === Periodic          ||
+                                T === Flat              ||
+                                T === RightFaceFolded   ||
+                                T === RightCenterFolded
+
 function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
 
     # Iterate over the fields to clear _ALL_ possible architectures
@@ -24,7 +31,7 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
+@inline interior_tendency_kernel_parameters(arch, grid) = KernelParameters(worksize(grid), map(zero, worksize(grid))) # fallback
 
 function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Rx, Ry, _ = arch.ranks

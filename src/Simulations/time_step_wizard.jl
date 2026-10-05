@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.Utils: prettysummary
-import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -14,6 +14,8 @@ mutable struct TimeStepWizard{FT, C, D}
 end
 
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
+
+Oceananigans.prognostic_state(::TimeStepWizard) = nothing
 
 Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                                 "cfl=",           prettysummary(wizard.cfl),
@@ -87,8 +89,6 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
     return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt,
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
-
-using Oceananigans.DistributedComputations: all_reduce
 
 """
 $(TYPEDSIGNATURES)

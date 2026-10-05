@@ -318,10 +318,10 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    nTX, nTY, nTZ = map(nameof, topology(grid))
 
     return string(size_summary(grid),
-                  " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " LatitudeLongitudeGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
@@ -680,6 +680,7 @@ end
 @inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = φnodes(grid, ℓy; with_halos, indices)
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
+@inline ynodes(grid::LLG, ::Nothing; with_halos=false) = 1:1
 
 @inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
 @inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)

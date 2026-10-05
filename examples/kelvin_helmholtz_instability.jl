@@ -188,6 +188,8 @@ function grow_instability!(simulation, energy)
     energy₀ = energy[1, 1, 1]
 
     ## Grow
+    ## Fail the docs build if this simulation produces NaNs #hide
+    Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
     run!(simulation)
 
     ## Analyze
@@ -380,7 +382,7 @@ simulation.output_writers[:vorticity] =
     JLD2Writer(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
                schedule = TimeInterval(0.10 / estimated_growth_rate),
                filename = "kelvin_helmholtz_instability.jld2",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # And now we...
 

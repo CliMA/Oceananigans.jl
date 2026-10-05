@@ -63,6 +63,7 @@ regular_dimensions(::XYZRegularRG) = (1, 2, 3)
 stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
 stretched_dimensions(::XYRegularRG) = tuple(3)
+stretched_dimensions(::XYZRegularRG) = tuple()
 
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
@@ -372,7 +373,9 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
     return RectilinearGrid{TX, TY, TZ, Nothing}(nothing,
                                        grid.Nx, grid.Ny, grid.Nz,
                                        grid.Hx, grid.Hy, grid.Hz,
-                                       grid.Lx, grid.Ly, grid.Lz,
+                                       Adapt.adapt(to, grid.Lx),
+                                       Adapt.adapt(to, grid.Ly),
+                                       Adapt.adapt(to, grid.Lz),
                                        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
                                        Adapt.adapt(to, grid.Δxᶜᵃᵃ),
                                        Adapt.adapt(to, grid.xᶠᵃᵃ),

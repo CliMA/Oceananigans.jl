@@ -41,7 +41,7 @@ Random.seed!(1337) # for reproducible results
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as [Wagner2021](@citet),
+# We use a modest resolution and the same total extent as in the paper by [Wagner2021](@citet),
 
 grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 
@@ -217,7 +217,7 @@ simulation.output_writers[:fields] =
     ZarrWriter(model, fields_to_output,
                schedule = TimeInterval(output_interval),
                filename = "langmuir_turbulence_fields.zarr",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # ### An "averages" writer
 #
@@ -237,12 +237,14 @@ simulation.output_writers[:averages] =
     ZarrWriter(model, (; U, V, B, wu, wv),
                schedule = AveragedTimeInterval(output_interval, window=2minutes),
                filename = "langmuir_turbulence_averages.zarr",
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # ## Running the simulation
 #
 # This part is easy,
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # # Making a neat movie

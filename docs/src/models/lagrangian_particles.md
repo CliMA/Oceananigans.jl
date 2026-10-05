@@ -44,7 +44,8 @@ model = NonhydrostaticModel(grid; particles=lagrangian_particles)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 10×10×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme:
+│   └── momentum: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -60,6 +61,9 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 If you want to keep track of custom properties, such as the species or DNA of a Lagrangian particle
 representing a microbe in an agent-based model, then you can create your own custom particle type
 and pass a `StructArray` to the `LagrangianParticles` constructor.
+
+Fields passed through `tracked_fields` are sampled before custom `dynamics` and refreshed after
+advection and boundary handling. Recorded properties therefore match the recorded particle positions.
 
 ```jldoctest particles
 using Oceananigans

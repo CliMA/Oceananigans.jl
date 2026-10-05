@@ -2,9 +2,14 @@
 ##### Utilities for launching kernels
 #####
 
+# Δt for kernel arguments: Metal cannot load Float64 ones. Reactant needs it unconverted,
+# and overrides this in OceananigansReactantExt.
+@inline kernel_time_step(arch, grid, Δt) = convert(eltype(grid), Δt)
+
 using Adapt: Adapt
 using Base: @pure
 using KernelAbstractions: Kernel,
+                          KernelAbstractions as KA,
                           ndrange, workgroupsize,
                           __iterspace, __groupindex, __dynamic_checkbounds,
                           CompilerMetadata
@@ -41,7 +46,7 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See [`launch!`](@ref).
 """
-KernelParameters(size, offsets) = KernelParameters{size, offsets}()
+@inline KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
 # If `size` and `offsets` are numbers, we convert them to tuples
 KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
@@ -134,6 +139,22 @@ function heuristic_workgroup(Wx::Int, Wy::Int, Wz=nothing, Wt=nothing)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Return the workgroup for a kernel launched over `launch_size` on the device `dev`.
+`grid_size` is the size of the grid (with reduced dimensions flattened), which
+the GPU heuristic uses regardless of the dimensions the kernel spans.
+"""
+@inline workgroup_layout(dev, grid_size, launch_size) = heuristic_workgroup(grid_size...)
+
+# The KernelAbstractions CPU backend runs each block as a loop over `CartesianIndices(workgroup)`,
+# so a workgroup spanning the first dimension of `launch_size` yields a single contiguous inner loop.
+@inline workgroup_layout(::KA.CPU, grid_size, launch_size) = cpu_workgroup(launch_size...)
+
+@inline cpu_workgroup(W1::Int) = W1
+@inline cpu_workgroup(W1::Int, W2::Int, Wz...) = W1 == 1 ? (1, W2) : (W1, 1)
+
 # To be extended in the `Grids` modules for non-trivial peripheries,
 # for all other cases, `periphery_offset` is zero.
 periphery_offset(loc, grid, side) = 0
@@ -157,7 +178,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 @inline select_dims(::Val{:xz},  x, y, z) = (x, z)
 @inline select_dims(::Val{:yz},  x, y, z) = (y, z)
 
-@inline function interior_work_layout(grid, workdims::Val, (ℓx, ℓy, ℓz))
+@inline function interior_work_layout(dev, grid, workdims::Val, (ℓx, ℓy, ℓz))
     Fx, Fy, Fz = worksize(grid)
 
     ox = periphery_offset(ℓx, grid, Val(1))
@@ -165,9 +186,10 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     oz = periphery_offset(ℓz, grid, Val(3))
 
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
-    workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup_layout(dev, (Wx, Wy, Wz), launch_size))
 
-    range = contiguousrange(select_dims(workdims, Wx, Wy, Wz), select_dims(workdims, ox, oy, oz))
+    range = contiguousrange(launch_size, select_dims(workdims, ox, oy, oz))
 
     return workgroup, OffsetStaticSize(range)
 end
@@ -181,23 +203,24 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function work_layout(grid, workdims::Val, reduced_dimensions)
+@inline function work_layout(dev, grid, workdims::Val, reduced_dimensions)
     Fx, Fy, Fz = worksize(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
-    workgroup  = heuristic_workgroup(Wx, Wy, Wz)
-    return StaticSize(workgroup), StaticSize(select_dims(workdims, Wx, Wy, Wz))
+    launch_size = select_dims(workdims, Wx, Wy, Wz)
+    workgroup = workgroup_layout(dev, (Wx, Wy, Wz), launch_size)
+    return StaticSize(workgroup), StaticSize(launch_size)
 end
 
-@inline work_layout(grid, workdims::Symbol, reduced_dimensions) = work_layout(grid, Val(workdims), reduced_dimensions)
-@inline interior_work_layout(grid, workdims::Symbol, location) = interior_work_layout(grid, Val(workdims), location)
+@inline work_layout(dev, grid, workdims::Symbol, reduced_dimensions) = work_layout(dev, grid, Val(workdims), reduced_dimensions)
+@inline interior_work_layout(dev, grid, workdims::Symbol, location) = interior_work_layout(dev, grid, Val(workdims), location)
 
-@inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
-    workgroup = heuristic_workgroup(worksize...)
+@inline function work_layout(dev, grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
+    workgroup = workgroup_layout(dev, worksize, worksize)
     return StaticSize(workgroup), StaticSize(worksize)
 end
 
-@inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
-    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
+@inline function offset_work_layout(dev, grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+    workgroup, worksize = work_layout(dev, grid, spec, reduced_dimensions)
     range = contiguousrange(worksize, offsets)
     return  workgroup, OffsetStaticSize(range)
 end
@@ -248,8 +271,8 @@ end
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
     dev  = Architectures.device(arch)
+    workgroup, worksize = work_layout(dev, grid, workspec, reduced_dimensions)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::StaticSize
@@ -260,8 +283,8 @@ end
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    workgroup, worksize = interior_work_layout(grid, workspec, location)
     dev  = Architectures.device(arch)
+    workgroup, worksize = interior_work_layout(dev, grid, workspec, location)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::OffsetStaticSize
@@ -271,8 +294,8 @@ end
 @inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...;
                                   reduced_dimensions = (), kwargs...)
 
-    workgroup, worksize = offset_work_layout(grid, workspec, reduced_dimensions)
     dev  = Architectures.device(arch)
+    workgroup, worksize = offset_work_layout(dev, grid, workspec, reduced_dimensions)
     loop = kernel!(dev, workgroup, worksize)
 
     return loop, worksize::OffsetStaticSize
@@ -306,46 +329,46 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
+@inline launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
-    _launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, workspec::NTuple{M, Int}, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where {M, N} =
+    _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
-@inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
-    _launch!(arch, grid, first(workspec_tuple), args...; kwargs...)
-    launch!(arch, grid, Base.tail(workspec_tuple), args...; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N
+    _launch!(arch, grid, first(workspec_tuple), kernel!, kernel_args...; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, kernel_args...; kwargs...)
     return nothing
 end
 
-@inline launch!(arch, grid, ::Tuple{}, args...; kwargs...) = nothing
+@inline launch!(arch, grid, ::Tuple{}, kernel!, kernel_args...; kwargs...) = nothing
 
-@inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
-@inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
+@inline launch!(arch, grid, workspec::Symbol, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, Val(workspec), kernel!, kernel_args...; kw...)
+@inline launch!(arch, grid, workspec::Val, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
-@inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
+@inline launch_split_maps!(::Tuple{}, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = nothing
 
-@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery = false, reduced_dimensions = ())
+@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; exclude_periphery = false, reduced_dimensions = ()) where N
     cells_map = first(maps)
-    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
-    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
+    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
     return nothing
 end
 
 # Inner interface
-@inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
+@inline function _launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N};
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing)
+                          active_cells_map = nothing) where N
 
     active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
 
     # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
-    location = Oceananigans.instantiated_location(first_kernel_arg)
+    location = Oceananigans.instantiated_location(first(kernel_args))
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
                                        location,
@@ -353,7 +376,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(first_kernel_arg, other_kernel_args...)
+        loop!(Architectures.convert_to_device(arch, kernel_args)...)
     end
 
     return nothing
@@ -534,10 +557,11 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     range = length(index_map)
     groupsize = get(static_workgroupsize)
 
-    blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
+    blocks, groupsize, _ = NDIteration.partition(range, groupsize)
     iterspace = NDRange{1, NDIteration.DynamicSize, static_workgroupsize}(CartesianIndices(blocks), IndexMap(index_map))
 
-    return iterspace, dynamic
+    # The map length is a runtime value, so the last block is always bounds-checked
+    return iterspace, NDIteration.DynamicCheck()
 end
 
 #####
