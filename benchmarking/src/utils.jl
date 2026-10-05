@@ -39,6 +39,18 @@ function zarr_chunk_shape(zarr_path::AbstractString, variable_name::AbstractStri
     end
 end
 
+"""
+    used_gpu_memory()
+
+Bytes of GPU memory currently allocated by this process on the active device. Reads the stream-ordered memory pool
+when one is active, and CUDA's own live-allocation accounting when the pool is disabled
+(`JULIA_CUDA_MEMORY_POOL=none`, as required by CUDA-aware MPI).
+"""
+function used_gpu_memory()
+    pool_used_bytes = CUDACore.MemoryInfo().pool_used_bytes
+    return something(pool_used_bytes, CUDACore.memory_stats().live)
+end
+
 
 """
     benchmark_time_stepping(model;
@@ -111,7 +123,7 @@ function benchmark_time_stepping(model;
     steps_per_second = 1 / time_per_step_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = BenchmarkResult(
@@ -137,12 +149,12 @@ function benchmark_time_stepping(model;
         @info "    Total time: $(@sprintf("%.3f", total_time_seconds)) s"
         @info "    Time per step: $(@sprintf("%.6f", time_per_step_seconds)) s (min of $samples windows; median $(@sprintf("%.6f", time_per_step_median_seconds)) s, max $(@sprintf("%.6f", time_per_step_max_seconds)) s)"
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
-        if arch isa GPU
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 
@@ -262,7 +274,7 @@ function run_benchmark_simulation(model;
     steps_per_second = time_steps / wall_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = SimulationResult(
@@ -290,12 +302,12 @@ function run_benchmark_simulation(model;
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
         @info "    Surface timeseries: $output_filename"
         @info "    Final 3D snapshot: $final_filename"
-        if arch isa GPU
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 
@@ -446,7 +458,7 @@ function run_io_benchmark(model;
                   zarr_chunk_shape(output_filename, "T") :
                   nothing
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = IOBenchmarkResult(
@@ -479,12 +491,12 @@ function run_io_benchmark(model;
         if !isnothing(chunk_shape)
             @info "    Chunk shape: $(Tuple(chunk_shape))"
         end
-        if arch isa GPU
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 
