@@ -174,7 +174,7 @@ sweep and which are recomputed during the reverse sweep. See [`Simulation`](@ref
 """
 function time_step_for!(sim::ReactantSimulation, Nsteps)
     checkpointing = sim.checkpointing
-    @trace track_numbers = false checkpointing = checkpointing for _ = 1:Nsteps
+    @trace mincut = true track_numbers = false checkpointing = checkpointing for _ = 1:Nsteps
         time_step!(sim)
     end
     return nothing
