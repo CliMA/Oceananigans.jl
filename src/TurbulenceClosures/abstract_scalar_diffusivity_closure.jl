@@ -341,9 +341,6 @@ end
 @inline κᶠᶜᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶠ(i, j, k, grid, loc::Tuple, κ::Number, clk, fields) = κ
 
-# Nothing: no momentum or tracer closure. Fluxes are skipped by dispatch; these cover coefficient queries
-# (for example from the vertically implicit solver).
-
 @inline νᶜᶜᶜ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
 @inline νᶠᶜᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
 @inline νᶜᶠᶠ(i, j, k, grid, loc::Tuple, ν::Nothing, clk, fields) = zero(grid)
