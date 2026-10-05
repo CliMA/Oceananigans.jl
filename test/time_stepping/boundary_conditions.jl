@@ -680,7 +680,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             # https://github.com/CliMA/Oceananigans.jl/issues/4165
             free_surface = SplitExplicitFreeSurface(; substeps=10)
 
-            @testset "$boundary_condition [$(typeof(arch)), $FT]" for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+            @testset "$boundary_condition [$(summary(arch)), $FT]" for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
@@ -701,7 +701,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 
-    @testset "Budgets with Flux boundary conditions [$(typeof(arch))]" for arch in archs
+    @testset "Budgets with Flux boundary conditions [$(summary(arch))]" for arch in archs
         Lx = 0.3
         Ly = 0.4
         Lz = 0.5
@@ -738,11 +738,11 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 
-    @testset "Custom diffusivity boundary conditions [$(typeof(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
+    @testset "Custom diffusivity boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
         @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     end
 
-    @testset "Open boundary conditions [$(typeof(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
+    @testset "Open boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
         test_perturbation_advection_open_boundary_conditions(arch, FT)
         test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
         test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
@@ -772,7 +772,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
     end
 
-    @testset "FieldTimeSeries boundary conditions [$(typeof(arch)), $FT]" for arch in archs, FT in (Float64,)
+    @testset "FieldTimeSeries boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,)
         topo = (Bounded, Bounded, Bounded)
         for C in (Flux, Value)
             bc = field_time_series_bc(C, FT, array_type(arch))
@@ -780,7 +780,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 
-    @testset "FieldTimeSeries in boundary conditions are advanced in time [$(typeof(arch))]" for arch in archs
+    @testset "FieldTimeSeries in boundary conditions are advanced in time [$(summary(arch))]" for arch in archs
         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         bare  = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
         param = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
