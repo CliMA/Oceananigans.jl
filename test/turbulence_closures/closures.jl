@@ -947,7 +947,6 @@ end
     end
 
     @testset "Closures with nothing for ν or κ" begin
-        @info "  Testing that ν = nothing and κ = nothing match zero coefficients..."
         grid = RectilinearGrid(CPU(), size=(6, 6, 6), extent=(1, 1, 1), halo=(3, 3, 3), topology=(Periodic, Periodic, Bounded))
 
         function step_with_closure(closure)
