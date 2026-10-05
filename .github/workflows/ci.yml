@@ -77,7 +77,7 @@ jobs:
           # Exit immediately if there's a test failure
           TEST_ARGS+=(--quickfail)
 
-          if [[ ${{ matrix.label }} == 'Reactant and Makie' ]]; then
+          if [[ '${{ matrix.label }}' == 'Reactant and Makie' ]]; then
               # Reduce number of workers to avoid OOM's
               TEST_ARGS+=(--jobs=$(($(nproc) - 2)))
           fi
