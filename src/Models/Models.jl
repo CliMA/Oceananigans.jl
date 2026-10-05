@@ -50,6 +50,7 @@ total_velocities(model::AbstractModel) = nothing
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+update_model_field_time_series!(model::AbstractModel, first_time::Time, last_time::Time) = nothing
 
 #####
 ##### Model-building utilities
@@ -179,6 +180,18 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     for fts in time_series_tuple
         update_field_time_series!(fts, time)
+    end
+
+    return nothing
+end
+
+# Update every `FieldTimeSeries` to hold all times between `first_time` and `last_time`, e.g. the barotropic substeps
+function update_model_field_time_series!(model::OceananigansModels, first_time::Time, last_time::Time)
+    possible_fts = possible_field_time_series(model)
+    time_series_tuple = extract_field_time_series(possible_fts)
+
+    for fts in time_series_tuple
+        update_field_time_series!(fts, first_time, last_time)
     end
 
     return nothing

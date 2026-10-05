@@ -264,6 +264,10 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Reset the filtered fields and the barotropic timestepper to zero.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
+    # Substep halo fills read time series up to the last substep time, which can lie past tⁿ⁺¹
+    t = model.clock.time
+    update_model_field_time_series!(model, Time(t), Time(t + (Nsubsteps - 1) * Δτᴮ))
+
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 

@@ -412,6 +412,23 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     return update_field_time_series!(fts, n₁, n₂)
 end
 
+update_field_time_series!(fts, first_time::Time, last_time::Time) = nothing
+
+# Update the `fts` to contain every time between `first_time.time` and `last_time.time`
+function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, last_time::Time)
+    arch = architecture(fts)
+    n₁ = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, first_time.time).first_index
+    n₂ = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, last_time.time).second_index
+    Nm = length(fts.backend)
+    Nt = length(fts.times)
+
+    min(n₂, Nt) - n₁ < Nm ||
+        throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
+                            "more than the $Nm held in memory; increase `time_indices_in_memory`."))
+
+    return update_field_time_series!(fts, n₁, n₂)
+end
+
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
     in_range = in_time_range(fts, fts.time_indexing, n₁, n₂)
 
