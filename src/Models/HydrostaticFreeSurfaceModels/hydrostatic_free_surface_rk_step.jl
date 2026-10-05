@@ -148,10 +148,12 @@ function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
 
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    # Every stage restarts from (uⁿ, ηⁿ), while the displacement still holds the previous stage's barotropic solve
+    ηⁿ = get(model.timestepper.Ψ⁻, :η, nothing)
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
