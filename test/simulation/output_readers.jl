@@ -726,11 +726,12 @@ end
 function test_field_time_series_with_subsetted_times(backend)
     grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
     output_times = 0:0.1:1
-    filename = "test_fts_subsetted_times.jld2"
+    dir = mktempdir()
+    path = joinpath(dir, "test_fts_subsetted_times.jld2")
     name = "c"
 
     field_time_series = FieldTimeSeries{Center, Center, Center}(
-        grid, output_times;  backend = OnDisk(), path=filename, name
+        grid, output_times;  backend = OnDisk(), path, name
     )
 
     for (i, t) in enumerate(output_times)
@@ -741,7 +742,7 @@ function test_field_time_series_with_subsetted_times(backend)
 
     subset_times = output_times[end-5:end]
 
-    field_time_series_subset = FieldTimeSeries(filename, name; backend, times=subset_times)
+    field_time_series_subset = FieldTimeSeries(path, name; backend, times=subset_times)
 
     @test field_time_series_subset.times == subset_times
 
@@ -750,7 +751,7 @@ function test_field_time_series_with_subsetted_times(backend)
         @test field_time_series_subset[i] == field_time_series[Time(subset_times[i])]
     end
 
-    rm(filename)
+    rm(dir; recursive=true, force=true)
 end
 
 function test_field_time_series_time_average(arch)
@@ -1018,10 +1019,8 @@ end
     end
     rm(filepath_sine)
 
-    for backend in (OnDisk(), InMemory(), InMemory(2))
-        @testset "Test indexing of FieldTimeSeries with specified times and backend $backend" begin
-            test_field_time_series_with_subsetted_times(backend)
-        end
+    @testset "Test indexing of FieldTimeSeries with specified times and backend $backend" for backend in (OnDisk(), InMemory(), InMemory(2))
+        test_field_time_series_with_subsetted_times(backend)
     end
 
     # A series reachable only through a boundary condition must still be found, so that
