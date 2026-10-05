@@ -328,12 +328,12 @@ end
 
     function grad_loss(sim, dsim, T_init, dT_init)
         parent(dT_init) .= 0
-        _, loss_value = Enzyme.autodiff(
+        _, primal = Enzyme.autodiff(
             Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal),
             loss, Enzyme.Active,
             Enzyme.Duplicated(sim, dsim),
             Enzyme.Duplicated(T_init, dT_init))
-        return dT_init, loss_value
+        return dT_init, primal
     end
 
     function gradient(checkpointing)
@@ -344,8 +344,8 @@ end
         set!(T_init, Ti)
         dT_init = CenterField(r_model.grid)
         compiled_grad = @compile raise=true raise_first=true sync=true grad_loss(r_simulation, dr_simulation, T_init, dT_init)
-        dT, loss_value = compiled_grad(r_simulation, dr_simulation, T_init, dT_init)
-        return Array(interior(dT)), Reactant.to_number(loss_value)
+        gradient_field, primal = compiled_grad(r_simulation, dr_simulation, T_init, dT_init)
+        return Array(interior(gradient_field)), Reactant.to_number(primal)
     end
 
     dT, loss_value = gradient(false)
