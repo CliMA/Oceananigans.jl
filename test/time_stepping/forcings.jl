@@ -460,6 +460,41 @@ function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
     return all(Gc .≈ Gd) && all(Gc .≈ -3)
 end
 
+# Verify that `ContinuousForcing` with field dependencies is type-stable and compiles on GPUs
+# when `model_fields` holds fields of different types, here the barotropic velocities of
+# `SplitExplicitFreeSurface`. Regression test for https://github.com/CliMA/Oceananigans.jl/issues/4165.
+function test_heterogeneous_model_fields_dependencies(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+
+    @inline continuous_forcing_func(x, y, z, t, T, u) = - T * u
+    continuous_forcing = Forcing(continuous_forcing_func; field_dependencies=(:T, :u))
+
+    @inline discrete_forcing_func(i, j, k, grid, clock, model_fields) =
+        @inbounds - model_fields.T[i, j, k] * model_fields.u[i, j, k]
+    discrete_forcing = Forcing(discrete_forcing_func; discrete_form=true)
+
+    model_c = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T, buoyancy=nothing,
+                                          forcing=(; T=continuous_forcing))
+    model_d = HydrostaticFreeSurfaceModel(grid; free_surface, tracers=:T, buoyancy=nothing,
+                                          forcing=(; T=discrete_forcing))
+
+    if arch isa CPU
+        @test @inferred(model_c.forcing.T(1, 1, 1, grid, model_c.clock, fields(model_c))) isa Float64
+    end
+
+    for model in (model_c, model_d)
+        set!(model, T=3, u=2)
+        time_step!(model, 1e-3)
+    end
+
+    Gc = Array(interior(model_c.timestepper.Gⁿ.T))
+    Gd = Array(interior(model_d.timestepper.Gⁿ.T))
+    @test Gc ≈ Gd
+
+    return nothing
+end
+
 """ Build a time-invariant FTS where each snapshot equals `f(x, y, z)`. Used to
 isolate the spatial-interpolation path: temporal interpolation collapses to a
 constant since all snapshots are identical.
@@ -556,6 +591,10 @@ end
             @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$A]" begin
                 @info "      Testing hydrostatic continuous/discrete forcing consistency [$A]..."
                 @test test_hydrostatic_continuous_discrete_forcing_consistency(arch)
+            end
+
+            @testset "Field dependencies with heterogeneous model fields [$A]" begin
+                test_heterogeneous_model_fields_dependencies(arch)
             end
 
             @testset "Relaxation forcing functions [$A]" begin
