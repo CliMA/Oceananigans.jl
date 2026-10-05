@@ -1,0 +1,32 @@
+name: Partial cell validation
+on:
+  push:
+    branches: [codex/validate-partial-cell-ci]
+permissions:
+  contents: read
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TEST_ARCHITECTURE: CPU
+      CUDA_VISIBLE_DEVICES: "-1"
+      JULIA_NUM_PRECOMPILE_TASKS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.11"
+      - uses: julia-actions/cache@v2
+      - name: Install CPU test dependencies
+        run: julia --project -e 'using Pkg; Pkg.instantiate(); Pkg.add(PackageSpec(name="CUDA", version="5.9.1"))'
+      - name: Run fraction and immersed-boundary regressions
+        run: |
+          julia --project --check-bounds=yes -e '
+            @eval module FractionValidation
+              include("test/unit/partial_cell_bottom_validation.jl")
+            end
+            @eval module ImmersedBoundaryValidation
+              include("test/unit/immersed_boundary_grid.jl")
+            end
+          '
