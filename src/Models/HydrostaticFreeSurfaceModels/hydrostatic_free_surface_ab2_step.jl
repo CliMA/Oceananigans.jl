@@ -161,10 +161,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
 
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    ηⁿ = displacement(model.free_surface)
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
@@ -219,15 +220,9 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 as they are handled separately. Implicit vertical diffusion is applied if configured.
 """
 function ab2_step_tracers!(tracers, model, Δt, χ)
-    ab2_step_tracers!(model, Δt, χ, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline ab2_step_tracers!(model, Δt, χ, ::Val, ::Val{()}) = nothing
-
-@inline function ab2_step_tracers!(model, Δt, χ, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    ab2_step_tracer!(model, Δt, χ, Val(tracer_index), Val(first(names)))
-    ab2_step_tracers!(model, Δt, χ, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 
@@ -245,13 +240,10 @@ end
     FT = eltype(grid)
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
-    @inbounds c_forcing = model.forcing[tracer_name]
-
-    # The advecting velocities must match the ones used in the tendency, so that an adaptive-implicit
-    # vertical advection scheme splits the flux of the *total* velocity between its two halves.
-    advecting_velocities = tracer_advecting_velocities(model.transport_velocities, closure, model.closure_fields,
-                                                       model.biogeochemistry, c_forcing, Val(tracer_name))
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
 
     implicit_step!(tracer_field,
                    model.timestepper.implicit_solver,
@@ -262,7 +254,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   advecting_velocities)
+                   c_velocities)
     return nothing
 end
 

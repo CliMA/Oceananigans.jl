@@ -48,24 +48,35 @@ $(TYPEDSIGNATURES)
 
 Advance the velocities of `model` with `substep_velocity!(u, Gⁿ, G⁻)` and its tracers with
 `substep_tracer!(c, Gⁿ, G⁻)`, then apply implicit vertical diffusion over `implicit_Δt`.
-The recursions over `Val`-wrapped field names keep each launch type stable.
+Unrolling the loops over `Val`-wrapped field names keeps each launch type stable.
 """
 function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::ST, implicit_Δt) where {SV, ST}
     # `SV` and `ST` force specializing on the closures, which are only passed through: otherwise,
     # when this function is not inlined, they are boxed and the calls below are dispatched dynamically
     implicit_advecting_velocities(model)
-    step_velocities!(model, substep_velocity!, implicit_Δt, Val(keys(model.velocities)))
-    step_tracers!(model, substep_tracer!, implicit_Δt, Val(1), Val(keys(model.tracers)))
+    step_velocities!(model, substep_velocity!, implicit_Δt)
+    step_tracers!(model, substep_tracer!, implicit_Δt)
     return nothing
 end
 
-# `fields(model)` and `advecting_velocities(model)` are rebuilt at every level of the recursions
-# below: passing the tuples down the recursion allocates
+function step_velocities!(model, substep_velocity!::SV, implicit_Δt) where SV
+    foreach_name(model.velocities) do _, val_name
+        step_velocity!(model, substep_velocity!, implicit_Δt, val_name)
+    end
+    return nothing
+end
 
-@inline step_velocities!(model, substep_velocity!, implicit_Δt, ::Val{()}) = nothing
+function step_tracers!(model, substep_tracer!::ST, implicit_Δt) where ST
+    foreach_name(model.tracers) do val_tracer_index, val_name
+        step_tracer!(model, substep_tracer!, implicit_Δt, val_tracer_index, val_name)
+    end
+    return nothing
+end
 
-@inline function step_velocities!(model, substep_velocity!, implicit_Δt, ::Val{names}) where names
-    name = first(names)
+# `fields(model)` and `advecting_velocities(model)` are rebuilt for every field below:
+# passing the tuples down to each call allocates
+
+@inline function step_velocity!(model, substep_velocity!, implicit_Δt, ::Val{name}) where name
     u  = model.velocities[name]
     Gⁿ = model.timestepper.Gⁿ[name]
     G⁻ = model.timestepper.G⁻[name]
@@ -82,14 +93,10 @@ end
                    model.advection.momentum,
                    advecting_velocities(model))
 
-    step_velocities!(model, substep_velocity!, implicit_Δt, Val(Base.tail(names)))
     return nothing
 end
 
-@inline step_tracers!(model, substep_tracer!, implicit_Δt, ::Val, ::Val{()}) = nothing
-
-@inline function step_tracers!(model, substep_tracer!, implicit_Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    name = first(names)
+@inline function step_tracer!(model, substep_tracer!, implicit_Δt, ::Val{tracer_index}, ::Val{name}) where {tracer_index, name}
     c  = model.tracers[name]
     Gⁿ = model.timestepper.Gⁿ[name]
     G⁻ = model.timestepper.G⁻[name]
@@ -106,6 +113,5 @@ end
                    model.advection[name],
                    advecting_velocities(model))
 
-    step_tracers!(model, substep_tracer!, implicit_Δt, Val(tracer_index + 1), Val(Base.tail(names)))
     return nothing
 end
