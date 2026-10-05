@@ -95,7 +95,7 @@ end
   @testset "2d - $arch, $gridc, $ibc, $strategy, $partition" for (arch, gridc, ibc, strategy, partition) in
       Iterators.product(archs, grid_constructors, ib_constructors, strategies, partitions)
 
-    grid = gridc(arch)
+    underlying_grid = gridc(arch)
 
     Nx, Ny, Nz = size(underlying_grid)
 
