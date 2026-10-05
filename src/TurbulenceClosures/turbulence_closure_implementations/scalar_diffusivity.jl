@@ -264,5 +264,4 @@ end
 @inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityHD, K, id, c, clk, fields, b) = zero(grid)
 @inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityVD, K, id, c, clk, fields, b) = zero(grid)
 
-# `κ = nothing` is not indexed by tracer
 @inline diffusivity(::ScalarDiffusivity{<:Any, <:Any, <:Any, <:Any, Nothing}, K, ::Val) = nothing
