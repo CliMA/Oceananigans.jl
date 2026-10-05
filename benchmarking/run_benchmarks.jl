@@ -298,10 +298,10 @@ function make_closure(name, FT)
     name == "CATKE" && return CATKEVerticalDiffusivity(FT)
     name == "SmagorinskyLilly" && return SmagorinskyLilly(FT)
     name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
-                                          HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12, κ=nothing))
+                                          HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
-                                              IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
-                                              HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12, κ=nothing))
+                                             IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
+                                             HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
