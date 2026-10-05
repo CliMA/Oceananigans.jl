@@ -138,9 +138,9 @@ steps:
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE_GPU2
 
         echo "========================================"
-        echo "  Group 7: Nonhydrostatic pressure solver sweep (64³) [GPU 2]"
+        echo "  Group 7: Nonhydrostatic pressure solver sweep [GPU 2]"
         echo "========================================"
-        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --case=nonhydrostatic --size=64x64x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient" --group="Nonhydrostatic Pressure Solver Sweep" --output=$OUTPUT_FILE_GPU2
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --case=nonhydrostatic --size=256x128x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient" --group="Nonhydrostatic Pressure Solver Sweep" --output=$OUTPUT_FILE_GPU2
       ) &
       GPU2_PID=$$!
 
