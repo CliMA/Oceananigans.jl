@@ -379,6 +379,18 @@ end
     end
 end
 
+# σ keeps σ τ / (βᵣ + ϵ) ≤ 2⁶⁰ in formats with 8 exponent bits (Float32, BFloat16), so its square cannot overflow.
+# σ² may underflow to zero, which is harmless: it is then negligible beside the ≥ 2²⁰ term of the smoothest stencil.
+# A threshold product may overflow to Inf when every β is large, which is also harmless: the comparison then
+# fails, and a large minimum(β) already bounds the ratio.
+@inline function metaprogrammed_zweno_rescaling(FT)
+    return quote
+        dmin = minimum(β) + ϵ
+        ifelse(τ > $(FT(2)^110) * dmin, $(inv(FT(2)^100)),
+        ifelse(τ > $(FT(2)^60)  * dmin, $(inv(FT(2)^50)), $(one(FT))))
+    end
+end
+
 for buffer in advection_buffers[2:end]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
@@ -386,11 +398,9 @@ for buffer in advection_buffers[2:end]
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 
-    # σ keeps σ τ / (βᵣ + ϵ) ≤ 2⁶⁰, whose square cannot overflow Float32.
-    σ = :(ifelse(τ > $(2f0^110) * (minimum(β) + ϵ), $(2f0^-100), ifelse(τ > $(2f0^60) * (minimum(β) + ϵ), $(2f0^-50), 1f0)))
-
     for FT in (Float32, BFloat16)
-        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, σ))
+        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT =
+            @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
     end
 end
 
