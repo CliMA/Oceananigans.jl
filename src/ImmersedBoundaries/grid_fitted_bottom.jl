@@ -26,6 +26,7 @@ Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+const GFBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom{<:Any, <:AbstractArray}}
 
 """
     GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition())
