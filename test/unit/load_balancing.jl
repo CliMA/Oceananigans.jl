@@ -7,7 +7,7 @@ using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, General
 sizes = [ (6, 6, 3) ]
 halos = [ (4, 4, 4) ]
 longitudes = [ (0, 360) ]
-latitudes = [ (-80, 85) ]
+latitudes = [ (-40, 45) ]
 xs = [ (-10, 10) ]
 ys = [ (-10, 10) ]
 zs = [ (-10, 0) ]
