@@ -92,21 +92,23 @@ function file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
     return sfp.paths[i], n - prev
 end
 
+file_and_local_index(path::AbstractString, n, ::Nothing, reader_kw) = path, n
+
 function file_and_local_index(path::AbstractString, n, time, reader_kw)
-    if !isnothing(time)
-        n = jldopen(path; reader_kw...) do file
-            file_times = file["timeseries/t"]
-            iter = keys(file_times)[n]
-            if file_times[iter] != time
-                # times in fts not aligned with those in file so search for match
-                file_n = findfirst(k -> file_times[k] == time, keys(file_times))
-                isnothing(file_n) && error("No data for time $time (local time index $n) found at $(path).")
-                n = file_n
-            end
+    local_n::Int = jldopen(path; reader_kw...) do file
+        file_times = file["timeseries/t"]
+        iter = keys(file_times)[n]
+        if file_times[iter] == time
             n
+        else
+            # times in fts not aligned with those in file so search for match
+            file_n = findfirst(k -> file_times[k] == time, keys(file_times))
+            isnothing(file_n) && error("No data for time $(time) (local time index $(n)) found at $(path).")
+            file_n
         end
     end
-    return path, n
+
+    return path, local_n
 end
 
 #####
