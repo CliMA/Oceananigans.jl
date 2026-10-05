@@ -215,11 +215,13 @@ end
 
 # Inferring this for a concrete model type means inferring `serializeproperty!` for the
 # union of all the model's property types, which takes seconds and is never needed
-Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including)
+Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including, single_grid)
     saveproperties!(file, model, including)
 
     for property in including
-        serializeproperty!(file, "serialized/$property", getproperty(model, property))
+        if !single_grid || property !== :grid
+            serializeproperty!(file, "serialized/$property", getproperty(model, property))
+        end
     end
 
     return nothing
@@ -234,18 +236,17 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
+    output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
+    unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
+    single_grid  = length(unique_grids) == 1
+
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
-            save_and_serialize_properties!(file, model, including)
+            save_and_serialize_properties!(file, model, including, single_grid)
         end
     catch err
         @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
-
-    # Extract grids from outputs, falling back to `nothing` for non-field outputs
-    output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
-    unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
-    single_grid  = length(unique_grids) == 1
 
     # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
     # (no suffix); with multiple grids they are stored at `serialized/grid_1`, `grid_2`, ...
