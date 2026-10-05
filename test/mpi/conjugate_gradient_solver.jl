@@ -99,8 +99,7 @@ end
     # The FFT preconditioner on a stretched grid is a distributed Fourier-tridiagonal solver
     topology = (Bounded, Bounded, Bounded)
     z = [2π * (k / 8)^2 for k in 0:8]
-    for ranks in ((4, 1, 1), (1, 4, 1), (2, 2, 1))
-        @info "  Testing distributed CG Poisson solver [fft] on a z-stretched grid with $ranks ranks..."
+    @testset "fft on a z-stretched grid with $(ranks) ranks" for ranks in ((4, 1, 1), (1, 4, 1), (2, 2, 1))
         @test divergence_free_poisson_solution((16, 16, 8), ranks, topology, child_arch, :fft; z)
     end
 end
