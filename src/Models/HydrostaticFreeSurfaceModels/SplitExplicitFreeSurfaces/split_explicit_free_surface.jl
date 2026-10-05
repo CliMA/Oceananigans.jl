@@ -1,6 +1,5 @@
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected
-using Oceananigans.Grids: RightCenterFolded, RightFaceFolded
 using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
@@ -101,9 +100,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
-- `kernel_parameters`: Kernel parameters for subcycling kernel launching. For `FixedTimeStepSize` substepping, this is
-  the symbol `:xy`. For `FixedSubstepNumber` substepping with connected topologies, this is a `KernelParameters`
-  struct that defines the kernel execution ranges.
+- `kernel_parameters`: Kernel parameters for subcycling kernel launching. This is `Val(:xy)` when the substeps span
+  the interior, and a `KernelParameters` struct with the execution ranges when they extend into the halos.
 
 - `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
@@ -429,8 +427,6 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stage
     end
 end
 
-# `Val(:xy)` spans the interior, which is what the `:xy` active-cells map enumerates, so the substep
-# kernels skip the dry columns whenever the window does not reach past it.
 maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = Val(:xy)
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
@@ -446,8 +442,6 @@ end
 @inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 @inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 @inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
-@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N
-@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
 @inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1

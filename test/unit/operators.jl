@@ -306,8 +306,6 @@ end
     end
 
     @testset "Topology-aware operators on tripolar grids" begin
-        @info "  Testing topology-aware operators on tripolar grids..."
-
         for (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
             grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
             Nx, Ny, _ = size(grid)
