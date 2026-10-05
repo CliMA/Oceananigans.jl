@@ -89,12 +89,12 @@ jump_stencil(FT, buffer, slope, jump) = ntuple(i -> FT(slope * (i - 1) + jump * 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
             # subnormal weights are imprecise, and cannot influence the reconstruction
-            @test all(isapprox.(ω, reference; rtol=100eps(eltype(ω)), atol=floatmin(eltype(ω))))
+            @test all(isapprox.(ω, reference; rtol=20eps(eltype(ω)), atol=floatmin(eltype(ω))))
 
             # the whole chain against its BigFloat counterpart: the FT-rounded smoothness coefficients
             # move the weights by O(eps(FT)), about 10 ulps in practice
             reference = biased_weno_weights(big.(δ), nothing, WENO(BigFloat; order, weight_computation))
-            @test all(isapprox.(ω, reference; rtol=50eps(FT), atol=floatmin(eltype(ω))))
+            @test all(isapprox.(ω, reference; rtol=30eps(FT), atol=floatmin(eltype(ω))))
         end
     end
 end
