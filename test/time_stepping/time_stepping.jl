@@ -498,7 +498,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # If every stage sees tⁿ instead, c(t) = t (t - Δt) / 2.
             forcing = Forcing((x, y, z, t) -> t)
 
-            for timestepper in split_runge_kutta_timesteppers
+            for timestepper in (split_runge_kutta_timesteppers..., :SSPRungeKutta3)
                 model = HydrostaticFreeSurfaceModel(grid; timestepper, tracers=:c, forcing=(; c=forcing),
                                                     velocities=PrescribedVelocityFields())
                 for n in 1:3
@@ -514,7 +514,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # Float32 round-off (~1e-7) requires coarse steps to resolve the 4th- and 5th-order errors.
             Δts = FT == Float32 ? (1.0, 0.5, 0.25) : (0.2, 0.1, 0.05)
 
-            for (timestepper, order) in zip(split_runge_kutta_timesteppers, (2, 3, 4, 5))
+            for (timestepper, order) in zip((split_runge_kutta_timesteppers..., :SSPRungeKutta3), (2, 3, 4, 5, 3))
                 errors = [time_dependent_forcing_error(arch, FT, timestepper, Δt) for Δt in Δts]
                 observed_orders = [log2(errors[i] / errors[i+1]) for i in 1:length(Δts)-1]
                 @test all(observed_orders .> order - 0.3)

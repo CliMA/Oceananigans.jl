@@ -127,6 +127,8 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
+ssp_euler_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
+ssp_blend_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
@@ -146,7 +148,7 @@ materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFie
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
-previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
+previous_hydrostatic_state_fields(::MultiStage, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
