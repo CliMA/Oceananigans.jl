@@ -69,7 +69,8 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
-    compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map)
+
+    compute_biogeochemical_transitions!(model, :xyz)
 
     compute_tracer_flux_bcs!(model)
 
