@@ -98,9 +98,9 @@ jobs:
                   return f"Other/{name}/{gpu}/{size_str}"
 
               # Parse name components to extract the variant
-              # Name format: EarthOcean_{grid_type}{_zstar}_{size}_{ft}_{mom_adv}_{trc_adv}_{closure}_{N}tr
+              # Name format: EarthOcean_{grid_type}{_zstar}_{size}_{ft}_{mom_adv}_{trc_adv}_{closure}_{N}tr{_{partition}ranks}
               m = re.match(
-                  r"EarthOcean_(.+?)_(\d+x\d+x\d+)_(F\d+)_([^_]+)_([^_]+)_(.+)_(\d+)tr$",
+                  r"EarthOcean_(.+?)_(\d+x\d+x\d+)_(F\d+)_([^_]+)_([^_]+)_(.+)_(\d+)tr(?:_(\d+x\d+x\d+)ranks)?$",
                   name,
               )
               if not m:
@@ -111,6 +111,7 @@ jobs:
               trc_adv = m.group(5)
               closure = m.group(6)
               n_tracers = m.group(7)
+              partition = m.group(8) or "1x1x1"
 
               if group == "Resolution Sweep":
                   fixed = f"{grid_info} {ft_short} {mom_adv}+{trc_adv} {closure}"
@@ -133,6 +134,10 @@ jobs:
               elif group == "Default":
                   fixed = f"{grid_info} {size_str} {ft_short}"
                   variant = "default"
+              elif group == "Distributed":
+                  # grid_size is the per-rank size in distributed runs; the name carries the global one
+                  fixed = f"{grid_info} {m.group(2)} {ft_short}"
+                  variant = partition
               else:
                   fixed = name
                   variant = size_str
@@ -145,7 +150,7 @@ jobs:
           # All sweep groups that should include the Default baseline
           sweep_groups = [
               "Resolution Sweep", "Float Type Sweep", "Closure Sweep",
-              "Advection Sweep", "Grid Type Sweep", "Tracer Count Sweep",
+              "Advection Sweep", "Grid Type Sweep", "Tracer Count Sweep", "Distributed",
           ]
 
           data = []
