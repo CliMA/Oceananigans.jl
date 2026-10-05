@@ -6,8 +6,7 @@ export
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator, sanitize_environ!,
-    @root, @onrank, @distribute, @handshake,
-    record_event, sync_event
+    @root, @onrank, @distribute, @handshake
 
 using MPI
 

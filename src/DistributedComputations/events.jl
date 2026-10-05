@@ -1,5 +1,16 @@
-record_event(arch) = sync_device!(arch)
+# Each communication state owns one event, re-recorded after every pack of its send buffers
+new_event(arch) = nothing
+new_event(arch::Distributed) = new_event(arch.child_architecture)
 
-record_event(arch::Distributed) = record_event(arch.child_architecture)
+record_event!(event, arch) = sync_device!(arch)
+record_event!(event, arch::Distributed) = record_event!(event, arch.child_architecture)
 
-sync_event(event) = nothing
+event_done(event) = true
+bind_thread!(event) = nothing
+
+function sync_event(event)
+    while !event_done(event)
+        Threads.nthreads() > 1 && yield()
+    end
+    return nothing
+end

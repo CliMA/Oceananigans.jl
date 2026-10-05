@@ -32,6 +32,8 @@ definitions:
   test_command: &test_command |
     group="{{ matrix.group }}"
     export TEST_GROUP="\${group#* }"
+    # allocation baselines are single-threaded: multithreaded CPU kernel launches allocate tasks
+    if [ "\$TEST_GROUP" = "distributed_memory_allocation" ]; then export JULIA_NUM_THREADS=1; fi
     srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
 steps:

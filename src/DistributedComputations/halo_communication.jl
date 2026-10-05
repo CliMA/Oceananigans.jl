@@ -27,45 +27,17 @@ opposite_side = Dict(
     :northeast => :southwest,
 )
 
-const ID_DIGITS   = 4
-
-# A Hashing function which returns a unique
-# integer between 0 and 26 for a combination of
-# 3 locations wither Center, Face, or Nothing
-location_counter = 0
-for LX in (:Face, :Center, :Nothing)
-    for LY in (:Face, :Center, :Nothing)
-        for LZ in (:Face, :Center, :Nothing)
-            @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
-            global location_counter += 1
-        end
-    end
-end
-
-# Functions that return unique send and recv MPI tags for each field, side, field location
-# the MPI tag is an integer with:
-#   digit 1-2: a unique integer for the field
-#   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
-#   digit 5: the side we send / receive from
+# Each field gets `halo_tag_slots` consecutive MPI tags: one per side (0-7) and three for the tripolar fold (8-10)
+const halo_tag_slots = 11
 
 for side in sides
-    side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
+    send_slot = side_id[side]
+    recv_slot = side_id[opposite_side[side]]
     @eval begin
-        function $send_tag_fn_name(arch, grid, field_tag, location)
-            field_id   = string(field_tag, pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-            side_digit = string(side_id[Symbol($side_str)])
-            return parse(Int, field_id * loc_digit * side_digit)
-        end
-
-        function $recv_tag_fn_name(arch, grid, field_tag, location)
-            field_id   = string(field_tag, pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-            side_digit = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, field_id * loc_digit * side_digit)
-        end
+        $send_tag_fn_name(arch, grid, field_tag, location) = Int(halo_tag_slots * field_tag + $send_slot)
+        $recv_tag_fn_name(arch, grid, field_tag, location) = Int(halo_tag_slots * field_tag + $recv_slot)
     end
 end
 
@@ -137,16 +109,15 @@ end
 
 function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     sync_device!(arch)
-    waitall_comms!(post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers))
+    post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
+    wait_for_comms!(buffers)
     recv_from_buffers!(c, buffers, grid, Val(:corners))
     return nothing
 end
 
 function async_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
-    fill_event = record_event(arch)
-
-    async_comms!(post_corner_requests!, fill_event, buffers, c, connectivity, indices, loc, arch, grid)
-
+    record_event!(buffers.state.event, arch)
+    post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
     return nothing
 end
 
@@ -157,20 +128,6 @@ function post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffer
     fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast)
     requests = buffers.state.requests
     return (requests.southwest, requests.southeast, requests.northwest, requests.northeast)
-end
-
-# Post the MPI requests of `post_requests!(args..., buffers)` once `fill_event` is done, without waiting for them to complete.
-# With the progress worker the requests are posted and completed by the worker; otherwise they are posted right away by the
-# main thread and completed by `wait_for_comms!`.
-function async_comms!(post_requests!, fill_event, buffers, args...)
-    if use_progress_worker()
-        add_fill_event!(buffers)
-        submit_exchange!(HaloExchange(post_requests!, fill_event, buffers, args))
-    else
-        sync_event(fill_event)
-        post_requests!(args..., buffers)
-    end
-    return nothing
 end
 
 waitall_comms!(requests::Tuple) = foreach(waitall_comms!, requests)
@@ -192,14 +149,10 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     buffer_side = kernel!.side
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
-    fill_event = record_event(arch)
+    record_event!(buffers.state.event, arch)
+    kernel!(c, bcs..., loc, grid, arch, buffers)
 
-    if async && (arch isa AsynchronousDistributed)
-        async_comms!(kernel!, fill_event, buffers, c, bcs..., loc, grid, arch)
-    else
-        sync_event(fill_event)
-        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        waitall_comms!(requests)
+    if !(async && (arch isa AsynchronousDistributed))
         wait_for_comms!(buffers)
         recv_from_buffers!(c, buffers, grid, buffer_side)
     end
@@ -317,7 +270,7 @@ for side in sides
             send_tag = $side_send_tag(arch, grid, get_comm_tag(buffers.state),  location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator, buffers.state.requests.$side[1])
+            isend!(buffers.state, send_buffer, rank_to_send_to, send_tag, arch.communicator, buffers.state.requests.$side)
 
             return nothing
         end
@@ -343,7 +296,7 @@ for side in sides
             recv_tag = $side_recv_tag(arch, grid, get_comm_tag(buffers.state), location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator, buffers.state.requests.$side[2])
+            irecv!(buffers.state, recv_buffer, rank_to_recv_from, recv_tag, arch.communicator, buffers.state.requests.$side)
 
             return nothing
         end
