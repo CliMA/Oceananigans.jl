@@ -102,11 +102,11 @@ end
     cost_map = create_cost_map(underlying_grid, ib)
     balanced_partition = create_balanced_partition(strategy, partition, cost_map)
 
-    @test sum(balanced_partition.x) == Nx
-    @test sum(balanced_partition.y) == Ny
+    @test sum(balanced_partition.x.sizes) == Nx
+    @test sum(balanced_partition.y.sizes) == Ny
 
-    @test length(balanced_partition.x) == partition.x
-    @test length(balanced_partition.y) == partition.y
+    @test length(balanced_partition.x.sizes) == partition.x
+    @test length(balanced_partition.y.sizes) == partition.y
 
   end
 end
