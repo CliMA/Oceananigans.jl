@@ -188,6 +188,7 @@ TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceMode
 
 include("boundary_targeted_transport.jl")
 include("barotropic_pressure_correction.jl")
+include("immersed_top_advective_form_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
