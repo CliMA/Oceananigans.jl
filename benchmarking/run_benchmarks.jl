@@ -81,8 +81,8 @@ function parse_commandline()
             help = "Use distributed architecture."
             action = :store_true
 
-        "--load_balancing"
-            help = "Create a partition that balances workloads between ranks"
+        "--no_load_balancing"
+            help = "Run the distributed benchmark withought automatic load balancing of partitions"
             action = :store_true
 
         "--partition"
@@ -320,7 +320,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
-    load_balancing_enabled = args["load_balancing"]
+    load_balancing_enabled = !args["no_load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
