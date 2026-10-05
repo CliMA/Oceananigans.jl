@@ -157,9 +157,13 @@ end
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
+# Grid-fitted bottoms without an immersed top
+const BottomOnlyIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
+                                           <:Union{GridFittedBottom{<:Any, Nothing}, PartialCellBottom{<:Any, Nothing}}}
+
 const CenterOrFace = Union{Center, Face}
 const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 
-# Does not require a sweep
-mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =
+# Does not require a sweep; with an immersed top the column is swept like any `ReducedField`
+mask_immersed_field!(field::OnlyZReducedField, grid::BottomOnlyIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))

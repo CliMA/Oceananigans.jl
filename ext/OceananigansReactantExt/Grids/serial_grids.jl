@@ -10,6 +10,7 @@ deconcretize(z::StaticVerticalDiscretization) =
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
+                                                       deconcretize(gfb.top_height),
                                                        gfb.immersed_condition)
 
 const CPUUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:CPU}
