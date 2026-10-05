@@ -167,9 +167,14 @@ end
 
 `Nsteps` calls to `time_step!(sim)` as one traced loop: one `stablehlo.while` body rather than
 `Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
+
+The loop is traced with `checkpointing = sim.checkpointing`, which only matters when the program
+is differentiated in reverse mode: it decides which steps' states are stored during the forward
+sweep and which are recomputed during the reverse sweep. See [`Simulation`](@ref).
 """
 function time_step_for!(sim::ReactantSimulation, Nsteps)
-    @trace track_numbers = false for _ = 1:Nsteps
+    checkpointing = sim.checkpointing
+    @trace track_numbers = false checkpointing = checkpointing for _ = 1:Nsteps
         time_step!(sim)
     end
     return nothing

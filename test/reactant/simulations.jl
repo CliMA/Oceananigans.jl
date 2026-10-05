@@ -1,6 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
+using Enzyme
+using Statistics: mean
 using Oceananigans.Diagnostics: NaNChecker
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
@@ -268,4 +270,92 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.fi
     @test r_final ≈ bookends.final[1]               # finalize!: the final state
     @test r_final ≈ sum(Array(interior(r_model.velocities.u)) .^ 2)
     @test r_initial != r_final
+end
+
+@testset "Reactant Simulation: checkpointing" begin
+    Nx, Ny, Nz = (8, 8, 4)
+    halo = (5, 5, 5)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), tracers=:T)
+
+    Random.seed!(123)
+    ui = randn(Nx, Ny, Nz)
+    vi = randn(Nx, Ny, Nz)
+    Ti = randn(Nx, Ny, Nz)
+
+    function fresh_model(arch)
+        grid = RectilinearGrid(arch; rectilinear_kw...)
+        model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+        set!(model, u=ui, v=vi, T=Ti)
+        return model
+    end
+
+    model = fresh_model(CPU())
+    Δt = 1e-6 * minimum_xspacing(model.grid)
+    stop_iteration = 5
+
+    # The keyword exists only on a Reactant Simulation and defaults to no checkpointing.
+    @test isnothing(Simulation(model; Δt, stop_iteration, verbose=false).checkpointing)
+    r_model = fresh_model(ReactantState())
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false).checkpointing === false
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=Reactant.Periodic(2)).checkpointing == Reactant.Periodic(2)
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=Reactant.Binomial(2)).checkpointing == Reactant.Binomial(2)
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=2)
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=true)
+
+    # The forward program does not depend on checkpointing.
+    simulation = Simulation(model; Δt, stop_iteration, verbose=false)
+    run!(simulation)
+
+    for checkpointing in (Reactant.Periodic(2), Reactant.Binomial(2))
+        r_model = fresh_model(ReactantState())
+        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing)
+        compiled_run! = @compile run!(r_simulation)
+        compiled_run!(r_simulation)
+        @test iteration(r_simulation) == stop_iteration
+        @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+        @test Array(interior(r_model.tracers.T)) ≈ Array(interior(model.tracers.T))
+    end
+
+    # The reverse-mode gradient of a loss on the final state, through run!, is the same with and
+    # without checkpointing: it changes what the reverse sweep stores and recomputes, not what it
+    # computes.
+    function loss(sim, T_init)
+        set!(sim.model, T=T_init)
+        run!(sim)
+        return mean(interior(sim.model.tracers.T) .^ 2)
+    end
+
+    function grad_loss(sim, dsim, T_init, dT_init)
+        parent(dT_init) .= 0
+        _, loss_value = Enzyme.autodiff(
+            Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal),
+            loss, Enzyme.Active,
+            Enzyme.Duplicated(sim, dsim),
+            Enzyme.Duplicated(T_init, dT_init))
+        return dT_init, loss_value
+    end
+
+    function gradient(checkpointing)
+        r_model = fresh_model(ReactantState())
+        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing)
+        dr_simulation = Enzyme.make_zero(r_simulation)
+        T_init = CenterField(r_model.grid)
+        set!(T_init, Ti)
+        dT_init = CenterField(r_model.grid)
+        compiled_grad = @compile raise=true raise_first=true sync=true grad_loss(r_simulation, dr_simulation, T_init, dT_init)
+        dT, loss_value = compiled_grad(r_simulation, dr_simulation, T_init, dT_init)
+        return Array(interior(dT)), Reactant.to_number(loss_value)
+    end
+
+    dT, loss_value = gradient(false)
+    @test loss_value > 0
+    @test maximum(abs, dT) > 0
+    @test !any(isnan, dT)
+
+    for checkpointing in (Reactant.Periodic(2), Reactant.Binomial(2))
+        dT_checkpointed, loss_checkpointed = gradient(checkpointing)
+        @test loss_checkpointed ≈ loss_value
+        @test dT_checkpointed ≈ dT
+    end
 end

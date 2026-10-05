@@ -9,7 +9,7 @@ using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, CK}
     model :: ML
     Δt :: DT
     stop_iteration :: FT
@@ -24,6 +24,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     initialized :: BL
     verbose :: BL
     minimum_relative_step :: FT
+    checkpointing :: CK
 end
 
 """
@@ -115,7 +116,8 @@ function Simulation(model;
                      false,
                      false,
                      verbose,
-                     Float64(minimum_relative_step))
+                     Float64(minimum_relative_step),
+                     nothing) # checkpointing: only a compiled (Reactant) Simulation has one
 end
 
 function Base.show(io::IO, s::Simulation)
