@@ -1,6 +1,6 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!, include_biogeochemistry_transitions,
-                                    separate_transition_tracers, add_biogeochemical_transitions!
+                                    add_biogeochemical_transitions!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
 

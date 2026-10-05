@@ -5,8 +5,7 @@ using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCall
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!, include_biogeochemistry_transitions,
-                                    separate_transition_tracers, add_biogeochemical_transitions!,
-                                    biogeochemical_auxiliary_fields
+                                    add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Utils: get_active_cells_map
