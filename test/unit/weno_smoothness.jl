@@ -57,17 +57,20 @@ using BFloat16s: BFloat16
     end
 end
 
-# ZWENO weights evaluated in Float64 from the smoothness indicators of `scheme`, so that only the α computation
+# ZWENO weights evaluated in BigFloat from the smoothness indicators of `scheme`, so that only the α computation
 # is compared and not the precision of β, which carries 8 significant bits in BFloat16
 function reference_weno_weights(scheme, β, τ)
-    α = ntuple(r -> Float64(C★(scheme, Val(r - 1))) * (1 + (Float64(τ) / (Float64(β[r]) + Float64(ϵ)))^2), length(β))
+    α = ntuple(r -> big(C★(scheme, Val(r - 1))) * (1 + (big(τ) / (big(β[r]) + big(ϵ)))^2), length(β))
     return α ./ sum(α)
 end
 
+const weno_float_types = (Float64, Float32, BFloat16, BigFloat)
+
 jump_stencil(FT, buffer, slope, jump) = ntuple(i -> FT(slope * (i - 1) + jump * max(0, i - buffer)), 2buffer - 1)
 
-@testset "WENO weights beside a large jump [$FT]" for FT in (Float32, BFloat16)
-    # The jumps span τ / (β + ϵ) from O(1) up to ≈ 2¹²⁰, whose square overflows every 8-exponent-bit format.
+@testset "WENO weights beside a large jump [$FT]" for FT in weno_float_types
+    # The jumps span τ / (β + ϵ) from O(1) up to ≈ 2¹²⁰, whose square overflows every 8-exponent-bit format
+    # but never Float64 or BigFloat, which use the unscaled weights.
     # A background slope keeps every β large enough that the rescaling thresholds themselves overflow.
     # Third order matters because it is the fallback near immersed boundaries.
     for order in (3, 5, 7, 9), slope in (0, 1000), jump in exp2.(8:8:56)
@@ -86,7 +89,7 @@ jump_stencil(FT, buffer, slope, jump) = ntuple(i -> FT(slope * (i - 1) + jump * 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
             # subnormal weights are imprecise, and cannot influence the reconstruction
-            @test all(isapprox.(ω, reference; rtol=1e-5, atol=floatmin(eltype(ω))))
+            @test all(isapprox.(ω, reference; rtol=100eps(eltype(ω)), atol=floatmin(eltype(ω))))
 
             if FT == Float32
                 reference = biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order, weight_computation))
@@ -96,7 +99,7 @@ jump_stencil(FT, buffer, slope, jump) = ntuple(i -> FT(slope * (i - 1) + jump * 
     end
 end
 
-@testset "WENO weights where the flow is smooth [$FT]" for FT in (Float32, BFloat16)
+@testset "WENO weights where the flow is smooth [$FT]" for FT in weno_float_types
     for order in (3, 5, 7, 9)
         buffer = (order + 1) ÷ 2
         δ = ntuple(_ -> one(FT), Val(2buffer - 2)) # linear field ⇒ every β equal ⇒ τ = 0
@@ -104,7 +107,7 @@ end
         for weight_computation in (NormalDivision, BackendOptimizedDivision)
             scheme = WENO(FT; order, weight_computation)
             ω = biased_weno_weights(δ, nothing, scheme)
-            optimal = ntuple(r -> Float64(C★(scheme, Val(r - 1))), buffer)
+            optimal = ntuple(r -> big(C★(scheme, Val(r - 1))), buffer)
             optimal = optimal ./ sum(optimal) # the FT-rounded C★ do not sum exactly to one
 
             β = beta_loop(scheme, δ)
@@ -112,7 +115,7 @@ end
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
-            @test all(isapprox.(ω, reference_weno_weights(scheme, β, τ); rtol=1e-5))
+            @test all(isapprox.(ω, reference_weno_weights(scheme, β, τ); rtol=100eps(eltype(ω))))
             # the β agree only to FT rounding, so τ ≠ 0 moves the weights off the optimal ones by O((τ / β)²)
             @test all(isapprox.(ω, optimal; rtol=1e-6 + (τ / minimum(β))^2))
         end
