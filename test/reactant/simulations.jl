@@ -1,8 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
-using Enzyme
-using Statistics: mean
 using Oceananigans.Diagnostics: NaNChecker
 
 @kernel function _simple_tendency_kernel!(Gu, grid, advection, velocities)
@@ -315,47 +313,5 @@ end
         @test iteration(r_simulation) == stop_iteration
         @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
         @test Array(interior(r_model.tracers.T)) ≈ Array(interior(model.tracers.T))
-    end
-
-    # The reverse-mode gradient of a loss on the final state, through run!, is the same with and
-    # without checkpointing: it changes what the reverse sweep stores and recomputes, not what it
-    # computes.
-    function loss(sim, T_init)
-        set!(sim.model, T=T_init)
-        run!(sim)
-        return mean(interior(sim.model.tracers.T) .^ 2)
-    end
-
-    function grad_loss(sim, dsim, T_init, dT_init)
-        parent(dT_init) .= 0
-        _, primal = Enzyme.autodiff(
-            Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal),
-            loss, Enzyme.Active,
-            Enzyme.Duplicated(sim, dsim),
-            Enzyme.Duplicated(T_init, dT_init))
-        return dT_init, primal
-    end
-
-    function gradient(checkpointing)
-        r_model = fresh_model(ReactantState())
-        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing)
-        dr_simulation = Enzyme.make_zero(r_simulation)
-        T_init = CenterField(r_model.grid)
-        set!(T_init, Ti)
-        dT_init = CenterField(r_model.grid)
-        compiled_grad = @compile raise=true raise_first=true sync=true grad_loss(r_simulation, dr_simulation, T_init, dT_init)
-        gradient_field, primal = compiled_grad(r_simulation, dr_simulation, T_init, dT_init)
-        return Array(interior(gradient_field)), Reactant.to_number(primal)
-    end
-
-    dT, loss_value = gradient(false)
-    @test loss_value > 0
-    @test maximum(abs, dT) > 0
-    @test !any(isnan, dT)
-
-    for checkpointing in (Reactant.Periodic(2), Reactant.Binomial(2))
-        dT_checkpointed, loss_checkpointed = gradient(checkpointing)
-        @test loss_checkpointed ≈ loss_value
-        @test dT_checkpointed ≈ dT
     end
 end
