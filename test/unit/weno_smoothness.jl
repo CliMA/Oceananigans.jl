@@ -1,6 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Advection: beta_loop, biased_weno_weights
+using Oceananigans.Advection: beta_loop, biased_weno_weights, global_smoothness_indicator, C★, ϵ
+using Oceananigans.Utils: NormalDivision, BackendOptimizedDivision
+using BFloat16s: BFloat16
 
 @testset "Float32 WENO smoothness indicators" begin
     # A smooth ρθ profile with large mean (≈ 300) and small O(0.1) perturbations.
@@ -55,56 +57,64 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
     end
 end
 
-@testset "Float32 WENO weights beside a large jump" begin
-    # A flat sub-stencil beside a jump of 3e5 gives τ / (β + ϵ) ≈ 3e19, whose square overflows Float32; 1e15 gives ≈ 1e38
-    for order in (5, 7, 9), jump in (3f5, 1f15)
-        buffer = Int((order + 1) ÷ 2)
-        S = ntuple(i -> i < buffer + 1 ? 0f0 : jump * (i - buffer), 2buffer - 1)
+# ZWENO weights evaluated in Float64 from the smoothness indicators of `scheme`, so that only the α computation
+# is compared and not the precision of β, which carries 8 significant bits in BFloat16
+function reference_weno_weights(scheme, β, τ)
+    α = ntuple(r -> Float64(C★(scheme, Val(r - 1))) * (1 + (Float64(τ) / (Float64(β[r]) + Float64(ϵ)))^2), length(β))
+    return α ./ sum(α)
+end
+
+jump_stencil(FT, buffer, slope, jump) = ntuple(i -> FT(slope * (i - 1) + jump * max(0, i - buffer)), 2buffer - 1)
+
+@testset "WENO weights beside a large jump [$FT]" for FT in (Float32, BFloat16)
+    # The jumps span τ / (β + ϵ) from O(1) up to ≈ 2¹²⁰, whose square overflows every 8-exponent-bit format.
+    # A background slope keeps every β large enough that the rescaling thresholds themselves overflow.
+    # Third order matters because it is the fallback near immersed boundaries.
+    for order in (3, 5, 7, 9), slope in (0, 1000), jump in exp2.(8:8:56)
+        buffer = (order + 1) ÷ 2
+        S = jump_stencil(FT, buffer, slope, jump)
         δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
 
-        for weight_computation in (Oceananigans.Utils.NormalDivision,
-                                   Oceananigans.Utils.BackendOptimizedDivision)
-            ω = biased_weno_weights(δ, nothing, WENO(Float32; order, weight_computation))
-            reference = Float32.(biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order, weight_computation)))
+        for weight_computation in (NormalDivision, BackendOptimizedDivision)
+            scheme = WENO(FT; order, weight_computation)
+            ω = biased_weno_weights(δ, nothing, scheme)
+
+            β = beta_loop(scheme, δ)
+            τ = global_smoothness_indicator(Val(buffer), β)
+            reference = reference_weno_weights(scheme, β, τ)
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
-            @test all(isapprox.(ω, reference; rtol=1e-5))
+            # subnormal weights are imprecise, and cannot influence the reconstruction
+            @test all(isapprox.(ω, reference; rtol=1e-5, atol=floatmin(eltype(ω))))
+
+            if FT == Float32
+                reference = biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order, weight_computation))
+                @test all(isapprox.(ω, reference; rtol=1e-5, atol=floatmin(eltype(ω))))
+            end
         end
     end
 end
 
-@testset "Float32 third-order WENO weights beside a large jump" begin
-    # Third order is the fallback near immersed boundaries. A jump of 3e6 gives τ / (β + ϵ) ≈ 9e20, whose
-    # square overflows Float32.
-    S = (0f0, 0f0, 3f6)
-    δ = (S[2] - S[1], S[3] - S[2])
+@testset "WENO weights where the flow is smooth [$FT]" for FT in (Float32, BFloat16)
+    for order in (3, 5, 7, 9)
+        buffer = (order + 1) ÷ 2
+        δ = ntuple(_ -> one(FT), Val(2buffer - 2)) # linear field ⇒ every β equal ⇒ τ = 0
 
-    for weight_computation in (Oceananigans.Utils.NormalDivision,
-                               Oceananigans.Utils.BackendOptimizedDivision)
-        ω = biased_weno_weights(δ, nothing, WENO(Float32; order=3, weight_computation))
-        reference = biased_weno_weights(Float64.(δ), nothing, WENO(Float64; order=3, weight_computation))
-
-        @test all(isfinite, ω)
-        @test sum(ω) ≈ 1
-        @test all(isapprox.(ω, reference))
-    end
-end
-
-@testset "Float32 WENO weights where the flow is smooth" begin
-    for order in (5, 7, 9)
-        buffer = Int((order + 1) ÷ 2)
-        δ = ntuple(_ -> 1f0, Val(2buffer - 2))          # linear field ⇒ every β equal ⇒ τ = 0
-
-        for weight_computation in (Oceananigans.Utils.NormalDivision,
-                                   Oceananigans.Utils.BackendOptimizedDivision)
-            scheme = WENO(Float32; order, weight_computation)
+        for weight_computation in (NormalDivision, BackendOptimizedDivision)
+            scheme = WENO(FT; order, weight_computation)
             ω = biased_weno_weights(δ, nothing, scheme)
-            optimal = ntuple(r -> Oceananigans.Advection.C★(scheme, Val(r - 1)), buffer)
+            optimal = ntuple(r -> Float64(C★(scheme, Val(r - 1))), buffer)
+            optimal = optimal ./ sum(optimal) # the FT-rounded C★ do not sum exactly to one
+
+            β = beta_loop(scheme, δ)
+            τ = global_smoothness_indicator(Val(buffer), β)
 
             @test all(isfinite, ω)
             @test sum(ω) ≈ 1
-            @test all(isapprox.(ω, optimal; rtol=1e-6))
+            @test all(isapprox.(ω, reference_weno_weights(scheme, β, τ); rtol=1e-5))
+            # the β agree only to FT rounding, so τ ≠ 0 moves the weights off the optimal ones by O((τ / β)²)
+            @test all(isapprox.(ω, optimal; rtol=1e-6 + (τ / minimum(β))^2))
         end
     end
 end
