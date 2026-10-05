@@ -5,7 +5,7 @@ import Oceananigans.DistributedComputations: north_recv_tag,
                                              northeast_recv_tag,
                                              northeast_send_tag
 
-ID_DIGITS = 4
+using Oceananigans.DistributedComputations: ID_DIGITS
 
 sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
 side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
