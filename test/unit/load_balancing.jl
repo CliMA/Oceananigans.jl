@@ -99,7 +99,7 @@ end
 
     bottom_height = -30.0 .* rand(Float64, (Nx, Ny)) .+ 15.0
     ib = ibc(bottom_height)
-    cost_map = create_cost_map(grid, ib)
+    cost_map = create_cost_map(underlying_grid, ib)
     balanced_partition = create_balanced_partition(strategy, partition, cost_map)
 
     @test sum(balanced_partition.x) == Nx
