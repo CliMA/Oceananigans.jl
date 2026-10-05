@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, create_cost_map, GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
 
-sizes = [ (6, 6, 3) ]
+sizes = [ (60, 60, 30) ]
 halos = [ (4, 4, 4) ]
 longitudes = [ (0, 360) ]
 latitudes = [ (-40, 45) ]
