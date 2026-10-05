@@ -42,8 +42,6 @@ rectilinear_constructors = [
 tripolar_constructors = [
   arch -> TripolarGrid(arch;
                        size,
-                       x,
-                       y,
                        z,
                        halo)
   for (size, halo, x, y, z) in
