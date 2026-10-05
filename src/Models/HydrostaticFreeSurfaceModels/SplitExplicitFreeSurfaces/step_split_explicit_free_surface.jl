@@ -167,7 +167,7 @@ end
 
 @inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
 
-function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F::Fη, clock, weights, transport_weights, ::Val{Nsubsteps}) where {Fη, Nsubsteps}
     arch = architecture(grid)
 
     η           = free_surface.displacement
