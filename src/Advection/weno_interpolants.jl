@@ -1,5 +1,6 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 using Oceananigans.Utils: newton_div
+using BFloat16s: BFloat16
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -365,19 +366,28 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ), divided by M² where M = max(1, τ₂ᵣ₋₁ / dmin) and
-# dmin = minᵣ(βᵣ + ϵ), so that no term can overflow. M² cancels when the weights are normalized.
-@inline function metaprogrammed_zweno_alpha_loop(buffer)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ) multiplied by σ², which cancels when the weights are normalized
+@inline function metaprogrammed_zweno_alpha_loop(buffer, σ = 1)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (a^2 + (b * newton_div(WCT, dmin, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (σ^2 + (newton_div(WCT, σ * τ, β[$stencil] + ϵ))^2))
     end
 
     return quote
-        dmin = minimum(β) + ϵ
-        a = newton_div(WCT, dmin, max(τ, dmin))    # 1 / M, without dividing by τ
-        b = min(one(FT), newton_div(WCT, τ, dmin)) # τ / (M * dmin)
+        σ = $σ
         ($(elem...),)
+    end
+end
+
+# σ keeps σ τ / (βᵣ + ϵ) ≤ 2⁶⁰ in formats with 8 exponent bits (Float32, BFloat16), so its square cannot overflow.
+# σ² may underflow to zero, which is harmless: it is then negligible beside the ≥ 2²⁰ term of the smoothest stencil.
+# A threshold product may overflow to Inf when every β is large, which is also harmless: the comparison then
+# fails, and a large minimum(β) already bounds the ratio.
+@inline function metaprogrammed_zweno_rescaling(FT)
+    return quote
+        dmin = minimum(β) + ϵ
+        ifelse(τ > $(FT(2)^110) * dmin, $(inv(FT(2)^100)),
+        ifelse(τ > $(FT(2)^60)  * dmin, $(inv(FT(2)^50)), $(one(FT))))
     end
 end
 
@@ -386,6 +396,11 @@ for buffer in advection_buffers[2:end]
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer, FT}, δ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+    end
+
+    for FT in (Float32, BFloat16)
+        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT =
+            @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
     end
 end
 
