@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
+using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
 
 
 function test_three_dimensional_differences(T=Float64)
@@ -301,6 +302,29 @@ end
             @test δyᵃᶠᵃ(idx..., grid_xz, A2xz) ≈ 0
             @test δzᵃᵃᶜ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶜ(idx..., grid_xz, A3)
             @test δzᵃᵃᶠ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶠ(idx..., grid_xz, A3)
+        end
+    end
+
+    @testset "Topology-aware operators on tripolar grids" begin
+        for (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+            grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
+            Nx, Ny, _ = size(grid)
+            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
+
+            U = Field{Face, Center, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U))
+            V = Field{Center, Face, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))
+            c = Field{Center, Center, Nothing}(grid)
+
+            for f in (U, V, c)
+                set!(f, rand(size(f)...))
+                fill_halo_regions!(f)
+            end
+
+            # A topology-aware operator equals the plain operator applied to a halo-filled field
+            @test all(δxTᶜᵃᵃ(i, j, 1, grid, U) ≈ δxᶜᵃᵃ(i, j, 1, grid, U) for i in 1:Nx, j in 1:Ny)
+            @test all(δxTᶠᵃᵃ(i, j, 1, grid, c) ≈ δxᶠᵃᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:Ny)
+            @test all(δyTᵃᶜᵃ(i, j, 1, grid, V) ≈ δyᵃᶜᵃ(i, j, 1, grid, V) for i in 1:Nx, j in 1:northernmost_row)
+            @test all(δyTᵃᶠᵃ(i, j, 1, grid, c) ≈ δyᵃᶠᵃ(i, j, 1, grid, c) for i in 1:Nx, j in 1:northernmost_row)
         end
     end
 end
