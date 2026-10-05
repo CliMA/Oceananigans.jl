@@ -38,7 +38,8 @@ function Simulation(model::ReactantModel; Δt,
                     wall_time_limit = Inf,
                     align_time_step = false,
                     minimum_relative_step = 0,
-                    checkpointing = false)
+                    checkpointing = false,
+                   )
 
     Δt = Float64(Δt)
     checkpointing = validate_checkpointing(checkpointing)
@@ -67,7 +68,8 @@ function Simulation(model::ReactantModel; Δt,
                       false,
                       verbose,
                       Float64(minimum_relative_step),
-                      checkpointing)
+                      checkpointing,
+                     )
 end
 
 validate_checkpointing(checkpointing::Union{Periodic, Binomial}) = checkpointing

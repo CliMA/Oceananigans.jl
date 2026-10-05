@@ -117,7 +117,8 @@ function Simulation(model;
                      false,
                      verbose,
                      Float64(minimum_relative_step),
-                     nothing) # checkpointing: only a compiled (Reactant) Simulation has one
+                     nothing, # checkpointing: only a compiled (Reactant) Simulation has one
+                    )
 end
 
 function Base.show(io::IO, s::Simulation)
