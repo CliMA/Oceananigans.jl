@@ -1,7 +1,7 @@
 using GPUArraysCore
 using Oceananigans.Grids: stretched_dimensions
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
-using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             stretched_direction,
@@ -414,17 +414,17 @@ using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δxᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function distributed_fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
 end
 
 function compute_preconditioner_rhs!(solver::DistributedFourierTridiagonalPoissonSolver, rhs)
