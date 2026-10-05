@@ -161,3 +161,66 @@ end
         end
     end
 end
+
+# # Boundary faces on the edge ranks of a distributed Bounded dimension
+#
+# On the left-edge rank the topology is `RightConnected`, but face 1 is still the domain boundary and must
+# not be stepped with the interior. Rotation of a sheared `v` gives the boundary face a depth-varying tendency
+# that the barotropic correction does not remove, and the anchored radiation fill reads the boundary value.
+
+vᵢ(x, y, z) = 0.01 * (1 + 2z)
+
+function build_rotating_open(grid; timestepper)
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
+                                    east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps=8, extend_halos=false)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, timestepper,
+                                        coriolis = FPlane(f = 10),
+                                        boundary_conditions = (u = u_bcs, U = U_bcs),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+    set!(model, η = ηᵢ, v = vᵢ)
+
+    for _ in 1:10
+        time_step!(model, 5e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed open boundary faces are not stepped" begin
+    open_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
+                  Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
+
+    for arch in open_archs, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
+        global_grid = reconstruct_global_grid(grid)
+
+        mp = build_rotating_open(grid; timestepper)
+        ms = build_rotating_open(global_grid; timestepper)
+
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
+
+        us = partition(interior(on_architecture(CPU(), ms.velocities.u)), cpu_arch, size(up))
+        vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
+        ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
+
+        @testset "rotating open boundaries [$timestepper, $(typeof(arch.partition))]" begin
+            @test all(isapprox.(up, us))
+            @test all(isapprox.(vp, vs))
+            @test all(isapprox.(ηp, ηs))
+        end
+    end
+end
