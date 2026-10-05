@@ -1,8 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.ImmersedBoundaries: active_cells_per_column
-using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
+using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, create_cost_map, GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
 
 sizes = [ (6, 6, 3) ]
 halos = [ (4, 4, 4) ]
@@ -77,7 +76,7 @@ sum_sizes(x::Sizes) = sum(x.sizes)
   active_cells_map = immersed_grid.interior_active_cells
   active_cells_count = isnothing(active_cells_map) ? Nx*Ny*Nz : length(active_cells_map)
 
-  @test sum(active_cells_per_column(underlying_grid, ib)) == active_cells_count
+  @test sum(create_cost_map(underlying_grid, ib)) == active_cells_count
 
 end
 
