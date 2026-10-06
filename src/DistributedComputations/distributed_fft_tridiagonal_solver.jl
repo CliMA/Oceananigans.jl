@@ -273,7 +273,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
 end
 
 # The solution of the homogeneous Neumann problem is unique up to a constant; return the zero-mean one.
-function copy_zero_mean_solution!(x, solver)
+function copy_and_zero_mean!(x, solver)
     launch!(architecture(solver), solver.local_grid, :xyz, _copy_real_component!, x, parent(solver.storage.zfield))
     x .-= mean(x)
     return x
@@ -315,7 +315,7 @@ function _slab_x_solve!(x, solver::ZStretchedDistributedSolver)
     transpose_x_to_y!(storage)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
 
-    return copy_zero_mean_solution!(x, solver)
+    return copy_and_zero_mean!(x, solver)
 end
 
 # General Z-stretched solve (pencil decomposition): 4+ MPI transposes.
@@ -340,7 +340,7 @@ function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_z!(storage)
 
-    return copy_zero_mean_solution!(x, solver)
+    return copy_and_zero_mean!(x, solver)
 end
 
 function solve!(x, solver::YStretchedDistributedSolver)
@@ -366,7 +366,7 @@ function solve!(x, solver::YStretchedDistributedSolver)
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
     solver.plan.backward.z!(parent(storage.zfield), buffer.z)
 
-    return copy_zero_mean_solution!(x, solver)
+    return copy_and_zero_mean!(x, solver)
 end
 
 function solve!(x, solver::XStretchedDistributedSolver)
@@ -391,7 +391,7 @@ function solve!(x, solver::XStretchedDistributedSolver)
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
     solver.plan.backward.z!(parent(storage.zfield), buffer.z) # last backwards transform is in z
 
-    return copy_zero_mean_solution!(x, solver)
+    return copy_and_zero_mean!(x, solver)
 end
 
 #####
