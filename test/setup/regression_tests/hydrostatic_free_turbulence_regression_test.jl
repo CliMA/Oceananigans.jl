@@ -133,8 +133,6 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
 
         close(file)
 
-        summarize_regression_test(test_fields, truth_fields)
-
         test_fields_equality(cpu_arch, test_fields, truth_fields)
     end
 
