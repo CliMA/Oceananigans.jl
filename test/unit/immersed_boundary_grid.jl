@@ -166,10 +166,8 @@ end
 function test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid = false)
     Nz = 3; Lz = 1
     if mutable_grid
-        @info "    Testing grid with a MutableVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=MutableVerticalDiscretization((-Lz, 0)))
     else
-        @info "    Testing grid with a StaticVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=(-Lz, 0))
     end
 
@@ -352,19 +350,36 @@ end
 function test_immersed_boundary_grid_show(FT, arch, boundary_type)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
 
-    bottom_function(x, y) = 0.2
-    ib = boundary_type(bottom_function)
-    ibg = ImmersedBoundaryGrid(underlying_grid, ib)
+    bottom_function(x, y) = -0.5
+    ibg = ImmersedBoundaryGrid(underlying_grid, boundary_type(bottom_function))
+    ib = ibg.immersed_boundary
 
-    @test try
-        show(ibg); println()
-        show(ibg.immersed_boundary); println()
-        true
-    catch err
-        println("error in show functions")
-        println(sprint(showerror, err))
-        false
+    if boundary_type === GridFittedBottom
+        ib_summary = "GridFittedBottom(mean(z)=-0.5, min(z)=-0.5, max(z)=-0.5)"
+        bottom_height_prefix = "└── bottom_height: "
+        ib_suffix = "\n"
+    else
+        ib_summary = "PartialCellBottom(mean(zb)=-0.5, min(zb)=-0.5, max(zb)=-0.5, ϵ=0.2)"
+        bottom_height_prefix = "├── bottom_height: "
+        ib_suffix = "\n└── minimum_fractional_cell_height: 0.2"
     end
+
+    ibg_summary = "4×4×4 ImmersedBoundaryGrid{$FT, Periodic, Periodic, Bounded} on $(summary(arch)) with 3×3×3 halo"
+
+    @test summary(ib) == ib_summary
+    @test summary(ibg) == ibg_summary
+
+    @test sprint(show, ibg) == string(ibg_summary, ":\n",
+                                      "├── immersed_boundary: ", ib_summary, "\n",
+                                      "├── underlying_grid: ", summary(underlying_grid), "\n",
+                                      "├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.25\n",
+                                      "├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.25\n",
+                                      "└── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=0.25")
+
+    # The array type in the bottom height summary depends on the architecture
+    ib_shown = sprint(show, ib)
+    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 OffsetArray("))
+    @test endswith(ib_shown, string("with eltype $FT with indices -2:7×-2:7×1:1", ib_suffix))
 
     return nothing
 end
@@ -521,12 +536,9 @@ end
 #####
 
 @testset "Immersed Boundary Grids" begin
-    @info "Testing immersed boundary grids..."
-
     @testset "Basic construction" begin
         for arch in archs, FT in float_types
             for boundary_type in (GridFittedBottom, PartialCellBottom)
-                @info "  Testing basic immersed boundary grid construction [$FT, $(typeof(arch)), $boundary_type] ..."
                 @testset "Construction [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_construction(FT, arch, boundary_type)
                     test_immersed_boundary_grid_with_array_bottom(FT, arch, boundary_type)
@@ -539,7 +551,6 @@ end
 
     @testset "Grid fitting and cell detection" begin
         for arch in archs, FT in float_types
-            @info "  Testing grid fitting and immersed cell detection [$FT, $(typeof(arch))]..."
             @testset "Cell detection [$FT, $(typeof(arch))]" begin
                 test_grid_fitted_bottom_cell_detection(FT, arch)
                 test_partial_cell_bottom_cell_detection(FT, arch)
@@ -553,10 +564,10 @@ end
 
     @testset "Grid spacings and metrics" begin
         for arch in archs, FT in float_types
-            @info "  Testing grid spacings and metrics [$FT, $(typeof(arch))]..."
             @testset "Spacings [$FT, $(typeof(arch))]" begin
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=false)
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=true)
+                @testset "PartialCellBottom spacings with a $(mutable_grid ? "Mutable" : "Static")VerticalDiscretization" for mutable_grid in (false, true)
+                    test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid)
+                end
                 test_partial_cell_bottom_face_spacings(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)
@@ -569,7 +580,6 @@ end
 
     @testset "GridFittedBoundary" begin
         for arch in archs, FT in float_types
-            @info "  Testing GridFittedBoundary [$FT, $(typeof(arch))]..."
             @testset "GridFittedBoundary [$FT, $(typeof(arch))]" begin
                 test_grid_fitted_boundary_with_function(FT, arch)
                 test_grid_fitted_boundary_with_array(FT, arch)
@@ -580,7 +590,6 @@ end
     @testset "Show functions" begin
         for arch in archs, FT in float_types
             for boundary_type in (GridFittedBottom, PartialCellBottom)
-                @info "  Testing show functions [$FT, $(typeof(arch)), $boundary_type]..."
                 @testset "Show [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_show(FT, arch, boundary_type)
                 end
@@ -590,7 +599,6 @@ end
 
     @testset "Error conditions" begin
         for arch in archs, FT in float_types
-            @info "  Testing error conditions [$FT, $(typeof(arch))]..."
             @testset "Errors [$FT, $(typeof(arch))]" begin
                 test_immersed_boundary_grid_errors(FT, arch)
             end
@@ -600,7 +608,6 @@ end
     @testset "Flat topologies" begin
         for arch in archs, FT in float_types
             for boundary_type in (GridFittedBottom, PartialCellBottom)
-                @info "  Testing flat topologies [$FT, $(typeof(arch)), $boundary_type]..."
                 @testset "Flat [$FT, $(typeof(arch)), $boundary_type]" begin
                     test_immersed_boundary_grid_flat_topologies(FT, arch, boundary_type)
                 end
@@ -610,7 +617,6 @@ end
 
     @testset "Immersed boundary equality" begin
         for arch in archs, FT in float_types
-            @info "  Testing immersed boundary equality [$FT, $(typeof(arch))]..."
             @testset "Equality [$FT, $(typeof(arch))]" begin
                 test_immersed_boundary_equality(FT, arch)
             end
