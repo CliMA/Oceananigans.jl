@@ -300,7 +300,7 @@ end
 
     # Only a Simulation on ReactantState takes them.
     @test isnothing(Simulation(model; Δt, stop_iteration, verbose=false).automatic_differentiation)
-    @test_throws ArgumentError Simulation(model; Δt, stop_iteration, verbose=false, automatic_differentiation=AutomaticDifferentiationOptions())
+    @test_throws ArgumentError Simulation(model; Δt, stop_iteration, verbose=false, automatic_differentiation=AutomaticDifferentiationOptions(checkpointing=false))
 
     r_model = fresh_model(ReactantState())
     @test Simulation(r_model; Δt, stop_iteration, verbose=false).automatic_differentiation == AutomaticDifferentiationOptions(checkpointing=false)
