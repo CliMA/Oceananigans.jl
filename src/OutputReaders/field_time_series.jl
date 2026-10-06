@@ -1080,18 +1080,16 @@ end
 ##### Fill halo regions
 #####
 
-const MAX_FTS_TUPLE_SIZE = 10
-
 BoundaryConditions.fill_halo_regions!(fts::OnDiskFTS) = nothing
 
+# The time indices are filled one after the other. They all share `fts.boundary_conditions`, and some
+# boundary conditions keep state between computing and applying it (the pole value of a
+# `PolarValueBoundaryCondition`): filling several indices concurrently (e.g. with `asyncmap`) lets one
+# index's halo fill pick up another index's pole value whenever a task yields, which on the GPU depends
+# on timing and makes the halos nondeterministic.
 function BoundaryConditions.fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
-    Ni = length(partitioned_indices)
-
-    asyncmap(1:Ni) do i
-        indices = partitioned_indices[i]
-        fts_tuple = Tuple(fts[n] for n in indices)
-        fill_halo_regions!(fts_tuple)
+    for n in time_indices(fts)
+        fill_halo_regions!(fts[n])
     end
 
     return nothing
