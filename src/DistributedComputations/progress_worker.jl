@@ -10,26 +10,26 @@ struct HaloMessage{E}
     rank :: Int
     tag :: Int
     communicator :: MPI.Comm
-    requests :: MPI.UnsafeMultiRequest
-    index :: Int
+    request :: MPI.MultiRequestItem{MPI.UnsafeMultiRequest}
     event :: E
     fill_events :: Threads.Atomic{UInt64}
 end
 
-function HaloMessage(state, send, array, rank, tag, communicator, requests, index)
+# Each side of a communication state has one [send, recv] pair of requests
+function HaloMessage(state, send, array, rank, tag, communicator, requests)
     buffer = MPI.Buffer(array)
     root = Base.cconvert(MPI.MPIPtr, buffer.data)
     pointer = Base.unsafe_convert(MPI.MPIPtr, root)
     buffer = MPI.Buffer(pointer, buffer.count, buffer.datatype)
-    return HaloMessage(send, buffer, root, rank, tag, mpi_communicator(communicator), requests, index, state.event, state.fill_events)
+    request = requests[send ? 1 : 2]
+    return HaloMessage(send, buffer, root, rank, tag, mpi_communicator(communicator), request, state.event, state.fill_events)
 end
 
 # Communicators that wrap an MPI communicator (e.g. `NCCLCommunicator`) extend this to unwrap it
 mpi_communicator(communicator::MPI.Comm) = communicator
 
-# Each side of a communication state has one [send, recv] pair of requests
-isend!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, true, array, rank, tag, communicator, requests, 1))
-irecv!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, false, array, rank, tag, communicator, requests, 2))
+isend!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, true, array, rank, tag, communicator, requests))
+irecv!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, false, array, rank, tag, communicator, requests))
 
 # Without the progress worker, the main thread posts right away
 function submit!(state::CommState{<:Any, <:Any, Nothing}, message)
@@ -57,9 +57,6 @@ function use_progress_worker()
     return progress_worker_enabled[]::Bool
 end
 
-# A single interactive thread is the main thread itself, so the worker goes to the default pool
-progress_worker_threadpool() = Threads.nthreads(:interactive) > 1 ? :interactive : :default
-
 # The channel to the worker, or `nothing` without it. There is one worker per type of event
 # (e.g. CPU and GPU fields in the same run), so that each worker handles a single concrete type of message.
 function progress_worker(event::E) where E
@@ -70,33 +67,31 @@ end
 
 function start_progress_worker(M)
     messages = Channel{M}(Inf)
-    pool = progress_worker_threadpool()
+    # A single interactive thread is the main thread itself, so the worker goes to the default pool
+    pool = Threads.nthreads(:interactive) > 1 ? :interactive : :default
     errormonitor(Threads.@spawn pool progress_messages!(messages))
     MPI.add_finalize_hook!(() -> close(messages))
     return messages
 end
 
 function post!(message::HaloMessage)
-    request = message.requests[message.index]
     if message.send
-        MPI.Isend(message.buffer, message.rank, message.tag, message.communicator, request)
+        MPI.Isend(message.buffer, message.rank, message.tag, message.communicator, message.request)
     else
-        MPI.Irecv!(message.buffer, message.rank, message.tag, message.communicator, request)
+        MPI.Irecv!(message.buffer, message.rank, message.tag, message.communicator, message.request)
     end
     return nothing
 end
 
-function complete!(message::HaloMessage)
-    MPI.Test(message.requests[message.index]) || return false
-    Threads.atomic_sub!(message.fill_events, UInt64(1))
-    return true
-end
-
-# Unlike `filter!(!complete!, posted)`, which shrinks `posted` so that the next `push!` reallocates
+# Compacts `posted` in place: `filter!` would shrink it, so that the next `push!` reallocates
 function remove_complete!(posted)
     n = 0
     for message in posted
-        complete!(message) || (posted[n += 1] = message)
+        if MPI.Test(message.request)
+            Threads.atomic_sub!(message.fill_events, UInt64(1))
+        else
+            posted[n += 1] = message
+        end
     end
     resize!(posted, n)
     return nothing
