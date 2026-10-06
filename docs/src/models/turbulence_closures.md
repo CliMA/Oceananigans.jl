@@ -221,7 +221,7 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── tke_time_step: Nothing
 ├── mixing_length: TKEBasedVerticalDiffusivities.CATKEMixingLength
 │   ├── Cˢ:   1.131
-│   ├── Cᵇ:   0.28
+│   ├── Cᵇ:   0.967
 │   ├── Cʰⁱu: 0.242
 │   ├── Cʰⁱc: 0.098
 │   ├── Cʰⁱe: 0.548
