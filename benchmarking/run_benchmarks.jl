@@ -469,7 +469,7 @@ function run_benchmarks(args)
                 closure,
                 tracers,
                 timestepper,
-                load_balancing=load_balancing_enabled
+                load_balanced_partition=load_balancing_enabled
             )
         elseif case == "nonhydrostatic"
             model = nonhydrostatic_box(arch; Nx, Ny, Nz, float_type = FT, pressure_solver)
