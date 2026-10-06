@@ -731,6 +731,37 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
     return nothing
 end
 
+function test_field_time_series_with_subsetted_times(backend)
+    grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+    output_times = 0:0.1:1
+    dir = mktempdir()
+    path = joinpath(dir, "test_fts_subsetted_times.jld2")
+    name = "c"
+
+    field_time_series = FieldTimeSeries{Center, Center, Center}(
+        grid, output_times;  backend = OnDisk(), path, name
+    )
+
+    for (i, t) in enumerate(output_times)
+        field= CenterField(grid)
+        set!(field, Returns(t))
+        set!(field_time_series, field, i)
+    end
+
+    subset_times = output_times[end-5:end]
+
+    field_time_series_subset = FieldTimeSeries(path, name; backend, times=subset_times)
+
+    @test field_time_series_subset.times == subset_times
+
+    for (i, t) in enumerate(subset_times)
+        @test field_time_series_subset[i][1, 1, 1] == t
+        @test field_time_series_subset[i] == field_time_series[Time(subset_times[i])]
+    end
+
+    rm(dir; recursive=true, force=true)
+end
+
 function test_field_time_series_time_average(arch)
     grid = RectilinearGrid(arch, size=(2, 1, 4), extent=(1, 1, 1))
     times = 0:7
@@ -984,6 +1015,10 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
+
+    @testset "Test indexing of FieldTimeSeries with specified times and backend $backend" for backend in (OnDisk(), InMemory(), InMemory(2))
+        test_field_time_series_with_subsetted_times(backend)
+    end
 
     # A series reachable only through a boundary condition must still be found, so that
     # `update_field_time_series!` advances its in-memory window.
