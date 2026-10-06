@@ -210,11 +210,10 @@ end
 
 function active_cells_per_column(grid, ib)
 
-  active_cells_count = Field{Center, Center, Nothing}(grid, Int64)
-
-  launch!(architecture(grid), grid, :xy, _count_active_cells_in_column!, active_cells_count, grid, ib)
-
-  return active_cells_count
+    active_cells_per_column = Field{Center, Center, Nothing}(grid, Int32)
+    fill!(active_cells_per_column, 0)
+    launch!(architecture(grid), grid, :xy, _count_active_cells_in_column!, active_cells_per_column, grid, ib)
+    return interior(active_cells_per_column)
 end
 
 @kernel function _count_active_cells_in_column!(active_cells_count, grid, ib)

@@ -29,7 +29,7 @@ end
 
 function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribution, unbalanced_partition, cost_map)
   Rx, Ry, _ = ranks(unbalanced_partition)
-  costs = on_architecture(CPU(), interior(cost_map))
+  costs = on_architecture(CPU(), cost_map)
 
   # Partition each direction independently
   x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
@@ -47,7 +47,7 @@ end
 function create_balanced_partition(strategy::GeneralizedBlockDistribution, unbalanced_partition, cost_map)
   # Iterative algorithm based on "Manne, F., Sørevik, T. (1996). Partitioning an array onto a mesh of processors"
   Rx, Ry, _ = ranks(unbalanced_partition)
-  costs = on_architecture(CPU(), interior(cost_map))
+  costs = on_architecture(CPU(), cost_map)
 
   # Partition x first
   x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
