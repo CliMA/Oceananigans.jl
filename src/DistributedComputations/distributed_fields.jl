@@ -248,14 +248,14 @@ end
     conditional_length(condition_operand(identity, c, NotImmersed(), 0))
 
 # Distributed norm
-@inline function norm(u::DistributedField; condition=nothing)
+@inline function norm(u::DistributedAbstractField; condition=nothing)
     n² = dot(u, u; condition)
     return sqrt(n²)
 end
 
 # Distributed dot product: the local dot products are summed across ranks on the host,
 # so the result is copied back into `r`. `LinearAlgebra.dot` is built on `dot!`.
-function Fields.dot!(r, u::DistributedField, v::DistributedField; condition=nothing)
+function Fields.dot!(r, u::DistributedAbstractField, v::DistributedAbstractField; condition=nothing)
     local_dot!(r, u, v; condition)
     dot_local = @allowscalar r[1]
     arch = architecture(u)
