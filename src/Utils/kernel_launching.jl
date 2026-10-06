@@ -11,7 +11,6 @@ using Base: @pure
 using KernelAbstractions: Kernel,
                           KernelAbstractions as KA,
                           ndrange, workgroupsize,
-                          __iterspace,
                           CompilerMetadata
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 using Oceananigans.Architectures: Architectures
@@ -511,7 +510,6 @@ KA.cartesian(m::IndexMap) = MappedIndices(m)
 KA.cartesian(r::MappedIndices) = r
 
 const MappedNDRange = NDRange{1, <:Any, <:Any, <:Any, <:Any, <:IndexMap}
-const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
 
 function partition(kernel::Kernel{<:Any, <:StaticSize, <:NDIteration.DynamicSize}, map::IndexMap, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
@@ -534,5 +532,5 @@ end
 @inline expand(ndrange::MappedNDRange, groupidx::Integer, idx::CartesianIndex{1}) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
 
 # The linear index of a mapped work item is its position in the map
-@inline KA.__index_Global_Linear(ctx::MappedCompilerMetadata) =
-    mapped_position(__iterspace(ctx), KA.__index_Group_Linear(ctx), KA.__index_Local_Linear(ctx))
+@inline NDIteration.linear_index(ndrange::MappedNDRange, ::MappedIndices, groupidx::CartesianIndex{1}, idx::CartesianIndex{1}) =
+    mapped_position(ndrange, groupidx, idx)
