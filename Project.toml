@@ -96,5 +96,5 @@ Zarr = "0.10"
 julia = "1.10"
 
 [sources]
-KernelAbstractions = {rev = "e444fb916b5527f942cf2f84438acdb6bec646c0", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
-KernelInterface = {rev = "e444fb916b5527f942cf2f84438acdb6bec646c0", subdir = "lib/KernelInterface", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
+KernelAbstractions = {rev = "1c2be357bfb64600416337b82a7a2083fee07145", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
+KernelInterface = {rev = "1c2be357bfb64600416337b82a7a2083fee07145", subdir = "lib/KernelInterface", url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"}
