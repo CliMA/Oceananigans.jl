@@ -6,7 +6,7 @@
 # To keep it cheap enough for a laptop GPU, the grid is 1° with four layers.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
-# currents, the Gulf Stream and the Kuroshio, that close the wind-driven gyres.
+# currents, the Gulf Stream, and the Kuroshio, that close the wind-driven gyres.
 # Sverdrup theory says that the depth-integrated meridional transport of the interior is
 #
 # ```math
