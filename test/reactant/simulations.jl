@@ -270,7 +270,8 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.fi
     @test r_initial != r_final
 end
 
-@testset "Reactant Simulation: checkpointing" begin
+@testset "Reactant Simulation: automatic differentiation options" begin
+    AutomaticDifferentiationOptions = OceananigansReactantExt.Simulations.AutomaticDifferentiationOptions
     Nx, Ny, Nz = (8, 8, 4)
     halo = (5, 5, 5)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
@@ -292,22 +293,33 @@ end
     Δt = 1e-6 * minimum_xspacing(model.grid)
     stop_iteration = 5
 
-    # The keyword exists only on a Reactant Simulation and defaults to no checkpointing.
-    @test isnothing(Simulation(model; Δt, stop_iteration, verbose=false).checkpointing)
-    r_model = fresh_model(ReactantState())
-    @test Simulation(r_model; Δt, stop_iteration, verbose=false).checkpointing === false
-    @test Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=Reactant.Periodic(2)).checkpointing == Reactant.Periodic(2)
-    @test Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=Reactant.Binomial(2)).checkpointing == Reactant.Binomial(2)
-    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=2)
-    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing=true)
+    # Checkpointing has to be chosen, mincut is on by default, and a NamedTuple converts.
+    @test_throws UndefKeywordError AutomaticDifferentiationOptions()
+    @test sprint(show, AutomaticDifferentiationOptions(checkpointing=false)) == "AutomaticDifferentiationOptions(track_numbers=false, mincut=true, checkpointing=false)"
+    @test convert(AutomaticDifferentiationOptions, (; checkpointing=false, mincut=false)) == AutomaticDifferentiationOptions(checkpointing=false, mincut=false)
 
-    # The forward program does not depend on checkpointing.
+    # Only a Simulation on ReactantState takes them.
+    @test isnothing(Simulation(model; Δt, stop_iteration, verbose=false).automatic_differentiation)
+    @test_throws ArgumentError Simulation(model; Δt, stop_iteration, verbose=false, automatic_differentiation=AutomaticDifferentiationOptions())
+
+    r_model = fresh_model(ReactantState())
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false).automatic_differentiation == AutomaticDifferentiationOptions(checkpointing=false)
+    @test_throws UndefKeywordError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; mincut=true))
+    ad = AutomaticDifferentiationOptions(checkpointing=Reactant.Periodic(2), mincut=false)
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=ad).automatic_differentiation == ad
+    @test Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=Reactant.Binomial(2))).automatic_differentiation ==
+        AutomaticDifferentiationOptions(checkpointing=Reactant.Binomial(2))
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=2))
+    @test_throws ArgumentError Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation=(; checkpointing=true))
+
+    # The forward program does not depend on the options.
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
     run!(simulation)
 
-    for checkpointing in (Reactant.Periodic(2), Reactant.Binomial(2))
+    for automatic_differentiation in (AutomaticDifferentiationOptions(checkpointing=Reactant.Periodic(2), mincut=false),
+                                      AutomaticDifferentiationOptions(checkpointing=Reactant.Binomial(2)))
         r_model = fresh_model(ReactantState())
-        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, checkpointing)
+        r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false, automatic_differentiation)
         compiled_run! = @compile run!(r_simulation)
         compiled_run!(r_simulation)
         @test iteration(r_simulation) == stop_iteration

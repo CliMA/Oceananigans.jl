@@ -168,13 +168,25 @@ end
 `Nsteps` calls to `time_step!(sim)` as one traced loop: one `stablehlo.while` body rather than
 `Nsteps` copies of the step. Does not initialize; see [`run!`](@ref).
 
-The loop is traced with `checkpointing = sim.checkpointing`, which only matters when the program
-is differentiated in reverse mode: it decides which steps' states are stored during the forward
-sweep and which are recomputed during the reverse sweep. See [`Simulation`](@ref).
+The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
+`sim.automatic_differentiation`, which only matter when the program is differentiated in
+reverse mode. See [`AutomaticDifferentiationOptions`](@ref).
 """
-function time_step_for!(sim::ReactantSimulation, Nsteps)
-    checkpointing = sim.checkpointing
-    @trace mincut = true track_numbers = false checkpointing = checkpointing for _ = 1:Nsteps
+time_step_for!(sim::ReactantSimulation, Nsteps) =
+    time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers))
+
+# `@trace` needs `track_numbers` as a literal: it picks the promotion type at macro expansion.
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{false})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = false mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
+        time_step!(sim)
+    end
+    return nothing
+end
+
+function time_step_for!(sim::ReactantSimulation, Nsteps, ::Val{true})
+    ad = sim.automatic_differentiation
+    @trace track_numbers = true mincut = ad.mincut checkpointing = ad.checkpointing for _ = 1:Nsteps
         time_step!(sim)
     end
     return nothing

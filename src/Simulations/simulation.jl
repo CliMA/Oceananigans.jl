@@ -9,7 +9,7 @@ using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, CK}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
     stop_iteration :: FT
@@ -24,7 +24,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, CK}
     initialized :: BL
     verbose :: BL
     minimum_relative_step :: FT
-    checkpointing :: CK
+    automatic_differentiation :: AD
 end
 
 """
@@ -35,7 +35,8 @@ end
                stop_time = Inf,
                wall_time_limit = Inf,
                align_time_step = true,
-               minimum_relative_step = 0)
+               minimum_relative_step = 0,
+               automatic_differentiation = nothing)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -64,6 +65,10 @@ Keyword arguments
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
+
+- `automatic_differentiation`: options for differentiating a compiled `run!` in reverse mode, which only
+                               a model on `ReactantState` supports; see the `Simulation` method for such
+                               models in the Reactant extension. Default: `nothing`.
 """
 function Simulation(model;
                     Δt,
@@ -72,7 +77,12 @@ function Simulation(model;
                     stop_time = Inf,
                     wall_time_limit = Inf,
                     align_time_step = true,
-                    minimum_relative_step = 0)
+                    minimum_relative_step = 0,
+                    automatic_differentiation = nothing)
+
+   isnothing(automatic_differentiation) || throw(ArgumentError(
+       "automatic_differentiation = $automatic_differentiation needs a model on ReactantState, whose " *
+       "compiled run! is what gets differentiated; this model is on $(summary(architecture(model)))."))
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
@@ -117,8 +127,7 @@ function Simulation(model;
                      false,
                      verbose,
                      Float64(minimum_relative_step),
-                     nothing, # checkpointing: only a compiled (Reactant) Simulation has one
-                    )
+                     automatic_differentiation)
 end
 
 function Base.show(io::IO, s::Simulation)

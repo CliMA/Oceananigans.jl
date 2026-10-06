@@ -1,9 +1,55 @@
 const ReactantSimulation = Simulation{<:ReactantModel}
 
 """
+    AutomaticDifferentiationOptions(; checkpointing, track_numbers = false, mincut = true)
+
+Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
+given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
+a `NamedTuple` of the same fields. They are passed to `Reactant.@trace` for the loop over time
+steps, and only take effect under differentiation: the forward program is the same whatever they are.
+
+- `track_numbers`: whether plain Julia numbers captured by the loop are promoted to traced numbers.
+  Default: `false`, since the model holds numbers inside structs whose type parameters do not
+  cover every numeric field, and promoting those fails.
+
+- `mincut`: whether the reverse pass uses the mincut algorithm to reduce what is stored between
+  the forward and reverse sweeps. Default: `true`.
+
+- `checkpointing` (required): `false` stores every step's state for the reverse sweep;
+  `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
+  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+
+Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
+Saving the state of a simulation to disk so it can be restarted is done by the `Checkpointer`.
+"""
+struct AutomaticDifferentiationOptions{C}
+    track_numbers :: Bool
+    mincut :: Bool
+    checkpointing :: C
+end
+
+function AutomaticDifferentiationOptions(; checkpointing, track_numbers = false, mincut = true)
+    validate_checkpointing(checkpointing)
+    return AutomaticDifferentiationOptions(track_numbers, mincut, checkpointing)
+end
+
+Base.convert(::Type{AutomaticDifferentiationOptions}, options::NamedTuple) = AutomaticDifferentiationOptions(; options...)
+
+validate_checkpointing(::Union{Periodic, Binomial}) = nothing
+
+validate_checkpointing(checkpointing) = checkpointing === false ? nothing : throw(ArgumentError(
+    "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
+    "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
+
+Base.show(io::IO, ad::AutomaticDifferentiationOptions) =
+    print(io, "AutomaticDifferentiationOptions(track_numbers=", ad.track_numbers,
+              ", mincut=", ad.mincut,
+              ", checkpointing=", ad.checkpointing, ")")
+
+"""
     Simulation(model::ReactantModel; Δt, stop_iteration = Inf, stop_time = nothing, verbose = true,
                wall_time_limit = Inf, align_time_step = false, minimum_relative_step = 0,
-               checkpointing = false)
+               automatic_differentiation = AutomaticDifferentiationOptions(checkpointing = false))
 
 A `Simulation` of a model on `ReactantState`, meant to be compiled: `@compile run!(sim)` is one
 program that steps the model to the stop criterion and fires `sim.callbacks` inside the loop
@@ -24,12 +70,10 @@ What differs from the eager `Simulation`:
   program. `add_callback!` works as usual, converting a `TimeInterval` to an `IterationInterval`;
   see [`time_step!`](@ref) for what a callback may do.
 - `output_writers` and `diagnostics` are `nothing`: IO cannot happen inside a program.
-- `checkpointing` checkpoints the traced step loop for reverse-mode differentiation through
-  `run!`. By default there is no checkpointing: every step's state is stored for the reverse
-  pass. `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in
-  between; `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve
-  algorithm. Checkpointing only takes effect under differentiation; the forward program is the
-  same either way. See [`time_step_for!`](@ref).
+- `automatic_differentiation` holds the options of the traced step loop that matter when `run!`
+  is differentiated in reverse mode: `track_numbers`, `mincut`, and `checkpointing` (`false`,
+  `Reactant.Periodic(n)` or `Reactant.Binomial(budget)`), as a `NamedTuple` of those fields or an
+  [`AutomaticDifferentiationOptions`](@ref). See [`time_step_for!`](@ref).
 """
 function Simulation(model::ReactantModel; Δt,
                     verbose = true,
@@ -38,11 +82,10 @@ function Simulation(model::ReactantModel; Δt,
                     wall_time_limit = Inf,
                     align_time_step = false,
                     minimum_relative_step = 0,
-                    checkpointing = false,
-                   )
+                    automatic_differentiation = AutomaticDifferentiationOptions(checkpointing = false))
 
     Δt = Float64(Δt)
-    checkpointing = validate_checkpointing(checkpointing)
+    automatic_differentiation = convert(AutomaticDifferentiationOptions, automatic_differentiation)
 
     if !isnothing(stop_time)
         isfinite(stop_iteration) && throw(ArgumentError(
@@ -68,15 +111,8 @@ function Simulation(model::ReactantModel; Δt,
                       false,
                       verbose,
                       Float64(minimum_relative_step),
-                      checkpointing,
-                     )
+                      automatic_differentiation)
 end
-
-validate_checkpointing(checkpointing::Union{Periodic, Binomial}) = checkpointing
-
-validate_checkpointing(checkpointing) = checkpointing === false ? false : throw(ArgumentError(
-    "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
-    "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
 
 """
     whole_steps(interval, Δt) -> Int or nothing
