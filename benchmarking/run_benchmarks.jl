@@ -320,7 +320,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
-    load_balancing_enabled = !args["no_load_balancing"]
+    load_balancing_enabled = distributed_enabled && !args["no_load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
