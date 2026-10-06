@@ -25,6 +25,7 @@ using Statistics
 
 using Oceananigans
 using Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Diagnostics: hasnan
 using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
