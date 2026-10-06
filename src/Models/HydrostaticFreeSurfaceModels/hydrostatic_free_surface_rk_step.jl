@@ -149,10 +149,10 @@ function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
 
     ηⁿ = get(model.timestepper.Ψ⁻, :η, nothing)
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
