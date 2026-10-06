@@ -7,7 +7,7 @@
 
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
-using Oceananigans.DistributedComputations: SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
+using Oceananigans.DistributedComputations: Distributed, SimplifiedGeneralizedBlockDistribution, create_cost_map, create_balanced_partition
 
 """
     earth_ocean(arch = CPU();
@@ -57,7 +57,7 @@ function earth_ocean(arch = CPU();
     grid_type in ("tripolar", "lat_lon", "immersed_lat_lon") ||
         error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"immersed_lat_lon\".")
 
-    if load_balanced_partition
+    if load_balanced_partition && arch isa Distributed
         underlying_grid = create_underlying_grid(arch.child_architecture, grid_type, (Nx, Ny, Nz), zstar_coordinate)
     else
         underlying_grid = create_underlying_grid(arch, grid_type, (Nx, Ny, Nz), zstar_coordinate)
