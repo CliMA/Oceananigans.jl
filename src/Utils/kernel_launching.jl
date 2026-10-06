@@ -7,16 +7,13 @@
 @inline kernel_time_step(arch, grid, Δt) = convert(eltype(grid), Δt)
 
 using Adapt: Adapt
-using Base: @pure
 using KernelAbstractions: Kernel,
                           KernelAbstractions as KA,
-                          ndrange, workgroupsize,
-                          CompilerMetadata
-using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
+                          workgroupsize, StaticSize
+using KernelAbstractions.NDIteration: NDIteration, NDRange, workitems
 using Oceananigans.Architectures: Architectures
 
 import Oceananigans
-import KernelAbstractions: get, expand, StaticSize
 
 struct KernelParameters{S, O} end
 
@@ -175,7 +172,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 
     range = contiguousrange(launch_size, select_dims(workdims, ox, oy, oz))
 
-    return workgroup, OffsetStaticSize(range)
+    return workgroup, StaticSize(range)
 end
 
 """
@@ -206,7 +203,7 @@ end
 @inline function offset_work_layout(dev, grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
     workgroup, worksize = work_layout(dev, grid, spec, reduced_dimensions)
     range = contiguousrange(worksize, offsets)
-    return  workgroup, OffsetStaticSize(range)
+    return workgroup, StaticSize(range)
 end
 
 """
@@ -270,7 +267,7 @@ end
     workgroup, worksize = interior_work_layout(dev, grid, workspec, location)
     loop = kernel!(dev, workgroup, worksize)
 
-    return loop, worksize::OffsetStaticSize
+    return loop, worksize::StaticSize
 end
 
 # When there are KernelParameters, we use the `offset_work_layout` function
@@ -281,7 +278,7 @@ end
     workgroup, worksize = offset_work_layout(dev, grid, workspec, reduced_dimensions)
     loop = kernel!(dev, workgroup, worksize)
 
-    return loop, worksize::OffsetStaticSize
+    return loop, worksize::StaticSize
 end
 
 # An active cells map launches a linear kernel with one work item per index it holds (see `IndexMap`)
@@ -347,110 +344,6 @@ end
 end
 
 #####
-##### Extension to KA for offset indices: to remove when implemented in KA
-##### Allows to use `launch!` with offsets, e.g.:
-##### `launch!(arch, grid, KernelParameters(size, offsets), kernel!; kernel_args...)`
-##### where offsets is a tuple containing the offset to pass to @index
-##### Note that this syntax is only usable in conjunction with the `launch!` function and
-##### will have no effect if the kernel is launched with `kernel!` directly.
-##### To achieve the same result with kernel launching, the correct syntax is:
-##### `kernel!(arch, StaticSize(size), OffsetStaticSize(contiguousrange(size, offset)))`
-##### Using offsets is (at the moment) incompatible with dynamic workgroup sizes: in case of offset dynamic kernels
-##### offsets will have to be passed manually.
-#####
-
-# TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-import KernelAbstractions: partition
-import KernelAbstractions: __ndrange, __groupsize
-
-struct OffsetStaticSize{S} <: _Size
-    function OffsetStaticSize{S}() where S
-        new{S::Tuple{Vararg}}()
-    end
-end
-
-@pure OffsetStaticSize(s::Tuple{}) = OffsetStaticSize{s}()
-@pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}()
-@pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}()
-@pure OffsetStaticSize(s::Type{<:Tuple}) = OffsetStaticSize{tuple(s.parameters...)}()
-@pure OffsetStaticSize(s::Tuple{Vararg{UnitRange{Int}}}) = OffsetStaticSize{s}()
-
-# Some @pure convenience functions for `OffsetStaticSize` (following `StaticSize` in KA)
-@pure get(::Type{OffsetStaticSize{S}}) where {S} = S
-@pure get(::OffsetStaticSize{S}) where {S} = S
-@pure Base.getindex(::OffsetStaticSize{S}, i::Int) where {S} = i <= length(S) ? S[i] : 1
-@pure Base.ndims(::OffsetStaticSize{S}) where {S}  = length(S)
-@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(map(worksize, S))
-
-@inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
-@inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
-
-# Makes sense to explicitly define the offsets for up to 3 dimensions,
-# since Oceananigans typically runs kernels with up to 3 dimensions.
-@inline offsets(ranges::NTuple{1, UnitRange}) = @inbounds (ranges[1].start - 1, )
-@inline offsets(ranges::NTuple{2, UnitRange}) = @inbounds (ranges[1].start - 1, ranges[2].start - 1)
-@inline offsets(ranges::NTuple{3, UnitRange}) = @inbounds (ranges[1].start - 1, ranges[2].start - 1, ranges[3].start - 1)
-
-# Generic case for any number of dimensions
-@inline offsets(ranges::NTuple{N, UnitRange}) where N = @inbounds Tuple(ranges[t].start - 1 for t in 1:N)
-
-@inline worksize(t::Tuple) = map(worksize, t)
-@inline worksize(sz::Int) = sz
-@inline worksize(r::AbstractUnitRange) = length(r)
-
-const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:OffsetStaticSize{S}} where {N, S}
-
-# NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
-# TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
-    nI = ntuple(Val(N)) do I
-        Base.@_inline_meta
-        offsets = workitems(ndrange)
-        stride = size(offsets, I)
-        gidx = groupidx.I[I]
-        (gidx - 1) * stride + idx.I[I] + S[I]
-    end
-    return CartesianIndex(nI)
-end
-
-@inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
-@inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
-
-# Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
-const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
-
-# Extending the partition function to include offsets in NDRange: note that in this case the
-# offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
-function partition(kernel::OffsetKernel, inrange, ingroupsize)
-    static_ndrange = ndrange(kernel)
-    static_workgroupsize = workgroupsize(kernel)
-
-    if inrange !== nothing && inrange != get(static_ndrange)
-        error("Static NDRange ($static_ndrange) and launch NDRange ($inrange) differ")
-    end
-
-    range, offsets = getrange(static_ndrange)
-
-    if static_workgroupsize <: StaticSize
-        if ingroupsize !== nothing && ingroupsize != get(static_workgroupsize)
-            error("Static WorkgroupSize ($static_workgroupsize) and launch WorkgroupSize $(ingroupsize) differ")
-        end
-        groupsize = get(static_workgroupsize)
-    end
-
-    @assert groupsize !== nothing
-    @assert range !== nothing
-    blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
-
-    static_blocks = StaticSize{blocks}
-    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, OffsetStaticSize(offsets))
-
-    return iterspace, dynamic
-end
-
-#####
 ##### Index maps: kernels running one work item per listed index
 #####
 ##### `launch!` passes an `IndexMap` as the `ndrange` of a kernel with a static one-dimensional
@@ -511,7 +404,7 @@ KA.cartesian(r::MappedIndices) = r
 
 const MappedNDRange = NDRange{1, <:Any, <:Any, <:Any, <:Any, <:IndexMap}
 
-function partition(kernel::Kernel{<:Any, <:StaticSize, <:NDIteration.DynamicSize}, map::IndexMap, ingroupsize)
+function KA.partition(kernel::Kernel{<:Any, <:StaticSize, <:NDIteration.DynamicSize}, map::IndexMap, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
     items = NDIteration.get(static_workgroupsize)
     length(items) == 1 || throw(ArgumentError("A kernel launched over an index map needs a one-dimensional workgroup, got $items"))
@@ -526,10 +419,10 @@ end
 @inline mapped_position(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::Integer) = mapped_position(ndrange, groupidx.I[1], idx)
 @inline mapped_position(ndrange::MappedNDRange, groupidx::Integer, idx::CartesianIndex{1}) = mapped_position(ndrange, groupidx, idx.I[1])
 
-@inline expand(ndrange::MappedNDRange, groupidx::Integer, idx::Integer) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
-@inline expand(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::CartesianIndex{1}) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
-@inline expand(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::Integer) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
-@inline expand(ndrange::MappedNDRange, groupidx::Integer, idx::CartesianIndex{1}) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
+@inline KA.expand(ndrange::MappedNDRange, groupidx::Integer, idx::Integer) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
+@inline KA.expand(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::CartesianIndex{1}) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
+@inline KA.expand(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::Integer) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
+@inline KA.expand(ndrange::MappedNDRange, groupidx::Integer, idx::CartesianIndex{1}) = mapped_index(ndrange.mapping, mapped_position(ndrange, groupidx, idx))
 
 # The linear index of a mapped work item is its position in the map
 @inline NDIteration.linear_index(ndrange::MappedNDRange, ::MappedIndices, groupidx::CartesianIndex{1}, idx::CartesianIndex{1}) =
