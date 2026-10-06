@@ -22,7 +22,8 @@ using MPI
 MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
+using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+                                            synchronize_communication!
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Solvers: ZeroMeanGaugeCondition
@@ -446,6 +447,28 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
     return nothing
 end
 
+# A fill of a field whose asynchronous fill is still in flight completes that fill first, and its own halos win
+function test_halo_communication_after_asynchronous_fill(child_arch)
+    arch = Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2))
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3))
+    field, reference = CenterField(grid), CenterField(grid)
+
+    fill!(reference, arch.local_rank + 10)
+    fill_halo_regions!(reference)
+
+    for second_fill_async in (false, true)
+        fill!(field, arch.local_rank)
+        fill_halo_regions!(field; async=true)
+        fill!(field, arch.local_rank + 10)
+        fill_halo_regions!(field; async=second_fill_async)
+        synchronize_communication!(field)
+
+        @test Array(parent(field)) == Array(parent(reference))
+    end
+
+    return nothing
+end
+
 #####
 ##### Run tests!
 #####
@@ -481,6 +504,8 @@ end
             test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
+
+        test_halo_communication_after_asynchronous_fill(child_arch)
     end
 
     @testset "Complex boundary conditions" begin

@@ -443,3 +443,8 @@ _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+
 # Pass throughs to communication state
 add_fill_event!(buff::CommunicationBuffers) = add_fill_event!(buff.state)
 wait_for_comms!(buff::CommunicationBuffers) = wait_for_comms!(buff.state)
+
+without_progress_worker(buff::CommunicationBuffers) =
+    CommunicationBuffers(buff.west, buff.east, buff.south, buff.north,
+                         buff.southwest, buff.southeast, buff.northwest, buff.northeast,
+                         without_progress_worker(buff.state))

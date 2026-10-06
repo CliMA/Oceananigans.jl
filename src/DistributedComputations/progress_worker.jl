@@ -6,6 +6,7 @@
 struct HaloMessage{E}
     send :: Bool
     buffer :: MPI.Buffer{MPI.MPIPtr}
+    root :: Any # keeps the array behind `buffer` alive until the message is complete; never read
     rank :: Int
     tag :: Int
     communicator :: MPI.Comm
@@ -17,10 +18,14 @@ end
 
 function HaloMessage(state, send, array, rank, tag, communicator, requests, index)
     buffer = MPI.Buffer(array)
-    pointer = Base.unsafe_convert(MPI.MPIPtr, Base.cconvert(MPI.MPIPtr, buffer.data))
+    root = Base.cconvert(MPI.MPIPtr, buffer.data)
+    pointer = Base.unsafe_convert(MPI.MPIPtr, root)
     buffer = MPI.Buffer(pointer, buffer.count, buffer.datatype)
-    return HaloMessage(send, buffer, rank, tag, communicator, requests, index, state.event, state.fill_events)
+    return HaloMessage(send, buffer, root, rank, tag, mpi_communicator(communicator), requests, index, state.event, state.fill_events)
 end
+
+# Communicators that wrap an MPI communicator (e.g. `NCCLCommunicator`) extend this to unwrap it
+mpi_communicator(communicator::MPI.Comm) = communicator
 
 # Each side of a communication state has one [send, recv] pair of requests
 isend!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, true, array, rank, tag, communicator, requests, 1))

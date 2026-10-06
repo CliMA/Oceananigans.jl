@@ -69,10 +69,13 @@ end
 
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
-function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
+function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
+    # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused
+    only_local_halos || wait_for_comms!(buffers)
+
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
-    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; kwargs...)
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers; kwargs...)
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; only_local_halos, kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers; only_local_halos, kwargs...)
     return nothing
 end
 
@@ -109,7 +112,7 @@ end
 
 function sync_corner_halo_comms(c, connectivity, indices, loc, arch, grid, buffers)
     sync_device!(arch)
-    post_corner_requests!(c, connectivity, indices, loc, arch, grid, buffers)
+    post_corner_requests!(c, connectivity, indices, loc, arch, grid, without_progress_worker(buffers))
     wait_for_comms!(buffers)
     recv_from_buffers!(c, buffers, grid, Val(:corners))
     return nothing
@@ -150,9 +153,12 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
     record_event!(buffers.state.event, arch)
-    kernel!(c, bcs..., loc, grid, arch, buffers)
 
-    if !(async && (arch isa AsynchronousDistributed))
+    if async && (arch isa AsynchronousDistributed)
+        kernel!(c, bcs..., loc, grid, arch, buffers)
+    else
+        # The main thread waits for the messages anyway, so it posts them itself rather than handing them to the progress worker
+        kernel!(c, bcs..., loc, grid, arch, without_progress_worker(buffers))
         wait_for_comms!(buffers)
         recv_from_buffers!(c, buffers, grid, buffer_side)
     end
