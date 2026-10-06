@@ -170,7 +170,7 @@ end
 
 The loop is traced with the `track_numbers`, `mincut` and `checkpointing` options of
 `sim.automatic_differentiation`, which only matter when the program is differentiated in
-reverse mode. See [`AutomaticDifferentiationOptions`](@ref).
+reverse mode. See [`AutomaticDifferentiation`](@ref).
 """
 time_step_for!(sim::ReactantSimulation, Nsteps) =
     time_step_for!(sim, Nsteps, Val(sim.automatic_differentiation.track_numbers))

@@ -1,7 +1,7 @@
 const ReactantSimulation = Simulation{<:ReactantModel}
 
 """
-    AutomaticDifferentiationOptions(; checkpointing, track_numbers = false, mincut = true)
+    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
 
 Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
 given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
@@ -22,18 +22,18 @@ steps, and only take effect under differentiation: the forward program is the sa
 Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
 Saving the state of a simulation to disk so it can be restarted is done by the `Checkpointer`.
 """
-struct AutomaticDifferentiationOptions{C}
+struct AutomaticDifferentiation{C}
     track_numbers :: Bool
     mincut :: Bool
     checkpointing :: C
 end
 
-function AutomaticDifferentiationOptions(; checkpointing, track_numbers = false, mincut = true)
+function AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
     validate_checkpointing(checkpointing)
-    return AutomaticDifferentiationOptions(track_numbers, mincut, checkpointing)
+    return AutomaticDifferentiation(track_numbers, mincut, checkpointing)
 end
 
-Base.convert(::Type{AutomaticDifferentiationOptions}, options::NamedTuple) = AutomaticDifferentiationOptions(; options...)
+Base.convert(::Type{AutomaticDifferentiation}, options::NamedTuple) = AutomaticDifferentiation(; options...)
 
 validate_checkpointing(::Union{Periodic, Binomial}) = nothing
 
@@ -41,15 +41,15 @@ validate_checkpointing(checkpointing) = checkpointing === false ? nothing : thro
     "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
     "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
 
-Base.show(io::IO, ad::AutomaticDifferentiationOptions) =
-    print(io, "AutomaticDifferentiationOptions(track_numbers=", ad.track_numbers,
+Base.show(io::IO, ad::AutomaticDifferentiation) =
+    print(io, "AutomaticDifferentiation(track_numbers=", ad.track_numbers,
               ", mincut=", ad.mincut,
               ", checkpointing=", ad.checkpointing, ")")
 
 """
     Simulation(model::ReactantModel; Δt, stop_iteration = Inf, stop_time = nothing, verbose = true,
                wall_time_limit = Inf, align_time_step = false, minimum_relative_step = 0,
-               automatic_differentiation = AutomaticDifferentiationOptions(checkpointing = false))
+               automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
 
 A `Simulation` of a model on `ReactantState`, meant to be compiled: `@compile run!(sim)` is one
 program that steps the model to the stop criterion and fires `sim.callbacks` inside the loop
@@ -73,7 +73,7 @@ What differs from the eager `Simulation`:
 - `automatic_differentiation` holds the options of the traced step loop that matter when `run!`
   is differentiated in reverse mode: `track_numbers`, `mincut`, and `checkpointing` (`false`,
   `Reactant.Periodic(n)` or `Reactant.Binomial(budget)`), as a `NamedTuple` of those fields or an
-  [`AutomaticDifferentiationOptions`](@ref). See [`time_step_for!`](@ref).
+  [`AutomaticDifferentiation`](@ref). See [`time_step_for!`](@ref).
 """
 function Simulation(model::ReactantModel; Δt,
                     verbose = true,
@@ -82,10 +82,10 @@ function Simulation(model::ReactantModel; Δt,
                     wall_time_limit = Inf,
                     align_time_step = false,
                     minimum_relative_step = 0,
-                    automatic_differentiation = AutomaticDifferentiationOptions(checkpointing = false))
+                    automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
 
     Δt = Float64(Δt)
-    automatic_differentiation = convert(AutomaticDifferentiationOptions, automatic_differentiation)
+    automatic_differentiation = convert(AutomaticDifferentiation, automatic_differentiation)
 
     if !isnothing(stop_time)
         isfinite(stop_iteration) && throw(ArgumentError(
