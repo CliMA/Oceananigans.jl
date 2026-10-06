@@ -8,9 +8,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   materialize_free_surface,
                                                                                   SplitExplicitFreeSurface,
                                                                                   iterate_split_explicit!,
-                                                                                  SubstepWeight,
-                                                                                  StepValue
+                                                                                  weights_from_substeps
 using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Utils: capture_launches, StepValue
 
 @inline noforcing(args...) = 0
 
@@ -328,8 +328,8 @@ end
 
 @inline clock_dependent_forcing(i, j, k, grid, clock, fields) = 1e-3 * sin(clock.time)
 
-@testset "Device-backed substep values are bit-identical" begin
-    for arch in (CPU(),)
+@testset "Device-backed substep values and replayed barotropic graphs" begin
+    for arch in archs
         grid = RectilinearGrid(arch; size = (16, 16, 1), x = (0, 2π), y = (0, 2π), z = (-1, 0),
                                topology = (Periodic, Periodic, Bounded))
 
@@ -341,42 +341,62 @@ end
         set!(GU, (x, y) -> 1e-4 * cos(y))
         set!(GV, (x, y) -> 1e-4 * sin(x))
 
-        forcing_clock = Clock{Float64}(time = 1)
-        Nsubsteps = calculate_substeps(free_surface.substepping)
-        fractional_Δt, weights, transport_weights = calculate_adaptive_settings(free_surface.substepping, Nsubsteps)
-        Δτ = fractional_Δt * 10
-
         η = free_surface.displacement
         U, V = free_surface.barotropic_velocities
         state = free_surface.filtered_state
         barotropic_fields = (η, U, V, state.η̅, state.U̅, state.V̅, state.Ũ, state.Ṽ)
 
-        function reset_barotropic_state!()
+        function substep_settings(substeps)
+            fractional_Δt, weights, transport_weights = weights_from_substeps(eltype(grid), substeps, constant_averaging_kernel)
+            return fractional_Δt * 10, weights, transport_weights
+        end
+
+        # Substep the barotropic mode once, from the same initial state every time, and return the result
+        function substep_barotropic_mode(Δτ, clock, weights, transport_weights; capture_graphs, GU = GU)
             foreach(field -> fill!(field, 0), barotropic_fields)
             set!(η, (x, y, z) -> 1e-2 * sin(x) * cos(y))
             fill_halo_regions!(η)
-            return nothing
+
+            capture_launches[] = capture_graphs
+            try
+                iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, clock_dependent_forcing, clock,
+                                        weights, transport_weights, Val(length(weights)))
+            finally
+                capture_launches[] = true
+            end
+
+            return map(field -> Array(interior(field)), barotropic_fields)
         end
 
-        reset_barotropic_state!()
-        iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, clock_dependent_forcing, forcing_clock,
-                                weights, transport_weights, Val(Nsubsteps))
-        plain_results = map(field -> Array(interior(field)), barotropic_fields)
+        Δτ₁, weights₁, transport_weights₁ = substep_settings(10)
+        Δτ₂, weights₂, transport_weights₂ = substep_settings(12)
+        clock₁ = Clock{Float64}(time = 1)
+        clock₂ = Clock{Float64}(time = 2)
 
-        step = on_architecture(arch, [(; Δτ, clock = convert_to_device(arch, forcing_clock))])
-        device_weights = on_architecture(arch, collect(weights))
-        device_transport_weights = on_architecture(arch, collect(transport_weights))
-        substep_weights = [SubstepWeight(substep, device_weights) for substep in 1:Nsubsteps]
-        substep_transport_weights = [SubstepWeight(substep, device_transport_weights) for substep in 1:Nsubsteps]
+        # References, computed by launching the substepping kernels one by one
+        reference₁     = substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = false)
+        clocked_ref₁   = substep_barotropic_mode(Δτ₁, clock₂, weights₁, transport_weights₁; capture_graphs = false)
+        reference₂     = substep_barotropic_mode(Δτ₂, clock₁, weights₂, transport_weights₂; capture_graphs = false)
 
-        reset_barotropic_state!()
-        iterate_split_explicit!(free_surface, grid, GU, GV, StepValue{:Δτ}(step), clock_dependent_forcing,
-                                StepValue{:clock}(step), substep_weights, substep_transport_weights, Val(Nsubsteps))
-        device_value_results = map(field -> Array(interior(field)), barotropic_fields)
+        @test any(!iszero, reference₁[1])
+        @test reference₁ != clocked_ref₁ # the forcing depends on the clock, so the clock has to reach the kernel
+        @test reference₁ != reference₂
 
-        @test any(!iszero, plain_results[1])
-        for (plain, device_value) in zip(plain_results, device_value_results)
-            @test plain == device_value
-        end
+        # Substep values read from device memory
+        step = on_architecture(arch, [(; Δτ = Δτ₁, clock = convert_to_device(arch, clock₁))])
+        device_values = substep_barotropic_mode(StepValue{:Δτ}(step), StepValue{:clock}(step),
+                                                weights₁, transport_weights₁; capture_graphs = false)
+        @test device_values == reference₁
+
+        # The same substepping, recorded in and replayed from a CUDA graph
+        @test substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = true) == reference₁   # capture
+        @test substep_barotropic_mode(Δτ₁, clock₂, weights₁, transport_weights₁; capture_graphs = true) == clocked_ref₁ # replay with a new clock
+        @test substep_barotropic_mode(Δτ₂, clock₁, weights₂, transport_weights₂; capture_graphs = true) == reference₂   # new weights, new graph
+        @test substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = true) == reference₁   # the first graph is still cached
+
+        other_GU = Field{Face, Center, Nothing}(grid)
+        set!(other_GU, (x, y) -> 2e-4 * sin(y))
+        other_reference = substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = false, GU = other_GU)
+        @test substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = true, GU = other_GU) == other_reference
     end
 end
