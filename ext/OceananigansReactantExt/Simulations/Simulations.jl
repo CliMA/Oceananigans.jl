@@ -19,6 +19,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.OutputWriters: write_output!
 
 using Oceananigans.Simulations:
+    AutomaticDifferentiation,
     validate_Δt,
     stop_iteration_exceeded,
     add_dependencies!,

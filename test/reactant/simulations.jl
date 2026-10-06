@@ -271,7 +271,6 @@ Oceananigans.Simulations.finalize!(bookends::EnergyBookends, sim) = (bookends.fi
 end
 
 @testset "Reactant Simulation: automatic differentiation options" begin
-    AutomaticDifferentiation = OceananigansReactantExt.Simulations.AutomaticDifferentiation
     Nx, Ny, Nz = (8, 8, 4)
     halo = (5, 5, 5)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))

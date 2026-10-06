@@ -1,50 +1,10 @@
 const ReactantSimulation = Simulation{<:ReactantModel}
 
-"""
-    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
-
-Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
-given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
-a `NamedTuple` of the same fields. They are passed to `Reactant.@trace` for the loop over time
-steps, and only take effect under differentiation: the forward program is the same whatever they are.
-
-- `track_numbers`: whether plain Julia numbers captured by the loop are promoted to traced numbers.
-  Default: `false`, since the model holds numbers inside structs whose type parameters do not
-  cover every numeric field, and promoting those fails.
-
-- `mincut`: whether the reverse pass uses the mincut algorithm to reduce what is stored between
-  the forward and reverse sweeps. Default: `true`.
-
-- `checkpointing` (required): `false` stores every step's state for the reverse sweep;
-  `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
-  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
-
-Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
-Saving the state of a simulation to disk so it can be restarted is done by the `Checkpointer`.
-"""
-struct AutomaticDifferentiation{C}
-    track_numbers :: Bool
-    mincut :: Bool
-    checkpointing :: C
-end
-
-function AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
-    validate_checkpointing(checkpointing)
-    return AutomaticDifferentiation(track_numbers, mincut, checkpointing)
-end
-
-Base.convert(::Type{AutomaticDifferentiation}, options::NamedTuple) = AutomaticDifferentiation(; options...)
-
 validate_checkpointing(::Union{Periodic, Binomial}) = nothing
 
 validate_checkpointing(checkpointing) = checkpointing === false ? nothing : throw(ArgumentError(
     "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
     "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
-
-Base.show(io::IO, ad::AutomaticDifferentiation) =
-    print(io, "AutomaticDifferentiation(track_numbers=", ad.track_numbers,
-              ", mincut=", ad.mincut,
-              ", checkpointing=", ad.checkpointing, ")")
 
 """
     Simulation(model::ReactantModel; Δt, stop_iteration = Inf, stop_time = nothing, verbose = true,
@@ -86,6 +46,7 @@ function Simulation(model::ReactantModel; Δt,
 
     Δt = Float64(Δt)
     automatic_differentiation = convert(AutomaticDifferentiation, automatic_differentiation)
+    validate_checkpointing(automatic_differentiation.checkpointing)
 
     if !isnothing(stop_time)
         isfinite(stop_iteration) && throw(ArgumentError(
