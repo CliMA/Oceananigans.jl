@@ -38,7 +38,6 @@ using Oceananigans.Units
 using Oceananigans.Coriolis: DualGridScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
-using Oceananigans.Operators: Az
 using NCDatasets
 using Downloads
 using Printf
@@ -242,20 +241,11 @@ momentum_advection = WENOVectorInvariant(order=5)
 tracer_advection = WENO(order=7)
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expansion=2e-4), constant_salinity=35)
 
-# WENO dissipates only where the flow is fast, so in the slow interior of the ``β``-plane
-# runs grid-scale noise builds up unchecked. A biharmonic viscosity ``ν = A² / τ``, with
-# ``A`` the horizontal area of a cell and ``τ = 30`` days, damps a two-cell wave within
-# hours and an eight-cell wave in about three months, and leaves the gyres, dozens of
-# cells across, alone.
-#
 # Poleward of about 60°, the restoring cools the surface below the water underneath it.
 # A hydrostatic model cannot overturn such a column, so a convective adjustment mixes
 # temperature and momentum vertically wherever the stratification is unstable.
 
-## @inline biharmonic_viscosity(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, τ) = Az(i, j, k, grid, ℓx, ℓy, ℓz)^2 / τ
-## horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=biharmonic_viscosity, discrete_form=true, parameters=FT(30days))
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, convective_νz=1)
-closure = convective_adjustment
+closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, convective_νz=1)
 
 function build_model(grid, coriolis)
     model = HydrostaticFreeSurfaceModel(grid; coriolis, free_surface, buoyancy, closure,
