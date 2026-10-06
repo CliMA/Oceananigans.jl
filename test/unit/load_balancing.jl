@@ -59,23 +59,24 @@ partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
 grid_constructors = Iterators.flatten([latlong_constructors, rectilinear_constructors, tripolar_constructors])
 
-@testset "Total active cells consistent" for (arch, grid_constructor, ib_constructor) in
-    Iterators.product(archs, grid_constructors, ib_constructors)
+@testset "Total active cells consistent" begin
+    for (arch, grid_constructor, ib_constructor) in Iterators.product(archs, grid_constructors, ib_constructors)
 
-  underlying_grid = grid_constructor(arch)
+        underlying_grid = grid_constructor(arch)
 
-  Nx, Ny, Nz = size(underlying_grid)
+        Nx, Ny, Nz = size(underlying_grid)
 
-  bottom_height = -30.0 .* rand(Float64, (Nx, Ny)) .+ 15.0
+        bottom_height = -30.0 .* rand(Float64, (Nx, Ny)) .+ 15.0
 
-  ib = ib_constructor(bottom_height)
-  immersed_grid = ImmersedBoundaryGrid(underlying_grid, ib; active_cells_map = true)
+        ib = ib_constructor(bottom_height)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, ib; active_cells_map = true)
 
-  active_cells_map = immersed_grid.interior_active_cells
-  active_cells_count = isnothing(active_cells_map) ? Nx*Ny*Nz : length(active_cells_map)
-
-  @test sum(create_cost_map(underlying_grid, ib)) == active_cells_count
-
+        active_cells_map = immersed_grid.interior_active_cells
+        active_cells_count = isnothing(active_cells_map) ? Nx*Ny*Nz : length(active_cells_map)
+        @testset "$arch, $(nameof(typeof(underlying_grid))), $(nameof(typeof(ib))), size=($Nx, $Ny, $Nz)" begin
+          @test sum(create_cost_map(underlying_grid, ib)) == active_cells_count
+        end
+    end
 end
 
 @testset "Partitioning consistent" begin
