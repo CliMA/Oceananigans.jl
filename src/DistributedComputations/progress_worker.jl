@@ -48,11 +48,11 @@ const progress_workers = Dict{DataType, Channel}()
 const progress_failure = Ref{Any}(nothing)
 const progress_worker_enabled = Ref{Union{Nothing, Bool}}(nothing)
 
-# The worker needs a spare thread in either pool, and calls MPI concurrently with the main thread (`MPI_THREAD_MULTIPLE`)
+# The worker needs a spare thread, and calls MPI concurrently with the main thread (`MPI_THREAD_MULTIPLE`)
+spare_thread() = any(>(1), Threads.nthreads.((:default, :interactive)))
 function use_progress_worker()
     if isnothing(progress_worker_enabled[])
-        spare_thread = any(>(1), Threads.nthreads.((:default, :interactive)))
-        progress_worker_enabled[] = spare_thread && MPI.Query_thread() == MPI.THREAD_MULTIPLE
+        progress_worker_enabled[] = spare_thread() && MPI.Query_thread() == MPI.THREAD_MULTIPLE
     end
     return progress_worker_enabled[]::Bool
 end
@@ -101,7 +101,7 @@ function progress_messages!(messages::Channel{M}) where M
     packing = M[] # waiting for their send buffers to be packed, in stream order
     posted = M[]  # waiting for MPI to complete them
     try
-        while true
+        while isopen(messages) # closed by `MPI.Finalize`
             # block on new messages only when none is in flight
             while isready(messages) || (isempty(packing) && isempty(posted))
                 push!(packing, take!(messages))

@@ -166,7 +166,7 @@ validate_partition(::Equal, ::Equal, ::Equal) = throw_multiple_equal()
 throw_multiple_equal() = throw(ArgumentError("Equal() can be used for only one direction"))
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init(; threadlevel=:multiple)
+    MPI.Initialized() || MPI.Init(; threadlevel = spare_thread() ? :multiple : :serialized)
     r12 = ranks(r1) * ranks(r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
@@ -248,11 +248,12 @@ function Distributed(child_architecture = CPU();
                      partition = nothing,
                      devices = nothing,
                      communicator = nothing,
-                     synchronized_communication = false)
+                     synchronized_communication = false,
+                     field_count = Threads.Atomic{UInt64}(0))
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
-        MPI.Init(; threadlevel=:multiple)
+        MPI.Init(; threadlevel = spare_thread() ? :multiple : :serialized)
     end
 
     if isnothing(communicator) # default communicator
@@ -299,7 +300,7 @@ function Distributed(child_architecture = CPU();
                                                    local_index,
                                                    local_connectivity,
                                                    communicator,
-                                                   Threads.Atomic{UInt64}(0),
+                                                   field_count,
                                                    devices)
 end
 
@@ -347,10 +348,8 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.field_count,
                    nothing) # No devices on the CPU
 
-# Unique per-field tag
-function get_new_tag(arch::Distributed)
-  return Threads.atomic_add!(arch.field_count, UInt64(1))
-end
+# Fields of architectures sharing `field_count` (e.g. `twin_grid`s) get distinct tags, as long as all ranks create them in the same order
+get_new_tag(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
