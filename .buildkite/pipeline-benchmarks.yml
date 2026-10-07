@@ -199,7 +199,7 @@ steps:
       echo "========================================"
       $MPIWRAPPER_HOME/bin/mpiwrapperexec --map-by socket --bind-to socket -n 2 \
         -x MPITRAMPOLINE_LIB -x JULIA_CUDA_MEMORY_POOL -x CUDA_VISIBLE_DEVICES \
-        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
+        $JULIA $JULIA_ARGS -t 4,2 $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
 
       # Combine across ranks to calculate total throughput
       # jq filter to selectively merge the ranks

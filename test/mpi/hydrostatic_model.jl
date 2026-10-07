@@ -20,7 +20,7 @@ using Oceananigans.Grids: MutableVerticalDiscretization, StaticVerticalDiscretiz
 #
 # julia> include("test/mpi/hydrostatic_model.jl")
 
-MPI.Initialized() || MPI.Init()
+MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized, synchronize_communication!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
