@@ -15,7 +15,7 @@ function filtered_tidal_signal(arch, Writer, directory; stop_time, pickup = fals
     model = NonhydrostaticModel(grid)
     c = Field(KernelFunctionOperation{Center, Center, Center}(tidal_signal, grid, model.clock))
 
-    simulation = Simulation(model; Δt = 10minutes, stop_time)
+    simulation = Simulation(model; Δt = 10minutes, stop_time, verbose = false)
     simulation.output_writers[:daily] = Writer(model, (; c); dir = directory, filename = "daily",
                                                    schedule = FilteredTimeInterval(LanczosKernel(5days; cutoff = 40hours); interval = 1days), overwrite_files = pickup === false)
     simulation.output_writers[:weekly] = Writer(model, (; c); dir = directory, filename = "weekly",
@@ -27,7 +27,13 @@ function filtered_tidal_signal(arch, Writer, directory; stop_time, pickup = fals
     return simulation.output_writers[:daily].filepath, simulation.output_writers[:weekly].filepath
 end
 
-read_filtered(filepath) = FieldTimeSeries(filepath, "c")
+boundary_conditions_logs(filepath) =
+    endswith(filepath, ".nc")   ? ((:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
+                                           "Using default FieldBoundaryConditions for `grid` and `location`."),) :
+    endswith(filepath, ".zarr") ? ((:warn, "Reading boundary conditions from Zarr stores is not supported. " *
+                                           "Using default FieldBoundaryConditions for `grid` and `location`."),) : ()
+
+read_filtered(filepath) = @test_logs boundary_conditions_logs(filepath)... FieldTimeSeries(filepath, "c")
 
 frames(series) = Array(interior(series))[1, 1, 1, :]
 
@@ -76,12 +82,12 @@ for arch in archs
             grid = RectilinearGrid(arch; size = (1, 1, 1), extent = (1, 1, 1))
             model = NonhydrostaticModel(grid)
             c = Field(KernelFunctionOperation{Center, Center, Center}(linear_signal, grid, model.clock))
-            simulation = Simulation(model; Δt = 10minutes, stop_time = 10days)
+            simulation = Simulation(model; Δt = 10minutes, stop_time = 10days, verbose = false)
             simulation.output_writers[:boxcar] = Writer(model, (; c); dir = mktempdir(), filename = "boxcar",
                                                         schedule = FilteredTimeInterval(BoxcarKernel(4days); interval = 1day))
             run!(simulation)
 
-            boxcar = FieldTimeSeries(simulation.output_writers[:boxcar].filepath, "c")
+            boxcar = read_filtered(simulation.output_writers[:boxcar].filepath)
             @test boxcar.times ≈ (2:8) .* days
             # The first window starts at t = 0, where the initial sample has zero weight.
             @test frames(boxcar)[2:end] ≈ 1 .+ boxcar.times[2:end] ./ 1day

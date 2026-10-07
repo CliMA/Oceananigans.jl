@@ -29,7 +29,6 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
-
     compute_biogeochemical_transitions!(model, :xyz)
 
     for callback in callbacks
