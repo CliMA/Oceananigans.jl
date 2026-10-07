@@ -4,8 +4,7 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Biogeochemistry: update_tendencies!, include_biogeochemistry_transitions,
-                                    add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
+using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Utils: get_active_cells_map
@@ -48,7 +47,7 @@ Compute tendencies for all tracer fields.
 This function:
 1. Computes interior tracer tendencies (advection, diffusion, forcing, biogeochemistry sources)
 2. Completes halo communication and computes buffer tendencies for distributed grids
-3. Adds biogeochemical transitions computed in separate kernels (`separate_transition_tracers`)
+3. Adds biogeochemical transitions computed in separate kernels (`separate_tracer_transitions`)
 4. Computes flux boundary condition contributions
 5. Scales tendencies by the grid stretching factor for z-star coordinates
 6. Updates biogeochemistry tendencies
@@ -129,7 +128,6 @@ end
             c_immersed_bc,
             model.buoyancy,
             model.biogeochemistry,
-            Val(include_biogeochemistry_transitions(model.biogeochemistry, Val(tracer_name))),
             model.transport_velocities,
             model.free_surface,
             model.tracers,
@@ -244,13 +242,13 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid,
                                                       val_tracer_index, val_tracer_name, advection, closure,
-                                                      c_immersed_bc, buoyancy, biogeochemistry, val_include_biogeochemistry,
+                                                      c_immersed_bc, buoyancy, biogeochemistry,
                                                       velocities, free_surface, tracers, closure_fields, auxiliary_fields,
                                                       clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                                      val_tracer_index, val_tracer_name, advection, closure,
-                                                                     c_immersed_bc, buoyancy, biogeochemistry, val_include_biogeochemistry,
+                                                                     c_immersed_bc, buoyancy, biogeochemistry,
                                                                      velocities, free_surface, tracers, closure_fields, auxiliary_fields,
                                                                      clock, forcing)
 end

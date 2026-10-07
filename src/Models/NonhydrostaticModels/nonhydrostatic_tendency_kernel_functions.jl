@@ -4,7 +4,9 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
 
-using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
+using Oceananigans.Biogeochemistry: biogeochemical_transition,
+                                    biogeochemical_drift_velocity,
+                                    include_biogeochemistry_transitions
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
@@ -266,15 +268,13 @@ velocity components, tracer fields, and precalculated closure_fields where appli
                                  c_immersed_bc,
                                  buoyancy,
                                  biogeochemistry,
-                                 ::Val{include_biogeochemistry_transitions},
                                  background_fields,
                                  velocities,
                                  tracers,
                                  auxiliary_fields,
                                  closure_fields,
                                  clock,
-                                 forcing) where {tracer_index, include_biogeochemistry_transitions}
-
+                                 forcing) where tracer_index
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
@@ -294,7 +294,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    bgc_tendency = include_biogeochemistry_transitions ?
+    bgc_tendency = include_biogeochemistry_transitions(biogeochemistry, val_tracer_name) ?
                    biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
                    zero(grid)
 

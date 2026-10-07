@@ -1,6 +1,8 @@
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v,
                               U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric
-using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
+using Oceananigans.Biogeochemistry: biogeochemical_transition,
+                                    biogeochemical_drift_velocity,
+                                    include_biogeochemistry_transitions
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
@@ -127,14 +129,13 @@ where `c = C[tracer_index]`.
                                                           c_immersed_bc,
                                                           buoyancy,
                                                           biogeochemistry,
-                                                          ::Val{include_biogeochemistry_transitions},
                                                           velocities,
                                                           free_surface,
                                                           tracers,
                                                           closure_fields,
                                                           auxiliary_fields,
                                                           clock,
-                                                          forcing) where {tracer_index, include_biogeochemistry_transitions}
+                                                          forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers),
@@ -143,7 +144,7 @@ where `c = C[tracer_index]`.
 
     total_velocities = tracer_advecting_velocities(velocities, biogeochemistry, closure, closure_fields, forcing, val_tracer_name)
 
-    bgc_tendency = include_biogeochemistry_transitions ?
+    bgc_tendency = include_biogeochemistry_transitions(biogeochemistry, val_tracer_name) ?
                    biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
                    zero(grid)
 

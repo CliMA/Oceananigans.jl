@@ -1,6 +1,5 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
-using Oceananigans.Biogeochemistry: update_tendencies!, include_biogeochemistry_transitions,
-                                    add_biogeochemical_transitions!
+using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
 
@@ -104,7 +103,6 @@ end
             c_tendency, grid,
             Val(tracer_index), Val(tracer_name), c_advection, model.closure, c_immersed_bc, model.buoyancy,
             model.biogeochemistry,
-            Val(include_biogeochemistry_transitions(model.biogeochemistry, Val(tracer_name))),
             model.background_fields, model.velocities, model.tracers, model.auxiliary_fields,
             model.closure_fields, model.clock, forcing;
             active_cells_map)
@@ -162,13 +160,13 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_Gc!(Gc, grid,
                              val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
-                             biogeochemistry, val_include_biogeochemistry, background_fields,
+                             biogeochemistry, background_fields,
                              velocities, tracers, auxiliary_fields, closure_fields,
                              clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid,
                                             val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
-                                            biogeochemistry, val_include_biogeochemistry, background_fields,
+                                            biogeochemistry, background_fields,
                                             velocities, tracers, auxiliary_fields, closure_fields,
                                             clock, forcing)
 end

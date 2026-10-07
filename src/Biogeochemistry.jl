@@ -187,22 +187,22 @@ Splitting can make tendency kernels for complex biogeochemical models substantia
 compile and faster to run (especially on GPUs). Opt in by extending this function, e.g.
 
 ```julia
-Oceananigans.Biogeochemistry.separate_transition_tracers(bgc::MyBGC) = required_biogeochemical_tracers(bgc)
+Oceananigans.Biogeochemistry.separate_tracer_transitions(bgc::MyBGC) = required_biogeochemical_tracers(bgc)
 ```
 """
-separate_transition_tracers(bgc) = ()
+separate_tracer_transitions(bgc) = ()
 
 """
 $(TYPEDSIGNATURES)
 
-Add the biogeochemical transition of each tracer in `separate_transition_tracers(bgc)` in place to
+Add the biogeochemical transition of each tracer in `separate_tracer_transitions(bgc)` in place to
 the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `model_fields` must be the
 same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
-Does nothing when `separate_transition_tracers(bgc)` is empty.
+Does nothing when `separate_tracer_transitions(bgc)` is empty.
 """
 add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields;
                                 kernel_parameters=:xyz, active_cells_map=nothing) =
-    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_transition_tracers(bgc);
+    add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_tracer_transitions(bgc);
                                     kernel_parameters, active_cells_map)
 
 add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{};
@@ -226,11 +226,11 @@ end
 $(TYPEDSIGNATURES)
 
 Return `false` if the biogeochemical transition of tracer `name` is computed in a separate kernel
-(that is, if `name` is in [`separate_transition_tracers`](@ref)), so that the tracer tendency kernel
+(that is, if `name` is in [`separate_tracer_transitions`](@ref)), so that the tracer tendency kernel
 does not include it; otherwise return `true`.
 """
 @inline include_biogeochemistry_transitions(biogeochemistry, ::Val{name}) where name =
-    !(name in separate_transition_tracers(biogeochemistry))
+    !(name in separate_tracer_transitions(biogeochemistry))
 
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()

@@ -23,7 +23,7 @@ import Oceananigans.Biogeochemistry:
        biogeochemical_drift_velocity,
        biogeochemical_auxiliary_fields,
        update_biogeochemical_state!,
-       separate_transition_tracers
+       separate_tracer_transitions
 
 import Adapt: adapt_structure
 
@@ -153,7 +153,7 @@ required_biogeochemical_tracers(::SeparableBGC) = (:P, :Z)
 required_biogeochemical_auxiliary_fields(::SeparableBGC) = (:Iᴾᴬᴿ,)
 biogeochemical_auxiliary_fields(bgc::SeparableBGC) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
 biogeochemical_drift_velocity(bgc::SeparableBGC, ::Val{:P}) = bgc.sinking_velocity
-separate_transition_tracers(::SeparableBGC{true}) = (:P,)
+separate_tracer_transitions(::SeparableBGC{true}) = (:P,)
 
 #####
 ##### Test a `bgc` model in a `model` with `arch`
@@ -220,8 +220,8 @@ function test_separate_transitions(ModelType, build_grid, BGCType, timestepper)
     split     = separable_model(ModelType, build_grid(), BGCType, true,  timestepper)
     nodrift   = separable_model(ModelType, build_grid(), BGCType, true,  timestepper; drift = false)
 
-    @test separate_transition_tracers(reference.biogeochemistry) == ()
-    @test separate_transition_tracers(split.biogeochemistry) == (:P,)
+    @test separate_tracer_transitions(reference.biogeochemistry) == ()
+    @test separate_tracer_transitions(split.biogeochemistry) == (:P,)
 
     P₀ = Array(interior(split.tracers.P))
 
