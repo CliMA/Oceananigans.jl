@@ -15,7 +15,7 @@ using Adapt
 using GPUArraysCore
 using CUDA
 
-MPI.Initialized() || MPI.Init()
+MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
