@@ -16,7 +16,7 @@
 #
 # and the western boundary current returns that transport back across the basin.
 # Its strength should therefore scale with ``1 / \Omega``, which we check by running
-# the simulation at Earth's rotation rate and at twice that. A third run with a constant
+# the simulation at Earth's rotation rate and at half that. A third run with a constant
 # Coriolis parameter shows that the gyres owe their western intensification to ``β``.
 #
 # ## Install dependencies
@@ -266,8 +266,8 @@ end
 # ## Three Coriolis parameters
 #
 # The Coriolis parameter is the only thing that differs between the runs. Two of them use
-# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at twice it, which doubles
-# ``β`` and should halve the Sverdrup transport. The third uses an [`FPlane`](@ref) with the
+# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at half it, which halves
+# ``β`` and should double the Sverdrup transport. The third uses an [`FPlane`](@ref) with the
 # value of ``f`` at 30°N everywhere, ``f = 2Ω \sin 30°``, so that ``β = 0``. A constant
 # ``f`` has the wrong sign in the Southern Hemisphere, so on the ``f``-plane we only look
 # at the northern gyres.
@@ -316,10 +316,9 @@ function run_gyres(grid, coriolis, name; stop_time=5year, save_interval=10days)
     return filename
 end
 
-coriolis_title(rotation_rate) = "f = $(round(Int, 2rotation_rate / Ω))Ω sin φ"
-
-rotation_rates = (Ω, 2Ω)
-filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate, scheme=DualGridScheme(grid)), @sprintf("omega_%d", rotation_rate / Ω))
+rotation_rates = (Ω, Ω / 2)
+coriolis_titles = Dict(Ω => "f = 2Ω sin φ", Ω / 2 => "f = Ω sin φ")
+filenames = Dict(rotation_rate => run_gyres(grid, HydrostaticSphericalCoriolis(; rotation_rate, scheme=DualGridScheme(grid)), @sprintf("omega_%g", rotation_rate / Ω))
                  for rotation_rate in rotation_rates)
 
 f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=DualGridScheme(grid)), "f_plane")
@@ -363,7 +362,7 @@ atlantic = (longitude = (280, 360), latitude = (20, 42))
 pacific = (longitude = (120, 250), latitude = (20, 42))
 
 # Now we compare the transport time series with the Sverdrup prediction, which
-# halves when the rotation rate doubles.
+# doubles when the rotation rate halves.
 
 Sv = 1e6 # m³ s⁻¹
 
@@ -375,7 +374,7 @@ colors = Dict(zip(rotation_rates, Makie.wong_colors()))
 
 for rotation_rate in rotation_rates
     streamfunctions = FieldTimeSeries(filenames[rotation_rate], "ψ")
-    label = coriolis_title(rotation_rate)
+    label = coriolis_titles[rotation_rate]
     color = colors[rotation_rate]
 
     for (name, box, basin) in ((:gulf_stream, gulf_stream, atlantic), (:kuroshio, kuroshio, pacific))
@@ -391,7 +390,7 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 # ![](western_boundary_current_transports.png)
 #
 # The solid lines are the gyre transports measured in the simulations and the dashed
-# lines the Sverdrup prediction. Doubling the rotation rate halves the transport of
+# lines the Sverdrup prediction. Halving the rotation rate doubles the transport of
 # both boundary currents.
 #
 # ## The gyres
@@ -414,8 +413,8 @@ function streamfunction_map!(fig, row, filename; title, colorrange)
     return nothing
 end
 
-experiments = ((filenames[Ω], coriolis_title(Ω), (-100, 100)),
-               (filenames[2Ω], coriolis_title(2Ω), (-100, 100)),
+experiments = ((filenames[Ω], coriolis_titles[Ω], (-100, 100)),
+               (filenames[Ω / 2], coriolis_titles[Ω / 2], (-100, 100)),
                (f_plane_filename, "f = 2Ω sin 30°", (-1000, 1000)))
 
 fig = Figure(size=(900, 1050))
@@ -428,7 +427,7 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](global_wind_driven_gyres.png)
 #
-# Doubling the rotation rate halves the gyres but leaves their shape alone: the
+# Halving the rotation rate doubles the gyres but leaves their shape alone: the
 # streamfunction climbs to the gyre maximum within a few degrees of the western coast
 # and decays slowly across the rest of the basin. On the ``f``-plane the gyres are
 # symmetric about the middle of each basin and there is no western boundary current.
@@ -442,7 +441,7 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # Kuroshio, the departure of the surface temperature from its restoring profile,
 # ``T - T^\star``, for the three Coriolis parameters. With ``f = 2Ω \sin φ`` the western
 # boundary currents appear within the first weeks and then sharpen and speed up at the
-# surface over the following years; with ``f = 4Ω \sin φ`` they are half as fast. On the
+# surface over the following years; with ``f = Ω \sin φ`` they are twice as fast. On the
 # ``f``-plane there are no boundary currents at all: the whole gyre circulates at a few
 # tens of centimeters per second. The temperature spends its first two months relaxing
 # from the uniform initial 10 °C toward ``T^\star``. After that, on the ``β``-planes, the
