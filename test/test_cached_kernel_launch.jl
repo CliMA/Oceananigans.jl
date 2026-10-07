@@ -43,7 +43,7 @@ end
 
     for grid in (regular, stretched, latlon)
         device_grid = convert_to_device(arch, grid)
-        @test device_grid === CUDA.cudaconvert(grid)
+        @test device_grid === Ext.int32_indexed(CUDA.cudaconvert(grid))   # cudaconvert, then 32-bit index parents
         @test typeof(device_grid) != typeof(grid)
         @test Ext.is_device_form_type(typeof(device_grid))
         @test convert_to_device(arch, device_grid) === device_grid       # idempotent, untouched
@@ -51,7 +51,8 @@ end
         c = CenterField(grid)
         @test !Ext.is_device_form_type(typeof(c.data))
         device_c = convert_to_device(arch, c.data)
-        @test device_c === CUDA.cudaconvert(c.data)
+        @test device_c === Ext.int32_indexed(CUDA.cudaconvert(c.data))
+        @test CUDA.cudaconvert(device_c) === device_c                    # the device form is cudaconvert-stable
         @test Ext.is_device_form_type(typeof(device_c))
         @test convert_to_device(arch, device_c) === device_c
 

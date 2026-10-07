@@ -14,6 +14,20 @@ using OffsetArrays: OffsetArrays, OffsetArray
 using SparseArrays: SparseArrays, SparseMatrixCSC
 
 """
+    INT32_INDEXING
+
+Whether GPU kernels index their array arguments with 32-bit integer arithmetic (`true` by default). With CUDA, the
+launch conversion (`convert_to_device`) gives every `OffsetArray` argument a parent whose linear index is computed in
+`Int32`; an argument array of `typemax(Int32)` or more elements then raises an `ArgumentError`. A compile-time
+preference of Oceananigans: set `int32_indexing = false` under `[Oceananigans]` in the active project's
+`LocalPreferences.toml` to keep 64-bit index arithmetic everywhere (Oceananigans recompiles when it changes).
+"""
+const INT32_INDEXING = let uuid = Base.UUID("9e8cae18-63c1-5223-a75c-80ca9d6e9a09")  # Oceananigans
+    Base.record_compiletime_preference(uuid, "int32_indexing")
+    get(Base.get_preferences(uuid), "int32_indexing", true)::Bool
+end
+
+"""
     AbstractArchitecture
 
 Abstract supertype for architectures supported by Oceananigans.
