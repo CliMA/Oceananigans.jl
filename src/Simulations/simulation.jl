@@ -114,7 +114,7 @@ Keyword arguments
                            Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
 
 - `automatic_differentiation`: [`AutomaticDifferentiation`](@ref) options for differentiating a compiled
-                               `run!` in reverse mode, which only a model on `ReactantState` supports.
+                               `run!` in reverse mode, which only a model on [`ReactantState`](@ref) supports.
                                Default: `nothing`.
 """
 function Simulation(model;
