@@ -213,7 +213,7 @@ steps:
       # Create a separate json file with the non-distributed results
       jq 'map(select(has("rank") == false))' $OUTPUT_FILE > non_distributed_results.json
       # Merge the lists back together
-      jq -s 'flatten' combined_throughputs.json non_distributed_results.json > final_results.json
+      jq -s 'flatten' non_distributed_results.json combined_throughputs.json > final_results.json
       mv final_results.json $OUTPUT_FILE
 
     artifact_paths:
