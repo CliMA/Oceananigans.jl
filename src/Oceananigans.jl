@@ -17,7 +17,6 @@ export
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
     geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor,
-    LambertConformalConicGrid, LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
     MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,

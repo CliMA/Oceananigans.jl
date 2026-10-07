@@ -3,8 +3,7 @@ module OrthogonalSphericalShellGrids
 # The only thing we need!
 export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid,
        ConformalConicGrid, ConformalConic,
-       geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor,
-       LambertConformalConicGrid, LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor
+       geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture

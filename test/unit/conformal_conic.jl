@@ -412,14 +412,6 @@ end
         @test :conformal_conic_to_geographic in names(Oceananigans.OrthogonalSphericalShellGrids)
         @test :conformal_conic_scale_factor in names(Oceananigans.OrthogonalSphericalShellGrids)
 
-        # Deprecated pre-v0.114 names
-        @test LambertConformalConicGrid === ConformalConicGrid
-        @test LambertConformalConic === ConformalConic
-        deprecated_map = ConformalConic(Float64; standard_parallels = (30, 60), central_longitude = -105,
-                                        latitude_of_origin = 40, x₁ = 0, y₁ = 0, Δx = 1, Δy = 1)
-        @test lcc_forward(deprecated_map, -100, 45) == geographic_to_conformal_conic(deprecated_map, -100, 45)
-        @test lcc_inverse(deprecated_map, 1e5, 2e5) == conformal_conic_to_geographic(deprecated_map, 1e5, 2e5)
-        @test lcc_scale_factor(deprecated_map, 45) == conformal_conic_scale_factor(deprecated_map, 45)
 
         base_kwargs = (size = (16, 12, 4),
                        standard_parallels = (30, 60),

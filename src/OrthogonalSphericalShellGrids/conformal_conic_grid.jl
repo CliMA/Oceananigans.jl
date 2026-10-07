@@ -904,12 +904,3 @@ function Grids.with_number_type(FT, grid::ConformalConicGrid)
 end
 
 Oceananigans.Grids.grid_name(::ConformalConicGrid) = "ConformalConicGrid"
-
-# Deprecated names from before v0.114, when the grid was called LambertConformalConicGrid.
-# The type aliases are silent because the new names are themselves aliases of the same types.
-const LambertConformalConicGrid = ConformalConicGrid
-const LambertConformalConic = ConformalConic
-
-Base.@deprecate lcc_forward(map, λ, φ) geographic_to_conformal_conic(map, λ, φ) false
-Base.@deprecate lcc_inverse(map, x, y) conformal_conic_to_geographic(map, x, y) false
-Base.@deprecate lcc_scale_factor(map, φ) conformal_conic_scale_factor(map, φ) false
