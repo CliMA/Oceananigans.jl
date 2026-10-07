@@ -85,7 +85,7 @@ julia> @inline ν(x, y, z, t) = 1000 * exp(z / depth_scale)
 ν (generic function with 1 method)
 
 julia> ScalarDiffusivity(ν=ν)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=Nothing)
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -98,7 +98,7 @@ julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)
 κ (generic function with 1 method)
 
 julia> ScalarDiffusivity(κ=κ, discrete_form=true)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=Nothing, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -109,7 +109,7 @@ julia> @inline function another_κ(i, j, k, grid, clock, fields, p)
 another_κ (generic function with 1 method)
 
 julia> ScalarDiffusivity(κ=another_κ, discrete_form=true, loc=(Center, Center, Face), parameters=(; depth_scale = 120.0))
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, @NamedTuple{depth_scale::Float64}, typeof(another_κ)})
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=Nothing, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, @NamedTuple{depth_scale::Float64}, typeof(another_κ)})
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
