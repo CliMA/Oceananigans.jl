@@ -15,8 +15,6 @@ on_architecture(arch, cs::CommState) = cs
 
 communication_state(arch, sides...) = nothing
 
-# The tag is the number of distributed fields created before this one, so all ranks must create their distributed fields
-# in the same order: a field created on some ranks only shifts the tags of all later fields, and their halo messages never match.
 function communication_state(arch::Distributed, west, east, south, north, southwest, southeast, northwest, northeast)
     sides = (; west, east, south, north, southwest, southeast, northwest, northeast)
     tag = UInt64(mod(get_new_tag(arch), MPI.tag_ub() ÷ halo_tag_slots))
@@ -26,10 +24,6 @@ end
 
 side_requests(::Nothing) = nothing
 side_requests(buffer) = MPI.UnsafeMultiRequest(2)
-
-add_fill_event!(f) = nothing
-add_fill_event!(f::Field) = add_fill_event!(f.communication_buffers)
-add_fill_event!(cs::CommState) = Threads.atomic_add!(cs.fill_events, UInt64(1))
 
 wait_for_comms!(_) = nothing
 wait_for_comms!(f::Field) = wait_for_comms!(f.communication_buffers)
@@ -46,5 +40,3 @@ end
 
 # The same state, but its messages are posted right away by the main thread
 without_progress_worker(cs::CommState) = CommState(cs.fill_events, cs.requests, cs.tag, cs.event, nothing)
-
-get_comm_tag(cs::CommState) = cs.tag

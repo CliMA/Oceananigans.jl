@@ -26,6 +26,7 @@ MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs.
 MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
 MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
 DC.mpi_communicator(c::NCCLCommunicator) = c.mpi
+DC.check_field_tags(c::NCCLCommunicator, field_count) = DC.check_field_tags(c.mpi, field_count)
 
 # The host MPI library need not be CUDA-aware: device buffers reaching these forwarded
 # collectives (e.g. the tiny result arrays of distributed field reductions) must be
@@ -163,7 +164,7 @@ end
 ##### NCCL corner communication
 #####
 
-function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
+function DC.fill_corners!(c, connectivity, arch::NCCLDistributedArchitecture,
                           grid, buffers; only_local_halos=false, kw...)
     only_local_halos && return nothing
 

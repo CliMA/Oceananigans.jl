@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: DistributedCommunication, pivot_shift
-using Oceananigans.DistributedComputations: CommunicationBuffers, halo_tag_slots
+using Oceananigans.DistributedComputations: CommunicationBuffers, halo_tag_slots, side_id
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,

@@ -39,7 +39,7 @@ function submit!(state::CommState{<:Any, <:Any, Nothing}, message)
 end
 
 function submit!(state, message)
-    add_fill_event!(state)
+    Threads.atomic_add!(state.fill_events, UInt64(1))
     put!(state.progress_worker, message)
     return nothing
 end
