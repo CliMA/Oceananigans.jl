@@ -441,9 +441,9 @@ _recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:
 _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
 # Pass throughs to communication state
-wait_for_comms!(buff::CommunicationBuffers) = wait_for_comms!(buff.state)
+wait_for_messages!(buff::CommunicationBuffers) = wait_for_messages!(buff.state)
 
-without_progress_worker(buff::CommunicationBuffers) =
+posted_by_main_thread(buff::CommunicationBuffers) =
     CommunicationBuffers(buff.west, buff.east, buff.south, buff.north,
                          buff.southwest, buff.southeast, buff.northwest, buff.northeast,
-                         without_progress_worker(buff.state))
+                         posted_by_main_thread(buff.state))

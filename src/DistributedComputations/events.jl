@@ -6,9 +6,9 @@ record_event!(event, arch) = sync_device!(arch)
 record_event!(event, arch::Distributed) = record_event!(event, arch.child_architecture)
 
 event_done(event) = true
-bind_thread!(event) = nothing
+bind_thread_to_device!(event) = nothing
 
-function sync_event(event)
+function wait_for_event(event)
     while !event_done(event)
         Threads.nthreads() > 1 && yield()
     end

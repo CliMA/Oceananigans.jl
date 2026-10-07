@@ -166,7 +166,7 @@ validate_partition(::Equal, ::Equal, ::Equal) = throw_multiple_equal()
 throw_multiple_equal() = throw(ArgumentError("Equal() can be used for only one direction"))
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init(; threadlevel = spare_thread() ? :multiple : :serialized)
+    MPI.Initialized() || MPI.Init(; threadlevel = has_spare_thread() ? :multiple : :serialized)
     r12 = ranks(r1) * ranks(r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
@@ -253,7 +253,7 @@ function Distributed(child_architecture = CPU();
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
-        MPI.Init(; threadlevel = spare_thread() ? :multiple : :serialized)
+        MPI.Init(; threadlevel = has_spare_thread() ? :multiple : :serialized)
     end
 
     if isnothing(communicator) # default communicator
@@ -349,7 +349,7 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    nothing) # No devices on the CPU
 
 # Fields of architectures sharing `field_count` (e.g. `twin_grid`s) get distinct tags, as long as all ranks create them in the same order
-get_new_tag(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
+next_field_tag!(arch::Distributed) = Threads.atomic_add!(arch.field_count, UInt64(1))
 
 # Fail loudly instead of hanging in the first halo exchange: called where all ranks meet, e.g. `initialize!(::Simulation)`
 check_field_tags(arch) = nothing

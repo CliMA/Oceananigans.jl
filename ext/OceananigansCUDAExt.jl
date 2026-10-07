@@ -155,7 +155,7 @@ end
 DC.new_event(::CUDAGPU) = ContextEvent(CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING), CUDA.context())
 DC.record_event!(event::ContextEvent, ::CUDAGPU) = CUDA.record(event.event, CUDA.stream())
 DC.event_done(event::ContextEvent) = CUDA.isdone(event.event)
-DC.bind_thread!(event::ContextEvent) = CUDA.activate(event.context)
+DC.bind_thread_to_device!(event::ContextEvent) = CUDA.activate(event.context)
 
 # Use faster versions of `newton_div` on Nvidia GPUs
 CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)

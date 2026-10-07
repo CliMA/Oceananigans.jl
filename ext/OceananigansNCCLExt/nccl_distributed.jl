@@ -144,7 +144,7 @@ function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
     # Synchronize when using heterogeneous NCCL/MPI
-    DC.wait_for_comms!(field)
+    DC.wait_for_messages!(field)
 
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)

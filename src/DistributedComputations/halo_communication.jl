@@ -71,7 +71,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGri
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
     # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused
-    only_local_halos || wait_for_comms!(buffers)
+    only_local_halos || wait_for_messages!(buffers)
 
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; only_local_halos, kwargs...)
@@ -111,19 +111,19 @@ end
 
 function sync_corner_halo_comms(c, connectivity, arch, grid, buffers)
     sync_device!(arch)
-    post_corner_requests!(connectivity, arch, grid, without_progress_worker(buffers))
-    wait_for_comms!(buffers)
+    post_corner_messages!(connectivity, arch, grid, posted_by_main_thread(buffers))
+    wait_for_messages!(buffers)
     recv_from_buffers!(c, buffers, grid, Val(:corners))
     return nothing
 end
 
 function async_corner_halo_comms(connectivity, arch, grid, buffers)
-    record_event!(buffers.state.event, arch)
-    post_corner_requests!(connectivity, arch, grid, buffers)
+    record_event!(buffers.state.pack_event, arch)
+    post_corner_messages!(connectivity, arch, grid, buffers)
     return nothing
 end
 
-function post_corner_requests!(connectivity, arch, grid, buffers)
+function post_corner_messages!(connectivity, arch, grid, buffers)
     fill_southwest_halo!(connectivity.southwest, arch, grid, buffers, buffers.southwest)
     fill_southeast_halo!(connectivity.southeast, arch, grid, buffers, buffers.southeast)
     fill_northwest_halo!(connectivity.northwest, arch, grid, buffers, buffers.northwest)
@@ -131,9 +131,9 @@ function post_corner_requests!(connectivity, arch, grid, buffers)
     return nothing
 end
 
-waitall_comms!(requests::Tuple) = foreach(waitall_comms!, requests)
-waitall_comms!(::Nothing) = nothing
-waitall_comms!(requests::MPI.UnsafeMultiRequest) = MPI.Waitall(requests)
+waitall_requests!(requests::Tuple) = foreach(waitall_requests!, requests)
+waitall_requests!(::Nothing) = nothing
+waitall_requests!(requests::MPI.UnsafeMultiRequest) = MPI.Waitall(requests)
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
@@ -150,14 +150,14 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
     buffer_side = kernel!.side
 
     fill_send_buffers!(c, buffers, grid, buffer_side)
-    record_event!(buffers.state.event, arch)
+    record_event!(buffers.state.pack_event, arch)
 
     if async && (arch isa AsynchronousDistributed)
         kernel!(bcs..., grid, arch, buffers)
     else
-        # The main thread waits for the messages anyway, so it posts them itself rather than handing them to the progress worker
-        kernel!(bcs..., grid, arch, without_progress_worker(buffers))
-        wait_for_comms!(buffers)
+        # The main thread waits for these messages anyway
+        kernel!(bcs..., grid, arch, posted_by_main_thread(buffers))
+        wait_for_messages!(buffers)
         recv_from_buffers!(c, buffers, grid, buffer_side)
     end
 
