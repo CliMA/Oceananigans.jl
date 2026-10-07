@@ -8,12 +8,13 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline build_halo_fill_args(f, grid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...)
 @inline build_halo_fill_args(f, grid::DistributedGrid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
 
-@inline substep_halo_fill_args(f, grid, free_surface, args...) = build_halo_fill_args(f, grid, args...)
+@inline substep_halo_fill_args(f, grid, ::Nothing, args...) = build_halo_fill_args(f, grid, args...)
+@inline substep_halo_fill_args(f, grid, bcs, args...) = (f.data, bcs, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
 
-function substep_halo_fill_args(f, grid::DistributedGrid, free_surface::SplitExplicitFreeSurface{LocalHaloFilling}, args...)
-    bcs = substep_boundary_conditions(f, grid, free_surface.kernel_parameters)
-    return (f.data, bcs, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
-end
+materialize_substep_boundary_conditions(strategy, grid, fields, kernel_parameters) = map(f -> nothing, fields)
+
+materialize_substep_boundary_conditions(::LocalHaloFilling, grid::DistributedGrid, fields, kernel_parameters) =
+    map(f -> substep_boundary_conditions(f, grid, kernel_parameters), fields)
 
 # `LocalHaloFilling` steps the barotropic fields into the Connected halos, so the physical boundaries are filled there too
 function substep_boundary_conditions(f, grid, kernel_parameters)
@@ -175,9 +176,10 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     barotropic_model_fields = (; U, V, η)
 
     # Builds also a separate "sub-stepping" clock to account for time dependent forcing and boundary conditions
-    @apply_regionally U_halo_args = substep_halo_fill_args(U, grid, free_surface, barotropic_model_fields)
-    @apply_regionally V_halo_args = substep_halo_fill_args(V, grid, free_surface, barotropic_model_fields)
-    @apply_regionally η_halo_args = substep_halo_fill_args(η, grid, free_surface, barotropic_model_fields)
+    substep_bcs = free_surface.substep_boundary_conditions
+    @apply_regionally U_halo_args = substep_halo_fill_args(U, grid, substep_bcs.U, barotropic_model_fields)
+    @apply_regionally V_halo_args = substep_halo_fill_args(V, grid, substep_bcs.V, barotropic_model_fields)
+    @apply_regionally η_halo_args = substep_halo_fill_args(η, grid, substep_bcs.η, barotropic_model_fields)
 
     only_local_halos = fill_only_local_halos(free_surface)
 
