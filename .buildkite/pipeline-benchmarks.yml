@@ -202,6 +202,7 @@ steps:
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
 
       # Combine across ranks to calculate total throughput
+      # jq filter to selectively merge the ranks
       cat << 'EOF' > filter.jq
       map(select(has("rank")))
       |(.[0].name| match("[0-9]+x[0-9]+x[0-9]+"; "s").string | split("x") | map(tonumber)) as $gs
@@ -210,7 +211,11 @@ steps:
       | .[0] | .grid_size = $gs | .total_time_seconds = $tts | .grid_points_per_second = $gpps | del(.rank)
       EOF
       jq -f filter.jq $OUTPUT_FILE > combined_throughputs.json
-      mv combined_throughputs.json $OUTPUT_FILE
+      # Create a separate json file with the non-distributed results
+      jq 'map(select(has("rank") == false))' $OUTPUT_FILE > non_distributed_results.json
+      # Merge the lists back together
+      jq -s 'flatten' combined_throughputs.json, non_distributed_results.json > final_results.json
+      mv final_results.json $OUTPUT_FILE
 
     artifact_paths:
       - "benchmark_results.json"
