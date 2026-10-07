@@ -36,12 +36,16 @@ invoke_callback(callback, sim) = callback(sim)
 
 Add `callback` to `sim.callbacks`, with its schedule converted to one a program can evaluate.
 
-A schedule fires inside the compiled loop as a traced predicate on the clock, so it must be a
-pure function of the clock. `IterationInterval` is. `TimeInterval` mutates a host-side
+A schedule fires inside the compiled loop as a traced predicate on the clock, so it must be
+evaluable there. `IterationInterval` is as it stands. `TimeInterval` mutates a host-side
 actuation counter when it fires, so it is converted here to the `IterationInterval` it equals
 under a fixed `Δt`, counted from the simulation's current iteration; an interval that is not a
-whole number of steps is an error, since a schedule has no remainder step to take. Other
-schedules are refused. The `add_callback!(sim, func, schedule; kw...)` form routes through here.
+whole number of steps is an error, since a schedule has no remainder step to take.
+`SpecifiedTimes` remembers which time comes next in a host `Int`, so it is rebuilt with its times
+on the device, where its call needs no memory: with a fixed step, "the first step at or after
+`t`" is the step whose `(time − Δt, time]` contains `t` (see [`DeviceSpecifiedTimes`](@ref)).
+Other schedules are refused. The `add_callback!(sim, func, schedule; kw...)` form routes through
+here.
 
 The callback's function is checked too. Of the functions Oceananigans itself puts in callbacks,
 four cannot run inside a program and are refused here with the reason, rather than failing inside
@@ -70,9 +74,40 @@ function traced_schedule(schedule::TimeInterval, sim)
     return IterationInterval(m; offset = iteration(sim))
 end
 
+"""
+    DeviceSpecifiedTimes
+
+A `SpecifiedTimes` whose times live on the device: what `traced_schedule` makes of an eager one,
+before and during tracing. The eager schedule remembers which of its times comes next in
+`previous_actuation` and advances it inside an `if`, neither of which can live inside a program.
+Inside one the step is fixed, so no memory is needed: time `t` fires on exactly the step whose
+interval `(time − last_Δt, time]` contains it, which is the eager "first step at or after `t`".
+The call below is one comparison of the traced clock against the times, reduced with `|`, and
+returns the traced `Bool` that `time_step!`'s traced `if` consumes. Keeping the times on the
+device rather than in the program lets a run with different times reuse the compiled program.
+"""
+const DeviceSpecifiedTimes = SpecifiedTimes{<:Any, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}}
+
+function traced_schedule(schedule::SpecifiedTimes, sim)
+    eltype(schedule.times) <: Number || throw(ArgumentError(
+        "SpecifiedTimes with $(eltype(schedule.times)) times cannot fire inside a compiled run: the clock " *
+        "is a number there. Give the times in simulation seconds."))
+    FT = eltype(schedule.times)
+    times = Reactant.to_rarray(copy(schedule.times))
+    return SpecifiedTimes{FT, typeof(times)}(times, schedule.previous_actuation)   # FT is the times' float type, not the device array's traced eltype
+end
+
+function (schedule::SpecifiedTimes{<:Any, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}})(model)
+    times = schedule.times
+    t = model.clock.time
+    t₋ = t - model.clock.last_Δt                           # the step just taken is (t₋, t]
+    in_step = (times .> t₋) .& (times .<= t)
+    return any(in_step)   # a `|` over the times, as a traced Bool
+end
+
 traced_schedule(schedule, sim) = throw(ArgumentError(
-    "$(typeof(schedule)) cannot fire inside a compiled run: a schedule there must be a pure function " *
-    "of the clock. Use IterationInterval, or a TimeInterval that Δt divides."))
+    "$(typeof(schedule)) cannot fire inside a compiled run: a schedule there must be evaluable on the " *
+    "traced clock. Use IterationInterval, a TimeInterval that Δt divides, or SpecifiedTimes."))
 
 # Callback functions that cannot run inside a program. Anything else is admitted on trust: the
 # rule it must follow (device work only) is in the `time_step!` docstring.

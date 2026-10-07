@@ -8,10 +8,10 @@ using Oceananigans
 
 using OrderedCollections: OrderedDict
 
-using ..Architectures: ReactantState
+using ..Architectures: ReactantState, AnyConcreteReactantArray
 using ..TimeSteppers: ReactantModel
 
-using Oceananigans: run_diagnostic!, Callback, TimeStepCallsite, TimeInterval, IterationInterval, TimeStepWizard, TimeDerivative
+using Oceananigans: run_diagnostic!, Callback, TimeStepCallsite, TimeInterval, IterationInterval, SpecifiedTimes, TimeStepWizard, TimeDerivative
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: NaNChecker
 using Oceananigans.TimeSteppers: update_state!, QuasiAdamsBashforth2TimeStepper
