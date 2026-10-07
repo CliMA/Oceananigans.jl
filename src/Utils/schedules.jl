@@ -234,10 +234,10 @@ function SpecifiedTimes(times...)
 
     if all(t -> t isa Number, times)
         FT = Oceananigans.defaults.FloatType
-        return SpecifiedTimes(sort([convert(FT, t) for t in times]), 0)
+        return SpecifiedTimes(sort!([convert(FT, t) for t in times]), 0)
     elseif all(t -> t isa AbstractTime, times)
         TT = typeof(first_time)
-        return SpecifiedTimes(sort(collect(TT, times)), 0)
+        return SpecifiedTimes(sort!(collect(TT, times)), 0)
     else
         throw(ArgumentError("SpecifiedTimes expects all times to be numbers or all to be Date/DateTime."))
     end
