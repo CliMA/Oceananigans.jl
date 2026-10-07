@@ -22,10 +22,10 @@
 # ## Install dependencies
 #
 # Besides Oceananigans, this example needs NCDatasets to read the bathymetry, CairoMakie
-# to make the plots, and ConservativeRegridding to regrid the zoomed maps. To run on a GPU
-# you also need the Julia package for your GPU: CUDA for NVIDIA, Metal for Apple silicon,
-# or AMDGPU for AMD. On a machine without a GPU, skip that package and the example runs
-# on the CPU.
+# to make the plots, and ConservativeRegridding to regrid between the tripolar and
+# latitude-longitude grids. To run on a GPU you also need the Julia package for your GPU:
+# CUDA for NVIDIA, Metal for Apple silicon, or AMDGPU for AMD. On a machine without a GPU,
+# skip that package and the example runs on the CPU.
 #
 # ```julia
 # using Pkg
@@ -460,12 +460,6 @@ restoring_profile = restoring_temperature.(φ)
 
 gulf_stream_view = (limits = ((260, 320), (15, 55)), xticks = (270:15:315, ["90°W", "75°W", "60°W", "45°W"]))
 kuroshio_view = (limits = ((115, 175), (15, 55)), xticks = (120:15:165, ["120°E", "135°E", "150°E", "165°E"]))
-
-# For the zoomed maps we regrid ``T - T^\star`` conservatively from the tripolar grid onto
-# ½° latitude-longitude grids with ConservativeRegridding. A `Regridder` computes the
-# overlap areas between the cells of two grids once, and `regrid!` then maps any field on
-# one grid onto the other. We store the regridded snapshots in a `FieldTimeSeries` on
-# each latitude-longitude grid and draw them with `heatmap!`, one flat color per cell.
 
 tripolar_grid = TripolarGrid(CPU(), Float64; size=(Nx, Ny, 1), z=(0, 1)) ## the regridder needs Float64 coordinates
 
