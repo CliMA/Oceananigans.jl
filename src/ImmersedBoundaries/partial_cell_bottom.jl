@@ -9,13 +9,15 @@ import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
 ##### PartialCellBottom
 #####
 
-struct PartialCellBottom{H, T, E} <: AbstractGridFittedBottom{H}
+struct PartialCellBottom{H, T, E, L} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     minimum_fractional_cell_height :: E
+    top_load :: L
 end
 
 PartialCellBottom(bottom_height, minimum_fractional_cell_height) = PartialCellBottom(bottom_height, nothing, minimum_fractional_cell_height)
+PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height) = PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height, nothing)
 
 const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
 
@@ -60,11 +62,12 @@ function Base.show(io::IO, ib::PartialCellBottom)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "├── top_load: ", prettysummary(ib.top_load), '\n')
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
 """
-    PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
+    PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
 
 Return `PartialCellBottom` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
@@ -83,6 +86,11 @@ minimum_fractional_cell_height * Δz,
 where `Δz` is the original height of the cell in the underlying grid.
 Columns in which the top and bottom leave less than this height are immersed entirely.
 
+`top_load` is the potential of the weight of the solid top, added to the hydrostatic pressure of
+every column: either `nothing` (default, no load), a [`TopLoad`](@ref) computed from a reference
+state, or an array, function of `(x, y)` or two-dimensional field such as the one returned by
+[`top_load_potential`](@ref). It requires `top_height`.
+
 Example
 =======
 
@@ -100,8 +108,9 @@ julia> ImmersedBoundaryGrid(grid, PartialCellBottom(-95; top_height=(x, y) -> -2
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
-    return PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height)
+function PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height, top_load)
 end
 
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
@@ -117,7 +126,10 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     fill_halo_regions!(bottom_field)
     fill_top_height_halo_regions!(top_field)
 
-    return PartialCellBottom(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height)
+    unloaded_ib = PartialCellBottom(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height)
+    top_load = materialize_top_load(grid, unloaded_ib, ib.top_load)
+
+    return PartialCellBottom(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height, top_load)
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
@@ -179,11 +191,13 @@ end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
                                                                      adapt(to, ib.top_height),
-                                                                     ib.minimum_fractional_cell_height)
+                                                                     ib.minimum_fractional_cell_height,
+                                                                     adapt(to, ib.top_load))
 
 Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
                                                                              on_architecture(to, ib.top_height),
-                                                                             on_architecture(to, ib.minimum_fractional_cell_height))
+                                                                             on_architecture(to, ib.minimum_fractional_cell_height),
+                                                                             on_architecture(to, ib.top_load))
 
 """
     immersed     underlying
@@ -345,5 +359,6 @@ end
 function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
     return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) &&
            bottom_heights_equal(pcb1.top_height, pcb2.top_height) &&
+           bottom_heights_equal(pcb1.top_load, pcb2.top_load) &&
            pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
 end

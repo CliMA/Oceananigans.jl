@@ -14,13 +14,15 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedBottom{H, T, I} <: AbstractGridFittedBottom{H}
+struct GridFittedBottom{H, T, I, L} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     immersed_condition :: I
+    top_load :: L
 end
 
 GridFittedBottom(bottom_height, immersed_condition) = GridFittedBottom(bottom_height, nothing, immersed_condition)
+GridFittedBottom(bottom_height, top_height, immersed_condition) = GridFittedBottom(bottom_height, top_height, immersed_condition, nothing)
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
@@ -29,7 +31,7 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 const GFBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom{<:Any, <:AbstractArray}}
 
 """
-    GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition())
+    GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition(), top_load=nothing)
 
 Return a bottom immersed boundary, optionally with an immersed top.
 
@@ -57,6 +59,12 @@ Keyword arguments
                         minimum fractional cell height for partial cells is set
                         to 0. The same condition applies to the top.
 
+* `top_load`: the potential of the weight of the solid top, added to the hydrostatic
+              pressure of every column. Either `nothing` (default, no load), a [`TopLoad`](@ref)
+              computed from a reference state, or an array, function of `(x, y)` or
+              two-dimensional field such as the one returned by [`top_load_potential`](@ref).
+              Requires `top_height`.
+
 Columns in which the top lies at or below the bottom are immersed entirely.
 
 Example
@@ -76,8 +84,10 @@ julia> ImmersedBoundaryGrid(grid, GridFittedBottom(-90; top_height=(x, y) -> -20
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition()) =
-    GridFittedBottom(bottom_height, top_height, immersed_condition)
+function GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition(), top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return GridFittedBottom(bottom_height, top_height, immersed_condition, top_load)
+end
 
 # 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
@@ -163,16 +173,19 @@ end
 function Base.show(io::IO, ib::GridFittedBottom)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
-    print(io, "└── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "└── top_load: ", prettysummary(ib.top_load), '\n')
 end
 
 Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height),
                                                                              on_architecture(arch, ib.top_height),
-                                                                             ib.immersed_condition)
+                                                                             ib.immersed_condition,
+                                                                             on_architecture(arch, ib.top_load))
 
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height),
                                                                    adapt(to, ib.top_height),
-                                                                   adapt(to, ib.immersed_condition))
+                                                                   adapt(to, ib.immersed_condition),
+                                                                   adapt(to, ib.top_load))
 
 """
 $(TYPEDSIGNATURES)
@@ -195,7 +208,10 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     fill_halo_regions!(bottom_field)
     fill_top_height_halo_regions!(top_field)
 
-    return GridFittedBottom(bottom_field.data, top_height_data(top_field), ib.immersed_condition)
+    unloaded_ib = GridFittedBottom(bottom_field.data, top_height_data(top_field), ib.immersed_condition)
+    top_load = materialize_top_load(grid, unloaded_ib, ib.top_load)
+
+    return GridFittedBottom(bottom_field.data, top_height_data(top_field), ib.immersed_condition, top_load)
 end
 
 materialize_top_height(grid, ::Nothing) = nothing
@@ -316,5 +332,6 @@ end
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
     return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) &&
            bottom_heights_equal(gfb1.top_height, gfb2.top_height) &&
+           bottom_heights_equal(gfb1.top_load, gfb2.top_load) &&
            gfb1.immersed_condition == gfb2.immersed_condition
 end
