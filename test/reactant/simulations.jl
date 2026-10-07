@@ -218,6 +218,59 @@ end
     @test_throws ArgumentError add_callback!(r_simulation, TimeDerivativeCallback(r_model.velocities.u))
 end
 
+@testset "Reactant Simulation: SpecifiedTimes" begin
+    @info "Testing a SpecifiedTimes callback on a Reactant Simulation..."
+    Nx, Ny, Nz = (10, 10, 10)
+    halo = (7, 7, 7)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
+    model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
+
+    grid = RectilinearGrid(CPU(); rectilinear_kw...)
+    r_grid = RectilinearGrid(ReactantState(); rectilinear_kw...)
+    model = HydrostaticFreeSurfaceModel(grid; model_kw...)
+    r_model = HydrostaticFreeSurfaceModel(r_grid; model_kw...)
+    ui = randn(size(model.velocities.u)...)
+    vi = randn(size(model.velocities.v)...)
+    set!(model, u=ui, v=vi)
+    set!(r_model, u=ui, v=vi)
+
+    accumulate_u²!(sim, p) = (p.total .+= sum(interior(sim.model.velocities.u) .^ 2); nothing)
+
+    Δt = 1e-6 * minimum_xspacing(model.grid)
+
+    # One time on the step grid and one off it: both runs fire at iteration 0 (every callback does,
+    # at initialization), at step 1, and at step 3, the first step at or after 2.5Δt.
+    times = SpecifiedTimes(Δt, 2.5Δt)
+    simulation = Simulation(model; Δt, stop_time=4Δt, verbose=false)
+    total = zeros(1)
+    add_callback!(simulation, accumulate_u²!, times; parameters=(; total), name=:energy)
+    run!(simulation)
+    @test simulation.callbacks[:energy].schedule.previous_actuation == 2
+
+    r_simulation = Simulation(r_model; Δt, stop_time=4Δt, verbose=false)
+    r_total = Reactant.to_rarray(zeros(1))
+    add_callback!(r_simulation, accumulate_u²!, times; parameters=(; total=r_total), name=:energy)
+
+    # The schedule keeps its type; its times move to the device, where its call needs no counter.
+    r_schedule = r_simulation.callbacks[:energy].schedule
+    @test r_schedule isa SpecifiedTimes
+    @test r_schedule isa OceananigansReactantExt.Simulations.DeviceSpecifiedTimes
+    @test Array(r_schedule.times) == times.times
+    @test times.times isa Vector   # the eager schedule was copied, not moved
+
+    compiled_run! = @compile run!(r_simulation)
+    compiled_run!(r_simulation)
+
+    @test iteration(r_simulation) == 4
+    @test Reactant.to_number(r_model.clock.time) ≈ 4Δt
+    @test Array(interior(r_model.velocities.u)) ≈ Array(interior(model.velocities.u))
+    @test Array(r_total)[1] ≈ total[1]
+
+    # Times must be numbers: the traced clock is one.
+    DateTime = Oceananigans.Utils.Dates.DateTime
+    @test_throws ArgumentError add_callback!(r_simulation, accumulate_u²!, SpecifiedTimes(DateTime(2020, 1, 1)); parameters=(; total=r_total))
+end
+
 # A callback whose function type records the initial and final Σu² through the `initialize!` and
 # `finalize!` hooks, which run once each outside the traced loop. It carries its own buffers, since
 # the hooks receive the function, not the callback's parameters. Each is a length-one array written
