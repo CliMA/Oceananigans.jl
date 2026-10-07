@@ -31,6 +31,7 @@ import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
 import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
+import KernelAbstractions as KA
 import Oceananigans.DistributedComputations: Distributed
 
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
@@ -139,6 +140,92 @@ CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     else
         return true
     end
+end
+
+#####
+##### Cached launch of configured kernels (host cost of `launch!` and the halo fills)
+#####
+#
+# `KA.Kernel{CUDABackend}` launches (CUDACore's CUDAKernels.jl) re-convert every argument with
+# `cudaconvert` (a closure `map` that is not inferred for Oceananigans' nested argument types: the grid,
+# boundary conditions with field time series, field tuples), rebuild the argument tuple type and look up
+# the compiled kernel, and the compiled kernel's call converts the arguments once more — on every launch.
+# Oceananigans has already converted them (`Architectures.convert_to_device`), so for a kernel with a
+# static workgroup and ndrange whose arguments are all `isbits` (their device form), this launches the
+# same compiled kernel (`cufunction` with the same function, argument types, `maxthreads` and
+# `always_inline`), cached per CUDA context, kernel function, argument types and compile options, with
+# the same threads and blocks (computed per launch from the kernel's own static sizes, exactly as
+# CUDAKernels.jl does) and the same argument values, without re-converting them
+# (`convert = Val(false)`). Argument tuples that are not all `isbits`, contain a `Type` or a raw
+# pointer (whose conversion is not the identity), or kernels with a dynamic workgroup or ndrange take
+# the standard launch. `CACHED_KERNEL_LAUNCH[] = false` disables the cache; `CHECK_CACHED_KERNEL_LAUNCH[] = true`
+# asserts on every cached launch that converting the arguments again leaves them bit-identical
+# (`cudaconvert(args) === args`), the condition under which the cached launch is the standard one.
+
+const CACHED_KERNEL_LAUNCH = Ref(true)
+const CHECK_CACHED_KERNEL_LAUNCH = Ref(false)
+const cached_launch_kernels = Dict{Any, Any}()
+const cached_launch_lock = ReentrantLock()
+
+# Whether a type (an argument type, recursively through its fields) may hold a raw pointer, whose
+# `cudaconvert` is not the identity (`CuPtr` → `LLVMPtr`).
+holds_raw_pointer(::Type{<:Union{Ptr, CuPtr}}) = true
+function holds_raw_pointer(T::Type)
+    isconcretetype(T) || return true
+    return any(holds_raw_pointer, fieldtypes(T))
+end
+
+# The argument tuple type `@cuda` compiles for (`Tuple{map(Core.Typeof, args)...}`), or `nothing` where
+# the cached launch does not apply. Evaluated at compile time.
+@generated function cached_launch_type(args...)
+    TT = Tuple{args...}
+    applies = isbitstype(TT) && !any(T -> T <: Type, args) && !holds_raw_pointer(TT)
+    return applies ? :($TT) : :(nothing)
+end
+
+const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
+
+@inline UT.launch_configured_kernel!(loop!::KA.Kernel{CUDABackend}, args...) =
+    CACHED_KERNEL_LAUNCH[] ? cached_kernel_launch!(loop!, args...) : loop!(args...)
+
+@inline cached_kernel_launch!(loop!, args...) = loop!(args...)
+
+@inline function cached_kernel_launch!(obj::KA.Kernel{CUDABackend, <:KA.StaticSize, <:StaticNDRange}, args...)
+    ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, nothing, nothing)
+    ctx = KA.mkcontext(obj, ndrange, iterspace)
+    kernel_args = (ctx, args...)
+    TT = cached_launch_type(kernel_args...)
+    TT === nothing && return obj(args...)
+
+    blocks = length(KA.blocks(iterspace))
+    threads = length(KA.workitems(iterspace))
+    blocks == 0 && return nothing
+
+    CHECK_CACHED_KERNEL_LAUNCH[] && check_cached_launch_arguments(obj, kernel_args)
+
+    maxthreads = prod(KA.get(KA.workgroupsize(obj)))
+    always_inline = KA.backend(obj).always_inline
+    kernel = cached_host_kernel(obj.f, TT, maxthreads, always_inline)
+    kernel(kernel_args...; threads, blocks, convert = Val(false))
+    return nothing
+end
+
+function cached_host_kernel(f::F, ::Type{TT}, maxthreads, always_inline) where {F, TT}
+    key = (context(), f, TT, maxthreads, always_inline)
+    kernel = @lock cached_launch_lock get(cached_launch_kernels, key, nothing)
+    if kernel === nothing
+        kernel = CUDA.cufunction(f, TT; always_inline, maxthreads)
+        @lock cached_launch_lock cached_launch_kernels[key] = kernel
+    end
+    return kernel::CUDA.HostKernel{F, TT}
+end
+
+@noinline function check_cached_launch_arguments(obj, kernel_args)
+    reconverted = map(CUDA.cudaconvert, kernel_args)
+    reconverted === kernel_args ||
+        error("cached kernel launch of $(nameof(typeof(obj.f))): the arguments are not in their device form " *
+              "(cudaconvert changes them); the cached launch would differ from the standard one")
+    return nothing
 end
 
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()

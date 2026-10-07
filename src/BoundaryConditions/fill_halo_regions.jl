@@ -1,5 +1,6 @@
 using OffsetArrays: OffsetArray
 using Oceananigans.Grids: architecture, total_size
+using Oceananigans.Utils: launch_configured_kernel!
 
 #####
 ##### General halo filling functions
@@ -77,7 +78,7 @@ const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{No
     if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
         prepare_halo_fill!(bcs[2], c, grid, loc)
-        kernel!(c, bcs[1], bcs[2], loc, grid, halo_fill_args(bcs, args))
+        launch_configured_kernel!(kernel!, c, bcs[1], bcs[2], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -85,7 +86,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
-        kernel!(c, bcs[1], loc, grid, halo_fill_args(bcs, args))
+        launch_configured_kernel!(kernel!, c, bcs[1], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -93,7 +94,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bc, fill_normal_flow_bcs)
         prepare_halo_fill!(bc, c, grid, loc)
-        kernel!(c, bc, loc, grid, halo_fill_args(bc, args))
+        launch_configured_kernel!(kernel!, c, bc, loc, grid, halo_fill_args(bc, args))
     end
     return nothing
 end

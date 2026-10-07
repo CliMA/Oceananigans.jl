@@ -359,11 +359,24 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(Architectures.convert_to_device(arch, kernel_args)...)
+        launch_configured_kernel!(loop!, Architectures.convert_to_device(arch, kernel_args)...)
     end
 
     return nothing
 end
+
+"""
+    launch_configured_kernel!(loop!, args...)
+
+Launch the configured KernelAbstractions kernel `loop!` (its workgroup and ndrange fixed by
+`configure_kernel` or a preconfigured halo-fill kernel, no keyword arguments) with `args`. The
+default is `loop!(args...)`. A backend extension may launch the same compiled kernel with the same
+argument values at a lower host cost when `args` are already in their device form
+(`Architectures.convert_to_device`): see `OceananigansCUDAExt`, which caches the compiled kernel per
+kernel function and argument types instead of re-converting the arguments, rebuilding their tuple
+type and looking up the compiled kernel on every launch.
+"""
+@inline launch_configured_kernel!(loop!, args...) = loop!(args...)
 
 # `:xyz` and `:xy` launch over the corresponding active cells map of `grid`, if it has one
 @inline possibly_load_active_cells_map(grid, workspec, exclude_periphery) = workspec
