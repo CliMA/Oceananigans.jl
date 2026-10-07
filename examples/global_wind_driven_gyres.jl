@@ -155,7 +155,7 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 # The zonal wind stress
 #
 # ```math
-# τˣ(φ) = - τ₀ \, \sin 2φ \sin 6φ
+# τˣ(φ) = - τ₀ \, \sin(2φ) \sin(6φ)
 # ```
 #
 # has easterly trade winds peaking at ±15°, westerlies peaking at ±45°, and polar
