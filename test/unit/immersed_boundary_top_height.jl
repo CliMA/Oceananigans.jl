@@ -224,6 +224,26 @@ function test_top_height_equality_and_show(FT, arch, Boundary)
     return nothing
 end
 
+function test_no_bottom_height(FT, arch, Boundary)
+    underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 10), extent=(1, 1, 1))
+
+    top(x, y) = -0.27 - 0.4 * x
+    no_bottom   = ImmersedBoundaryGrid(underlying_grid, Boundary(; top_height=top))
+    flat_bottom = ImmersedBoundaryGrid(underlying_grid, Boundary(-1; top_height=top))
+
+    @test Array(bottom_height_interior(no_bottom.immersed_boundary.bottom_height)) ==
+          Array(bottom_height_interior(flat_bottom.immersed_boundary.bottom_height))
+    @test center_values(immersed_cell, no_bottom) == center_values(immersed_cell, flat_bottom)
+    @test center_values(Δrᶜᶜᶜ, no_bottom) == center_values(Δrᶜᶜᶜ, flat_bottom)
+    @test center_values(column_depthᶜᶜᵃ, no_bottom) == center_values(column_depthᶜᶜᵃ, flat_bottom)
+
+    no_boundary = ImmersedBoundaryGrid(underlying_grid, Boundary())
+    @test !any(center_values(immersed_cell, no_boundary) .== 1)
+    @test occursin("nothing", summary(Boundary(; top_height=top)))
+
+    return nothing
+end
+
 @testset "Immersed boundary top height" begin
     for arch in archs, FT in float_types
         A = typeof(arch)
@@ -232,6 +252,7 @@ end
             @testset "$Boundary open top [$FT, $A]"              test_open_top_matches_bottom_only(FT, arch, Boundary)
             @testset "$Boundary reduced field masking [$FT, $A]" test_top_height_reduced_field_masking(FT, arch, Boundary)
             @testset "$Boundary equality and show [$FT, $A]"     test_top_height_equality_and_show(FT, arch, Boundary)
+            @testset "$Boundary without bottom [$FT, $A]"        test_no_bottom_height(FT, arch, Boundary)
         end
         @testset "GridFittedBottom top pattern [$FT, $A]"                     test_grid_fitted_top_immersed_cell_pattern(FT, arch)
         @testset "GridFittedBottom column closure [$FT, $A]"                  test_grid_fitted_top_column_closure(FT, arch)

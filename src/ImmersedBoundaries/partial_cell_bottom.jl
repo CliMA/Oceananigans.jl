@@ -46,6 +46,10 @@ Base.summary(ib::PartialCellBottom{<:Function}) = @sprintf("PartialCellBottom(%s
                                                            top_height_summary(ib.top_height),
                                                            ib.minimum_fractional_cell_height)
 
+Base.summary(ib::PartialCellBottom{Nothing}) = @sprintf("PartialCellBottom(nothing%s, ϵ=%.1f)",
+                                                        top_height_summary(ib.top_height),
+                                                        ib.minimum_fractional_cell_height)
+
 function Base.show(io::IO, ib::PartialCellBottom{<:Any, Nothing})
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
@@ -60,12 +64,12 @@ function Base.show(io::IO, ib::PartialCellBottom)
 end
 
 """
-    PartialCellBottom(bottom_height; top_height=nothing, minimum_fractional_cell_height=0.2)
+    PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
 
 Return `PartialCellBottom` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
 to fit the provided `bottom_height`, which may be a `Field`, `Array`, or function
-of `(x, y)`.
+of `(x, y)`. If `bottom_height` is `nothing`, the bottom is the bottom of the domain.
 
 If `top_height` is provided (e.g. an ice-shelf draft), cells above it are immersed
 and the height of the topmost cell in each column is reduced to fit it in the same way.
@@ -96,7 +100,7 @@ julia> ImmersedBoundaryGrid(grid, PartialCellBottom(-95; top_height=(x, y) -> -2
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellBottom(bottom_height; top_height=nothing, minimum_fractional_cell_height=0.2)
+function PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
     return PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height)
 end
 
