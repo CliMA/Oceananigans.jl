@@ -69,6 +69,19 @@ jobs:
           export TMPDIR="${GITHUB_WORKSPACE}/tmp"
           mkdir -vp "${TMPDIR}"
           echo "TMPDIR=${TMPDIR}" | tee -a "${GITHUB_ENV}"
+      - name: "Set test arguments and other environment variables"
+        shell: bash
+        run: |
+          # Run tests in verbose mode
+          TEST_ARGS=(--verbose)
+          # Exit immediately if there's a test failure
+          TEST_ARGS+=(--quickfail)
+
+          if [[ '${{ matrix.label }}' == 'Reactant and Makie' ]]; then
+              # Reduce number of workers to avoid OOM's
+              TEST_ARGS+=(--jobs=$(($(nproc) - 2)))
+          fi
+          echo "runtest_test_args=${TEST_ARGS[@]}" | tee -a "${GITHUB_ENV}"
       - name: Instantiate environment
         timeout-minutes: 45
         shell: bash
@@ -92,7 +105,7 @@ jobs:
         with:
           check_bounds: "${{ matrix.check_bounds }}"
           optimize: "0"
-          test_args: --verbose --quickfail
+          test_args: "${{ env.runtest_test_args }}"
         env:
           TEST_GROUP: "${{ matrix.test_group }}"
       - name: Stop earlyoom

@@ -9,7 +9,54 @@ using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
+"""
+    AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
+
+Options for differentiating a compiled `run!` of a `Simulation` on `ReactantState` in reverse mode,
+given to the `Simulation` constructor as `automatic_differentiation`, either as this struct or as
+a `NamedTuple` of the same fields. They are passed to `Reactant.@trace` for the loop over time
+steps, and only take effect under differentiation: the forward program is the same whatever they are.
+
+- `track_numbers`: whether plain Julia numbers captured by the loop are promoted to traced numbers.
+  Default: `false`, since the model holds numbers inside structs whose type parameters do not
+  cover every numeric field, and promoting those fails.
+
+- `mincut`: whether the reverse pass uses the mincut algorithm to reduce what is stored between
+  the forward and reverse sweeps. Default: `true`.
+
+- `checkpointing` (required): `false` stores every step's state for the reverse sweep;
+  `Reactant.Periodic(n)` stores a checkpoint every `n` steps and recomputes the steps in between;
+  `Reactant.Binomial(budget)` keeps at most `budget` checkpoints, placed by the revolve algorithm.
+
+Note that "checkpointing" here is the recomputation strategy of reverse-mode differentiation.
+Saving the state of a simulation to disk so it can be restarted is done by the [`Checkpointer`](@ref).
+
+```jldoctest
+using Oceananigans
+
+AutomaticDifferentiation(checkpointing = false)
+
+# output
+AutomaticDifferentiation(track_numbers=false, mincut=true, checkpointing=false)
+```
+"""
+struct AutomaticDifferentiation{C}
+    track_numbers :: Bool
+    mincut :: Bool
+    checkpointing :: C
+end
+
+AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true) =
+    AutomaticDifferentiation(track_numbers, mincut, checkpointing)
+
+Base.convert(::Type{AutomaticDifferentiation}, options::NamedTuple) = AutomaticDifferentiation(; options...)
+
+Base.show(io::IO, ad::AutomaticDifferentiation) =
+    print(io, "AutomaticDifferentiation(track_numbers=", ad.track_numbers,
+              ", mincut=", ad.mincut,
+              ", checkpointing=", ad.checkpointing, ")")
+
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
     stop_iteration :: FT
@@ -24,6 +71,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     initialized :: BL
     verbose :: BL
     minimum_relative_step :: FT
+    automatic_differentiation :: AD
 end
 
 """
@@ -34,7 +82,8 @@ end
                stop_time = Inf,
                wall_time_limit = Inf,
                align_time_step = true,
-               minimum_relative_step = 0)
+               minimum_relative_step = 0,
+               automatic_differentiation = nothing)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -63,6 +112,10 @@ Keyword arguments
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
+
+- `automatic_differentiation`: [`AutomaticDifferentiation`](@ref) options for differentiating a compiled
+                               `run!` in reverse mode, which only a model on [`ReactantState`](@ref) supports.
+                               Default: `nothing`.
 """
 function Simulation(model;
                     Δt,
@@ -71,7 +124,12 @@ function Simulation(model;
                     stop_time = Inf,
                     wall_time_limit = Inf,
                     align_time_step = true,
-                    minimum_relative_step = 0)
+                    minimum_relative_step = 0,
+                    automatic_differentiation = nothing)
+
+   isnothing(automatic_differentiation) || throw(ArgumentError(
+       "automatic_differentiation = $automatic_differentiation needs a model on ReactantState, whose " *
+       "compiled run! is what gets differentiated; this model is on $(summary(architecture(model)))."))
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
@@ -115,7 +173,8 @@ function Simulation(model;
                      false,
                      false,
                      verbose,
-                     Float64(minimum_relative_step))
+                     Float64(minimum_relative_step),
+                     automatic_differentiation)
 end
 
 function Base.show(io::IO, s::Simulation)
