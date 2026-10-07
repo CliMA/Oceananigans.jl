@@ -313,6 +313,33 @@ end
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
+function recompute_catke_surface_buoyancy_flux!(closure_fields, closure::FlavorOfCATKE, model)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
+    top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
+    active_cells_map = get_active_cells_map(grid, Val(:xy))
+
+    launch!(arch, grid, :xy,
+            set_surface_buoyancy_flux!,
+            closure_fields.Jᵇ, grid, velocities, tracers,
+            buoyancy, top_tracer_bcs, model.clock;
+            active_cells_map)
+
+    return nothing
+end
+
+@kernel function set_surface_buoyancy_flux!(Jᵇ, grid, velocities, tracers,
+                                            buoyancy, top_tracer_bcs, clock)
+    i, j = @index(Global, NTuple)
+    model_fields = merge(velocities, tracers)
+    @inbounds Jᵇ[i, j, 1] = top_buoyancy_flux(i, j, grid, buoyancy,
+                                               top_tracer_bcs, clock,
+                                               model_fields)
+end
+
 @kernel function compute_CATKE_closure_fields!(closure_fields, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
