@@ -46,7 +46,7 @@ ObliqueRadiation{Float64}
 ├── inflow_timescale: 0.0
 ├── outflow_timescale: Inf
 ├── use_boundary_velocity: false
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}

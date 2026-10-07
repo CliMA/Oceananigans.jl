@@ -16,6 +16,7 @@ function prettysummary(f::Function, showmethods=true)
 end
 
 prettysummary(x::Int, args...) = string(x)
+prettysummary(x::Nothing, args...) = string(x)
 
 # This is very important
 function prettysummary(nt::NamedTuple, args...)

@@ -410,13 +410,20 @@ end
 
                 κ = diffusivity(model.closure, model.closure_fields, Val(:c))
                 @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.closure_fields, Val(:c))
-                κ_dx_c = κ * ∂x(c)
 
                 ν = viscosity(model.closure, model.closure_fields)
                 @test viscosity(model) == viscosity(model.closure, model.closure_fields)
-                ν_dx_u = ν * ∂x(u)
-                @test ν_dx_u[1, 1, 1] == 0
-                @test κ_dx_c[1, 1, 1] == 0
+
+                # Closures constructed with default `ν = nothing` or `κ = nothing` have no viscosity or diffusivity
+                if !isnothing(κ)
+                    κ_dx_c = κ * ∂x(c)
+                    @test κ_dx_c[1, 1, 1] == 0
+                end
+
+                if !isnothing(ν)
+                    ν_dx_u = ν * ∂x(u)
+                    @test ν_dx_u[1, 1, 1] == 0
+                end
             end
         end
 

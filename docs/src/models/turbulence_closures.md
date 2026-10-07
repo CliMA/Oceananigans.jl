@@ -77,7 +77,7 @@ julia> @inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) =
 νhb (generic function with 1 method)
 
 julia> closure = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=15days)
-ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=Nothing)
+ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)
 ```
 
 The `ℓx`, `ℓy`, `ℓz` arguments indicate the grid location (`Center()` or `Face()`) where
@@ -91,7 +91,7 @@ Multiple closures can be combined in a tuple. All closure contributions are summ
 julia> using Oceananigans
 
 julia> closure = (HorizontalScalarDiffusivity(ν=1e-3), VerticalScalarDiffusivity(ν=1e-4))
-(HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=Nothing), VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0001, κ=Nothing))
+(HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=nothing), VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0001, κ=nothing))
 ```
 
 See the [hydrostatic modeling example](@ref hydrostatic-example) below for a more complex tuple.
@@ -325,12 +325,12 @@ viscosity with a TKE-based vertical mixing scheme:
 
 ```jldoctest closures
 julia> horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=5days)
-ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=Nothing)
+ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)
 
 julia> vertical_closure = CATKEVerticalDiffusivity();
 
 julia> closure = (horizontal_closure, vertical_closure);
 
 julia> summary(horizontal_closure)
-"ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=Nothing)"
+"ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)"
 ```
