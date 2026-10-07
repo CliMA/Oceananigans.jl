@@ -148,18 +148,16 @@ save("bathymetry.png", fig, px_per_unit=2) #hide
 
 # ## Wind stress and bottom drag
 #
-# The zonal wind stress is a sum of four wind belts,
+# The zonal wind stress is a sum of four Gaussian wind belts,
 #
 # ```math
 # τˣ(φ) = \sum_n τₙ \exp\left[-\left(\frac{φ - φₙ}{11°}\right)^2\right] ,
 # ```
 #
-# easterly trade winds of 0.055 N m⁻² at 18°N and 0.065 N m⁻² at 17°S, and westerlies of
-# 0.07 N m⁻² at 46°N and 0.19 N m⁻² at 51°S. These four belts fit the annual- and zonal-mean
-# wind stress over the ocean from the NCEP/NCAR reanalysis (1991–2020) with an rms error of
-# 0.01 N m⁻²: the trades overlap into weak easterlies on the equator, and the westerlies are
-# almost three times stronger over the Southern Ocean than in the north. The belts leave out
-# the weak easterlies along the Antarctic coast, south of 65°S. The curl drives cyclonic
+# the easterly trade winds and the westerlies of each hemisphere, whose strengths and latitudes
+# follow the observed annual- and zonal-mean wind stress over the ocean from the NCEP/NCAR
+# reanalysis. The trades overlap into weak easterlies on the equator, and the westerlies are
+# almost three times stronger over the Southern Ocean than in the north. The curl drives cyclonic
 # tropical and subpolar gyres and anticyclonic subtropical gyres, whose western boundary
 # currents are the Gulf Stream and the Kuroshio. A positive flux boundary condition transports
 # momentum out of the domain, so the momentum flux from the wind is minus the wind stress
