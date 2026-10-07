@@ -583,3 +583,5 @@ end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
 Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+
+Utils.periphery_offset(::Face, ::RightConnected, N::Int) = ifelse(N > 1, 1, 0)
