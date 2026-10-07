@@ -1,5 +1,5 @@
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 # Make sure results are
 # reproducible
