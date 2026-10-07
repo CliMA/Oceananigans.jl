@@ -54,6 +54,28 @@ else
     needs_data(name) = startswith(name, "regression/") || name == "unit/grids" || startswith(name, "multi_region/cubed_sphere")
     args.list === nothing && any(needs_data, keys(testsuite)) && include(joinpath(SETUP, "data_dependencies.jl"))
 
+    # OCEANANIGANS_PROFILE_DIR=dir profiles every test and saves the samples and statistics in dir.
+    profile_dir = get(ENV, "OCEANANIGANS_PROFILE_DIR", "")
+    init_code = :()
+    if !isempty(profile_dir)
+        init_code = :(include($(joinpath(SETUP, "profile_recording.jl"))))
+        for (name, test) in testsuite
+            prefix = joinpath(profile_dir, replace(name, "/" => "__"))
+            testsuite[name] = quote
+                Profile.init(n = 5 * 10^7, delay = 0.02)
+                Profile.clear()
+                profile_start = time()
+                Profile.start_timer()
+                profile_stats = @timed try
+                    $test
+                finally
+                    Profile.stop_timer()
+                end
+                write_profile_record($prefix, $name, profile_stats, time() - profile_start)
+            end
+        end
+    end
+
     # Tests that mutate process-global state (loggers, Enzyme and Reactant flags, the active project,
     # the default float type) get a throw-away worker.
     dedicated_prefixes = ("enzyme/", "sharding/", "convergence/", "metal/", "oneapi/")
@@ -107,6 +129,7 @@ else
 
     runtests(Oceananigans, args;
              testsuite,
+             init_code,
              test_worker,
              serial,
              max_worker_rss,

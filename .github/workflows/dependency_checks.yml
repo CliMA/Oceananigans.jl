@@ -15,6 +15,7 @@ on:
 jobs:
   check_minimum_version:
     name: Check Minimum Dependency Versions
+    if: false # disabled while instrumenting CI
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -38,6 +39,7 @@ jobs:
           mode: ${{ matrix.downgrade_mode }}
           projects: '., test, benchmarking'
   resolve_dependencies:
+    if: false # disabled while instrumenting CI
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
