@@ -39,7 +39,6 @@ using Oceananigans.Coriolis: DualGridScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
 using NCDatasets
-using Downloads
 using Printf
 using CairoMakie
 using ConservativeRegridding
@@ -87,21 +86,18 @@ underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 
 # ## Bathymetry from ETOPO1
 #
-# NOAA's ERDDAP server can subsample the 1-arc-minute ETOPO1 relief on the fly, so we
-# download every `stride`-th point, three per grid cell, a file of a couple of megabytes.
+# NOAA's NCEI serves the 1-arc-minute ETOPO1 relief over OPeNDAP, so NCDatasets can read
+# every `stride`-th point, three per grid cell, without downloading the whole file.
 # Averaging the samples in 3 × 3 blocks then gives the mean elevation of each grid cell
 # rather than the elevation at a single point.
 
 stride = round(Int, 20resolution) # arc-minutes between samples
-etopo_url = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/etopo180.nc?altitude" *
-            "[($(-90 + stride/120)):$stride:($(90 - stride/120))]" *
-            "[($(-180 + stride/120)):$stride:($(180 - stride/120))]"
+etopo_url = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO1_Ice_g_gmt4.nc"
 
-etopo_filename = "etopo1_$(stride)_arcmin.nc"
-isfile(etopo_filename) || Downloads.download(etopo_url, etopo_filename)
-
-etopo_elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_filename) do dataset
-    nomissing(dataset["altitude"][:, :]), dataset["longitude"][:], dataset["latitude"][:]
+etopo_elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_url) do dataset
+    i = 1 + stride÷2 : stride : dataset.dim["lon"] - stride÷2
+    j = 1 + stride÷2 : stride : dataset.dim["lat"] - stride÷2
+    nomissing(dataset["z"][i, j]), dataset["lon"][i], dataset["lat"][j]
 end
 
 block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
