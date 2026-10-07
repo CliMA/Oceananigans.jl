@@ -155,6 +155,28 @@ const AMG = MutableGridOfSomeKind
 const C = Center
 const F = Face
 
+const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bounded, <:UnderlyingMutableGrid,
+                                                    <:Union{GridFittedBottom{<:Any, <:AbstractArray}, PartialCellBottom{<:Any, <:AbstractArray}}}
+
+# Stretch about the immersed top `zᵗ` so the bottom stays put and the top moves with `η`
+@inline top_stretched_znode(r, σ, η, zᵗ) = zᵗ + η + σ * (r - zᵗ)
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::C, ::C, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, C(), C(), ℓz), σⁿ(i, j, k, grid, C(), C(), ℓz),
+                        @inbounds(grid.z.ηⁿ[i, j, 1]), @inbounds(grid.immersed_boundary.top_height[i, j, 1]))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::F, ::C, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, F(), C(), ℓz), σⁿ(i, j, k, grid, F(), C(), ℓz),
+                        ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑxᶠᵃᵃ(i, j, 1, grid, grid.immersed_boundary.top_height))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::C, ::F, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, C(), F(), ℓz), σⁿ(i, j, k, grid, C(), F(), ℓz),
+                        ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑyᵃᶠᵃ(i, j, 1, grid, grid.immersed_boundary.top_height))
+
+@inline Grids.znode(i, j, k, grid::MutableImmersedTopGrid, ::F, ::F, ℓz) =
+    top_stretched_znode(rnode(i, j, k, grid, F(), F(), ℓz), σⁿ(i, j, k, grid, F(), F(), ℓz),
+                        ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ), ℑxyᶠᶠᵃ(i, j, 1, grid, grid.immersed_boundary.top_height))
+
 #####
 ##### Grid slope functions: ∂z/∂x|_r and ∂z/∂y|_r at various staggerings
 #####
