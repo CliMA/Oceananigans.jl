@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: div_Uc, materialize_advection
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: immersed_cell, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: TopLoad, bottom_height_interior, immersed_cell, mask_immersed_field!
+using Oceananigans.Models: top_load_potential
 using Oceananigans.Grids: znode
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: immersed_top_advective_form_correctionᶜᶜᶜ, compute_w_from_continuity!,
                                                         update_zstar_scaling!
@@ -262,6 +263,106 @@ function test_immersed_top_zstar_znode(FT, arch)
     return nothing
 end
 
+function test_immersed_top_load_potential(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(5, 3, 4), x=(0, 5), y=(0, 1), z=(-1, 0),
+                                      topology=(Bounded, Periodic, Bounded))
+
+    # Open, face-aligned top, closed, open with a raised bottom, partial top
+    bottom(x, y) = 3 ≤ x < 4 ? -0.6 : -1
+    top(x, y) = x < 1 ? 0 :
+                    x < 2 ? -0.5 :
+                    x < 3 ? -1 :
+                    x < 4 ? 0 : -0.6
+
+    # The partial top of column 5 is snapped to the face at -0.5 by GridFittedBottom
+    for (Bottom, Φ⁵) in ((GridFittedBottom, FT(0.125)), (PartialCellBottom, FT(0.1875)))
+        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(bottom; top_height=top))
+
+        Φ = Array(interior(top_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> z))))
+
+        @test all(Φ[1, :, 1] .== 0)
+        @test all(Φ[3, :, 1] .== 0)
+        @test all(Φ[4, :, 1] .== 0)
+        @test all(Φ[2, :, 1] .≈ FT(0.125))
+        @test all(Φ[5, :, 1] .≈ Φ⁵)
+
+        Φ² = Array(interior(top_load_potential(ibg, BuoyancyTracer(), (; b = (x, y, z) -> 2z))))
+        @test all(isapprox.(Φ², 2 .* Φ; atol=100 * eps(FT)))
+
+        T(x, y, z) = 20 + 2z
+        S(x, y, z) = 35
+        Φˢʷ = Array(interior(top_load_potential(ibg, SeawaterBuoyancy(FT), (; T, S))))
+        @test all(Φˢʷ[[1, 3, 4], :, 1] .== 0)
+        @test all(abs.(Φˢʷ[[2, 5], :, 1]) .> 0)
+    end
+
+    return nothing
+end
+
+function rest_state_model(ibg; Δt=0.01, Nt=10, kw...)
+    model = HydrostaticFreeSurfaceModel(ibg; buoyancy=BuoyancyTracer(), tracers=:b, kw...)
+    set!(model, b=(x, z) -> z / 2)
+
+    for _ in 1:Nt
+        time_step!(model, Δt)
+    end
+
+    return model
+end
+
+function test_immersed_top_rest_state(FT, arch)
+    underlying_grid = RectilinearGrid(arch, FT, size=(16, 20), x=(0, 1), z=(-1, 0),
+                                      topology=(Bounded, Flat, Bounded))
+
+    top(x) = min(0, -0.93 + 1.7x)
+    b(x, z) = z / 2
+    top_load = TopLoad(BuoyancyTracer(), (; b))
+
+    for Bottom in (GridFittedBottom, PartialCellBottom)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-0.98; top_height=top))
+        @test isnothing(ibg.immersed_boundary.top_load)
+
+        control = rest_state_model(ibg)
+        @test maximum(abs, interior(control.velocities.u)) > 1e-3
+
+        Φ = top_load_potential(ibg, BuoyancyTracer(), (; b))
+        field_loaded_ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-0.98; top_height=top, top_load=Φ))
+        loaded_ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-0.98; top_height=top, top_load))
+
+        @test Array(bottom_height_interior(loaded_ibg.immersed_boundary.top_load)) == Array(interior(Φ))
+        @test loaded_ibg.immersed_boundary == field_loaded_ibg.immersed_boundary
+        @test loaded_ibg.immersed_boundary != ibg.immersed_boundary
+
+        model = rest_state_model(loaded_ibg)
+        tol = 5000 * eps(FT)
+        @test maximum(abs, interior(model.velocities.u)) ≤ tol
+        @test maximum(abs, interior(model.velocities.w)) ≤ tol
+        @test maximum(abs, interior(model.free_surface.displacement)) ≤ tol
+    end
+
+    return nothing
+end
+
+function test_immersed_top_zstar_rest_state(FT, arch)
+    z = MutableVerticalDiscretization(collect(range(-1, 0, length=21)))
+    underlying_grid = RectilinearGrid(arch, FT; size=(16, 20), x=(0, 1), z, topology=(Bounded, Flat, Bounded))
+
+    top(x) = min(0, -0.93 + 1.7x)
+    top_load = TopLoad(BuoyancyTracer(), (; b = (x, z) -> z / 2))
+
+    for Bottom in (GridFittedBottom, PartialCellBottom)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-0.98; top_height=top, top_load))
+        model = rest_state_model(ibg; vertical_coordinate=ZStarCoordinate(), timestepper=:SplitRungeKutta3)
+
+        tol = 5000 * eps(FT)
+        @test maximum(abs, interior(model.velocities.u)) ≤ tol
+        @test maximum(abs, interior(model.velocities.w)) ≤ tol
+        @test maximum(abs, interior(model.free_surface.displacement)) ≤ tol
+    end
+
+    return nothing
+end
+
 @testset "Immersed top dynamics" begin
     for arch in archs, FT in float_types
         @testset "Wall distances [$FT, $(typeof(arch))]"                       test_immersed_top_wall_distances(FT, arch)
@@ -271,5 +372,8 @@ end
         @testset "z★ freshwater flux beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_freshwater_flux(FT, arch)
         @testset "z★ freshwater flux rest state beneath an immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_freshwater_flux_rest_state(FT, arch)
         @testset "z★ znode beneath an immersed top [$FT, $(typeof(arch))]"     test_immersed_top_zstar_znode(FT, arch)
+        @testset "Top load potential [$FT, $(typeof(arch))]"                   test_immersed_top_load_potential(FT, arch)
+        @testset "Rest state beneath a loaded immersed top [$FT, $(typeof(arch))]" test_immersed_top_rest_state(FT, arch)
+        @testset "z★ rest state beneath a loaded immersed top [$FT, $(typeof(arch))]" test_immersed_top_zstar_rest_state(FT, arch)
     end
 end

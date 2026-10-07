@@ -5,6 +5,7 @@ using Oceananigans.ImmersedBoundaries:
     GridFittedBottom,
     PartialCellBottom,
     GridFittedBoundary,
+    TopLoad,
     bottom_height_interior,
     compute_mask,
     has_active_cells_map,
@@ -37,7 +38,8 @@ function reconstruct_global_immersed_boundary(ib::GridFittedBottom, arch, grid)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
     global_top_height = global_height_array(ib.top_height, arch, (Nx, Ny, 1))
-    return GridFittedBottom(global_bottom_height, global_top_height, ib.immersed_condition)
+    global_top_load = global_height_array(ib.top_load, arch, (Nx, Ny, 1))
+    return GridFittedBottom(global_bottom_height, global_top_height, ib.immersed_condition, global_top_load)
 end
 
 function reconstruct_global_immersed_boundary(ib::PartialCellBottom, arch, grid)
@@ -45,7 +47,8 @@ function reconstruct_global_immersed_boundary(ib::PartialCellBottom, arch, grid)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
     global_top_height = global_height_array(ib.top_height, arch, (Nx, Ny, 1))
-    return PartialCellBottom(global_bottom_height, global_top_height, ib.minimum_fractional_cell_height)
+    global_top_load = global_height_array(ib.top_load, arch, (Nx, Ny, 1))
+    return PartialCellBottom(global_bottom_height, global_top_height, ib.minimum_fractional_cell_height, global_top_load)
 end
 
 global_height_array(::Nothing, arch, global_size) = nothing
@@ -78,13 +81,15 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     bottom_interior = bottom_height_interior(ib.bottom_height)
     local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
     local_top_height = local_height_array(ib.top_height, arch, (nx, ny, 1))
+    local_top_load = local_height_array(ib.top_load, arch, (nx, ny, 1))
     ImmersedBoundaryConstructor = getnamewrapper(ib)
-    local_ib = ImmersedBoundaryConstructor(local_bottom_height; top_height=local_top_height)
+    local_ib = ImmersedBoundaryConstructor(local_bottom_height; top_height=local_top_height, top_load=local_top_load)
 
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
 
 local_height_array(::Nothing, arch, local_size) = nothing
+local_height_array(load::TopLoad, arch, local_size) = load
 local_height_array(height, arch, local_size) = partition(bottom_height_interior(height), arch, local_size)
 
 """
@@ -126,7 +131,8 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
         @warn "Resizing the bottom height to match the grid's halos"
         bottom_height = resize_height(ib.bottom_height, grid)
         top_height    = resize_height(ib.top_height, grid)
-        return getnamewrapper(ib)(bottom_height; top_height)
+        top_load      = resize_height(ib.top_load, grid)
+        return getnamewrapper(ib)(bottom_height; top_height, top_load)
     end
 
     return ib
