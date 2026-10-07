@@ -97,12 +97,12 @@ function traced_schedule(schedule::SpecifiedTimes, sim)
     return SpecifiedTimes{FT, typeof(times)}(times, schedule.previous_actuation)   # FT is the times' float type, not the device array's traced eltype
 end
 
-function (schedule::SpecifiedTimes{FT, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}})(model) where {FT}
+function (schedule::SpecifiedTimes{<:Any, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}})(model)
     times = schedule.times
     t = model.clock.time
     t₋ = t - model.clock.last_Δt                           # the step just taken is (t₋, t]
     in_step = (times .> t₋) .& (times .<= t)
-    return sum(ifelse.(in_step, one(FT), zero(FT))) > zero(FT)   # a `|` over the times, as a traced Bool
+    return any(in_step)   # a `|` over the times, as a traced Bool
 end
 
 traced_schedule(schedule, sim) = throw(ArgumentError(
