@@ -274,7 +274,7 @@ end
 # Antarctica, together with the surface speed and the surface temperature, every ten days
 # of a five-year run.
 
-year = 360days
+year = 365days
 
 function run_gyres(grid, coriolis, name; stop_time=5year, save_interval=10days)
     model = build_model(grid, coriolis)
