@@ -1,6 +1,6 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, InflowOutflowRate, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
