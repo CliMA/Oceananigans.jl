@@ -28,7 +28,7 @@ Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
 
 """
-    GridFittedBottom(bottom_height; top_height=nothing, immersed_condition=CenterImmersedCondition())
+    GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition())
 
 Return a bottom immersed boundary, optionally with an immersed top.
 
@@ -36,7 +36,8 @@ Arguments
 =========
 
 * `bottom_height`: an array or function that gives the height of the
-                   bottom in absolute ``z`` coordinates.
+                   bottom in absolute ``z`` coordinates. Default: `nothing`
+                   (the bottom of the domain, e.g. for a flat-bottomed domain with only a top).
 
 Keyword arguments
 =================
@@ -74,7 +75,7 @@ julia> ImmersedBoundaryGrid(grid, GridFittedBottom(-90; top_height=(x, y) -> -20
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-GridFittedBottom(bottom_height; top_height=nothing, immersed_condition=CenterImmersedCondition()) =
+GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition()) =
     GridFittedBottom(bottom_height, top_height, immersed_condition)
 
 # 1-based interior view of a bare bottom-height array.
@@ -90,6 +91,9 @@ end
 @inline bottom_heights_equal(h1::AbstractArray, h2::AbstractArray) = bottom_height_interior(h1) == bottom_height_interior(h2)
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
+
+# Without a bottom, the numerical bottom height becomes the bottom of the domain
+set_bottom_height!(bottom_field, ::Nothing) = set!(bottom_field, -Inf)
 
 function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
     source = on_architecture(architecture(bottom_field), bottom_height_interior(bottom_height))
@@ -148,7 +152,7 @@ function Base.summary(ib::GridFittedBottom)
     return summary1 * summary2 * summary3
 end
 
-Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s%s)", ib.bottom_height, top_height_summary(ib.top_height))
+Base.summary(ib::GridFittedBottom{<:Union{Function, Nothing}}) = @sprintf("GridFittedBottom(%s%s)", ib.bottom_height, top_height_summary(ib.top_height))
 
 function Base.show(io::IO, ib::GridFittedBottom{<:Any, Nothing})
     print(io, summary(ib), '\n')
