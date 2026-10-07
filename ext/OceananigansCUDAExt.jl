@@ -109,8 +109,24 @@ AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = t
     return dst
 end
 
-@inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
-@inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
+# Whether a type (an argument type, recursively through its fields) may hold a raw pointer, whose
+# `cudaconvert` is not the identity (`CuPtr` → `LLVMPtr`).
+holds_raw_pointer(::Type{<:Union{Ptr, CuPtr}}) = true
+function holds_raw_pointer(T::Type)
+    isconcretetype(T) || return true
+    return any(holds_raw_pointer, fieldtypes(T))
+end
+
+# An argument whose type is `isbits` (and holds no raw pointer) is already in its device form — host
+# objects that convert (arrays, fields, grids, mutable clocks) are not `isbits` — so it passes through
+# untouched, decided on the type at compile time. Arguments cached in their device form (Breeze's
+# kernel-argument cache) then cost nothing to convert again. Every other argument is converted with
+# `cudaconvert`.
+@generated is_device_form(::T) where T = isbitstype(T) && !holds_raw_pointer(T)
+@inline device_form(x) = is_device_form(x) ? x : CUDA.cudaconvert(x)
+
+@inline AC.convert_to_device(::CUDAGPU, args) = device_form(args)
+@inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(device_form, args)
 
 BC.validate_boundary_condition_architecture(::CuArray, ::AC.GPU, bc, side) = nothing
 
@@ -166,14 +182,8 @@ const CACHED_KERNEL_LAUNCH = Ref(true)
 const CHECK_CACHED_KERNEL_LAUNCH = Ref(false)
 const cached_launch_kernels = Dict{Any, Any}()
 const cached_launch_lock = ReentrantLock()
-
-# Whether a type (an argument type, recursively through its fields) may hold a raw pointer, whose
-# `cudaconvert` is not the identity (`CuPtr` → `LLVMPtr`).
-holds_raw_pointer(::Type{<:Union{Ptr, CuPtr}}) = true
-function holds_raw_pointer(T::Type)
-    isconcretetype(T) || return true
-    return any(holds_raw_pointer, fieldtypes(T))
-end
+# launches that took the cached path / the standard one (diagnostics)
+const cached_launch_counts = zeros(Int, 2)
 
 # The argument tuple type `@cuda` compiles for (`Tuple{map(Core.Typeof, args)...}`), or `nothing` where
 # the cached launch does not apply. Evaluated at compile time.
@@ -188,14 +198,15 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 @inline UT.launch_configured_kernel!(loop!::KA.Kernel{CUDABackend}, args...) =
     CACHED_KERNEL_LAUNCH[] ? cached_kernel_launch!(loop!, args...) : loop!(args...)
 
-@inline cached_kernel_launch!(loop!, args...) = loop!(args...)
+@inline cached_kernel_launch!(loop!, args...) = (cached_launch_counts[2] += 1; loop!(args...))
 
 @inline function cached_kernel_launch!(obj::KA.Kernel{CUDABackend, <:KA.StaticSize, <:StaticNDRange}, args...)
     ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, nothing, nothing)
     ctx = KA.mkcontext(obj, ndrange, iterspace)
     kernel_args = (ctx, args...)
     TT = cached_launch_type(kernel_args...)
-    TT === nothing && return obj(args...)
+    TT === nothing && return (cached_launch_counts[2] += 1; obj(args...))
+    cached_launch_counts[1] += 1
 
     blocks = length(KA.blocks(iterspace))
     threads = length(KA.workitems(iterspace))
