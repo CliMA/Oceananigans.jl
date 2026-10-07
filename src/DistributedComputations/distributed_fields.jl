@@ -16,6 +16,7 @@ using LinearAlgebra: dot, norm
 using Statistics: mean
 
 import Oceananigans.Fields: Field, set!, conditional_length
+import Oceananigans.Solvers: reduce_partial_sums!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm
 import Statistics: mean
@@ -251,6 +252,15 @@ end
 @inline function norm(u::DistributedField; condition=nothing)
     n² = dot(u, u; condition)
     return sqrt(n²)
+end
+
+# The column-segment sums of the fused conjugate-gradient iteration: each rank reduces
+# its own, then the ranks' sums are added on the host and copied back into `sums`
+function reduce_partial_sums!(sums, partial_sums, arch::Distributed)
+    reduce_partial_sums!(sums, partial_sums, child_architecture(arch))
+    host_sums = Array(sums)
+    all_reduce!(+, host_sums, arch)
+    return copyto!(sums, host_sums)
 end
 
 # Distributed dot product: the local dot products are summed across ranks on the host,
