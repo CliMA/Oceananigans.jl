@@ -201,9 +201,16 @@ steps:
         -x MPITRAMPOLINE_LIB -x JULIA_CUDA_MEMORY_POOL -x CUDA_VISIBLE_DEVICES \
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
 
-      # All ranks time the same synchronized steps: keep rank 0 only
-      jq 'map(select((.rank // 0) == 0))' $OUTPUT_FILE > rank_zero_tmp.json
-      mv rank_zero_tmp.json $OUTPUT_FILE
+      # Combine across ranks to calculate total throughput
+      cat << 'EOF' > filter.jq
+      map(select(has("rank")))
+      |(.[0].name| match("[0-9]+x[0-9]+x[0-9]+"; "s").string | split("x") | map(tonumber)) as $gs
+      |(map(.total_time_seconds) | max) as $tts
+      |(map(.grid_points_per_second) | add) as $gpps
+      | .[0] | .grid_size = $gs | .total_time_seconds = $tts | .grid_points_per_second = $gpps | del(.rank)
+      EOF
+      jq -f filter.jq $OUTPUT_FILE > combined_throughputs.json
+      mv combined_throughputs.json $OUTPUT_FILE
 
     artifact_paths:
       - "benchmark_results.json"
