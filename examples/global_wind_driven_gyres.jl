@@ -396,10 +396,10 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 #
 # ## The gyres
 #
-# Next we plot the streamfunction at the end of each simulation and follow it along
-# 30°N across the Pacific and the Atlantic. The Antarctic Circumpolar Current puts a
-# large offset between ``ψ`` on Antarctica and everywhere else, so we set ``ψ = 0`` on
-# North America. Note the ten times larger color range of the ``f``-plane map.
+# Next we plot the streamfunction at the end of each simulation. The Antarctic
+# Circumpolar Current puts a large offset between ``ψ`` on Antarctica and everywhere
+# else, so we set ``ψ = 0`` on North America. Note the ten times larger color range of
+# the ``f``-plane map.
 
 north_america = argmin(@. (mod(λ, 360) - 260)^2 + (φ - 40)^2)
 
@@ -411,25 +411,19 @@ function streamfunction_map!(fig, row, filename; title, colorrange)
     sf = surface!(axis, λ, φ, 0 * λ; color=streamfunction, colormap=:balance, colorrange,
                   shading=NoShading, nan_color=:gray)
     Colorbar(fig[row, 2], sf, label="Streamfunction [Sv]")
-    return streamfunction
+    return nothing
 end
 
 experiments = ((filenames[Ω], coriolis_title(Ω), (-100, 100)),
                (filenames[2Ω], coriolis_title(2Ω), (-100, 100)),
                (f_plane_filename, "f = 2Ω sin 30°", (-1000, 1000)))
 
-along_30N = @. abs(φ - 30) < resolution / 2
-eastward = sortperm(λ[along_30N])
-
-fig = Figure(size=(900, 1400))
-ax = Axis(fig[4, 1], xlabel="Longitude", ylabel="Streamfunction along 30°N [Sv]", xticks=longitude_ticks)
+fig = Figure(size=(900, 1050))
 
 for (row, (filename, title, colorrange)) in enumerate(experiments)
-    streamfunction = streamfunction_map!(fig, row, filename; title, colorrange)
-    lines!(ax, λ[along_30N][eastward], streamfunction[along_30N][eastward]; label=title)
+    streamfunction_map!(fig, row, filename; title, colorrange)
 end
 
-axislegend(ax)
 save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 
 # ![](global_wind_driven_gyres.png)
