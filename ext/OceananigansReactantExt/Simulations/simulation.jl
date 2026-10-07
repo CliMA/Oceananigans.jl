@@ -1,8 +1,15 @@
 const ReactantSimulation = Simulation{<:ReactantModel}
 
+validate_checkpointing(::Union{Periodic, Binomial}) = nothing
+
+validate_checkpointing(checkpointing) = checkpointing === false ? nothing : throw(ArgumentError(
+    "checkpointing = $checkpointing is not supported: use `Reactant.Periodic(n)`, " *
+    "`Reactant.Binomial(budget)`, or `false` for no checkpointing."))
+
 """
     Simulation(model::ReactantModel; Δt, stop_iteration = Inf, stop_time = nothing, verbose = true,
-               wall_time_limit = Inf, align_time_step = false, minimum_relative_step = 0)
+               wall_time_limit = Inf, align_time_step = false, minimum_relative_step = 0,
+               automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
 
 A `Simulation` of a model on `ReactantState`, meant to be compiled: `@compile run!(sim)` is one
 program that steps the model to the stop criterion and fires `sim.callbacks` inside the loop
@@ -23,6 +30,10 @@ What differs from the eager `Simulation`:
   program. `add_callback!` works as usual, converting a `TimeInterval` to an `IterationInterval`;
   see [`time_step!`](@ref) for what a callback may do.
 - `output_writers` and `diagnostics` are `nothing`: IO cannot happen inside a program.
+- `automatic_differentiation` holds the options of the traced step loop that matter when `run!`
+  is differentiated in reverse mode: `track_numbers`, `mincut`, and `checkpointing` (`false`,
+  `Reactant.Periodic(n)` or `Reactant.Binomial(budget)`), as a `NamedTuple` of those fields or an
+  [`AutomaticDifferentiation`](@ref). See [`time_step_for!`](@ref).
 """
 function Simulation(model::ReactantModel; Δt,
                     verbose = true,
@@ -30,9 +41,12 @@ function Simulation(model::ReactantModel; Δt,
                     stop_time = nothing,
                     wall_time_limit = Inf,
                     align_time_step = false,
-                    minimum_relative_step = 0)
+                    minimum_relative_step = 0,
+                    automatic_differentiation = AutomaticDifferentiation(checkpointing = false))
 
     Δt = Float64(Δt)
+    automatic_differentiation = convert(AutomaticDifferentiation, automatic_differentiation)
+    validate_checkpointing(automatic_differentiation.checkpointing)
 
     if !isnothing(stop_time)
         isfinite(stop_iteration) && throw(ArgumentError(
@@ -57,7 +71,8 @@ function Simulation(model::ReactantModel; Δt,
                       false,
                       false,
                       verbose,
-                      Float64(minimum_relative_step))
+                      Float64(minimum_relative_step),
+                      automatic_differentiation)
 end
 
 """

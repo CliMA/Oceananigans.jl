@@ -414,8 +414,7 @@ end
             vin = VolumeInverseNorm(grid)
             computed = vin(r)
 
-            # Check r is restored after in-place scaling
-            @test Array(interior(r)) ≈ r_before
+            @test Array(interior(r)) == r_before
 
             # Check norm value against manual computation
             expected = 0.0
