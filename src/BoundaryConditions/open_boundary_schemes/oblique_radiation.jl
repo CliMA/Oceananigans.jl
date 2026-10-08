@@ -125,11 +125,12 @@ radiation_buffers(radiation::ObliqueRadiation) =
 const OBC = BoundaryCondition{<:Union{Value{<:ObliqueRadiation}, NormalFlow{<:ObliqueRadiation}}}
 
 # The halos of the previous values take those of the neighbouring ranks
-function update_boundary_condition!(bc::OBC, side, field, model)
-    state_fields = bc.classification.scheme.state_fields
-    isnothing(state_fields) || foreach(fill_halo_regions!, state_fields)
+function fill_boundary_state_halos!(radiation::ObliqueRadiation)
+    isnothing(radiation.state_fields) || foreach(fill_halo_regions!, radiation.state_fields)
     return nothing
 end
+
+update_boundary_condition!(bc::OBC, side, field, model) = fill_boundary_state_halos!(bc.classification.scheme)
 
 # Fills read the buffer written during the previous iteration and write the other one.
 @inline written_buffer(clock) = clock.iteration % 2 + 1
