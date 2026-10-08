@@ -71,6 +71,14 @@ Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_surface_copy!)), ::V
 Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_surface_copy_three_extents!)), ::Val, ::Val) = (4, 1, 2)
 Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_copy_too_many_threads!)), ::Val, ::Val) = (64, 1, 32)
 
+# The same body with a register cap that depends on the launch's static range: capped on large ranges only.
+@kernel function _stencil_capped_when_large!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = (b[i+1, j, k] - b[i-1, j, k]) * b[i, j+1, k] + b[i, j, k-1] / (1 + b[i, j, k+1]^2)
+end
+
+Utils.kernel_launch_maxregs(::typeof(gpu_kernel_function(_stencil_capped_when_large!)), ::Val{S}) where S = prod(S) >= 100 ? 32 : 0
+
 function stencil(kernel!, grid, workspec = :xyz)
     a = CenterField(grid)
     b = CenterField(grid)
@@ -218,6 +226,27 @@ end
         # entries the range cannot take: more extents than the range has dimensions, more than 1024 threads
         @test_throws ArgumentError launch!(arch, regular, :xy, _surface_copy_three_extents!, a, regular, b)
         @test_throws ArgumentError launch!(arch, regular, :xyz, _copy_too_many_threads!, a, regular, b)
+
+        # A register cap that reads the launch's static range: the full range (8 × 6 × 4 = 192 cells) is compiled
+        # with the cap, the offset range (6 × 4 × 2 = 48) without; the result is the uncapped one on both.
+        @test Utils.kernel_launch_maxregs(gpu__stencil_default!, Val((8, 6, 4))) === 0                    # fallbacks
+        @test Utils.kernel_launch_maxregs(gpu__stencil_configured!, Val((8, 6, 4))) === 32               # a one-argument entry
+        @test Utils.kernel_launch_maxregs(gpu__stencil_capped_when_large!, Val((8, 6, 4))) === 32
+        @test Utils.kernel_launch_maxregs(gpu__stencil_capped_when_large!, Val((6, 4, 2))) === 0
+        @test Utils.kernel_launch_maxregs(gpu__stencil_capped_when_large!) === 0
+        fill!(Ext.cached_launch_counts, 0)
+        for grid in (regular, stretched, latlon), range in (:xyz, KernelParameters(2:7, 2:5, 2:3))
+            default = stencil(_stencil_default!, grid, range)
+            capped = stencil(_stencil_capped_when_large!, grid, range)
+            @test reinterpret(UInt64, capped) == reinterpret(UInt64, default)
+        end
+        @test Ext.cached_launch_counts[2] == 0
+        caps_of(f) = sort(unique([key[6] for key in keys_of(f)]))
+        @test caps_of(gpu__stencil_capped_when_large!) == [0, 32]
+        @test all(key -> (key[6] == 32) == occursin("StaticSize{(8, 6, 4)}", string(key[3])), keys_of(gpu__stencil_capped_when_large!))
+        @test all(kernel -> CUDA.registers(kernel) <= 32,
+                  [Ext.cached_launch_kernels[key] for key in keys_of(gpu__stencil_capped_when_large!) if key[6] == 32])
+        @test Ext.static_launch_size(loop!) === (8, 6, 4)
 
         # The batched tridiagonal solve's default workgroup entry (32 × 8): cached launch (entry applied) against
         # the standard launch (16 × 16), several blocks in each direction.

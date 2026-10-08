@@ -360,6 +360,7 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 # The size of a static launch range, one entry per dimension: a constant of the range's type.
 @inline static_launch_size(::Type{KA.StaticSize{S}}) where S = S
 @generated static_launch_size(::Type{UT.OffsetStaticSize{S}}) where S = map(r -> r isa Integer ? Int(r) : length(r), S)
+@inline static_launch_size(::KA.Kernel{CUDABackend, <:Any, N}) where N <: StaticNDRange = static_launch_size(N)
 
 # The kernel object with the workgroup of its per-kernel launch configuration (`UT.kernel_launch_workgroup`):
 # the object itself unless an entry names another workgroup, decided at compile time on the kernel function,
@@ -394,7 +395,7 @@ end
 
     maxthreads = prod(KA.get(KA.workgroupsize(obj)))
     always_inline = KA.backend(obj).always_inline
-    maxregs = UT.kernel_launch_maxregs(obj.f)
+    maxregs = UT.kernel_launch_maxregs(obj.f, Val(static_launch_size(obj)))
     kernel = cached_host_kernel(obj.f, TT, maxthreads, always_inline, maxregs)
     kernel(kernel_args...; threads, blocks, convert = Val(false))
     return nothing
