@@ -45,6 +45,12 @@ function __init__()
 
         allowscalar(false)
     end
+
+    # Cached launch of configured kernels (below): `OCEANANIGANS_CACHED_KERNEL_LAUNCH=false` takes the standard
+    # launch everywhere; `OCEANANIGANS_CHECK_CACHED_KERNEL_LAUNCH=true` asserts on every cached launch that
+    # re-converting its arguments leaves them bit-identical.
+    CACHED_KERNEL_LAUNCH[] = lowercase(get(ENV, "OCEANANIGANS_CACHED_KERNEL_LAUNCH", "true")) != "false"
+    CHECK_CACHED_KERNEL_LAUNCH[] = lowercase(get(ENV, "OCEANANIGANS_CHECK_CACHED_KERNEL_LAUNCH", "false")) == "true"
 end
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
