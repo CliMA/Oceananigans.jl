@@ -59,7 +59,7 @@ end
 # but builds the solver on a `Distributed` grid and selects the preconditioner.
 function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, preconditioner_type; z=(0, 2π))
     arch = Distributed(child_arch, partition=Partition(ranks...))
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, x=(0, 2π), y=(0, 2π), z)
+    local_grid = RectilinearGrid(arch; topology=topo, size=grid_points, x=(0, 2π), y=(0, 2π), z)
 
     preconditioner = preconditioner_type == :fft ? fft_poisson_solver(local_grid) :
                                                    DiagonallyDominantPreconditioner()
