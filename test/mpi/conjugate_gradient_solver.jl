@@ -98,8 +98,9 @@ end
 
     # The FFT preconditioner on a stretched grid is a distributed Fourier-tridiagonal solver
     topology = (Bounded, Bounded, Bounded)
-    z = [2π * (k / 8)^2 for k in 0:8]
+    # The transposed grids split z across the ranks, which need at least as many cells as the halo
+    z = [2π * (k / 16)^2 for k in 0:16]
     @testset "fft on a z-stretched grid with $(ranks) ranks" for ranks in ((4, 1, 1), (1, 4, 1), (2, 2, 1))
-        @test divergence_free_poisson_solution((16, 16, 8), ranks, topology, child_arch, :fft; z)
+        @test divergence_free_poisson_solution((16, 16, 16), ranks, topology, child_arch, :fft; z)
     end
 end

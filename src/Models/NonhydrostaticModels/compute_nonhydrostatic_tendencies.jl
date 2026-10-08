@@ -105,13 +105,12 @@ end
     return nothing
 end
 
-function compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map=nothing)
+function compute_biogeochemical_transitions!(model, kernel_parameters)
     model_fields = merge(model.velocities, model.tracers, model.auxiliary_fields,
                          biogeochemical_auxiliary_fields(model.biogeochemistry))
 
     return add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry,
-                                           model.grid, model.clock, model_fields;
-                                           kernel_parameters, active_cells_map)
+                                           model.grid, model.clock, model_fields; kernel_parameters)
 end
 
 #####
