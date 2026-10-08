@@ -211,7 +211,7 @@ v_boundary_conditions = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBo
 # warm at the equator and cold at the poles. The flux is written in discrete form so that
 # it can read the surface temperature at each column.
 
-restoring_temperature(φ) = 30 * cosd(φ)^2
+restoring_temperature(φ) = 30 * cos(deg2rad(φ))^2
 
 @inline function temperature_flux(i, j, grid, clock, fields, parameters)
     φ = φnode(i, j, grid.Nz, grid, Center(), Center(), Center())
