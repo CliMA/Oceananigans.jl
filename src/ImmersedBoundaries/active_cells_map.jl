@@ -136,8 +136,9 @@ function active_cells_maps(grid, ib, regions)
 
     last_indices = cumsum(lengths)
     region_maps = ntuple(n -> view(cells, last_indices[n]+1:last_indices[n+1]), N)
+    interior    = view(cells, last_indices[1]+1:last_indices[N+1])
 
-    return (view(cells, lengths[1]+1:last_indices[N+1]), region_maps...)
+    return (interior, region_maps...)
 end
 
 function build_active_cells_map(grid, ib)
