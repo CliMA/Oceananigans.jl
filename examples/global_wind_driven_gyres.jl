@@ -94,10 +94,10 @@ underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 stride = round(Int, 20resolution) # arc-minutes between samples
 etopo_url = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO1_Ice_g_gmt4.nc"
 
-etopo_elevation, etopo_longitude, etopo_latitude = NCDataset(etopo_url) do dataset
+etopo_elevation = NCDataset(etopo_url) do dataset
     i = 1 + stride÷2 : stride : dataset.dim["lon"] - stride÷2
     j = 1 + stride÷2 : stride : dataset.dim["lat"] - stride÷2
-    nomissing(dataset["z"][i, j]), dataset["lon"][i], dataset["lat"][j]
+    nomissing(dataset["z"][i, j])
 end
 
 block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
@@ -342,27 +342,7 @@ end
 gulf_stream = (longitude = (275, 310), latitude = (20, 42))
 kuroshio = (longitude = (118, 160), latitude = (20, 42))
 
-# For the Sverdrup prediction we integrate the interior transport across each basin
-# on the ETOPO grid and take the largest value over the latitudes of the gyre.
-
-etopo_ocean = etopo_elevation .< 0
-etopo_longitude = mod.(etopo_longitude, 360)
-
-function sverdrup_gyre_transport(rotation_rate, basin)
-    transports = map(basin.latitude[1]:resolution:basin.latitude[2]) do latitude
-        j = argmin(abs.(etopo_latitude .- latitude))
-        inside = @. basin.longitude[1] < etopo_longitude < basin.longitude[2]
-        width = count(etopo_ocean[:, j] .& inside) * 2π * R * cosd(latitude) / length(etopo_longitude)
-        return - sverdrup_transport(latitude, rotation_rate) * width
-    end
-    return maximum(transports)
-end
-
-atlantic = (longitude = (280, 360), latitude = (20, 42))
-pacific = (longitude = (120, 250), latitude = (20, 42))
-
-# Now we compare the transport time series with the Sverdrup prediction, which
-# doubles when the rotation rate halves.
+# Now we compare the transport time series at the two rotation rates.
 
 Sv = 1e6 # m³ s⁻¹
 
@@ -377,21 +357,18 @@ for rotation_rate in rotation_rates
     label = coriolis_titles[rotation_rate]
     color = colors[rotation_rate]
 
-    for (name, box, basin) in ((:gulf_stream, gulf_stream, atlantic), (:kuroshio, kuroshio, pacific))
+    for (name, box) in ((:gulf_stream, gulf_stream), (:kuroshio, kuroshio))
         transport = [gyre_transport(streamfunctions[n], box) for n in 1:length(times)]
         lines!(axes[name], times / year, transport / Sv; label, color)
-        hlines!(axes[name], sverdrup_gyre_transport(rotation_rate, basin) / Sv; color, linestyle=:dash)
     end
 end
 
-axislegend(axes.gulf_stream, position=:rt)
+axislegend(axes.gulf_stream, position=:lt)
 save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 
 # ![](western_boundary_current_transports.png)
 #
-# The solid lines are the gyre transports measured in the simulations and the dashed
-# lines the Sverdrup prediction. Halving the rotation rate doubles the transport of
-# both boundary currents.
+# Halving the rotation rate doubles the transport of both boundary currents.
 #
 # ## The gyres
 #
