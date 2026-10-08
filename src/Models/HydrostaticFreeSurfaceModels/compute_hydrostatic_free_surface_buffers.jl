@@ -76,8 +76,7 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary.
         if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, active_cells_map)
         end
     end
 
@@ -132,8 +131,7 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
         if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_tracer_tendencies!(model, nothing; active_cells_map)
+            compute_hydrostatic_tracer_tendencies!(model, active_cells_map)
         end
     end
 

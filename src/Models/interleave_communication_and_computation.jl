@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
-using Oceananigans.Utils: KernelParameters, worksize
+using Oceananigans.Utils: KernelParameters, worksize, get_active_cells_map
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
@@ -30,8 +30,8 @@ end
 complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
-""" Kernel parameters for computing interior tendencies. """
-@inline interior_tendency_kernel_parameters(arch, grid) = KernelParameters(worksize(grid), map(zero, worksize(grid))) # fallback
+""" Kernel parameters for computing interior tendencies: the `:core` active cells map of `grid`, if it has one. """
+@inline interior_tendency_kernel_parameters(arch, grid) = something(get_active_cells_map(grid, Val(:core)), KernelParameters(worksize(grid), map(zero, worksize(grid))))
 
 function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Rx, Ry, _ = arch.ranks
@@ -70,5 +70,5 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     sizes = (Sx, Sy, Wz)
     offsets = (Ox, Oy, 0)
 
-    return KernelParameters(sizes, offsets)
+    return something(get_active_cells_map(grid, Val(:core)), KernelParameters(sizes, offsets))
 end

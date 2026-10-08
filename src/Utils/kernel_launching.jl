@@ -115,9 +115,9 @@ A `MappedFunction` is a wrapper around a function `func` of a kernel that is map
 The `index_map` is a one-dimensional `AbstractArray` where the elements are tuple of indices `(i, j, k, ....)`.
 
 A kernel launched over a `MappedFunction` **needs** to be launched with a one-dimensional **static** workgroup and worksize.
-If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped
-in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a
-one-dimensional workgroup and worksize equal  to the length of the `active_cells_map`.
+If the workspec of `launch!` is an active cells map, the kernel function is wrapped in a `MappedFunction` with
+`index_map` equal to the map, and the resulting kernel is launched with a one-dimensional workgroup and a worksize
+equal to the length of the map.
 """
 struct MappedFunction{F, M} <: Function
     func :: F
@@ -228,7 +228,6 @@ end
 
 """
     configure_kernel(arch, grid, workspec, kernel!;
-                     active_cells_map = nothing,
                      exclude_periphery = false,
                      reduced_dimensions = (),
                      location = nothing)
@@ -241,7 +240,9 @@ Arguments
 
 - `arch`: The architecture on which the kernel will be launched.
 - `grid`: The grid on which the kernel will be executed.
-- `workspec`: The workspec that defines the work distribution.
+- `workspec`: The workspec that defines the work distribution: a `Symbol` such as `:xyz`, a tuple of sizes,
+              `KernelParameters`, or an active cells map, i.e. an array of `(i, j[, k])` indices. A kernel launched
+              over an active cells map is a linear kernel that visits the indices in the map.
 - `kernel!`: The kernel function to be executed.
 
 Keyword Arguments
@@ -249,26 +250,23 @@ Keyword Arguments
 
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, used when `exclude_periphery = true`. Default is `nothing`.
-- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
-                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
 @inline configure_kernel(arch, grid, workspec::Symbol, kernel!; kwargs...) =
     configure_kernel(arch, grid, Val(workspec), kernel!; kwargs...)
 
 @inline function configure_kernel(arch, grid, workspec, kernel!;
-                                  active_cells_map = nothing,
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
                                   location = nothing)
 
     # Transform keyword arguments into arguments to be able to dispatch correctly
-    return configure_kernel(arch, grid, workspec, kernel!, active_cells_map, exclude_periphery;
+    return configure_kernel(arch, grid, workspec, kernel!, Val(exclude_periphery);
                             reduced_dimensions,
                             location)
 end
 
-@inline function configure_kernel(arch, grid, workspec, kernel!, ::Nothing, args...;
+@inline function configure_kernel(arch, grid, workspec, kernel!, ::Val;
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -280,7 +278,7 @@ end
 end
 
 # With a "true" exclude_periphery, we use the `interior_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::Val, kernel!, ::Nothing, ::Val{true};
+@inline function configure_kernel(arch, grid, workspec::Val, kernel!, ::Val{true};
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -292,7 +290,7 @@ end
 end
 
 # When there are KernelParameters, we use the `offset_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Nothing, args...;
+@inline function configure_kernel(arch, grid, workspec::KernelParameters, kernel!, ::Val;
                                   reduced_dimensions = (), kwargs...)
 
     dev  = Architectures.device(arch)
@@ -302,8 +300,8 @@ end
     return loop, worksize::OffsetStaticSize
 end
 
-# When there is an active_cells_map, we use the `mapped_kernel` function
-@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::AbstractArray, args...; kwargs...)
+# An active cells map launches a linear kernel over the indices it holds
+@inline function configure_kernel(arch, grid, active_cells_map::AbstractArray, kernel!, ::Val; kwargs...)
 
     dev  = Architectures.device(arch)
     loop = kernel!(dev, StaticSize((256,)), NDIteration.DynamicSize())
@@ -313,9 +311,6 @@ end
 
     return loop, active_cells_map
 end
-
-# An active cells map can also be the workspec
-@inline configure_kernel(arch, grid, map::AbstractArray, kernel!, ::Nothing, args...; kwargs...) = configure_kernel(arch, grid, map, kernel!, map, args...; kwargs...)
 
 @inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
     f  = kernel.f
@@ -352,14 +347,13 @@ end
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N};
                           exclude_periphery = false,
-                          reduced_dimensions = (),
-                          active_cells_map = nothing) where N
+                          reduced_dimensions = ()) where N
 
-    active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
+    workspec = possibly_load_active_cells_map(grid, workspec, exclude_periphery)
 
     location = Oceananigans.instantiated_location(first(kernel_args))
 
-    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
+    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, Val(exclude_periphery);
                                        location,
                                        reduced_dimensions)
 
@@ -371,22 +365,13 @@ end
     return nothing
 end
 
-# Fallback, use always the provided map
-possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery) = active_cells_map
+# `:xyz` and `:xy` launch over the corresponding active cells map of `grid`, if it has one
+@inline possibly_load_active_cells_map(grid, workspec, exclude_periphery) = workspec
 
-# If we use standard dimensions, load the corresponding map
-@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xyz}, exclude_periphery)
-    exclude_periphery && return nothing
-    return get_active_cells_map(grid, Val(:xyz))
+@inline function possibly_load_active_cells_map(grid, workspec::Union{Val{:xyz}, Val{:xy}}, exclude_periphery)
+    exclude_periphery && return workspec
+    return something(get_active_cells_map(grid, workspec), workspec)
 end
-
-@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xy}, exclude_periphery)
-    exclude_periphery && return nothing
-    return get_active_cells_map(grid, Val(:xy))
-end
-
-@inline possibly_load_active_cells_map(::Nothing, grid, ::Val, exclude_periphery) = nothing
-@inline possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery) = possibly_load_active_cells_map(nothing, grid, Val(workspec), exclude_periphery)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA

@@ -187,24 +187,13 @@ for arch in archs
                 end
 
                 closure = CATKEVerticalDiffusivity()
-
-                catke_grid = LatitudeLongitudeGrid(arch,
-                                                   size = (Nx, Ny, 3),
-                                                   halo = (4, 4, 3),
-                                                   latitude = (-80, 80),
-                                                   longitude = (-160, 160),
-                                                   z = z_face,
-                                                   radius = 10,
-                                                   topology = (Bounded, Bounded, Bounded))
-
                 cpu_arch = cpu_architecture(arch)
-                catke_global_grid = reconstruct_global_grid(catke_grid)
 
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
 
                 # "s" for "serial" computation, "p" for parallel
-                ms = rotation_with_shear_test(catke_global_grid, closure)
-                mp = rotation_with_shear_test(catke_grid, closure)
+                ms = rotation_with_shear_test(global_immersed_grid, closure)
+                mp = rotation_with_shear_test(immersed_active_grid, closure)
 
                 us = interior(on_architecture(CPU(), ms.velocities.u))
                 vs = interior(on_architecture(CPU(), ms.velocities.v))

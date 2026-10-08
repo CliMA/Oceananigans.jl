@@ -7,7 +7,6 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Utils: get_active_cells_map
 
 """
 $(TYPEDSIGNATURES)
@@ -26,10 +25,9 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
     complete_communication_and_compute_momentum_buffer!(model, grid, arch)
 
     for callback in callbacks
@@ -61,10 +59,9 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map  = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
     compute_tracer_flux_bcs!(model)
 
@@ -87,26 +84,26 @@ compute_free_surface_tendency!(grid, model, free_surface, Δt) = nothing
 end
 
 """
-    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
 
-Compute tracer tendencies in the grid interior (or on specified active cells).
+Compute tracer tendencies over `kernel_parameters`, which may be an active cells map.
 
 Launches the tracer tendency kernel for each tracer, computing advection, diffusion,
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
 
-function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
     arch = model.architecture
     grid = model.grid
 
     foreach_name(model.tracers) do val_tracer_index, val_tracer_name
-        launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
+        launch_tracer_tendency!(model, arch, grid, kernel_parameters, val_tracer_index, val_tracer_name)
     end
 
     return nothing
 end
 
-@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
+@inline function launch_tracer_tendency!(model, arch, grid, kernel_parameters, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
 
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
     @inbounds c_advection   = model.advection[tracer_name]
@@ -130,18 +127,17 @@ end
             model.closure_fields,
             model.auxiliary_fields,
             model.clock,
-            c_forcing;
-            active_cells_map)
+            c_forcing)
 
     return nothing
 end
 
 """
-    compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+    compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters)
 
-Compute momentum tendencies for `u` and `v` in the grid interior (or on specified active cells).
+Compute momentum tendencies for `u` and `v` over `kernel_parameters`, which may be an active cells map.
 """
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters)
 
     grid = model.grid
     arch = architecture(grid)
@@ -167,7 +163,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.auxiliary_fields,
             model.vertical_coordinate,
             model.clock,
-            u_forcing; active_cells_map)
+            u_forcing)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
@@ -184,7 +180,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.auxiliary_fields,
             model.vertical_coordinate,
             model.clock,
-            v_forcing; active_cells_map)
+            v_forcing)
 
     return nothing
 end
