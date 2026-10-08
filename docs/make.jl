@@ -38,6 +38,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "global_wind_driven_gyres.jl",
         "single_column_parameter_estimation.jl",
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
@@ -141,6 +142,7 @@ example_pages = [
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
     "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md",
+    "Global wind-driven gyres"              => "literated/global_wind_driven_gyres.md",
     "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
 ]
 
