@@ -174,13 +174,7 @@ function NonhydrostaticModel(grid;
         if isnothing(free_surface)
             nonhydrostatic_pressure = CenterField(grid)
         else
-        # elseif free_surface isa ImplicitFreeSurface
-            # Use a MixedBoundaryCondition for the top bc for pressure
-            coefficient = Ref(zero(grid))
-            combination = Field{Center, Center, Nothing}(grid)
-            top_bc = MixedBoundaryCondition(coefficient, combination)
-            pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
-            nonhydrostatic_pressure = CenterField(grid; boundary_conditions=pressure_bcs)
+            nonhydrostatic_pressure = free_surface_pressure_field(grid)
         end
     end
 
@@ -327,6 +321,8 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
         pressure_solver = nonhydrostatic_pressure_solver(grid, free_surface)
     end
 
+    pressure_solver = immersed_top_free_surface_solver(pressure_solver, grid, free_surface)
+
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracer_names, grid, clock)
     model_fields = merge(velocities, tracers, auxiliary_fields)
@@ -441,3 +437,12 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
 end
 
 restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
+
+# Use a MixedBoundaryCondition for the top bc for pressure
+function free_surface_pressure_field(grid)
+    coefficient = Ref(zero(grid))
+    combination = Field{Center, Center, Nothing}(grid)
+    top_bc = MixedBoundaryCondition(coefficient, combination)
+    pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
+    return CenterField(grid; boundary_conditions=pressure_bcs)
+end
