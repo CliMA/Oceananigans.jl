@@ -2,7 +2,8 @@
 #
 # This example is a stripped-down version of the global ocean configurations used for
 # OMIP-style simulations: a [`TripolarGrid`](@ref) with realistic bathymetry,
-# a ``z^\star`` vertical coordinate, and a [`SplitExplicitFreeSurface`](@ref).
+# a [``z^\star`` vertical coordinate](@ref "Vertical coordinates"),
+# and a [`SplitExplicitFreeSurface`](@ref).
 # To keep it cheap enough for a laptop GPU, the grid is 1° with four layers.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
@@ -35,6 +36,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Coriolis: DualGridScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
@@ -123,13 +125,13 @@ interpolate!(bottom_height, elevation_field)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height, InterfaceImmersedCondition()); active_cells_map=true)
 
-# The tripolar grid is curvilinear, so we draw maps with `surface!` on the grid's own
-# longitudes and latitudes, which run from 70°E eastward around the globe, and hide the land.
+# The Makie extension draws the bathymetry field in the tripolar grid's own
+# longitudes and latitudes, which run from 70°E eastward around the globe. We hide
+# the land by setting non-positive depths to NaN.
 
-λ = Array(λnodes(underlying_grid, Center(), Center(), Center()))
-φ = Array(φnodes(underlying_grid, Center(), Center(), Center()))
-depth = - Array(interior(bottom_height_field(grid), :, :, 1))
-land = depth .≤ 0
+height = bottom_height_field(grid)
+bathymetry = Field{Center, Center, Nothing}(underlying_grid)
+interior(bathymetry) .= ifelse.(interior(height) .< 0, .-interior(height), FT(NaN))
 
 longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
@@ -139,8 +141,7 @@ map_axis(figure_position; title="", limits=((70, 430), (-80, 70)), xticks=longit
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title="Ocean depth")
-sf = surface!(ax, λ, φ, 0 * λ; color=ifelse.(land, NaN, depth), colormap=:deep,
-              shading=NoShading, nan_color=:gray)
+sf = surface!(ax, bathymetry; colormap=:deep, nan_color=:gray)
 Colorbar(fig[1, 2], sf, label="Depth [m]")
 save("bathymetry.png", fig, px_per_unit=2) #hide
 
@@ -186,11 +187,11 @@ sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρ₀ * 2 * rota
 
 latitudes = -80:0.5:80
 
-fig = Figure(size=(800, 300))
-ax = Axis(fig[1, 1], xlabel="Latitude [°]", ylabel="Zonal wind stress [N m⁻²]")
-lines!(ax, latitudes, [zonal_wind_stress(φ, wind_belts) for φ in latitudes])
-ax = Axis(fig[1, 2], xlabel="Latitude [°]", ylabel="Sverdrup transport [m² s⁻¹]")
-lines!(ax, latitudes[abs.(latitudes) .> 5], sverdrup_transport.(latitudes[abs.(latitudes) .> 5], Ω))
+fig = Figure(size=(800, 400))
+ax = Axis(fig[1, 1], xlabel="Zonal wind stress [N m⁻²]", ylabel="Latitude [°]")
+lines!(ax, [zonal_wind_stress(φ, wind_belts) for φ in latitudes], latitudes)
+ax = Axis(fig[1, 2], xlabel="Sverdrup transport [m² s⁻¹]", ylabel="Latitude [°]")
+lines!(ax, sverdrup_transport.(latitudes[abs.(latitudes) .> 5], Ω), latitudes[abs.(latitudes) .> 5])
 save("wind_stress.png", fig, px_per_unit=2) #hide
 
 # ![](wind_stress.png)
@@ -334,8 +335,10 @@ f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=DualGridScheme(gri
 times = ψt.times
 
 function gyre_transport(ψ, box)
-    inside = @. (box.longitude[1] < mod(λ, 360) < box.longitude[2]) & (box.latitude[1] < φ < box.latitude[2])
-    values = interior(ψ, :, :, 1)[inside]
+    inside = Field{Center, Center, Nothing}(ψ.grid)
+    set!(inside, (λ, φ) -> (box.longitude[1] < mod(λ, 360) < box.longitude[2]) &
+                           (box.latitude[1] < φ < box.latitude[2]))
+    values = interior(ψ, :, :, 1)[interior(inside, :, :, 1) .== 1]
     return maximum(values) - minimum(values)
 end
 
@@ -377,15 +380,19 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 # else, so we set ``ψ = 0`` on North America. Note the ten times larger color range of
 # the ``f``-plane map.
 
-north_america = argmin(@. (mod(λ, 360) - 260)^2 + (φ - 40)^2)
+height_cpu = on_architecture(CPU(), height)
+land = interior(height_cpu, :, :, 1) .≥ 0
+distance_to_north_america = Field{Center, Center, Nothing}(height_cpu.grid)
+set!(distance_to_north_america, (λ, φ) -> (mod(λ, 360) - 260)^2 + (φ - 40)^2)
+north_america = argmin(interior(distance_to_north_america, :, :, 1))
 
 function streamfunction_map!(fig, row, filename; title, colorrange)
     streamfunctions = FieldTimeSeries(filename, "ψ")
-    ψ_end = interior(streamfunctions[end], :, :, 1)
-    streamfunction = ifelse.(land, NaN, (ψ_end .- ψ_end[north_america]) / Sv)
+    ψ_end = streamfunctions[end]
+    reference = ψ_end[north_america[1], north_america[2], 1]
+    streamfunction = Field((ψ_end - reference) / Sv)
     axis = map_axis(fig[row, 1]; title)
-    sf = surface!(axis, λ, φ, 0 * λ; color=streamfunction, colormap=:balance, colorrange,
-                  shading=NoShading, nan_color=:gray)
+    sf = surface!(axis, streamfunction; colormap=:balance, colorrange, nan_color=:gray)
     Colorbar(fig[row, 2], sf, label="Streamfunction [Sv]")
     return nothing
 end
@@ -426,12 +433,12 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # poleward along the coast, while the fast ``f``-plane gyres stir the whole basin into
 # lobes several degrees warm and cold.
 
-restoring_profile = restoring_temperature.(φ)
-
 gulf_stream_view = (limits = ((260, 320), (15, 55)), xticks = (270:15:315, ["90°W", "75°W", "60°W", "45°W"]))
 kuroshio_view = (limits = ((115, 175), (15, 55)), xticks = (120:15:165, ["120°E", "135°E", "150°E", "165°E"]))
 
 tripolar_grid = TripolarGrid(CPU(), Float64; size=(Nx, Ny, 1), z=(0, 1)) ## the regridder needs Float64 coordinates
+restoring_profile = Field{Center, Center, Nothing}(tripolar_grid)
+set!(restoring_profile, (λ, φ) -> restoring_temperature(φ))
 
 latitude_longitude_grid((longitude, latitude)) =
     LatitudeLongitudeGrid(CPU(), Float64; longitude, latitude, topology=(Bounded, Bounded, Flat),
@@ -446,7 +453,7 @@ function regrid_temperature_anomaly(temperatures)
     regional_anomalies = [FieldTimeSeries{Center, Center, Nothing}(grid, temperatures.times) for grid in regional_grids]
 
     for n in eachindex(temperatures.times)
-        set!(anomaly, ifelse.(land, NaN, interior(temperatures[n], :, :, 1) .- restoring_profile))
+        set!(anomaly, ifelse.(land, NaN, interior(temperatures[n], :, :, 1) .- interior(restoring_profile, :, :, 1)))
         for (anomalies, regridder) in zip(regional_anomalies, regridders)
             ConservativeRegridding.regrid!(anomalies[n], regridder, anomaly)
         end
@@ -462,11 +469,10 @@ Label(fig[1, 1:5], @lift(@sprintf("After %.1f years", times[$n] / year)); fontsi
 
 for (row, (filename, title, _)) in enumerate(experiments)
     speeds = FieldTimeSeries(filename, "surface_speed")
-    speed = @lift ifelse.(land, NaN, interior(speeds[$n], :, :, 1))
+    speed = @lift speeds[$n]
 
     ax = map_axis(fig[row + 1, 1]; title="Surface speed, " * title)
-    sf = surface!(ax, λ, φ, 0 * λ; color=speed, colormap=:magma, colorrange=(0, 0.3),
-                  shading=NoShading, nan_color=:gray)
+    sf = surface!(ax, speed; colormap=:magma, colorrange=(0, 0.3), nan_color=:gray)
     row == 1 && Colorbar(fig[2:4, 2], sf, label="Speed [m s⁻¹]")
 
     regional_anomalies = regrid_temperature_anomaly(FieldTimeSeries(filename, "surface_temperature"))
