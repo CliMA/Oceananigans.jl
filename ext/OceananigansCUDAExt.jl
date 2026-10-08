@@ -150,6 +150,13 @@ Base.elsize(::Type{<:Int32IndexedArray{T}}) where T = sizeof(T)
 Base.pointer(a::Int32IndexedArray{T}, i::Integer = 1) where T = a.ptr + (Int(i) - 1) * sizeof(T)
 Base.unsafe_convert(::Type{Core.LLVMPtr{T, A}}, a::Int32IndexedArray{T, <:Any, A}) where {T, A} = a.ptr
 
+# The device form stands in for a `CuDeviceArray`, so it answers `architecture` as `CuDeviceArray` does (above). Host
+# code that receives converted arguments asks for it: `update_pole_value!` launches on `architecture(bc.data)` of the
+# device-form PolarValue that `fill_halo_regions!(::Field)` passes after `convert_to_device` (reached by a Float64 grid
+# regridding Float32 ETOPO topography on a global source grid).
+AC.architecture(::Int32IndexedArray) = CUDAGPU()
+AC.architecture(::Type{<:Int32IndexedArray}) = CUDAGPU()
+
 # 0-based linear index of the 1-based indices `I`, in Int32: (i₁ - 1) + d₁ ((i₂ - 1) + d₂ (…)).
 @inline int32_linear_index(::Tuple{}, ::Tuple{}) = Int32(0)
 @inline int32_linear_index(dims::Tuple, I::Tuple) =
