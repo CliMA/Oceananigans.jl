@@ -401,7 +401,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: PeriodicBoundaryCondition
 ├── north: PeriodicBoundaryCondition
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
@@ -458,12 +458,12 @@ model.velocities.u.boundary_conditions
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: NormalFlowBoundaryCondition{Nothing}: Nothing
-├── east: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── west: NormalFlowBoundaryCondition{Nothing}: nothing
+├── east: NormalFlowBoundaryCondition{Nothing}: nothing
 ├── south: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── north: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Flux, north=Flux, bottom=Flux, top=Flux
 ```
 
