@@ -583,3 +583,65 @@ end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
 Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+
+#####
+##### Kernel parameters that extend into the halos
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D variables in the interior plus one extra cell
+in the horizontal directions (indices `0:Nx+1` and `0:Ny+1`).
+
+The extra cells provide the values that interior stencils read at cell faces (e.g., for viscous fluxes)
+without requiring (possibly costly) halo exchanges.
+"""
+@inline function extended_interior_kernel_parameters(grid)
+    Wx, Wy, Wz = worksize(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    kk = 1:Wz
+
+    return KernelParameters(ii, jj, kk)
+end

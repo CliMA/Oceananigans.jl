@@ -92,6 +92,7 @@ end
 KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::StaticSize{S}, offset) where S = contiguousrange(S, offset)
+contiguousrange(::KernelParameters{S, O}) where {S, O} = contiguousrange(S, O)
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 
 # Heuristic for 1-tuple, 2-tuple and 3-tuple of integers
@@ -313,6 +314,9 @@ end
     return loop, active_cells_map
 end
 
+# An active cells map can also be the workspec
+@inline configure_kernel(arch, grid, map::AbstractArray, kernel!, ::Nothing, args...; kwargs...) = configure_kernel(arch, grid, map, kernel!, map, args...; kwargs...)
+
 @inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
     f  = kernel.f
     mf = MappedFunction(f, map)
@@ -345,15 +349,6 @@ end
 @inline launch!(arch, grid, workspec::Symbol, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, Val(workspec), kernel!, kernel_args...; kw...)
 @inline launch!(arch, grid, workspec::Val, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
-@inline launch_split_maps!(::Tuple{}, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = nothing
-
-@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; exclude_periphery = false, reduced_dimensions = ()) where N
-    cells_map = first(maps)
-    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
-    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
-    return nothing
-end
-
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N};
                           exclude_periphery = false,
@@ -361,12 +356,6 @@ end
                           active_cells_map = nothing) where N
 
     active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
-
-    # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
-    if active_map isa NamedTuple
-        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
-        return nothing
-    end
 
     location = Oceananigans.instantiated_location(first(kernel_args))
 
