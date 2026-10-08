@@ -380,13 +380,23 @@ type and looking up the compiled kernel on every launch.
 
 """
     kernel_launch_workgroup(f, ::Val{default})
+    kernel_launch_workgroup(f, ::Val{default}, ::Val{launch_size})
     kernel_launch_maxregs(f)
 
 Per-kernel launch configuration of configured kernels, by kernel function `f` (the backend function of a
 KernelAbstractions kernel, see `gpu_kernel_function`), on
 backends whose launch supports it (CUDA's cached launch, `launch_configured_kernel!`): the workgroup to launch
-`f` with in place of the configured `default` (a tuple of the same length), and a cap on the registers per
+`f` with in place of the configured `default`, and a cap on the registers per
 thread `f` is compiled with (`0`: none). The fallbacks change nothing.
+
+The launch reads the three-argument method, whose fallback is the two-argument one. `launch_size` is the size of
+the launch's static range, one entry per dimension of the range (`(Nx, Ny, Nz)` for an `:xyz` launch, `(Nx, Ny)`
+for an `:xy` one, the extents of an offset range), so that an entry can depend on the dimensions and the extent
+of the launch. The workgroup returned has at least as many entries as `default` and at most as many as
+`launch_size`: where `default` is two-dimensional (the `(16, 16)` of a three-dimensional launch, which
+KernelAbstractions pads with ones), an entry may add an extent along the third dimension, e.g. `(32, 1, 8)`.
+The blocks of a launch tile its range in the order of its dimensions (first fastest), so such a block spans 8
+levels of 32 cells of one row, and the levels above and below a cell are read by the same block.
 
 Both change only how the same kernel body is launched — the mapping of threads to indices and the register
 allocation — not what it computes at an index, so a kernel whose result at an index depends on that index only
@@ -396,11 +406,14 @@ is bit-identical under any entry. A kernel that uses shared memory, the group si
 
     using Oceananigans.Utils: gpu_kernel_function
     Oceananigans.Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(my_kernel!)), ::Val{(16, 16)}) = (32, 8)
+    Oceananigans.Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(my_kernel!)), ::Val{(16, 16)}, ::Val{S}) where S =
+        length(S) == 3 ? (32, 1, 8) : (32, 8)
     Oceananigans.Utils.kernel_launch_maxregs(::typeof(gpu_kernel_function(my_kernel!))) = 64
 
 Launches that do not take the cached path (see `launch_configured_kernel!`) keep the configured launch.
 """
 @inline kernel_launch_workgroup(f, ::Val{default}) where default = default
+@inline kernel_launch_workgroup(f, default::Val, launch_size::Val) = kernel_launch_workgroup(f, default)
 @inline kernel_launch_maxregs(f) = 0
 
 struct KernelFunctionProbe <: KA.GPU end

@@ -33,6 +33,44 @@ end
 Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_stencil_configured!)), ::Val{W}) where W = ntuple(d -> d == 1 ? 4 : 2, length(W))
 Utils.kernel_launch_maxregs(::typeof(gpu_kernel_function(_stencil_configured!))) = 32
 
+# The same body with entries that depend on the launch's static range (the three-argument method): a workgroup
+# with an extent along the third dimension on every three-dimensional range, and one only on large ranges.
+@kernel function _stencil_k_tiled!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = (b[i+1, j, k] - b[i-1, j, k]) * b[i, j+1, k] + b[i, j, k-1] / (1 + b[i, j, k+1]^2)
+end
+
+@kernel function _stencil_k_tiled_when_large!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = (b[i+1, j, k] - b[i-1, j, k]) * b[i, j+1, k] + b[i, j, k-1] / (1 + b[i, j, k+1]^2)
+end
+
+# Two-dimensional launches: an entry that adds a third extent only where the range has three dimensions
+# (so it keeps the two-dimensional workgroup here), and one that returns three extents whatever the range.
+@kernel function _surface_copy!(a, grid, b)
+    i, j = @index(Global, NTuple)
+    @inbounds a[i, j, 1] = b[i, j, 1] + zero(grid)
+end
+
+@kernel function _surface_copy_three_extents!(a, grid, b)
+    i, j = @index(Global, NTuple)
+    @inbounds a[i, j, 1] = b[i, j, 1] + zero(grid)
+end
+
+@kernel function _copy_too_many_threads!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = b[i, j, k] + zero(grid)
+end
+
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_stencil_k_tiled!)), ::Val{W}, ::Val{S}) where {W, S} =
+    length(S) == 3 ? (4, 1, 2) : W
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_stencil_k_tiled_when_large!)), ::Val{W}, ::Val{S}) where {W, S} =
+    length(S) == 3 && S[1] * S[2] >= 48 ? (4, 1, 2) : W
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_surface_copy!)), ::Val{W}, ::Val{S}) where {W, S} =
+    length(S) == 3 ? (4, 1, 2) : (4, 2)
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_surface_copy_three_extents!)), ::Val, ::Val) = (4, 1, 2)
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_copy_too_many_threads!)), ::Val, ::Val) = (64, 1, 32)
+
 function stencil(kernel!, grid, workspec = :xyz)
     a = CenterField(grid)
     b = CenterField(grid)
@@ -148,6 +186,38 @@ end
         @test length(keys_of(gpu__stencil_configured!)) >= 2                                 # :xyz and the offset range
         @test all(key -> key[4] == 256 && key[6] == 0, keys_of(gpu__stencil_default!))
         @test all(kernel -> CUDA.registers(kernel) <= 32, [Ext.cached_launch_kernels[key] for key in keys_of(gpu__stencil_configured!)])
+
+        # Entries that read the launch's static range (the three-argument method). A workgroup with an extent along
+        # the third dimension changes which thread computes which cell, not the result: full range and offset range.
+        @test Utils.kernel_launch_workgroup(gpu__stencil_default!, Val((16, 16)), Val((8, 6, 4))) === (16, 16)       # fallbacks
+        @test Utils.kernel_launch_workgroup(gpu__stencil_configured!, Val((16, 16)), Val((8, 6, 4))) === (4, 2)
+        @test Ext.static_launch_size(typeof(Utils.OffsetStaticSize((2:7, 2:5, 2:3)))) === (6, 4, 2)
+        fill!(Ext.cached_launch_counts, 0)
+        for grid in (regular, stretched, latlon), range in (:xyz, KernelParameters(2:7, 2:5, 2:3))
+            default = stencil(_stencil_default!, grid, range)
+            for kernel! in (_stencil_k_tiled!, _stencil_k_tiled_when_large!)
+                k_tiled = stencil(kernel!, grid, range)
+                @test reinterpret(UInt64, k_tiled) == reinterpret(UInt64, default)
+            end
+            @test any(!iszero, default)
+        end
+        @test Ext.cached_launch_counts[2] == 0
+        workgroups_of(f) = sort(unique([key[4] for key in keys_of(f)]))                      # maxthreads of its compiled kernels
+        @test workgroups_of(gpu__stencil_k_tiled!) == [8]                                    # (4, 1, 2) on both ranges
+        @test all(key -> occursin("StaticSize{(4, 1, 2)}", string(key[3])), keys_of(gpu__stencil_k_tiled!))
+        @test workgroups_of(gpu__stencil_k_tiled_when_large!) == [8, 256]                    # 8 × 6 levels: (4, 1, 2); 6 × 4: as configured
+        # decided at compile time: the configured kernel object is inferred
+        loop! = _stencil_k_tiled!(CUDA.CUDABackend(), (16, 16), size(regular))
+        @test (@inferred Ext.configured_kernel(loop!)) isa Oceananigans.Utils.KA.Kernel{<:Any, Oceananigans.Utils.KA.StaticSize{(4, 1, 2)}}
+        # a two-dimensional launch of a kernel whose entry adds a third extent only on three-dimensional ranges
+        a, b = CenterField(regular), CenterField(regular)
+        set!(b, (x, y, z) -> x - 2y + z)
+        launch!(arch, regular, :xy, _surface_copy!, a, regular, b)
+        @test Array(interior(a, :, :, 1)) == Array(interior(b, :, :, 1)) && iszero(Array(interior(a, :, :, 2:4)))
+        @test all(key -> occursin("StaticSize{(4, 2)}", string(key[3])), keys_of(gpu__surface_copy!))
+        # entries the range cannot take: more extents than the range has dimensions, more than 1024 threads
+        @test_throws ArgumentError launch!(arch, regular, :xy, _surface_copy_three_extents!, a, regular, b)
+        @test_throws ArgumentError launch!(arch, regular, :xyz, _copy_too_many_threads!, a, regular, b)
 
         # The batched tridiagonal solve's default workgroup entry (32 × 8): cached launch (entry applied) against
         # the standard launch (16 × 16), several blocks in each direction.

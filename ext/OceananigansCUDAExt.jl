@@ -357,14 +357,22 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 
 @inline cached_kernel_launch!(loop!, args...) = standard_kernel_launch!(loop!, dynamic_launch, args...)
 
+# The size of a static launch range, one entry per dimension: a constant of the range's type.
+@inline static_launch_size(::Type{KA.StaticSize{S}}) where S = S
+@generated static_launch_size(::Type{UT.OffsetStaticSize{S}}) where S = map(r -> r isa Integer ? Int(r) : length(r), S)
+
 # The kernel object with the workgroup of its per-kernel launch configuration (`UT.kernel_launch_workgroup`):
-# the object itself unless an entry names another workgroup, decided at compile time on the kernel function
-# and the configured workgroup.
-@inline function configured_kernel(obj::KA.Kernel{CUDABackend, KA.StaticSize{W}, N, F}) where {W, N, F}
-    W′ = UT.kernel_launch_workgroup(obj.f, Val(W))
+# the object itself unless an entry names another workgroup, decided at compile time on the kernel function,
+# the configured workgroup and the size of the launch's static range. An entry has at least the dimensions of
+# the configured workgroup and at most those of the range (a two-dimensional `(16, 16)` may become `(32, 1, 8)`
+# on a three-dimensional range), and at most 1024 threads.
+@inline function configured_kernel(obj::KA.Kernel{CUDABackend, KA.StaticSize{W}, N, F}) where {W, N <: StaticNDRange, F}
+    L = static_launch_size(N)
+    W′ = UT.kernel_launch_workgroup(obj.f, Val(W), Val(L))
     W′ === W && return obj
-    (W′ isa NTuple{length(W), Int} && all(>(0), W′)) ||
-        throw(ArgumentError("kernel_launch_workgroup of $(nameof(F)) must return a tuple of $(length(W)) positive integers, not $(W′)"))
+    (W′ isa Tuple{Vararg{Int}} && length(W) <= length(W′) <= length(L) && all(>(0), W′) && prod(W′) <= 1024) ||
+        throw(ArgumentError("kernel_launch_workgroup of $(nameof(F)) must return $(length(W)) to $(length(L)) positive integers " *
+                            "with a product of at most 1024 for a launch over $(L), not $(W′)"))
     return KA.Kernel{CUDABackend, KA.StaticSize{W′}, N, F}(KA.backend(obj), obj.f)
 end
 
