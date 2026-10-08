@@ -120,7 +120,8 @@ end
 """
 function regular_faces(FT, c₁, c₂, N, H, total)
     interior = range(FT(c₁), FT(c₂), length = N + 1)
-    return StepRangeLen{FT}(interior.ref, interior.step, total, interior.offset + H)
+    faces = StepRangeLen{FT}(interior.ref, interior.step, max(total, interior.offset + H), interior.offset + H)
+    return faces[1:total]
 end
 
 # The `total` cell centers between the regular faces `F`
