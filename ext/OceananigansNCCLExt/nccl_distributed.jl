@@ -25,6 +25,8 @@ MPI.Barrier(c::NCCLCommunicator) = MPI.Barrier(c.mpi)
 MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs...)
 MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
 MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
+DC.mpi_communicator(c::NCCLCommunicator) = c.mpi
+DC.check_field_tags(c::NCCLCommunicator, field_count) = DC.check_field_tags(c.mpi, field_count)
 
 # The host MPI library need not be CUDA-aware: device buffers reaching these forwarded
 # collectives (e.g. the tiny result arrays of distributed field reductions) must be
@@ -79,8 +81,7 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.local_index,
                           mpi_arch.connectivity,
                           nccl_communicator,
-                          mpi_arch.mpi_requests,
-                          mpi_arch.mpi_tag,
+                          mpi_arch.field_count,
                           mpi_arch.devices)
 end
 
@@ -143,11 +144,7 @@ function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
     # Synchronize when using heterogeneous NCCL/MPI
-    if !isempty(arch.mpi_requests)
-        DC.cooperative_waitall!(arch.mpi_requests)
-        arch.mpi_tag[] = 0
-        empty!(arch.mpi_requests)
-    end
+    DC.wait_for_messages!(field)
 
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)
@@ -167,7 +164,7 @@ end
 ##### NCCL corner communication
 #####
 
-function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
+function DC.fill_corners!(c, connectivity, arch::NCCLDistributedArchitecture,
                           grid, buffers; only_local_halos=false, kw...)
     only_local_halos && return nothing
 

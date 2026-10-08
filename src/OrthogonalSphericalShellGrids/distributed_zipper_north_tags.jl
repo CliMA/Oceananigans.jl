@@ -5,56 +5,39 @@ import Oceananigans.DistributedComputations: north_recv_tag,
                                              northeast_recv_tag,
                                              northeast_send_tag
 
-ID_DIGITS = 2
-
-sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
-side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
-
-# Change these and we are golden!
-function north_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "8" : string(side_id[:south])
-    return parse(Int, field_id * loc_digit * side_digit)
+# On the last rank the fold exchanges use the extra slots 8, 9 and 10
+function north_recv_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 8 : side_id[:south]
+    return Int(halo_tag_slots * field_id + slot)
 end
 
-function north_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "8" : string(side_id[:north])
-    return parse(Int, field_id * loc_digit * side_digit)
+function north_send_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 8 : side_id[:north]
+    return Int(halo_tag_slots * field_id + slot)
 end
 
-function northwest_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "9" : string(side_id[:southeast])
-    return parse(Int, field_id * loc_digit * side_digit)
+function northwest_recv_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 9 : side_id[:southeast]
+    return Int(halo_tag_slots * field_id + slot)
 end
 
-function northwest_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "9" : string(side_id[:northwest])
-    return parse(Int, field_id * loc_digit * side_digit)
+function northwest_send_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 9 : side_id[:northwest]
+    return Int(halo_tag_slots * field_id + slot)
 end
 
-function northeast_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "10" : string(side_id[:southwest])
-    return parse(Int, field_id * loc_digit * side_digit)
+function northeast_recv_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 10 : side_id[:southwest]
+    return Int(halo_tag_slots * field_id + slot)
 end
 
-function northeast_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
-    field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-    loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
-    last_rank  = arch.local_index[2] == ranks(arch)[2]
-    side_digit = last_rank ? "10" : string(side_id[:northeast])
-    return parse(Int, field_id * loc_digit * side_digit)
+function northeast_send_tag(arch, ::MPITripolarGridOfSomeKind, field_id)
+    last_rank = arch.local_index[2] == ranks(arch)[2]
+    slot = last_rank ? 10 : side_id[:northeast]
+    return Int(halo_tag_slots * field_id + slot)
 end

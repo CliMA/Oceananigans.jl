@@ -2,6 +2,8 @@ using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Ax�
     Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
 using Oceananigans.Fields: Field, condition_operand, conditional_length
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Grids: Center
 
 #####
 ##### Volume-inverse-weighted residual norm
@@ -14,23 +16,11 @@ struct VolumeInverseNorm{G}
     grid :: G
 end
 
-@kernel function _scale_by_volume_inverse!(r, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds r[i, j, k] = r[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-end
-
-@kernel function _scale_by_volume!(r, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds r[i, j, k] = r[i, j, k] * Vᶜᶜᶜ(i, j, k, grid)
-end
+@inline volume_inverse_weighted(i, j, k, grid, r) = @inbounds r[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 
 function (vin::VolumeInverseNorm)(r)
-    grid = vin.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, _scale_by_volume_inverse!, r, grid)
-    n = norm(r)
-    launch!(arch, grid, :xyz, _scale_by_volume!, r, grid)
-    return n
+    V⁻¹r = KernelFunctionOperation{Center, Center, Center}(volume_inverse_weighted, vin.grid, r)
+    return norm(V⁻¹r)
 end
 
 Base.summary(::VolumeInverseNorm) = "VolumeInverseNorm"
