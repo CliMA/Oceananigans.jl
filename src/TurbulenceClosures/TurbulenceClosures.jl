@@ -66,7 +66,7 @@ using Oceananigans.Operators: Operators,
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tuple
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, ImmersedTopIBG
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
@@ -189,6 +189,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
 @inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_top(i, j, ibg::ImmersedTopIBG) = @inbounds ibg.immersed_boundary.top_height[i, j, 1]
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
