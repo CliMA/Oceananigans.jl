@@ -248,7 +248,7 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                                      val_tracer_index, val_tracer_name, advection, closure,
-                                                                     c_immersed_bc, buoyancy, biogeochemistry,
-                                                                     velocities, free_surface, tracers, closure_fields, auxiliary_fields,
+                                                                     c_immersed_bc, buoyancy, biogeochemistry, velocities, 
+                                                                     free_surface, tracers, closure_fields, auxiliary_fields,
                                                                      clock, forcing)
 end
