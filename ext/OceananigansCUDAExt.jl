@@ -260,10 +260,40 @@ end
 @inline is_device_form_type(::Type{T}) where T =
     isbitstype(T) && has_no_raw_pointer(T) && (Core.Compiler.return_type(CUDA.cudaconvert, Tuple{T}) === T)
 
+# Inference cannot always type `cudaconvert` of an `isbits`, pointer-free argument (a closure whose captured values
+# Adapt rebuilds through a call inference gives up on: `return_type` is then not concrete). The compile-time test
+# above says no for such a type although `cudaconvert` returns its values unchanged, and every launch that takes
+# such an argument would miss the cached launch. For exactly those types the question is settled once per type,
+# from the first value seen: the type is a device form when `cudaconvert` gives that value back with its type.
+# (`CHECK_CACHED_KERNEL_LAUNCH[] = true` asserts `cudaconvert(args) === args` on every cached launch.) A type
+# whose conversion infers to another concrete type (a host object) is never asked.
+@inline function undecided_device_form_type(::Type{T}) where T
+    (isbitstype(T) && has_no_raw_pointer(T)) || return false
+    C = Core.Compiler.return_type(CUDA.cudaconvert, Tuple{T})
+    return !(C === T) && !isconcretetype(C)
+end
+
+const observed_device_forms = IdDict{Any, Bool}()
+const observed_device_form_lock = ReentrantLock()
+
+@noinline function observed_device_form(x::T) where T
+    observed = @lock observed_device_form_lock get(observed_device_forms, T, nothing)
+    if observed === nothing
+        observed = typeof(CUDA.cudaconvert(x)) === T
+        @lock observed_device_form_lock observed_device_forms[T] = observed
+    end
+    return observed::Bool
+end
+
+# Whether the argument `x` is in its device form: decided on its type at compile time, or, where that is
+# undecided, from the per-type observation.
+@inline is_device_form(x::T) where T =
+    is_device_form_type(T) || (undecided_device_form_type(T) && observed_device_form(x))
+
 # The conversion path gives the converted arrays 32-bit index arithmetic (`int32_indexed`, above); its result is in
 # device form (an `OffsetArray` over an `Int32IndexedArray` is `isbits`, pointer-free for this test and returned
 # unchanged by `cudaconvert`), so converting it again passes it through.
-@inline device_form(x::T) where T = is_device_form_type(T) ? x : int32_indexed(CUDA.cudaconvert(x))
+@inline device_form(x::T) where T = is_device_form(x) ? x : int32_indexed(CUDA.cudaconvert(x))
 
 @inline AC.convert_to_device(::CUDAGPU, args) = device_form(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(device_form, args)
@@ -307,7 +337,7 @@ end
 # boundary conditions with field time series, field tuples), rebuild the argument tuple type and look up
 # the compiled kernel, and the compiled kernel's call converts the arguments once more — on every launch.
 # Oceananigans has already converted them (`Architectures.convert_to_device`), so for a kernel with a
-# static workgroup and ndrange whose arguments are all in their device form (`is_device_form_type`), this launches the
+# static workgroup and ndrange whose arguments are all in their device form (`is_device_form`), this launches the
 # same compiled kernel (`cufunction` with the same function, argument types, `maxthreads` and
 # `always_inline`), cached per CUDA context, kernel function, argument types and compile options, with
 # the same threads and blocks (computed per launch from the kernel's own static sizes, exactly as
@@ -344,11 +374,11 @@ end
 
 @inline dynamic_launch(args) = :dynamic
 
-# Whether every argument of a launch is in its device form (see `is_device_form_type`; a `Type` argument is
+# Whether every argument of a launch is in its device form (see `is_device_form`; a `Type` argument is
 # not `isbits`, so the argument tuple type then equals the `Tuple{map(Core.Typeof, args)...}` that `@cuda`
 # compiles for).
 @inline all_device_form(::Tuple{}) = true
-@inline all_device_form(args::Tuple) = is_device_form_type(typeof(first(args))) & all_device_form(Base.tail(args))
+@inline all_device_form(args::Tuple) = is_device_form(first(args)) & all_device_form(Base.tail(args))
 
 const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 
@@ -383,7 +413,7 @@ end
     ctx = KA.mkcontext(obj, ndrange, iterspace)
     kernel_args = (ctx, args...)
     all_device_form(kernel_args) ||
-        return standard_kernel_launch!(configured, _ -> findall(arg -> !is_device_form_type(typeof(arg)), collect(Any, kernel_args)), args...)
+        return standard_kernel_launch!(configured, _ -> findall(arg -> !is_device_form(arg), collect(Any, kernel_args)), args...)
     TT = typeof(kernel_args)
     cached_launch_counts[1] += 1
 

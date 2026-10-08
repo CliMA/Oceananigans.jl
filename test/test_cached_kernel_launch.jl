@@ -12,6 +12,30 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!, solve_batched_trid
 using KernelAbstractions: @kernel, @index
 
 const Ext = Base.get_extension(Oceananigans, :OceananigansCUDAExt)
+const Adapt = Oceananigans.Architectures.Adapt
+
+# An `isbits`, pointer-free argument whose conversion inference cannot type (the Adapt rule rebuilds it behind an
+# inference barrier, as Adapt's rule for a closure can), although the conversion returns it unchanged.
+struct OpaqueArgument{T}
+    x :: T
+end
+
+Adapt.adapt_structure(to, a::OpaqueArgument) = OpaqueArgument(Base.inferencebarrier(a.x))
+
+@kernel function _scale_on_grid!(a, grid, b, factor)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = b[i, j, k] * factor.x + zero(grid)
+end
+
+function scaled(grid, factor, cached)
+    Ext.CACHED_KERNEL_LAUNCH[] = cached
+    a = CenterField(grid)
+    b = CenterField(grid)
+    set!(b, (x, y, z) -> sin(7x) + cos(5y) * z)
+    fill!(Ext.cached_launch_counts, 0)
+    launch!(architecture(grid), grid, :xyz, _scale_on_grid!, a, grid, b, factor)
+    return Array(interior(a))
+end
 
 @kernel function _copy_on_grid!(a, grid, b)
     i, j, k = @index(Global, NTuple)
@@ -158,6 +182,19 @@ end
     @test !Ext.is_device_form_type(DataType)         # a `Type` argument compiles as `Type{T}`
     @test !Ext.is_device_form_type(typeof(CUDA.zeros(2)))
 
+    # Where inference cannot type the conversion of an isbits, pointer-free argument, its type is decided once, from
+    # a value; a host object whose conversion is another type stays out.
+    opaque = OpaqueArgument(2.0)
+    @test isbits(opaque) && !Ext.is_device_form_type(typeof(opaque))
+    @test Ext.undecided_device_form_type(typeof(opaque))
+    @test Ext.is_device_form(opaque)
+    @test Ext.observed_device_forms[typeof(opaque)]
+    @test convert_to_device(arch, opaque) === opaque
+    @test Ext.all_device_form((1.0, opaque, Val(2)))
+    @test !Ext.is_device_form(regular)
+    @test !Ext.is_device_form(CUDA.zeros(2))
+    @test !Ext.undecided_device_form_type(DataType)
+
     # Kernels and halo fills on each grid through the cached launch, with the check that the cached launch's
     # arguments are bit-identical to their re-conversion on every launch, against the standard launch.
     cached_before, check_before = Ext.CACHED_KERNEL_LAUNCH[], Ext.CHECK_CACHED_KERNEL_LAUNCH[]
@@ -170,6 +207,14 @@ end
             @test Ext.cached_launch_counts[2] == 0
             without_cache = launched_and_filled(grid, false)
             @test reinterpret(UInt64, with_cache) == reinterpret(UInt64, without_cache)
+        end
+        # A launch with an argument decided from its value takes the cached path (the check re-converts it on
+        # every launch) and computes what the standard launch computes.
+        for grid in (stretched, latlon)
+            with_cache = scaled(grid, opaque, true)
+            @test Ext.cached_launch_counts == [1, 0]
+            without_cache = scaled(grid, opaque, false)
+            @test any(!iszero, with_cache) && reinterpret(UInt64, with_cache) == reinterpret(UInt64, without_cache)
         end
         # Per-kernel launch configuration: another workgroup and a register cap change the launch, not the result.
         Ext.CACHED_KERNEL_LAUNCH[] = true
