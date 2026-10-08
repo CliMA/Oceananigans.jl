@@ -135,8 +135,8 @@ function active_cells_maps(grid, ib, regions)
     cells, lengths = labelled_indices(grid, labels.data, (N+1, (1:N)..., N+2))
 
     last_indices = cumsum(lengths)
-    region_maps = ntuple(n -> view(cells, last_indices[n]+1:last_indices[n+1]), N)
-    interior    = view(cells, last_indices[1]+1:last_indices[N+1])
+    region_maps = ntuple(n -> SubArray(cells, (last_indices[n]+1:last_indices[n+1],)), N)
+    interior    = SubArray(cells, (last_indices[1]+1:last_indices[N+1],))
 
     return (interior, region_maps...)
 end
@@ -151,5 +151,5 @@ function build_active_z_columns(grid, ib)
     labels = Field{Center, Center, Nothing}(grid, Int8)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _label_active_z_columns!, labels, grid, ib, ((1:Wx, 1:Wy),))
     columns, lengths = labelled_indices(grid, view(labels.data, :, :, 1), (1, 2))
-    return view(columns, 1:first(lengths))
+    return SubArray(columns, (1:first(lengths),))
 end
