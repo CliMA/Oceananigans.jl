@@ -408,7 +408,9 @@ end
 # Advect Value fields with the boundary-face velocity (`use_boundary_velocity`) or the one-cell-interior
 # velocity (default): the interior value is prognostic, the boundary value is radiation-extrapolated.
 @inline radiation_velocity_index(bc, boundary_index, interior_index) =
-    ifelse(bc.classification.scheme.use_boundary_velocity, boundary_index, interior_index)
+    ifelse(uses_boundary_velocity(bc.classification.scheme), boundary_index, interior_index)
+
+@inline uses_boundary_velocity(scheme) = scheme.use_boundary_velocity
 
 @inline _fill_east_halo!(j, k, grid, c, bc::RVBC, loc::CAA, clock, model_fields) =
     radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[radiation_velocity_index(bc, grid.Nx+1, grid.Nx), j, k]), loc, clock, model_fields)
