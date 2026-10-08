@@ -1,6 +1,7 @@
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
-using Statistics: mean
+using Oceananigans.Architectures: device
+using KernelAbstractions: @localmem, @synchronize, StaticSize
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -240,21 +241,61 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ = solver.storage
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
-    # Apply backward transforms in order
-    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
-
-    # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
-        ϕ .= ϕ .- mean(ϕ)
+        subtract_zero_mode_mean!(ϕ, solver)
     end
+
+    # Apply backward transforms in order
+    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
 
     return nothing
+end
+
+const ZERO_MODE_WORKGROUP_SIZE = 256
+
+# The column at zero wavenumber in both transformed directions holds the mean of the solution
+# over those directions at every level, so removing its mean along the tridiagonal direction
+# sets the volume mean of the solution to zero.
+function subtract_zero_mode_mean!(ϕ, solver)
+    dim = dimension(solver.batched_tridiagonal_solver.tridiagonal_direction)
+    column = view(ϕ, ntuple(d -> d == dim ? Colon() : 1, 3)...)
+    workgroup = StaticSize((ZERO_MODE_WORKGROUP_SIZE,))
+    kernel! = _subtract_mean!(device(architecture(solver)), workgroup, workgroup)
+    kernel!(column)
+    return nothing
+end
+
+# A single workgroup strides along the column and sums it through local memory in a fixed order
+@kernel function _subtract_mean!(column)
+    t = @index(Local, Linear)
+    partial_sums = @localmem eltype(column) (ZERO_MODE_WORKGROUP_SIZE,)
+
+    Σ = zero(eltype(column))
+    for n in t:ZERO_MODE_WORKGROUP_SIZE:length(column)
+        @inbounds Σ += column[n]
+    end
+    @inbounds partial_sums[t] = Σ
+    @synchronize
+
+    if t == 1
+        Σ = zero(eltype(column))
+        for m in 1:ZERO_MODE_WORKGROUP_SIZE
+            @inbounds Σ += partial_sums[m]
+        end
+        @inbounds partial_sums[1] = Σ / length(column)
+    end
+    @synchronize
+
+    @inbounds mean = partial_sums[1]
+    for n in t:ZERO_MODE_WORKGROUP_SIZE:length(column)
+        @inbounds column[n] -= mean
+    end
 end
 
 """
