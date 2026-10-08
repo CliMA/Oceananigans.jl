@@ -240,7 +240,7 @@ end
     return sqrt(n²)
 end
 
-# The column-segment sums of the fused conjugate-gradient iteration: each rank reduces
+# The column sums of the fused conjugate-gradient iteration: each rank reduces
 # its own, then the ranks' sums are added on the host and copied back into `sums`
 function reduce_partial_sums!(sums, partial_sums, arch::Distributed)
     reduce_partial_sums!(sums, partial_sums, child_architecture(arch))
