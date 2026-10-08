@@ -14,6 +14,9 @@ env:
   OUTPUT_FILE: "benchmark_results.json"
   OUTPUT_FILE_GPU2: "benchmark_results_gpu2.json"
   JULIA_CUDA_USE_COMPAT: false
+  CUDA_AWARE_OPENMPI: "/storage4/simone/TestsScaling/openmpi"
+  MPIWRAPPER_VERSION: "2.11.0"
+  MPIWRAPPER_HOME: "$TARTARUS_HOME/mpiwrapper-$MPIWRAPPER_VERSION"
 
 steps:
   - label: "🏕️ Initialize tartarus environment"
@@ -26,6 +29,31 @@ steps:
       # Download julia binaries
       wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
       tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
+
+      # Build MPIwrapper against the CUDA-aware Open MPI. This is a one-time build, cached in $TARTARUS_HOME across builds.
+      if [ ! -f "$MPIWRAPPER_HOME/lib/libmpiwrapper.so" ]; then
+        rm -rf $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION $MPIWRAPPER_HOME
+        wget -N -P $TARTARUS_HOME https://github.com/eschnett/MPIwrapper/archive/refs/tags/v$MPIWRAPPER_VERSION.tar.gz
+        tar xf $TARTARUS_HOME/v$MPIWRAPPER_VERSION.tar.gz -C $TARTARUS_HOME
+
+        PATH=$CUDA_AWARE_OPENMPI/bin:\$PATH cmake \
+          -S $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION \
+          -B $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION/build \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DCMAKE_INSTALL_PREFIX=$MPIWRAPPER_HOME \
+          -DCMAKE_INSTALL_LIBDIR=lib \
+          -DMPI_HOME=$CUDA_AWARE_OPENMPI \
+          -DMPIEXEC_EXECUTABLE=$CUDA_AWARE_OPENMPI/bin/mpiexec \
+          -DCMAKE_C_COMPILER=$CUDA_AWARE_OPENMPI/bin/mpicc \
+          -DCMAKE_CXX_COMPILER=$CUDA_AWARE_OPENMPI/bin/mpicxx \
+          -DCMAKE_Fortran_COMPILER=$CUDA_AWARE_OPENMPI/bin/mpifort
+        cmake --build $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION/build
+        cmake --install $TARTARUS_HOME/MPIwrapper-$MPIWRAPPER_VERSION/build
+      fi
+
+      # Fail here, loudly, rather than in the middle of the benchmarks
+      ls -l $MPIWRAPPER_HOME/lib/libmpiwrapper.so $MPIWRAPPER_HOME/bin/mpiwrapperexec
+      $CUDA_AWARE_OPENMPI/bin/ompi_info --parsable --all 2>/dev/null | grep -E "ompi:version:full|mpi_built_with_cuda_support:value" || true
     agents:
       queue: "Oceananigans-benchmarks"
     retry:
@@ -43,6 +71,11 @@ steps:
       queue: "Oceananigans-benchmarks"
     timeout_in_minutes: 120
     command: |
+      # Options for the MPI benchmarks
+      export MPITRAMPOLINE_LIB=$MPIWRAPPER_HOME/lib/libmpiwrapper.so
+      export MPITRAMPOLINE_MPIEXEC=$MPIWRAPPER_HOME/bin/mpiwrapperexec
+      JULIA_PKG_PRECOMPILE_AUTO=0 $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using MPIPreferences; MPIPreferences.use_jll_binary("MPItrampoline_jll")'
+
       # Instantiate, precompile, and pre-download bathymetry data (before parallel GPU runs)
       $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
 
@@ -103,6 +136,11 @@ steps:
         echo "  Group 6: Tracer count sweep (1/2 deg) [GPU 2]"
         echo "========================================"
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE_GPU2
+
+        echo "========================================"
+        echo "  Group 7: Nonhydrostatic pressure solver sweep (64³) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --case=nonhydrostatic --size=64x64x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient" --group="Nonhydrostatic Pressure Solver Sweep" --output=$OUTPUT_FILE_GPU2
       ) &
       GPU2_PID=$$!
 
@@ -137,10 +175,10 @@ steps:
       #  Wait for GPU 2 and merge results
       # ==========================================
       echo "Waiting for GPU 2 benchmarks to finish..."
-      wait $GPU2_PID
-      GPU2_STATUS=$$?
-      if [ $GPU2_STATUS -ne 0 ]; then
-        echo "WARNING: GPU 2 benchmarks exited with status $GPU2_STATUS"
+      GPU2_STATUS=0
+      wait $$GPU2_PID || GPU2_STATUS=$$?
+      if [ $$GPU2_STATUS -ne 0 ]; then
+        echo "WARNING: GPU 2 benchmarks exited with status $$GPU2_STATUS"
       fi
 
       if [ -f "$OUTPUT_FILE_GPU2" ]; then
@@ -149,6 +187,34 @@ steps:
         rm -f $OUTPUT_FILE_GPU2
         echo "Merged GPU 2 results into $OUTPUT_FILE"
       fi
+
+      # ==========================================
+      #  Distributed benchmark on GPUs 0 and 2 (both free now)
+      # ==========================================
+      export CUDA_VISIBLE_DEVICES=0,2
+      export JULIA_CUDA_MEMORY_POOL=none
+
+      echo "========================================"
+      echo "  Default configuration, 1x2 partition [GPUs 0 and 2]"
+      echo "========================================"
+      $MPIWRAPPER_HOME/bin/mpiwrapperexec --map-by socket --bind-to socket -n 2 \
+        -x MPITRAMPOLINE_LIB -x JULIA_CUDA_MEMORY_POOL -x CUDA_VISIBLE_DEVICES \
+        $JULIA $JULIA_ARGS -t 4,2 $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
+
+      # Combine across ranks to calculate total throughput
+      # jq filter to selectively merge the ranks
+      echo -n 'map(select(has("rank")))' > filter.jq
+      echo -n '|(.[0].name| match("[0-9]+x[0-9]+x[0-9]+"; "s").string | split("x") | map(tonumber)) as \$gs' >> filter.jq
+      echo -n '|(map(.total_time_seconds) | max) as \$tts' >> filter.jq
+      echo -n '|(map(.grid_points_per_second) | add) as \$gpps' >> filter.jq
+      echo -n '| .[0] | .grid_size = \$gs | .total_time_seconds = \$tts | .grid_points_per_second = \$gpps | del(.rank)' >> filter.jq
+
+      jq -f filter.jq $OUTPUT_FILE > combined_throughputs.json
+      # Create a separate json file with the non-distributed results
+      jq 'map(select(has("rank") == false))' $OUTPUT_FILE > non_distributed_results.json
+      # Merge the lists back together
+      jq -s 'flatten' non_distributed_results.json combined_throughputs.json > final_results.json
+      mv final_results.json $OUTPUT_FILE
 
     artifact_paths:
       - "benchmark_results.json"

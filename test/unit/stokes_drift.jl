@@ -41,8 +41,6 @@ function instantiate_stokes_drift()
 end
 
 @testset "Stokes drift" begin
-    @info "Testing Stokes drift..."
-
     @testset "Stokes drift" begin
         @test instantiate_uniform_stokes_drift()
         @test instantiate_stokes_drift()

@@ -12,6 +12,16 @@ agents:
 with:
   coverage: false
 
+# Path groups for `if_changed`
+paths:
+  buildkite:     &buildkite_paths      ".buildkite/{pipeline.yml,hooks/**}"
+  code:          &code_paths           "{ext,src}/**"
+  project:       &project_paths        "Project.toml"
+  tests:         &test_paths           "test/**"
+  no_tests:      &no_test_paths        "test/{ProjectDistributed.toml,amdgpu/**,distributed/**,convergence/**,makie/**,manual/**,metal/**,mpi/**,oneapi/**,sharding/**}"
+  docs:          &docs_paths           "{docs,examples}/**"
+  agents:        &agents_paths         "AGENTS.md"
+
 steps:
   - label: "🏕️ initialize general environment"
     concurrency_group: gate
@@ -22,6 +32,9 @@ steps:
     env:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION
 
@@ -52,6 +65,9 @@ steps:
     env:
       TEST_GROUP: "init"
     timeout_in_minutes: 60
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
@@ -79,6 +95,9 @@ steps:
     env:
       JULIA_CPU_THREADS: "6"
     timeout_in_minutes: 150
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: [*no_test_paths, "test/{enzyme,reactant}/**"]
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -98,10 +117,10 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e \
+      julia +$JULIA_VERSION -O0 --color=yes --project -e \
         'using Pkg;
          Pkg.test("Oceananigans";
-           coverage="user",
+           coverage=true,
            test_args=`--verbose --quickfail unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts memory_allocation`)
         '
       test_status=$$?
@@ -141,6 +160,7 @@ steps:
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     timeout_in_minutes: 120
+    if_changed: [*buildkite_paths, *code_paths, *project_paths, *docs_paths, *agents_paths]
     command: |
       cd "$OCEANANIGANS_DIR"
 
@@ -170,6 +190,9 @@ steps:
     env:
       JULIA_CPU_THREADS: "4"
     timeout_in_minutes: 45
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: *no_test_paths
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -190,10 +213,10 @@ steps:
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e \
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e \
         'using Pkg;
          Pkg.test("Oceananigans";
-           coverage="user",
+           coverage=true,
            julia_args=["--check-bounds=auto"],
            test_args=`--verbose --quickfail enzyme reactant`)
         '
