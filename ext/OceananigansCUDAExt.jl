@@ -117,13 +117,18 @@ function holds_raw_pointer(T::Type)
     return any(holds_raw_pointer, fieldtypes(T))
 end
 
-# An argument whose type is `isbits` (and holds no raw pointer) is already in its device form — host
-# objects that convert (arrays, fields, grids, mutable clocks) are not `isbits` — so it passes through
-# untouched, decided on the type at compile time. Arguments cached in their device form (Breeze's
-# kernel-argument cache) then cost nothing to convert again. Every other argument is converted with
-# `cudaconvert`.
-@generated is_device_form(::T) where T = isbitstype(T) && !holds_raw_pointer(T)
-@inline device_form(x) = is_device_form(x) ? x : CUDA.cudaconvert(x)
+# An argument is already in its device form when its type is `isbits`, holds no raw pointer and is the type
+# `cudaconvert` gives it back as (a host object that is `isbits` but converts to another type — a regular
+# `RectilinearGrid`, whose architecture becomes `nothing` — is not). Decided on the type, at compile time
+# (`Core.Compiler.return_type` of a concretely inferred call folds to a constant). Such an argument passes
+# through untouched, so arguments cached in their device form (Breeze's kernel-argument cache) cost nothing
+# to convert again; every other argument is converted with `cudaconvert`.
+@generated has_no_raw_pointer(::Type{T}) where T = !holds_raw_pointer(T)
+
+@inline is_device_form_type(::Type{T}) where T =
+    isbitstype(T) && has_no_raw_pointer(T) && (Core.Compiler.return_type(CUDA.cudaconvert, Tuple{T}) === T)
+
+@inline device_form(x::T) where T = is_device_form_type(T) ? x : CUDA.cudaconvert(x)
 
 @inline AC.convert_to_device(::CUDAGPU, args) = device_form(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(device_form, args)
@@ -167,14 +172,14 @@ end
 # boundary conditions with field time series, field tuples), rebuild the argument tuple type and look up
 # the compiled kernel, and the compiled kernel's call converts the arguments once more — on every launch.
 # Oceananigans has already converted them (`Architectures.convert_to_device`), so for a kernel with a
-# static workgroup and ndrange whose arguments are all `isbits` (their device form), this launches the
+# static workgroup and ndrange whose arguments are all in their device form (`is_device_form_type`), this launches the
 # same compiled kernel (`cufunction` with the same function, argument types, `maxthreads` and
 # `always_inline`), cached per CUDA context, kernel function, argument types and compile options, with
 # the same threads and blocks (computed per launch from the kernel's own static sizes, exactly as
 # CUDAKernels.jl does) and the same argument values, without re-converting them
-# (`convert = Val(false)`). Argument tuples that are not all `isbits`, contain a `Type` or a raw
-# pointer (whose conversion is not the identity), or kernels with a dynamic workgroup or ndrange take
-# the standard launch. `CACHED_KERNEL_LAUNCH[] = false` disables the cache; `CHECK_CACHED_KERNEL_LAUNCH[] = true`
+# (`convert = Val(false)`). Launches with an argument that is not in its device form (not `isbits`, a
+# `Type`, a raw pointer, or a type `cudaconvert` changes), or kernels with a dynamic workgroup or ndrange,
+# take the standard launch. `CACHED_KERNEL_LAUNCH[] = false` disables the cache; `CHECK_CACHED_KERNEL_LAUNCH[] = true`
 # asserts on every cached launch that converting the arguments again leaves them bit-identical
 # (`cudaconvert(args) === args`), the condition under which the cached launch is the standard one.
 
@@ -185,13 +190,11 @@ const cached_launch_lock = ReentrantLock()
 # launches that took the cached path / the standard one (diagnostics)
 const cached_launch_counts = zeros(Int, 2)
 
-# The argument tuple type `@cuda` compiles for (`Tuple{map(Core.Typeof, args)...}`), or `nothing` where
-# the cached launch does not apply. Evaluated at compile time.
-@generated function cached_launch_type(args...)
-    TT = Tuple{args...}
-    applies = isbitstype(TT) && !any(T -> T <: Type, args) && !holds_raw_pointer(TT)
-    return applies ? :($TT) : :(nothing)
-end
+# Whether every argument of a launch is in its device form (see `is_device_form_type`; a `Type` argument is
+# not `isbits`, so the argument tuple type then equals the `Tuple{map(Core.Typeof, args)...}` that `@cuda`
+# compiles for).
+@inline all_device_form(::Tuple{}) = true
+@inline all_device_form(args::Tuple) = is_device_form_type(typeof(first(args))) & all_device_form(Base.tail(args))
 
 const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 
@@ -204,8 +207,8 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
     ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, nothing, nothing)
     ctx = KA.mkcontext(obj, ndrange, iterspace)
     kernel_args = (ctx, args...)
-    TT = cached_launch_type(kernel_args...)
-    TT === nothing && return (cached_launch_counts[2] += 1; obj(args...))
+    all_device_form(kernel_args) || return (cached_launch_counts[2] += 1; obj(args...))
+    TT = typeof(kernel_args)
     cached_launch_counts[1] += 1
 
     blocks = length(KA.blocks(iterspace))
@@ -233,9 +236,13 @@ end
 
 @noinline function check_cached_launch_arguments(obj, kernel_args)
     reconverted = map(CUDA.cudaconvert, kernel_args)
-    reconverted === kernel_args ||
+    if !(reconverted === kernel_args)
+        changed = [string(i, ": ", typeof(kernel_args[i]), " → ", typeof(reconverted[i]))
+                   for i in eachindex(kernel_args) if !(reconverted[i] === kernel_args[i])]
         error("cached kernel launch of $(nameof(typeof(obj.f))): the arguments are not in their device form " *
-              "(cudaconvert changes them); the cached launch would differ from the standard one")
+              "(cudaconvert changes them); the cached launch would differ from the standard one. Changed: " *
+              join(changed, "; "))
+    end
     return nothing
 end
 
