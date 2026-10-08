@@ -4,6 +4,13 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 4
   JULIA_NUM_THREADS: 4
 
+# Path groups for `if_changed`
+paths:
+  buildkite:     &buildkite_paths      ".buildkite/{pipeline-juliagpu.yml,hooks/**}"
+  code:          &code_paths           "{ext,src}/**"
+  project:       &project_paths        "Project.toml"
+  tests:         &test_paths           "test/{Project.toml,runtests.jl,init/**,setup/**}"
+
 steps:
   - label: "🦕 AMDGPU extension tests - Julia {{matrix.version}}"
     matrix:
@@ -15,6 +22,8 @@ steps:
           version: "{{matrix.version}}"
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, "test/amdgpu/**"]
     command: |
       TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
 
@@ -36,6 +45,8 @@ steps:
           version: "{{matrix.version}}"
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, "test/oneapi/**"]
     command: |
       TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test(; test_args=["--verbose"])'
 

@@ -8,10 +8,25 @@ using ..TurbulenceClosures:
     struct CATKEMixingLength{FT}
 
 Contains mixing length parameters for CATKE vertical diffusivity.
+
+The wall-distance coefficients `Cˢ` and `Cᵇ` set the mixing length ``ℓ = Cˢ d`` near the
+surface and ``ℓ = Cᵇ d`` near the bottom, where ``d`` is the distance to the boundary.
+In a neutrally-stratified similarity layer, section 3.1.3 of [Wagner et al. (2025)](@cite Wagner25catke)
+shows that these are equivalent to prescribing a similarity ("von Kármán") constant
+
+```math
+κ = C \\left ( \\frac{(C^{lo}_u)^3}{C^{lo}_D} \\right )^{1/4}
+```
+
+where ``C`` is either `Cˢ` or `Cᵇ`. The calibrated `Cˢ = 1.131` corresponds to ``κ = 0.47``,
+slightly larger than the rigid-wall value 0.4 because the large eddy simulations used to
+calibrate CATKE include surface wave effects. Because `Cᵇ` is not constrained by those
+surface-forced simulations, it is instead chosen such that ``κ = 0.4`` at the bottom, which
+gives `Cᵇ = 0.967`.
 """
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
-    Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
+    Cᵇ   :: FT = 0.967  # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
     CRiᵟ :: FT = 1.02   # Stability function width
     CRi⁰ :: FT = 0.254  # Stability function lower Ri

@@ -44,6 +44,7 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
@@ -101,7 +102,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
+    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,

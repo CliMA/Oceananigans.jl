@@ -4,6 +4,7 @@ export
     TimeStepWizard,
     conjure_time_step_wizard!,
     Simulation,
+    AutomaticDifferentiation,
     run!,
     Callback,
     add_callback!,

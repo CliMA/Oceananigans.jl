@@ -33,13 +33,8 @@ periodic_grid(arch, ::Val{:x}) = RectilinearGrid(arch; size=20, x=(-1, 1), halo=
 periodic_grid(arch, ::Val{:y}) = RectilinearGrid(arch; size=20, y=(-1, 1), halo=5, topology = (Flat, Periodic, Flat))
 periodic_grid(arch, ::Val{:z}) = RectilinearGrid(arch; size=20, z=(-1, 1), halo=5, topology = (Flat, Flat, Periodic))
 
-get_advection_dissipation(::Val{:x}, t) = FieldTimeSeries("one_d_simulation_x.jld2", "A$(t)x")
-get_advection_dissipation(::Val{:y}, t) = FieldTimeSeries("one_d_simulation_y.jld2", "A$(t)y")
-get_advection_dissipation(::Val{:z}, t) = FieldTimeSeries("one_d_simulation_z.jld2", "A$(t)z")
-
-get_diffusion_dissipation(::Val{:x}, t) = FieldTimeSeries("one_d_simulation_x.jld2", "D$(t)x")
-get_diffusion_dissipation(::Val{:y}, t) = FieldTimeSeries("one_d_simulation_y.jld2", "D$(t)y")
-get_diffusion_dissipation(::Val{:z}, t) = FieldTimeSeries("one_d_simulation_z.jld2", "D$(t)z")
+get_advection_dissipation(filepath, dim, t) = FieldTimeSeries(filepath, "A$(t)$(dim)")
+get_diffusion_dissipation(filepath, dim, t) = FieldTimeSeries(filepath, "D$(t)$(dim)")
 
 advecting_velocity(::Val{:x}) = PrescribedVelocityFields(u = 1)
 advecting_velocity(::Val{:y}) = PrescribedVelocityFields(v = 1)
@@ -78,7 +73,7 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     Uⁿ⁻¹ = Oceananigans.Fields.VelocityFields(grid)
     Uⁿ   = Oceananigans.Fields.VelocityFields(grid)
 
-    sim = Simulation(model; Δt=0.01, stop_time=1)
+    sim = Simulation(model; Δt=0.01, stop_time=1, verbose=false)
 
     ϵc = VarianceDissipation(:c, grid; Uⁿ⁻¹, Uⁿ)
     ϵd = VarianceDissipation(:d, grid; Uⁿ⁻¹, Uⁿ)
@@ -93,10 +88,16 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     outputs = merge(model.tracers, model.auxiliary_fields, fd, fc)
 
     # Add both callbacks to the simulation with a schedule
-    add_callback!(sim, ϵc, schedule)
-    add_callback!(sim, ϵd, schedule)
+    schedule_logs = schedule == IterationInterval(1) ? () :
+        ((:warn, "VarianceDissipation callback must be called every Iteration or on `ConsecutiveIterations`. \n" *
+                 "Changing `schedule` to `ConsecutiveIterations(schedule)`."),)
 
+    @test_logs schedule_logs... add_callback!(sim, ϵc, schedule)
+    @test_logs schedule_logs... add_callback!(sim, ϵd, schedule)
+
+    dir = mktempdir()
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
+                                               dir,
                                                filename="one_d_simulation_$(dim).jld2",
                                                schedule, # Make sure it is the same schedule as the one where we compute the dissipation
                                                overwrite_files=true,
@@ -106,13 +107,14 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     run!(sim)
 
-    Δtc² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtc²")
-    Ac   = get_advection_dissipation(Val(dim), :c)
-    Dc   = get_diffusion_dissipation(Val(dim), :c)
+    filepath = sim.output_writers[:solution].filepath
+    Δtc² = FieldTimeSeries(filepath, "Δtc²")
+    Ac   = get_advection_dissipation(filepath, dim, :c)
+    Dc   = get_diffusion_dissipation(filepath, dim, :c)
 
-    Δtd² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtd²")
-    Ad   = get_advection_dissipation(Val(dim), :d)
-    Dd   = get_diffusion_dissipation(Val(dim), :d)
+    Δtd² = FieldTimeSeries(filepath, "Δtd²")
+    Ad   = get_advection_dissipation(filepath, dim, :d)
+    Dd   = get_diffusion_dissipation(filepath, dim, :d)
 
     Nt = length(Ac.times)
 
@@ -128,23 +130,16 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
         @test abs(∫closs[i] - ∫Ac[i] - ∫Dc[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
         @test abs(∫dloss[i] - ∫Ad[i] - ∫Dd[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision
     end
+
+    rm(dir; recursive=true)
 end
 
 @testset "Implicit Diffusion Diagnostic" begin
-    @info "Testing implicit diffusion diagnostic..."
-    for arch in archs
-        schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
-        for schedule in schedules
-            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
-                @testset "Implicit Diffusion on $schedule schedule and $timestepper, [$(typeof(arch))]" begin
-                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in x-direction..."
-                    test_implicit_diffusion_diagnostic(arch, :x, timestepper, schedule)
-                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in y-direction..."
-                    test_implicit_diffusion_diagnostic(arch, :y, timestepper, schedule)
-                    @info "  Testing implicit diffusion diagnostic [$(typeof(arch))] with $schedule and $timestepper, in z-direction..."
-                    test_implicit_diffusion_diagnostic(arch, :z, timestepper, schedule)
-                end
-            end
+    schedules = [IterationInterval(1), IterationInterval(10), IterationInterval(100)]
+    timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5)
+    for arch in archs, schedule in schedules, timestepper in timesteppers
+        @testset "Implicit Diffusion on $schedule schedule and $timestepper, in $dim-direction [$(typeof(arch))]" for dim in (:x, :y, :z)
+            test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
         end
     end
 end

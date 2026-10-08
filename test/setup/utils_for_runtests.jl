@@ -93,22 +93,6 @@ function nonhydrostatic_regression_test_architectures()
     end
 end
 
-function summarize_regression_test(fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
-        Δ = φ .- φ_c
-        Δ_min       = minimum(Δ)
-        Δ_max       = maximum(Δ)
-        Δ_mean      = mean(Δ)
-        Δ_abs_mean  = mean(abs, Δ)
-        Δ_std       = std(Δ)
-        matching    = sum(φ .≈ φ_c)
-        grid_points = length(φ_c)
-
-        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
-    end
-end
-
 #####
 ##### Grid utils
 #####

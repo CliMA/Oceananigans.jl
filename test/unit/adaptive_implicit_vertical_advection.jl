@@ -280,6 +280,70 @@ end
     end
 end
 
+@testset "AIVA solve with explicit and implicit closure tuples" begin
+    Nz = 16
+    grid = RectilinearGrid(CPU(), size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           halo=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = Δt
+    scheme = WENO(; time_discretization=td)
+    solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    clock = Clock(grid)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * exp(-(z - 500)^2 / (2 * 100^2)))
+    fill_halo_regions!(W)
+
+    q₀(x, y, z) = exp(-((z - 400) / 150)^2)
+    initial = CenterField(grid)
+    set!(initial, q₀)
+    fill_halo_regions!(initial)
+    initial = Array(interior(initial))
+
+    function step_with_closure(closure, closure_fields; boundary_conditions=nothing, advection=scheme)
+        q = isnothing(boundary_conditions) ? CenterField(grid) : CenterField(grid; boundary_conditions)
+        set!(q, q₀)
+        fill_halo_regions!(q)
+
+        implicit_step!(q, solver, closure, closure_fields, Val(1), clock, (;), Δt, advection, (; w=W))
+        return Array(interior(q))
+    end
+
+    no_closure = step_with_closure(nothing, nothing)
+    explicit_closure = step_with_closure(SmagorinskyLilly(), nothing)
+    explicit_singleton = step_with_closure((SmagorinskyLilly(),), (nothing,))
+    explicit_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)), (nothing, nothing))
+    reported_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=1.5e-5, κ=2.1e-5)), (nothing, nothing))
+
+    @test maximum(abs, no_closure .- initial) > 0
+    @test explicit_closure ≈ no_closure
+    @test explicit_singleton ≈ explicit_closure
+    @test explicit_tuple ≈ no_closure
+    @test reported_tuple ≈ no_closure
+
+    implicit_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=2.1e-5)
+    implicit_singleton = step_with_closure(implicit_closure, nothing)
+    mixed_tuple = step_with_closure((SmagorinskyLilly(), implicit_closure), (nothing, nothing))
+
+    @test maximum(abs, implicit_singleton .- no_closure) > 0
+    @test mixed_tuple ≈ implicit_singleton
+
+    boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                                  top=IMEXFluxBoundaryCondition(0.0, 0.05))
+    no_closure_with_flux = step_with_closure(nothing, nothing; boundary_conditions)
+    tuple_with_flux = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                        (nothing, nothing); boundary_conditions)
+    flux_only = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                  (nothing, nothing); boundary_conditions, advection=nothing)
+
+    @test no_closure_with_flux[1, 1, end] < no_closure[1, 1, end]
+    @test tuple_with_flux ≈ no_closure_with_flux
+    @test flux_only[1, 1, end] ≈ initial[1, 1, end] / (1 + Δt * 0.05 / (1000 / Nz))
+    @test flux_only[1, 1, 1:end-1] ≈ initial[1, 1, 1:end-1]
+end
+
 @testset "AIVA and bounds preservation both refresh" begin
     grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), halo=(6, 6, 6))
     advection = WENO(order=5, bounds=(0, 1), time_discretization=AdaptiveVerticallyImplicitDiscretization())

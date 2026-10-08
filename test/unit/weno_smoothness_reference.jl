@@ -1,5 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
+using Oceananigans: fully_supported_float_types
 using Oceananigans.Advection: smoothness_indicator
 using Random
 
@@ -31,17 +32,19 @@ const reference_smoothness_coefficients = Dict(
     (6, 5) => (1152561, -12950184, 29442256, -33918804, 19834350, -4712740, 36480687, -166461044, 192596472, -113206788, 27060170, 190757572, -444003904, 262901672, -63394124, 260445372, -311771244, 76206736, 94851237, -47460464, 6150211),
 )
 
-# The reference smoothness indicator of the `buffer` stencil values `ψ`, evaluated exactly (in BigFloat from
-# the rational coefficients)
+# The reference smoothness indicator of the `buffer` stencil values `ψ`, evaluated in BigFloat from the rational
+# coefficients. The value form cancels ≈ 2²⁷ bits for a mean of 300, so it is evaluated with spare precision.
 function reference_smoothness_indicator(ψ, buffer, stencil)
     C = reference_smoothness_coefficients[(buffer, stencil)] .// reference_smoothness_denominator[buffer]
-    β = zero(BigFloat)
-    c = 1
-    for i in 1:buffer
-        β += ψ[i] * sum(BigFloat(C[c + j - i]) * ψ[j] for j in i:buffer)
-        c += buffer - i + 1
+    return setprecision(BigFloat, 4precision(BigFloat)) do
+        β = zero(BigFloat)
+        c = 1
+        for i in 1:buffer
+            β += ψ[i] * sum(BigFloat(C[c + j - i]) * ψ[j] for j in i:buffer)
+            c += buffer - i + 1
+        end
+        return β
     end
-    return β
 end
 
 @testset "WENO smoothness indicators match the reference tables" begin
@@ -49,9 +52,8 @@ end
 
     for buffer in 2:6
         order = 2buffer - 1
-        @info "Testing WENO$order smoothness indicators against the reference tables..."
 
-        for stencil in 0:buffer-1, FT in (Float64, Float32)
+        @testset "WENO order $(order)" for stencil in 0:buffer-1, FT in fully_supported_float_types
             scheme = WENO(FT; order)
             rtol = 20eps(FT)
 

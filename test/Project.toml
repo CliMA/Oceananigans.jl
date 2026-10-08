@@ -64,12 +64,12 @@ LinearAlgebra = "<0.0.1, 1"
 Logging = "<0.0.1, 1"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
 MPIPreferences = "0.1"
-NCCL = "0.1"
 Metal = "1.10"
+NCCL = "0.1"
 NCDatasets = "0.12.10, 0.13.1, 0.14"
 OffsetArrays = "1.4"
+ParallelTestRunner = "2.9 - 2.9.1"
 Pkg = "<0.0.1, 1"
-ParallelTestRunner = "2.9"
 Printf = "<0.0.1, 1"
 Random = "1.9"
 Reactant = "0.2.278 - 0.2.279"
@@ -84,8 +84,8 @@ Zarr = "0.10"
 julia = "1.10"
 oneAPI = "2.4.0"
 
-[preferences.Reactant]
-xla_runtime = "IFRT"
-
 [extras]
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+
+[preferences.Reactant]
+xla_runtime = "IFRT"
