@@ -2,9 +2,10 @@ using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜ�
     δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
-
-using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
+using Oceananigans.Grids: isrectilinear, halo_size, inactive_node, immersed_peripheral_node
+using Oceananigans.Fields: dot!
+using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver, precondition!, update_search_direction!, reduce_partial_sums!
+using GPUArraysCore: @allowscalar
 import Oceananigans.Architectures: architecture
 
 """
@@ -53,6 +54,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
     settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+    settings[:residual_norm] = get(settings, :residual_norm, FreeSurfaceResidualNorm(grid))
 
     if grid isa DistributedGrid
         settings[:preconditioner] = nothing
@@ -167,9 +169,11 @@ where  ̂ indicates a vertical integral, and
 @kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz + 1
-    Az = Azᶜᶜᶜ(i, j, grid.Nz, grid)
-    @inbounds L_ηⁿ⁺¹[i, j, k_top] = Az_∇h²ᶜᶜᶜ(i, j, k_top, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, k_top] / (g * Δt^2)
+    @inbounds L_ηⁿ⁺¹[i, j, k_top] = implicit_free_surface_linear_operation(i, j, k_top, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 end
+
+@inline implicit_free_surface_linear_operation(i, j, k, grid, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt) =
+    @inbounds Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η) - Azᶜᶜᶜ(i, j, grid.Nz, grid) * η[i, j, k] / (g * Δt^2)
 
 """
 Compute the horizontal divergence of vertically-uniform quantity using
@@ -178,6 +182,125 @@ vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 @inline Az_∇h²ᶜᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η) =
     (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
      δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
+
+#####
+##### Fused iteration: the linear operation kernel accumulates p ⋅ q while it writes q, and the update
+##### kernel accumulates r ⋅ r while it writes η and r. One thread sums a segment of `surface_segment_length` cells in y.
+#####
+
+const surface_segment_length = 16
+
+"""
+    FreeSurfaceResidualNorm(grid)
+
+The Euclidean norm of the free surface residual over the active surface nodes of `grid`.
+It stores `r ⋅ r` in `rᵀr`. The fused conjugate-gradient iteration sums `p ⋅ q` and `r ⋅ r`
+over segments of `surface_segment_length` cells in `y` into `partial_sums`.
+"""
+struct FreeSurfaceResidualNorm{P, S}
+    partial_sums :: P
+    rᵀr :: S
+end
+
+function FreeSurfaceResidualNorm(grid)
+    Nx, Ny = size(grid, 1), size(grid, 2)
+    partial_sums = zeros(grid, Nx, cld(Ny, surface_segment_length), 1)
+    return FreeSurfaceResidualNorm(partial_sums, zeros(grid, 1))
+end
+
+function (residual_norm::FreeSurfaceResidualNorm)(r)
+    rᵀr = dot!(residual_norm.rᵀr, r, r)
+    return sqrt(@allowscalar rᵀr[1])
+end
+
+Base.summary(::FreeSurfaceResidualNorm) = "FreeSurfaceResidualNorm"
+
+const FusedFreeSurfaceSolver = ConjugateGradientSolver{<:Any, <:Any, ImplicitFreeSurfaceOperation, <:Any, <:Any,
+                                                       <:Any, <:Any, <:Any, <:FreeSurfaceResidualNorm}
+
+@inline function surface_segment(s, grid, partial_sums)
+    segment_length = cld(size(grid, 2), size(partial_sums, 2))
+    return (s - 1) * segment_length + 1 : min(s * segment_length, size(grid, 2))
+end
+
+@inline active_surface_node(i, j, k, grid) =
+    !(immersed_peripheral_node(i, j, k, grid, Center(), Center(), Face()) | inactive_node(i, j, k, grid, Center(), Center(), Face()))
+
+@kernel function _implicit_free_surface_linear_operation_with_pᵀq!(partial_sums, q, grid, p, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    i, s = @index(Global, NTuple)
+    k = grid.Nz + 1
+    pᵀq = zero(eltype(partial_sums))
+
+    for j in surface_segment(s, grid, partial_sums)
+        @inbounds begin
+            qᵢⱼ = implicit_free_surface_linear_operation(i, j, k, grid, p, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+            q[i, j, k] = qᵢⱼ
+            pᵀq += p[i, j, k] * qᵢⱼ * active_surface_node(i, j, k, grid)
+        end
+    end
+
+    @inbounds partial_sums[i, s, 1] = pᵀq
+end
+
+@kernel function _update_solution_and_residual_with_rᵀr!(partial_sums, η, r, grid, p, q, α)
+    i, s = @index(Global, NTuple)
+    k = grid.Nz + 1
+    a = @inbounds α[1]
+    rᵀr = zero(eltype(partial_sums))
+
+    for j in surface_segment(s, grid, partial_sums)
+        @inbounds begin
+            η[i, j, k] += a * p[i, j, k]
+            rᵢⱼ = r[i, j, k] - a * q[i, j, k]
+            r[i, j, k] = rᵢⱼ
+            rᵀr += rᵢⱼ * rᵢⱼ * active_surface_node(i, j, k, grid)
+        end
+    end
+
+    @inbounds partial_sums[i, s, 1] = rᵀr
+end
+
+function Solvers.iterate!(η, solver::FusedFreeSurfaceSolver, rhs, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    r = solver.residual
+    p = solver.search_direction
+    q = solver.linear_operator_product
+    grid = solver.grid
+    arch = architecture(grid)
+    residual_norm = solver.residual_norm
+    partial_sums = residual_norm.partial_sums
+    worksize = (size(grid, 1), size(partial_sums, 2))
+
+    # Preconditioned:   z = P * r, ρ = z ⋅ r
+    # Unpreconditioned: z = r, so ρ = r ⋅ r is already in the residual norm
+    z = precondition!(solver.preconditioner_product, solver.preconditioner, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    ρ = z === r ? residual_norm.rᵀr : dot!(solver.ρ, z, r)
+
+    if solver.iteration > 0
+        solver.β .= ρ ./ solver.ρⁱ⁻¹
+    end
+
+    update_search_direction!(p, z, solver.β, solver.iteration)
+
+    fill_halo_regions!(p)
+    launch!(arch, grid, worksize, _implicit_free_surface_linear_operation_with_pᵀq!, partial_sums, q, grid, p, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    reduce_partial_sums!(solver.pᵀq, partial_sums, arch)
+
+    solver.α .= ρ ./ solver.pᵀq
+    solver.ρⁱ⁻¹ .= ρ
+
+    launch!(arch, grid, worksize, _update_solution_and_residual_with_rᵀr!, partial_sums, η, r, grid, p, q, solver.α)
+    reduce_partial_sums!(residual_norm.rᵀr, partial_sums, arch)
+
+    solver.iteration += 1
+
+    return nothing
+end
+
+function Solvers.iterating(solver::FusedFreeSurfaceSolver, tolerance)
+    solver.iteration >= solver.maxiter && return false
+    rᵀr = @allowscalar solver.residual_norm.rᵀr[1]
+    return sqrt(rᵀr) > tolerance
+end
 
 #####
 ##### Preconditioners

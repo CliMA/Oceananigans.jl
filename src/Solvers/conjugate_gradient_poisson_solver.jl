@@ -240,7 +240,7 @@ end
 end
 
 function reduce_partial_sums!(sums, partial_sums, arch)
-    sum!(reshape(sums, 1, 1, 1, length(sums)), partial_sums)
+    sum!(reshape(sums, ntuple(Returns(1), ndims(partial_sums) - 1)..., length(sums)), partial_sums)
     return sums
 end
 
