@@ -276,6 +276,9 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
             closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
             active_cells_map)
 
+    # The diffusivities are computed one cell into the halos, where they read the averaged flux
+    fill_halo_regions!(closure_fields.Jᵇ)
+
     return nothing
 end
 
