@@ -28,6 +28,21 @@ const INT32_INDEXING = let uuid = Base.UUID("9e8cae18-63c1-5223-a75c-80ca9d6e9a0
 end
 
 """
+    STATIC_SHAPES
+
+Whether GPU kernels that opt in (`Utils.kernel_launch_static_shapes`) are compiled for the shapes of their array
+arguments (`true` by default): with CUDA, the cached launch then runs a specialisation whose argument types carry the
+dimensions and offsets of the arrays, so that the address of a stencil neighbour is a compile-time offset. It changes
+integer address arithmetic only. A preference of Oceananigans, next to `int32_indexing` (which it builds on): set
+`static_shapes = false` under `[Oceananigans]` in the active project's `LocalPreferences.toml` to switch every
+specialisation off; the environment variable `OCEANANIGANS_STATIC_SHAPES` overrides it for one run.
+"""
+const STATIC_SHAPES = let uuid = Base.UUID("9e8cae18-63c1-5223-a75c-80ca9d6e9a09")  # Oceananigans
+    Base.record_compiletime_preference(uuid, "static_shapes")
+    get(Base.get_preferences(uuid), "static_shapes", true)::Bool
+end
+
+"""
     AbstractArchitecture
 
 Abstract supertype for architectures supported by Oceananigans.

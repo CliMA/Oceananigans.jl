@@ -51,6 +51,10 @@ function __init__()
     # re-converting its arguments leaves them bit-identical.
     CACHED_KERNEL_LAUNCH[] = lowercase(get(ENV, "OCEANANIGANS_CACHED_KERNEL_LAUNCH", "true")) != "false"
     CHECK_CACHED_KERNEL_LAUNCH[] = lowercase(get(ENV, "OCEANANIGANS_CHECK_CACHED_KERNEL_LAUNCH", "false")) == "true"
+
+    # Static-shape specialisations of the kernels that opt in (below): the preference `static_shapes`, or
+    # `OCEANANIGANS_STATIC_SHAPES=false` / `true` for this run.
+    STATIC_SHAPES[] = lowercase(get(ENV, "OCEANANIGANS_STATIC_SHAPES", string(AC.STATIC_SHAPES))) == "true"
 end
 
 const CUDAGPU = AC.GPU{<:CUDABackend}
@@ -241,6 +245,194 @@ end
 # The kernel arguments with 32-bit index arithmetic (`AC.INT32_INDEXING`, a compile-time constant), or as converted.
 @inline int32_indexed(x) = AC.INT32_INDEXING ? Adapt.adapt(Int32Indexing(), x) : x
 
+#####
+##### Compile-time array shapes: a specialisation of the cached launch
+#####
+##### An `OffsetArray` over an `Int32IndexedArray` reads its dimensions and offsets from the kernel's parameters at
+##### every access, and a stencil neighbour repeats part of the index arithmetic, because a wrapping `Int32` add
+##### cannot be folded into the address. For a kernel that opts in (`UT.kernel_launch_static_shapes`), the cached
+##### launch runs the same kernel function compiled for argument types that carry each array's dimensions and
+##### offsets as type parameters (`StaticShapeArray`) and form the linear index in `Int64` from those constants:
+##### `ℓ = i + D₁ j + D₁D₂ k + C`, so a neighbour of an access is the same address plus a compile-time constant.
+##### The arguments, their memory and every value read and written are those of the ordinary launch: only the
+##### integer instructions that form addresses differ.
+#####
+##### The canonical device form of an argument stays `OffsetArray{…, Int32IndexedArray}` (so every host-side cache,
+##### `is_device_form_type` and the debug checks are unchanged). The static-shape argument tuple has the same
+##### layout, field for field, and is obtained by reinterpreting the bits of the ordinary one. Its *type* is derived
+##### on the types, without calling a constructor (`static_shape_type`): an `OffsetArray{T, N, Int32IndexedArray}`
+##### reached through tuples, named tuples and struct fields whose declared type is a bare type parameter gets its
+##### dimensions and offsets as parameters; a type parameter is replaced only if every field that mentions it is
+##### declared as exactly that parameter and all those fields agree (two fields `a::A, b::A` that hold arrays of
+##### different shapes keep `A`); everything else keeps its type and its 32-bit index arithmetic.
+#####
+##### The compiled kernel is keyed on the shapes it was compiled for (`argument_shapes`, read from the arguments of
+##### every launch), so a launch of the same kernel on arrays of other shapes gets its own specialisation, never
+##### this one. A specialisation never runs with fewer thread blocks per multiprocessor than the ordinary kernel
+##### (it is compiled with that block count's register budget where it would); a kernel whose static-shape form
+##### does not compile keeps the ordinary kernel.
+#####
+
+"""
+    StaticShapeArray{T, N, A, D, O}
+
+The parent of an `OffsetArray` kernel argument whose dimensions `D` and whose `OffsetArray`'s offsets `O` are type
+parameters. Same fields as [`Int32IndexedArray`](@ref) (the pointer and the `Int32` dimensions, which the index
+arithmetic does not read), so that an argument tuple holding it has the layout of the ordinary one.
+"""
+struct StaticShapeArray{T, N, A, D, O} <: DenseArray{T, N}
+    ptr :: Core.LLVMPtr{T, A}
+    dims :: NTuple{N, Int32}
+end
+
+Base.size(::StaticShapeArray{T, N, A, D}) where {T, N, A, D} = D
+Base.IndexStyle(::Type{<:StaticShapeArray}) = IndexLinear()
+Base.elsize(::Type{<:StaticShapeArray{T}}) where T = sizeof(T)
+Base.pointer(a::StaticShapeArray{T}, i::Integer = 1) where T = a.ptr + (Int(i) - 1) * sizeof(T)
+Base.unsafe_convert(::Type{Core.LLVMPtr{T, A}}, a::StaticShapeArray{T, <:Any, A}) where {T, A} = a.ptr
+
+Base.@propagate_inbounds function Base.getindex(a::StaticShapeArray{T}, i::Int) where T
+    @boundscheck checkbounds(a, i)
+    return unsafe_load(a.ptr, i, Val(Base.datatype_alignment(T)))
+end
+
+Base.@propagate_inbounds function Base.setindex!(a::StaticShapeArray{T}, x, i::Int) where T
+    @boundscheck checkbounds(a, i)
+    unsafe_store!(a.ptr, convert(T, x), i, Val(Base.datatype_alignment(T)))
+    return a
+end
+
+const StaticShapeOffsetArray{T, N, A, D, O} = OffsetArray{T, N, StaticShapeArray{T, N, A, D, O}}
+
+# 0-based linear index of the offset indices I: (i₁ - O₁ - 1) + D₁ ((i₂ - O₂ - 1) + D₂ (…)), in Int64 from constants
+@inline static_linear_index(::Tuple{}, ::Tuple{}, ::Tuple{}) = 0
+@inline static_linear_index(D::Tuple, O::Tuple, I::Tuple) =
+    (first(I) - first(O) - 1) + first(D) * static_linear_index(Base.tail(D), Base.tail(O), Base.tail(I))
+
+# `getindex` / `setindex!` of the OffsetArray itself (its own methods subtract the offsets it stores; these use the
+# constants). Bounds checks, where a kernel runs without `@inbounds`, are the OffsetArray's.
+for N in 1:4
+    indices = [Symbol(:i, n) for n in 1:N]
+    signature = [:($i::Int) for i in indices]
+    @eval begin
+        @inline function Base.getindex(a::StaticShapeOffsetArray{T, $N, A, D, O}, $(signature...)) where {T, A, D, O}
+            @boundscheck checkbounds(a, $(indices...))
+            ℓ = static_linear_index(D, O, ($(indices...),))
+            return unsafe_load(parent(a).ptr, ℓ + 1, Val(Base.datatype_alignment(T)))
+        end
+
+        @inline function Base.setindex!(a::StaticShapeOffsetArray{T, $N, A, D, O}, x, $(signature...)) where {T, A, D, O}
+            @boundscheck checkbounds(a, $(indices...))
+            ℓ = static_linear_index(D, O, ($(indices...),))
+            unsafe_store!(parent(a).ptr, convert(T, x), ℓ + 1, Val(Base.datatype_alignment(T)))
+            return a
+        end
+    end
+end
+
+const Int32OffsetArray = OffsetArray{<:Any, <:Any, <:Int32IndexedArray}
+
+# whether the type variable `tv` occurs in the type expression `t`
+occurs_in(tv::TypeVar, t) =
+    t === tv ||
+    (t isa DataType && any(p -> occurs_in(tv, p), t.parameters)) ||
+    (t isa UnionAll && (occurs_in(tv, t.body) || occurs_in(tv, t.var.ub) || occurs_in(tv, t.var.lb))) ||
+    (t isa Union && (occurs_in(tv, t.a) || occurs_in(tv, t.b))) ||
+    (t isa Core.TypeofVararg && ((isdefined(t, :T) && occurs_in(tv, t.T)) || (isdefined(t, :N) && occurs_in(tv, t.N))))
+
+same_layout(S, T) = S isa DataType && isconcretetype(S) && isbitstype(S) && sizeof(S) == sizeof(T) &&
+                    fieldcount(S) == fieldcount(T) && all(fieldoffset(S, i) == fieldoffset(T, i) for i in 1:fieldcount(T))
+
+"""
+    static_shape_type(T, x)
+
+The static-shape type of the device-form value `x::T` (see the notes above): a type with the layout of `T`.
+"""
+function static_shape_type(::Type{T}, x) where T
+    if T <: Int32OffsetArray
+        p = getfield(x, :parent)
+        E = eltype(T); N = ndims(T); A = typeof(p).parameters[3]
+        return OffsetArray{E, N, StaticShapeArray{E, N, A, map(Int, getfield(p, :dims)), getfield(x, :offsets)}}
+    end
+
+    (isbitstype(T) && isstructtype(T) && fieldcount(T) > 0) || return T
+
+    if T <: Tuple
+        return Tuple{Any[static_shape_type(fieldtype(T, i), getfield(x, i)) for i in 1:fieldcount(T)]...}
+    elseif T <: NamedTuple
+        return NamedTuple{T.parameters[1], static_shape_type(T.parameters[2], Tuple(x))}
+    end
+
+    W = T.name.wrapper
+    W isa UnionAll || return T
+    declaration = Base.unwrap_unionall(W)
+    variables = Any[declaration.parameters...]
+    parameters = Any[T.parameters...]
+    length(variables) == length(parameters) || return T
+    # the declared field types, type variables included (not `fieldtype`, whose result inference takes for a `Type`
+    # and so folds `isa TypeVar` to `false`)
+    declared_types = Base.datatype_fieldtypes(declaration)
+
+    replacement = copy(parameters)
+    replaced = falses(length(parameters))
+    kept = falses(length(parameters))
+
+    for i in 1:fieldcount(T)
+        declared = declared_types[i]
+        j = declared isa TypeVar ? findfirst(v -> v === declared, variables) : nothing
+
+        if j === nothing # a parameter mentioned inside a composite field type is not replaced
+            for (n, v) in enumerate(variables)
+                v isa TypeVar && occurs_in(v, declared) && (kept[n] = true)
+            end
+        else
+            S = static_shape_type(fieldtype(T, i), getfield(x, i))
+            if !replaced[j]
+                replacement[j] = S
+                replaced[j] = true
+            elseif replacement[j] !== S # two fields of one parameter that disagree keep it
+                kept[j] = true
+            end
+        end
+    end
+
+    for j in eachindex(parameters)
+        (kept[j] || !replaced[j]) && (replacement[j] = parameters[j])
+    end
+
+    all(replacement[j] === parameters[j] for j in eachindex(parameters)) && return T
+
+    S = try
+        W{replacement...}
+    catch
+        return T
+    end
+
+    return same_layout(S, T) ? S : T
+end
+
+# the value `x::T` as the layout-identical type `S`
+@inline function reinterpret_arguments(::Type{S}, x::T) where {S, T}
+    reference = Ref{T}(x)
+    return GC.@preserve reference unsafe_load(Ptr{S}(Base.unsafe_convert(Ptr{T}, reference)))
+end
+
+# The part of an argument's value the static-shape types depend on: the dimensions and offsets of every
+# `Int32OffsetArray` reached through its isbits fields, as one flat tuple (type-stable; arrays that
+# `static_shape_type` leaves alone are included, which is harmless for a key).
+function shape_expressions!(expressions, T, x)
+    if T <: Int32OffsetArray
+        push!(expressions, :(getfield(getfield($x, :parent), :dims)), :(getfield($x, :offsets)))
+    elseif isbitstype(T) && isstructtype(T)
+        for i in 1:fieldcount(T)
+            shape_expressions!(expressions, fieldtype(T, i), :(getfield($x, $i)))
+        end
+    end
+    return expressions
+end
+
+@generated argument_shapes(x::T) where T = Expr(:tuple, shape_expressions!(Any[], T, :x)...)
+
 # Whether a type (an argument type, recursively through its fields) may hold a raw pointer, whose
 # `cudaconvert` is not the identity (`CuPtr` → `LLVMPtr`).
 holds_raw_pointer(::Type{<:Union{Ptr, CuPtr}}) = true
@@ -344,7 +536,9 @@ end
 # CUDAKernels.jl does) and the same argument values, without re-converting them
 # (`convert = Val(false)`). Launches with an argument that is not in its device form (not `isbits`, a
 # `Type`, a raw pointer, or a type `cudaconvert` changes), or kernels with a dynamic workgroup or ndrange,
-# take the standard launch. `CACHED_KERNEL_LAUNCH[] = false` disables the cache; `CHECK_CACHED_KERNEL_LAUNCH[] = true`
+# take the standard launch. A kernel that opts in is launched as a specialisation compiled for the shapes of its
+# array arguments (see "Compile-time array shapes" above and `launch_static_shapes!` below).
+# `CACHED_KERNEL_LAUNCH[] = false` disables the cache; `CHECK_CACHED_KERNEL_LAUNCH[] = true`
 # asserts on every cached launch that converting the arguments again leaves them bit-identical
 # (`cudaconvert(args) === args`), the condition under which the cached launch is the standard one.
 
@@ -426,6 +620,9 @@ end
     maxthreads = prod(KA.get(KA.workgroupsize(obj)))
     always_inline = KA.backend(obj).always_inline
     maxregs = UT.kernel_launch_maxregs(obj.f, Val(static_launch_size(obj)))
+    if STATIC_SHAPES[] && UT.kernel_launch_static_shapes(obj.f, TT)
+        launch_static_shapes!(obj.f, kernel_args, threads, blocks, maxthreads, always_inline, maxregs) && return nothing
+    end
     kernel = cached_host_kernel(obj.f, TT, maxthreads, always_inline, maxregs)
     kernel(kernel_args...; threads, blocks, convert = Val(false))
     return nothing
@@ -453,6 +650,134 @@ end
               join(changed, "; "))
     end
     return nothing
+end
+
+"""
+Whether the cached launch runs static-shape specialisations for the kernels that opt in
+(`UT.kernel_launch_static_shapes`). The default is the compile-time preference `AC.STATIC_SHAPES`;
+`OCEANANIGANS_STATIC_SHAPES=false` (or `true`) at load overrides it.
+"""
+const STATIC_SHAPES = Ref(AC.STATIC_SHAPES)
+
+# A static-shape specialisation of a kernel: the compiled kernel and the two argument tuple types.
+struct StaticShapeLaunch{K, TT, TS}
+    kernel :: K
+end
+
+@inline function (launch::StaticShapeLaunch{K, TT, TS})(kernel_args::TT, threads, blocks) where {K, TT, TS}
+    static_args = reinterpret_arguments(TS, kernel_args)
+    launch.kernel(static_args...; threads, blocks, convert = Val(false))
+    return nothing
+end
+
+# The specialisations of one kernel on one argument tuple type: the shapes of the last launch and its launcher
+# (`nothing`: keep the ordinary kernel), and those of the other shapes it has been launched with.
+mutable struct StaticShapeEntry{S}
+    shapes :: S
+    launcher :: Any
+    others :: Vector{Tuple{S, Any}}
+end
+
+const static_shape_entries = Dict{Any, Any}()
+# launches specialised / launches of opted-in kernels kept ordinary / specialisations compiled (diagnostics)
+const static_shape_counts = zeros(Int, 3)
+# (kernel function type, argument tuple type) => why its launches keep the ordinary kernel (diagnostics)
+const static_shape_refusals = Dict{Any, String}()
+
+const occupancy = isdefined(CUDA, :CUDACore) ? CUDA.CUDACore : CUDA
+
+@noinline function refuse_static_shapes(F, TT, reason)
+    @lock cached_launch_lock static_shape_refusals[(F, TT)] = reason
+    return nothing
+end
+
+# The registers per thread with which `blocks` thread blocks of `threads` threads fit a multiprocessor (the register
+# file is allotted to a thread in multiples of four).
+function block_register_budget(threads, blocks)
+    registers = occupancy.attribute(CUDA.device(), occupancy.DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR)
+    return 4 * ((registers ÷ (threads * blocks)) ÷ 4)
+end
+
+# The static-shape launcher of `f` for these arguments, or `nothing`: when no argument type changes or the
+# specialisation does not compile. Throughput follows the threads resident on a multiprocessor, so a specialisation
+# never runs with fewer thread blocks per multiprocessor than the ordinary kernel: if it needs more registers per
+# thread and so fits a block fewer, it is compiled with the register budget of the ordinary kernel's block count
+# (`block_register_budget`), and if that does not restore the count it is not used.
+@noinline function static_shape_launcher(f::F, kernel_args::TT, maxthreads, always_inline, maxregs) where {F, TT}
+    TS = static_shape_type(TT, kernel_args)
+    (TS !== TT && same_layout(TS, TT)) || return refuse_static_shapes(F, TT, "no argument array takes a static shape")
+
+    compile(cap) = cap > 0 ? CUDA.cufunction(f, TS; always_inline, maxthreads, maxregs = cap) :
+                             CUDA.cufunction(f, TS; always_inline, maxthreads)
+
+    ordinary = cached_host_kernel(f, TT, maxthreads, always_inline, maxregs)
+    blocks = occupancy.active_blocks(ordinary.fun, maxthreads)
+
+    static = try
+        specialisation = compile(maxregs)
+        if occupancy.active_blocks(specialisation.fun, maxthreads) < blocks
+            specialisation = compile(block_register_budget(maxthreads, blocks))
+        end
+        specialisation
+    catch err
+        err isa InterruptException && rethrow()
+        return refuse_static_shapes(F, TT, "the static-shape form does not compile: " * first(sprint(showerror, err), 400))
+    end
+
+    if occupancy.active_blocks(static.fun, maxthreads) < blocks
+        return refuse_static_shapes(F, TT, "fewer resident blocks: $(occupancy.registers(ordinary)) → $(occupancy.registers(static)) registers")
+    end
+
+    static_shape_counts[3] += 1
+    return StaticShapeLaunch{typeof(static), TT, TS}(static)
+end
+
+function static_shape_entry(f::F, kernel_args::TT, shapes::S, maxthreads, always_inline, maxregs) where {F, TT, S}
+    key = (context(), f, TT, maxthreads, always_inline, maxregs)
+    entry = @lock cached_launch_lock get(static_shape_entries, key, nothing)
+    if entry === nothing
+        launcher = static_shape_launcher(f, kernel_args, maxthreads, always_inline, maxregs)
+        entry = StaticShapeEntry{S}(shapes, launcher, Tuple{S, Any}[])
+        @lock cached_launch_lock static_shape_entries[key] = entry
+    end
+    return entry::StaticShapeEntry{S}
+end
+
+# The launcher for shapes other than the entry's last ones (a kernel launched on arrays of several shapes under one
+# argument type): found among the others or compiled, and made the entry's current one.
+@noinline function switch_static_shapes!(entry::StaticShapeEntry{S}, f, kernel_args, shapes::S, maxthreads, always_inline, maxregs) where S
+    n = findfirst(other -> first(other) === shapes, entry.others)
+    launcher = n === nothing ? static_shape_launcher(f, kernel_args, maxthreads, always_inline, maxregs) : last(entry.others[n])
+    @lock cached_launch_lock begin
+        n === nothing || deleteat!(entry.others, n)
+        push!(entry.others, (entry.shapes, entry.launcher))
+        entry.shapes = shapes
+        entry.launcher = launcher
+    end
+    return launcher
+end
+
+@noinline function check_static_shape_launch(::StaticShapeLaunch{K, TT, TS}, kernel_args) where {K, TT, TS}
+    derived = static_shape_type(TT, kernel_args)
+    derived === TS || error("static-shape launch: the arguments' shapes give $derived, the compiled kernel takes $TS")
+    return nothing
+end
+
+# Launch `f` with its static-shape specialisation for these arguments; `false` if it keeps the ordinary kernel.
+@inline function launch_static_shapes!(f::F, kernel_args::TT, threads, blocks, maxthreads, always_inline, maxregs) where {F, TT}
+    shapes = argument_shapes(kernel_args)
+    shapes === () && return false
+    entry = static_shape_entry(f, kernel_args, shapes, maxthreads, always_inline, maxregs)
+    launcher = entry.shapes === shapes ? entry.launcher :
+               switch_static_shapes!(entry, f, kernel_args, shapes, maxthreads, always_inline, maxregs)
+    if launcher === nothing
+        static_shape_counts[2] += 1
+        return false
+    end
+    CHECK_CACHED_KERNEL_LAUNCH[] && check_static_shape_launch(launcher, kernel_args)
+    static_shape_counts[1] += 1
+    launcher(kernel_args, threads, blocks)
+    return true
 end
 
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()

@@ -421,6 +421,32 @@ Launches that do not take the cached path (see `launch_configured_kernel!`) keep
 @inline kernel_launch_maxregs(f) = 0
 @inline kernel_launch_maxregs(f, launch_size::Val) = kernel_launch_maxregs(f)
 
+"""
+    kernel_launch_static_shapes(f, argument_types)
+
+Whether launches of the kernel function `f` (see `gpu_kernel_function`) with the argument tuple type
+`argument_types` (the kernel's context first, then its arguments in their device form) run a kernel compiled for
+the shapes of their array arguments, on backends whose launch supports it (CUDA's cached launch,
+`launch_configured_kernel!`; see `Architectures.STATIC_SHAPES`). The fallback is `false`.
+
+The specialisation is the same kernel body on the same memory: the dimensions and offsets of its `OffsetArray`
+arguments are constants of the compiled code instead of values read at every access, so the results are the
+same bits. It pays for kernels with many stencil reads per cell and is neutral or slightly negative for kernels
+that mostly move memory, so kernels opt in one by one. An entry is a method on the function's type that returns a
+literal, so that it is decided at compile time; the argument types let one kernel function opt in for some of its
+uses only (a generic tendency kernel, by the type of the tendency function it is given):
+
+    using Oceananigans.Utils: gpu_kernel_function
+    Oceananigans.Utils.kernel_launch_static_shapes(::typeof(gpu_kernel_function(my_kernel!)), ::Type) = true
+    Oceananigans.Utils.kernel_launch_static_shapes(::typeof(gpu_kernel_function(my_generic_kernel!)),
+                                                   ::Type{<:Tuple{Any, Any, Any, typeof(my_tendency), Vararg}}) = true
+
+A specialisation never runs with fewer thread blocks per multiprocessor than the ordinary kernel: where it needs
+more registers per thread, it is compiled with the register budget of the ordinary kernel's block count. One that does
+not compile is not used. Launches that do not take the cached path keep the ordinary kernel.
+"""
+@inline kernel_launch_static_shapes(f, argument_types) = false
+
 struct KernelFunctionProbe <: KA.GPU end
 
 """
