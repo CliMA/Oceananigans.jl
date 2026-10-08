@@ -157,9 +157,32 @@ end
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
+# Grid-fitted bottoms without an immersed top
+const BottomOnlyIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
+                                           <:Union{GridFittedBottom{<:Any, Nothing}, PartialCellBottom{<:Any, Nothing}}}
+
 const CenterOrFace = Union{Center, Face}
 const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 
-# Does not require a sweep
-mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =
+# Does not require a sweep; with an immersed top the column is swept like any `ReducedField`
+mask_immersed_field!(field::OnlyZReducedField, grid::BottomOnlyIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))
+
+const WField = Field{<:Center, <:Center, <:Face}
+
+# `immersed_peripheral_node` never masks the domain's top face, which is peripheral on the underlying grid too
+function mask_immersed_field!(field::WField, grid::ImmersedTopIBG, loc, value)
+    arch = architecture(field)
+    loc  = instantiate.(loc)
+    kp = KernelParameters(interior_indices(field)...)
+    launch!(arch, grid, kp, _mask_immersed_w_field!, field, loc, grid, value)
+    return nothing
+end
+
+@kernel function _mask_immersed_w_field!(field, (ℓx, ℓy, ℓz), grid, value)
+    i, j, k = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    covered = immersed_cell(i, j, Nz, grid) | (column_top_height(i, j, grid, grid.immersed_boundary.top_height) < rnode(i, j, Nz+1, grid, c, c, f))
+    masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | ((k == Nz + 1) & covered)
+    @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
+end

@@ -1,6 +1,6 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Grids: XYZRegularRG, x_domain, y_domain
-using Oceananigans.Operators: Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
+using Oceananigans.Operators: Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᵃ, δyᶜᶜᵃ
 
 using Oceananigans.Solvers: Solvers, FFTBasedPoissonSolver, solve!
 
@@ -105,8 +105,8 @@ end
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
+    δx_U = δxᶜᶜᵃ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
+    δy_V = δyᶜᶜᵃ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
     fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
     @inbounds rhs[i, j, 1] = (δx_U + δy_V - Az * fη - Az * η[i, j, kᴺ+1] / Δt) / (g * Lz * Δt * Az)
