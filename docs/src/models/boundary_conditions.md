@@ -88,17 +88,17 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: ValueBoundaryCondition: 0.0
 ├── north: ValueBoundaryCondition: 0.0
 ├── bottom: ValueBoundaryCondition: 0.0
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 
 julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: NormalFlowBoundaryCondition{Nothing}: Nothing
-├── north: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── south: NormalFlowBoundaryCondition{Nothing}: nothing
+├── north: NormalFlowBoundaryCondition{Nothing}: nothing
 ├── bottom: ValueBoundaryCondition: 0.0
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
@@ -166,7 +166,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ```
 
@@ -398,8 +398,8 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
-└── target_transport: Nothing
+├── density: nothing
+└── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
@@ -423,7 +423,7 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
+├── density: nothing
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
@@ -466,13 +466,13 @@ we write
 julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
                                        bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ├── bottom: GradientBoundaryCondition: 0.01
 ├── top: ValueBoundaryCondition: 20.0
-└── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+└── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ```
 
 If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultBoundaryCondition`
@@ -647,12 +647,12 @@ velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── top: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
@@ -705,12 +705,12 @@ u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
-├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── top: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
 ```
 
