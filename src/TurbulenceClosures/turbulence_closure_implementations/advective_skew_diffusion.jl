@@ -71,6 +71,17 @@ end
     return ifelse(bz <= 0, zero(grid), -bh / bz) + ∂h_z
 end
 
+@inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
+    FT = eltype(grid)
+    Sₘ = convert(FT, slope_limiter.max_slope)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
+
+    Sx = - bx / bz + ∂x_z
+    Sy = - by / bz + ∂y_z
+
+    return ifelse(bz <= 0, zero(grid), min(one(grid), Sₘ^2 / (Sx^2 + Sy^2)))
+end
+
 # Buoyancy gradients at (F, C, F), the location of the x-component of the eddy streamfunction
 @inline bxᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
 @inline byᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxyᶠᶜᵃ, ∂yᵣ_b, b, C)
