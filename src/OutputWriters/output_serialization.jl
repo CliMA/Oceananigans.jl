@@ -186,7 +186,5 @@ end
 ##### Serialization of vertical coordinates
 #####
 
-# A vertical coordinate other than a plain face specification (mutable, terrain-following, …)
-# also carries grid-sized arrays; only its type and reference interfaces are serialized.
-serialize_vertical_coordinate(z::AbstractVerticalCoordinate) =
-    string(nameof(typeof(z)), "(", collect(z.cᵃᵃᶠ), ")")
+# Serialize only type and reference interfaces of a generic vertical coordinate.
+serialize_vertical_coordinate(z::AbstractVerticalCoordinate) = string(nameof(typeof(z)), "(", collect(z.cᵃᵃᶠ), ")")
