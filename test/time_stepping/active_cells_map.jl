@@ -92,16 +92,22 @@ Nz = 10
 
         @testset "Active cells maps that extend into the halos" begin
             grid = on_architecture(CPU(), immersed_grid)
+            corner_cells = CartesianIndices((0:1, 0:1, 0:1))
+            horizontal_corner_cells = CartesianIndices((0:1, 0:1))
+
+            # An index has an active node if any of the cells around its `(Face, Face, Face)` node is not immersed
             active_cells(ranges) = Set(Tuple(I) for I in CartesianIndices(ranges) if !immersed_cell(Tuple(I)..., grid))
-            active_columns(ranges) = Set(Tuple(I) for I in CartesianIndices(ranges) if !all(immersed_cell(Tuple(I)..., k, grid) for k in 1:Nz))
+            active_nodes(ranges) = Set(Tuple(I) for I in CartesianIndices(ranges) if !all(immersed_cell(Tuple(I - J)..., grid) for J in corner_cells))
+            active_column_nodes(ranges) = Set(Tuple(I) for I in CartesianIndices(ranges)
+                                              if !all(immersed_cell(Tuple(I - J)..., k, grid) for J in horizontal_corner_cells, k in 1:Nz))
 
             surface  = on_architecture(CPU(), surface_kernel_parameters(immersed_active_grid))
             extended = on_architecture(CPU(), extended_interior_kernel_parameters(immersed_active_grid))
             volume   = on_architecture(CPU(), volume_kernel_parameters(immersed_active_grid))
 
-            @test Set(surface)  == active_columns(contiguousrange(surface_kernel_parameters(underlying_grid)))
+            @test Set(surface)  == active_column_nodes(contiguousrange(surface_kernel_parameters(underlying_grid)))
             @test Set(extended) == active_cells(contiguousrange(extended_interior_kernel_parameters(underlying_grid)))
-            @test Set(volume)   == active_cells(contiguousrange(volume_kernel_parameters(underlying_grid)))
+            @test Set(volume)   == active_nodes(contiguousrange(volume_kernel_parameters(underlying_grid)))
             @test allunique(surface)
             @test allunique(volume)
         end

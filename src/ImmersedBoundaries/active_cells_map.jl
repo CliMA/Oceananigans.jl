@@ -54,9 +54,13 @@ const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 # Each of these four strips contains the active cells whose stencils touch a halo region,
 # and must therefore wait for the halo exchanges before being computed.
 #
-# All the maps are views into a single array that also holds the active cells in the halo regions spanned by
+# All the maps are views into a single array that also holds the indices in the halo regions spanned by
 # `surface_kernel_parameters` (columns), and `extended_interior_kernel_parameters` and `volume_kernel_parameters`
 # (three-dimensional maps). On a grid with maps, these kernel parameters are views into that array too.
+#
+# The interior maps and `extended_interior_kernel_parameters` hold the active cells, which are the indices with a node
+# that is not peripheral. `surface_kernel_parameters` and `volume_kernel_parameters` hold every index with an active
+# node, so that the kernels launched over them also compute boundary nodes (velocities on walls, stresses on corners).
 @inline Utils.get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:xyz})   = grid.interior_active_cells
 @inline Utils.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:xyz})   = grid.interior_active_cells.interior
 @inline Utils.get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:xy})    = grid.active_z_columns
@@ -78,6 +82,12 @@ end
 
 @inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
+# A node at `(i, j, k)` touches some of the cells `(i-1:i, j-1:j, k-1:k)`, and the `(Face, Face, Face)` node touches all of them
+@inline active_horizontal_node(i, j, k, grid, ib) = active_cell(i, j,   k, grid, ib) | active_cell(i-1, j,   k, grid, ib) |
+                                                    active_cell(i, j-1, k, grid, ib) | active_cell(i-1, j-1, k, grid, ib)
+
+@inline active_node(i, j, k, grid, ib) = active_horizontal_node(i, j, k, grid, ib) | active_horizontal_node(i, j, k-1, grid, ib)
+
 @inline inside(i, j, k, (ri, rj, rk)::NTuple{3}) = (i ∈ ri) & (j ∈ rj) & (k ∈ rk)
 @inline inside(i, j, k, (ri, rj)::NTuple{2})     = (i ∈ ri) & (j ∈ rj)
 
@@ -90,18 +100,23 @@ end
     return label
 end
 
+# Active cells take the label of their region, and the other indices with an active node the label after the regions
 @kernel function _label_active_cells!(labels, grid, ib, regions)
     i, j, k = @index(Global, NTuple)
-    @inbounds labels[i, j, k] = active_cell(i, j, k, grid, ib) * region_label(i, j, k, regions)
+    last_label = length(regions) + 1
+    @inbounds labels[i, j, k] = ifelse(active_cell(i, j, k, grid, ib), region_label(i, j, k, regions), active_node(i, j, k, grid, ib) * last_label)
 end
 
 @kernel function _label_active_z_columns!(labels, grid, ib, regions)
     i, j = @index(Global, NTuple)
     active_column = false
+    active_corner = false
     for k in 1:size(grid, 3)
         active_column = active_column | active_cell(i, j, k, grid, ib)
+        active_corner = active_corner | active_horizontal_node(i, j, k, grid, ib)
     end
-    @inbounds labels[i, j, 1] = active_column * region_label(i, j, 1, regions)
+    last_label = length(regions) + 1
+    @inbounds labels[i, j, 1] = ifelse(active_column, region_label(i, j, 1, regions), active_corner * last_label)
 end
 
 index_type(grid) = maximum(size(grid) .+ halo_size(grid)) ≤ typemax(Int16) ? Int16 : Int32
@@ -123,13 +138,13 @@ $(TYPEDSIGNATURES)
 
 Return the active cells of each of the disjoint `regions` that cover the interior, preceded by their union.
 All of them are views into one array that starts with the active cells that `extended_interior_kernel_parameters`
-adds around the interior, and ends with the ones that `volume_kernel_parameters` adds around those.
+adds around the interior, and ends with the other indices with an active node that `volume_kernel_parameters` adds.
 """
 function active_cells_maps(grid, ib, regions)
     N = length(regions)
     extended_interior = contiguousrange(extended_interior_kernel_parameters(grid))
 
-    # Labels 1:N are the regions, N+1 the rest of the extended interior, and N+2 the rest of the volume
+    # Labels 1:N are the regions, N+1 the rest of the extended interior, and N+2 the rest of the volume with an active node
     labels = Field{Center, Center, Center}(grid, Int8)
     launch!(architecture(grid), grid, volume_kernel_parameters(grid), _label_active_cells!, labels, grid, ib, (regions..., extended_interior))
     cells, lengths = labelled_indices(grid, labels.data, (N+1, (1:N)..., N+2))
