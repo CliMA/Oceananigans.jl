@@ -324,6 +324,25 @@ const cached_launch_kernels = Dict{Any, Any}()
 const cached_launch_lock = ReentrantLock()
 # launches that took the cached path / the standard one (diagnostics)
 const cached_launch_counts = zeros(Int, 2)
+# With `RECORD_STANDARD_LAUNCHES[] = true`: the launches that took the standard path, counted by kernel function
+# and reason — `:dynamic` (workgroup or ndrange not static) or the positions of the arguments that are not in
+# their device form (1 is the kernel's context) (diagnostics).
+const RECORD_STANDARD_LAUNCHES = Ref(false)
+const standard_launches = Dict{Any, Int}()
+
+@noinline function record_standard_launch(f, reason)
+    key = (f, reason)
+    @lock cached_launch_lock standard_launches[key] = get(standard_launches, key, 0) + 1
+    return nothing
+end
+
+@inline function standard_kernel_launch!(loop!, reason, args...)
+    cached_launch_counts[2] += 1
+    RECORD_STANDARD_LAUNCHES[] && record_standard_launch(loop!.f, reason(args))
+    return loop!(args...)
+end
+
+@inline dynamic_launch(args) = :dynamic
 
 # Whether every argument of a launch is in its device form (see `is_device_form_type`; a `Type` argument is
 # not `isbits`, so the argument tuple type then equals the `Tuple{map(Core.Typeof, args)...}` that `@cuda`
@@ -336,13 +355,26 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 @inline UT.launch_configured_kernel!(loop!::KA.Kernel{CUDABackend}, args...) =
     CACHED_KERNEL_LAUNCH[] ? cached_kernel_launch!(loop!, args...) : loop!(args...)
 
-@inline cached_kernel_launch!(loop!, args...) = (cached_launch_counts[2] += 1; loop!(args...))
+@inline cached_kernel_launch!(loop!, args...) = standard_kernel_launch!(loop!, dynamic_launch, args...)
 
-@inline function cached_kernel_launch!(obj::KA.Kernel{CUDABackend, <:KA.StaticSize, <:StaticNDRange}, args...)
+# The kernel object with the workgroup of its per-kernel launch configuration (`UT.kernel_launch_workgroup`):
+# the object itself unless an entry names another workgroup, decided at compile time on the kernel function
+# and the configured workgroup.
+@inline function configured_kernel(obj::KA.Kernel{CUDABackend, KA.StaticSize{W}, N, F}) where {W, N, F}
+    W′ = UT.kernel_launch_workgroup(obj.f, Val(W))
+    W′ === W && return obj
+    (W′ isa NTuple{length(W), Int} && all(>(0), W′)) ||
+        throw(ArgumentError("kernel_launch_workgroup of $(nameof(F)) must return a tuple of $(length(W)) positive integers, not $(W′)"))
+    return KA.Kernel{CUDABackend, KA.StaticSize{W′}, N, F}(KA.backend(obj), obj.f)
+end
+
+@inline function cached_kernel_launch!(configured::KA.Kernel{CUDABackend, <:KA.StaticSize, <:StaticNDRange}, args...)
+    obj = configured_kernel(configured)
     ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, nothing, nothing)
     ctx = KA.mkcontext(obj, ndrange, iterspace)
     kernel_args = (ctx, args...)
-    all_device_form(kernel_args) || return (cached_launch_counts[2] += 1; obj(args...))
+    all_device_form(kernel_args) ||
+        return standard_kernel_launch!(configured, _ -> findall(arg -> !is_device_form_type(typeof(arg)), collect(Any, kernel_args)), args...)
     TT = typeof(kernel_args)
     cached_launch_counts[1] += 1
 
@@ -354,16 +386,19 @@ const StaticNDRange = Union{KA.StaticSize, UT.OffsetStaticSize}
 
     maxthreads = prod(KA.get(KA.workgroupsize(obj)))
     always_inline = KA.backend(obj).always_inline
-    kernel = cached_host_kernel(obj.f, TT, maxthreads, always_inline)
+    maxregs = UT.kernel_launch_maxregs(obj.f)
+    kernel = cached_host_kernel(obj.f, TT, maxthreads, always_inline, maxregs)
     kernel(kernel_args...; threads, blocks, convert = Val(false))
     return nothing
 end
 
-function cached_host_kernel(f::F, ::Type{TT}, maxthreads, always_inline) where {F, TT}
-    key = (context(), f, TT, maxthreads, always_inline)
+# (the workgroup is part of `TT` through the kernel's context type, and of `maxthreads`)
+function cached_host_kernel(f::F, ::Type{TT}, maxthreads, always_inline, maxregs) where {F, TT}
+    key = (context(), f, TT, maxthreads, always_inline, maxregs)
     kernel = @lock cached_launch_lock get(cached_launch_kernels, key, nothing)
     if kernel === nothing
-        kernel = CUDA.cufunction(f, TT; always_inline, maxthreads)
+        kernel = maxregs > 0 ? CUDA.cufunction(f, TT; always_inline, maxthreads, maxregs) :
+                               CUDA.cufunction(f, TT; always_inline, maxthreads)
         @lock cached_launch_lock cached_launch_kernels[key] = kernel
     end
     return kernel::CUDA.HostKernel{F, TT}

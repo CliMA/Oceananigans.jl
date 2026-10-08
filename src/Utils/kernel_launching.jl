@@ -378,6 +378,42 @@ type and looking up the compiled kernel on every launch.
 """
 @inline launch_configured_kernel!(loop!, args...) = loop!(args...)
 
+"""
+    kernel_launch_workgroup(f, ::Val{default})
+    kernel_launch_maxregs(f)
+
+Per-kernel launch configuration of configured kernels, by kernel function `f` (the backend function of a
+KernelAbstractions kernel, see `gpu_kernel_function`), on
+backends whose launch supports it (CUDA's cached launch, `launch_configured_kernel!`): the workgroup to launch
+`f` with in place of the configured `default` (a tuple of the same length), and a cap on the registers per
+thread `f` is compiled with (`0`: none). The fallbacks change nothing.
+
+Both change only how the same kernel body is launched — the mapping of threads to indices and the register
+allocation — not what it computes at an index, so a kernel whose result at an index depends on that index only
+is bit-identical under any entry. A kernel that uses shared memory, the group size or barriers (`@localmem`,
+`@groupsize`, `@synchronize`) must not be given a workgroup entry. An entry is a method on the function's type
+(see `gpu_kernel_function`) that returns a literal, so that it is decided at compile time:
+
+    using Oceananigans.Utils: gpu_kernel_function
+    Oceananigans.Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(my_kernel!)), ::Val{(16, 16)}) = (32, 8)
+    Oceananigans.Utils.kernel_launch_maxregs(::typeof(gpu_kernel_function(my_kernel!))) = 64
+
+Launches that do not take the cached path (see `launch_configured_kernel!`) keep the configured launch.
+"""
+@inline kernel_launch_workgroup(f, ::Val{default}) where default = default
+@inline kernel_launch_maxregs(f) = 0
+
+struct KernelFunctionProbe <: KA.GPU end
+
+"""
+    gpu_kernel_function(kernel)
+
+The function that the KernelAbstractions kernel `kernel` (the name given to `@kernel`) runs on GPU backends: the
+`f` of its kernel objects, on whose type the per-kernel launch configuration dispatches
+(`kernel_launch_workgroup`, `kernel_launch_maxregs`).
+"""
+gpu_kernel_function(kernel) = kernel(KernelFunctionProbe()).f
+
 # `:xyz` and `:xy` launch over the corresponding active cells map of `grid`, if it has one
 @inline possibly_load_active_cells_map(grid, workspec, exclude_periphery) = workspec
 

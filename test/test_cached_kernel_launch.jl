@@ -5,9 +5,9 @@
 using Test
 using CUDA
 using Oceananigans
-using Oceananigans.Architectures: convert_to_device, architecture
+using Oceananigans.Architectures: convert_to_device, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: Utils, launch!, launch_configured_kernel!, KernelParameters, gpu_kernel_function
 using KernelAbstractions: @kernel, @index
 
 const Ext = Base.get_extension(Oceananigans, :OceananigansCUDAExt)
@@ -17,15 +17,28 @@ const Ext = Base.get_extension(Oceananigans, :OceananigansCUDAExt)
     @inbounds a[i, j, k] = b[i, j, k] + zero(grid)
 end
 
-# The result of one launch and one halo fill, cached launch on or off.
-function launched_and_filled(grid, cached)
-    Ext.CACHED_KERNEL_LAUNCH[] = cached
+# Two kernels with the same body: one launched as configured, one with a per-kernel launch configuration
+# (another workgroup and a register cap).
+@kernel function _stencil_default!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = (b[i+1, j, k] - b[i-1, j, k]) * b[i, j+1, k] + b[i, j, k-1] / (1 + b[i, j, k+1]^2)
+end
+
+@kernel function _stencil_configured!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    @inbounds a[i, j, k] = (b[i+1, j, k] - b[i-1, j, k]) * b[i, j+1, k] + b[i, j, k-1] / (1 + b[i, j, k+1]^2)
+end
+
+Utils.kernel_launch_workgroup(::typeof(gpu_kernel_function(_stencil_configured!)), ::Val{W}) where W = ntuple(d -> d == 1 ? 4 : 2, length(W))
+Utils.kernel_launch_maxregs(::typeof(gpu_kernel_function(_stencil_configured!))) = 32
+
+function stencil(kernel!, grid, workspec = :xyz)
     a = CenterField(grid)
     b = CenterField(grid)
-    set!(b, (x, y, z) -> x + 2y + 3z)
-    launch!(architecture(grid), grid, :xyz, _copy_on_grid!, a, grid, b)
-    fill_halo_regions!(a)
-    return Array(parent(a))
+    set!(b, (x, y, z) -> sin(3x) + cos(5y) * z)
+    fill_halo_regions!(b)
+    launch!(architecture(grid), grid, workspec, kernel!, a, grid, b)
+    return Array(interior(a))
 end
 
 @testset "Device-form kernel arguments and the cached launch" begin
@@ -85,6 +98,44 @@ end
             without_cache = launched_and_filled(grid, false)
             @test reinterpret(UInt64, with_cache) == reinterpret(UInt64, without_cache)
         end
+        # Per-kernel launch configuration: another workgroup and a register cap change the launch, not the result.
+        Ext.CACHED_KERNEL_LAUNCH[] = true
+        fill!(Ext.cached_launch_counts, 0)
+        for grid in (regular, stretched, latlon)
+            default = stencil(_stencil_default!, grid)
+            configured = stencil(_stencil_configured!, grid)
+            @test reinterpret(UInt64, configured) == reinterpret(UInt64, default)
+        end
+        # … also over an offset range (the ndrange keeps its type, the workgroup changes)
+        for grid in (regular, stretched, latlon)
+            range = KernelParameters(2:7, 2:5, 2:3)
+            default = stencil(_stencil_default!, grid, range)
+            configured = stencil(_stencil_configured!, grid, range)
+            @test reinterpret(UInt64, configured) == reinterpret(UInt64, default)
+            @test any(!iszero, configured) && iszero(configured[1, :, :]) && iszero(configured[:, :, 4])
+        end
+        @test Ext.cached_launch_counts[2] == 0
+        @test gpu_kernel_function(_stencil_default!) === gpu__stencil_default!
+        keys_of(f) = [key for key in keys(Ext.cached_launch_kernels) if key[2] === f]
+        @test all(key -> key[4] == 8 && key[6] == 32, keys_of(gpu__stencil_configured!))     # maxthreads 4 × 2, maxregs 32
+        @test length(keys_of(gpu__stencil_configured!)) >= 2                                 # :xyz and the offset range
+        @test all(key -> key[4] == 256 && key[6] == 0, keys_of(gpu__stencil_default!))
+        @test all(kernel -> CUDA.registers(kernel) <= 32, [Ext.cached_launch_kernels[key] for key in keys_of(gpu__stencil_configured!)])
+
+        # A launch with an argument that is not in its device form takes the standard launch, and is recorded.
+        Ext.CACHED_KERNEL_LAUNCH[] = true
+        Ext.RECORD_STANDARD_LAUNCHES[] = true
+        empty!(Ext.standard_launches)
+        a, b = CenterField(regular), CenterField(regular)
+        set!(b, (x, y, z) -> x - y + z)
+        loop! = _copy_on_grid!(CUDA.CUDABackend(), (16, 16), size(regular))
+        launch_configured_kernel!(loop!, a.data, regular, b.data)
+        @test Array(interior(a)) == Array(interior(b))
+        @test Ext.standard_launches == Dict((gpu_kernel_function(_copy_on_grid!), [2, 3, 4]) => 1)
+        dynamic_loop! = _copy_on_grid!(CUDA.CUDABackend(), (16, 16))
+        @test_throws Exception launch_configured_kernel!(dynamic_loop!, convert_to_device(arch, (a.data, regular, b.data))...)
+        @test Ext.standard_launches[(gpu_kernel_function(_copy_on_grid!), :dynamic)] == 1
+        Ext.RECORD_STANDARD_LAUNCHES[] = false
     finally
         Ext.CACHED_KERNEL_LAUNCH[], Ext.CHECK_CACHED_KERNEL_LAUNCH[] = cached_before, check_before
     end
