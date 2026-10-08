@@ -49,6 +49,23 @@ end
     end
 end
 
+@testset "KernelFunctionOperation regional indices" begin
+    grid = RectilinearGrid(CPU(), size=(4, 2, 3), extent=(1, 1, 1), halo=(1, 1, 1))
+    regional_grid = MultiRegionGrid(grid, partition=XPartition(2))
+    return_two(i, j, k, grid) = 2
+    operation = KernelFunctionOperation{Center, Center, Center}(
+        return_two, regional_grid; indices=(:, :, 2:3))
+
+    for region in 1:2
+        @test Oceananigans.Utils.getregion(operation, region).indices == (:, :, 2:3)
+        @test Oceananigans.Utils._getregion(operation, region).indices == (:, :, 2:3)
+    end
+
+    result = reconstruct_global_field(compute!(Field(operation)))
+    @test size(interior(result)) == (4, 2, 2)
+    @test all(==(2), interior(result))
+end
+
 @testset "Testing multi region grids" begin
     for arch in archs
 

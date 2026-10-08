@@ -1,7 +1,7 @@
 using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
 """
-    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
+    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:, :, :))
 
 Construct a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` with `arguments`.
 
@@ -23,6 +23,8 @@ already accepts `(i, j, k, grid, arguments...)` keeps that behavior at every loc
 reduced call is used only when the full one is not applicable.
 
 Note that `compute!(kfo::KernelFunctionOperation)` calls `compute!` on all `kfo.arguments`.
+By default, the operation covers the full domain. Set `indices` to restrict the output domain.
+The caller must ensure that the kernel supports the selected output indices.
 
 Examples
 ========
@@ -75,22 +77,24 @@ KernelFunctionOperation at (Center, Center, ⋅)
 └── arguments: ()
 ```
 """
-struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
+struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D, I} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     grid :: G
     arguments :: D
+    indices :: I
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, grid::G, arguments::D,
-                                                 ::Type{T}=eltype(grid)) where {LX, LY, LZ, G, T, K, D<:Tuple}
-        return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
+                                                 ::Type{T}=eltype(grid); indices=(:,:,:)) where {LX, LY, LZ, G, T, K, D<:Tuple}
+        output_indices = construct_regionally(validate_indices, indices, (LX, LY, LZ), grid)
+        return new{LX, LY, LZ, G, T, K, D, typeof(output_indices)}(kernel_function, grid, arguments, output_indices)
     end
 
 end
 
 # Convenience outer constructor: splat arguments into a tuple.
 # T defaults to eltype(grid) via the inner constructor.
-function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
-    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
+function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...; indices=(:, :, :)) where {LX, LY, LZ}
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...); indices)
 end
 
 # `getindex` calls the kernel function with the full `(i, j, k, grid, args...)` signature
@@ -108,7 +112,7 @@ end
 @inline kept_index(::Type{Nothing}, index) = ()
 @inline kept_index(::Type, index) = (index,)
 
-indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
+indices(κ::KernelFunctionOperation) = κ.indices
 compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
 "Adapt `KernelFunctionOperation` to work on the GPU via KernelAbstractions."
@@ -116,13 +120,15 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),
                                         Tuple(Adapt.adapt(to, a) for a in κ.arguments),
-                                        unwrapped_eltype(eltype(κ)))
+                                        unwrapped_eltype(eltype(κ));
+                                        indices=Adapt.adapt(to, κ.indices))
 
 Architectures.on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
                                         on_architecture(to, κ.grid),
                                         Tuple(on_architecture(to, a) for a in κ.arguments),
-                                        eltype(κ))
+                                        eltype(κ);
+                                        indices=on_architecture(to, κ.indices))
 
 Base.show(io::IO, kfo::KernelFunctionOperation) =
     print(io,
