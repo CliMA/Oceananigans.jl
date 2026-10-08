@@ -69,7 +69,7 @@ Oceananigans.defaults.FloatType = FT
 # ## A four-layer tripolar grid
 #
 # The tripolar grid spans the globe from 80°S to the North Pole. The resolution is a
-# parameter: the three five-year 1° runs below take about an hour and a half on a laptop
+# parameter: the three six-year 1° runs below take just under two hours on a laptop
 # GPU, ½° takes about eight times longer, and 2° is quick enough for a CPU. The four layers thicken
 # with depth, from 100 m at the surface to 2.5 km at the bottom. We build the vertical
 # coordinate with a `MutableVerticalDiscretization` so that the layers can stretch with
@@ -275,11 +275,11 @@ end
 # The simulation runner saves the barotropic streamfunction ``ψ``, defined by
 # ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U`` northward from
 # Antarctica, together with the surface speed and the surface temperature, every ten days
-# of a five-year run.
+# of a six-year run.
 
 year = 365days
 
-function run_gyres(grid, coriolis, name; stop_time=5year, save_interval=10days)
+function run_gyres(grid, coriolis, name; stop_time=6year, save_interval=10days)
     model = build_model(grid, coriolis)
     simulation = Simulation(model; Δt, stop_time)
 
