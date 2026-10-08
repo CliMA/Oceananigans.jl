@@ -21,70 +21,38 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  mpi:
-    name: Distributed MPI - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  tests:
+    name: ${{ matrix.label }} - Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.julia_arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.13'
-        os:
-          - ubuntu-latest
-        arch:
-          - 'default'
+        include:
+          - label: 'Distributed MPI'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'ubuntu-latest'
+            test_group: 'distributed/tripolar,distributed/output_combining'
+            check_bounds: 'yes'
+          - label: 'Reactant and Makie'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'ubuntu-latest'
+            test_group: 'makie,reactant,sharding'
+            check_bounds: 'auto'
+          - label: 'Metal'
+            julia_version: '1.13'
+            julia_arch: 'default'
+            os: 'macos-latest'
+            test_group: 'metal'
+            check_bounds: 'yes'
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-          show-versioninfo: true
-      - uses: julia-actions/cache@v3
-      - name: Instantiate environment
-        timeout-minutes: 45
-        shell: bash
-        run: |
-          julia --project=test --color=yes --check-bounds=yes -e '
-            using Pkg
-            Pkg.instantiate()
-          '
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          test_args: --verbose --quickfail
-        env:
-          TEST_GROUP: "distributed/tripolar,distributed/output_combining"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          # default is src,ext — include others if you need them
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: distributed_tripolar   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
-
-  reactant_makie:
-    name: Reactant and Makie - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.13'
-        os:
-          - ubuntu-latest
-        arch:
-          - 'default'
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          version: ${{ matrix.julia_version }}
+          arch: ${{ matrix.julia_arch }}
           show-versioninfo: true
       - uses: julia-actions/cache@v3
       - name: Set IFRT runtime for Reactant
@@ -93,10 +61,6 @@ jobs:
           echo 'xla_runtime = "IFRT"' >> LocalPreferences.toml
 
           cat LocalPreferences.toml
-      - name: Install earlyoom
-        shell: bash
-        run: |
-          sudo apt-get install -y earlyoom
       - name: Set TMPDIR and create directory
         # We have to use `${GITHUB_WORKSPACE}` instead of `github.workspace` because GitHub
         # is terrible and the two don't match inside containers:
@@ -109,105 +73,57 @@ jobs:
         timeout-minutes: 45
         shell: bash
         run: |
-          julia --project=test --color=yes --check-bounds=auto -e '
+          julia --project=test --color=yes --check-bounds=${{ matrix.check_bounds }} -e '
             using Pkg
             Pkg.instantiate()
           '
-      - name: Run tests
+      - name: Install earlyoom
+        if:  ${{ runner.os == 'Linux' }}
         shell: bash
         run: |
-          earlyoom -m 2 -s 100 -r 60 --prefer 'julia' &
-          julia --project --color=yes --check-bounds=auto -e '
-            using Pkg
-            Pkg.test(; coverage=true,
-                       julia_args=["--check-bounds=auto", "-O0", "--color=yes"],
-                       test_args=["--verbose", " --quickfail"],
-                       force_latest_compatible_version=false,
-                       allow_reresolve=true)'
+          sudo apt-get install -y earlyoom
+      - name: Start earlyoom
+        if:  ${{ runner.os == 'Linux' }}
+        id: earlyoom
+        run: |
+          earlyoom -m 2 -s 100 -r 60 --prefer 'julia'
+        background: true
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: "${{ matrix.check_bounds }}"
+          optimize: "0"
+          test_args: --verbose --quickfail
         env:
-          TEST_GROUP: "makie,reactant,sharding"
-          JULIA_DEBUG: "Reactant, Reactant_jll"
-          JULIA_TEST_MAXRSS_MB: 3200
-          REACTANT_TEST: true
-          XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
-
+          TEST_GROUP: "${{ matrix.test_group }}"
+      - name: Stop earlyoom
+        cancel: earlyoom
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          # default is src,ext — include others if you need them
+          directories: src,ext
       - name: Upload XLA dump
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         timeout-minutes: 10
         if: ${{ always() }}
         with:
-          name: 'xla-dump-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}'
+          name: 'xla-dump-${{ matrix.julia_version }}-${{ matrix.os }}-${{ matrix.julia_arch }}'
           path: '**/xla_dump'
           retention-days: 90
           overwrite: false
+          if-no-files-found: ignore
       - name: Upload MLIR and XLA modules
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         timeout-minutes: 10
         if: ${{ always() }}
         with:
-          name: 'mlir-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}'
+          name: 'mlir-${{ matrix.julia_version }}-${{ matrix.os }}-${{ matrix.julia_arch }}'
           path: |
             **/*.mlir
           retention-days: 90
           overwrite: false
-
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-
+          if-no-files-found: ignore
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  metal:
-    name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.13'
-        os:
-          - macos-latest
-        arch:
-          - 'default'
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-          show-versioninfo: true
-      - uses: julia-actions/cache@v3
-      - name: Instantiate environment
-        timeout-minutes: 45
-        shell: bash
-        run: |
-          julia --project=test --color=yes --check-bounds=yes -e '
-            using Pkg
-            Pkg.instantiate()
-          '
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          test_args: --verbose --quickfail
-        env:
-          TEST_GROUP: "metal"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          # default is src,ext — include others if you need them
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
-
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
+          flags: "${{ matrix.test_group }}"    # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)

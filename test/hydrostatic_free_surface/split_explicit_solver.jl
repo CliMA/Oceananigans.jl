@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Fields: VelocityFields
+using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot, regularize_field_boundary_conditions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
@@ -398,5 +399,44 @@ end
         set!(other_GU, (x, y) -> 2e-4 * sin(y))
         other_reference = substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = false, GU = other_GU)
         @test substep_barotropic_mode(Δτ₁, clock₁, weights₁, transport_weights₁; capture_graphs = true, GU = other_GU) == other_reference
+    end
+end
+
+@testset "extend_halos vs fill_halos consistency on tripolar grids" begin
+    # Land over the two singular poles of the fold, at (70°E, 55°N) and (250°E, 55°N)
+    cosine_of_pole_distance(λ, φ, pole_longitude) = sind(φ) * sind(55) + cosd(φ) * cosd(55) * cosd(λ - pole_longitude)
+    Lz = 1 / Oceananigans.defaults.gravitational_acceleration
+    bottom_height(λ, φ) = max(cosine_of_pole_distance(λ, φ, 70), cosine_of_pole_distance(λ, φ, 250)) > cosd(3) ? 0 : -Lz
+
+    for arch in archs, (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+        underlying_grid = TripolarGrid(arch; size = (16, 10, 1), z = (-Lz, 0), north_poles_latitude = 55, first_pole_longitude = 70,
+                                       fold_topology, pivot)
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+
+        velocities = VelocityFields(grid)
+        boundary_conditions = (U = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U),
+                               V = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))
+
+        GU = Field{Face, Center, Nothing}(grid)
+        GV = Field{Center, Face, Nothing}(grid)
+
+        Nsubsteps = 30
+        Δτ = 1e4
+
+        extended, filled = map((true, false)) do extend_halos
+            free_surface = SplitExplicitFreeSurface(grid; substeps = Nsubsteps, extend_halos, averaging_kernel = constant_averaging_kernel)
+            free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
+            set!(free_surface.displacement, (λ, φ, z) -> cosd(φ) * sind(λ - 20) + cosd(φ)^3 * cosd(3λ))
+
+            fractional_Δt, weights, transport_weights = calculate_adaptive_settings(free_surface.substepping, Nsubsteps)
+            iterate_split_explicit!(free_surface, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(Nsubsteps))
+
+            return free_surface
+        end
+
+        # U is not compared: halo filling leaves 0/0 at the land-masked U-pivot poles
+        @test Array(interior(extended.displacement)) ≈ Array(interior(filled.displacement))
+        @test Array(interior(extended.barotropic_velocities.V)) ≈ Array(interior(filled.barotropic_velocities.V))
+        @test Array(interior(extended.filtered_state.η̅)) ≈ Array(interior(filled.filtered_state.η̅))
     end
 end

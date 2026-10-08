@@ -1,7 +1,7 @@
 using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
     Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
+using Oceananigans.Fields: Field, condition_operand, conditional_length
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Statistics: mean
 
 #####
 ##### Volume-inverse-weighted residual norm
@@ -78,21 +78,56 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
-@kernel function subtract_and_mask!(a, grid, b)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    @inbounds a[i, j, k] = (a[i, j, k] - b) * active
+#####
+##### Zero-mean gauge condition
+#####
+
+struct ZeroMeanGaugeCondition{S, N}
+    solution_sum :: S
+    residual_sum :: S
+    number_of_active_cells :: N
 end
 
-function enforce_zero_mean_gauge!(x, r)
-    grid = r.grid
+"""
+$(TYPEDSIGNATURES)
+
+Return a gauge condition for the `ConjugateGradientPoissonSolver` on `grid`, which
+subtracts the mean over the active cells of `grid` from the solution and from the residual
+after every iteration.
+"""
+function ZeroMeanGaugeCondition(grid)
+    solution_sum = Field{Nothing, Nothing, Nothing}(grid)
+    residual_sum = Field{Nothing, Nothing, Nothing}(grid)
+
+    # The normalization of `mean(c)` for a field `c` at cell centers
+    c = CenterField(grid)
+    number_of_active_cells = conditional_length(condition_operand(identity, c, nothing, 0))
+
+    return ZeroMeanGaugeCondition(solution_sum, residual_sum, number_of_active_cells)
+end
+
+function (gauge::ZeroMeanGaugeCondition)(x, r)
+    grid = x.grid
     arch = architecture(grid)
 
-    mean_x = mean(x)
-    mean_r = mean(r)
+    Σx = sum!(gauge.solution_sum, x)
+    Σr = sum!(gauge.residual_sum, r)
 
-    launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
-    launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
+    launch!(arch, grid, :xyz, _subtract_means_and_mask!, x, r, grid, Σx, Σr, gauge.number_of_active_cells)
+
+    return nothing
+end
+
+@kernel function _subtract_means_and_mask!(x, r, grid, Σx, Σr, number_of_active_cells)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+
+    @inbounds begin
+        x̄ = Σx[1, 1, 1] / number_of_active_cells
+        r̄ = Σr[1, 1, 1] / number_of_active_cells
+        x[i, j, k] = (x[i, j, k] - x̄) * active
+        r[i, j, k] = (r[i, j, k] - r̄) * active
+    end
 end
 
 @kernel function cell_volume!(V, grid)
@@ -114,7 +149,7 @@ struct DefaultPreconditioner end
                                    preconditioner = DefaultPreconditioner(),
                                    reltol = sqrt(eps(grid)),
                                    abstol = sqrt(eps(grid)),
-                                   enforce_gauge_condition! = enforce_zero_mean_gauge!,
+                                   enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
                                    kw...)
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
@@ -126,7 +161,8 @@ Convergence is measured using a volume-inverse-weighted residual norm, `||V⁻¹
 normalizes out the cell volume scaling introduced by the symmetric volume-weighted Laplacian
 operator `V∇²`. This makes convergence behavior independent of cell volume.
 
-The Poisson solver has a zero mean gauge condition enforced with `enforce_gauge_condition! = enforce_zero_mean_gauge!`,
+The Poisson solver has a zero mean gauge condition enforced with
+`enforce_gauge_condition! = ZeroMeanGaugeCondition(grid)`,
 which pins the pressure field to have a mean of zero.
 This is because the pressure field is defined only up to an arbitrary constant, and the zero mean gauge condition
 is a common choice to remove this degree of freedom.
@@ -135,7 +171,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition! = enforce_zero_mean_gauge!,
+                                        enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default

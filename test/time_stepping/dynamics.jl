@@ -29,7 +29,7 @@ function test_diffusion_simple(arch, fieldname, timestepper, time_discretization
     return !any(@. !isapprox(value, field_data))
 end
 
-function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
+function test_diffusion_budget(field, model, κ, Δ, order=2)
     init_mean = mean(field)
     update_state!(model)
     Δt = 1e-4 * Δ^order / κ # small to suppress non-conservative time-discretization error
@@ -39,10 +39,9 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     end
 
     final_mean = mean(field)
-    @info @sprintf("    Initial <%s>: %.16f, final <%s>: %.16f, final - initial: %.4e",
-                   fieldname, init_mean, fieldname, final_mean, final_mean - init_mean)
+    @test final_mean ≈ init_mean
 
-    return isapprox(init_mean, final_mean)
+    return nothing
 end
 
 function test_ScalarDiffusivity_budget(fieldname, model)
@@ -50,19 +49,25 @@ function test_ScalarDiffusivity_budget(fieldname, model)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
     ν = viscosity(model.closure, nothing)
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.z.Δᵃᵃᶜ)
+    return test_diffusion_budget(field, model, ν, model.grid.z.Δᵃᵃᶜ)
 end
 
 function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
+    return test_diffusion_budget(field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
+
+# The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
+pressure_solver_logs(::Type{NonhydrostaticModel}, ::ImmersedBoundaryGrid) =
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),)
+
+pressure_solver_logs(Model, grid) = ()
 
 function test_diffusion_cosine(fieldname, Model, timestepper, grid, closure, ξ, tracers=:c; kwargs...)
 
-    model = Model(grid; closure, timestepper, tracers, buoyancy=nothing, kwargs...)
+    model = @test_logs pressure_solver_logs(Model, grid)... Model(grid; closure, timestepper, tracers, buoyancy=nothing, kwargs...)
     field = fields(model)[fieldname]
     ξ = on_architecture(architecture(grid), ξ)
 
@@ -245,18 +250,15 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
 
     # Calculate relative error between model and analytic solutions for u and v.
     u_rel_err = abs.((Array(interior(model.velocities.u)) .- u.(xF, yC, zC, t)) ./ u.(xF, yC, zC, t))
-    u_rel_err_avg = mean(u_rel_err)
     u_rel_err_max = maximum(u_rel_err)
 
     v_rel_err = abs.((Array(interior(model.velocities.v)) .- v.(xC, yF, zC, t)) ./ v.(xC, yF, zC, t))
-    v_rel_err_avg = mean(v_rel_err)
     v_rel_err_max = maximum(v_rel_err)
 
-    @info "Taylor-Green vortex test [$arch, $FT, Nx=Ny=$N, Nt=$Nt]: " *
-          @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)",
-                   u_rel_err_avg, u_rel_err_max, v_rel_err_avg, v_rel_err_max)
+    @test u_rel_err_max < 5e-6
+    @test v_rel_err_max < 5e-6
 
-    return u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
+    return nothing
 end
 
 function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
@@ -278,20 +280,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, b=b₀)
 
-    simulation = Simulation(model, Δt=10minutes, stop_time=1hour)
+    simulation = Simulation(model; Δt=10minutes, stop_time=1hour, verbose=false)
     run!(simulation)
 
     @compute ∂y_b = Field(∂y(model.tracers.b))
     @compute ∂z_b = Field(∂z(model.tracers.b))
-
-    mean_∂y_b = mean(∂y_b)
-    mean_∂z_b = mean(∂z_b)
-
-    Δ_y = N² * g̃[2] - mean_∂y_b
-    Δ_z = N² * g̃[3] - mean_∂z_b
-
-    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
 
     @test N² * g̃[2] ≈ mean(∂y_b)
     @test N² * g̃[3] ≈ mean(∂z_b)
@@ -326,20 +319,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
 
     T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, T=T₀)
-    simulation = Simulation(model, Δt=10minute, stop_time=1hour)
+    simulation = Simulation(model; Δt=10minute, stop_time=1hour, verbose=false)
     run!(simulation)
 
     ∂y_T = Field(∂y(model.tracers.T))
     ∂z_T = Field(∂z(model.tracers.T))
-
-    mean_∂y_T = mean(∂y_T)
-    mean_∂z_T = mean(∂z_T)
-
-    Δ_y = ∂T∂z * g̃[2] - mean_∂y_T
-    Δ_z = ∂T∂z * g̃[3] - mean_∂z_T
-
-    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
 
     @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
     @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
@@ -366,13 +350,13 @@ function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
     model_x =  NonhydrostaticModel(grid; buoyancy=nothing, tracers=nothing, closure=nothing,
                                    timestepper = :RungeKutta3, coriolis = xcoriolis)
     set!(model_x, v=ū)
-    simulation_x = Simulation(model_x, Δt=Δt, stop_time=stop_time)
+    simulation_x = Simulation(model_x; Δt, stop_time, verbose=false)
     run!(simulation_x)
 
     model_z =  NonhydrostaticModel(grid; buoyancy=nothing, tracers=nothing, closure=nothing,
                                    timestepper = :RungeKutta3, coriolis = zcoriolis)
     set!(model_z, u=ū)
-    simulation_z = Simulation(model_z, Δt=Δt, stop_time=stop_time)
+    simulation_z = Simulation(model_z; Δt, stop_time, verbose=false)
     run!(simulation_z)
 
     u_x, v_x, w_x = map(q -> Array(interior(q))[1, 1, 1], model_x.velocities)
@@ -393,10 +377,7 @@ end
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Dynamics" begin
-    @info "Testing dynamics..."
-
     @testset "Simple diffusion" begin
-        @info "  Testing simple diffusion..."
         for arch in archs, fieldname in (:u, :v, :c), timestepper in timesteppers
             for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                 @test test_diffusion_simple(arch, fieldname, timestepper, time_discretization)
@@ -405,7 +386,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Budgets in isotropic diffusion" begin
-        @info "  Testing model budgets with isotropic diffusion..."
         for arch in archs, timestepper in timesteppers
             for topology in ((Periodic, Periodic, Periodic),
                              (Periodic, Periodic, Bounded),
@@ -438,10 +418,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         td = typeof(time_discretization).name.wrapper
 
-                        for fieldname in fieldnames
-                            @info "    [$timestepper, $td, $closurename] " *
-                                  "Testing $fieldname budget in a $topology domain with scalar diffusion..."
-                            @test test_ScalarDiffusivity_budget(fieldname, model)
+                        @testset "$fieldname budget in a $topology domain [$timestepper, $td, $closurename]" for fieldname in fieldnames
+                            test_ScalarDiffusivity_budget(fieldname, model)
                         end
                     end
                 end
@@ -450,7 +428,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Budgets in biharmonic diffusion" begin
-        @info "  Testing model budgets with biharmonic diffusion..."
         for arch in archs, timestepper in timesteppers
             for topology in ((Periodic, Periodic, Periodic),
                              (Periodic, Periodic, Bounded),
@@ -469,10 +446,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     model = NonhydrostaticModel(grid; timestepper, tracers = :c,
                                                       closure = ScalarBiharmonicDiffusivity(formulation, ν=1, κ=1))
 
-                    for fieldname in fieldnames
-                        @info "    [$timestepper] Testing $fieldname budget in a $topology domain " *
-                              "with biharmonic diffusion and $formulation..."
-                        @test test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
+                    @testset "$fieldname budget in a $topology domain with $formulation [$timestepper]" for fieldname in fieldnames
+                        test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
                     end
                 end
             end
@@ -579,8 +554,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 grid = grids[case]
                 coord = coords[case]
 
-                for fieldname in fieldnames[case]
-                    @info "  Testing diffusion of a cosine [$fieldname, $(summary(closure)), $(summary(grid))]..."
+                @testset "$fieldname [$(summary(closure)), $(summary(grid))]" for fieldname in fieldnames[case]
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :RungeKutta3, grid, closure, coord)
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
 
@@ -602,20 +576,15 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             z_regular = (z₀, Lz + z₀)
             z_stretch = center_clustered_coord(Nz, Lz, z₀)
 
-            for z_coord = (z_regular, z_stretch)
-                @info "  Testing gaussian immersed diffusion for " *
-                      "[$(typeof(arch)), $time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]..."
+            @testset "[$(typeof(arch)), $time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]" for z_coord = (z_regular, z_stretch)
                 @test test_immersed_diffusion(arch, Nz, z_coord, time_discretization)
                 @test test_3D_immersed_diffusion(arch, Nz, z_coord, time_discretization)
             end
         end
     end
 
-    @testset "Passive tracer advection" begin
-        for arch in archs, timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing passive tracer advection [$(typeof(arch)), $timestepper]..."
-            @test passive_tracer_advection_test(arch, timestepper)
-        end
+    @testset "Passive tracer advection [$(typeof(arch)), $timestepper]" for arch in archs, timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+        @test passive_tracer_advection_test(arch, timestepper)
     end
 
     @testset "Internal wave" begin
@@ -665,11 +634,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
                     gravitational_acceleration = (10σ)^2 / Lx
 
-                    for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
+                    @testset "[$(typeof(arch)), $grid_name, $topo, $timestepper, $(nameof(typeof(free_surface)))]" for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
                         model = HydrostaticFreeSurfaceModel(grid; free_surface, kwargs...)
-
-                        free_surface_type = typeof(free_surface).name.wrapper
-                        @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $(typeof(arch)), $grid_name, $topo, $timestepper, $free_surface_type]..."
                         internal_wave_dynamics_test(model, solution, Δt)
                     end
                 end
@@ -677,61 +643,42 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
 
         @testset "Internal wave with NonhydrostaticModel" begin
-            for arch in archs, grid in internal_wave_test_grids(arch)
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
-
+            @testset "[$(typeof(arch)), $(nameof(typeof(grid))), $(topology(grid))]" for arch in archs, grid in internal_wave_test_grids(arch)
                 model = NonhydrostaticModel(grid; kwargs...)
-
-                @info "  Testing internal wave [NonhydrostaticModel, $(typeof(arch)), $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
             end
         end
     end
 
     @testset "Taylor-Green vortex" begin
-        for arch in archs, timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                td = typeof(time_discretization).name.wrapper
-                @info "  Testing Taylor-Green vortex [$(typeof(arch)), $timestepper, $td]..."
-                @test taylor_green_vortex_test(arch, timestepper, time_discretization)
-            end
+        time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+        @testset "[$(typeof(arch)), $timestepper, $(nameof(typeof(td)))]" for arch in archs, timestepper in (:QuasiAdamsBashforth2,), td in time_discretizations #timesteppers
+            taylor_green_vortex_test(arch, timestepper, td)
         end
     end
 
-    @testset "Background fields" begin
-        for arch in archs, timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing dynamics with background fields [$(typeof(arch)), $timestepper]..."
-            @test_skip passive_tracer_advection_test(arch, timestepper, background_velocity_field=true)
+    @testset "Background fields [$(typeof(arch)), $timestepper]" for arch in archs, timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+        @test_skip passive_tracer_advection_test(arch, timestepper, background_velocity_field=true)
 
-            Nx = Nz = 128
-            Lx = Lz = 2π
+        Nx = Nz = 128
+        Lx = Lz = 2π
 
-            # Regular grid with no flat dimension
-            y_periodic_regular_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded),
-                                                      size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+        # Regular grid with no flat dimension
+        y_periodic_regular_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded),
+                                                  size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
 
-            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+        solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
-            model = NonhydrostaticModel(y_periodic_regular_grid; background_fields, kwargs...)
-            internal_wave_dynamics_test(model, solution, Δt)
-        end
+        model = NonhydrostaticModel(y_periodic_regular_grid; background_fields, kwargs...)
+        internal_wave_dynamics_test(model, solution, Δt)
     end
 
-    @testset "Tilted gravity" begin
-        for arch in archs
-            @info "  Testing tilted gravity [$(typeof(arch))]..."
-            for θ in (0, 1, -30, 60, 90, -180)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
-            end
-        end
+    @testset "Tilted gravity [$(typeof(arch)), θ=$(θ)°]" for arch in archs, θ in (0, 1, -30, 60, 90, -180)
+        stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64; θ)
+        stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64; θ)
     end
 
-    @testset "Background rotation about arbitrary axis" begin
-        for arch in archs
-            @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
-            inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
-        end
+    @testset "Background rotation about arbitrary axis [$(typeof(arch))]" for arch in archs
+        inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
     end
 end

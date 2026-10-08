@@ -92,6 +92,8 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
+    kernel_Δt = kernel_time_step(architecture(model.grid), model.grid, Δt)
+
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
@@ -109,13 +111,13 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    ab2_step!(model, Δt, callbacks)
-    step_lagrangian_particles!(model, Δt)
+    ab2_step!(model, kernel_Δt, callbacks)
+    step_lagrangian_particles!(model, kernel_Δt)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
-    step_closure_prognostics!(model, Δt)
+    step_closure_prognostics!(model, kernel_Δt)
     update_state!(model, callbacks)
     update_lagrangian_particle_state!(model)
 
@@ -135,7 +137,6 @@ Time step fields via the 2nd-order quasi Adams-Bashforth method
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
-    Δt = convert(FT, Δt)
     α = convert(FT, 3/2) + χ
     β = convert(FT, 1/2) + χ
     not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻

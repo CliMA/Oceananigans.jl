@@ -3,7 +3,12 @@ module Utils
 using Oceananigans
 using Reactant
 
-import Oceananigans.Utils: prettytime, prettysummary
+import Oceananigans.Utils: prettytime, prettysummary, kernel_time_step
+
+using Oceananigans.Architectures: ReactantState
+
+# Reactant tracing breaks if Δt is converted outside the kernel, so pass it through.
+@inline kernel_time_step(::ReactantState, grid, Δt) = Δt
 
 function prettytime(concrete_number::Union{ConcretePJRTNumber,ConcreteIFRTNumber})
     number = Reactant.to_number(concrete_number)

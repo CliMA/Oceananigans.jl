@@ -159,14 +159,13 @@ end
 
 @inline function rk_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[name]
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     velocity_field = velocities[name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
+            _rk_substep_field!, velocity_field, Δt, Gⁿ, Ψ⁻; exclude_periphery=true)
 
     return nothing
 end
@@ -217,14 +216,13 @@ end
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
 
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
     c  = model.tracers[tracer_name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+            _rk_substep_tracer_field!, c, grid, Δt, Gⁿ, Ψ⁻)
 
     # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]

@@ -77,6 +77,8 @@ const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_size) =
     ntuple(_ -> zeros(arch, FT, tangential_size...), 2) # cʳ, cʳˡ
 
+radiation_buffers(reservoir::TracerReservoir) = (reservoir.cʳ, reservoir.cʳˡ)
+
 radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
     TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, cʳ, cʳˡ)
 

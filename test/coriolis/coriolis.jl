@@ -110,7 +110,6 @@ function instantiate_spherical_coriolis2(FT)
 end
 
 @testset "Coriolis" begin
-    @info "Testing Coriolis..."
     # Save for later use
     FT₀ = Oceananigans.defaults.FloatType
 
@@ -161,23 +160,27 @@ end
 
         # Test show functions
         ✈ = FPlane(FT, latitude=45)
-        show(✈); println()
+        @test sprint(show, ✈) == "FPlane{$FT}(f=0.000103126)"
         @test ✈ isa FPlane{<:Any, FT}
 
         ✈ = ConstantCartesianCoriolis(FT, f=1e-4)
-        show(✈); println()
+        @test sprint(show, ✈) == "ConstantCartesianCoriolis{$FT}: fx = 0.00e+00, fy = 0.00e+00, fz = 1.00e-04"
         @test ✈ isa ConstantCartesianCoriolis{FT}
 
         ✈ = BetaPlane(FT, latitude=45)
-        show(✈); println()
+        @test sprint(show, ✈) == "BetaPlane{$FT}(f₀=0.000103126, β=1.61868e-11)"
         @test ✈ isa BetaPlane{<:Any, FT}
 
         ✈ = NonTraditionalBetaPlane(FT, latitude=45)
-        show(✈); println()
+        @test sprint(show, ✈) == "NonTraditionalBetaPlane{$FT}(fz = 1.03e-04, fy = 1.03e-04, β = 1.62e-11, γ = -3.24e-11, R = 6.37e+06)"
         @test ✈ isa NonTraditionalBetaPlane{FT}
 
         ✈ = SphericalCoriolis(FT, rotation_rate = 1e-4)
-        show(✈); println()
+        @test sprint(show, ✈) == """
+                                 SphericalCoriolis
+                                 ├─ rotation rate: 1.00e-04 s⁻¹ = 1.37 Ω_Earth
+                                 ├─ formulation: NonhydrostaticFormulation
+                                 └─ scheme: EnstrophyConserving"""
         @test ✈ isa SphericalCoriolis
 
         for make_test_coriolis in (test_fplane,

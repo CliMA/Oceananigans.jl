@@ -23,7 +23,8 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
                                        LagrangianAveraging,
                                        AnisotropicMinimumDissipation,
                                        IsopycnalSkewSymmetricDiffusivity,
-                                       DiffusiveFormulation, AdvectiveFormulation, ThreeDimensionalFormulation
+                                       DiffusiveFormulation, AdvectiveFormulation, ThreeDimensionalFormulation,
+                                       VerticalFormulation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -396,15 +397,12 @@ function test_discrete_function_scalar_diffusivity()
 end
 
 @testset "Turbulence closures" begin
-    @info "Testing turbulence closures..."
-
     @testset "Closure instantiation" begin
         for closurename in closures
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            for arch in archs
-                @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
+            @testset "NonhydrostaticModel with $closurename [$(typeof(arch))]" for arch in archs
                 grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
                 model = NonhydrostaticModel(grid; closure, tracers = :c)
                 c = model.tracers.c
@@ -424,7 +422,7 @@ end
 
         c = Center()
         f = Face()
-        ri_based = RiBasedVerticalDiffusivity()
+        ri_based = @test_logs (:warn, r"^RiBasedVerticalDiffusivity is an experimental turbulence closure") RiBasedVerticalDiffusivity()
         @test viscosity_location(ri_based) == (c, c, f)
         @test diffusivity_location(ri_based) == (c, c, f)
 
@@ -434,7 +432,6 @@ end
     end
 
     @testset "ScalarDiffusivity" begin
-        @info "  Testing ScalarDiffusivity..."
         for FT in float_types
             ν, κ = 0.3, 0.7
             closure = ScalarDiffusivity(FT; κ=(T=κ, S=κ), ν=ν)
@@ -443,11 +440,32 @@ end
             run_constant_isotropic_diffusivity_fluxdiv_tests(FT)
         end
 
-        @info "  Testing ScalarDiffusivity with different halo requirements..."
         closure = ScalarDiffusivity(ν=0.3)
         @test required_halo_size_x(closure) == 1
         @test required_halo_size_y(closure) == 1
         @test required_halo_size_z(closure) == 1
+
+        @testset "ScalarDiffusivity architecture conversion preserves halo size" begin
+            time_discretization = VerticallyImplicitTimeDiscretization()
+            diffusivity_formulation = VerticalFormulation()
+            ν = (x, y, z, t) -> 0.3
+            κ = (x, y, z, t) -> 0.7
+            for tracer_diffusivities in (κ, (T=κ, S=κ))
+                closure = ScalarDiffusivity(time_discretization, diffusivity_formulation, Float32;
+                                            ν, κ=tracer_diffusivities, required_halo_size=3)
+                converted_closures = (Adapt.adapt_structure(identity, closure),
+                                      on_architecture(CPU(), closure))
+
+                for converted in converted_closures
+                    @test required_halo_size_x(converted) == 3
+                    @test required_halo_size_y(converted) == 3
+                    @test required_halo_size_z(converted) == 3
+                    @test converted.ν == closure.ν
+                    @test converted.κ == closure.κ
+                    @test typeof(converted).parameters[1:2] == typeof(closure).parameters[1:2]
+                end
+            end
+        end
 
         closure = ScalarBiharmonicDiffusivity(ν=0.3)
         @test required_halo_size_x(closure) == 2
@@ -462,13 +480,13 @@ end
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
 
-        @info "  Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
-        @test test_function_scalar_diffusivity()
-        @test test_discrete_function_scalar_diffusivity()
+        @testset "cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion" begin
+            @test test_function_scalar_diffusivity()
+            @test test_discrete_function_scalar_diffusivity()
+        end
     end
 
     @testset "HorizontalScalarDiffusivity" begin
-        @info "  Testing HorizontalScalarDiffusivity..."
         for FT in float_types
             @test tracer_specific_horizontal_diffusivity(FT)
             @test horizontal_diffusivity_fluxdiv(FT, νz=zero(FT), νh=zero(FT))
@@ -477,7 +495,6 @@ end
     end
 
     @testset "Time-stepping with variable diffusivities" begin
-        @info "  Testing time-stepping with prescribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_field_isotropic_diffusivity(arch)
@@ -487,7 +504,6 @@ end
     end
 
     @testset "AnisotropicMinimumDissipation with variable coefficients" begin
-        @info "  Testing AnisotropicMinimumDissipation time stepping with variable coefficients..."
         for arch in archs
             @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=false)
             @test time_step_with_variable_AMD_coefficient(arch, use_field_coefficient=true)
@@ -495,7 +511,6 @@ end
     end
 
     @testset "Dynamic Smagorinsky closures" begin
-        @info "  Testing that dynamic Smagorinsky closures produce diffusivity fields of correct sizes..."
         for arch in archs
             grid = RectilinearGrid(arch, size=(2, 3, 4), extent=(1, 2, 3))
 
@@ -535,7 +550,6 @@ end
     end
 
     @testset "Lagrangian averaged Smagorinsky produces non-zero eddy viscosity" begin
-        @info "  Testing that Lagrangian averaged Smagorinsky produces non-zero eddy viscosity after setting random velocities..."
         for arch in archs
             grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
             model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
@@ -546,59 +560,60 @@ end
     end
 
     @testset "Time-stepping with CATKE closure" begin
-        @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
-            @info "    Testing time-stepping CATKE by itself..."
             catke = CATKEVerticalDiffusivity()
             explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
 
-            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-                run_time_step_with_catke_tests(arch, catke, timestepper)
+            @testset "CATKE by itself [$(typeof(arch))]" begin
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                    run_time_step_with_catke_tests(arch, catke, timestepper)
+                end
+
+                run_catke_tke_substepping_tests(arch, explicit_catke)
             end
 
-            run_catke_tke_substepping_tests(arch, explicit_catke)
+            @testset "CATKE in a 2-tuple with HorizontalScalarDiffusivity [$(typeof(arch))]" begin
+                closure = (catke, HorizontalScalarDiffusivity())
+                model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
+                @test first(model.closure) === closure[1]
+                closure = (explicit_catke, HorizontalScalarDiffusivity())
+                run_catke_tke_substepping_tests(arch, closure)
 
-            @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (catke, HorizontalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
-            @test first(model.closure) === closure[1]
-            closure = (explicit_catke, HorizontalScalarDiffusivity())
-            run_catke_tke_substepping_tests(arch, closure)
-
-
-            # Test that closure tuples with CATKE are correctly reordered
-            @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
-            closure = (HorizontalScalarDiffusivity(), catke)
-            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
-            @test first(model.closure) === closure[2]
-            closure = (HorizontalScalarDiffusivity(), explicit_catke)
-            run_catke_tke_substepping_tests(arch, closure)
+                # Test that closure tuples with CATKE are correctly reordered
+                closure = (HorizontalScalarDiffusivity(), catke)
+                model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
+                @test first(model.closure) === closure[2]
+                closure = (HorizontalScalarDiffusivity(), explicit_catke)
+                run_catke_tke_substepping_tests(arch, closure)
+            end
 
             # These are slow to compile...
-            @info "    Testing time-stepping CATKE in a 3-tuple..."
-            closure = (HorizontalScalarDiffusivity(), catke, VerticalScalarDiffusivity())
-            model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
-            @test first(model.closure) === closure[2]
-            closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
-            run_catke_tke_substepping_tests(arch, closure)
+            @testset "CATKE in a 3-tuple [$(typeof(arch))]" begin
+                closure = (HorizontalScalarDiffusivity(), catke, VerticalScalarDiffusivity())
+                model = run_time_step_with_catke_tests(arch, closure, :QuasiAdamsBashforth2)
+                @test first(model.closure) === closure[2]
+                closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
+                run_catke_tke_substepping_tests(arch, closure)
+            end
 
-            @info "    Testing the surface TKE flux with CATKE in closure tuples of length 1 to 6..."
-            run_catke_closure_tuple_surface_tke_flux_tests(arch)
+            @testset "Surface TKE flux with CATKE in closure tuples of length 1 to 6 [$(typeof(arch))]" begin
+                run_catke_closure_tuple_surface_tke_flux_tests(arch)
+            end
 
-            @info "    Testing CATKE with ImmersedBoundaryGrid and active_cells_map on $arch..."
-            underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 2, 3))
-            bottom(x, y) = -2
-            grid_acm = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom), active_cells_map=true)
-            catke_closure = CATKEVerticalDiffusivity()
-            model_acm = HydrostaticFreeSurfaceModel(grid_acm; closure=catke_closure, buoyancy=BuoyancyTracer(), tracers=:b)
-            time_step!(model_acm, 1)
-            time_step!(model_acm, 1)
-            @test model_acm isa HydrostaticFreeSurfaceModel
+            @testset "CATKE with ImmersedBoundaryGrid and active_cells_map [$(typeof(arch))]" begin
+                underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 2, 3))
+                bottom(x, y) = -2
+                grid_acm = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom), active_cells_map=true)
+                catke_closure = CATKEVerticalDiffusivity()
+                model_acm = HydrostaticFreeSurfaceModel(grid_acm; closure=catke_closure, buoyancy=BuoyancyTracer(), tracers=:b)
+                time_step!(model_acm, 1)
+                time_step!(model_acm, 1)
+                @test model_acm isa HydrostaticFreeSurfaceModel
+            end
         end
     end
 
     @testset "Vertical diffusive CFL diagnostics" begin
-        @info "  Testing vertical diffusive CFL diagnostics..."
         grid = RectilinearGrid(CPU(); size=(20, 30, 4), x=(-10, 10), y=(-10, 10), z=(-10, 0), halo=(6, 6, 5))
 
         implicit_catke = CATKEVerticalDiffusivity()
@@ -667,8 +682,6 @@ end
 
 
     @testset "Vertically-implicit diffusion operator" begin
-        @info "  Testing that the vertically-implicit stencil reproduces ∂z(νz ∂z ϕ), boundary rows included..."
-
         function implicit_operator_rows(arch, closure_constructor, LX, LZ, Nz, z, Lz, immersed_boundary)
             underlying_grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z,
                                               topology=(Periodic, Periodic, Bounded))
@@ -753,14 +766,13 @@ end
 
             grid_kind = z isa Tuple ? "uniform" : "stretched"
             boundary_kind = isnothing(immersed_boundary) ? "" : ", $(nameof(typeof(immersed_boundary)))"
-            @info "    Testing implicit diffusion operator [$arch, $closure_constructor, ($LX, Center, $LZ), $grid_kind$boundary_kind]..."
-            @test implicit_operator_rows(arch, closure_constructor, LX, LZ, Nz, z, Lz, immersed_boundary) < 1e-12
+            @testset "[$(typeof(arch)), $(nameof(closure_constructor)), ($(nameof(LX)), Center, $(nameof(LZ))), $grid_kind$boundary_kind]" begin
+                @test implicit_operator_rows(arch, closure_constructor, LX, LZ, Nz, z, Lz, immersed_boundary) < 1e-12
+            end
         end
     end
 
     @testset "Vertically-implicit viscous stress on w" begin
-        @info "  Testing that the vertically-implicit viscous operator on w matches the explicit one..."
-
         # The viscous tendency of w: the explicit −∂ⱼτ₃ⱼ plus the increment of the implicit solve
         function w_viscous_tendency(grid, closure, u₀, v₀, w₀, Δt)
             model = NonhydrostaticModel(grid; closure, advection=nothing)
@@ -805,10 +817,9 @@ end
 
             # Face 1 is the boundary, where w vanishes and no tendency is computed
             faces = 2:Nz
-            for (name, explicit, implicit) in (("ScalarDiffusivity",             ScalarDiffusivity(; ν),          ScalarDiffusivity(VITD; ν)),
+            @testset "$name [$(typeof(arch))]" for (name, explicit, implicit) in (("ScalarDiffusivity",             ScalarDiffusivity(; ν),          ScalarDiffusivity(VITD; ν)),
                                                ("SmagorinskyLilly",              SmagorinskyLilly(),              SmagorinskyLilly(VITD)),
                                                ("AnisotropicMinimumDissipation", AnisotropicMinimumDissipation(), AnisotropicMinimumDissipation(VITD)))
-                @info "    Testing the vertically-implicit viscous stress on w [$arch, $name]..."
                 Gₑ, _ = w_viscous_tendency(grid, explicit, u₀, v₀, w₀, Δt)
                 Gᵢ, _ = w_viscous_tendency(grid, implicit, u₀, v₀, w₀, Δt)
                 Gₑ, Gᵢ = view(Gₑ, :, :, faces), view(Gᵢ, :, :, faces)
@@ -818,8 +829,6 @@ end
     end
 
     @testset "Vertically-implicit diffusion of a vortex between free-slip walls" begin
-        @info "  Testing that a vertically-implicit step of a vortex between free-slip walls is a backward Euler step of its eigenmode..."
-
         for arch in archs
             Nx, Nz = 16, 16
             Lx, Lz = 2, 1
@@ -853,8 +862,6 @@ end
     end
 
     @testset "Vertically-implicit diffusion beneath an immersed bottom" begin
-        @info "  Testing that vertically-implicit diffusion is isolated from the cells beneath an immersed bottom..."
-
         # As a forcing or auxiliary field evaluated beneath the bottom would leave there
         nan_in_immersed_cells(i, j, k, grid, clock, fields) =
             ifelse(immersed_cell(i, j, k, grid), convert(eltype(grid), NaN), zero(grid))
@@ -872,8 +879,7 @@ end
             return Array(interior(model.tracers.c))
         end
 
-        for arch in archs, FT in float_types
-            @info "    Testing vertically-implicit diffusion beneath an immersed bottom [$arch, $FT]..."
+        @testset "[$(typeof(arch)), $FT]" for arch in archs, FT in float_types
             Nx, Ny, Nz = 3, 2, 8
             underlying_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, Nx), y=(0, Ny), z=(-Nz, 0),
                                               topology=(Periodic, Periodic, Bounded))
@@ -900,7 +906,6 @@ end
     end
 
     @testset "Closure tuples" begin
-        @info "  Testing time-stepping with a tuple of closures..."
         for arch in archs, FT in float_types
             @test time_step_with_tupled_closure(FT, arch)
             # Test up to 6 closures in a tuple
@@ -910,14 +915,11 @@ end
     end
 
     @testset "IsopycnalSkewSymmetricDiffusivity" begin
-        @info "  Testing time-stepping with IsopycnalSkewSymmetricDiffusivity..."
         time_discretizations = [ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization()]
         skew_flux_formulations = [DiffusiveFormulation(), AdvectiveFormulation()]
         for arch in archs, FT in float_types
-            for time_discretization in time_discretizations, skew_flux_formulation in skew_flux_formulations
-                td = typeof(time_discretization).name.name
-                ff = typeof(skew_flux_formulation).name.name
-                @info "    Time-stepping IsopycnalSkewSymmetricDiffusivity with $td and $ff [$arch, $FT]..."
+            @testset "$(nameof(typeof(time_discretization))) and $(nameof(typeof(skew_flux_formulation))) [$(typeof(arch)), $FT]" for time_discretization in time_discretizations,
+                                                                                                                                     skew_flux_formulation in skew_flux_formulations
                 @test time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
             end
         end
@@ -925,19 +927,17 @@ end
 
     @testset "Diagnostics" begin
         for arch in archs
-            @info "  Testing turbulence closure diagnostics..."
-            for closurename in closures
-                @info "    Testing turbulence closure diagnostics for $closurename on $arch"
+            @testset "$closurename [$(typeof(arch))]" for closurename in closures
                 closure = @eval $closurename()
                 compute_closure_specific_diffusive_cfl(arch, closure)
             end
 
-            # now test also a case for a tuple of closures
-            @info "    Testing turbulence closure diagnostics for a Tuple closure on $arch"
-            compute_closure_specific_diffusive_cfl(arch, (ScalarDiffusivity(),
-                                                          ScalarBiharmonicDiffusivity(),
-                                                          SmagorinskyLilly(),
-                                                          AnisotropicMinimumDissipation()))
+            @testset "Tuple closure [$(typeof(arch))]" begin
+                compute_closure_specific_diffusive_cfl(arch, (ScalarDiffusivity(),
+                                                              ScalarBiharmonicDiffusivity(),
+                                                              SmagorinskyLilly(),
+                                                              AnisotropicMinimumDissipation()))
+            end
         end
     end
 end

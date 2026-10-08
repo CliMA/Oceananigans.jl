@@ -4,9 +4,11 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        assumed_field_location,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
-                                       RightBoundary
+                                       RightBoundary,
+                                       pivot_shift
 using Oceananigans.Grids: Grids, SerialFoldedTopology
 using Oceananigans.BoundaryConditions: BoundaryConditions
+using Oceananigans.Operators: Operators
 
 # A tripolar grid is always between 0 and 360 in longitude
 # and always caps at the north pole (90°N)
@@ -15,6 +17,11 @@ Grids.y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ))
 
 fold_pivot(grid::TripolarGrid) = fold_pivot(grid.conformal_mapping)
 fold_pivot(grid::ImmersedBoundaryGrid) = fold_pivot(grid.underlying_grid)
+
+@inline function Operators.north_fold_index(i, grid::TripolarGridOfSomeKind)
+    i′ = grid.Nx - i + 1 + pivot_shift(fold_pivot(grid))
+    return ifelse(i′ < 1, i′ + grid.Nx, i′) # i′ = 0 only for the T-pivot column i = Nx
+end
 
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind, sign = 1) = BoundaryCondition(Zipper{fold_pivot(grid)}(), sign)
 

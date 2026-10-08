@@ -88,8 +88,6 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                         T = partition(reference_fields.T, cpu_arch, size(reference_fields.T)),
                         S = partition(reference_fields.S, cpu_arch, size(reference_fields.S)))
 
-    summarize_regression_test(test_fields, reference_fields)
-
     @test all(test_fields.u .≈ reference_fields.u)
     @test all(test_fields.v .≈ reference_fields.v)
     @test all(test_fields.w .≈ reference_fields.w)
