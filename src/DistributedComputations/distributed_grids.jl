@@ -7,11 +7,33 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
                           generate_coordinate, with_precomputed_metrics,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           metrics_precomputed, constructor_arguments
+using Oceananigans.Grids: AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
 using Oceananigans.Utils: getnamewrapper
 
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
-                           with_halo, with_number_type, size_summary
+                           with_halo, with_number_type, size_summary, generate_coordinate
+
+# This rank's part of a regular coordinate: the nodes of the whole coordinate at this rank's indices
+function generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)
+    c₁, c₂ = @. BigFloat(p.interval)
+    Δ = (c₂ - c₁) / p.N
+
+    TF = total_length(Face(),   topo, n, H)
+    TC = total_length(Center(), topo, n, H)
+
+    whole_F = regular_faces(FT, c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
+    whole_C = regular_centers(whole_F, length(whole_F))
+
+    F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
+    C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
+
+    if coordinate_name == :z
+        return FT(n * Δ), StaticVerticalDiscretization(F, C, FT(Δ), FT(Δ))
+    else
+        return FT(n * Δ), F, C, FT(Δ), FT(Δ)
+    end
+end
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},

@@ -2,6 +2,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using MPI
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: cpu_architecture, partition
+using Oceananigans.Grids: λnode, φnode
+using Oceananigans.Operators: Azᶜᶜᶜ, Δxᶠᶜᶜ
 using CUDA
 
 @testset "Distributed macros" begin
@@ -59,6 +62,26 @@ using CUDA
 
     @onrank split_comm 0 @test a == [1, 3, 5, 7, 9]
     @onrank split_comm 1 @test a == [2, 4, 6, 8, 10]
+end
+
+@testset "Distributed grids have the nodes of the global grid" begin
+    kw = (size = (140, 92, 2), longitude = (-76 + 2/12, -64 - 2/12), latitude = (34 + 2/12, 42 - 2/12), z = (-10, 0), halo = (3, 3, 3))
+    grid = LatitudeLongitudeGrid(CPU(); kw...)
+
+    for arch in archs
+        local_grid = LatitudeLongitudeGrid(arch; kw...)
+        Nx, Ny, _ = size(local_grid)
+
+        for f in ((i, j, g) -> λnode(i, j, 1, g, Face(), Center(), Center()),
+                  (i, j, g) -> φnode(i, j, 1, g, Center(), Center(), Center()),
+                  (i, j, g) -> Azᶜᶜᶜ(i, j, 1, g),
+                  (i, j, g) -> Δxᶠᶜᶜ(i, j, 1, g))
+
+            global_values = [f(i, j, grid) for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:1]
+            local_values = [f(i, j, local_grid) for i in 1:Nx, j in 1:Ny, k in 1:1]
+            @test local_values == partition(global_values, cpu_architecture(arch), size(local_values))
+        end
+    end
 end
 
 #=

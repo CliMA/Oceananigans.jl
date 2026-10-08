@@ -60,19 +60,22 @@ function partition_coordinate(c::AbstractVector, n, arch, dim)
     return c[start_idx:end_idx]
 end
 
+"""
+    PartitionedInterval(interval, N, offset)
+
+The part of a regular coordinate that starts `offset` cells into the whole coordinate, which spans `interval` with `N`
+cells.
+"""
+struct PartitionedInterval{C}
+    interval :: C
+    N :: Int
+    offset :: Int
+end
+
 function partition_coordinate(c::Tuple, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
-    N  = sum(nl)
-    R  = arch.ranks[dim]
-    Δl = (c[2] - c[1]) / N
-
-    l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
-    for i in 2:R
-        lp = l[i-1][2]
-        push!(l, (lp, lp + Δl * nl[i]))
-    end
-
-    return l[arch.local_index[dim]]
+    r  = arch.local_index[dim]
+    return PartitionedInterval(c, sum(nl), sum(nl[1:r-1]))
 end
 
 """
