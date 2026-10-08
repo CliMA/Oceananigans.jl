@@ -17,7 +17,7 @@ using Oceananigans.Fields: AbstractField, CenterField, field, topology
 using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic,
                           XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG,
                           RectilinearGrid, RegularVerticalCoordinate, inactive_cell
-using Oceananigans.Utils: launch!, worksize
+using Oceananigans.Utils: Utils, launch!, worksize
 
 """
 $(TYPEDSIGNATURES)

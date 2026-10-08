@@ -8,6 +8,7 @@ using Oceananigans
 using Oceananigans.Architectures: convert_to_device, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, launch_configured_kernel!, KernelParameters, gpu_kernel_function
+using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!, solve_batched_tridiagonal_system_kernel!
 using KernelAbstractions: @kernel, @index
 
 const Ext = Base.get_extension(Oceananigans, :OceananigansCUDAExt)
@@ -39,6 +40,32 @@ function stencil(kernel!, grid, workspec = :xyz)
     fill_halo_regions!(b)
     launch!(architecture(grid), grid, workspec, kernel!, a, grid, b)
     return Array(interior(a))
+end
+
+# A vertical tridiagonal solve of a diagonally dominant system on `grid`, cached launch on or off.
+function tridiagonal_solution(grid, cached)
+    Ext.CACHED_KERNEL_LAUNCH[] = cached
+    arch = architecture(grid)
+    Nx, Ny, Nz = size(grid)
+    lower = on_architecture(arch, [sin(i + 2j + 3k) for i in 1:Nx, j in 1:Ny, k in 1:Nz])
+    upper = on_architecture(arch, [cos(2i + j + 5k) for i in 1:Nx, j in 1:Ny, k in 1:Nz])
+    diagonal = on_architecture(arch, [4 + sin(i * j + k) for i in 1:Nx, j in 1:Ny, k in 1:Nz])
+    rhs = on_architecture(arch, [cos(i - j) + k / Nz for i in 1:Nx, j in 1:Ny, k in 1:Nz])
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal = lower, diagonal, upper_diagonal = upper)
+    ϕ = CenterField(grid)
+    solve!(ϕ, solver, rhs)
+    return Array(interior(ϕ))
+end
+
+# The result of one launch and one halo fill, cached launch on or off.
+function launched_and_filled(grid, cached)
+    Ext.CACHED_KERNEL_LAUNCH[] = cached
+    a = CenterField(grid)
+    b = CenterField(grid)
+    set!(b, (x, y, z) -> x + 2y + 3z)
+    launch!(architecture(grid), grid, :xyz, _copy_on_grid!, a, grid, b)
+    fill_halo_regions!(a)
+    return Array(parent(a))
 end
 
 @testset "Device-form kernel arguments and the cached launch" begin
@@ -121,6 +148,22 @@ end
         @test length(keys_of(gpu__stencil_configured!)) >= 2                                 # :xyz and the offset range
         @test all(key -> key[4] == 256 && key[6] == 0, keys_of(gpu__stencil_default!))
         @test all(kernel -> CUDA.registers(kernel) <= 32, [Ext.cached_launch_kernels[key] for key in keys_of(gpu__stencil_configured!)])
+
+        # The batched tridiagonal solve's default workgroup entry (32 × 8): cached launch (entry applied) against
+        # the standard launch (16 × 16), several blocks in each direction.
+        wide = RectilinearGrid(arch; size = (70, 40, 12), halo = (3, 3, 3), x = (0, 1), y = (0, 1), z = (0, 1),
+                               topology = (Bounded, Bounded, Bounded))
+        tridiagonal = gpu_kernel_function(solve_batched_tridiagonal_system_kernel!)
+        @test Utils.kernel_launch_workgroup(tridiagonal, Val((16, 16))) === (32, 8)
+        @test Utils.kernel_launch_workgroup(tridiagonal, Val((1, 256))) === (1, 256)
+        fill!(Ext.cached_launch_counts, 0)
+        entry_applied = tridiagonal_solution(wide, true)
+        @test Ext.cached_launch_counts[2] == 0
+        standard = tridiagonal_solution(wide, false)
+        @test reinterpret(UInt64, entry_applied) == reinterpret(UInt64, standard)
+        @test all(isfinite, entry_applied) && any(!iszero, entry_applied)
+        @test !isempty(keys_of(tridiagonal))
+        @test all(key -> occursin("StaticSize{(32, 8)}", string(key[3])), keys_of(tridiagonal))
 
         # A launch with an argument that is not in its device form takes the standard launch, and is recorded.
         Ext.CACHED_KERNEL_LAUNCH[] = true

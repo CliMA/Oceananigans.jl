@@ -330,3 +330,8 @@ end
 
     return nothing
 end
+
+# Launched 32 × 8 rather than 16 × 16 (where the launch supports a per-kernel configuration): each thread sweeps
+# one line, and more of a block's lines then lie along the first launch dimension, contiguous in memory when it
+# is x (measured for the `ZDirection` solve over `:xy`).
+Utils.kernel_launch_workgroup(::typeof(Utils.gpu_kernel_function(solve_batched_tridiagonal_system_kernel!)), ::Val{(16, 16)}) = (32, 8)
