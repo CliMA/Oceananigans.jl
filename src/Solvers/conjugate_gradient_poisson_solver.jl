@@ -155,8 +155,19 @@ const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_
     return (s - 1) * segment_length + 1 : min(s * segment_length, size(grid, 3))
 end
 
+# The kernels are launched over all column segments in one dimension, so consecutive threads
+# read consecutive i; thread n sums the segment s of column (i, j)
+@inline function segment_indices(n, grid)
+    Nx, Ny = size(grid, 1), size(grid, 2)
+    i = (n - 1) % Nx + 1
+    j = (n - 1) ÷ Nx % Ny + 1
+    s = (n - 1) ÷ (Nx * Ny) + 1
+    return i, j, s
+end
+
 @kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
-    i, j, s = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, grid)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -182,7 +193,8 @@ end
 end
 
 @kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
-    i, j, s = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, grid)
     FT = eltype(partial_sums)
     pᵀq = Σp = Σq = zero(FT)
 
@@ -206,7 +218,8 @@ end
 end
 
 @kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, α, laplacian_sums, residual_sums, number_of_active_cells)
-    i, j, s = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, grid)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -244,7 +257,7 @@ function reduce_partial_sums!(sums, partial_sums, arch)
     return sums
 end
 
-@inline segments_worksize(grid, partial_sums) = (size(grid, 1), size(grid, 2), size(partial_sums, 3))
+@inline segments_worksize(grid, partial_sums) = (size(grid, 1) * size(grid, 2) * size(partial_sums, 3),)
 
 function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
     r = solver.residual
