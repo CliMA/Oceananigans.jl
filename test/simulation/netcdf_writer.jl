@@ -3719,8 +3719,7 @@ function test_netcdf_rectilinear_mvd_output(arch)
 
     # Only the reference interfaces of the mutable coordinate are serialized.
     r_faces = collect(range(-100.0, 0.0; length=6))
-    @test ds.group["underlying_grid_reconstruction_kwargs"].attrib["z"] ==
-          "MutableVerticalDiscretization($r_faces)"
+    @test ds.group["underlying_grid_reconstruction_kwargs"].attrib["z"] == "MutableVerticalDiscretization($r_faces)"
     close(ds)
 
     reconstructed = reconstruct_grid(fp; architecture=arch)
