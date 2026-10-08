@@ -205,8 +205,7 @@ add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields;
     add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_tracer_transitions(bgc);
                                     kernel_parameters, active_cells_map)
 
-add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{};
-                                kwargs...) = nothing
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{}; kwargs...) = nothing
 
 @inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple;
                                                  kernel_parameters=:xyz, active_cells_map=nothing)
