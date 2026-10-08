@@ -4,7 +4,7 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Biogeochemistry: update_tendencies!
+using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 
@@ -45,9 +45,10 @@ Compute tendencies for all tracer fields.
 This function:
 1. Computes interior tracer tendencies (advection, diffusion, forcing, biogeochemistry sources)
 2. Completes halo communication and computes buffer tendencies for distributed grids
-3. Computes flux boundary condition contributions
-4. Scales tendencies by the grid stretching factor for z-star coordinates
-5. Updates biogeochemistry tendencies
+3. Adds biogeochemical transitions computed in separate kernels (`separate_tracer_transitions`)
+4. Computes flux boundary condition contributions
+5. Scales tendencies by the grid stretching factor for z-star coordinates
+6. Updates biogeochemistry tendencies
 
 Tracers are advected using `model.transport_velocities` which may differ from `model.velocities`
 when using split-explicit free surfaces (transport velocities include barotropic correction).
@@ -63,6 +64,9 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
+
+    compute_biogeochemical_transitions!(model, :xyz)
+
     compute_tracer_flux_bcs!(model)
 
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
@@ -185,6 +189,16 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     return nothing
 end
 
+function compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map=nothing)
+    model_fields = merge(hydrostatic_fields(model.transport_velocities, model.free_surface, model.tracers),
+                         model.auxiliary_fields,
+                         biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+    return add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry,
+                                           model.grid, model.clock, model_fields;
+                                           kernel_parameters, active_cells_map)
+end
+
 #####
 ##### Tendency calculators for u, v
 #####
@@ -224,8 +238,8 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid,
                                                       val_tracer_index, val_tracer_name, advection, closure,
-                                                      c_immersed_bc, buoyancy, biogeochemistry, velocities,
-                                                      free_surface, tracers, closure_fields, auxiliary_fields,
+                                                      c_immersed_bc, buoyancy, biogeochemistry,
+                                                      velocities, free_surface, tracers, closure_fields, auxiliary_fields,
                                                       clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid,

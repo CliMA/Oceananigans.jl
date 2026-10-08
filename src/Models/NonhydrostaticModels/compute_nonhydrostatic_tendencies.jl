@@ -1,5 +1,5 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
-using Oceananigans.Biogeochemistry: update_tendencies!
+using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
 """
@@ -27,6 +27,7 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
 
     compute_interior_tendency_contributions!(model, kernel_parameters)
     complete_communication_and_compute_buffer!(model, grid, arch)
+    compute_biogeochemical_transitions!(model, :xyz)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
@@ -104,6 +105,15 @@ end
     return nothing
 end
 
+function compute_biogeochemical_transitions!(model, kernel_parameters; active_cells_map=nothing)
+    model_fields = merge(model.velocities, model.tracers, model.auxiliary_fields,
+                         biogeochemical_auxiliary_fields(model.biogeochemistry))
+
+    return add_biogeochemical_transitions!(model.timestepper.Gⁿ, model.biogeochemistry,
+                                           model.grid, model.clock, model_fields;
+                                           kernel_parameters, active_cells_map)
+end
+
 #####
 ##### Tendency calculators for u, v, w-velocity
 #####
@@ -145,12 +155,14 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_Gc!(Gc, grid,
                              val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
-                             biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, closure_fields,
+                             biogeochemistry, background_fields,
+                             velocities, tracers, auxiliary_fields, closure_fields,
                              clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid,
                                             val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
-                                            biogeochemistry, background_fields, velocities, tracers, auxiliary_fields, closure_fields,
+                                            biogeochemistry, background_fields,
+                                            velocities, tracers, auxiliary_fields, closure_fields,
                                             clock, forcing)
 end
 

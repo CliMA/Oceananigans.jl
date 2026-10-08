@@ -2,6 +2,7 @@
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
@@ -30,6 +31,7 @@ Oceananigans = {path = ".."}
 [compat]
 CairoMakie = "0.15"
 CUDA = "=5.8.5, 5.9.1, 6.0 - 6.1"
+ConservativeRegridding = "0.2"
 Documenter = "1 - 1.17"
 DocumenterCitations = "1"
 DocumenterVitepress = "0.3.1"
