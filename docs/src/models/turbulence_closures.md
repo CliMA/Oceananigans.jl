@@ -218,7 +218,7 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── minimum_tke: 1.0e-9
 ├── negative_tke_time_scale: 60.0
 ├── minimum_convective_buoyancy_flux: 1.0e-11
-├── tke_time_step: Nothing
+├── tke_time_step: nothing
 ├── mixing_length: TKEBasedVerticalDiffusivities.CATKEMixingLength
 │   ├── Cˢ:   1.131
 │   ├── Cᵇ:   0.967
@@ -271,7 +271,7 @@ TKEDissipationVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── maximum_viscosity: Inf
 ├── minimum_tke: 1.0e-6
 ├── negative_tke_damping_time_scale: 60.0
-├── tke_dissipation_time_step: Nothing
+├── tke_dissipation_time_step: nothing
 ├── tke_dissipation_equations: Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.TKEDissipationEquations{Float64}
 │   ├── Cᵋϵ: 1.92
 │   ├── Cᴾϵ: 1.44

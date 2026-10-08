@@ -398,7 +398,7 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
+├── density: nothing
 └── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
@@ -423,7 +423,7 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
+├── density: nothing
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
