@@ -368,7 +368,7 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 
 # ![](western_boundary_current_transports.png)
 #
-# Halving the rotation rate doubles the transport of both boundary currents.
+# Halving the rotation rate roughly doubles the transport of both boundary currents.
 #
 # ## The gyres
 #
@@ -408,7 +408,7 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # streamfunction climbs to the gyre maximum within a few degrees of the western coast
 # and decays slowly across the rest of the basin. On the ``f``-plane the gyres are
 # symmetric about the middle of each basin and there is no western boundary current.
-# They are also twenty times stronger and take about a year to level off: without
+# They are also more than ten times stronger and take about two years to level off: without
 # ``β`` there is no Sverdrup balance, so the wind keeps spinning up each basin until
 # friction alone can remove the vorticity it puts in.
 #
@@ -418,7 +418,7 @@ save("global_wind_driven_gyres.png", fig, px_per_unit=2) #hide
 # Kuroshio, the departure of the surface temperature from its restoring profile,
 # ``T - T^\star``, for the three Coriolis parameters. With ``f = 2Ω \sin φ`` the western
 # boundary currents appear within the first weeks and then sharpen and speed up at the
-# surface over the following years; with ``f = Ω \sin φ`` they are twice as fast. On the
+# surface over the following years; with ``f = Ω \sin φ`` they are about 50% faster. On the
 # ``f``-plane there are no boundary currents at all: the whole gyre circulates at a few
 # tens of centimeters per second. The temperature spends its first two months relaxing
 # from the uniform initial 10 °C toward ``T^\star``. After that, on the ``β``-planes, the
