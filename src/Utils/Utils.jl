@@ -37,6 +37,7 @@ function get_active_cells_map end
 include("time_discretizations.jl")
 include("prettysummary.jl")
 include("kernel_launching.jl")
+include("captured_launches.jl")
 include("prettytime.jl")
 include("pretty_filesize.jl")
 include("tuple_utils.jl")

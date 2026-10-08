@@ -41,9 +41,11 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+@kernel function _split_explicit_barotropic_velocity!(transport_weight, Δτ, grid, filled_halos, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
+
+    Δτ = step_value(Δτ)
 
     cache_previous_velocities!(timestepper, i, j, 1, U, V)
 
@@ -65,9 +67,12 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+@kernel function _split_explicit_free_surface!(averaging_weight, Δτ, clock, grid, filled_halos, η, U, V, F, η̅, U̅, V̅, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
+
+    Δτ = step_value(Δτ)
+    clock = step_value(clock)
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
@@ -123,8 +128,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (Δτᴮ, grid, Val(true), η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    η_args = (Δτᴮ, clock, grid, Val(true), η, U, V, F, η̅, U̅, V̅, timestepper)
 
     barotropic_model_fields = (; U, V, η)
 
@@ -183,8 +188,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    η_args = (grid, Val(false), η, U, V, F, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -192,13 +197,23 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
         converted_U_args = convert_to_device(arch, U_args)
         converted_η_args = convert_to_device(arch, η_args)
 
-        @unroll for substep in 1:Nsubsteps
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
+        step_values = (; Δτ = Δτᴮ, clock = convert_to_device(arch, clock))
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
+        launch_captured!(substep_barotropic_mode!, child_architecture(arch), step_values, barotropic_velocity_kernel!,
+                         free_surface_kernel!, converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
+    end
+
+    return nothing
+end
+
+function substep_barotropic_mode!(step_values, barotropic_velocity_kernel!, free_surface_kernel!,
+                                  U_args, η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+    @unroll for substep in 1:Nsubsteps
+        @inbounds averaging_weight = weights[substep]
+        @inbounds transport_weight = transport_weights[substep]
+
+        barotropic_velocity_kernel!(transport_weight, step_values.Δτ, U_args...)
+        free_surface_kernel!(averaging_weight, step_values.Δτ, step_values.clock, η_args...)
     end
 
     return nothing
