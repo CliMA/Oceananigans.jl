@@ -1,7 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize
-using Oceananigans.Grids: halo_size, topology, architecture
+using Oceananigans.Grids: halo_size, topology, architecture, LeftConnectedOnlyTopology
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
@@ -44,7 +44,7 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     local_x = Rx == 1
     local_y = Ry == 1
     one_sided_x = Tx == RightConnected || Tx == LeftConnected
-    one_sided_y = Ty == RightConnected || Ty == LeftConnected
+    one_sided_y = Ty == RightConnected || Ty <: LeftConnectedOnlyTopology
 
     # Sizes
     Sx = if local_x
