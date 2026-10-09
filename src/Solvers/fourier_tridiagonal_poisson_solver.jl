@@ -272,17 +272,11 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     return nothing
 end
 
-@kernel function multiply_by_spacing!(b, ::XDirection, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δxᶜᶜᶜ(i, j, k, grid)
-end
+Δξᶜᶜᶜ(i, j, k, grid, ::XDirection) = Δxᶜᶜᶜ(i, j, k, grid)
+Δξᶜᶜᶜ(i, j, k, grid, ::YDirection) = Δyᶜᶜᶜ(i, j, k, grid)
+Δξᶜᶜᶜ(i, j, k, grid, ::ZDirection) = Δzᶜᶜᶜ(i, j, k, grid)
 
-@kernel function multiply_by_spacing!(b, ::YDirection, grid)
+@kernel function multiply_by_spacing!(b, tridiagonal_direction, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δyᶜᶜᶜ(i, j, k, grid)
-end
-
-@kernel function multiply_by_spacing!(b, ::ZDirection, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds b[i, j, k] *= Δzᶜᶜᶜ(i, j, k, grid)
+    @inbounds b[i, j, k] *= Δξᶜᶜᶜ(i, j, k, grid, tridiagonal_direction)
 end
