@@ -250,7 +250,6 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
         zero_mode .-= sum(zero_mode, dims=1) ./ length(zero_mode)
     end
 
-    # Apply backward transforms in order
     apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
 
     arch = architecture(solver)
