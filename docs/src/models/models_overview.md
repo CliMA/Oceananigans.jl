@@ -24,7 +24,7 @@ with a free surface on its top boundary. The hydrostatic approximation allows th
 to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
 simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
 and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
-and [LambertConformalConicGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid).
+and [ConformalConicGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalConicGrid).
 Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser
 grid spacings of O(30 m) up to O(100 km). Such coarse-grained simulations are usually paired with more elaborate
 turbulence closures or "parameterizations" than small-scale simulations with NonhydrostaticModel, such as the

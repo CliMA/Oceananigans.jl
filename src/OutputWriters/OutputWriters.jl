@@ -35,10 +35,10 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                    ConformalCubedSpherePanelGrid,
-                                                   LambertConformalConicGrid,
+                                                   ConformalConicGrid,
                                                    Tripolar, LatitudeLongitudeRotation,
                                                    CubedSphereConformalMapping,
-                                                   LambertConformalConic
+                                                   ConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize

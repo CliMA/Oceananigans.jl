@@ -9,7 +9,7 @@ using Oceananigans.Grids: Grids, Bounded, Center, Face, OrthogonalSphericalShell
 using Oceananigans.Utils: KernelParameters, launch!, prettysummary
 using OrderedCollections: OrderedDict
 
-struct LambertConformalConic{FT}
+struct ConformalConic{FT}
     central_longitude :: FT
     latitude_of_origin :: FT
     standard_parallel_1 :: FT
@@ -26,17 +26,14 @@ struct LambertConformalConic{FT}
     Δy :: FT
 end
 
-const LambertConformalConicGrid{FT, TX, TY, TZ, Z} =
+const ConformalConicGrid{FT, TX, TY, TZ, Z} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z,
-                                 <:LambertConformalConic} where {FT, TX, TY, TZ, Z}
+                                 <:ConformalConic} where {FT, TX, TY, TZ, Z}
 
 @inline degrees_to_radians(::Type{FT}, θ) where FT = convert(FT, θ) * convert(FT, π) / convert(FT, 180)
 @inline radians_to_degrees(::Type{FT}, θ) where FT = convert(FT, θ) * convert(FT, 180) / convert(FT, π)
-@inline lcc_half(::Type{FT}) where FT = one(FT) / convert(FT, 2)
-@inline lcc_halfπ(::Type{FT}) where FT = convert(FT, π) / convert(FT, 2)
-@inline lcc_quarterπ(::Type{FT}) where FT = convert(FT, π) / convert(FT, 4)
-@inline lcc_tangent(φ) = tan(lcc_quarterπ(typeof(φ)) + lcc_half(typeof(φ)) * φ)
-@inline lcc_wrap_to_π(λ) = atan(sin(λ), cos(λ))
+@inline conformal_conic_tangent(φ) = tan(convert(typeof(φ), π) / 4 + φ / 2)
+@inline conformal_conic_wrap_to_π(λ) = atan(sin(λ), cos(λ))
 
 function normalize_standard_parallels(standard_parallel, standard_parallels)
     if !isnothing(standard_parallel) && !isnothing(standard_parallels)
@@ -56,8 +53,8 @@ function normalize_standard_parallels(standard_parallel, standard_parallels)
     end
 end
 
-function validate_lcc_angles(FT, φ₀, φ₁, φ₂)
-    halfπ = lcc_halfπ(FT)
+function validate_conformal_conic_angles(FT, φ₀, φ₁, φ₂)
+    halfπ = convert(FT, π) / 2
     tolerance = sqrt(eps(FT))
 
     isfinite(φ₀) || throw(ArgumentError("latitude_of_origin must be finite."))
@@ -85,7 +82,7 @@ function validate_lcc_angles(FT, φ₀, φ₁, φ₂)
     return nothing
 end
 
-function validate_lcc_scalar(value, name, FT; positive = false)
+function validate_conformal_conic_scalar(value, name, FT; positive = false)
     value = try
         convert(FT, value)
     catch
@@ -98,13 +95,13 @@ function validate_lcc_scalar(value, name, FT; positive = false)
     return value
 end
 
-function lcc_cone_constant(FT, φ₁, φ₂)
+function conformal_conic_cone_constant(FT, φ₁, φ₂)
     tolerance = sqrt(eps(FT))
 
     n = if isapprox(φ₁, φ₂; atol = tolerance, rtol = zero(FT))
         sin(φ₁)
     else
-        log(cos(φ₁) / cos(φ₂)) / log(lcc_tangent(φ₂) / lcc_tangent(φ₁))
+        log(cos(φ₁) / cos(φ₂)) / log(conformal_conic_tangent(φ₂) / conformal_conic_tangent(φ₁))
     end
 
     abs(n) > tolerance || throw(ArgumentError("Lambert conformal cone constant n is too close to zero."))
@@ -120,65 +117,65 @@ Return a spherical Lambert conformal conic projection map.
 ```jldoctest
 using Oceananigans
 
-map = LambertConformalConic(Float64;
-                            standard_parallels = (30, 60),
-                            central_longitude = -105,
-                            latitude_of_origin = 40,
-                            x₁ = -1000, y₁ = -1000,
-                            Δx = 100, Δy = 100)
+map = ConformalConic(Float64;
+                     standard_parallels = (30, 60),
+                     central_longitude = -105,
+                     latitude_of_origin = 40,
+                     x₁ = -1000, y₁ = -1000,
+                     Δx = 100, Δy = 100)
 
-show(round(lcc_scale_factor(map, 30); digits=12))
+show(round(conformal_conic_scale_factor(map, 30); digits=12))
 
 # output
 1.0
 ```
 """
-function LambertConformalConic(FT::DataType = Oceananigans.defaults.FloatType;
-                               standard_parallel = nothing,
-                               standard_parallels = nothing,
-                               central_longitude,
-                               latitude_of_origin,
-                               false_easting = 0,
-                               false_northing = 0,
-                               radius = Oceananigans.defaults.planet_radius,
-                               x₁,
-                               y₁,
-                               Δx,
-                               Δy)
+function ConformalConic(FT::DataType = Oceananigans.defaults.FloatType;
+                        standard_parallel = nothing,
+                        standard_parallels = nothing,
+                        central_longitude,
+                        latitude_of_origin,
+                        false_easting = 0,
+                        false_northing = 0,
+                        radius = Oceananigans.defaults.planet_radius,
+                        x₁,
+                        y₁,
+                        Δx,
+                        Δy)
 
     standard_parallel_1, standard_parallel_2 =
         normalize_standard_parallels(standard_parallel, standard_parallels)
 
-    central_longitude = validate_lcc_scalar(central_longitude, "central_longitude", FT)
-    latitude_of_origin = validate_lcc_scalar(latitude_of_origin, "latitude_of_origin", FT)
-    standard_parallel_1 = validate_lcc_scalar(standard_parallel_1, "standard parallels", FT)
-    standard_parallel_2 = validate_lcc_scalar(standard_parallel_2, "standard parallels", FT)
-    false_easting = validate_lcc_scalar(false_easting, "false_easting", FT)
-    false_northing = validate_lcc_scalar(false_northing, "false_northing", FT)
-    radius = validate_lcc_scalar(radius, "radius", FT; positive = true)
-    x₁ = validate_lcc_scalar(x₁, "x₁", FT)
-    y₁ = validate_lcc_scalar(y₁, "y₁", FT)
-    Δx = validate_lcc_scalar(Δx, "Δx", FT; positive = true)
-    Δy = validate_lcc_scalar(Δy, "Δy", FT; positive = true)
+    central_longitude = validate_conformal_conic_scalar(central_longitude, "central_longitude", FT)
+    latitude_of_origin = validate_conformal_conic_scalar(latitude_of_origin, "latitude_of_origin", FT)
+    standard_parallel_1 = validate_conformal_conic_scalar(standard_parallel_1, "standard parallels", FT)
+    standard_parallel_2 = validate_conformal_conic_scalar(standard_parallel_2, "standard parallels", FT)
+    false_easting = validate_conformal_conic_scalar(false_easting, "false_easting", FT)
+    false_northing = validate_conformal_conic_scalar(false_northing, "false_northing", FT)
+    radius = validate_conformal_conic_scalar(radius, "radius", FT; positive = true)
+    x₁ = validate_conformal_conic_scalar(x₁, "x₁", FT)
+    y₁ = validate_conformal_conic_scalar(y₁, "y₁", FT)
+    Δx = validate_conformal_conic_scalar(Δx, "Δx", FT; positive = true)
+    Δy = validate_conformal_conic_scalar(Δy, "Δy", FT; positive = true)
 
     λ₀ = degrees_to_radians(FT, central_longitude)
     φ₀ = degrees_to_radians(FT, latitude_of_origin)
     φ₁ = degrees_to_radians(FT, standard_parallel_1)
     φ₂ = degrees_to_radians(FT, standard_parallel_2)
 
-    validate_lcc_angles(FT, φ₀, φ₁, φ₂)
+    validate_conformal_conic_angles(FT, φ₀, φ₁, φ₂)
 
-    n = lcc_cone_constant(FT, φ₁, φ₂)
-    T₁ = lcc_tangent(φ₁)
+    n = conformal_conic_cone_constant(FT, φ₁, φ₂)
+    T₁ = conformal_conic_tangent(φ₁)
     # Polar-stereographic limit: when |φ₁| = π/2 the cone degenerates to a
     # plane tangent at the pole. cos(φ₁) → 0 and T₁^n → ∞, but the product
     # cos(φ₁) · T₁^n / n approaches the finite limit 2·sign(n). Take that limit
     # directly to avoid 0·∞ = NaN.
-    halfπ = lcc_halfπ(FT)
+    halfπ = convert(FT, π) / 2
     polar_tolerance = sqrt(eps(FT))
     is_polar = abs(abs(φ₁) - halfπ) <= polar_tolerance
     F = is_polar ? convert(FT, 2) * sign(n) : cos(φ₁) * T₁^n / n
-    ρ₀ = radius * F / lcc_tangent(φ₀)^n
+    ρ₀ = radius * F / conformal_conic_tangent(φ₀)^n
 
     isfinite(F) ||
         throw(ArgumentError("Lambert conformal scale constant F is not finite."))
@@ -186,32 +183,32 @@ function LambertConformalConic(FT::DataType = Oceananigans.defaults.FloatType;
     isfinite(ρ₀) ||
         throw(ArgumentError("Lambert conformal radius at latitude_of_origin is not finite."))
 
-    return LambertConformalConic{FT}(λ₀, φ₀, φ₁, φ₂,
+    return ConformalConic{FT}(λ₀, φ₀, φ₁, φ₂,
                                      false_easting, false_northing,
                                      radius, n, F, ρ₀,
                                      x₁, y₁, Δx, Δy)
 end
 
-function Adapt.adapt_structure(to, map::LambertConformalConic)
-    return LambertConformalConic(adapt(to, map.central_longitude),
-                                 adapt(to, map.latitude_of_origin),
-                                 adapt(to, map.standard_parallel_1),
-                                 adapt(to, map.standard_parallel_2),
-                                 adapt(to, map.false_easting),
-                                 adapt(to, map.false_northing),
-                                 adapt(to, map.radius),
-                                 adapt(to, map.cone_constant),
-                                 adapt(to, map.scale_constant),
-                                 adapt(to, map.origin_radius),
-                                 adapt(to, map.x₁),
-                                 adapt(to, map.y₁),
-                                 adapt(to, map.Δx),
-                                 adapt(to, map.Δy))
+function Adapt.adapt_structure(to, map::ConformalConic)
+    return ConformalConic(adapt(to, map.central_longitude),
+                          adapt(to, map.latitude_of_origin),
+                          adapt(to, map.standard_parallel_1),
+                          adapt(to, map.standard_parallel_2),
+                          adapt(to, map.false_easting),
+                          adapt(to, map.false_northing),
+                          adapt(to, map.radius),
+                          adapt(to, map.cone_constant),
+                          adapt(to, map.scale_constant),
+                          adapt(to, map.origin_radius),
+                          adapt(to, map.x₁),
+                          adapt(to, map.y₁),
+                          adapt(to, map.Δx),
+                          adapt(to, map.Δy))
 end
 
-on_architecture(::AbstractArchitecture, map::LambertConformalConic) = map
+on_architecture(::AbstractArchitecture, map::ConformalConic) = map
 
-function Base.show(io::IO, map::LambertConformalConic{FT}) where FT
+function Base.show(io::IO, map::ConformalConic{FT}) where FT
     λ₀ = prettysummary(radians_to_degrees(FT, map.central_longitude))
     φ₀ = prettysummary(radians_to_degrees(FT, map.latitude_of_origin))
     φ₁ = prettysummary(radians_to_degrees(FT, map.standard_parallel_1))
@@ -219,45 +216,46 @@ function Base.show(io::IO, map::LambertConformalConic{FT}) where FT
     Δx = prettysummary(map.Δx)
     Δy = prettysummary(map.Δy)
 
-    return print(io, "LambertConformalConic(λ₀=", λ₀, "°, φ₀=", φ₀,
+    return print(io, "ConformalConic(λ₀=", λ₀, "°, φ₀=", φ₀,
                  "°, standard_parallels=(", φ₁, "°, ", φ₂, "°), Δ=(", Δx, ", ", Δy, ") m)")
 end
 
-@inline function lcc_radius(map::LambertConformalConic{FT}, φ) where FT
+@inline function conformal_conic_radius(map::ConformalConic{FT}, φ) where FT
     F = map.scale_constant
     n = map.cone_constant
-    return map.radius * F / lcc_tangent(φ)^n
+    return map.radius * F / conformal_conic_tangent(φ)^n
 end
 
 """
 $(SIGNATURES)
 
-Return the projected coordinates `(x, y)` corresponding to longitude `λ` and latitude `φ`, in degrees.
+Project geographic coordinates onto the conformal conic plane: return the projected
+coordinates `(x, y)`, in meters, corresponding to longitude `λ` and latitude `φ`, in degrees.
 
 ```jldoctest
 using Oceananigans
 
-map = LambertConformalConic(Float64;
-                            standard_parallels = (30, 60),
-                            central_longitude = -105,
-                            latitude_of_origin = 40,
-                            x₁ = -1000, y₁ = -1000,
-                            Δx = 100, Δy = 100)
+map = ConformalConic(Float64;
+                     standard_parallels = (30, 60),
+                     central_longitude = -105,
+                     latitude_of_origin = 40,
+                     x₁ = -1000, y₁ = -1000,
+                     Δx = 100, Δy = 100)
 
-x, y = lcc_forward(map, -105, 40)
+x, y = geographic_to_conformal_conic(map, -105, 40)
 show((round(x; digits=12), round(y; digits=12)))
 
 # output
 (0.0, 0.0)
 ```
 """
-@inline function lcc_forward(map::LambertConformalConic{FT}, λ, φ) where FT
+@inline function geographic_to_conformal_conic(map::ConformalConic{FT}, λ, φ) where FT
     λ = degrees_to_radians(FT, λ)
     φ = degrees_to_radians(FT, φ)
-    ρ = lcc_radius(map, φ)
+    ρ = conformal_conic_radius(map, φ)
     n = map.cone_constant
     ρ₀ = map.origin_radius
-    θ = n * lcc_wrap_to_π(λ - map.central_longitude)
+    θ = n * conformal_conic_wrap_to_π(λ - map.central_longitude)
 
     x = map.false_easting + ρ * sin(θ)
     y = map.false_northing + ρ₀ - ρ * cos(θ)
@@ -268,27 +266,28 @@ end
 """
 $(SIGNATURES)
 
-Return the longitude and latitude `(λ, φ)`, in degrees, corresponding to projected coordinates `(x, y)`.
+Unproject conformal conic plane coordinates back to geographic coordinates: return the
+longitude and latitude `(λ, φ)`, in degrees, corresponding to projected coordinates `(x, y)`, in meters.
 
 ```jldoctest
 using Oceananigans
 
-map = LambertConformalConic(Float64;
-                            standard_parallels = (30, 60),
-                            central_longitude = -105,
-                            latitude_of_origin = 40,
-                            x₁ = -1000, y₁ = -1000,
-                            Δx = 100, Δy = 100)
+map = ConformalConic(Float64;
+                     standard_parallels = (30, 60),
+                     central_longitude = -105,
+                     latitude_of_origin = 40,
+                     x₁ = -1000, y₁ = -1000,
+                     Δx = 100, Δy = 100)
 
-x, y = lcc_forward(map, -100, 45)
-λ, φ = lcc_inverse(map, x, y)
+x, y = geographic_to_conformal_conic(map, -100, 45)
+λ, φ = conformal_conic_to_geographic(map, x, y)
 show((round(λ; digits=10), round(φ; digits=10)))
 
 # output
 (-100.0, 45.0)
 ```
 """
-@inline function lcc_inverse(map::LambertConformalConic{FT}, x, y) where FT
+@inline function conformal_conic_to_geographic(map::ConformalConic{FT}, x, y) where FT
     n = map.cone_constant
     F = map.scale_constant
     ρ₀ = map.origin_radius
@@ -302,13 +301,14 @@ show((round(λ; digits=10), round(φ; digits=10)))
                             ρ)
     θ = atan(sign_n * x′, sign_n * (ρ₀ - y′))
     T = (map.radius * F / ρ_for_inverse)^(one(FT) / n)
-    φ = convert(FT, 2) * atan(T) - lcc_halfπ(FT)
+    halfπ = convert(FT, π) / 2
+    φ = convert(FT, 2) * atan(T) - halfπ
     λ = map.central_longitude + θ / n
 
-    φ_apex = ifelse(n < zero(FT), -lcc_halfπ(FT), lcc_halfπ(FT))
+    φ_apex = ifelse(n < zero(FT), -halfπ, halfπ)
     φ = ifelse(ρ_abs == zero(FT), φ_apex, φ)
     λ = ifelse(ρ_abs == zero(FT), map.central_longitude, λ)
-    λ = lcc_wrap_to_π(λ)
+    λ = conformal_conic_wrap_to_π(λ)
 
     return radians_to_degrees(FT, λ), radians_to_degrees(FT, φ)
 end
@@ -321,24 +321,24 @@ Return the Lambert conformal conic scale factor at latitude `φ`, in degrees.
 ```jldoctest
 using Oceananigans
 
-map = LambertConformalConic(Float64;
-                            standard_parallels = (30, 60),
-                            central_longitude = -105,
-                            latitude_of_origin = 40,
-                            x₁ = -1000, y₁ = -1000,
-                            Δx = 100, Δy = 100)
+map = ConformalConic(Float64;
+                     standard_parallels = (30, 60),
+                     central_longitude = -105,
+                     latitude_of_origin = 40,
+                     x₁ = -1000, y₁ = -1000,
+                     Δx = 100, Δy = 100)
 
-show(round(lcc_scale_factor(map, 60); digits=12))
+show(round(conformal_conic_scale_factor(map, 60); digits=12))
 
 # output
 1.0
 ```
 """
-@inline function lcc_scale_factor(map::LambertConformalConic{FT}, φ) where FT
+@inline function conformal_conic_scale_factor(map::ConformalConic{FT}, φ) where FT
     φ = degrees_to_radians(FT, φ)
     n = map.cone_constant
     F = map.scale_constant
-    T = lcc_tangent(φ)
+    T = conformal_conic_tangent(φ)
     # cos(φ) = 2T / (1 + T²) for T = tan(π/4 + φ/2), so the cos(φ) in the scale
     # factor k = n ρ / (radius cos φ) cancels analytically. The closed form below
     # stays well-conditioned at the pole, where the direct n ρ / (radius cos φ)
@@ -346,30 +346,30 @@ show(round(lcc_scale_factor(map, 60); digits=12))
     return abs(n * F * (one(FT) + T^2) / (convert(FT, 2) * T^(n + one(FT))))
 end
 
-@inline function lcc_xnode(i, ::Center, map::LambertConformalConic{FT}) where FT
-    return map.x₁ + (convert(FT, i) - lcc_half(FT)) * map.Δx
+@inline function conformal_conic_xnode(i, ::Center, map::ConformalConic{FT}) where FT
+    return map.x₁ + (convert(FT, i) - convert(FT, 1//2)) * map.Δx
 end
 
-@inline function lcc_xnode(i, ::Face, map::LambertConformalConic{FT}) where FT
+@inline function conformal_conic_xnode(i, ::Face, map::ConformalConic{FT}) where FT
     return map.x₁ + (convert(FT, i) - one(FT)) * map.Δx
 end
 
-@inline function lcc_ynode(j, ::Center, map::LambertConformalConic{FT}) where FT
-    return map.y₁ + (convert(FT, j) - lcc_half(FT)) * map.Δy
+@inline function conformal_conic_ynode(j, ::Center, map::ConformalConic{FT}) where FT
+    return map.y₁ + (convert(FT, j) - convert(FT, 1//2)) * map.Δy
 end
 
-@inline function lcc_ynode(j, ::Face, map::LambertConformalConic{FT}) where FT
+@inline function conformal_conic_ynode(j, ::Face, map::ConformalConic{FT}) where FT
     return map.y₁ + (convert(FT, j) - 1) * map.Δy
 end
 
-function validate_lcc_topology(topology)
+function validate_conformal_conic_topology(topology)
     TX, TY, TZ = validate_topology(topology)
-    TX === Bounded || throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in x."))
-    TY === Bounded || throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in y."))
+    TX === Bounded || throw(ArgumentError("ConformalConicGrid requires Bounded topology in x."))
+    TY === Bounded || throw(ArgumentError("ConformalConicGrid requires Bounded topology in y."))
     return TX, TY, TZ
 end
 
-function validate_lcc_tuple(specification, name, FT; positive = false)
+function validate_conformal_conic_tuple(specification, name, FT; positive = false)
     x, y = try
         if specification isa Number
             value = convert(FT, specification)
@@ -396,7 +396,7 @@ function validate_lcc_tuple(specification, name, FT; positive = false)
     return x, y
 end
 
-function validate_lcc_center(center, FT)
+function validate_conformal_conic_center(center, FT)
     center isa Tuple && length(center) == 2 ||
         throw(ArgumentError("center must be a 2-tuple of longitude and latitude."))
 
@@ -415,14 +415,14 @@ function validate_lcc_center(center, FT)
     return λ, φ
 end
 
-function parse_lcc_domain(FT, map, size; x, y, center, extent, spacing)
+function parse_conformal_conic_domain(FT, map, size; x, y, center, extent, spacing)
     has_x = !isnothing(x)
     has_y = !isnothing(y)
     has_center = !isnothing(center)
     has_extent = !isnothing(extent)
     has_spacing = !isnothing(spacing)
 
-    has_x == has_y || throw(ArgumentError("LambertConformalConicGrid requires both x and y, or neither."))
+    has_x == has_y || throw(ArgumentError("ConformalConicGrid requires both x and y, or neither."))
 
     xy_mode = has_x && has_y && !has_center && !has_extent && !has_spacing
     center_extent_mode = has_center && has_extent && !has_x && !has_y && !has_spacing
@@ -435,21 +435,21 @@ function parse_lcc_domain(FT, map, size; x, y, center, extent, spacing)
     Nx, Ny, _ = size
 
     if has_x
-        x₁, x₂ = validate_lcc_tuple(x, "x", FT)
-        y₁, y₂ = validate_lcc_tuple(y, "y", FT)
+        x₁, x₂ = validate_conformal_conic_tuple(x, "x", FT)
+        y₁, y₂ = validate_conformal_conic_tuple(y, "y", FT)
         x₂ > x₁ || throw(ArgumentError("x must be an increasing interval."))
         y₂ > y₁ || throw(ArgumentError("y must be an increasing interval."))
         Δx = (x₂ - x₁) / convert(FT, Nx)
         Δy = (y₂ - y₁) / convert(FT, Ny)
     else
-        x_center, y_center = lcc_forward(map, center...)
+        x_center, y_center = geographic_to_conformal_conic(map, center...)
 
         if has_extent
-            Lx, Ly = validate_lcc_tuple(extent, "extent", FT; positive = true)
+            Lx, Ly = validate_conformal_conic_tuple(extent, "extent", FT; positive = true)
             Δx = Lx / convert(FT, Nx)
             Δy = Ly / convert(FT, Ny)
         else
-            Δx, Δy = validate_lcc_tuple(spacing, "spacing", FT; positive = true)
+            Δx, Δy = validate_conformal_conic_tuple(spacing, "spacing", FT; positive = true)
             Lx = convert(FT, Nx) * Δx
             Ly = convert(FT, Ny) * Δy
         end
@@ -461,7 +461,7 @@ function parse_lcc_domain(FT, map, size; x, y, center, extent, spacing)
     return x₁, y₁, Δx, Δy
 end
 
-function lcc_coordinate_matches_node(coordinate, first_face, spacing, N, ::Face)
+function conformal_conic_coordinate_matches_node(coordinate, first_face, spacing, N, ::Face)
     FT = typeof(spacing)
     fractional_index = one(FT) + (coordinate - first_face) / spacing
     tolerance = sqrt(eps(FT))
@@ -470,25 +470,25 @@ function lcc_coordinate_matches_node(coordinate, first_face, spacing, N, ::Face)
            abs(fractional_index - round(fractional_index)) <= tolerance
 end
 
-function lcc_coordinate_matches_node(coordinate, first_face, spacing, N, ::Center)
+function conformal_conic_coordinate_matches_node(coordinate, first_face, spacing, N, ::Center)
     FT = typeof(spacing)
-    fractional_index = lcc_half(FT) + (coordinate - first_face) / spacing
+    fractional_index = convert(FT, 1//2) + (coordinate - first_face) / spacing
     tolerance = sqrt(eps(FT))
 
     return one(FT) <= fractional_index <= convert(FT, N) &&
            abs(fractional_index - round(fractional_index)) <= tolerance
 end
 
-function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size; warn = true) where FT
+function validate_conformal_conic_projected_domain(map::ConformalConic{FT}, size; warn = true) where FT
     Nx, Ny, _ = size
     x₂ = map.x₁ + convert(FT, Nx) * map.Δx
     y₂ = map.y₁ + convert(FT, Ny) * map.Δy
 
     for x in (map.x₁, x₂), y in (map.y₁, y₂)
-        λ, φ = lcc_inverse(map, x, y)
+        λ, φ = conformal_conic_to_geographic(map, x, y)
 
         isfinite(λ) && isfinite(φ) ||
-            throw(ArgumentError("LambertConformalConicGrid domain inverse-projects to nonfinite " *
+            throw(ArgumentError("ConformalConicGrid domain inverse-projects to nonfinite " *
                                 "longitude or latitude."))
     end
 
@@ -497,15 +497,15 @@ function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size; war
     apex_in_x_domain = map.x₁ <= x_apex <= x₂
     apex_in_y_domain = map.y₁ <= y_apex <= y₂
 
-    apex_on_x_node = lcc_coordinate_matches_node(x_apex, map.x₁, map.Δx, Nx, Center()) ||
-                     lcc_coordinate_matches_node(x_apex, map.x₁, map.Δx, Nx, Face())
+    apex_on_x_node = conformal_conic_coordinate_matches_node(x_apex, map.x₁, map.Δx, Nx, Center()) ||
+                     conformal_conic_coordinate_matches_node(x_apex, map.x₁, map.Δx, Nx, Face())
 
-    apex_on_y_node = lcc_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Center()) ||
-                     lcc_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Face())
+    apex_on_y_node = conformal_conic_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Center()) ||
+                     conformal_conic_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Face())
 
     if warn && apex_in_x_domain && apex_in_y_domain
         node_message = ifelse(apex_on_x_node && apex_on_y_node, " on a grid node", "")
-        @warn "LambertConformalConicGrid contains the cone apex / pole$(node_message); longitude is singular there."
+        @warn "ConformalConicGrid contains the cone apex / pole$(node_message); longitude is singular there."
     end
 
     return nothing
@@ -514,7 +514,7 @@ end
 """
 $(SIGNATURES)
 
-Return a regional `LambertConformalConicGrid`, represented internally as an
+Return a regional `ConformalConicGrid`, represented internally as an
 `OrthogonalSphericalShellGrid` with 2D longitude, latitude, and spherical metric arrays.
 The computational grid is regular in projected `x/y` coordinates measured in meters,
 while the physical grid is a thin spherical shell in geographic longitude/latitude.
@@ -549,14 +549,14 @@ removed entirely by using the polar stereographic limit above.
 ```jldoctest
 using Oceananigans
 
-grid = LambertConformalConicGrid(size = (8, 6, 1),
-                                 center = (-105, 40),
-                                 spacing = 10000,
-                                 standard_parallels = (30, 60),
-                                 z = (-100, 0))
+grid = ConformalConicGrid(size = (8, 6, 1),
+                          center = (-105, 40),
+                          spacing = 10000,
+                          standard_parallels = (30, 60),
+                          z = (-100, 0))
 
 # output
-8×6×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+8×6×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 0.742148 degrees variably spaced with min(Δλ)=0.0926432, max(Δλ)=0.0927288
 ├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.0926432, max(Δφ)=0.0927288
@@ -566,14 +566,14 @@ grid = LambertConformalConicGrid(size = (8, 6, 1),
 ```jldoctest
 using Oceananigans
 
-grid = LambertConformalConicGrid(size = (4, 4, 1),
-                                 center = (-105, 40),
-                                 extent = (80e3, 60e3),
-                                 standard_parallels = (30, 60),
-                                 z = (-1, 0))
+grid = ConformalConicGrid(size = (4, 4, 1),
+                          center = (-105, 40),
+                          extent = (80e3, 60e3),
+                          standard_parallels = (30, 60),
+                          z = (-1, 0))
 
 # output
-4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+4×4×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 0.742301 degrees variably spaced with min(Δλ)=0.185286, max(Δλ)=0.185458
 ├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.138965, max(Δφ)=0.139093
@@ -583,16 +583,16 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
 ```jldoctest
 using Oceananigans
 
-grid = LambertConformalConicGrid(size = (4, 4, 1),
-                                 x = (-40e3, 40e3),
-                                 y = (-30e3, 30e3),
-                                 standard_parallels = (30, 60),
-                                 central_longitude = -105,
-                                 latitude_of_origin = 40,
-                                 z = (-1, 0))
+grid = ConformalConicGrid(size = (4, 4, 1),
+                          x = (-40e3, 40e3),
+                          y = (-30e3, 30e3),
+                          standard_parallels = (30, 60),
+                          central_longitude = -105,
+                          latitude_of_origin = 40,
+                          z = (-1, 0))
 
 # output
-4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+4×4×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 0.742301 degrees variably spaced with min(Δλ)=0.185286, max(Δλ)=0.185458
 ├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.138965, max(Δφ)=0.139093
@@ -602,45 +602,45 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
 ```jldoctest
 using Oceananigans
 
-grid = LambertConformalConicGrid(size = (4, 4, 1),
-                                 center = (-100, 45),
-                                 spacing = 10000,
-                                 standard_parallel = 45,
-                                 z = (-1, 0))
+grid = ConformalConicGrid(size = (4, 4, 1),
+                          center = (-100, 45),
+                          spacing = 10000,
+                          standard_parallel = 45,
+                          z = (-1, 0))
 
 # output
-4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+4×4×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-100.0, 45.0)
 ├── longitude: Bounded  extent 0.359729 degrees variably spaced with min(Δλ)=0.0899317, max(Δλ)=0.0899322
 ├── latitude:  Bounded  extent 0.359728 degrees variably spaced with min(Δφ)=0.0899317, max(Δφ)=0.0899322
 └── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0
 ```
 """
-function LambertConformalConicGrid(arch::AbstractArchitecture = CPU(),
-                                   FT::DataType = Oceananigans.defaults.FloatType;
-                                   size,
-                                   z,
-                                   center = nothing,
-                                   spacing = nothing,
-                                   extent = nothing,
-                                   x = nothing,
-                                   y = nothing,
-                                   standard_parallel = nothing,
-                                   standard_parallels = nothing,
-                                   central_longitude = nothing,
-                                   latitude_of_origin = nothing,
-                                   false_easting = 0,
-                                   false_northing = 0,
-                                   radius = Oceananigans.defaults.planet_radius,
-                                   halo = nothing,
-                                   topology = (Bounded, Bounded, Bounded),
-                                   warn = true)
+function ConformalConicGrid(arch::AbstractArchitecture = CPU(),
+                            FT::DataType = Oceananigans.defaults.FloatType;
+                            size,
+                            z,
+                            center = nothing,
+                            spacing = nothing,
+                            extent = nothing,
+                            x = nothing,
+                            y = nothing,
+                            standard_parallel = nothing,
+                            standard_parallels = nothing,
+                            central_longitude = nothing,
+                            latitude_of_origin = nothing,
+                            false_easting = 0,
+                            false_northing = 0,
+                            radius = Oceananigans.defaults.planet_radius,
+                            halo = nothing,
+                            topology = (Bounded, Bounded, Bounded),
+                            warn = true)
 
     if !isnothing(center)
-        center = validate_lcc_center(center, FT)
+        center = validate_conformal_conic_center(center, FT)
     end
 
-    TX, TY, TZ = validate_lcc_topology(topology)
+    TX, TY, TZ = validate_conformal_conic_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, size, halo)
     z = validate_dimension_specification(TZ, z, :z, size[3], FT)
@@ -655,81 +655,81 @@ function LambertConformalConicGrid(arch::AbstractArchitecture = CPU(),
         latitude_of_origin = center[2]
     end
 
-    temporary_map = LambertConformalConic(FT;
-                                          standard_parallel,
-                                          standard_parallels,
-                                          central_longitude,
-                                          latitude_of_origin,
-                                          false_easting,
-                                          false_northing,
-                                          radius,
-                                          x₁ = zero(FT),
-                                          y₁ = zero(FT),
-                                          Δx = one(FT),
-                                          Δy = one(FT))
+    temporary_map = ConformalConic(FT;
+                                   standard_parallel,
+                                   standard_parallels,
+                                   central_longitude,
+                                   latitude_of_origin,
+                                   false_easting,
+                                   false_northing,
+                                   radius,
+                                   x₁ = zero(FT),
+                                   y₁ = zero(FT),
+                                   Δx = one(FT),
+                                   Δy = one(FT))
 
-    x₁, y₁, Δx, Δy = parse_lcc_domain(FT, temporary_map, size; x, y, center, extent, spacing)
+    x₁, y₁, Δx, Δy = parse_conformal_conic_domain(FT, temporary_map, size; x, y, center, extent, spacing)
 
-    conformal_mapping = LambertConformalConic(FT;
-                                              standard_parallel,
-                                              standard_parallels,
-                                              central_longitude,
-                                              latitude_of_origin,
-                                              false_easting,
-                                              false_northing,
-                                              radius,
-                                              x₁, y₁, Δx, Δy)
+    conformal_mapping = ConformalConic(FT;
+                                       standard_parallel,
+                                       standard_parallels,
+                                       central_longitude,
+                                       latitude_of_origin,
+                                       false_easting,
+                                       false_northing,
+                                       radius,
+                                       x₁, y₁, Δx, Δy)
 
-    validate_lcc_projected_domain(conformal_mapping, size; warn)
+    validate_conformal_conic_projected_domain(conformal_mapping, size; warn)
 
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius,
                                         halo, topology,
                                         conformal_mapping)
 
-    fill_lcc_coordinates_and_metrics!(grid)
+    fill_conformal_conic_coordinates_and_metrics!(grid)
 
     return grid
 end
 
-LambertConformalConicGrid(FT::DataType; kwargs...) = LambertConformalConicGrid(CPU(), FT; kwargs...)
+ConformalConicGrid(FT::DataType; kwargs...) = ConformalConicGrid(CPU(), FT; kwargs...)
 
-function fill_lcc_coordinates_and_metrics!(grid::LambertConformalConicGrid)
+function fill_conformal_conic_coordinates_and_metrics!(grid::ConformalConicGrid)
     arch = architecture(grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
     coordinate_parameters = KernelParameters(-Hx-1:Nx+Hx+2, -Hy-1:Ny+Hy+2)
-    launch!(arch, grid, coordinate_parameters, _fill_lcc_coordinates!, grid)
+    launch!(arch, grid, coordinate_parameters, _fill_conformal_conic_coordinates!, grid)
 
     metric_parameters = KernelParameters(-Hx:Nx+Hx+1, -Hy:Ny+Hy+1)
-    launch!(arch, grid, metric_parameters, _calculate_lcc_metrics!, grid)
+    launch!(arch, grid, metric_parameters, _calculate_conformal_conic_metrics!, grid)
 
     return nothing
 end
 
-@kernel function _fill_lcc_coordinates!(grid)
+@kernel function _fill_conformal_conic_coordinates!(grid)
     i, j = @index(Global, NTuple)
     map = grid.conformal_mapping
 
-    xᶜ = lcc_xnode(i, Center(), map)
-    xᶠ = lcc_xnode(i, Face(), map)
-    yᶜ = lcc_ynode(j, Center(), map)
-    yᶠ = lcc_ynode(j, Face(), map)
+    xᶜ = conformal_conic_xnode(i, Center(), map)
+    xᶠ = conformal_conic_xnode(i, Face(), map)
+    yᶜ = conformal_conic_ynode(j, Center(), map)
+    yᶠ = conformal_conic_ynode(j, Face(), map)
 
     @inbounds begin
-        λ, φ = lcc_inverse(map, xᶜ, yᶜ)
+        λ, φ = conformal_conic_to_geographic(map, xᶜ, yᶜ)
         grid.λᶜᶜᵃ[i, j] = λ
         grid.φᶜᶜᵃ[i, j] = φ
 
-        λ, φ = lcc_inverse(map, xᶠ, yᶜ)
+        λ, φ = conformal_conic_to_geographic(map, xᶠ, yᶜ)
         grid.λᶠᶜᵃ[i, j] = λ
         grid.φᶠᶜᵃ[i, j] = φ
 
-        λ, φ = lcc_inverse(map, xᶜ, yᶠ)
+        λ, φ = conformal_conic_to_geographic(map, xᶜ, yᶠ)
         grid.λᶜᶠᵃ[i, j] = λ
         grid.φᶜᶠᵃ[i, j] = φ
 
-        λ, φ = lcc_inverse(map, xᶠ, yᶠ)
+        λ, φ = conformal_conic_to_geographic(map, xᶠ, yᶠ)
         grid.λᶠᶠᵃ[i, j] = λ
         grid.φᶠᶠᵃ[i, j] = φ
     end
@@ -742,8 +742,8 @@ end
     λ₂ = degrees_to_radians(FT, λ₂)
     φ₂ = degrees_to_radians(FT, φ₂)
 
-    half = lcc_half(FT)
-    Δλ = lcc_wrap_to_π(λ₂ - λ₁)
+    half = convert(FT, 1//2)
+    Δλ = conformal_conic_wrap_to_π(λ₂ - λ₁)
     Δφ = φ₂ - φ₁
     haversine_argument = sin(half * Δφ)^2 + cos(φ₁) * cos(φ₂) * sin(half * Δλ)^2
     haversine_argument = min(max(haversine_argument, zero(FT)), one(FT))
@@ -786,7 +786,7 @@ end
 
 # This duplicates TripolarGrid's spherical metric conventions until the shared
 # spherical-shell metric generation kernel is factored out.
-@kernel function _calculate_lcc_metrics!(grid)
+@kernel function _calculate_conformal_conic_metrics!(grid)
     i, j = @index(Global, NTuple)
     R = grid.radius
 
@@ -830,7 +830,7 @@ end
     end
 end
 
-function Grids.with_halo(new_halo, old_grid::LambertConformalConicGrid)
+function Grids.with_halo(new_halo, old_grid::ConformalConicGrid)
     arch = architecture(old_grid)
     FT = eltype(old_grid)
     Nx, Ny, Nz = size(old_grid)
@@ -843,10 +843,10 @@ function Grids.with_halo(new_halo, old_grid::LambertConformalConicGrid)
     x = (map.x₁, map.x₁ + convert(FT, Nx) * map.Δx)
     y = (map.y₁, map.y₁ + convert(FT, Ny) * map.Δy)
 
-    return LambertConformalConicGrid(arch, FT;
-                                     size = grid_size,
-                                     x, y, z,
-                                     standard_parallels = (radians_to_degrees(FT, map.standard_parallel_1),
+    return ConformalConicGrid(arch, FT;
+                              size = grid_size,
+                              x, y, z,
+                              standard_parallels = (radians_to_degrees(FT, map.standard_parallel_1),
                                                            radians_to_degrees(FT, map.standard_parallel_2)),
                                      central_longitude = radians_to_degrees(FT, map.central_longitude),
                                      latitude_of_origin = radians_to_degrees(FT, map.latitude_of_origin),
@@ -858,7 +858,7 @@ function Grids.with_halo(new_halo, old_grid::LambertConformalConicGrid)
                                      warn = false)
 end
 
-function Grids.constructor_arguments(grid::LambertConformalConicGrid)
+function Grids.constructor_arguments(grid::ConformalConicGrid)
     arch = architecture(grid)
     FT = eltype(grid)
     args = OrderedDict(:architecture => arch, :number_type => FT)
@@ -890,17 +890,17 @@ function Grids.constructor_arguments(grid::LambertConformalConicGrid)
     return args, kwargs
 end
 
-function Base.similar(grid::LambertConformalConicGrid)
+function Base.similar(grid::ConformalConicGrid)
     args, kwargs = Grids.constructor_arguments(grid)
     arch = args[:architecture]
     FT = args[:number_type]
-    return LambertConformalConicGrid(arch, FT; kwargs..., warn = false)
+    return ConformalConicGrid(arch, FT; kwargs..., warn = false)
 end
 
-function Grids.with_number_type(FT, grid::LambertConformalConicGrid)
+function Grids.with_number_type(FT, grid::ConformalConicGrid)
     args, kwargs = Grids.constructor_arguments(grid)
     arch = args[:architecture]
-    return LambertConformalConicGrid(arch, FT; kwargs..., warn = false)
+    return ConformalConicGrid(arch, FT; kwargs..., warn = false)
 end
 
-Oceananigans.Grids.grid_name(::LambertConformalConicGrid) = "LambertConformalConicGrid"
+Oceananigans.Grids.grid_name(::ConformalConicGrid) = "ConformalConicGrid"

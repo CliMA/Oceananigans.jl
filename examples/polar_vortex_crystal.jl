@@ -6,7 +6,7 @@
 # as a model for Jupiter's polar vortex clusters observed by Juno's JIRAM
 # instrument.
 #
-# The grid is a [`LambertConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid)
+# The grid is a [`ConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalConicGrid)
 # centred exactly on the North Pole with `standard_parallel = 90` — the
 # polar stereographic limit, where the cone is tangent to the sphere at the
 # pole and the projection has no antemeridian wedge.
@@ -27,15 +27,15 @@ Nx = Ny = 128
 Δ  = 25kilometers
 H  = 1000meters
 
-grid = LambertConformalConicGrid(Float64;
-                                 size = (Nx, Ny, 1),
-                                 center = (0, 90),
-                                 spacing = Δ,
-                                 standard_parallel = 90,
-                                 latitude_of_origin = 90,
-                                 central_longitude = 0,
-                                 z = (-H, 0),
-                                 halo = (7, 7, 7))
+grid = ConformalConicGrid(Float64;
+                          size = (Nx, Ny, 1),
+                          center = (0, 90),
+                          spacing = Δ,
+                          standard_parallel = 90,
+                          latitude_of_origin = 90,
+                          central_longitude = 0,
+                          z = (-H, 0),
+                          halo = (7, 7, 7))
 
 R_earth = grid.radius
 R_bowl  = 1500kilometers
@@ -78,7 +78,7 @@ ring_λ      = [360k/N_ring for k in 0:N_ring-1]
 ring_φ      = fill(90 - rad2deg(r_ring/R_earth), N_ring)
 vortex_λ    = vcat(ring_λ, [0])
 vortex_φ    = vcat(ring_φ, [90])
-vortex_xpyp = [lcc_forward(grid.conformal_mapping, λv, φv)
+vortex_xpyp = [geographic_to_conformal_conic(grid.conformal_mapping, λv, φv)
                for (λv, φv) in zip(vortex_λ, vortex_φ)]
 
 g_const  = Oceananigans.defaults.gravitational_acceleration
@@ -88,17 +88,17 @@ geo_coef = g_const * η₀ / (f_pole * σ_vortex^2)
 gaussian(xp, yp, xv, yv) = exp(-((xp - xv)^2 + (yp - yv)^2) / (2σ_vortex^2))
 
 function η_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    xp, yp = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum(η₀ * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
 end
 
 function u_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    xp, yp = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum( geo_coef * (yp - yv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
 end
 
 function v_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    xp, yp = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum(-geo_coef * (xp - xv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
 end
 
