@@ -578,10 +578,12 @@ end
 
 # BFloat16 is a storage format for WENO: the stencil values are widened to Float32 once, and the whole
 # reconstruction (differences, smoothness indicators, weights and stencil polynomials) is computed and returned in
-# Float32 with Float32 coefficients. GPUs before sm_90 have no BFloat16 add, multiply, compare or min (only a scalar
-# fma), so BFloat16 arithmetic is emulated through Float32 conversions and is both slower and less accurate than
-# Float32 arithmetic. The Float32 result also keeps the flux and its divergence in Float32, so the tendency is
-# rounded to BFloat16 once, when it is stored.
+# Float32 with Float32 coefficients. GPUs before sm_90 have no BFloat16 add, subtract, multiply or compare
+# instructions, so every BFloat16 operation becomes a fused multiply-add that occupies one lane of a two-lane
+# instruction; `muladd` does not fuse for BFloat16, which is not an `IEEEFloat`; and Julia's NaN-aware `min` lowers
+# to integer comparisons and branches. BFloat16 arithmetic is thus both slower and less accurate than Float32
+# arithmetic. The Float32 result also keeps the flux and its divergence in Float32, so the tendency is rounded to
+# BFloat16 once, when it is stored.
 @inline reconstruction_value(ψ) = ψ
 @inline reconstruction_value(ψ::BFloat16) = Float32(ψ)
 
