@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.ImmersedBoundaries: active_cells_per_column
 
 abstract type BalancingStrategy end
 
