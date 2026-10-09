@@ -197,15 +197,27 @@ end
     end
 end
 
-@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, α, laplacian_sums, residual_sums, number_of_active_cells)
+@kernel function _update_search_direction!(p, z, ρ, ρⁱ⁻¹, iteration)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        β = ρ[1] / ρⁱ⁻¹[1]
+        zᵢ = z[i, j, k]
+        p[i, j, k] = ifelse(iteration == 0, zᵢ, zᵢ + β * p[i, j, k])
+    end
+end
+
+@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, ρ, ρⁱ⁻¹, laplacian_sums, residual_sums, number_of_active_cells)
     i, j = @index(Global, NTuple)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
     @inbounds begin
-        a = α[1]
+        a = ρ[1] / laplacian_sums[1]
         x̄ = (residual_sums[1] + a * laplacian_sums[2]) / number_of_active_cells
         r̄ = (residual_sums[2] - a * laplacian_sums[3]) / number_of_active_cells
+
+        # Without a preconditioner ρ lives in the residual sums, which this kernel's reduction overwrites
+        i == 1 && j == 1 && (ρⁱ⁻¹[1] = ρ[1])
     end
 
     for k in 1:size(grid, 3)
@@ -263,23 +275,16 @@ function iterate!(x, solver::FusedPoissonSolver, b)
     z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
     ρ = z === r ? view(gauge.residual_sums, 3:3) : dot!(solver.ρ, z, r)
 
-    if solver.iteration > 0
-        solver.β .= ρ ./ solver.ρⁱ⁻¹
-    end
-
-    update_search_direction!(p, z, solver.β, solver.iteration)
-
+    launch!(arch, grid, :xyz, _update_search_direction!, p, z, ρ, solver.ρⁱ⁻¹, solver.iteration)
     fill_halo_regions!(p)
+
     partial_sums = gauge.laplacian_partial_sums
     launch!(arch, grid, :xy, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
     reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
 
-    solver.α .= ρ ./ view(gauge.laplacian_sums, 1:1)
-    solver.ρⁱ⁻¹ .= ρ
-
     partial_sums = gauge.residual_partial_sums
     launch!(arch, grid, :xy, _update_solution_and_residual!,
-            partial_sums, x, r, grid, p, q, solver.α, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+            partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     solver.iteration += 1
