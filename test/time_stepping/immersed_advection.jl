@@ -17,6 +17,7 @@ using Oceananigans.Advection:
 
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: compute_tendencies!
+using Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -99,9 +100,9 @@ end
 
 staircase(ξ) = (5 + sum(tanh(40 * (ξ - n / 6)) for n in 1:5)) / 20
 
-function run_kinetic_energy_conservation_test(arch)
+function run_kinetic_energy_conservation_test(arch, Bottom)
     grid = RectilinearGrid(arch, size=(16, 16, 32), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
-    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> staircase(x) + staircase(y)))
+    ibg  = ImmersedBoundaryGrid(grid, Bottom((x, y) -> staircase(x) + staircase(y)))
 
     pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
     model = NonhydrostaticModel(ibg; advection=Centered(), pressure_solver)
@@ -111,8 +112,12 @@ function run_kinetic_energy_conservation_test(arch)
     compute_tendencies!(model, [])
     G = model.timestepper.Gⁿ
 
-    production = sum(u * G.u) + sum(v * G.v) + sum(w * G.w)
-    magnitude  = sum(abs, u * G.u) + sum(abs, v * G.v) + sum(abs, w * G.w)
+    Vu = KernelFunctionOperation{Face, Center, Center}(Vᶠᶜᶜ, ibg)
+    Vv = KernelFunctionOperation{Center, Face, Center}(Vᶜᶠᶜ, ibg)
+    Vw = KernelFunctionOperation{Center, Center, Face}(Vᶜᶜᶠ, ibg)
+
+    production = sum(Vu * u * G.u) + sum(Vv * v * G.v) + sum(Vw * w * G.w)
+    magnitude  = sum(abs, Vu * u * G.u) + sum(abs, Vv * v * G.v) + sum(abs, Vw * w * G.w)
 
     @test abs(production) < 1e-12 * magnitude
 
@@ -216,7 +221,9 @@ for arch in archs
 
     @testset "Immersed momentum advection conserves kinetic energy" begin
         @info "Running immersed momentum advection kinetic energy test [$(typeof(arch))]..."
-        run_kinetic_energy_conservation_test(arch)
+        for Bottom in (GridFittedBottom, PartialCellBottom)
+            run_kinetic_energy_conservation_test(arch, Bottom)
+        end
     end
 
     @testset "Convection over an immersed staircase stays bounded" begin
