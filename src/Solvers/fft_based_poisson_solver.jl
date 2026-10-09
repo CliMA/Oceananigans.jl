@@ -101,7 +101,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     apply_transforms!(solver.transforms.forward, b, solver.buffer)
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
-    launch!(arch, solver.grid, :xyz, _solve_poisson_in_spectral_space!, ϕc, b, λx, λy, λz, m)
+    launch!(arch, solver.grid, :xyz, _spectral_poisson_solve!, ϕc, b, λx, λy, λz, m)
 
     # Apply backward transforms in order
     apply_transforms!(solver.transforms.backward, ϕc, solver.buffer)
@@ -112,7 +112,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
 end
 
 # The mode where λx + λy + λz - m = 0 (the zeroth mode when m = 0) is undetermined and is set to zero
-@kernel function _solve_poisson_in_spectral_space!(ϕc, b, λx, λy, λz, m)
+@kernel function _spectral_poisson_solve!(ϕc, b, λx, λy, λz, m)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
         denominator = λx[i] + λy[j] + λz[k] - m

@@ -3,7 +3,7 @@ import FFTW
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
-using Oceananigans.Solvers: _solve_poisson_in_spectral_space!
+using Oceananigans.Solvers: _spectral_poisson_solve!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -155,7 +155,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3], m)
+    launch!(arch, storage.xfield.grid, :xyz, _spectral_poisson_solve!, x̂, b̂, λ[1], λ[2], λ[3], m)
 
     # Apply backward transforms to x̂ = parent(storage.xfield).
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
