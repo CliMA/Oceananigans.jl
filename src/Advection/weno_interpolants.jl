@@ -366,29 +366,37 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ) multiplied by σ², which cancels when the weights are normalized
-@inline function metaprogrammed_zweno_alpha_loop(buffer, σ = 1)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ★))ᵖ), with the regularization ϵ★ = zweno_regularization(scheme, τ)
+@inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (σ^2 + (newton_div(WCT, σ * τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ★))^2))
     end
 
     return quote
-        σ = $σ
+        ϵ★ = zweno_regularization(scheme, τ)
         ($(elem...),)
     end
 end
 
-# σ keeps σ τ / (βᵣ + ϵ) ≤ 2⁶⁰ in formats with 8 exponent bits (Float32, BFloat16), so its square cannot overflow.
-# σ² may underflow to zero, which is harmless: it is then negligible beside the ≥ 2²⁰ term of the smoothest stencil.
-# A threshold product may overflow to Inf when every β is large, which is also harmless: the comparison then
-# fails, and a large minimum(β) already bounds the ratio.
-@inline function metaprogrammed_zweno_rescaling(FT)
-    return quote
-        dmin = minimum(β) + ϵ
-        ifelse(τ > $(FT(2)^110) * dmin, $(inv(FT(2)^100)),
-        ifelse(τ > $(FT(2)^60)  * dmin, $(inv(FT(2)^50)), $(one(FT))))
-    end
+"""
+$(TYPEDSIGNATURES)
+
+Regularization ϵ★ of the ZWENO ratios τ / (βᵣ + ϵ★). It is the constant `ϵ`, except in formats with 8 exponent
+bits (Float32, BFloat16), where it is `max(ϵ, τ / 2⁶²)`. This bounds τ / (βᵣ + ϵ★) ≤ 2⁶², so that the squared
+ratios and their weighted sum ∑ᵣ αᵣ ≲ 2¹²⁴ cannot overflow beside large jumps. The bound costs one multiply and
+one `max` per reconstruction, and is inactive (ϵ★ = ϵ, so the α weights are bitwise unchanged) unless
+τ > 2⁶² ϵ ≈ 5 × 10¹⁰.
+
+When it is active, it only redistributes weight among the stencils with βᵣ ≲ τ / 2⁶², which become weighted in
+proportion to their optimal weights C★ᵣ rather than to C★ᵣ / (βᵣ + ϵ)². These stencils are smooth to within
+2⁻³¹ ≈ 5 × 10⁻¹⁰ of the jump in √β, so their reconstructions differ by less than the precision of the format
+relative to the jump.
+"""
+@inline zweno_regularization(scheme, τ) = ϵ
+
+for FT in (Float32, BFloat16)
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, τ * $(inv(FT(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]
@@ -396,11 +404,6 @@ for buffer in advection_buffers[2:end]
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer, FT}, δ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-    end
-
-    for FT in (Float32, BFloat16)
-        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT =
-            @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
     end
 end
 
@@ -418,14 +421,15 @@ Biased weno weights ω used to weight the WENO reconstruction of the different s
 We use here a Z-WENO formulation where
 
 ```math
-    α = C★ ⋅ (1 + τ² / (β + ϵ)²)
+    α = C★ ⋅ (1 + τ² / (β + ϵ★)²)
 ```
 
 where
 - ``C★`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
 - ``β`` is the smoothness indicator calculated by the `smoothness_indicator` function
 - ``τ`` is a global smoothness indicator, function of the ``β`` values, calculated by the `global_smoothness_indicator` function
-- ``ϵ`` is a regularization constant, typically equal to 1e-8
+- ``ϵ★`` is the regularization computed by `zweno_regularization`: the constant ``ϵ = 10⁻⁸``, which grows with
+  ``τ`` beside large jumps in Float32 and BFloat16 so that ``α`` cannot overflow
 
 The ``α`` values are normalized before returning
 """
