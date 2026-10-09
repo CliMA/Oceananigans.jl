@@ -2,7 +2,7 @@ using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜ�
     δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
+using Oceananigans.Grids: isrectilinear, halo_size, inactive_cell
 
 using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
 import Oceananigans.Architectures: architecture
@@ -197,12 +197,20 @@ Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
             fft_preconditioner_right_hand_side!,
             poisson_solver.storage, r, grid, Az, Lz)
 
-    return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
+    solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
+    launch!(arch, grid, :xy, _mask_inactive_columns!, P_r, grid)
+
+    return P_r
 end
 
 @kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az) * !inactive_cell(i, j, grid.Nz, grid)
+end
+
+@kernel function _mask_inactive_columns!(P_r, grid)
+    i, j = @index(Global, NTuple)
+    @inbounds P_r[i, j, grid.Nz+1] *= !inactive_cell(i, j, grid.Nz, grid)
 end
 
 # TODO: make it so adding this term:

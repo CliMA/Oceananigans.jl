@@ -108,13 +108,19 @@ end
                                           topology = (Bounded, Periodic, Bounded))
 
         bumpy_vertically_stretched_rectilinear_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+        coastal_grid = ImmersedBoundaryGrid(RectilinearGrid(arch, size = (16, 16, 2),
+                                                            x = (0, 1000kilometers),
+                                                            y = (0, 1000kilometers),
+                                                            z = (-1000, 0),
+                                                            topology = (Periodic, Bounded, Bounded)),
+                                            GridFittedBottom((x, y) -> y > 800kilometers ? 10 : -1000))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (50, 50, 5),
                                              longitude = (-20, 30),
                                              latitude = (-10, 40),
                                              z = (-4000, 0))
 
-        for grid in (rectilinear_grid, bumpy_vertically_stretched_rectilinear_grid, lat_lon_grid)
+        for grid in (rectilinear_grid, bumpy_vertically_stretched_rectilinear_grid, coastal_grid, lat_lon_grid)
             G = string(nameof(typeof(grid)))
 
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$A, $G]..."
