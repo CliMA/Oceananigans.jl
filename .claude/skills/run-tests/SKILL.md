@@ -1,7 +1,6 @@
 ---
 name: run-tests
 description: Run targeted Oceananigans tests, prioritized by what's likely to break
-user_invocable: true
 ---
 
 # Run Tests
