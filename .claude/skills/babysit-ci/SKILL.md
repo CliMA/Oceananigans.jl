@@ -1,6 +1,6 @@
 ---
 name: babysit-ci
-description: Monitor CI, auto-fix small issues, pause on bigger problems, retrigger flaky runs
+description: Use when asked to watch or fix CI on a PR or branch. Monitors GitHub Actions and Buildkite, fixes mechanical failures, retriggers infrastructure flakes, and stops to report anything that needs judgment.
 ---
 
 # Babysit CI
@@ -44,10 +44,10 @@ These are mechanical issues with obvious fixes:
 
 | Failure | How to fix |
 |---------|-----------|
-| **Whitespace check** | Run `.julia/contrib/check-whitespace.jl` logic: remove trailing whitespace, ensure final newline, no trailing blank lines |
+| **Whitespace check** | Remove trailing whitespace and trailing blank lines, and end each file with exactly one newline; `git diff --check origin/main` finds most of it |
 | **Missing explicit import** | `ExplicitImports` error in `test/unit/quality_assurance.jl` — add the missing `using`/`import` to the appropriate file |
 | **Aqua.jl ambiguities** | Add the missing method disambiguation |
-| **Doctest output mismatch** | Update the expected output in the docstring to match actual output |
+| **Doctest output mismatch** | Update the expected output only if the PR intentionally changed what is printed; otherwise pause |
 | **Typo in error message or docstring** | Fix the typo |
 | **Unused import warning** | Remove the unused import |
 
@@ -63,7 +63,8 @@ Then continue monitoring from Step 2.
 
 ### Retrigger (likely flaky)
 
-These failures are often transient and not caused by the PR:
+These failures are often transient and not caused by the PR. "Unrelated to the changed files" is
+not enough on its own: show the log line that points to infrastructure, or the same failure on `main`.
 
 | Signal | Action |
 |--------|--------|
@@ -72,7 +73,7 @@ These failures are often transient and not caused by the PR:
 | Network/download error | Retrigger |
 | `Pkg.instantiate` failure | Retrigger |
 | CI infrastructure error | Retrigger |
-| A job that failed but is unrelated to the changed files | Retrigger |
+| The same job fails the same way on `main` | Retrigger, and say it also fails on `main` |
 
 Retrigger with:
 
@@ -117,6 +118,9 @@ Report the final status to the user.
 - Always check `gh run view <RUN_ID> --log-failed` before acting — don't guess from job names alone
 - After pushing a fix, wait for CI to pick it up before checking again (use `gh run list` to find the new run)
 - The CI workflow has `cancel-in-progress` for PRs, so a new push cancels the old run automatically
-- CI jobs: Whitespace, test groups (sharding, mpi_tripolar, distributed_output, turbulence_closures,
-  makie, reactant, metal), each running on Julia 1.12
+- GitHub Actions runs Whitespace and the `Distributed MPI`, `Reactant and Makie`, and `Metal` jobs
+  (`.github/workflows/ci.yml`). The main CPU and GPU test suites, the documentation build, and the
+  Enzyme/Reactant GPU tests run on Buildkite (`.buildkite/pipeline.yml`). `gh pr checks` lists both,
+  but `gh run view --log-failed` only reads GitHub Actions logs; Buildkite logs are behind the link
+  in the check.
 - Never force-push or rewrite history to fix CI — always add new commits
