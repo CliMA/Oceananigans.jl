@@ -15,6 +15,9 @@ using Oceananigans.Advection:
         RightBias,
         materialize_advection
 
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.TimeSteppers: compute_tendencies!
+
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
 
@@ -94,6 +97,46 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
     return nothing
 end
 
+staircase(ξ) = (5 + sum(tanh(40 * (ξ - n / 6)) for n in 1:5)) / 20
+
+function run_kinetic_energy_conservation_test(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 32), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> staircase(x) + staircase(y)))
+
+    pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
+    model = NonhydrostaticModel(ibg; advection=Centered(), pressure_solver)
+
+    u, v, w = model.velocities
+    set!(model, u = rand(size(u)...) .- 1/2, v = rand(size(v)...) .- 1/2, w = rand(size(w)...) .- 1/2)
+    compute_tendencies!(model, [])
+    G = model.timestepper.Gⁿ
+
+    production = sum(u * G.u) + sum(v * G.v) + sum(w * G.w)
+    magnitude  = sum(abs, u * G.u) + sum(abs, v * G.v) + sum(abs, w * G.w)
+
+    @test abs(production) < 1e-12 * magnitude
+
+    return nothing
+end
+
+function run_staircase_convection_test(arch)
+    grid = RectilinearGrid(arch, size=(16, 128), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, PartialCellBottom(x -> 2staircase(x)))
+
+    model = NonhydrostaticModel(ibg; advection=WENO(), tracers=:b, buoyancy=BuoyancyTracer(),
+                                pressure_solver=ConjugateGradientPoissonSolver(ibg))
+
+    set!(model, b = (x, z) -> - exp(-((x - 1/2)^2 + (z - 0.55)^2) / (2 * 0.05^2)))
+
+    simulation = Simulation(model; Δt=1e-3, stop_time=1, verbose=false)
+    conjure_time_step_wizard!(simulation, cfl=0.7)
+    run!(simulation)
+
+    @test maximum(abs, model.velocities.u) < 1
+
+    return nothing
+end
+
 for arch in archs
     @testset "Immersed tracer reconstruction" begin
         @info "Running immersed tracer reconstruction tests..."
@@ -169,5 +212,15 @@ for arch in archs
             @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_momentum_interpolation_test(u, v, ibg, scheme)
         end
+    end
+
+    @testset "Immersed momentum advection conserves kinetic energy" begin
+        @info "Running immersed momentum advection kinetic energy test [$(typeof(arch))]..."
+        run_kinetic_energy_conservation_test(arch)
+    end
+
+    @testset "Convection over an immersed staircase stays bounded" begin
+        @info "Running immersed staircase convection test [$(typeof(arch))]..."
+        run_staircase_convection_test(arch)
     end
 end
