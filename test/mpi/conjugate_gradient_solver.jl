@@ -59,7 +59,7 @@ end
 # but builds the solver on a `Distributed` grid and selects the preconditioner.
 function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, preconditioner_type; z=(0, 2π))
     arch = Distributed(child_arch, partition=Partition(ranks...))
-    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, x=(0, 2π), y=(0, 2π), z)
+    local_grid = RectilinearGrid(arch; topology=topo, size=grid_points, x=(0, 2π), y=(0, 2π), z)
 
     preconditioner = preconditioner_type == :fft ? fft_poisson_solver(local_grid) :
                                                    DiagonallyDominantPreconditioner()
@@ -98,8 +98,9 @@ end
 
     # The FFT preconditioner on a stretched grid is a distributed Fourier-tridiagonal solver
     topology = (Bounded, Bounded, Bounded)
-    z = [2π * (k / 8)^2 for k in 0:8]
+    # The transposed grids split z across the ranks, which need at least as many cells as the halo
+    z = [2π * (k / 16)^2 for k in 0:16]
     @testset "fft on a z-stretched grid with $(ranks) ranks" for ranks in ((4, 1, 1), (1, 4, 1), (2, 2, 1))
-        @test divergence_free_poisson_solution((16, 16, 8), ranks, topology, child_arch, :fft; z)
+        @test divergence_free_poisson_solution((16, 16, 16), ranks, topology, child_arch, :fft; z)
     end
 end
