@@ -2,7 +2,6 @@ using Oceananigans: fields, prognostic_fields, TendencyCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!, tendency_biogeochemistry,
                                     separate_transition_tracers, add_biogeochemical_transitions!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
-using Oceananigans.Utils: get_active_cells_map
 
 """
 $(TYPEDSIGNATURES)
@@ -26,9 +25,8 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
-    active_cells_map  = get_active_cells_map(model.grid, Val(:core))
 
-    compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
+    compute_interior_tendency_contributions!(model, kernel_parameters)
     complete_communication_and_compute_buffer!(model, grid, arch)
 
     # Add transitions of `separate_transition_tracers` in place, after all interior and buffer
@@ -48,7 +46,7 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
+function compute_interior_tendency_contributions!(model, kernel_parameters)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
@@ -75,28 +73,28 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             tendencies.u, grid,
             advection, coriolis, stokes_drift, closure, u_immersed_bc, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.u;
-            active_cells_map, exclude_periphery)
+            exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gv!,
             tendencies.v, grid,
             advection, coriolis, stokes_drift, closure, v_immersed_bc, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.v;
-            active_cells_map, exclude_periphery)
+            exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gw!,
             tendencies.w, grid,
             advection, coriolis, stokes_drift, closure, w_immersed_bc, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
-            active_cells_map, exclude_periphery)
+            exclude_periphery)
 
     foreach_name(tracers) do val_tracer_index, val_tracer_name
-        launch_tracer_tendency!(model, kernel_parameters, active_cells_map, val_tracer_index, val_tracer_name)
+        launch_tracer_tendency!(model, kernel_parameters, val_tracer_index, val_tracer_name)
     end
 
     return nothing
 end
 
-@inline function launch_tracer_tendency!(model, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
+@inline function launch_tracer_tendency!(model, kernel_parameters, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     arch = model.architecture
     grid = model.grid
 
@@ -110,8 +108,7 @@ end
             Val(tracer_index), Val(tracer_name), c_advection, model.closure, c_immersed_bc, model.buoyancy,
             tendency_biogeochemistry(model.biogeochemistry, Val(tracer_name)),
             model.background_fields, model.velocities, model.tracers, model.auxiliary_fields,
-            model.closure_fields, model.clock, forcing;
-            active_cells_map)
+            model.closure_fields, model.clock, forcing)
 
     return nothing
 end

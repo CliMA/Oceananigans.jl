@@ -1,7 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Grids: MutableVerticalDiscretization, required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Models: ZStarCoordinate, ZCoordinate, surface_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters
+using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: with_tracers,
                                        IsopycnalSkewSymmetricDiffusivity,

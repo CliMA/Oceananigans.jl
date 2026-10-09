@@ -7,8 +7,9 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
+using Oceananigans.Grids: surface_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
+using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.TimeSteppers: compute_tendencies!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 

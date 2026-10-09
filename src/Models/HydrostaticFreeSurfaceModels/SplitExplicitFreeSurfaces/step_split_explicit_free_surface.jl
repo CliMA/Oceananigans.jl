@@ -125,9 +125,9 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    @apply_regionally cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, cells_map)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, cells_map)
+    @apply_regionally workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
+    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
     U_args = (Δτᴮ, grid, Val(true), η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (Δτᴮ, clock, grid, Val(true), η, U, V, F, η̅, U̅, V̅, timestepper)
@@ -187,9 +187,9 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, cells_map)
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, cells_map)
+    workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
     U_args = (grid, Val(false), η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(false), η, U, V, F, η̅, U̅, V̅, timestepper)
