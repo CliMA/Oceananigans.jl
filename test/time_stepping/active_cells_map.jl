@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Grids: with_halo, surface_kernel_parameters, extended_interior_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Grids: with_halo, surface_kernel_parameters, horizontally_extended_interior_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map, contiguousrange
 using Oceananigans.ImmersedBoundaries: immersed_cell
 
@@ -102,11 +102,11 @@ Nz = 10
                                               if !all(immersed_cell(Tuple(I - J)..., k, grid) for J in horizontal_corner_cells, k in 1:Nz))
 
             surface  = on_architecture(CPU(), surface_kernel_parameters(immersed_active_grid))
-            extended = on_architecture(CPU(), extended_interior_kernel_parameters(immersed_active_grid))
+            extended = on_architecture(CPU(), horizontally_extended_interior_kernel_parameters(immersed_active_grid))
             volume   = on_architecture(CPU(), volume_kernel_parameters(immersed_active_grid))
 
             @test Set(surface)  == active_column_nodes(contiguousrange(surface_kernel_parameters(underlying_grid)))
-            @test Set(extended) == active_cells(contiguousrange(extended_interior_kernel_parameters(underlying_grid)))
+            @test Set(extended) == active_cells(contiguousrange(horizontally_extended_interior_kernel_parameters(underlying_grid)))
             @test Set(volume)   == active_nodes(contiguousrange(volume_kernel_parameters(underlying_grid)))
             @test allunique(surface)
             @test allunique(volume)

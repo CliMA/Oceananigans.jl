@@ -6,7 +6,7 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
-using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, extended_interior_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
@@ -63,7 +63,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally begin
         surface_params = surface_kernel_parameters(grid)
         volume_params = volume_kernel_parameters(grid)
-        κ_params = extended_interior_kernel_parameters(grid)
+        κ_params = horizontally_extended_interior_kernel_parameters(grid)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
         update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)

@@ -635,7 +635,7 @@ in the horizontal directions (indices `0:Nx+1` and `0:Ny+1`).
 The extra cells provide the values that interior stencils read at cell faces (e.g., for viscous fluxes)
 without requiring (possibly costly) halo exchanges.
 """
-@inline function extended_interior_kernel_parameters(grid)
+@inline function horizontally_extended_interior_kernel_parameters(grid)
     Wx, Wy, Wz = worksize(grid)
     Tx, Ty, Tz = topology(grid)
 
