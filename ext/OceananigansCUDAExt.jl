@@ -128,7 +128,7 @@ FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return cuFFT.plan_ifft!(A, dims)
+    return cuFFT.plan_bfft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly

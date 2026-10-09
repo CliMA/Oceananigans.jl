@@ -16,6 +16,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver,
                             compute_lower_diagonal!
 
 import Oceananigans.Solvers: compute_preconditioner_rhs!
+using Oceananigans.Solvers: backward_normalization
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     plan :: P
@@ -274,7 +275,8 @@ end
 
 # The solution of the homogeneous Neumann problem is unique up to a constant; return the zero-mean one.
 function copy_and_zero_mean!(x, solver)
-    launch!(architecture(solver), solver.local_grid, :xyz, _copy_real_component!, x, parent(solver.storage.zfield))
+    normalization = backward_normalization(eltype(solver.local_grid), solver.plan)
+    launch!(architecture(solver), solver.local_grid, :xyz, _copy_real_component!, x, parent(solver.storage.zfield), normalization)
     x .-= mean(x)
     return x
 end

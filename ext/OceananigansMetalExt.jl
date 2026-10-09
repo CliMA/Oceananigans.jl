@@ -1,6 +1,6 @@
 module OceananigansMetalExt
 
-using AbstractFFTs: plan_fft!, plan_ifft!
+using AbstractFFTs: plan_fft!, plan_bfft!
 using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
 using Metal: Metal, MtlArray, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d, threadgroup_position_in_grid, thread_position_in_threadgroup
 using Oceananigans: Oceananigans, CPU, GPU
@@ -41,7 +41,7 @@ end
 
 function Solvers.plan_backward_transform(A::MtlArray, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return plan_ifft!(A, dims)
+    return plan_bfft!(A, dims)
 end
 
 # `Base.cbrt(::Float32)` refines in Float64 and Metal has no `air.cbrt.f32`; `^` lowers to

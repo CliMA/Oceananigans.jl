@@ -1,9 +1,11 @@
 module Solvers
 
 using Reactant
+using Oceananigans.Architectures: ReactantState
 using Oceananigans.Grids: Bounded, Periodic, Flat
+using Oceananigans.Solvers: Backward
 
-import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform
+import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, normalization_factor
 import ..Architectures: AnyConcreteReactantArray
 
 const AnyReactantArray = Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}
@@ -24,6 +26,9 @@ function plan_backward_transform(A::AnyReactantArray, ::Periodic, dims, planner_
     T = eltype(A)
     return ReactantAbstractFFTsExt.ReactantIFFTInPlacePlan{T}(dims)
 end
+
+# The inverse FFT above is already normalized
+normalization_factor(::ReactantState, ::Periodic, ::Backward, N) = 1
 
 #####
 ##### Bounded topology (DCT) - not yet supported

@@ -2,7 +2,7 @@ module OceananigansAMDGPUExt
 
 using Oceananigans
 using AMDGPU, AMDGPU.rocSPARSE
-using AbstractFFTs: plan_fft!, plan_ifft!
+using AbstractFFTs: plan_fft!, plan_bfft!
 
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 using InteractiveUtils
@@ -98,7 +98,7 @@ FD.set!(v::MR.MultiRegionField, a::ROCArray) = apply_regionally!(FD.set!, v, a)
 
 function SO.plan_backward_transform(A::ROCArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return plan_ifft!(A, dims)
+    return plan_bfft!(A, dims)
 end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)

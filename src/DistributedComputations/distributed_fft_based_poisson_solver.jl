@@ -4,6 +4,7 @@ using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
+using Oceananigans.Solvers: backward_normalization
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -171,8 +172,9 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     solver.plan.backward.z!(parent(storage.zfield), buffer.z) # last backwards transform is in z
 
     # Copy the real component of xc to x.
+    normalization = backward_normalization(eltype(solver.local_grid), solver.plan)
     launch!(arch, solver.local_grid, :xyz,
-            _copy_real_component!, x, parent(storage.zfield))
+            _copy_real_component!, x, parent(storage.zfield), normalization)
 
     return x
 end
@@ -182,9 +184,9 @@ end
     @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k] - m)
 end
 
-@kernel function _copy_real_component!(ϕ, ϕc)
+@kernel function _copy_real_component!(ϕ, ϕc, normalization)
     i, j, k = @index(Global, NTuple)
-    @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
+    @inbounds ϕ[i, j, k] = normalization * real(ϕc[i, j, k])
 end
 
 #####

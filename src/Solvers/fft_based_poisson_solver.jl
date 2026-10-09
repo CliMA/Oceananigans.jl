@@ -114,19 +114,20 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     # Apply backward transforms in order
     apply_transforms!(solver.transforms.backward, ϕc, solver.buffer)
 
-    launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
+    normalization = backward_normalization(eltype(solver.grid), solver.transforms)
+    launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ), normalization)
 
     return ϕ
 end
 
 # We have to pass the offset explicitly to this kernel (we cannot use KA implicit
 # index offsetting) since ϕc and ϕ and indexed with different indices
-@kernel function copy_real_component!(ϕ, ϕc, index_ranges)
+@kernel function copy_real_component!(ϕ, ϕc, index_ranges, normalization)
     i, j, k = @index(Global, NTuple)
 
     i′ = offset_compute_index(index_ranges[1], i)
     j′ = offset_compute_index(index_ranges[2], j)
     k′ = offset_compute_index(index_ranges[3], k)
 
-    @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
+    @inbounds ϕ[i′, j′, k′] = normalization * real(ϕc[i, j, k])
 end

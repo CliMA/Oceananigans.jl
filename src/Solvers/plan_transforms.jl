@@ -25,7 +25,7 @@ end
 
 function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
-    return FFTW.plan_ifft!(A, dims, flags=planner_flag; num_threads)
+    return FFTW.plan_bfft!(A, dims, flags=planner_flag; num_threads)
 end
 
 function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])

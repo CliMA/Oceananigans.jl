@@ -252,7 +252,8 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     end
 
     arch = architecture(solver)
-    launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
+    normalization = backward_normalization(eltype(solver.grid), solver.transforms)
+    launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x), normalization)
 
     return nothing
 end

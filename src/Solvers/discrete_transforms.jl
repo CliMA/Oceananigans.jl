@@ -24,6 +24,7 @@ Architectures.architecture(transform::DiscreteTransform) = child_architecture(ar
 #####
 
 normalization_factor(arch, topo, direction, N) = 1
+normalization_factor(arch, topo, ::Backward, N) = 1 / N
 
 """
 $(TYPEDSIGNATURES)
@@ -81,7 +82,7 @@ end
 ##### Constructing discrete transforms
 #####
 
-NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
+NoTransform() = DiscreteTransform(nothing, nothing, nothing, nothing, nothing, 1, nothing, nothing)
 
 function DiscreteTransform(plan, direction, grid, dims)
     arch = child_architecture(grid) # In case we are doing it on a DistributedGrid
@@ -123,7 +124,6 @@ function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
     maybe_permute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
     maybe_twiddle_forward!(A, transform.twiddle_factors)
-    maybe_normalize!(A, transform.normalization)
     return nothing
 end
 
@@ -131,7 +131,6 @@ function (transform::DiscreteTransform{P, <:Backward})(A, buffer) where P
     maybe_twiddle_backward!(A, transform.twiddle_factors)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
     maybe_unpermute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
-    maybe_normalize!(A, transform.normalization)
     return nothing
 end
 
@@ -189,10 +188,4 @@ function maybe_twiddle_backward!(A, twiddle)
     return nothing
 end
 
-function maybe_normalize!(A, normalization)
-    # Avoid a tiny kernel launch if possible.
-    if normalization != 1
-        @. A *= normalization
-    end
-    return nothing
-end
+backward_normalization(FT, transforms) = convert(FT, prod(transform.normalization for transform in transforms.backward))
