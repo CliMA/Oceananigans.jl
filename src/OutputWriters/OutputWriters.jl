@@ -18,8 +18,7 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
-                          RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization,
-                          AbstractVerticalCoordinate,
+                          RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
                           ColumnEnsembleSize, Periodic, Bounded, FullyConnected,
                           LeftConnected, RightConnected, RightFaceFolded, RightCenterFolded,
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
