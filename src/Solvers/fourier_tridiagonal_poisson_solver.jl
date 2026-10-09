@@ -246,6 +246,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
         dim = dimension(solver.batched_tridiagonal_solver.tridiagonal_direction)
         zero_mode = view(ϕ, ntuple(d -> d == dim ? Colon() : 1, 3)...)
+        # `mean` scalar-indexes this strided view on GPUs: GPUArrays overrides it only for whole arrays
         zero_mode .-= sum(zero_mode, dims=1) ./ length(zero_mode)
     end
 
