@@ -12,6 +12,8 @@ using Oceananigans.ImmersedBoundaries:
     serially_build_active_cells_map,
     compute_mask
 
+using Oceananigans.Grids: LeftConnectedOnlyTopology
+
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
@@ -157,7 +159,7 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
     include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
     include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty <: LeftConnectedOnlyTopology)
 
     west_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(west_boundary...))
     east_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(east_boundary...))
@@ -170,7 +172,7 @@ function build_active_cells_map(grid::DistributedGrid, ib)
     north_halo_dependent_cells = ifelse(include_north, north_halo_dependent_cells, nothing)
 
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty <: LeftConnectedOnlyTopology ? Ny - Hy : Ny - 2Hy)
 
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
