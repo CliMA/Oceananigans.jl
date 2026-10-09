@@ -184,9 +184,10 @@ struct StaticSizeDeviceArray{T, N, D} <: DenseArray{T, N}
     ptr :: Core.LLVMPtr{T, CUDA.AS.Global}
 end
 
-function StaticSizeDeviceArray(a::CUDA.DenseCuArray{T, N}) where {T, N}
-    ptr = reinterpret(Core.LLVMPtr{T, CUDA.AS.Global}, pointer(a))
-    return StaticSizeDeviceArray{T, N, size(a)}(ptr)
+# Convert through CUDA's own `CuDeviceArray` conversion, which also prefetches unified memory
+function StaticSizeDeviceArray(to::CUDA.KernelAdaptor, a::CUDA.DenseCuArray{T, N}) where {T, N}
+    device_array = Adapt.adapt_storage(to, a)
+    return StaticSizeDeviceArray{T, N, size(a)}(pointer(device_array))
 end
 
 Base.size(::StaticSizeDeviceArray{T, N, D}) where {T, N, D} = D
@@ -208,7 +209,12 @@ AC.architecture(::StaticSizeDeviceArray) = CUDAGPU()
 const CuOffsetArray{T, N} = OffsetArray{T, N, <:CUDA.DenseCuArray{T, N}}
 
 kernel_field_data(to, data) = Adapt.adapt(to, data)
-kernel_field_data(to, data::CuOffsetArray) = OffsetArray(StaticSizeDeviceArray(parent(data)), data.offsets)
+
+# Arrays of isbits unions (which `CuDeviceArray` stores with a selector byte array) keep the default
+function kernel_field_data(to, data::CuOffsetArray{T}) where T
+    isbitstype(T) || return Adapt.adapt(to, data)
+    return OffsetArray(StaticSizeDeviceArray(to, parent(data)), data.offsets)
+end
 
 Adapt.adapt_structure(to::CUDA.KernelAdaptor, f::FD.Field) = kernel_field_data(to, f.data)
 
