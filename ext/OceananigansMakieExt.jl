@@ -468,6 +468,41 @@ const SphericalGrid = Union{LatitudeLongitudeGrid,
 const SphericalField = Field{<:Any, <:Any, <:Any, <:Any, <:SphericalGrid}
 
 """
+    surface!(ax::Axis, f::OSSGField; kwargs...)
+
+Plot a horizontal field on an `OrthogonalSphericalShellGrid` (including a
+`TripolarGrid`) in longitude–latitude coordinates. The field must have a
+single vertical index. Coordinates and colors are transferred to the CPU
+automatically, and immersed cells are masked with NaNs.
+"""
+function surface!(ax::Axis, f::OSSGField; kwargs...)
+    λ, φ, z = longitude_latitude_coordinates(f)
+    colors = make_plottable_array(f)
+    return surface!(ax, λ, φ, z; color=colors, shading=NoShading, kwargs...)
+end
+
+function longitude_latitude_coordinates(f::OSSGField)
+    size(f, 3) == 1 || throw(ArgumentError("Longitude–latitude surface plots require a single vertical index."))
+    λ, φ, _ = nodes(f)
+    λ_cpu = on_architecture(CPU(), λ)
+    φ_cpu = on_architecture(CPU(), φ)
+    return λ_cpu, φ_cpu, zero.(λ_cpu)
+end
+
+"""
+    surface!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+
+Plot an observable horizontal field in longitude–latitude coordinates. Coordinates
+are taken from the initial field; colors and immersed masks update when the
+observable changes. All frames must use the same grid and horizontal location.
+"""
+function surface!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+    λ, φ, z = longitude_latitude_coordinates(f_obs[])
+    colors = @lift make_plottable_array($f_obs)
+    return surface!(ax, λ, φ, z; color=colors, shading=NoShading, kwargs...)
+end
+
+"""
     surface!(ax::Axis3, f::SphericalField; kwargs...)
 
 Plot a spherical field `f` on a 3D sphere in `Axis3`.
