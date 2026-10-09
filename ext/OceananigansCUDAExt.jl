@@ -15,6 +15,8 @@ if isdefined(CUDA, :cuFFT)
 else
     const cuFFT = CUDA.CUFFT
 end
+using Adapt: Adapt
+using OffsetArrays: OffsetArray
 using GPUArraysCore: allowscalar
 using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
@@ -165,6 +167,62 @@ function DC.event_done(event::ContextEvent)
     result == CUDADriver.ERROR_NOT_READY && return false
     result == CUDADriver.SUCCESS && return true
     return CUDADriver.throw_api_error(result)
+end
+
+#####
+##### Field data with static dimensions inside kernels
+#####
+
+# Fields reach kernels as device arrays whose dimensions are type parameters. Indexing an array
+# whose dimensions are only known at run time needs a separate 64-bit address register for every
+# stencil offset in y and z (the strides are run-time values); with static dimensions the offsets
+# are compile-time constants that become immediate offsets of the load instructions. High-order
+# advection stencils read tens of neighbors, so this lowers register pressure (≈ 75 to ≈ 50
+# registers per thread for WENO tendency kernels) and raises occupancy. Kernels are therefore
+# specialized on the array sizes, as they are under Reactant.
+struct StaticSizeDeviceArray{T, N, D} <: DenseArray{T, N}
+    ptr :: Core.LLVMPtr{T, CUDA.AS.Global}
+end
+
+# Convert through CUDA's own `CuDeviceArray` conversion, which also prefetches unified memory
+function StaticSizeDeviceArray(to::CUDA.KernelAdaptor, a::CUDA.DenseCuArray{T, N}) where {T, N}
+    device_array = Adapt.adapt_storage(to, a)
+    return StaticSizeDeviceArray{T, N, size(a)}(pointer(device_array))
+end
+
+Base.size(::StaticSizeDeviceArray{T, N, D}) where {T, N, D} = D
+Base.length(::StaticSizeDeviceArray{T, N, D}) where {T, N, D} = prod(D)
+Base.IndexStyle(::Type{<:StaticSizeDeviceArray}) = IndexLinear()
+Base.pointer(a::StaticSizeDeviceArray) = a.ptr
+Base.elsize(::Type{<:StaticSizeDeviceArray{T}}) where T = sizeof(T)
+
+@inline Base.getindex(a::StaticSizeDeviceArray{T}, i::Integer) where T =
+    unsafe_load(a.ptr, i, Val(Base.datatype_alignment(T)))
+
+@inline function Base.setindex!(a::StaticSizeDeviceArray{T}, x, i::Integer) where T
+    unsafe_store!(a.ptr, convert(T, x)::T, i, Val(Base.datatype_alignment(T)))
+    return a
+end
+
+AC.architecture(::StaticSizeDeviceArray) = CUDAGPU()
+
+const CuOffsetArray{T, N} = OffsetArray{T, N, <:CUDA.DenseCuArray{T, N}}
+
+kernel_field_data(to, data) = Adapt.adapt(to, data)
+
+# Arrays of isbits unions (which `CuDeviceArray` stores with a selector byte array) keep the default
+function kernel_field_data(to, data::CuOffsetArray{T}) where T
+    isbitstype(T) || return Adapt.adapt(to, data)
+    return OffsetArray(StaticSizeDeviceArray(to, parent(data)), data.offsets)
+end
+
+Adapt.adapt_structure(to::CUDA.KernelAdaptor, f::FD.Field) = kernel_field_data(to, f.data)
+
+# Reduced fields keep their location (see `Adapt.adapt_structure(to, ::ReducedField)`)
+function Adapt.adapt_structure(to::CUDA.KernelAdaptor, reduced_field::FD.ReducedField)
+    LX, LY, LZ = FD.location(reduced_field)
+    data = kernel_field_data(to, reduced_field.data)
+    return FD.Field{LX, LY, LZ}(nothing, data, nothing, nothing, nothing, nothing, nothing)
 end
 
 # Use faster versions of `newton_div` on Nvidia GPUs
