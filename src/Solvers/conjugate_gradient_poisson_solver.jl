@@ -147,8 +147,17 @@ end
 const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
                                                    <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
 
+# The fused kernels launch over the columns in one dimension, so consecutive threads read consecutive i
+@inline columns_worksize(grid) = (size(grid, 1) * size(grid, 2),)
+
+@inline function column_indices(n, grid)
+    Nx = size(grid, 1)
+    return (n - 1) % Nx + 1, (n - 1) ÷ Nx + 1
+end
+
 @kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
-    i, j = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -174,7 +183,8 @@ const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_
 end
 
 @kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
-    i, j = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
     FT = eltype(partial_sums)
     pᵀq = Σp = Σq = zero(FT)
 
@@ -198,7 +208,8 @@ end
 end
 
 @kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, α, laplacian_sums, residual_sums, number_of_active_cells)
-    i, j = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -244,7 +255,7 @@ function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
     partial_sums = gauge.residual_partial_sums
 
     compute_symmetric_laplacian!(q, x)
-    launch!(arch, grid, :xy, _initialize_residual!, partial_sums, r, grid, x, b, q)
+    launch!(arch, grid, columns_worksize(grid), _initialize_residual!, partial_sums, r, grid, x, b, q)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     return nothing
@@ -271,14 +282,14 @@ function iterate!(x, solver::FusedPoissonSolver, b)
 
     fill_halo_regions!(p)
     partial_sums = gauge.laplacian_partial_sums
-    launch!(arch, grid, :xy, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    launch!(arch, grid, columns_worksize(grid), _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
     reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
 
     solver.α .= ρ ./ view(gauge.laplacian_sums, 1:1)
     solver.ρⁱ⁻¹ .= ρ
 
     partial_sums = gauge.residual_partial_sums
-    launch!(arch, grid, :xy, _update_solution_and_residual!,
+    launch!(arch, grid, columns_worksize(grid), _update_solution_and_residual!,
             partial_sums, x, r, grid, p, q, solver.α, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
