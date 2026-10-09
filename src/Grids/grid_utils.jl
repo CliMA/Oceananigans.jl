@@ -49,6 +49,8 @@ const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnec
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
 const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
 
+const LeftConnectedOnlyTopology = Union{LeftConnected, SlabFoldedTopology}
+
 const AT = AbstractTopology
 
 Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1

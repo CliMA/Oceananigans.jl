@@ -2,9 +2,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl"))
 
 using Metal
+using Oceananigans.Fields: interpolate!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
-using Oceananigans.Fields: interpolate!
 
 Oceananigans.defaults.FloatType = Float32
 
