@@ -208,11 +208,11 @@ run!(simulation)
 
 filepath = simulation.output_writers[:simple_output].filepath
 
-wt = FieldTimeSeries(filepath, "w")
-Pt = FieldTimeSeries(filepath, "P")
-P̄t = FieldTimeSeries(filepath, "P̄")
+w_timeseries = FieldTimeSeries(filepath, "w")
+P_timeseries = FieldTimeSeries(filepath, "P")
+P̄_timeseries = FieldTimeSeries(filepath, "P̄")
 
-times = wt.times
+times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
 nothing # hide
 
@@ -224,11 +224,11 @@ n = Observable(1)
 
 title = @lift "t = " * prettytime(times[$n])
 
-wn = @lift wt[$n]
-Pn = @lift Pt[$n]
-P̄n = @lift P̄t[$n]
+wn = @lift w_timeseries[$n]
+Pn = @lift P_timeseries[$n]
+P̄n = @lift P̄_timeseries[$n]
 
-wmax = maximum(abs, wt)
+wmax = maximum(abs, w_timeseries)
 
 fig = Figure(size = (1200, 1000))
 

@@ -118,8 +118,8 @@ run!(simulation)
 # To animate the results, we load the saved temperature as a `FieldTimeSeries`
 # and plot the temperature profile at each saved time.
 
-Tts = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
-times = Tts.times
+T_timeseries = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+times = T_timeseries.times
 
 fig = Figure()
 ax = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z")
@@ -127,7 +127,7 @@ xlims!(ax, 0, 1)
 
 n = Observable(1)
 
-T = @lift Tts[$n]
+T = @lift T_timeseries[$n]
 lines!(ax, T)
 
 label = @lift "t = $(round(times[$n], digits=3))"

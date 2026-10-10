@@ -151,8 +151,8 @@ nothing #hide
 
 n = Observable(1)
 
-wts = FieldTimeSeries(filename, "w")
-w = @lift wts[$n]
+w_timeseries = FieldTimeSeries(filename, "w")
+w = @lift w_timeseries[$n]
 wmax = 1e-8
 
 contourf!(ax, w;
@@ -161,12 +161,12 @@ contourf!(ax, w;
           extendlow = :auto,
           extendhigh = :auto)
 
-title = @lift "ωt = $(round(ω * wts.times[$n], digits=2))"
+title = @lift "ωt = $(round(ω * w_timeseries.times[$n], digits=2))"
 fig[1, 1] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
 
-frames = 1:length(wts.times)
+frames = 1:length(w_timeseries.times)
 
 @info "Animating a propagating internal wave..."
 

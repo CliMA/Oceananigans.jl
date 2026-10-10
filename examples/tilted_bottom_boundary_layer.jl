@@ -218,13 +218,13 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωyt = FieldTimeSeries(filename, "ωy")
-Bt  = FieldTimeSeries(filename, "B")
-Vt  = FieldTimeSeries(filename, "V")
+ωy_timeseries = FieldTimeSeries(filename, "ωy")
+B_timeseries  = FieldTimeSeries(filename, "B")
+V_timeseries  = FieldTimeSeries(filename, "V")
 
-ωyn = @lift ωyt[$n]
-Bn  = @lift Bt[$n]
-Vn  = @lift Vt[$n]
+ωyn = @lift ωy_timeseries[$n]
+Bn  = @lift B_timeseries[$n]
+Vn  = @lift V_timeseries[$n]
 
 buoyancy_levels = -1e-3:5e-5:1e-3
 
@@ -236,7 +236,7 @@ hm_v = heatmap!(ax_v, Vn, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
 contour!(ax_v, Bn, levels=buoyancy_levels, color=:black)
 
-times = ωyt.times
+times = ωy_timeseries.times
 title = @lift "t = " * prettytime(times[$n])
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 

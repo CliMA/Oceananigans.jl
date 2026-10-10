@@ -156,10 +156,10 @@ run!(simulation)
 
 using CairoMakie
 
-ωt  = FieldTimeSeries(fields_filename, "ω")
-ω′t = FieldTimeSeries(fields_filename, "ω′")
+ω_timeseries  = FieldTimeSeries(fields_filename, "ω")
+ω′_timeseries = FieldTimeSeries(fields_filename, "ω′")
 
-times = ωt.times
+times = ω_timeseries.times
 
 fig = Figure(size = (1200, 660))
 
@@ -169,8 +169,8 @@ ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwa
 
 n = Observable(1)
 
-ωn  = @lift ωt[$n]
-ω′n = @lift ω′t[$n]
+ωn  = @lift ω_timeseries[$n]
+ω′n = @lift ω′_timeseries[$n]
 
 hm_ω = heatmap!(ax_ω, ωn, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)

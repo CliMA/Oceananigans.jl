@@ -164,14 +164,14 @@ run!(simulation)
 
 # First, we load the saved velocities and stratification output as `FieldTimeSeries`es.
 
-u′t = FieldTimeSeries(filename, "u′")
- wt = FieldTimeSeries(filename, "w")
-N²t = FieldTimeSeries(filename, "N²")
+u′_timeseries = FieldTimeSeries(filename, "u′")
+ w_timeseries = FieldTimeSeries(filename, "w")
+N²_timeseries = FieldTimeSeries(filename, "N²")
 
-u′max = maximum(abs, u′t[end])
- wmax = maximum(abs, wt[end])
+u′max = maximum(abs, u′_timeseries[end])
+ wmax = maximum(abs, w_timeseries[end])
 
-times = u′t.times
+times = u′_timeseries.times
 nothing #hide
 
 # ## Visualize
@@ -186,9 +186,9 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂", times[$n] / day, times[$n] / T₂)
 
-u′ₙ = @lift u′t[$n]
- wₙ = @lift wt[$n]
-N²ₙ = @lift N²t[$n]
+u′ₙ = @lift u′_timeseries[$n]
+ wₙ = @lift w_timeseries[$n]
+N²ₙ = @lift N²_timeseries[$n]
 
 axis_kwargs = (xlabel = "x [m]",
                ylabel = "z [m]",

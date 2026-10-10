@@ -156,11 +156,11 @@ run!(simulation)
 
 # ## Load the saved time series
 
-ut = FieldTimeSeries(filename, "u")
-N²t = FieldTimeSeries(filename, "N²")
-bt = FieldTimeSeries(filename, "b")
-et = FieldTimeSeries(filename, "e")
-times = bt.times
+u_timeseries = FieldTimeSeries(filename, "u")
+N²_timeseries = FieldTimeSeries(filename, "N²")
+b_timeseries = FieldTimeSeries(filename, "b")
+e_timeseries = FieldTimeSeries(filename, "e")
+times = b_timeseries.times
 
 # ## Visualize the simulation output
 
@@ -171,18 +171,18 @@ n = Observable(1)
 
 title = @lift "t = " * prettytime(times[$n])
 
-uₙ = @lift ut[$n]
-N²ₙ = @lift N²t[$n]
-bₙ = @lift bt[$n]
-eₙ = @lift et[$n]
+uₙ = @lift u_timeseries[$n]
+N²ₙ = @lift N²_timeseries[$n]
+bₙ = @lift b_timeseries[$n]
+eₙ = @lift e_timeseries[$n]
 nothing #hide
 
 # We use the last snapshot to set the color ranges.
 
-umax = maximum(abs, ut[end])
-N²max = maximum(abs, N²t[end])
-bmax = maximum(abs, bt[end])
-emax = maximum(abs, et[end])
+umax = maximum(abs, u_timeseries[end])
+N²max = maximum(abs, N²_timeseries[end])
+bmax = maximum(abs, b_timeseries[end])
+emax = maximum(abs, e_timeseries[end])
 nothing #hide
 
 # We visualize ``b``, ``e``, ``u``, and ``N²``.

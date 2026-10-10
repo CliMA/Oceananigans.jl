@@ -143,21 +143,21 @@ using CairoMakie
 
 CairoMakie.activate!(type = "png")
 
-ηts = FieldTimeSeries(filename, "η")
-ζts = FieldTimeSeries(filename, "ζ")
-sts = FieldTimeSeries(filename, "s")
-times = ηts.times
+η_timeseries = FieldTimeSeries(filename, "η")
+ζ_timeseries = FieldTimeSeries(filename, "ζ")
+s_timeseries = FieldTimeSeries(filename, "s")
+times = η_timeseries.times
 Nt = length(times)
 
-η_lim = maximum(abs, ηts)
-ζ_lim = maximum(abs, ζts) / 2
-s_lim = maximum(sts)
+η_lim = maximum(abs, η_timeseries)
+ζ_lim = maximum(abs, ζ_timeseries) / 2
+s_lim = maximum(s_timeseries)
 
 n = Observable(1)
 title = @lift "Polar vortex crystal — t = " * prettytime(times[$n])
-ηₙ = @lift ηts[$n]
-ζₙ = @lift ζts[$n]
-sₙ = @lift sts[$n]
+ηₙ = @lift η_timeseries[$n]
+ζₙ = @lift ζ_timeseries[$n]
+sₙ = @lift s_timeseries[$n]
 
 fig = Figure(size = (1500, 540))
 Label(fig[0, 1:6], title; fontsize = 18, tellwidth = false)

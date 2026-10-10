@@ -202,10 +202,10 @@ filenames = Dict(name => run_baroclinic_instability(grid, name) for (name, grid)
 # We make a three-dimensional visualization of our results on the sphere
 # with CairoMakie. First we load the output from each simulation,
 
-temperature_timeseries = Dict(name => FieldTimeSeries(filenames[name], "T") for name in names)
-vorticity_timeseries = Dict(name => FieldTimeSeries(filenames[name], "ζ") for name in names)
+T_timeseries = Dict(name => FieldTimeSeries(filenames[name], "T") for name in names)
+ζ_timeseries = Dict(name => FieldTimeSeries(filenames[name], "ζ") for name in names)
 
-times = temperature_timeseries["lat_lon"].times
+times = T_timeseries["lat_lon"].times
 Nt = length(times)
 
 # Next we make a plot showing baroclinic instability
@@ -238,8 +238,8 @@ plots_T = Dict()
 plots_ζ = Dict()
 
 for name in names
-    T = temperature_timeseries[name][Nt]
-    ζ = vorticity_timeseries[name][Nt]
+    T = T_timeseries[name][Nt]
+    ζ = ζ_timeseries[name][Nt]
     plots_T[name] = surface!(axes_T[name], T; colormap = :thermal, colorrange = (5, 30))
     plots_ζ[name] = surface!(axes_ζ[name], ζ; colormap = :balance, colorrange = (-2e-5, 2e-5))
     hidedecorations!(axes_T[name])

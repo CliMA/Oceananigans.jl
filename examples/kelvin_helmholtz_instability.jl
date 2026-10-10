@@ -396,13 +396,13 @@ run!(simulation)
 
 @info "Making a neat movie of stratified shear flow..."
 
-ωts = FieldTimeSeries(filename, "ω")
-bts = FieldTimeSeries(filename, "b")
-Ωts = FieldTimeSeries(filename, "Ω")
-Bts = FieldTimeSeries(filename, "B")
-KEts = FieldTimeSeries(filename, "KE")
+ω_timeseries = FieldTimeSeries(filename, "ω")
+b_timeseries = FieldTimeSeries(filename, "b")
+Ω_timeseries = FieldTimeSeries(filename, "Ω")
+B_timeseries = FieldTimeSeries(filename, "B")
+KE_timeseries = FieldTimeSeries(filename, "KE")
 
-times = ωts.times
+times = ω_timeseries.times
 t_final = times[end]
 
 t = [0, t_final]
@@ -411,8 +411,8 @@ nothing #hide
 
 n = Observable(1)
 
-ωₙ = @lift ωts[$n]
-bₙ = @lift bts[$n]
+ωₙ = @lift ω_timeseries[$n]
+bₙ = @lift b_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
@@ -442,11 +442,11 @@ lines!(ax_KE, t, exponential_growth;
        linewidth = 2,
        color = :black)
 
-lines!(ax_KE, KEts;
+lines!(ax_KE, KE_timeseries;
        label = "perturbation kinetic energy",
        linewidth = 4, color = :blue, alpha = 0.4)
 
-KE_point = @lift [Point2f(times[$n], KEts[$n][1, 1, 1])]
+KE_point = @lift [Point2f(times[$n], KE_timeseries[$n][1, 1, 1])]
 
 scatter!(ax_KE, KE_point;
          marker = :circle, markersize = 16, color = :blue)
@@ -465,8 +465,8 @@ nothing #hide
 
 n = Observable(1)
 
-Ωₙ = @lift Ωts[$n]
-Bₙ = @lift Bts[$n]
+Ωₙ = @lift Ω_timeseries[$n]
+Bₙ = @lift B_timeseries[$n]
 
 fig = Figure(size=(800, 600))
 
@@ -493,11 +493,11 @@ lines!(ax_KE, t, exponential_growth;
        linewidth = 2,
        color = :black)
 
-lines!(ax_KE, KEts;
+lines!(ax_KE, KE_timeseries;
        label = "perturbation kinetic energy",
        linewidth = 4, color = :blue, alpha = 0.4)
 
-KE_point = @lift [Point2f(times[$n], KEts[$n][1, 1, 1])]
+KE_point = @lift [Point2f(times[$n], KE_timeseries[$n][1, 1, 1])]
 
 scatter!(ax_KE, KE_point;
          marker = :circle, markersize = 16, color = :blue)

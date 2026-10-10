@@ -120,10 +120,10 @@ run!(simulation)
 #
 # We load the output
 
-ωts = FieldTimeSeries(filename, "ω")
-sts = FieldTimeSeries(filename, "s")
+ω_timeseries = FieldTimeSeries(filename, "ω")
+s_timeseries = FieldTimeSeries(filename, "s")
 
-times = ωts.times
+times = ω_timeseries.times
 nothing #hide
 
 # and animate the vorticity and fluid speed.
@@ -149,8 +149,8 @@ n = Observable(1)
 
 # Now let's plot the vorticity and speed.
 
-ω = @lift ωts[$n]
-s = @lift sts[$n]
+ω = @lift ω_timeseries[$n]
+s = @lift s_timeseries[$n]
 
 heatmap!(ax_ω, ω; colormap = :balance, colorrange = (-2, 2))
 heatmap!(ax_s, s; colormap = :speed, colorrange = (0, 0.2))

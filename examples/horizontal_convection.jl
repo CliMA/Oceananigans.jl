@@ -163,18 +163,18 @@ run!(simulation)
 
 using CairoMakie
 
-speed_timeseries = FieldTimeSeries(filename, "s")
-buoyancy_timeseries = FieldTimeSeries(filename, "b")
-vorticity_timeseries = FieldTimeSeries(filename, "ζ")
+s_timeseries = FieldTimeSeries(filename, "s")
+b_timeseries = FieldTimeSeries(filename, "b")
+ζ_timeseries = FieldTimeSeries(filename, "ζ")
 
-times = buoyancy_timeseries.times
+times = b_timeseries.times
 Nt = length(times)
 
-dissipation_timeseries = deepcopy(buoyancy_timeseries)
+χ_timeseries = deepcopy(b_timeseries)
 
 for n in 1:Nt
-    b = buoyancy_timeseries[n]
-    dissipation_timeseries[n] .= @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
+    b = b_timeseries[n]
+    χ_timeseries[n] .= @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
 end
 
 # Now we're ready to animate using Makie.
@@ -185,10 +185,10 @@ n = Observable(1)
 
 title = @lift @sprintf("t=%1.2f", times[$n])
 
-sn = @lift speed_timeseries[$n]
-ζn = @lift vorticity_timeseries[$n]
-bn = @lift buoyancy_timeseries[$n]
-χn = @lift dissipation_timeseries[$n]
+sn = @lift s_timeseries[$n]
+ζn = @lift ζ_timeseries[$n]
+bn = @lift b_timeseries[$n]
+χn = @lift χ_timeseries[$n]
 
 slim = 0.6
 blim = 0.6
@@ -278,8 +278,8 @@ nothing #hide
 
 # Then we compute the volume averages with `Average`, and plot.
 
-kinetic_energy = [Field(Average(speed_timeseries[n]^2 / 2))[1, 1, 1] for n in 1:Nt]
-Nu = [Field(Average(dissipation_timeseries[n]))[1, 1, 1] / χᵈⁱᶠᶠ for n in 1:Nt]
+kinetic_energy = [Field(Average(s_timeseries[n]^2 / 2))[1, 1, 1] for n in 1:Nt]
+Nu = [Field(Average(χ_timeseries[n]))[1, 1, 1] / χᵈⁱᶠᶠ for n in 1:Nt]
 
 fig = Figure(size = (850, 450))
 
