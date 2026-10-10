@@ -712,7 +712,7 @@ function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     B = ca * cb # Binary operation
     fill!(r, 0)
 
-    Base.mapreducedim!(identity, +, r, B)
+    Base.mapreducedim!(identity, +, r, reduction_operand(B))
     return r
 end
 
@@ -815,6 +815,13 @@ const Identity = typeof(Base.identity)
 # reduction code (e.g. GPUArrays') can view, reshape and adapt, unlike the field itself
 @inline reduction_operand(c::Field) = interior(c)
 @inline reduction_operand(c) = c
+
+# Operations drop the indices of their fields when adapted for a kernel, which changes their
+# size, so a windowed operation is reduced through a view of its window, which keeps it
+@inline reduction_operand(c::AbstractField) = windowed_reduction_operand(c, indices(c))
+@inline windowed_reduction_operand(c, ::Tuple{Colon, Colon, Colon}) = c
+@inline windowed_reduction_operand(c, ::Tuple) = view(c, axes(c)...)
+@inline windowed_reduction_operand(c, indices) = c
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)

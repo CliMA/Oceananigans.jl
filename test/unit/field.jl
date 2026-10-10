@@ -126,6 +126,10 @@ function run_field_reduction_tests(grid)
             positional = argmax(windowed_values)
             @test value == maximum(windowed_values)
             @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+
+            # Reductions of operations on windowed fields cover only the window
+            @test sum(2 * w) ≈ 2 * sum(windowed_values)
+            @test dot(w, w) ≈ sum(abs2, windowed_values)
         end
 
         for dims in dims_to_test
