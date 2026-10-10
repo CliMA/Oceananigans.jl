@@ -50,12 +50,12 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     return model.tracers
 end
 
-function solid_body_rotation_test(grid; P = XPartition, regions = 1)
+function solid_body_rotation_test(grid; P = XPartition, regions = 1,
+                                  free_surface = ExplicitFreeSurface(gravitational_acceleration = 1))
 
     mrg = @test_logs multi_region_log MultiRegionGrid(grid, partition = P(regions))
 
-    free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+    coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = @test_logs reduced_z_advection_log HydrostaticFreeSurfaceModel(mrg; momentum_advection = VectorInvariant(),
                                                                            free_surface, coriolis, tracers = :c,
@@ -197,6 +197,15 @@ for arch in archs
             @test all(isapprox(w, ws, atol=1e-20, rtol=1e-15))
             @test all(isapprox(c, cs, atol=1e-20, rtol=1e-15))
             @test all(isapprox(η, ηs, atol=1e-20, rtol=1e-15))
+        end
+
+        free_surface = ImplicitFreeSurface(gravitational_acceleration = 1, solver_method = :PreconditionedConjugateGradient)
+        ηs = Array(interior(solid_body_rotation_test(grid; free_surface).η))
+
+        for P in partitioning
+            @info "  Testing 2 $(P)s with a PCG implicit free surface on the $arch"
+            η = solid_body_rotation_test(grid; P, regions=2, free_surface).η
+            @test isapprox(interior(reconstruct_global_field(η)), ηs, rtol=1e-14)
         end
     end
 
