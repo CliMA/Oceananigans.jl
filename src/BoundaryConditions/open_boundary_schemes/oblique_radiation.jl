@@ -49,7 +49,7 @@ ObliqueRadiation{Float64}
 └── target_transport: nothing
 ```
 """
-struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
+struct ObliqueRadiation{FT, S, B, A, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
@@ -58,6 +58,7 @@ struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
     φ₁ˡ :: S
     previous_boundary :: B # boundary values written during the previous iteration, double-buffered by iteration parity
     previous_interior :: B # first-interior values, likewise
+    anchors :: A           # iteration of the last anchored fill at each boundary point
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
 
@@ -71,7 +72,7 @@ function ObliqueRadiation(FT = defaults.FloatType;
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
     return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity,
-                            nothing, nothing, nothing, nothing, nothing, target_transport)
+                            nothing, nothing, nothing, nothing, nothing, nothing, target_transport)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
@@ -83,22 +84,24 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      adapt(to, r.φ₁ˡ),
                      adapt(to, r.previous_boundary),
                      adapt(to, r.previous_interior),
+                     adapt(to, r.anchors),
                      adapt(to, r.target_transport))
 
-has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
+has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
 radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
     (ntuple(_ -> zeros(arch, FT, tangential_size...), 3)...,
      zeros(arch, FT, tangential_size..., 2),
-     zeros(arch, FT, tangential_size..., 2))
+     zeros(arch, FT, tangential_size..., 2),
+     anchor_buffer(arch, tangential_size))
 
 radiation_buffers(radiation::ObliqueRadiation) =
-    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior)
+    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior, radiation.anchors)
 
-radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)) =
+radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, anchors)) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport)
+                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, anchors, radiation.target_transport)
 
 # Fills read the buffer written during the previous iteration and write the other one.
 @inline written_buffer(clock) = clock.iteration % 2 + 1
