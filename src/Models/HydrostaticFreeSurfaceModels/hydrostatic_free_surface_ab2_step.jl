@@ -160,7 +160,9 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:v))
 
     add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    fill_halos_read_by_implicit_step!(velocities.v, velocities)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
+    fill_halos_read_by_implicit_step!(velocities.u, velocities)
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
 
