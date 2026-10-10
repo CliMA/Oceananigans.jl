@@ -125,8 +125,6 @@ unified_array(::GPU, a) = a
 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-@inline unsafe_free!(a) = nothing
-
 # CPU kernel arguments are adapted to `CPU()`. Like on GPUs this strips fields down to their data, so
 # that kernels do not specialize on field metadata that kernels never use (e.g. boundary conditions:
 # without this every distinct combination of boundary-condition types recompiles every kernel).
