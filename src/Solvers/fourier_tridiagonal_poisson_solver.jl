@@ -1,6 +1,5 @@
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
-using Statistics: mean
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -240,16 +239,17 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ = solver.storage
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
-    # Apply backward transforms in order
-    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
-
-    # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
-    # so that the solution has zero-mean.
+    # so that the solution has zero-mean. The zero-wavenumber column holds the horizontal
+    # mean at every level, so its mean along the tridiagonal direction is the volume mean.
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
-        ϕ .= ϕ .- mean(ϕ)
+        dim = dimension(solver.batched_tridiagonal_solver.tridiagonal_direction)
+        zero_mode = view(ϕ, ntuple(d -> d == dim ? Colon() : 1, 3)...)
+        zero_mode .-= sum(zero_mode, dims=1) ./ length(zero_mode)
     end
+
+    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
