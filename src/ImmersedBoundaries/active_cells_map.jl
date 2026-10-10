@@ -171,3 +171,23 @@ function build_active_z_columns(grid, ib)
     columns, lengths = labeled_indices(grid, view(labels.data, :, :, 1), (1, 2))
     return SubArray(columns, (1:first(lengths),))
 end
+
+function active_cells_per_column(grid, ib)
+
+    active_cells_per_column = Field{Center, Center, Nothing}(grid, Int32)
+    fill!(active_cells_per_column, 0)
+    launch!(architecture(grid), grid, :xy, _count_active_cells_in_column!, active_cells_per_column, grid, ib)
+    return interior(active_cells_per_column)
+end
+
+@kernel function _count_active_cells_in_column!(active_cells_count, grid, ib)
+  i,j = @index(Global, NTuple)
+
+  count = 0
+  for k in 1:size(grid, 3)
+    count += active_cell(i,j,k,grid,ib) ? 1 : 0
+  end
+
+  @inbounds active_cells_count[i,j,1] = count
+
+end
