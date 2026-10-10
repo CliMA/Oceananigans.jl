@@ -98,7 +98,7 @@ nothing #hide
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
 # In order that our initial condition excites an inertia-gravity wave, we
 # initialize the velocity and buoyancy perturbation fields to be consistent
-# with the pressure field ``p = a \, \cos(kx + mx - ωt)`` at ``t=0``.
+# with the pressure field ``p = a \, \cos(k x + m z - ω t)`` at ``t=0``.
 # These relations are sometimes called the "polarization
 # relations". At ``t=0``, the polarization relations yield
 
