@@ -204,9 +204,15 @@ function separable_bgc(BGCType, grid, split; drift = true)
     return BGCType{split}(1 / day, 0.3 / day, Iᴾᴬᴿ, sinking_velocity)
 end
 
+# The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
+pressure_solver_logs(::Type{NonhydrostaticModel}, ::ImmersedBoundaryGrid) =
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),)
+
+pressure_solver_logs(ModelType, grid) = ()
+
 function separable_model(ModelType, grid, BGCType, split, timestepper; drift = true)
     biogeochemistry = separable_bgc(BGCType, grid, split; drift)
-    model = ModelType(grid; biogeochemistry, timestepper)
+    model = @test_logs pressure_solver_logs(ModelType, grid)... ModelType(grid; biogeochemistry, timestepper)
     kw = ModelType == HydrostaticFreeSurfaceModel && grid.z isa MutableVerticalDiscretization ? (; η = 0.1) : (;)
     set!(model; P = (x, y, z) -> 1 + sin(x) * exp(z / 3) / 4, Z = (x, y, z) -> 0.5 + cos(y) * exp(z / 4) / 8, kw...)
     return model
@@ -285,7 +291,6 @@ end
 #####
 
 @testset "Biogeochemistry" begin
-    @info "Testing biogeochemistry setup..."
     for arch in archs
         grids = (RectilinearGrid(arch; size = (2, 2, 2), extent = (2, 2, 2)),
                  LatitudeLongitudeGrid(arch; size = (5, 5, 5), longitude = (-180, 180), latitude = (-85, 85), z = (-2, 0)),
@@ -296,15 +301,14 @@ end
             grid in grids
 
             if !((model == NonhydrostaticModel) && ((grid isa LatitudeLongitudeGrid) | (grid isa OrthogonalSphericalShellGrid)))
-                @info "Testing $bgc in $model on $grid..."
-                test_biogeochemistry(grid, bgc, model)
+                @testset "$(nameof(bgc)) in $(nameof(model)) on $(nameof(typeof(grid))) [$(summary(arch))]" begin
+                    test_biogeochemistry(grid, bgc, model)
+                end
             end
         end
     end
 
     @testset "Separately computed biogeochemical transitions" begin
-        @info "Testing separately computed biogeochemical transitions..."
-
         @testset "include_biogeochemistry_transitions" begin
             grid = RectilinearGrid(size = (2, 2, 2), extent = (1, 1, 1))
             for BGCType in (SeparableDiscreteBGC, SeparableContinuousBGC)
@@ -330,7 +334,7 @@ end
             for ModelType in (NonhydrostaticModel, HydrostaticFreeSurfaceModel),
                 BGCType in (SeparableDiscreteBGC, SeparableContinuousBGC)
 
-                @testset "Transition is computed separately: $(nameof(ModelType)), $(nameof(BGCType)) [$(typeof(arch))]" begin
+                @testset "Transition is computed separately: $(nameof(ModelType)), $(nameof(BGCType)) [$(summary(arch))]" begin
                     test_transition_computed_separately(ModelType, grid, BGCType)
                 end
             end
@@ -357,7 +361,7 @@ end
                 # Immersed and z-star grids are only tested with the first timestepper to limit compilation time
                 build_grid === rectilinear || timestepper == first(timesteppers) || continue
 
-                @testset "$(nameof(ModelType)), $(nameof(BGCType)), $timestepper, $(summary(build_grid())) [$(typeof(arch))]" begin
+                @testset "$(nameof(ModelType)), $(nameof(BGCType)), $timestepper, $(summary(build_grid())) [$(summary(arch))]" begin
                     test_separate_transitions(ModelType, build_grid, BGCType, timestepper)
                 end
             end
