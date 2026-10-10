@@ -2,7 +2,7 @@
 #
 # This example simulates a lock exchange problem on a slope. It demonstrates:
 #
-#  * How to set up a 2D grid with a sloping bottom using an immersed boundary
+#  * How to set up a 2D grid with a sloping bottom with an immersed boundary
 #  * Initializing a hydrostatic free surface model
 #  * Including variable density initial conditions
 #  * Applying bottom drag boundary conditions on immersed boundaries using [`BulkDrag`](@ref)
