@@ -49,16 +49,19 @@ ObliqueRadiation{Float64}
 └── target_transport: nothing
 ```
 """
-struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
+struct ObliqueRadiation{FT, S, B, TF, TB, E} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
     φᵇ  :: S
     φ₁  :: S
     φ₁ˡ :: S
-    previous_boundary :: B # boundary values written during the previous iteration, double-buffered by iteration parity
+    previous_boundary :: B # boundary values written during the previous iteration, one array per iteration parity,
+                           # with halos along the boundary that hold the values of neighbouring ranks
     previous_interior :: B # first-interior values, likewise
     target_transport :: TF # prescribed net transport through the boundary, or nothing
+    tangential_bounds :: TB # first and last index along the boundary that the tangential differences read
+    state_fields :: E      # the fields holding previous_boundary and previous_interior, whose halos are filled
 end
 
 function ObliqueRadiation(FT = defaults.FloatType;
@@ -71,7 +74,7 @@ function ObliqueRadiation(FT = defaults.FloatType;
     inflow_timescale = convert(FT, inflow_timescale)
     target_transport = convert_target_transport(FT, target_transport)
     return ObliqueRadiation(outflow_timescale, inflow_timescale, use_boundary_velocity,
-                            nothing, nothing, nothing, nothing, nothing, target_transport)
+                            nothing, nothing, nothing, nothing, nothing, target_transport, nothing, nothing)
 end
 
 Adapt.adapt_structure(to, r::ObliqueRadiation) =
@@ -83,34 +86,63 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
                      adapt(to, r.φ₁ˡ),
                      adapt(to, r.previous_boundary),
                      adapt(to, r.previous_interior),
-                     adapt(to, r.target_transport))
+                     adapt(to, r.target_transport),
+                     r.tangential_bounds,
+                     nothing)
 
 has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
-    (ntuple(_ -> zeros(arch, FT, tangential_size...), 3)...,
-     zeros(arch, FT, tangential_size..., 2),
-     zeros(arch, FT, tangential_size..., 2))
+# The previous boundary and first-interior values are kept in fields reduced normal to the boundary, whose halos along
+# it hold the values of a neighbouring rank or of the other end of a periodic boundary.
+function materialize_radiation_storage(radiation::ObliqueRadiation, grid, loc, dim)
+    FT = eltype(grid)
+    arch = architecture(grid)
+    Sx, Sy, Sz = size(grid, loc)
+
+    tangential_size = dim == 1 ? (Sy, Sz) :
+                      dim == 2 ? (Sx, Sz) :
+                                 (Sx, Sy)
+
+    φᵇ, φ₁, φ₁ˡ = ntuple(_ -> zeros(arch, FT, tangential_size...), 3)
+
+    state_fields = ntuple(_ -> boundary_state_field(grid, loc, dim), 4)
+    previous_boundary = map(f -> along_boundary(f, dim), state_fields[1:2])
+    previous_interior = map(f -> along_boundary(f, dim), state_fields[3:4])
+
+    T = topology(grid, dim == 1 ? 2 : 1)
+    N = tangential_size[1]
+    tangential_bounds = (ifelse(neighbour_on_left(T), 0, 1), ifelse(neighbour_on_right(T), N + 1, N))
+
+    return ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
+                            φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport,
+                            tangential_bounds, state_fields)
+end
 
 radiation_buffers(radiation::ObliqueRadiation) =
-    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior)
+    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, map(f -> parent(f.data), radiation.state_fields)...)
 
-radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)) =
-    ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                     φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport)
+const OBC = BoundaryCondition{<:Union{Value{<:ObliqueRadiation}, NormalFlow{<:ObliqueRadiation}}}
+
+# The halos of the previous values take those of the neighbouring ranks
+function fill_boundary_state_halos!(radiation::ObliqueRadiation)
+    isnothing(radiation.state_fields) || foreach(fill_halo_regions!, radiation.state_fields)
+    return nothing
+end
+
+update_boundary_condition!(bc::OBC, side, field, model) = fill_boundary_state_halos!(bc.classification.scheme)
 
 # Fills read the buffer written during the previous iteration and write the other one.
 @inline written_buffer(clock) = clock.iteration % 2 + 1
 @inline written_buffer(::Nothing) = 1
 
-# Backward and forward differences along the boundary face, zero beyond its ends.
-@inline function tangential_differences(φ, t, k, b)
-    T = size(φ, 1)
+# Backward and forward differences along the boundary face, zero beyond its ends. Next to a rank edge the neighbour is
+# in the halo of φ, which holds the neighbouring rank's value.
+@inline function tangential_differences(φ, t, k, (lower, upper))
     @inbounds begin
-        φ₀ = φ[t, k, b]
-        φ₋ = φ[max(t - 1, 1), k, b]
-        φ₊ = φ[min(t + 1, T), k, b]
+        φ₀ = φ[t, k]
+        φ₋ = φ[max(t - 1, lower), k]
+        φ₊ = φ[min(t + 1, upper), k]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
@@ -136,14 +168,14 @@ end
 
 @inline function radiation_update(radiation::ObliqueRadiation, t, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
     w = written_buffer(clock)
-    r = 3 - w
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary, t, k, r)
-    δ₁₋, δ₁₊ = tangential_differences(radiation.previous_interior, t, k, r)
+    bounds = radiation.tangential_bounds
+    δᵇ₋, δᵇ₊ = tangential_differences(radiation.previous_boundary[3 - w], t, k, bounds)
+    δ₁₋, δ₁₊ = tangential_differences(radiation.previous_interior[3 - w], t, k, bounds)
     φᵇⁿ⁺¹ = oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
     @inbounds begin
-        radiation.previous_boundary[t, k, w] = φᵇⁿ⁺¹
-        radiation.previous_interior[t, k, w] = φ₁ⁿ⁺¹
+        radiation.previous_boundary[w][t, k] = φᵇⁿ⁺¹
+        radiation.previous_interior[w][t, k] = φ₁ⁿ⁺¹
     end
 
     return φᵇⁿ⁺¹
