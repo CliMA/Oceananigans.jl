@@ -114,7 +114,7 @@ function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Num
 end
 
 """
-    regular_faces(FT, c₁, c₂, N, H, total)
+$(TYPEDSIGNATURES)
 
 `total` faces spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` are `range(c₁, c₂, length = N + 1)`.
 """
