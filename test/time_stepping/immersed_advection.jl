@@ -21,6 +21,12 @@ advection_schemes = [linear_advection_schemes... WENO]
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
 
+# Schemes wider than the lowest order are reduced in the z-direction of grids with a single cell
+reduced_z_advection_logs(adv, buffer) =
+    buffer == 1      ? () :
+    adv == Centered  ? ((:info, "Using the advection scheme Centered(order=2) in the z-direction because size(grid, 3) = 1"),) :
+                       ((:info, "Using the advection scheme UpwindBiased(order=1) in the z-direction because size(grid, 3) = 1"),)
+
 function run_tracer_interpolation_test(c, ibg, scheme)
     scheme = materialize_advection(scheme, ibg)
     for j in 6:19, i in 6:19
@@ -96,8 +102,6 @@ end
 
 for arch in archs
     @testset "Immersed tracer reconstruction" begin
-        @info "Running immersed tracer reconstruction tests..."
-
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
 
@@ -109,46 +113,43 @@ for arch in archs
         for adv in linear_advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
 
-            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
-            run_tracer_interpolation_test(c, ibg, scheme)
+            @testset "$(summary(scheme)) [$(summary(arch))]" begin
+                run_tracer_interpolation_test(c, ibg, scheme)
+            end
         end
 
         for buffer in [2, 3, 4, 5], bounds in (nothing, (0, 1))
             scheme = WENO(; order = advective_order(buffer, WENO), bounds)
 
-            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
-            run_tracer_interpolation_test(c, ibg, scheme)
+            @testset "$(summary(scheme)) [$(summary(arch))]" begin
+                run_tracer_interpolation_test(c, ibg, scheme)
+            end
         end
     end
 
     @testset "Immersed tracer conservation" begin
-        @info "Running immersed tracer conservation tests..."
-
         grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> ifelse(x < 2, 0, -1)))
 
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
 
-            for g in [grid, ibg]
-                @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
-                run_tracer_conservation_test(g, scheme)
+            @testset "$(summary(scheme)) on $(nameof(typeof(g))) [$(summary(arch))]" for g in [grid, ibg]
+                @test_logs reduced_z_advection_logs(adv, buffer)... run_tracer_conservation_test(g, scheme)
             end
         end
 
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             directional_scheme = adv(order = advective_order(buffer, adv))
             scheme = FluxFormAdvection(directional_scheme, directional_scheme, directional_scheme)
-            for g in [grid, ibg]
-                @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
-                run_tracer_conservation_test(g, scheme)
+
+            @testset "$(summary(scheme)) on $(nameof(typeof(g))) [$(summary(arch))]" for g in [grid, ibg]
+                @test_logs reduced_z_advection_logs(adv, buffer)... run_tracer_conservation_test(g, scheme)
             end
         end
     end
 
     @testset "Immersed momentum reconstruction" begin
-        @info "Running immersed momentum reconstruction tests..."
-
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
 
@@ -166,8 +167,9 @@ for arch in archs
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
 
-            @info "  Testing immersed momentum reconstruction [$(typeof(arch)), $(summary(scheme))]"
-            run_momentum_interpolation_test(u, v, ibg, scheme)
+            @testset "$(summary(scheme)) [$(summary(arch))]" begin
+                run_momentum_interpolation_test(u, v, ibg, scheme)
+            end
         end
     end
 end
