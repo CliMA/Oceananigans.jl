@@ -62,7 +62,12 @@ function shallow_water_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
-function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
+# The prognostic momentum variable: the transport for the conservative formulation, the velocity otherwise
+prognostic_name(::ConservativeFormulation, fieldname) = Symbol(fieldname, :h)
+prognostic_name(::VectorInvariantFormulation, fieldname) = fieldname
+
+# Diffuse a cosine in the velocity tangential to the boundaries of a domain of length π / m, at uniform depth
+function test_shallow_water_diffusion_cosine(grid, formulation, fieldname)
     ν, m = 1, 2 # viscosity and cosine wavenumber
 
     closure = ShallowWaterScalarDiffusivity(; ν)
@@ -78,20 +83,17 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
                                                            mass_advection,
                                                            formulation)
 
-    field = model.velocities[fieldname]
-
-    interior(field) .= on_architecture(architecture(grid), cos.(m * ξ))
-    update_state!(model)
+    set!(model; h = 1, prognostic_name(formulation, fieldname) => ξ -> cos(m * ξ))
 
     # Step forward with small time-step relative to viscous/diffusive time scale
-    Δt = 1e-6 * grid.Lx^2 / closure.ν
+    Δt = 1e-6 * (π / m)^2 / closure.ν
     for _ in 1:5
         time_step!(model, Δt)
     end
 
-    diffusing_cosine(ξ, t, κ, m) = exp(-κ * m^2 * t) * cos(m * ξ)
+    field = model.velocities[fieldname]
     analytical_solution = Field(instantiated_location(field), grid)
-    analytical_solution .= diffusing_cosine.(ξ, model.clock.time, ν, m)
+    set!(analytical_solution, ξ -> exp(-ν * m^2 * model.clock.time) * cos(m * ξ))
 
     return isapprox(field, analytical_solution, atol=1e-6, rtol=1e-6)
 end
@@ -220,13 +222,12 @@ end
 
         @testset "ShallowWaterModel viscous diffusion [$(summary(arch))]" begin
             Nx, Ny = 10, 12
-            grid_x = RectilinearGrid(arch, size = Nx, x = (0, 1), topology = (Bounded, Flat, Flat))
-            grid_y = RectilinearGrid(arch, size = Ny, y = (0, 1), topology = (Flat, Bounded, Flat))
-            coords = (reshape(xnodes(grid_x, Face()), (Nx+1, 1)), reshape(ynodes(grid_y, Face()), (1, Ny+1)))
+            grid_x = RectilinearGrid(arch, size = Nx, x = (0, π/2), topology = (Bounded, Flat, Flat))
+            grid_y = RectilinearGrid(arch, size = Ny, y = (0, π/2), topology = (Flat, Bounded, Flat))
 
-            for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
+            for (fieldname, grid) in zip([:v, :u], [grid_x, grid_y])
                 @testset "$fieldname, $(nameof(typeof(formulation)))" for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
-                    test_shallow_water_diffusion_cosine(grid, formulation, fieldname, coord)
+                    @test test_shallow_water_diffusion_cosine(grid, formulation, fieldname)
                 end
             end
         end
