@@ -1,15 +1,15 @@
-# # An unstable Bickley jet in a shallow water model
+# # An unstable Bickley jet in a shallow-water model
 #
 # This example uses Oceananigans.jl's `ShallowWaterModel` to simulate
 # the evolution of an unstable, geostrophically balanced Bickley jet.
 # The example is periodic in ``x`` with flat bathymetry and
-# uses the conservative formulation of the shallow water equations.
+# uses the conservative formulation of the shallow-water equations.
 # The initial conditions superpose the Bickley jet with small-amplitude perturbations.
 # See ["The nonlinear evolution of barotropically unstable jets," J. Phys. Oceanogr. (2003)](https://doi.org/10.1175/1520-0485(2003)033<2173:TNEOBU>2.0.CO;2)
 # for more details on this problem.
 #
 # The mass transport ``(uh, vh)`` is the prognostic momentum variable
-# in the conservative formulation of the shallow water equations,
+# in the conservative formulation of the shallow-water equations,
 # where ``(u, v)`` are the horizontal velocity components and ``h``
 # is the layer height.
 #
@@ -30,7 +30,7 @@ Random.seed!(90210) # for reproducible results
 
 # ## Two-dimensional domain
 #
-# The shallow water model is two-dimensional and uses grids that are `Flat`
+# The shallow-water model is two-dimensional and uses grids that are `Flat`
 # in the vertical direction. We use length scales non-dimensionalized by the width
 # of the Bickley jet.
 
