@@ -194,8 +194,8 @@ grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Per
 # output
 
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [3.60072e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [7.20145e-17, 12.5664) regularly spaced with Δy=0.392699
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 12.5664) regularly spaced with Δy=0.392699
 └── Flat z
 ```
 
