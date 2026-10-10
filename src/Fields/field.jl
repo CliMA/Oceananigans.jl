@@ -723,7 +723,7 @@ end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, 0)))
     return @allowscalar sqrt(r[1])
 end
 
@@ -811,6 +811,11 @@ const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
+# Reductions get a field's interior: a 1-based array of the field's own size, which generic
+# reduction code (e.g. GPUArrays') can view, reshape and adapt, unlike the field itself
+@inline reduction_operand(c::Field) = interior(c)
+@inline reduction_operand(c) = c
+
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
 @inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
@@ -835,7 +840,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      operand;
+                                      reduction_operand(operand);
                                       kwargs...)
         end
 
@@ -849,7 +854,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(a, condition, mask);
+                                      reduction_operand(condition_operand(a, condition, mask));
                                       kwargs...)
         end
 
@@ -866,7 +871,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             if dims isa Colon
                 # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
