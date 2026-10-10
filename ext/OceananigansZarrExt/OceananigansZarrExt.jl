@@ -18,7 +18,8 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture
 using Oceananigans.Fields: AbstractField, location, indices, interior
 using Oceananigans.Grids:
     OrthogonalSphericalShellGrid, Center, Face, grid,
-    constructor_arguments, generate_coordinate, grid
+    constructor_arguments, generate_coordinate, grid,
+    AbstractVerticalCoordinate
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
@@ -65,6 +66,7 @@ using Oceananigans.OutputWriters:
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric,
     materialize_serialized_output,
+    serialize_vertical_coordinate,
     ZarrWriter
 using Oceananigans.Utils:
     materialize_schedule,

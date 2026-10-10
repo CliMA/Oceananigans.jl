@@ -30,7 +30,7 @@ import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
     Center, Face, grid, nodes, constructor_arguments,
-    generate_coordinate
+    generate_coordinate, AbstractVerticalCoordinate
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
@@ -77,6 +77,7 @@ using Oceananigans.OutputWriters:
     squeeze_reduced_dimensions,
     inflate_reduced_dimensions,
     materialize_serialized_output,
+    serialize_vertical_coordinate,
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:

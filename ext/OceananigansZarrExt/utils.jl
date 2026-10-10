@@ -27,6 +27,7 @@ convert_for_zarr(::GPU)             = "GPU()"
 # The reader takes `architecture` as a kwarg and substitutes it in via the
 # `args_ordered` override in `reconstruct_zarr_grid`.
 convert_for_zarr(::Distributed)     = "CPU()"
+convert_for_zarr(z::AbstractVerticalCoordinate) = serialize_vertical_coordinate(z)
 convert_for_zarr(x)                 = string(x)
 
 materialize_from_zarr(dict::AbstractDict) = OrderedDict{Symbol, Any}(Symbol(k) => materialize_from_zarr(v) for (k, v) in dict)
