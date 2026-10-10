@@ -193,3 +193,50 @@ end
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
     return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) && gfb1.immersed_condition == gfb2.immersed_condition
 end
+
+#####
+##### Checkpointing
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a CPU copy of the bottom height of `grid` (interior columns only), to be saved in a
+checkpoint. Return `nothing` for grids without a bottom height.
+"""
+bottom_height_checkpoint_state(grid) = nothing
+bottom_height_checkpoint_state(grid::ImmersedBoundaryGrid) = bottom_height_checkpoint_state(grid.immersed_boundary)
+
+function bottom_height_checkpoint_state(ib::AbstractGridFittedBottom{<:OffsetArray})
+    bottom_height = bottom_height_interior(ib.bottom_height)
+    return collect(on_architecture(CPU(), bottom_height))
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Throw an `ArgumentError` if `checkpoint_bottom_height`, the bottom height saved in a checkpoint,
+differs from the bottom height of `grid`.
+
+Restoring a checkpoint copies every cell as it was saved. If the bottom has changed, cells that
+were below the bottom in the checkpoint (where fields are zero) become active cells with zero
+values, which usually makes the simulation blow up soon after the restart.
+"""
+validate_checkpoint_bottom_height(grid, ::Nothing) = nothing
+
+# Add up `n` over all processes. Distributed architectures extend this so that every process
+# throws the same error together, instead of some processes waiting forever for the others.
+sum_over_processes(n, arch) = n
+
+function validate_checkpoint_bottom_height(grid, checkpoint_bottom_height)
+    local_mismatch = Int(bottom_height_checkpoint_state(grid) != checkpoint_bottom_height)
+
+    if sum_over_processes(local_mismatch, architecture(grid)) > 0
+        msg = string("The bottom height of the grid differs from the bottom height saved in the checkpoint.", '\n',
+                     "Restoring would give newly active cells the zero values of cells that were immersed in the checkpoint.", '\n',
+                     "Use the same bathymetry as the run that wrote the checkpoint.")
+        throw(ArgumentError(msg))
+    end
+
+    return nothing
+end

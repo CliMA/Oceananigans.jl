@@ -166,3 +166,5 @@ function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <
               south_halo_dependent_cells,
               north_halo_dependent_cells)
 end
+
+ImmersedBoundaries.sum_over_processes(n, arch::Distributed) = all_reduce(+, n, arch)

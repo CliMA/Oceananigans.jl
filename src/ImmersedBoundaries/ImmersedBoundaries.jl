@@ -4,7 +4,7 @@ export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBo
 
 using Printf: @sprintf
 
-using Oceananigans.Architectures: Architectures, on_architecture
+using Oceananigans.Architectures: Architectures, CPU, on_architecture
 using Oceananigans.Grids: Center, Face, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
 using Oceananigans.Utils: launch!, @apply_regionally
 
