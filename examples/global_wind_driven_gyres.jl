@@ -275,9 +275,9 @@ end
 # at the northern gyres.
 #
 # The simulation runner saves the barotropic streamfunction ``ψ``, defined by
-# ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U`` northward from
-# Antarctica, together with the surface speed and the surface temperature, every ten days
-# of a six-year run.
+# ``U = ∫ u \, \mathrm{d} z = - \partial ψ / \partial y`` and computed by integrating ``U``
+# northward from Antarctica, together with the surface speed and the surface temperature,
+# every ten days of a six-year run.
 
 year = 365days
 
