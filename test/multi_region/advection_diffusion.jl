@@ -3,6 +3,11 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
+multi_region_log = (:warn, "MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!")
+
+# WENO is reduced to first-order upwinding in the z-direction of grids with a single cell
+reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order=1) in the z-direction because size(grid, 3) = 1")
+
 function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
@@ -21,14 +26,15 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     cᵢ(x, y, z) = Gaussian(x, 0, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = @test_logs multi_region_log MultiRegionGrid(grid, partition = P(regions))
 
-    model = HydrostaticFreeSurfaceModel(mrg;
-                                        tracers = (:c, :e),
-                                        velocities = prescribed_velocities(),
-                                        free_surface = ExplicitFreeSurface(),
-                                        momentum_advection = nothing,
-                                        tracer_advection = WENO())
+    advection_logs = (reduced_z_advection_log, reduced_z_advection_log) # one for each tracer
+    model = @test_logs advection_logs... HydrostaticFreeSurfaceModel(mrg;
+                                                                     tracers = (:c, :e),
+                                                                     velocities = prescribed_velocities(),
+                                                                     free_surface = ExplicitFreeSurface(),
+                                                                     momentum_advection = nothing,
+                                                                     tracer_advection = WENO())
 
     set!(model, c=cᵢ, e=eᵢ)
 
@@ -46,14 +52,14 @@ end
 
 function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = @test_logs multi_region_log MultiRegionGrid(grid, partition = P(regions))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(mrg; momentum_advection = VectorInvariant(),
-                                        free_surface, coriolis, tracers = :c,
-                                        tracer_advection = WENO())
+    model = @test_logs reduced_z_advection_log HydrostaticFreeSurfaceModel(mrg; momentum_advection = VectorInvariant(),
+                                                                           free_surface, coriolis, tracers = :c,
+                                                                           tracer_advection = WENO())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
@@ -76,7 +82,7 @@ end
 
 function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions))
+    mrg = @test_logs multi_region_log MultiRegionGrid(grid, partition = P(regions))
 
     # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
     # halo region in the horizontal. Because the extented halo region size cannot exceed
@@ -84,12 +90,15 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     # size into consideration.
     free_surface = SplitExplicitFreeSurface(substeps = 8)
 
-    model = HydrostaticFreeSurfaceModel(mrg;
-                                        free_surface,
-                                        closure,
-                                        tracers = :c,
-                                        coriolis = nothing,
-                                        buoyancy=nothing)
+    # The free surface builds another MultiRegionGrid with extended halos when the grid is partitioned
+    free_surface_logs = regions > 1 ? (multi_region_log,) : ()
+
+    model = @test_logs free_surface_logs... HydrostaticFreeSurfaceModel(mrg;
+                                                                        free_surface,
+                                                                        closure,
+                                                                        tracers = :c,
+                                                                        coriolis = nothing,
+                                                                        buoyancy=nothing)
 
     # The initial condition varies in both directions and is not symmetric about the walls,
     # so that a wall halo wrongly filled by wrap-around communication changes the result.
@@ -143,8 +152,7 @@ for arch in archs
             cs = Array(interior(cs))
             es = Array(interior(es))
 
-            for regions in (2,), P in partitioning
-                @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
+            @testset "$regions $(nameof(P))s on $(nameof(typeof(grid))) [$(summary(arch))]" for regions in (2,), P in partitioning
                 c, e = solid_body_tracer_advection_test(grid; P=P, regions=regions)
 
                 c = interior(reconstruct_global_field(c))
@@ -175,8 +183,7 @@ for arch in archs
         cs = Array(interior(cs))
         ηs = Array(interior(ηs))
 
-        for regions in (2,), P in partitioning
-            @info "  Testing $regions $(P)s on $(typeof(grid).name.wrapper) on the $arch"
+        @testset "$regions $(nameof(P))s on $(nameof(typeof(grid))) [$(summary(arch))]" for regions in (2,), P in partitioning
             u, v, w, c, η = solid_body_rotation_test(grid; P=P, regions=regions)
 
             u = interior(reconstruct_global_field(u))
@@ -219,9 +226,7 @@ for arch in archs
                     fs = diffusion_cosine_test(grid; closure, field_name, regions = 1)
                     fs = Array(interior(fs))
 
-                    for regions in (2,), P in partitioning
-                        @info "  Testing diffusion of $field_name on $regions $(P)s with $(typeof(closure).name.wrapper) with topology $topology on $arch"
-
+                    @testset "Diffusion of $field_name on $regions $(nameof(P))s with $(nameof(typeof(closure))) and topology ($(join(nameof.(topology), ", "))) [$(summary(arch))]" for regions in (2,), P in partitioning
                         f = diffusion_cosine_test(grid; closure, P, field_name, regions)
                         f = interior(reconstruct_global_field(f))
 
