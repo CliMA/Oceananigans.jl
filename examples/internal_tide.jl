@@ -72,17 +72,17 @@ fig
 # tidal excursion to the width of the hill,
 #
 # ```math
-# ϵ = \frac{U_2 / ω_2}{σ}
+# ϵ = \frac{U_{\mathrm{tidal}} / ω_2}{σ}
 # ```
 #
-# We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_2``
+# We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
 # which then allows us to determine the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
 # flow response for a given tidal forcing. Doing so we get that for the sinusoidal forcing above,
 # the tidal velocity and tidal forcing amplitudes are related via:
 #
 # ```math
-# U_2 = \frac{ω_2}{ω_2^2 - f^2} F_0
+# U_{\mathrm{tidal}} = \frac{ω_2}{ω_2^2 - f^2} F_0
 # ```
 #
 # Now we have a way to find the tidal forcing amplitude that corresponds to a given
