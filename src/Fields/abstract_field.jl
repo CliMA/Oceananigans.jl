@@ -57,9 +57,12 @@ const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 @inline axis(index::UnitRange, N) = index
 @inline axis(index::Base.OneTo, N) = index
 
+# Fields adapted to the GPU drop their indices
+@inline axes_indices(f) = something(indices(f), (:, :, :))
+
 @inline function Base.axes(f::Abstract3DField)
     Nx, Ny, Nz = size(f)
-    ix, iy, iz = indices(f)
+    ix, iy, iz = axes_indices(f)
 
     ax = axis(ix, Nx)
     ay = axis(iy, Ny)
@@ -70,7 +73,7 @@ end
 
 @inline function Base.axes(f::Abstract4DField)
     Nx, Ny, Nz, Nt = size(f)
-    ix, iy, iz = indices(f)
+    ix, iy, iz = axes_indices(f)
 
     ax = axis(ix, Nx)
     ay = axis(iy, Ny)
