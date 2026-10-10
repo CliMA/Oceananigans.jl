@@ -297,6 +297,11 @@ for arch in archs
             three_index_kernel_function(i, j, k, grid) = i + j
             op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
             @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # GPU reductions adapt their operand inside the kernel, which needs an inferable adapt rule
+            field_kernel_function(i, j, k, grid, q) = @inbounds q[i, j, k]
+            op = KernelFunctionOperation{Center, Center, Center}(field_kernel_function, grid, q)
+            @test minimum(op) == 2
         end
 
         @testset "InterpolatedOperations [$A]" begin

@@ -3,7 +3,7 @@ using Base: @propagate_inbounds
 using Dates: AbstractDateTime
 using Oceananigans: AbstractModel, defaults, instantiated_location
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: AbstractField, Scan
+using Oceananigans.Fields: Fields, AbstractField, Scan
 using Oceananigans.Utils: time_difference_seconds
 
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -133,6 +133,9 @@ interior(derivative::TimeDerivative, I...) = interior(derivative.result, I...)
 
 "Inside kernels a `TimeDerivative` is its `result`."
 Adapt.adapt_structure(to, derivative::TimeDerivative) = Adapt.adapt(to, derivative.result)
+
+# Reductions see a `TimeDerivative` as its `result`, which adapts to the halo'd data
+Fields.reduction_operand(derivative::TimeDerivative) = Fields.reduction_operand(derivative.result)
 
 # Calling a `TimeDerivative` updates it; reading it, including through `compute!`, does not
 (derivative::TimeDerivative)(sim) = update_time_derivative!(derivative, sim.model)

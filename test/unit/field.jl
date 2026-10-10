@@ -126,6 +126,10 @@ function run_field_reduction_tests(grid)
             positional = argmax(windowed_values)
             @test value == maximum(windowed_values)
             @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+
+            # Reductions of operations on windowed fields cover only the window
+            @test sum(2 * w) ≈ 2 * sum(windowed_values)
+            @test dot(w, w) ≈ sum(abs2, windowed_values)
         end
 
         for dims in dims_to_test
@@ -907,6 +911,15 @@ end
             wet_pattern = copy(pattern)
             wet_pattern[:, :, 1] .= false
             @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
+
+            # Boolean functions of a floating-point field, where immersed cells are masked
+            for c in (CenterField(grid), CenterField(immersed_grid))
+                set!(c, 1)
+                @test !any(isnan, c)
+                @test all(isfinite, c)
+                @test maximum(isnan, c) == 0
+                @test !any(Array(interior(any(isnan, c; dims=1))))
+            end
         end
 
         for arch in archs, FT in float_types

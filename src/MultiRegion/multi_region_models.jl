@@ -169,8 +169,8 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    @apply_regionally velocity_kernel!, worksize = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _    = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -180,10 +180,10 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
         @inbounds transport_weight = transport_weights[substep]
 
         fill_halo_regions!(η)
-        @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, U_args)
+        @apply_regionally apply_barotropic_kernel!(velocity_kernel!, worksize, transport_weight, U_args)
 
         fill_halo_regions!((U, V))
-        @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, η_args)
+        @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, worksize, averaging_weight, η_args)
     end
 
     return nothing

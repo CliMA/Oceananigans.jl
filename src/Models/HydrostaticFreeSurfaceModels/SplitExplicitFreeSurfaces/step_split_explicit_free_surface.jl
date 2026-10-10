@@ -121,8 +121,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
     @apply_regionally workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
+    @apply_regionally velocity_kernel!, worksize = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _    = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
     U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -153,19 +153,19 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
 
             maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args[1:end-1]..., substep_clock, converted_η_halo_args[end]; only_local_halos)
-            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
+            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, worksize, transport_weight, converted_U_args)
 
             maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args[1:end-1]..., substep_clock, converted_U_halo_args[end]; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args[1:end-1]..., substep_clock, converted_V_halo_args[end]; only_local_halos)
             pin_barotropic_faces!(face_pins)
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, worksize, averaging_weight, converted_η_args)
         end
     end
 
     return nothing
 end
 
-@inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
+@inline apply_barotropic_kernel!(kernel, worksize, weight, args) = kernel(weight, args...; ndrange = Utils.launch_ndrange(worksize))
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F::Fη, clock, weights, transport_weights, ::Val{Nsubsteps}) where {Fη, Nsubsteps}
     arch = architecture(grid)
@@ -183,8 +183,9 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
     workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
-    free_surface_kernel!, _        = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
+    barotropic_velocity_kernel!, worksize = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _               = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
+    ndrange = Utils.launch_ndrange(worksize)
 
     U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -199,8 +200,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(transport_weight, converted_U_args...; ndrange)
+            free_surface_kernel!(averaging_weight, converted_η_args...; ndrange)
         end
     end
 

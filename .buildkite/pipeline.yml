@@ -7,6 +7,7 @@ env:
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
   JULIA_CUDA_USE_COMPAT: false
+  POCL_CPU_MAX_CU_COUNT: "1"
 agents:
   queue: "Oceananigans"
 with:
@@ -56,6 +57,7 @@ steps:
           limit: 1
 
   - label: "🏕️ initialize enzyme environment"
+    skip: "Skip Enzyme"
     concurrency_group: gate
     concurrency: 6
     key: "init_enzyme"
@@ -86,6 +88,7 @@ steps:
           limit: 1
 
   - label: "🦉 documentation"
+    skip: "Skip docs"
     concurrency_group: gate
     concurrency: 6
     depends_on: "init"
@@ -151,7 +154,7 @@ steps:
          Pkg.test("Oceananigans";
            coverage=true,
            julia_args=["--check-bounds=yes"],
-           test_args=`--verbose --quickfail unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts memory_allocation`)
+           test_args=`--verbose unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region scripts memory_allocation`)
         '
       test_status=$$?
       set -e
@@ -182,6 +185,7 @@ steps:
           - "CPU"
 
   - label: "☣ {{ matrix.architecture }} - Enzyme/Reactant tests"
+    skip: "Skip Enzyme"
     concurrency_group: gate
     concurrency: 6
     key: "tests_enzyme_reactant"

@@ -712,7 +712,7 @@ function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     B = ca * cb # Binary operation
     fill!(r, 0)
 
-    Base.mapreducedim!(identity, +, r, B)
+    Base.mapreducedim!(identity, +, r, reduction_operand(B))
     return r
 end
 
@@ -723,7 +723,7 @@ end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, 0)))
     return @allowscalar sqrt(r[1])
 end
 
@@ -811,6 +811,30 @@ const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
+# Reductions get a field's interior: a 1-based array of the field's own size, which generic
+# reduction code (e.g. GPUArrays') can view, reshape and adapt, unlike the field itself
+@inline reduction_operand(c::Field) = interior(c)
+@inline reduction_operand(c) = c
+
+# Operations drop the indices of their fields when adapted for a kernel, which changes their
+# size, so a windowed operation is reduced through a view of its window, which keeps it
+@inline reduction_operand(c::AbstractField) = windowed_reduction_operand(c, indices(c))
+@inline windowed_reduction_operand(c, ::Tuple{Colon, Colon, Colon}) = c
+@inline windowed_reduction_operand(c, ::Tuple) = view(c, axes(c)...)
+@inline windowed_reduction_operand(c, indices) = c
+
+# The mask stands in for the values of `f` where a condition doesn't hold, so it takes their type
+@inline function mapped_eltype(f, a)
+    T = Base.promote_op(f, eltype(a))
+    return isconcretetype(T) ? T : eltype(a)
+end
+
+# The neutral masks of `maximum` and `minimum` are infinite, which integers and `Bool`s represent
+# by their extreme values
+@inline convert_mask(::Type{T}, mask) where T = convert(T, mask)
+@inline convert_mask(::Type{T}, mask::AbstractFloat) where T <: Integer =
+    isinf(mask) ? (mask > 0 ? typemax(T) : typemin(T)) : convert(T, mask)
+
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
 @inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
@@ -830,12 +854,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
-            mask = convert(eltype(a), mask)
+            mask = convert_mask(mapped_eltype(f, a), mask)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      operand;
+                                      reduction_operand(operand);
                                       kwargs...)
         end
 
@@ -846,10 +870,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     kwargs...)
 
 
-            mask = convert(eltype(a), mask)
+            mask = convert_mask(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(a, condition, mask);
+                                      reduction_operand(condition_operand(a, condition, mask));
                                       kwargs...)
         end
 
@@ -860,13 +884,13 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
-            mask = convert(eltype(c), mask)
+            mask = convert_mask(mapped_eltype(f, c), mask)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             if dims isa Colon
                 # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
@@ -893,7 +917,7 @@ Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximu
 # on the CPU, or consumed by `mapreducedim!` on the GPU — which GPUArrays dispatches on
 # the one-element destination — so neither the operand nor the pairs are materialized.
 function locate_extremum(better, c::AbstractField, condition, mask)
-    mask = convert(eltype(c), mask)
+    mask = convert_mask(eltype(c), mask)
     operand = condition_operand(c, condition, mask)
 
     # Ties resolve to the smaller linear index, matching Base
@@ -935,13 +959,13 @@ Base.argmax(c::AbstractField; kwargs...) = last(findmax(c; kwargs...))
 Base.argmin(c::AbstractField; kwargs...) = last(findmin(c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
-    mask = convert(eltype(c), mask)
+    mask = convert_mask(mapped_eltype(f, c), mask)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
-    mask = convert(eltype(c), mask)
+    mask = convert_mask(mapped_eltype(f, c), mask)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
     L = conditional_length(operand, dims)
@@ -957,7 +981,7 @@ Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = St
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
-    mask = convert(eltype(a), mask)
+    mask = convert_mask(mapped_eltype(f, a), mask)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     L = conditional_length(condition_operand(f, a, condition, mask), dims)

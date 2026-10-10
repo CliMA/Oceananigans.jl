@@ -1,7 +1,7 @@
 using Adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
-import KernelAbstractions
+using KernelInterface: KernelInterface
 
 using Oceananigans.Architectures: CPU, device
 
@@ -210,7 +210,7 @@ end
 function build_table(arch, func, range::NTuple{1}, points::NTuple{1}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
-    table = KernelAbstractions.zeros(dev, FT, points...)
+    table = KernelInterface.zeros(dev, FT, points...)
     kernel! = _build_table_1d_kernel!(dev, 256)
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table
@@ -219,7 +219,7 @@ end
 function build_table(arch, func, range::NTuple{2}, points::NTuple{2}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
-    table = KernelAbstractions.zeros(dev, FT, points...)
+    table = KernelInterface.zeros(dev, FT, points...)
     kernel! = _build_table_2d_kernel!(dev, (16, 16))
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table
@@ -228,7 +228,7 @@ end
 function build_table(arch, func, range::NTuple{3}, points::NTuple{3}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
-    table = KernelAbstractions.zeros(dev, FT, points...)
+    table = KernelInterface.zeros(dev, FT, points...)
     kernel! = _build_table_3d_kernel!(dev, (8, 8, 8))
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table
@@ -237,7 +237,7 @@ end
 function build_table(arch, func, range::NTuple{4}, points::NTuple{4}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
-    table = KernelAbstractions.zeros(dev, FT, points...)
+    table = KernelInterface.zeros(dev, FT, points...)
     kernel! = _build_table_4d_kernel!(dev, (4, 4, 4, 4))
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table
@@ -246,7 +246,7 @@ end
 function build_table(arch, func, range::NTuple{5}, points::NTuple{5}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
-    table = KernelAbstractions.zeros(dev, FT, points...)
+    table = KernelInterface.zeros(dev, FT, points...)
     kernel! = _build_table_5d_kernel!(dev, (4, 4, 4, 4, 4))
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table

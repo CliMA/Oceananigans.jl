@@ -20,6 +20,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
+env:
+  # Use a single thread in the KernelAbstraction's POCL backend
+  POCL_CPU_MAX_CU_COUNT: "1"
+
 jobs:
   tests:
     name: ${{ matrix.label }} - Julia ${{ matrix.julia_version }} - ${{ matrix.os }} - ${{ matrix.julia_arch }}
