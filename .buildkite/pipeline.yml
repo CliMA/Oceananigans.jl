@@ -310,3 +310,4 @@ steps:
     commands:
       - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
       - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
+      - julia +$JULIA_VERSION --color=yes -e 'using Pkg; try Pkg.gc(); catch err @error "Pkg.gc failed" err; end'
