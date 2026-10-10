@@ -4,7 +4,7 @@
 # in a two-dimensional domain. This example demonstrates:
 #
 #   * How to run a model with no tracers and no buoyancy model.
-#   * How to use computed `Field`s to generate output.
+#   * How to use `AbstractOperation`s to generate output.
 
 # ## Install dependencies
 #
@@ -17,9 +17,9 @@
 
 # ## Model setup
 
-# We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
-# a fifth-order advection scheme, third-order Runge-Kutta time-stepping,
-# and a small isotropic viscosity.  Note that we assign `Flat` to the `z` direction.
+# We use a grid with 128² points, a fifth-order upwind-biased advection scheme,
+# third-order Runge-Kutta time-stepping (the default), and a small isotropic viscosity.
+# Note that we assign `Flat` to the `z` direction.
 
 using Oceananigans
 using Random
@@ -51,16 +51,15 @@ set!(model, u=uᵢ, v=vᵢ)
 
 # ## Setting up a simulation
 #
-# We set-up a simulation that stops at 50 time units, with an initial
-# time-step of 0.1, and with adaptive time-stepping and progress printing.
+# We set up a simulation that stops at 50 time units, with an initial
+# time-step of 0.2, and with adaptive time-stepping and progress printing.
 
 simulation = Simulation(model, Δt=0.2, stop_time=50)
 
-# The `TimeStepWizard` helps ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
+# A `TimeStepWizard` helps ensure stable time-stepping
+# with a Courant-Friedrichs-Lewy (CFL) number of 0.7.
 
-wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, IterationInterval(10), cfl=0.7, max_change=1.1, max_Δt=0.5)
 
 # ## Logging simulation progress
 #
@@ -69,26 +68,21 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 using Printf
 
 function progress_message(sim)
-    max_abs_u = maximum(abs, sim.model.velocities.u)
-    walltime = prettytime(sim.run_wall_time)
-
-    return @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s\n",
-                          iteration(sim), time(sim), sim.Δt, max_abs_u, walltime)
+    u = sim.model.velocities.u
+    @info @sprintf("Iteration: %04d, time: %1.3f, Δt: %.2e, max(|u|) = %.1e, wall time: %s",
+                   iteration(sim), time(sim), sim.Δt, maximum(abs, u), prettytime(sim.run_wall_time))
+    return nothing
 end
 
 add_callback!(simulation, progress_message, IterationInterval(100))
 
 # ## Output
 #
-# We set up an output writer for the simulation that saves vorticity and speed every 20 iterations.
+# We set up an output writer for the simulation that saves vorticity and speed every 0.6 time units.
 #
 # ### Computing vorticity and speed
 #
-# To make our equations prettier, we unpack `u`, `v`, and `w` from
-# the `NamedTuple` model.velocities:
-u, v, w = model.velocities
-
-# Next we create two `Field`s that calculate
+# We create two abstract operations that calculate
 # _(i)_ vorticity that measures the rate at which the fluid rotates
 # and is defined as
 #
@@ -106,12 +100,12 @@ u, v, w = model.velocities
 
 s = sqrt(u^2 + v^2)
 
-# We pass these operations to an output writer below to calculate and output them during the simulation.
-filename = "two_dimensional_turbulence"
+# We pass these operations to an output writer, which computes and saves them during the simulation.
 
-simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
+filename = "two_dimensional_turbulence.jld2"
+
+simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s); filename,
                                                 schedule = TimeInterval(0.6),
-                                                filename = filename * ".jld2",
                                                 overwrite_files = true)
 
 # ## Running the simulation
@@ -124,12 +118,12 @@ run!(simulation)
 
 # ## Visualizing the results
 #
-# We load the output.
+# We load the output
 
-ω_timeseries = FieldTimeSeries(filename * ".jld2", "ω")
-s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
+ωts = FieldTimeSeries(filename, "ω")
+sts = FieldTimeSeries(filename, "s")
 
-times = ω_timeseries.times
+times = ωts.times
 nothing #hide
 
 # and animate the vorticity and fluid speed.
@@ -155,16 +149,15 @@ n = Observable(1)
 
 # Now let's plot the vorticity and speed.
 
-ω = @lift ω_timeseries[$n]
-s = @lift s_timeseries[$n]
+ω = @lift ωts[$n]
+s = @lift sts[$n]
 
 heatmap!(ax_ω, ω; colormap = :balance, colorrange = (-2, 2))
 heatmap!(ax_s, s; colormap = :speed, colorrange = (0, 0.2))
 
-title = @lift "t = " * string(round(times[$n], digits=2))
+title = @lift "t = $(round(times[$n], digits=2))"
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 
-current_figure() #hide
 fig
 
 # Finally, we record a movie.
@@ -173,7 +166,7 @@ frames = 1:length(times)
 
 @info "Making a neat animation of vorticity and speed..."
 
-record(fig, filename * ".mp4", frames, framerate=24) do i
+record(fig, "two_dimensional_turbulence.mp4", frames, framerate=24) do i
     n[] = i
 end
 nothing #hide

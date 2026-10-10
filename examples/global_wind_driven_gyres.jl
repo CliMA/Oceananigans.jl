@@ -7,7 +7,7 @@
 # To keep it cheap enough for a laptop GPU, the grid is 1° with four layers.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
-# currents, the Gulf Stream, and the Kuroshio, that close the wind-driven gyres.
+# currents that close the wind-driven gyres: the Gulf Stream and the Kuroshio.
 # Sverdrup theory says that the depth-integrated meridional transport of the interior is
 #
 # ```math
@@ -186,12 +186,13 @@ wind_stress_curl(φ) = - (zonal_wind_stress(φ + 0.01, wind_belts) - zonal_wind_
 sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρ₀ * 2 * rotation_rate * cosd(φ) / R)
 
 latitudes = -80:0.5:80
+extratropical_latitudes = filter(φ -> abs(φ) > 5, latitudes)
 
 fig = Figure(size=(800, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal wind stress [N m⁻²]", ylabel="Latitude [°]")
 lines!(ax, [zonal_wind_stress(φ, wind_belts) for φ in latitudes], latitudes)
 ax = Axis(fig[1, 2], xlabel="Sverdrup transport [m² s⁻¹]", ylabel="Latitude [°]")
-lines!(ax, sverdrup_transport.(latitudes[abs.(latitudes) .> 5], Ω), latitudes[abs.(latitudes) .> 5])
+lines!(ax, sverdrup_transport.(extratropical_latitudes, Ω), extratropical_latitudes)
 save("wind_stress.png", fig, px_per_unit=2) #hide
 
 # ![](wind_stress.png)
@@ -229,7 +230,7 @@ T_boundary_conditions = FieldBoundaryConditions(top=temperature_restoring)
 # Given the time step `Δt`, the free surface computes the number of substeps that keeps
 # the barotropic CFL number at 0.7.
 
-Δt = 1hour
+Δt = 1.5hour
 free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 
 # ## The model
@@ -267,7 +268,7 @@ end
 # ## Three Coriolis parameters
 #
 # The Coriolis parameter is the only thing that differs between the runs. Two of them use
-# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at half it, which halves
+# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at half that rate, which halves
 # ``β`` and should double the Sverdrup transport. The third uses an [`FPlane`](@ref) with the
 # value of ``f`` at 30°N everywhere, ``f = 2Ω \sin 30°``, so that ``β = 0``. A constant
 # ``f`` has the wrong sign in the Southern Hemisphere, so on the ``f``-plane we only look
@@ -331,8 +332,7 @@ f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=DualGridScheme(gri
 # contains the center of the subtropical gyre and the western boundary. The Gulf Stream
 # and the Kuroshio carry that transport northward along the coast.
 
-ψt = FieldTimeSeries(filenames[Ω], "ψ")
-times = ψt.times
+times = FieldTimeSeries(filenames[Ω], "ψ").times
 
 function gyre_transport(ψ, box)
     inside = Field{Center, Center, Nothing}(ψ.grid)

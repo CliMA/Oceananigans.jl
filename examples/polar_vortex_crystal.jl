@@ -27,19 +27,18 @@ Nx = Ny = 128
 Δ  = 25kilometers
 H  = 1000meters
 
-grid = LambertConformalConicGrid(Float64;
-                                 size = (Nx, Ny, 1),
-                                 center = (0, 90),
-                                 spacing = Δ,
-                                 standard_parallel = 90,
-                                 latitude_of_origin = 90,
-                                 central_longitude = 0,
-                                 z = (-H, 0),
-                                 halo = (7, 7, 7))
+grid = LambertConformalConicGrid(; size = (Nx, Ny, 1),
+                                   center = (0, 90),
+                                   spacing = Δ,
+                                   standard_parallel = 90,
+                                   latitude_of_origin = 90,
+                                   central_longitude = 0,
+                                   z = (-H, 0),
+                                   halo = (7, 7, 7))
 
-R_earth = grid.radius
-R_bowl  = 1500kilometers
-bowl_bottom(λ, φ) = ifelse(R_earth * (π/2 - deg2rad(φ)) > R_bowl, zero(H), -H)
+R = grid.radius
+disk_radius = 1500kilometers
+bowl_bottom(λ, φ) = R * deg2rad(90 - φ) > disk_radius ? 0 : -H
 ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(bowl_bottom))
 
 # ## Model
@@ -59,47 +58,44 @@ model = HydrostaticFreeSurfaceModel(ibg;
 
 # ## Initial condition
 #
-# Six Gaussian cyclones at radius `r_ring = 900 km` from the pole, evenly
+# Six Gaussian cyclones at a distance `ring_radius = 900 km` from the pole, evenly
 # spaced in longitude, plus one central cyclone at the pole. The depression
 # amplitude `η₀ = -13 m` and width `σ = 200 km` give an initial Rossby number
 # `Ro ≈ -2gη₀/(f²σ²) ≈ 0.3` at each vortex centre.
 #
-# Working in projected (`xp`, `yp`) coordinates of the polar stereographic
-# limit lets us write `η` and the geostrophic velocities `(u, v)` as plain
-# Gaussians of distance from each vortex centre. `set!` is told these are in
-# the grid's intrinsic frame.
+# Working in the projected coordinates `(x, y)` of the polar stereographic
+# limit lets us write `η` as a sum of Gaussians centred on `(xᵥ, yᵥ)`, and the
+# geostrophic velocities `u = -(g/f) ∂η/∂y` and `v = (g/f) ∂η/∂x` in closed form.
+# `set!` is told these velocities are in the grid's intrinsic frame.
 
-N_ring   = 6
-r_ring   = 900kilometers
-σ_vortex = 200kilometers
-η₀       = -13
+ring_size   = 6
+ring_radius = 900kilometers
+σ  = 200kilometers
+η₀ = -13
 
-ring_λ      = [360k/N_ring for k in 0:N_ring-1]
-ring_φ      = fill(90 - rad2deg(r_ring/R_earth), N_ring)
-vortex_λ    = vcat(ring_λ, [0])
-vortex_φ    = vcat(ring_φ, [90])
-vortex_xpyp = [lcc_forward(grid.conformal_mapping, λv, φv)
-               for (λv, φv) in zip(vortex_λ, vortex_φ)]
+ring_latitude = 90 - rad2deg(ring_radius / R)
+ring_longitudes = [360k / ring_size for k in 0:ring_size-1]
+vortex_coordinates = [[(λ, ring_latitude) for λ in ring_longitudes]; (0, 90)]
+vortex_centres = [lcc_forward(grid.conformal_mapping, λ, φ) for (λ, φ) in vortex_coordinates]
 
-g_const  = Oceananigans.defaults.gravitational_acceleration
-f_pole   = 2 * Oceananigans.defaults.planet_rotation_rate
-geo_coef = g_const * η₀ / (f_pole * σ_vortex^2)
+g = Oceananigans.defaults.gravitational_acceleration
+f = 2 * Oceananigans.defaults.planet_rotation_rate
 
-gaussian(xp, yp, xv, yv) = exp(-((xp - xv)^2 + (yp - yv)^2) / (2σ_vortex^2))
+ηᵥ(x, y, xᵥ, yᵥ) = η₀ * exp(-((x - xᵥ)^2 + (y - yᵥ)^2) / 2σ^2)
 
 function η_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
-    return sum(η₀ * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
+    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum(ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 
 function u_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
-    return sum( geo_coef * (yp - yv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
+    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum(g / f * (y - yᵥ) / σ^2 * ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 
 function v_init(λ, φ, z)
-    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
-    return sum(-geo_coef * (xp - xv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
+    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum(- g / f * (x - xᵥ) / σ^2 * ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 
 set!(model, η = η_init, u = u_init, v = v_init; intrinsic_velocities = true)
@@ -117,7 +113,7 @@ simulation = Simulation(model; Δt, stop_time = 120days)
 advective_cfl = AdvectiveCFL(simulation.Δt)
 
 progress(sim) = @printf("iter %5d, t = %s, max|u| = %.3f m/s, max|η| = %.2f m, CFL = %.3f\n",
-                        iteration(sim), prettytime(time(sim)),
+                        iteration(sim), prettytime(sim),
                         maximum(abs, sim.model.velocities.u),
                         maximum(abs, sim.model.free_surface.displacement),
                         advective_cfl(sim.model))
@@ -141,7 +137,7 @@ run!(simulation)
 
 # ## Visualization
 #
-# Animate η, |u|, and ζ over the 5-day evolution.
+# Animate η, ζ, and |u| over the 120-day evolution.
 
 using CairoMakie
 
@@ -153,12 +149,12 @@ sts = FieldTimeSeries(filename, "s")
 times = ηts.times
 Nt = length(times)
 
-η_lim = maximum(maximum(abs, interior(ηts[n])) for n in 1:Nt)
-ζ_lim = maximum(maximum(abs, interior(ζts[n])) for n in 1:Nt) * 0.5
-s_lim = maximum(maximum(abs, interior(sts[n])) for n in 1:Nt)
+η_lim = maximum(abs, ηts)
+ζ_lim = maximum(abs, ζts) / 2
+s_lim = maximum(sts)
 
 n = Observable(1)
-title = @lift @sprintf("Polar vortex crystal — t = %.2f d", times[$n] / 86400)
+title = @lift "Polar vortex crystal — t = " * prettytime(times[$n])
 ηₙ = @lift ηts[$n]
 ζₙ = @lift ζts[$n]
 sₙ = @lift sts[$n]

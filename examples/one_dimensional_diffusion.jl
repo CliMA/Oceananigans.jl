@@ -42,10 +42,11 @@ grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 # `x` and `y` topologies. We excise halos and avoid interpolation or differencing
 # in `Flat` directions, saving computation and memory.
 #
-# We next specify a model with an `ScalarDiffusivity`, which models either
+# We next specify a `ScalarDiffusivity` with diffusivity ``κ``, which models either
 # molecular or turbulent diffusion,
 
-closure = ScalarDiffusivity(κ=1)
+κ = 1
+closure = ScalarDiffusivity(; κ)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 
@@ -70,27 +71,22 @@ set!(model, T=initial_temperature)
 using CairoMakie
 set_theme!(Theme(fontsize = 20, linewidth=3))
 
-fig = Figure()
 axis = (xlabel = "Temperature (ᵒC)", ylabel = "z")
 label = "t = 0"
 lines(model.tracers.T; label, axis)
 current_figure() #hide
 
-# The function `interior` above extracts a `view` of `model.tracers.T` over the
-# physical points (excluding halos) at `(1, 1, :)`.
-#
 # ## Running a `Simulation`
 #
-# Next we set-up a `Simulation` that time-steps the model forward and manages output.
+# Next we set up a `Simulation` that time-steps the model forward and manages output.
 
-## Time-scale for diffusion across a grid cell
-min_Δz = minimum_zspacing(model.grid)
-diffusion_time_scale = min_Δz^2 / model.closure.κ.T
+Δz = minimum_zspacing(grid)
+Δt = 0.1 * Δz^2 / κ
 
-simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
+simulation = Simulation(model; Δt, stop_iteration = 1000)
 
 # `simulation` will run for 1000 iterations with a time-step that resolves the time-scale
-# at which our temperature field diffuses. All that's left is to
+# ``Δz^2 / κ`` for diffusion across a grid cell. All that's left is to
 
 ## Fail the docs build if this simulation produces NaNs #hide
 Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
@@ -100,9 +96,7 @@ run!(simulation)
 #
 # Let's look at how `model.tracers.T` changed during the simulation.
 
-using Printf
-
-label = @sprintf("t = %.3f", model.clock.time)
+label = "t = $(round(model.clock.time, digits=3))"
 lines!(model.tracers.T; label)
 axislegend()
 current_figure() #hide
@@ -113,7 +107,7 @@ current_figure() #hide
 simulation.output_writers[:temperature] =
     JLD2Writer(model, model.tracers,
                filename = "one_dimensional_diffusion.jld2",
-               schedule=IterationInterval(100),
+               schedule = IterationInterval(100),
                overwrite_files = true)
 
 # We run the simulation for 10,000 more iterations,
@@ -121,12 +115,11 @@ simulation.output_writers[:temperature] =
 simulation.stop_iteration += 10000
 run!(simulation)
 
-# Finally, we animate the results by opening the JLD2 file, extract the
-# iterations we ended up saving at, and plot the evolution of the
-# temperature profile in a loop over the iterations.
+# To animate the results, we load the saved temperature as a `FieldTimeSeries`
+# and plot the temperature profile at each saved time.
 
-T_timeseries = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
-times = T_timeseries.times
+Tts = FieldTimeSeries("one_dimensional_diffusion.jld2", "T")
+times = Tts.times
 
 fig = Figure()
 ax = Axis(fig[2, 1]; xlabel = "Temperature (ᵒC)", ylabel = "z")
@@ -134,13 +127,12 @@ xlims!(ax, 0, 1)
 
 n = Observable(1)
 
-T = @lift T_timeseries[$n]
-lines!(T)
+T = @lift Tts[$n]
+lines!(ax, T)
 
-label = @lift "t = " * string(round(times[$n], digits=3))
+label = @lift "t = $(round(times[$n], digits=3))"
 Label(fig[1, 1], label, tellwidth=false)
 
-current_figure() #hide
 fig
 
 # Finally, we record a movie.

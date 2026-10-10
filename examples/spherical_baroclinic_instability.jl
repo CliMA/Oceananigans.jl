@@ -5,9 +5,10 @@
 # a standard latitude-longitude grid, a tripolar grid, and a rotated latitude-longitude grid.
 #
 # Baroclinic instability is a fundamental mechanism for generating mesoscale eddies in the
-# ocean and synoptic-scale weather systems in the atmosphere. The instability arises when
-# horizontal density gradients (fronts) are tilted by the combined effects of Earth's rotation
-# and stratification, converting available potential energy into kinetic energy.
+# ocean and synoptic-scale weather systems in the atmosphere. In a rotating, stratified fluid,
+# horizontal density gradients (fronts) are associated with sloping density surfaces that store
+# available potential energy. Baroclinic instability releases this energy, converting it into
+# the kinetic energy of eddies.
 #
 # In this example, we initialize a meridional temperature front that is baroclinically unstable,
 # and watch eddies grow and equilibrate the front. We demonstrate this phenomenon on three
@@ -75,15 +76,14 @@ lat_lon_grid = LatitudeLongitudeGrid(arch; size, halo, latitude, longitude, z)
 
 # ### Tripolar grid
 #
-# The tripolar grid has singularities ("north poles") at 55°N latitude by default.
+# The tripolar grid places its two singularities ("north poles") at longitudes
+# `first_pole_longitude` and `first_pole_longitude + 180°`, both at latitude `north_poles_latitude`.
+# By default, the first pole is at 70°E longitude and 55°N latitude.
 
 underlying_tripolar_grid = TripolarGrid(arch; size, halo, z)
 
-# We also use an `ImmersedBoundaryGrid` to place Gaussian mountains over the singularities
+# We use an `ImmersedBoundaryGrid` to place Gaussian mountains over the singularities
 # to ensure the simulation remains stable.
-# The tripolar grid places singularities at longitude `first_pole_longitude` and
-# `first_pole_longitude + 180°`, both at latitude `north_poles_latitude`.
-# By default, the first pole is at 70°E longitude and 55°N latitude.
 
 σφ, σλ = 4, 8       # mountain extent in latitude and longitude (degrees)
 λ₀, φ₀ = 70, 55     # first pole location
@@ -127,9 +127,7 @@ function build_model(grid)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     free_surface = SplitExplicitFreeSurface(grid; substeps=80)
 
-    ## Apply bottom drag to both domain boundaries and immersed boundaries.
-    ## For immersed boundaries, use ImmersedBoundaryCondition to apply drag
-    ## only to the bottom facet.
+    ## On immersed boundaries, apply drag only to the bottom facet
     drag = BulkDrag(coefficient=2e-3)
     u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
     v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
@@ -140,7 +138,6 @@ function build_model(grid)
                                         momentum_advection, tracer_advection,
                                         boundary_conditions)
 
-    ## Initial conditions
     Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
     Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
     set!(model, T=Tᵢ, S=Sᵢ)
@@ -151,16 +148,14 @@ end
 # ## Simulation runner
 #
 # We define a function that sets up and runs a simulation on a given grid,
-# along with a progress callback that prints the velocity and temperature range
+# along with a progress callback that prints the maximum velocities and the temperature range
 # as the simulation runs. We run for 60 days to observe the initial development of the instability
 # while keeping computational costs reasonable.
 
-## Simulation runner
 function run_baroclinic_instability(grid, name; stop_time=60days, save_interval=24hours)
     model = build_model(grid)
     simulation = Simulation(model; Δt=8minutes, stop_time)
 
-    ## Progress callback
     function progress(sim)
         T = sim.model.tracers.T
         u, v, w = sim.model.velocities
@@ -177,15 +172,14 @@ function run_baroclinic_instability(grid, name; stop_time=60days, save_interval=
 
     add_callback!(simulation, progress, IterationInterval(1000))
 
-    ## Set up output: save vorticity and temperature at the surface
+    ## Save surface vorticity and temperature
     u, v, w = model.velocities
     T = model.tracers.T
     ζ = ∂x(v) - ∂y(u)
-    fields = (; ζ, T)
     indices = (:, :, grid.Nz)
     filename = "spherical_baroclinic_instability_" * name * ".jld2"
 
-    simulation.output_writers[:surface] = JLD2Writer(model, fields; indices, filename,
+    simulation.output_writers[:surface] = JLD2Writer(model, (; ζ, T); indices, filename,
                                                      schedule = TimeInterval(save_interval),
                                                      overwrite_files = true)
     ## Fail the docs build if this simulation produces NaNs #hide
@@ -198,28 +192,20 @@ end
 #
 # Now we run simulations on all three grids.
 
-names = ("lat_lon", "tripolar", "rotated_lat_lon") # To fix ordering of plots
+names = ("lat_lon", "tripolar", "rotated_lat_lon")
+grids = (lat_lon_grid, tripolar_grid, rotated_lat_lon_grid)
 
-results = Dict(
-    "lat_lon" => run_baroclinic_instability(lat_lon_grid, "lat_lon"),
-    "tripolar" => run_baroclinic_instability(tripolar_grid, "tripolar"),
-    "rotated_lat_lon" => run_baroclinic_instability(rotated_lat_lon_grid, "rotated_lat_lon")
-)
+filenames = Dict(name => run_baroclinic_instability(grid, name) for (name, grid) in zip(names, grids))
 
 # ## Visualization
 #
 # We make a three-dimensional visualization of our results on the sphere
 # with CairoMakie. First we load the output from each simulation,
 
-T_ts = Dict()
-ζ_ts = Dict()
+temperature_timeseries = Dict(name => FieldTimeSeries(filenames[name], "T") for name in names)
+vorticity_timeseries = Dict(name => FieldTimeSeries(filenames[name], "ζ") for name in names)
 
-for (name, filename) in results
-    T_ts[name] = FieldTimeSeries(filename, "T")
-    ζ_ts[name] = FieldTimeSeries(filename, "ζ")
-end
-
-times = T_ts["lat_lon"].times
+times = temperature_timeseries["lat_lon"].times
 Nt = length(times)
 
 # Next we make a plot showing baroclinic instability
@@ -227,9 +213,8 @@ Nt = length(times)
 # grid type, with temperature on top and vorticity on the bottom.
 
 fig = Figure(size = (700, 500))
-n = Nt
-title_str = @lift "Baroclinic instability at t = " * prettytime(times[$n])
-Label(fig[1, 1:4], title_str, fontsize = 16)
+title = "Baroclinic instability at t = " * prettytime(times[Nt])
+Label(fig[1, 1:4], title, fontsize = 16)
 
 labels = Dict("lat_lon" => "Latitude-Longitude",
               "tripolar" => "Tripolar",
@@ -237,12 +222,12 @@ labels = Dict("lat_lon" => "Latitude-Longitude",
 
 axes_T = Dict()
 axes_ζ = Dict()
-kw = (elevation=deg2rad(50), azimuth=deg2rad(190), aspect=:equal)
+axis_kwargs = (elevation=deg2rad(50), azimuth=deg2rad(190), aspect=:equal)
 
 for (col, name) in enumerate(names)
     Label(fig[2, col], labels[name], fontsize = 16, tellwidth=false)
-    axes_T[name] = Axis3(fig[3, col]; kw...)
-    axes_ζ[name] = Axis3(fig[4, col]; kw...)
+    axes_T[name] = Axis3(fig[3, col]; axis_kwargs...)
+    axes_ζ[name] = Axis3(fig[4, col]; axis_kwargs...)
 end
 
 # We use `surface!`, which has a special extension for Oceananigans fields,
@@ -252,11 +237,11 @@ end
 plots_T = Dict()
 plots_ζ = Dict()
 
-for name in keys(results)
-    Tn = T_ts[name][n]
-    ζn = ζ_ts[name][n]
-    plots_T[name] = surface!(axes_T[name], Tn; colormap = :thermal, colorrange = (5, 30))
-    plots_ζ[name] = surface!(axes_ζ[name], ζn; colormap = :balance, colorrange = (-2e-5, 2e-5))
+for name in names
+    T = temperature_timeseries[name][Nt]
+    ζ = vorticity_timeseries[name][Nt]
+    plots_T[name] = surface!(axes_T[name], T; colormap = :thermal, colorrange = (5, 30))
+    plots_ζ[name] = surface!(axes_ζ[name], ζ; colormap = :balance, colorrange = (-2e-5, 2e-5))
     hidedecorations!(axes_T[name])
     hidedecorations!(axes_ζ[name])
     hidespines!(axes_T[name])

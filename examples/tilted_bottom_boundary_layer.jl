@@ -1,6 +1,8 @@
+# # Tilted bottom boundary layer
+#
 # This example simulates a two-dimensional oceanic bottom boundary layer
 # in a domain that's tilted with respect to gravity. We simulate the perturbation
-# away from a constant along-slope (y-direction) velocity constant density stratification.
+# away from a constant along-slope (y-direction) velocity and a constant density stratification.
 # This perturbation develops into a turbulent bottom boundary layer due to momentum
 # loss at the bottom boundary modeled with a quadratic drag law.
 #
@@ -33,21 +35,13 @@ Lz = 100meters
 Nx = 64
 Nz = 64
 
-## Creates a grid with near-constant spacing `refinement * Lz / Nz`
-## near the bottom:
-refinement = 1.8 # controls spacing near surface (higher means finer spaced)
-stretching = 10  # controls rate of stretching at bottom
+refinement = 1.8 # controls spacing near the bottom (higher means finer spaced)
+stretching = 10  # controls rate of stretching away from the bottom
 
-## "Warped" height coordinate
 h(k) = (Nz + 1 - k) / Nz
-
-## Linear near-surface generator
 ζ(k) = 1 + (h(k) - 1) / refinement
-
-## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
-## Generating function
 z_faces(k) = - Lz * (ζ(k) * Σ(k) - 1)
 
 grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
@@ -71,7 +65,7 @@ current_figure() #hide
 
 θ = 3 # degrees
 
-# so that ``x`` is the along-slope direction, ``z`` is the across-slope direction that
+# so that ``x`` is the across-slope direction, ``z`` is the slope-normal direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
 ẑ = (sind(θ), 0, cosd(θ))
@@ -94,35 +88,34 @@ coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ẑ)
 # _perturbations_ away from the constant density stratification by imposing
 # a constant stratification as a `BackgroundField`,
 
-N² = 1e-5 # s⁻² # background vertical buoyancy gradient
-B∞_field = BackgroundField(constant_stratification, parameters=(; ẑ, N² = N²))
+N² = 1e-5 # s⁻²
+B∞_field = BackgroundField(constant_stratification, parameters=(; ẑ, N²))
 
 # We choose to impose a bottom boundary condition of zero *total* diffusive buoyancy
 # flux across the seafloor,
 # ```math
 # ∂_z B = ∂_z b + N^{2} \cos{\theta} = 0.
 # ```
-# This shows that to impose a no-flux boundary condition on the total buoyancy field ``B``, we must apply a boundary condition to the perturbation buoyancy ``b``,
+# This shows that to impose a no-flux boundary condition on the total buoyancy field ``B``,
+# we must apply a boundary condition to the perturbation buoyancy ``b``,
 # ```math
 # ∂_z b = - N^{2} \cos{\theta}.
 # ```
 
-∂z_b_bottom = - N² * cosd(θ)
-negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
-b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
+b_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(-N² * cosd(θ)))
 
 # ## Bottom drag and along-slope interior velocity
 #
-# We impose bottom drag that follows Monin--Obukhov theory.
+# We impose bottom drag that follows Monin–Obukhov theory.
 # We use `BulkDrag` to create the drag boundary conditions, which computes a
 # quadratic drag proportional to the total velocity (including the background velocity):
 
 V∞ = 0.1 # m s⁻¹
-ℓ = 0.1 # m (roughness length)
-ϰ = 0.4  # von Karman constant
+ℓ = 0.1  # roughness length (m)
+ϰ = 0.4  # von Kármán constant
 
-z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
-cᴰ = (ϰ / log(z₁ / ℓ))^2 # Drag coefficient
+z₁ = first(znodes(grid, Center())) # height of the grid center closest to the bottom
+cᴰ = (ϰ / log(z₁ / ℓ))^2
 
 drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞, 0))
 
@@ -132,7 +125,7 @@ v_bcs = FieldBoundaryConditions(bottom=drag_bc)
 # Note that, similar to the buoyancy boundary conditions, we had to
 # include the background flow in the drag calculation.
 #
-# Let us also create `BackgroundField` for the along-slope interior velocity:
+# Let us also create a `BackgroundField` for the along-slope interior velocity:
 
 V∞_field = BackgroundField(V∞)
 
@@ -159,34 +152,31 @@ set!(model, u=noise, w=noise)
 # ## Create and run a simulation
 #
 # We are now ready to create the simulation. We begin by setting the initial time step
-# conservatively, based on the smallest grid size of our domain and either an advective
-# or diffusive time scaling, depending on which is shorter.
+# conservatively, based on the smallest horizontal grid spacing and the interior velocity.
 
 Δt₀ = 0.5 * minimum_xspacing(grid) / V∞
 simulation = Simulation(model, Δt = Δt₀, stop_time = 1day)
 
 # We use a `TimeStepWizard` to adapt our time-step,
 
-wizard = TimeStepWizard(max_change=1.1, cfl=0.7)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
+conjure_time_step_wizard!(simulation, IterationInterval(4), max_change=1.1, cfl=0.7)
 
 # and also we add another callback to print a progress message,
 
 using Printf
 
-start_time = time_ns() # so we can print the total elapsed wall time
-
 progress_message(sim) =
     @printf("Iteration: %04d, time: %s, Δt: %s, max|w|: %.1e m s⁻¹, wall time: %s\n",
-            iteration(sim), prettytime(time(sim)),
-            prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
-            prettytime((time_ns() - start_time) * 1e-9))
+            iteration(sim), prettytime(sim), prettytime(sim.Δt),
+            maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(200))
+add_callback!(simulation, progress_message, IterationInterval(200))
 
 # ## Add outputs to the simulation
 #
-# We add outputs to our model using the `NetCDFWriter`, which needs `NCDatasets` to be loaded:
+# We output the total buoyancy ``B``, the total along-slope velocity ``V``, and the
+# ``y``-component of vorticity ``ω_y = ∂_z u - ∂_x w`` using the `NetCDFWriter`,
+# which needs `NCDatasets` to be loaded:
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -200,8 +190,9 @@ outputs = (; u, V, w, B, ωy)
 
 using NCDatasets
 
-simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
-                                                  filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
+filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc")
+
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs; filename,
                                                   schedule = TimeInterval(20minutes),
                                                   overwrite_files = true)
 
@@ -213,13 +204,8 @@ run!(simulation)
 
 # ## Visualize the results
 #
-# First we load the required package to load NetCDF output files and define the coordinates for
-# plotting using existing objects:
-
-using CairoMakie
-
-# Read in the simulation's `output_writer` for the two-dimensional fields and then create an
-# animation showing the ``y``-component of vorticity.
+# We load the output as `FieldTimeSeries` and create an animation showing the
+# ``y``-component of vorticity and the along-slope velocity, with buoyancy contours overlaid.
 
 fig = Figure(size = (800, 600))
 
@@ -232,23 +218,26 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ωy")
-B_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "B")
-V_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "V")
+ωyt = FieldTimeSeries(filename, "ωy")
+Bt  = FieldTimeSeries(filename, "B")
+Vt  = FieldTimeSeries(filename, "V")
 
-ωy = @lift ωy_timeseries[$n]
-B = @lift B_timeseries[$n]
-hm_ω = heatmap!(ax_ω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
+ωyn = @lift ωyt[$n]
+Bn  = @lift Bt[$n]
+Vn  = @lift Vt[$n]
+
+buoyancy_levels = -1e-3:5e-5:1e-3
+
+hm_ω = heatmap!(ax_ω, ωyn, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
-ct_b = contour!(ax_ω, B, levels=-1e-3:5e-5:1e-3, color=:black)
+contour!(ax_ω, Bn, levels=buoyancy_levels, color=:black)
 
-V = @lift V_timeseries[$n]
-hm_v = heatmap!(ax_v, V, colorrange = (-V∞, +V∞), colormap = :balance)
+hm_v = heatmap!(ax_v, Vn, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
-ct_b = contour!(ax_v, B, levels=-1e-3:5e-5:1e-3, color=:black)
+contour!(ax_v, Bn, levels=buoyancy_levels, color=:black)
 
-times = ωy_timeseries.times
-title = @lift "t = " * string(prettytime(times[$n]))
+times = ωyt.times
+title = @lift "t = " * prettytime(times[$n])
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
 current_figure() #hide

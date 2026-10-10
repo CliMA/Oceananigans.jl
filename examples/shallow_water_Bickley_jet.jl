@@ -1,7 +1,7 @@
-# # An unstable Bickley jet in Shallow Water model
+# # An unstable Bickley jet in a shallow water model
 #
 # This example uses Oceananigans.jl's `ShallowWaterModel` to simulate
-# the evolution of an unstable, geostrophically balanced, Bickley jet
+# the evolution of an unstable, geostrophically balanced Bickley jet.
 # The example is periodic in ``x`` with flat bathymetry and
 # uses the conservative formulation of the shallow water equations.
 # The initial conditions superpose the Bickley jet with small-amplitude perturbations.
@@ -24,7 +24,6 @@
 # ```
 
 using Oceananigans
-using Oceananigans.Models: ShallowWaterModel
 using Random
 
 Random.seed!(90210) # for reproducible results
@@ -44,7 +43,7 @@ grid = RectilinearGrid(size = (48, 128),
 #
 # We build a `ShallowWaterModel` with the `WENO` advection scheme,
 # 3rd-order Runge-Kutta time-stepping, non-dimensional Coriolis, and
-# gravitational acceleration
+# gravitational acceleration,
 
 gravitational_acceleration = 1
 coriolis = FPlane(f=1)
@@ -55,27 +54,23 @@ model = ShallowWaterModel(grid; coriolis, gravitational_acceleration,
 
 # ## Background state and perturbation
 #
-# The background velocity ``ū`` and free-surface ``η̄`` correspond to a
-# geostrophically balanced Bickely jet with maximum speed of ``U`` and maximum
+# The background velocity ``ū`` and layer height ``h̄`` correspond to a
+# geostrophically balanced Bickley jet with maximum speed of ``U`` and maximum
 # free-surface deformation of ``Δη``,
 
-U = 1  # Maximum jet velocity
-H = 10 # Reference depth
+U = 1  # maximum jet velocity
+H = 10 # reference depth
 f = coriolis.f
 g = gravitational_acceleration
-Δη = f * U / g  # Maximum free-surface deformation as dictated by geostrophy
+Δη = f * U / g
 
 h̄(x, y) = H - Δη * tanh(y)
 ū(x, y) = U * sech(y)^2
 
-# The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that
-# for the parameters we consider here, the growth rate for the most unstable mode that fits
-# our domain is approximately ``0.139``.
-
-# The vorticity of the background state is
-
-ω̄(x, y) = 2 * U * sech(y)^2 * tanh(y)
-
+# The total height of the fluid is ``h = H + η``, where ``η`` is the free-surface displacement.
+# Linear stability theory predicts that for the parameters we consider here, the growth rate
+# for the most unstable mode that fits our domain is approximately ``0.139``.
+#
 # The initial conditions include a small-amplitude perturbation that decays away from the
 # center of the jet.
 
@@ -85,29 +80,26 @@ small_amplitude = 1e-4
 uhⁱ(x, y) = uⁱ(x, y) * h̄(x, y)
 
 # We first set a "clean" initial condition without noise for the purpose of discretely
-# calculating the initial 'mean' vorticity,
+# calculating the background vorticity ``ω̄``,
 
-ū̄h(x, y) = ū(x, y) * h̄(x, y)
+ūh̄(x, y) = ū(x, y) * h̄(x, y)
 
-set!(model, uh = ū̄h, h = h̄)
+set!(model, uh = ūh̄, h = h̄)
 
-# We next compute the initial vorticity and perturbation vorticity,
+# We next compute the vorticity ``ω = ∂_x v - ∂_y u``, store a copy of its initial value
+# as ``ω̄``, and define the perturbation vorticity ``ω′ = ω - ω̄``,
 
 uh, vh, h = model.solution
 
-## Build velocities
 u = uh / h
 v = vh / h
 
-## Build mean vorticity discretely
 ω = Field(∂x(v) - ∂y(u))
 
-## Copy mean vorticity to a new field
-ωⁱ = Field{Face, Face, Nothing}(model.grid)
-ωⁱ .= ω
+ω̄ = Field{Face, Face, Nothing}(grid)
+set!(ω̄, ω)
 
-## Use this new field to compute the perturbation vorticity
-ω′ = Field(ω - ωⁱ)
+ω′ = Field(ω - ω̄)
 
 # and finally set the "true" initial condition with noise,
 
@@ -117,22 +109,21 @@ set!(model, uh = uhⁱ)
 #
 # We pick the time-step so that we make sure we resolve the surface gravity waves, which
 # propagate with speed of the order ``\sqrt{g H}``. That is, with `Δt = 1e-2` we ensure
-# that `` \sqrt{g H} Δt / Δx,  \sqrt{g H} Δt / Δy < 0.7``.
+# that ``\sqrt{g H} Δt / Δx, \sqrt{g H} Δt / Δy < 0.7``.
 
 simulation = Simulation(model, Δt = 1e-2, stop_time = 100)
 
 # ## Prepare output files
 #
-# Define a function to compute the norm of the perturbation on the cross channel velocity.
-# We obtain the `norm` function from `LinearAlgebra`.
+# Define a function to compute the norm of the cross-channel velocity ``v``, which
+# measures the perturbation amplitude. We obtain the `norm` function from `LinearAlgebra`.
 
 using LinearAlgebra: norm
 
 perturbation_norm(args...) = norm(v)
 
-# Build the `output_writer` for the two-dimensional fields to be output.
-# Output every `t = 1.0`. Note that we need `NCDatasets` to be able to use
-# the `NetCDFWriter`.
+# Build the output writer for the two-dimensional vorticity fields, which outputs
+# every 2 time units. Note that we need `NCDatasets` to be able to use the `NetCDFWriter`.
 
 using NCDatasets
 
@@ -142,8 +133,8 @@ simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
                                                   schedule = TimeInterval(2),
                                                   overwrite_files = true)
 
-# Build the `output_writer` for the growth rate, which is a scalar field.
-# Output every time step.
+# Build the output writer for the perturbation norm, which is a scalar,
+# and output it every time step.
 
 growth_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc")
 simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
@@ -159,19 +150,16 @@ Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results
-
-# Load required packages to read output and plot.
-
-using NCDatasets, Printf, CairoMakie
-nothing #hide
-
-# Define the coordinates for plotting.
-
-x, y = xnodes(ω), ynodes(ω)
-nothing #hide
-
-# Read in the `output_writer` for the two-dimensional fields and then create an animation
+#
+# We load the vorticity output as `FieldTimeSeries` and then create an animation
 # showing both the total and perturbation vorticities.
+
+using CairoMakie
+
+ωt  = FieldTimeSeries(fields_filename, "ω")
+ω′t = FieldTimeSeries(fields_filename, "ω′")
+
+times = ωt.times
 
 fig = Figure(size = (1200, 660))
 
@@ -181,19 +169,16 @@ ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwa
 
 n = Observable(1)
 
-ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
+ωn  = @lift ωt[$n]
+ω′n = @lift ω′t[$n]
 
-times = ds["time"][:]
-
-ω = @lift ds["ω"][:, :, $n]
-hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
+hm_ω = heatmap!(ax_ω, ωn, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ds["ω′"][:, :, $n]
-hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
+hm_ω′ = heatmap!(ax_ω′, ω′n, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
-title = @lift @sprintf("t = %.1f", times[$n])
+title = @lift "t = " * string(round(times[$n], digits=1))
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
 current_figure() #hide
@@ -210,18 +195,15 @@ nothing #hide
 
 # ![](shallow_water_Bickley_jet.mp4)
 
-# It's always good practice to close the NetCDF files when we are done.
+# Next, we read the time series of the perturbation norm, closing the NetCDF file
+# when we are done.
+
+ds = NCDataset(growth_filename)
+
+t = ds["time"][:]
+norm_v = ds["perturbation_norm"][:]
 
 close(ds)
-
-# Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
-
-ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
-
-     t = ds2["time"][:]
-norm_v = ds2["perturbation_norm"][:]
-
-close(ds2)
 nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the
