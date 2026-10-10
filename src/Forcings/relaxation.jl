@@ -299,6 +299,9 @@ struct GaussianMask{D, T}
     end
 end
 
+Adapt.adapt_structure(to, m::GaussianMask{D}) where D =
+    GaussianMask{D}(center=Adapt.adapt(to, m.center), width=Adapt.adapt(to, m.width))
+
 @inline (g::GaussianMask{:x})(x, y, z) = exp(-(x - g.center)^2 / (2 * g.width^2))
 @inline (g::GaussianMask{:y})(x, y, z) = exp(-(y - g.center)^2 / (2 * g.width^2))
 @inline (g::GaussianMask{:z})(x, y, z) = exp(-(z - g.center)^2 / (2 * g.width^2))
@@ -347,6 +350,9 @@ struct PiecewiseLinearMask{D, T}
         return new{D, T}(center, width)
     end
 end
+
+Adapt.adapt_structure(to, m::PiecewiseLinearMask{D}) where D =
+    PiecewiseLinearMask{D}(center=Adapt.adapt(to, m.center), width=Adapt.adapt(to, m.width))
 
 @inline function (p::PiecewiseLinearMask{:x})(x, y, z)
     d = 1 - abs(x - p.center) / p.width
@@ -408,6 +414,9 @@ struct CosineRampMask{D, T}
     end
 end
 
+Adapt.adapt_structure(to, m::CosineRampMask{D}) where D =
+    CosineRampMask{D}(start=Adapt.adapt(to, m.start), stop=Adapt.adapt(to, m.stop))
+
 @inline function cosine_ramp(m::CosineRampMask, ξ)
     r = clamp((ξ - m.start) / (m.stop - m.start), 0, 1)
     return (1 - cos(π * r)) / 2
@@ -454,6 +463,9 @@ struct LinearTarget{D, T}
         return new{D, T}(intercept, gradient)
     end
 end
+
+Adapt.adapt_structure(to, t::LinearTarget{D}) where D =
+    LinearTarget{D}(intercept=Adapt.adapt(to, t.intercept), gradient=Adapt.adapt(to, t.gradient))
 
 @inline (p::LinearTarget{:x})(x, y, z, t) = p.intercept + p.gradient * x
 @inline (p::LinearTarget{:y})(x, y, z, t) = p.intercept + p.gradient * y

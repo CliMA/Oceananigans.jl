@@ -135,6 +135,15 @@ unified_array(::GPU, a) = a
 #     for closures that are self-referential through a `Core.Box`.
 @inline Adapt.adapt(::CPU, f::Function) = f
 
+"""
+    Float32Adaptor
+
+`Adapt` adaptor that converts every `Float64` in a structure to `Float32`.
+"""
+struct Float32Adaptor end
+
+Adapt.adapt_storage(::Float32Adaptor, x::Float64) = Float32(x)
+
 # Convert arguments to device-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = Adapt.adapt(CPU(), args)
