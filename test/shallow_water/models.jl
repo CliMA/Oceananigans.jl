@@ -14,7 +14,7 @@ function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection
                                                            gravitational_acceleration = 1,
                                                            coriolis = coriolis,
                                                            momentum_advection = advection,
-                                                           timestepper = :RungeKutta3)
+                                                           timestepper)
     set!(model, h=1)
 
     simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
@@ -210,7 +210,7 @@ end
 
         for timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
             @testset "Time-stepping ShallowWaterModels [$(summary(arch)), $timestepper]" begin
-                @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, nothing, timestepper=timestepper)
+                @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, nothing; timestepper)
             end
         end
 
