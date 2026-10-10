@@ -104,7 +104,7 @@ function set_to_function!(u, f, clock=nothing)
 
     # Try to set the FunctionField to cpu_u
     try
-        evaluate_on_host!(cpu_u, f_field)
+        set_on_host!(cpu_u, f_field)
     catch err
         u_loc = Tuple(L() for L in location(u))
 
@@ -133,7 +133,7 @@ end
 # Evaluate `f_field` at the points of the CPU field `u` with a threaded loop rather than a kernel,
 # so that `set!(field, func)` accepts any Julia function, e.g. closures capturing arrays or types.
 # It covers the same indices as `u .= f_field`.
-function evaluate_on_host!(u, f_field)
+function set_on_host!(u, f_field)
     offsets = map(offset_index, indices(u))
     Nx, Ny, Nz = size(u)
     Threads.@threads for jk in CartesianIndices((Ny, Nz))
