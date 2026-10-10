@@ -6,7 +6,6 @@ using Oceananigans.Models: ZStarCoordinate, ZCoordinate
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_zstar_scaling!
 using Oceananigans.TurbulenceClosures: with_tracers,
                                        IsopycnalSkewSymmetricDiffusivity,
-                                       TriadIsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation, AdvectiveFormulation
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᵣᶠᶜᶜ, Axᶠᶜᶜ, Vᶜᶜᶜ
 
@@ -218,10 +217,8 @@ end
              IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
                                                skew_flux_formulation=DiffusiveFormulation())),
             ("ISSD AdvectiveFormulation",
-             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
+             IsopycnalSkewSymmetricDiffusivity(κ_skew=1000, κ_symmetric=1000,
                                                skew_flux_formulation=AdvectiveFormulation())),
-            # ("TISSD", TODO: test when ready
-            # TriadIsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0)),
         ]
 
         @testset "z-star time-stepping [$arch]" begin
