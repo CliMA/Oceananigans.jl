@@ -440,8 +440,8 @@ end
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
     i, j, k = ijk
 
-    uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
-    vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
+    uₛ = reconstruction_stencil(tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u))
+    vₛ = reconstruction_stencil(tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v))
     βᵤ = beta_loop(scheme, weno_differences(scheme, uₛ))
     βᵥ = beta_loop(scheme, weno_differences(scheme, vₛ))
     β  = beta_sum(scheme, βᵤ, βᵥ)
@@ -572,6 +572,27 @@ for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
+#####
+##### Precision of the reconstruction
+#####
+
+# BFloat16 is a storage format for WENO: the stencil values are widened to Float32 once, and the whole
+# reconstruction (differences, smoothness indicators, weights and stencil polynomials) is computed and returned in
+# Float32 with Float32 coefficients. GPUs before sm_90 have no BFloat16 add, subtract, multiply or compare
+# instructions, so every BFloat16 operation becomes a fused multiply-add that occupies one lane of a two-lane
+# instruction; `muladd` does not fuse for BFloat16, which is not an `IEEEFloat`; and Julia's NaN-aware `min` lowers
+# to integer comparisons and branches. BFloat16 arithmetic is thus both slower and less accurate than Float32
+# arithmetic. The Float32 result also keeps the flux and its divergence in Float32, so the tendency is rounded to
+# BFloat16 once, when it is stored.
+@inline reconstruction_value(ψ) = ψ
+@inline reconstruction_value(ψ::BFloat16) = Float32(ψ)
+
+@inline reconstruction_stencil(S) = map(reconstruction_value, S)
+
+@inline reconstruction_scheme(scheme) = scheme
+@inline reconstruction_scheme(scheme::WENO{N, BFloat16, WCT}) where {N, WCT} =
+    WENO{N, Float32, WCT}(scheme.bounds, scheme.buffer_scheme, scheme.advecting_velocity_scheme, scheme.time_discretization)
+
 # Interpolation functions
 for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3])
     interpolate_func = Symbol(:biased_interpolate_, interp)
@@ -583,10 +604,12 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             ψ, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, bias, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
+            𝒲  = reconstruction_scheme(scheme)
+            Ŝ  = reconstruction_stencil(S)
+            ψ₀ = weno_anchor(𝒲, Ŝ)
+            δ  = weno_differences(𝒲, Ŝ)
+            ω  = biased_weno_weights(δ, grid, 𝒲, bias, args...)
+            return weno_reconstruction(𝒲, ψ₀, δ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
@@ -594,10 +617,12 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
+            𝒲  = reconstruction_scheme(scheme)
+            Ŝ  = reconstruction_stencil(S)
+            ψ₀ = weno_anchor(𝒲, Ŝ)
+            δ  = weno_differences(𝒲, Ŝ)
+            ω  = biased_weno_weights(δ, grid, 𝒲, bias, VI, args...)
+            return weno_reconstruction(𝒲, ψ₀, δ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
@@ -605,10 +630,12 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
+            𝒲  = reconstruction_scheme(scheme)
+            Ŝ  = reconstruction_stencil(S)
+            ψ₀ = weno_anchor(𝒲, Ŝ)
+            δ  = weno_differences(𝒲, Ŝ)
+            ω  = biased_weno_weights((i, j, k), grid, 𝒲, bias, Val($val), VI, u, v)
+            return weno_reconstruction(𝒲, ψ₀, δ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid,
@@ -616,11 +643,13 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             ψ, VI::FunctionStencil, args...) where {N, FT}
 
             S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            Sₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
-            ω  = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
+            𝒲  = reconstruction_scheme(scheme)
+            Ŝ  = reconstruction_stencil(S)
+            ψ₀ = weno_anchor(𝒲, Ŝ)
+            δ  = weno_differences(𝒲, Ŝ)
+            Sₛ = reconstruction_stencil($stencil(i, j, k, grid, scheme, bias, VI.func, args...))
+            ω  = biased_weno_weights(weno_differences(𝒲, Sₛ), grid, 𝒲, bias, VI, args...)
+            return weno_reconstruction(𝒲, ψ₀, δ, ω)
         end
     end
 end
