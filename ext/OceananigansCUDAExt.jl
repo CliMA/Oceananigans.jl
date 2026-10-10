@@ -16,7 +16,6 @@ else
     const cuFFT = CUDA.CUFFT
 end
 using GPUArraysCore: allowscalar
-using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
@@ -106,8 +105,6 @@ AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = t
     end
     return dst
 end
-
-@inline AC.unsafe_free!(a::CuArray) = unsafe_free!(a)
 
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
