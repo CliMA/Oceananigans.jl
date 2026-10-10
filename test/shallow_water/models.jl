@@ -3,16 +3,21 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Models.ShallowWaterModels
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
+shallow_water_log = (:warn, "The ShallowWaterModel is currently unvalidated, subject to change, " *
+                            "and should not be used for scientific research without adequate validation.")
+
+topology_name(topo) = "(" * join(nameof.(topo), ", ") * ")"
+
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
-    model = ShallowWaterModel(grid;
-                              gravitational_acceleration = 1,
-                              coriolis = coriolis,
-                              momentum_advection = advection,
-                              timestepper = :RungeKutta3)
+    model = @test_logs shallow_water_log ShallowWaterModel(grid;
+                                                           gravitational_acceleration = 1,
+                                                           coriolis = coriolis,
+                                                           momentum_advection = advection,
+                                                           timestepper = :RungeKutta3)
     set!(model, h=1)
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
     run!(simulation)
 
     return model.clock.iteration == 1
@@ -20,12 +25,12 @@ end
 
 function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=topo)
-    model = ShallowWaterModel(grid;
-                              gravitational_acceleration = 1,
-                              coriolis = coriolis)
+    model = @test_logs shallow_water_log ShallowWaterModel(grid;
+                                                           gravitational_acceleration = 1,
+                                                           coriolis = coriolis)
     set!(model, h=1)
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
     wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=10)
     simulation.callbacks[:wizard] = Callback(wizard)
     run!(simulation)
@@ -35,9 +40,9 @@ end
 
 function shallow_water_model_tracers_and_forcings_work(arch)
     grid = RectilinearGrid(arch, size=(3, 3), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
-    model = ShallowWaterModel(grid;
-                              gravitational_acceleration = 1,
-                              tracers = (:c, :d))
+    model = @test_logs shallow_water_log ShallowWaterModel(grid;
+                                                           gravitational_acceleration = 1,
+                                                           tracers = (:c, :d))
     set!(model, h=1)
 
     @test model.tracers.c isa Field
@@ -49,7 +54,7 @@ function shallow_water_model_tracers_and_forcings_work(arch)
     @test haskey(model.forcing, :c)
     @test haskey(model.forcing, :d)
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
     run!(simulation)
 
     @test model.clock.iteration == 1
@@ -65,13 +70,13 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
     tracer_advection = nothing
     mass_advection = nothing
 
-    model = ShallowWaterModel(grid;
-                              closure,
-                              gravitational_acceleration = 1.0,
-                              momentum_advection,
-                              tracer_advection,
-                              mass_advection,
-                              formulation)
+    model = @test_logs shallow_water_log ShallowWaterModel(grid;
+                                                           closure,
+                                                           gravitational_acceleration = 1.0,
+                                                           momentum_advection,
+                                                           tracer_advection,
+                                                           mass_advection,
+                                                           formulation)
 
     field = model.velocities[fieldname]
 
@@ -92,29 +97,26 @@ function test_shallow_water_diffusion_cosine(grid, formulation, fieldname, ξ)
 end
 
 @testset "Shallow Water Models" begin
-    @info "Testing shallow water models..."
-
     @testset "Must be Flat in the vertical" begin
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
-        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_logs shallow_water_log @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
 
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
-        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_logs shallow_water_log @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
     end
 
     @testset "Model constructor errors" begin
         grid = RectilinearGrid(size=(1, 1), extent=(1, 1), topology=(Periodic,Periodic,Flat))
-        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
-        @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_logs shallow_water_log @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
+        @test_logs shallow_water_log @test_throws ArgumentError ShallowWaterModel(grid; gravitational_acceleration=1)
     end
 
     topo = (Flat, Flat, Flat)
 
-    @testset "$topo model construction" begin
-    @info "  Testing $topo model construction..."
+    @testset "$(topology_name(topo)) model construction" begin
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT, topology=topo, size=(), extent=())
-            model = ShallowWaterModel(grid; gravitational_acceleration=1)
+            model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1)
 
             @test model isa ShallowWaterModel
         end
@@ -126,13 +128,12 @@ end
             )
 
     for topo in topos
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
+        @testset "$(topology_name(topo)) model construction" begin
             for arch in archs, FT in float_types
                 #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=3, extent=1, halo=3)
-                model = ShallowWaterModel(grid; gravitational_acceleration=1)
+                model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1)
 
                 @test model isa ShallowWaterModel
             end
@@ -146,13 +147,12 @@ end
             )
 
     for topo in topos
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
+        @testset "$(topology_name(topo)) model construction" begin
             for arch in archs, FT in float_types
                #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), extent=(1, 2), halo=(3, 3))
-                model = ShallowWaterModel(grid; gravitational_acceleration=1)
+                model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1)
 
                 @test model isa ShallowWaterModel
             end
@@ -160,14 +160,12 @@ end
     end
 
     @testset "Setting ShallowWaterModel fields" begin
-        @info "  Testing setting shallow water model fields..."
-
         for arch in archs, FT in float_types
             N = (4,   4)
             L = (2π, 3π)
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
-            model = ShallowWaterModel(grid; gravitational_acceleration=1)
+            model = @test_logs shallow_water_log ShallowWaterModel(grid; gravitational_acceleration=1)
 
             x, y, z = nodes(model.grid, (Face(), Center(), Center()), reshape=true)
 
@@ -188,53 +186,46 @@ end
 
     for arch in archs
         for topo in topos
-            @testset "Time-stepping ShallowWaterModels [$arch, $topo]" begin
-                @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
+            @testset "Time-stepping ShallowWaterModels [$(summary(arch)), $(topology_name(topo))]" begin
                 @test time_stepping_shallow_water_model_works(arch, topo, nothing, nothing)
             end
         end
 
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
-            @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]" begin
-                @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]..."
+            @testset "Time-stepping ShallowWaterModels [$(summary(arch)), $(nameof(typeof(coriolis)))]" begin
                 @test time_stepping_shallow_water_model_works(arch, topos[1], coriolis, nothing)
             end
         end
 
-        @testset "Time-step Wizard ShallowWaterModels [$arch, $topos[1]]" begin
-        @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
+        @testset "Time-step Wizard ShallowWaterModels [$(summary(arch)), $(topology_name(topos[1]))]" begin
             @test time_step_wizard_shallow_water_model_works(arch, topos[1], nothing)
         end
 
         # Advection = nothing is broken as halo does not have a maximum
         for advection in (nothing, Centered(), WENO())
-            @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
-                @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."
+            @testset "Time-stepping ShallowWaterModels [$(summary(arch)), $(summary(advection))]" begin
                 @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, advection)
             end
         end
 
         for timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
-            @testset "Time-stepping ShallowWaterModels [$arch, $timestepper]" begin
-                @info "  Testing time-stepping ShallowWaterModels [$arch, $timestepper]..."
+            @testset "Time-stepping ShallowWaterModels [$(summary(arch)), $timestepper]" begin
                 @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, nothing, timestepper=timestepper)
             end
         end
 
-        @testset "ShallowWaterModel with tracers and forcings [$arch]" begin
-            @info "  Testing ShallowWaterModel with tracers and forcings [$arch]..."
+        @testset "ShallowWaterModel with tracers and forcings [$(summary(arch))]" begin
             shallow_water_model_tracers_and_forcings_work(arch)
         end
 
-        @testset "ShallowWaterModel viscous diffusion [$arch]" begin
+        @testset "ShallowWaterModel viscous diffusion [$(summary(arch))]" begin
             Nx, Ny = 10, 12
             grid_x = RectilinearGrid(arch, size = Nx, x = (0, 1), topology = (Bounded, Flat, Flat))
             grid_y = RectilinearGrid(arch, size = Ny, y = (0, 1), topology = (Flat, Bounded, Flat))
             coords = (reshape(xnodes(grid_x, Face()), (Nx+1, 1)), reshape(ynodes(grid_y, Face()), (1, Ny+1)))
 
             for (fieldname, grid, coord) in zip([:u, :v], [grid_x, grid_y], coords)
-                for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
-                    @info "  Testing ShallowWaterModel cosine viscous diffusion [$fieldname, $formulation]"
+                @testset "$fieldname, $(nameof(typeof(formulation)))" for formulation in (ConservativeFormulation(), VectorInvariantFormulation())
                     test_shallow_water_diffusion_cosine(grid, formulation, fieldname, coord)
                 end
             end
@@ -243,23 +234,21 @@ end
 
     @testset "ShallowWaterModels with ImmersedBoundaryGrid" begin
         for arch in archs
-            @testset "ShallowWaterModels with ImmersedBoundaryGrid [$arch]" begin
-                @info "Testing ShallowWaterModels with ImmersedBoundaryGrid [$arch]"
-
+            @testset "ShallowWaterModels with ImmersedBoundaryGrid [$(summary(arch))]" begin
                 # Gaussian bump of width "1"
                 bump(x, y) = y < exp(-x^2)
                 grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
                 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 
-                @test_throws ArgumentError model = ShallowWaterModel(grid_with_bump; gravitational_acceleration=1)
+                @test_logs shallow_water_log @test_throws ArgumentError ShallowWaterModel(grid_with_bump; gravitational_acceleration=1)
 
                 grid = RectilinearGrid(arch, size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat), halo=(4, 4))
                 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 
-                model = ShallowWaterModel(grid_with_bump; gravitational_acceleration=1)
+                model = @test_logs shallow_water_log ShallowWaterModel(grid_with_bump; gravitational_acceleration=1)
 
                 set!(model, h=1)
-                simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+                simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
                 run!(simulation)
 
                 @test model.clock.iteration == 1
