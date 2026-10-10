@@ -72,9 +72,13 @@ end
 ##### Zero-mean gauge condition
 #####
 
-struct ZeroMeanGaugeCondition{S, N}
+struct ZeroMeanGaugeCondition{S, P, V, N}
     solution_sum :: S
     residual_sum :: S
+    laplacian_partial_sums :: P
+    residual_partial_sums :: P
+    laplacian_sums :: V
+    residual_sums :: V
     number_of_active_cells :: N
 end
 
@@ -84,16 +88,30 @@ $(TYPEDSIGNATURES)
 Return a gauge condition for the `ConjugateGradientPoissonSolver` on `grid`, which
 subtracts the mean over the active cells of `grid` from the solution and from the residual
 after every iteration.
+
+The fused iteration of the `ConjugateGradientPoissonSolver` accumulates the sums it needs
+in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one column
+into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`) or `residual_partial_sums`
+(`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), which are then reduced into `laplacian_sums` and `residual_sums`.
 """
 function ZeroMeanGaugeCondition(grid)
     solution_sum = Field{Nothing, Nothing, Nothing}(grid)
     residual_sum = Field{Nothing, Nothing, Nothing}(grid)
 
+    Nx, Ny, _ = size(grid)
+    laplacian_partial_sums = zeros(grid, Nx, Ny, 3)
+    residual_partial_sums = zeros(grid, Nx, Ny, 4)
+    laplacian_sums = zeros(grid, 3)
+    residual_sums = zeros(grid, 4)
+
     # The normalization of `mean(c)` for a field `c` at cell centers
     c = CenterField(grid)
     number_of_active_cells = conditional_length(condition_operand(identity, c, nothing, 0))
 
-    return ZeroMeanGaugeCondition(solution_sum, residual_sum, number_of_active_cells)
+    return ZeroMeanGaugeCondition(solution_sum, residual_sum,
+                                  laplacian_partial_sums, residual_partial_sums,
+                                  laplacian_sums, residual_sums,
+                                  number_of_active_cells)
 end
 
 function (gauge::ZeroMeanGaugeCondition)(x, r)
@@ -118,6 +136,172 @@ end
         x[i, j, k] = (x[i, j, k] - x̄) * active
         r[i, j, k] = (r[i, j, k] - r̄) * active
     end
+end
+
+#####
+##### Fused iteration: the Laplacian kernel accumulates p ⋅ q, Σp and Σq while it writes q, and
+##### the update kernel applies the gauge and the mask while it writes x and r, accumulating
+##### Σx, Σr, r ⋅ r and ‖V⁻¹r‖². One thread sums one column.
+#####
+
+const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
+                                                   <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
+
+# The fused kernels launch over the columns in one dimension, so consecutive threads read consecutive i
+@inline columns_worksize(grid) = (size(grid, 1) * size(grid, 2),)
+
+@inline function column_indices(n, grid)
+    Nx = size(grid, 1)
+    return (n - 1) % Nx + 1, (n - 1) ÷ Nx + 1
+end
+
+@kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
+    FT = eltype(partial_sums)
+    Σx = Σr = rᵀr = n² = zero(FT)
+
+    for k in 1:size(grid, 3)
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            rᵢ = b[i, j, k] - q[i, j, k]
+            r[i, j, k] = rᵢ
+            V⁻¹rᵢ = rᵢ * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+            Σx   += x[i, j, k] * active
+            Σr   += rᵢ * active
+            rᵀr  += rᵢ * rᵢ * active
+            n²   += V⁻¹rᵢ * V⁻¹rᵢ * active
+        end
+    end
+
+    @inbounds begin
+        partial_sums[i, j, 1] = Σx
+        partial_sums[i, j, 2] = Σr
+        partial_sums[i, j, 3] = rᵀr
+        partial_sums[i, j, 4] = n²
+    end
+end
+
+@kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
+    FT = eltype(partial_sums)
+    pᵀq = Σp = Σq = zero(FT)
+
+    for k in 1:size(grid, 3)
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            pᵢ = p[i, j, k]
+            qᵢ = V∇²ᶜᶜᶜ(i, j, k, grid, p)
+            q[i, j, k] = qᵢ
+            pᵀq += pᵢ * qᵢ * active
+            Σp  += pᵢ * active
+            Σq  += qᵢ * active
+        end
+    end
+
+    @inbounds begin
+        partial_sums[i, j, 1] = pᵀq
+        partial_sums[i, j, 2] = Σp
+        partial_sums[i, j, 3] = Σq
+    end
+end
+
+@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, α, laplacian_sums, residual_sums, number_of_active_cells)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
+    FT = eltype(partial_sums)
+    Σx = Σr = rᵀr = n² = zero(FT)
+
+    @inbounds begin
+        a = α[1]
+        x̄ = (residual_sums[1] + a * laplacian_sums[2]) / number_of_active_cells
+        r̄ = (residual_sums[2] - a * laplacian_sums[3]) / number_of_active_cells
+    end
+
+    for k in 1:size(grid, 3)
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            xᵢ = (x[i, j, k] + a * p[i, j, k] - x̄) * active
+            rᵢ = (r[i, j, k] - a * q[i, j, k] - r̄) * active
+            x[i, j, k] = xᵢ
+            r[i, j, k] = rᵢ
+            V⁻¹rᵢ = rᵢ * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+            Σx  += xᵢ
+            Σr  += rᵢ
+            rᵀr += rᵢ * rᵢ
+            n²  += V⁻¹rᵢ * V⁻¹rᵢ
+        end
+    end
+
+    @inbounds begin
+        partial_sums[i, j, 1] = Σx
+        partial_sums[i, j, 2] = Σr
+        partial_sums[i, j, 3] = rᵀr
+        partial_sums[i, j, 4] = n²
+    end
+end
+
+function reduce_partial_sums!(sums, partial_sums, arch)
+    sum!(reshape(sums, 1, 1, length(sums)), partial_sums)
+    return sums
+end
+
+function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
+    r = solver.residual
+    grid = r.grid
+    arch = architecture(grid)
+    gauge = solver.enforce_gauge_condition!
+    partial_sums = gauge.residual_partial_sums
+
+    compute_symmetric_laplacian!(q, x)
+    launch!(arch, grid, columns_worksize(grid), _initialize_residual!, partial_sums, r, grid, x, b, q)
+    reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
+
+    return nothing
+end
+
+function iterate!(x, solver::FusedPoissonSolver, b)
+    r = solver.residual
+    p = solver.search_direction
+    q = solver.linear_operator_product
+    grid = r.grid
+    arch = architecture(grid)
+    gauge = solver.enforce_gauge_condition!
+
+    # Preconditioned:   z = P * r, ρ = z ⋅ r
+    # Unpreconditioned: z = r, so ρ = r ⋅ r is already in the residual sums
+    z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
+    ρ = z === r ? view(gauge.residual_sums, 3:3) : dot!(solver.ρ, z, r)
+
+    if solver.iteration > 0
+        solver.β .= ρ ./ solver.ρⁱ⁻¹
+    end
+
+    update_search_direction!(p, z, solver.β, solver.iteration)
+
+    fill_halo_regions!(p)
+    partial_sums = gauge.laplacian_partial_sums
+    launch!(arch, grid, columns_worksize(grid), _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
+
+    solver.α .= ρ ./ view(gauge.laplacian_sums, 1:1)
+    solver.ρⁱ⁻¹ .= ρ
+
+    partial_sums = gauge.residual_partial_sums
+    launch!(arch, grid, columns_worksize(grid), _update_solution_and_residual!,
+            partial_sums, x, r, grid, p, q, solver.α, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+    reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
+
+    solver.iteration += 1
+
+    return nothing
+end
+
+function iterating(solver::FusedPoissonSolver, tolerance)
+    solver.iteration >= solver.maxiter && return false
+    n² = @allowscalar solver.enforce_gauge_condition!.residual_sums[4]
+    return sqrt(n²) > tolerance
 end
 
 @kernel function cell_volume!(V, grid)
