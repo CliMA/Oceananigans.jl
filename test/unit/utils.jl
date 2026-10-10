@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Utils: TabulatedFunction, foreach_name
+using Oceananigans.Utils: TabulatedFunction, foreach_name, SumOfArrays
 
 record_name!(visited, ::Val{n}, ::Val{name}) where {n, name} = push!(visited, (n, name))
 
@@ -79,6 +79,15 @@ foreach_name_allocations(counts, weights, names) =
         foreach_name_allocations(counts, weights, weights)
         @test foreach_name_allocations(counts, weights, weights) == 0
         @test counts == 2 .* [1, 2, 3, 4]
+    end
+
+    @testset "SumOfArrays" begin
+        a, b, c, d = rand(3), rand(3), rand(3), rand(3)
+        for s in (SumOfArrays{2}(a, b), SumOfArrays{3}(a, b, c), SumOfArrays{4}(a, b, c, d))
+            # Adapting must be inferable to run inside kernels, e.g. for `@Const` arguments
+            adapted = @inferred Adapt.adapt(Array, s)
+            @test adapted[2] == s[2]
+        end
     end
 
     @testset "TabulatedFunction" begin
