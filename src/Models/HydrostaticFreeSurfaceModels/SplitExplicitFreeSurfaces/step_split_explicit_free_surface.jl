@@ -1,10 +1,57 @@
 using Oceananigans: fields
 using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
+using Oceananigans.BoundaryConditions: WEB, SNB, PBC, permute_boundary_conditions, reduced_dimensions, side_name, select_bc,
+                                       fill_halo_size, fill_halo_offset, fill_halo_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # Include buffers for distributed grids
 @inline build_halo_fill_args(f, grid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...)
 @inline build_halo_fill_args(f, grid::DistributedGrid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
+
+@inline substep_halo_fill_args(f, grid, ::Nothing, args...) = build_halo_fill_args(f, grid, args...)
+@inline substep_halo_fill_args(f, grid, bcs, args...) = (f.data, bcs, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
+
+materialize_substep_boundary_conditions(strategy, grid, fields, kernel_parameters) = map(f -> nothing, fields)
+
+materialize_substep_boundary_conditions(::LocalHaloFilling, grid::DistributedGrid, fields, kernel_parameters) =
+    map(f -> substep_boundary_conditions(f, grid, kernel_parameters), fields)
+
+# `LocalHaloFilling` steps the barotropic fields into the Connected halos, so the physical boundaries are filled there too
+function substep_boundary_conditions(f, grid, kernel_parameters)
+    bcs = f.boundary_conditions
+    loc = instantiated_location(f)
+    sides, ordered_bcs = permute_boundary_conditions(bcs)
+    reduced_dims = reduced_dimensions(loc)
+    names = map(side_name, sides)
+
+    kernels! = map(sides, ordered_bcs) do side, side_bcs
+        bc = select_bc(side_bcs)
+        size   = fill_halo_size(f.data, side, f.indices, bc, loc, grid)
+        offset = fill_halo_offset(size, side, f.indices)
+        size, offset = substep_fill_extent(side, bc, size, offset, topology(grid), kernel_parameters)
+        fill_halo_kernel(side, bc, grid, size, offset, f.data, reduced_dims)
+    end
+
+    return FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed,
+                                   NamedTuple{names}(kernels!), NamedTuple{names}(ordered_bcs))
+end
+
+substep_fill_extent(side, bc, size, offset, topo, kernel_parameters) = (size, offset)
+substep_fill_extent(::WEB, ::PBC, size::Tuple, offset, topo, ::KernelParameters) = (size, offset)
+substep_fill_extent(::SNB, ::PBC, size::Tuple, offset, topo, ::KernelParameters) = (size, offset)
+
+function substep_fill_extent(::WEB, bc, size::Tuple, offset, topo, ::KernelParameters{S, O}) where {S, O}
+    Sy, Oy = connected_extent(topo[2](), size[1], offset[1], S[2], O[2])
+    return (Sy, size[2]), (Oy, offset[2])
+end
+
+function substep_fill_extent(::SNB, bc, size::Tuple, offset, topo, ::KernelParameters{S, O}) where {S, O}
+    Sx, Ox = connected_extent(topo[1](), size[1], offset[1], S[1], O[1])
+    return (Sx, size[2]), (Ox, offset[2])
+end
+
+connected_extent(topo, size, offset, kernel_size, kernel_offset) = (size, offset)
+connected_extent(::ConnectedTopology, size, offset, kernel_size, kernel_offset) = (kernel_size, kernel_offset)
 
 # `CompleteHaloFilling` communicates every substep and needs the field's real communication buffers,
 # which `convert_to_device` strips to `nothing` on a GPU. Leave its distributed args unconverted.
@@ -130,9 +177,10 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     barotropic_model_fields = (; U, V, η)
 
     # Builds also a separate "sub-stepping" clock to account for time dependent forcing and boundary conditions
-    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, barotropic_model_fields)
-    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, barotropic_model_fields)
-    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, barotropic_model_fields)
+    substep_bcs = free_surface.substep_boundary_conditions
+    @apply_regionally U_halo_args = substep_halo_fill_args(U, grid, substep_bcs.U, barotropic_model_fields)
+    @apply_regionally V_halo_args = substep_halo_fill_args(V, grid, substep_bcs.V, barotropic_model_fields)
+    @apply_regionally η_halo_args = substep_halo_fill_args(η, grid, substep_bcs.η, barotropic_model_fields)
 
     only_local_halos = fill_only_local_halos(free_surface)
 

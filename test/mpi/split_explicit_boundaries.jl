@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using MPI
 MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
-using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, ranks, reconstruct_global_grid
+using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
 using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling
@@ -125,9 +125,6 @@ end
 
         strategy = extend_halos ? LocalHaloFilling : CompleteHaloFilling
 
-        # `LocalHaloFilling` skips the fill that re-radiates the open boundary into a y rank halo
-        reproduces_serial = !extend_halos || ranks(arch)[2] == 1
-
         up = interior(on_architecture(cpu_arch, mp.velocities.u))
         vp = interior(on_architecture(cpu_arch, mp.velocities.v))
         ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
@@ -141,18 +138,9 @@ end
             @test mp.free_surface isa SplitExplicitFreeSurface{strategy}
             @test ms.free_surface isa SplitExplicitFreeSurface{strategy}
 
-            if reproduces_serial
-                @test all(isapprox.(up, us))
-                @test all(isapprox.(vp, vs))
-                @test all(isapprox.(ηp, ηs))
-            else
-                @test_broken all(isapprox.(up, us))
-                @test_broken all(isapprox.(vp, vs))
-                @test_broken all(isapprox.(ηp, ηs))
-
-                @test maximum(abs, up .- us) < 1e-2 * maximum(abs, us)
-                @test maximum(abs, ηp .- ηs) < 1e-2 * maximum(abs, ηs)
-            end
+            @test all(isapprox.(up, us))
+            @test all(isapprox.(vp, vs))
+            @test all(isapprox.(ηp, ηs))
 
             # a solid wall would pin the normal velocity on the global faces to zero
             @test maximum(abs, up) > 0
