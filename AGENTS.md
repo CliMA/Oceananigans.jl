@@ -5,7 +5,7 @@
 Oceananigans.jl is a Julia package for fast, friendly, flexible, ocean-flavored fluid dynamics on CPUs and GPUs.
 It solves the incompressible (Boussinesq) Navier-Stokes equations with models including:
 nonhydrostatic (with free surfaces), hydrostatic free-surface, and shallow water —
-on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundaryGrid.
+on RectilinearGrid, LatitudeLongitudeGrid, ConformalCubedSphereGrid, TripolarGrid, and ImmersedBoundaryGrid.
 
 ## Language & Environment
 
@@ -64,25 +64,34 @@ on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundary
 
 ```
 src/
-├── Oceananigans.jl            # Main module, exports
-├── Architectures.jl           # CPU/GPU architecture abstractions
-├── Grids/                     # Grid types and constructors
-├── Fields/                    # Field types and operations
-├── Operators/                 # Finite difference operators
-├── BoundaryConditions/        # Boundary condition types
-├── Models/                    # Model implementations
+├── Oceananigans.jl                 # Main module, exports
+├── Architectures.jl                # CPU/GPU architecture abstractions
+├── Grids/                          # Grid types and constructors
+├── OrthogonalSphericalShellGrids/  # Tripolar and other curvilinear spherical-shell grids
+├── ImmersedBoundaries/             # ImmersedBoundaryGrid and immersed boundary conditions
+├── MultiRegion/                    # Multi-region grids (ConformalCubedSphereGrid)
+├── DistributedComputations/        # MPI-distributed architectures and halo communication
+├── Fields/                         # Field types and operations
+├── AbstractOperations/             # Lazy operations on fields (KernelFunctionOperation, etc.)
+├── Operators/                      # Finite difference operators
+├── BoundaryConditions/             # Boundary condition types
+├── Forcings/                       # Forcing functions
+├── Coriolis/                       # Coriolis formulations
+├── BuoyancyFormulations/           # Buoyancy models
+├── Advection/                      # Advection schemes
+├── TurbulenceClosures/             # LES and eddy viscosity models
+├── Models/                         # Model implementations
 │   ├── NonhydrostaticModels/
 │   ├── HydrostaticFreeSurfaceModels/
 │   ├── ShallowWaterModels/
 │   └── LagrangianParticleTracking/
-├── TimeSteppers/              # Time stepping schemes
-├── Solvers/                   # Poisson and tridiagonal solvers
-├── TurbulenceClosures/        # LES and eddy viscosity models
-├── Advection/                 # Advection schemes
-├── BuoyancyFormulations/      # Buoyancy models
-├── OutputWriters/             # File I/O
-├── Simulations/               # High-level simulation interface
-└── Utils/                     # Utilities and helpers
+├── TimeSteppers/                   # Time stepping schemes
+├── Solvers/                        # Poisson and tridiagonal solvers
+├── Simulations/                    # High-level simulation interface
+├── Diagnostics/                    # Diagnostics and callbacks
+├── OutputWriters/                  # File I/O
+├── OutputReaders/                  # FieldTimeSeries and output loading
+└── Utils/                          # Utilities and helpers
 ```
 
 ## Common Pitfalls
@@ -149,6 +158,8 @@ Rules in `.claude/rules/` load automatically when you touch matching files:
 - `testing-rules.md` — test writing and running (test/)
 - `docs-rules.md` — documentation building and style (docs/)
 - `examples-rules.md` — Literate.jl example conventions (examples/)
+- `style-rules.md` — naming, notation, and comment style (src/, test/, validation/, examples/)
+- `julia-repl-rules.md` — prefer an MCP Julia REPL over Bash when available (always)
 
 ### Skills (slash commands)
 

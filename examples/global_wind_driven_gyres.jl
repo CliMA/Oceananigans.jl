@@ -7,7 +7,7 @@
 # To keep it cheap enough for a laptop GPU, the grid is 1° with four layers.
 #
 # We force the ocean with an idealized zonal wind stress and look at the western boundary
-# currents, the Gulf Stream, and the Kuroshio, that close the wind-driven gyres.
+# currents that close the wind-driven gyres: the Gulf Stream and the Kuroshio.
 # Sverdrup theory says that the depth-integrated meridional transport of the interior is
 #
 # ```math
@@ -125,24 +125,25 @@ interpolate!(bottom_height, elevation_field)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height, InterfaceImmersedCondition()); active_cells_map=true)
 
-# The Makie extension draws the bathymetry field in the tripolar grid's own
-# longitudes and latitudes, which run from 70°E eastward around the globe. We hide
-# the land by setting non-positive depths to NaN.
+# The Makie extension's `quadmesh!` draws each cell of the bathymetry field as a flat-colored
+# quadrilateral in the tripolar grid's own longitudes and latitudes, which run from 70°E
+# eastward around the globe. Since the field lives on the immersed grid, land is masked
+# automatically.
 
 height = bottom_height_field(grid)
-bathymetry = Field{Center, Center, Nothing}(underlying_grid)
-interior(bathymetry) .= ifelse.(interior(height) .< 0, .-interior(height), FT(NaN))
+bathymetry = Field{Center, Center, Nothing}(grid)
+set!(bathymetry, -height)
 
 longitude_ticks = (120:60:420, ["120°E", "180°", "120°W", "60°W", "0°", "60°E"])
 
-map_axis(figure_position; title="", limits=((70, 430), (-80, 70)), xticks=longitude_ticks) =
-    Axis(figure_position; title, xlabel="Longitude", ylabel="Latitude",
-         aspect=DataAspect(), limits, xticks)
+map_axis(fig_position; title="", limits=((70, 430), (-80, 70)), xticks=longitude_ticks) =
+    Axis(fig_position; title, limits, xticks, aspect=DataAspect(),
+                       xlabel="Longitude", ylabel="Latitude")
 
 fig = Figure(size=(900, 500))
 ax = map_axis(fig[1, 1]; title="Ocean depth")
-sf = surface!(ax, bathymetry; colormap=:deep, nan_color=:gray)
-Colorbar(fig[1, 2], sf, label="Depth [m]")
+qm = quadmesh!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+Colorbar(fig[1, 2], qm, label="Depth [m]")
 save("bathymetry.png", fig, px_per_unit=2) #hide
 
 # ![](bathymetry.png)
@@ -186,12 +187,13 @@ wind_stress_curl(φ) = - (zonal_wind_stress(φ + 0.01, wind_belts) - zonal_wind_
 sverdrup_transport(φ, rotation_rate) = wind_stress_curl(φ) / (ρ₀ * 2 * rotation_rate * cosd(φ) / R)
 
 latitudes = -80:0.5:80
+extratropical_latitudes = filter(φ -> abs(φ) > 5, latitudes)
 
 fig = Figure(size=(800, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal wind stress [N m⁻²]", ylabel="Latitude [°]")
 lines!(ax, [zonal_wind_stress(φ, wind_belts) for φ in latitudes], latitudes)
 ax = Axis(fig[1, 2], xlabel="Sverdrup transport [m² s⁻¹]", ylabel="Latitude [°]")
-lines!(ax, sverdrup_transport.(latitudes[abs.(latitudes) .> 5], Ω), latitudes[abs.(latitudes) .> 5])
+lines!(ax, sverdrup_transport.(extratropical_latitudes, Ω), extratropical_latitudes)
 save("wind_stress.png", fig, px_per_unit=2) #hide
 
 # ![](wind_stress.png)
@@ -229,7 +231,7 @@ T_boundary_conditions = FieldBoundaryConditions(top=temperature_restoring)
 # Given the time step `Δt`, the free surface computes the number of substeps that keeps
 # the barotropic CFL number at 0.7.
 
-Δt = 1hour
+Δt = 1.5hour
 free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
 
 # ## The model
@@ -267,16 +269,16 @@ end
 # ## Three Coriolis parameters
 #
 # The Coriolis parameter is the only thing that differs between the runs. Two of them use
-# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at half it, which halves
+# the spherical ``f = 2Ω \sin φ``, at Earth's rotation rate and at half that rate, which halves
 # ``β`` and should double the Sverdrup transport. The third uses an [`FPlane`](@ref) with the
 # value of ``f`` at 30°N everywhere, ``f = 2Ω \sin 30°``, so that ``β = 0``. A constant
 # ``f`` has the wrong sign in the Southern Hemisphere, so on the ``f``-plane we only look
 # at the northern gyres.
 #
 # The simulation runner saves the barotropic streamfunction ``ψ``, defined by
-# ``U = ∫ u \, \mathrm{d} z = - ∂ψ / ∂y`` and computed by integrating ``U`` northward from
-# Antarctica, together with the surface speed and the surface temperature, every ten days
-# of a six-year run.
+# ``U = ∫ u \, \mathrm{d} z = - \partial ψ / \partial y`` and computed by integrating ``U``
+# northward from Antarctica, together with the surface speed and the surface temperature,
+# every ten days of a six-year run.
 
 year = 365days
 
@@ -331,15 +333,13 @@ f_plane_filename = run_gyres(grid, FPlane(latitude=30, scheme=DualGridScheme(gri
 # contains the center of the subtropical gyre and the western boundary. The Gulf Stream
 # and the Kuroshio carry that transport northward along the coast.
 
-ψt = FieldTimeSeries(filenames[Ω], "ψ")
-times = ψt.times
+times = FieldTimeSeries(filenames[Ω], "ψ").times
 
 function gyre_transport(ψ, box)
-    inside = Field{Center, Center, Nothing}(ψ.grid)
+    inside = Field{Face, Face, Nothing}(ψ.grid, Bool)
     set!(inside, (λ, φ) -> (box.longitude[1] < mod(λ, 360) < box.longitude[2]) &
                            (box.latitude[1] < φ < box.latitude[2]))
-    values = interior(ψ, :, :, 1)[interior(inside, :, :, 1) .== 1]
-    return maximum(values) - minimum(values)
+    return maximum(ψ; condition=inside) - minimum(ψ; condition=inside)
 end
 
 gulf_stream = (longitude = (275, 310), latitude = (20, 42))
@@ -382,18 +382,19 @@ save("western_boundary_current_transports.png", fig, px_per_unit=2) #hide
 
 height_cpu = on_architecture(CPU(), height)
 land = interior(height_cpu, :, :, 1) .≥ 0
-distance_to_north_america = Field{Center, Center, Nothing}(height_cpu.grid)
+
+distance_to_north_america = Field{Center, Center, Nothing}(underlying_grid)
 set!(distance_to_north_america, (λ, φ) -> (mod(λ, 360) - 260)^2 + (φ - 40)^2)
-north_america = argmin(interior(distance_to_north_america, :, :, 1))
+north_america = argmin(distance_to_north_america)
 
 function streamfunction_map!(fig, row, filename; title, colorrange)
     streamfunctions = FieldTimeSeries(filename, "ψ")
     ψ_end = streamfunctions[end]
-    reference = ψ_end[north_america[1], north_america[2], 1]
+    reference = ψ_end[north_america]
     streamfunction = Field((ψ_end - reference) / Sv)
-    axis = map_axis(fig[row, 1]; title)
-    sf = surface!(axis, streamfunction; colormap=:balance, colorrange, nan_color=:gray)
-    Colorbar(fig[row, 2], sf, label="Streamfunction [Sv]")
+    ax = map_axis(fig[row, 1]; title)
+    qm = quadmesh!(ax, streamfunction; colormap=:balance, colorrange, nan_color=:gray)
+    Colorbar(fig[row, 2], qm, label="Streamfunction [Sv]")
     return nothing
 end
 
@@ -472,15 +473,15 @@ for (row, (filename, title, _)) in enumerate(experiments)
     speed = @lift speeds[$n]
 
     ax = map_axis(fig[row + 1, 1]; title="Surface speed, " * title)
-    sf = surface!(ax, speed; colormap=:magma, colorrange=(0, 0.3), nan_color=:gray)
-    row == 1 && Colorbar(fig[2:4, 2], sf, label="Speed [m s⁻¹]")
+    qm = quadmesh!(ax, speed; colormap=:magma, colorrange=(0, 0.3), nan_color=:gray)
+    row == 1 && Colorbar(fig[2:4, 2], qm, label="Speed [m s⁻¹]")
 
     regional_anomalies = regrid_temperature_anomaly(FieldTimeSeries(filename, "surface_temperature"))
 
     for (column, ((region, zoom), anomalies)) in enumerate(zip(regions, regional_anomalies))
         ax = map_axis(fig[row + 1, column + 2]; title="T − T*, $region, " * title, zoom...)
-        sf = heatmap!(ax, @lift(anomalies[$n]); colormap=:balance, colorrange=(-2, 2), nan_color=:gray)
-        row == 1 && column == 2 && Colorbar(fig[2:4, 5], sf, label="T − T* [°C]")
+        hm = heatmap!(ax, @lift(anomalies[$n]); colormap=:balance, colorrange=(-2, 2), nan_color=:gray)
+        row == 1 && column == 2 && Colorbar(fig[2:4, 5], hm, label="T − T* [°C]")
     end
 end
 

@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using MPI
 using Oceananigans.Grids: MutableVerticalDiscretization, StaticVerticalDiscretization, with_halo
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 # # Distributed model tests
 #
@@ -32,6 +33,13 @@ function Δ_min(grid)
 end
 
 @inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
+
+@kernel function _increment!(c)
+    i, j, k = @index(Global, NTuple)
+    @inbounds c[i, j, k] += 1
+end
+
+@inline active_cell(i, j, k, grid) = !immersed_cell(i, j, k, grid)
 
 function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdamsBashforth2)
 
@@ -89,6 +97,20 @@ for arch in archs
     valid_z_partition = !(arch.partition.z isa Fractional)
 
     if valid_x_partition & valid_y_partition & valid_z_partition
+        @testset "Interior launches visit every active cell once [$(ranks(arch))]" begin
+            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3), halo = (4, 4, 3),
+                                                    latitude = (-80, 80), longitude = (-160, 160), z = (-1, 0))
+
+            bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+            visits = CenterField(grid)
+            launch!(arch, grid, :xyz, _increment!, visits)
+            active = Field(KernelFunctionOperation{Center, Center, Center}(active_cell, grid))
+
+            @test on_architecture(CPU(), interior(visits)) == on_architecture(CPU(), interior(active))
+        end
+
         @testset "Testing distributed solid body rotation" begin
 
             child_arch = child_architecture(arch)
@@ -165,24 +187,13 @@ for arch in archs
                 end
 
                 closure = CATKEVerticalDiffusivity()
-
-                catke_grid = LatitudeLongitudeGrid(arch,
-                                                   size = (Nx, Ny, 3),
-                                                   halo = (4, 4, 3),
-                                                   latitude = (-80, 80),
-                                                   longitude = (-160, 160),
-                                                   z = z_face,
-                                                   radius = 10,
-                                                   topology = (Bounded, Bounded, Bounded))
-
                 cpu_arch = cpu_architecture(arch)
-                catke_global_grid = reconstruct_global_grid(catke_grid)
 
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
 
                 # "s" for "serial" computation, "p" for parallel
-                ms = rotation_with_shear_test(catke_global_grid, closure)
-                mp = rotation_with_shear_test(catke_grid, closure)
+                ms = rotation_with_shear_test(global_immersed_grid, closure)
+                mp = rotation_with_shear_test(immersed_active_grid, closure)
 
                 us = interior(on_architecture(CPU(), ms.velocities.u))
                 vs = interior(on_architecture(CPU(), ms.velocities.v))

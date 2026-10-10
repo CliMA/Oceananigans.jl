@@ -8,7 +8,7 @@ using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
                                                   non_uniform_conformal_mapping_coordinates
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
     FixedSubstepNumber, ConnectedTopology
 using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
@@ -445,15 +445,6 @@ function Grids.with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}
                                                    new_region_grids)
 
     return new_grid
-end
-
-function Grids.with_halo(halo, ibg::ImmersedConformalCubedSphereGrid)
-    active_cells_map = has_active_cells_map(getregion(ibg, 1))
-    active_z_columns = has_active_z_columns(getregion(ibg, 1))
-    underlying_grid = with_halo(halo, ibg.underlying_grid)
-    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
-                                active_cells_map,
-                                active_z_columns)
 end
 
 function Grids.nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)

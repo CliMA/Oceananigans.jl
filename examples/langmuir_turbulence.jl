@@ -27,7 +27,7 @@
 # ```
 
 using Oceananigans
-using Oceananigans.Units: minute, minutes, hours
+using Oceananigans.Units
 using CUDA
 using Random
 using Zarr
@@ -61,11 +61,13 @@ wavelength = 60  # m
 wavenumber = 2π / wavelength # m⁻¹
 frequency = sqrt(g * wavenumber) # s⁻¹
 
-## The vertical scale over which the Stokes drift of a monochromatic surface wave
-## decays away from the surface is `1/2wavenumber`, or
-const vertical_scale = wavelength / 4π
+# The Stokes drift of a monochromatic surface wave decays away from the surface
+# over the vertical scale
 
-## Stokes drift velocity at the surface
+const vertical_scale = 1 / 2wavenumber
+
+# and has surface velocity
+
 const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
@@ -77,7 +79,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # and its `z`-derivative is
 
-∂z_uˢ(z, t) = 1 / vertical_scale * Uˢ * exp(z / vertical_scale)
+∂z_uˢ(z, t) = uˢ(z) / vertical_scale
 
 #
 # !!! info "The Craik-Leibovich equations in Oceananigans"
@@ -92,9 +94,9 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #     for more information.
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
-# if the Stokes drift and surface wave field undergoes _forced_ changes in time.
+# if the Stokes drift and surface wave field undergo _forced_ changes in time.
 # In this example, the Stokes drift is constant and thus the time-derivative of
-# the Stokes drift is 0.
+# the Stokes drift is zero.
 
 # ### Boundary conditions
 #
@@ -104,7 +106,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # [Wagner2021](@citet) impose a linear buoyancy gradient `N²` at the bottom
-# along with a weak, destabilizing flux of buoyancy at the surface to faciliate
+# along with a weak, destabilizing flux of buoyancy at the surface to facilitate
 # spin-up from rest.
 
 Jᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
@@ -116,7 +118,7 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ
 # !!! info "The flux convention in Oceananigans"
 #     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
 #     a negative flux at the surface drives positive velocities, and a positive flux of
-#     buoyancy drives cooling.
+#     buoyancy drives cooling (a loss of buoyancy).
 
 # ### Coriolis parameter
 #
@@ -128,16 +130,16 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 # ## Model instantiation
 #
-# We are ready to build the model. We use a fifth-order Weighted Essentially
-# Non-Oscillatory (WENO) advection scheme and the `AnisotropicMinimumDissipation`
-# model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
+# We are ready to build the model. We use a ninth-order Weighted Essentially
+# Non-Oscillatory (WENO) advection scheme, whose numerical dissipation acts as an
+# implicit large eddy simulation closure. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(grid; coriolis,
                             advection = WENO(order=9),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+                            stokes_drift = UniformStokesDrift(; ∂z_uˢ),
                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
@@ -152,11 +154,11 @@ nothing #hide
 # a deep linear stratification, plus noise,
 
 initial_mixed_layer_depth = 33 # m
-stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_mixed_layer_depth)
+stratification(z) = N² * min(z, -initial_mixed_layer_depth)
 
-bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
+bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * grid.Lz
 
-# The simulation we reproduce from [Wagner2021](@citet) is zero Lagrangian-mean velocity.
+# The simulation we reproduce from [Wagner2021](@citet) starts from zero Lagrangian-mean velocity.
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
@@ -171,41 +173,38 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 simulation = Simulation(model, Δt=45.0, stop_time=4hours)
 
 # We use the `TimeStepWizard` for adaptive time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
+# with a Courant–Friedrichs–Lewy (CFL) number of 1,
 
 conjure_time_step_wizard!(simulation, cfl=1.0, max_Δt=1minute)
 
 # ### Nice progress messaging
 #
-# We define a function that prints a helpful message with
-# maximum absolute value of ``u, v, w`` and the current wall clock time.
+# We define a function that prints a helpful message with the
+# maximum absolute value of ``u, v, w`` and the elapsed wall clock time.
 
 using Printf
 
 function progress(simulation)
     u, v, w = simulation.model.velocities
 
-    ## Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
+    @info @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) m s⁻¹, wall time: %s",
                    iteration(simulation),
-                   prettytime(time(simulation)),
+                   prettytime(simulation),
                    prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(simulation.run_wall_time))
 
-    @info msg
-
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
+add_callback!(simulation, progress, IterationInterval(20))
 
 # ## Output
 #
 # ### A field writer
 #
-# We set up an output writer for the simulation that saves all velocity fields,
-# tracer fields, and the subgrid turbulent diffusivity. We write to a Zarr store —
+# We set up an output writer for the simulation that saves all velocity and
+# tracer fields. We write to a Zarr store —
 # each output becomes a chunked array of shape `(Nx, Ny, Nz, Nt)` that grows along
 # the time axis. The on-disk layout is friendly to chunked / parallel reads.
 
@@ -221,8 +220,8 @@ simulation.output_writers[:fields] =
 
 # ### An "averages" writer
 #
-# We also set up output of time- and horizontally-averaged velocity field and
-# momentum fluxes.
+# We also set up output of time- and horizontally-averaged velocities, buoyancy,
+# and vertical momentum fluxes.
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -247,7 +246,7 @@ simulation.output_writers[:averages] =
 Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
-# # Making a neat movie
+# ## Making a neat movie
 #
 # We look at the results by loading data from file with `FieldTimeSeries`,
 # and plotting vertical slices of ``u`` and ``w``, and a horizontal
@@ -316,15 +315,13 @@ ax_uxz = Axis(fig[3, 1:2];
 
 nothing #hide
 
-wₙ = @lift time_series.w[$n]
-uₙ = @lift time_series.u[$n]
-Bₙ = @lift view(time_series.B[$n], 1, 1, :)
-Uₙ = @lift view(time_series.U[$n], 1, 1, :)
-Vₙ = @lift view(time_series.V[$n], 1, 1, :)
-wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
-wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
+Bₙ = @lift time_series.B[$n]
+Uₙ = @lift time_series.U[$n]
+Vₙ = @lift time_series.V[$n]
+wuₙ = @lift time_series.wu[$n]
+wvₙ = @lift time_series.wv[$n]
 
-k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
+k = searchsortedfirst(znodes(grid, Face()), -8)
 wxyₙ = @lift view(time_series.w[$n], :, :, k)
 wxzₙ = @lift view(time_series.w[$n], :, 1, :)
 uxzₙ = @lift view(time_series.u[$n], :, 1, :)
@@ -354,11 +351,11 @@ hm_wxz = heatmap!(ax_wxz, wxzₙ;
 
 Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-ax_uxz = heatmap!(ax_uxz, uxzₙ;
+hm_uxz = heatmap!(ax_uxz, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 
-Colorbar(fig[3, 3], ax_uxz; label = "m s⁻¹")
+Colorbar(fig[3, 3], hm_uxz; label = "m s⁻¹")
 
 current_figure() #hide
 fig
