@@ -760,6 +760,49 @@ end
         end
     end
 
+    @testset "Setting fields with any Julia function [$(summary(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=(4, 6, 8), extent=(1, 2, 3))
+
+        # Values of `func` at the nodes of `field`, computed on the CPU
+        function expected_values(func, field)
+            xs, ys, zs = map(Array, nodes(field))
+            return [func(x, y, z) for x in xs, y in ys, z in zs]
+        end
+
+        # None of these functions can be compiled into a kernel
+        FT = Float32
+        captures_type(x, y, z) = FT(x + y + z)
+        table = collect(1.0:3.0)
+        captures_array(x, y, z) = table[end] * x + y * z
+        shift = 1
+        shift = 2 # assigned twice, so closures capture it in a `Core.Box`
+        captures_box(x, y, z) = x + shift * z
+        scale = 3
+        refers_to_itself(x, z) = scale * x * z
+        refers_to_itself(x, y, z) = refers_to_itself(x, z) + y
+        allocates(x, y, z) = sum([x, 2y, 3z])
+
+        for func in (captures_type, captures_array, captures_box, refers_to_itself, allocates)
+            c = CenterField(grid)
+            set!(c, func)
+            @test Array(interior(c)) ≈ expected_values(func, c)
+        end
+
+        # Windowed and reduced fields are evaluated at their own nodes
+        windowed = Field{Center, Center, Center}(grid; indices=(:, :, 8))
+        set!(windowed, captures_array)
+        @test Array(interior(windowed)) ≈ expected_values(captures_array, windowed)
+
+        reduced = Field{Center, Center, Nothing}(grid)
+        set!(reduced, (x, y) -> table[2] * x + y)
+        xs, ys = map(Array, nodes(reduced))
+        @test Array(interior(reduced))[:, :, 1] ≈ [table[2] * x + y for x in xs, y in ys]
+
+        # The error thrown by the function is reported, not the threads' wrapper around it
+        c = CenterField(grid)
+        @test_logs (:warn, r"^An error was encountered within set!") @test_throws MethodError set!(c, (x, y) -> x)
+    end
+
     @testset "isapprox on Fields" begin
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
