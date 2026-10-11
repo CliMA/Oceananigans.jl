@@ -78,5 +78,9 @@ end
         pᶠ = pᶜ + ĝ * bᵏ * Δr⁻
     end
 
+    # Local halo fills skip the corners of distributed grids, which the chain rule of z★ reads
+    @inbounds pHY′[i, j, 0]          = pHY′[i, j, 1]
+    @inbounds pHY′[i, j, ibg.Nz + 1] = pHY′[i, j, ibg.Nz]
+
     return nothing
 end
