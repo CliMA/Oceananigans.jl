@@ -110,7 +110,7 @@ end
         zarrpath = abspath(joinpath(".", "test_zarr_roundtrip.zarr"))
         isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
 
-        simulation = Simulation(model, Δt=1.0, stop_iteration=2)
+        simulation = Simulation(model; Δt=1.0, stop_iteration=2, verbose=false)
         simulation.output_writers[:fields] = ZarrWriter(model, merge(model.velocities, model.tracers);
                                                        filename = "test_zarr_roundtrip",
                                                        dir = ".",
@@ -178,7 +178,7 @@ end
         isdir(filepath) && rm(filepath; recursive=true, force=true)
 
         stop_time = DateTime(2021, 1, 1, 0, 0, 1)
-        simulation = Simulation(model; Δt=1second, stop_time)
+        simulation = Simulation(model; Δt=1second, stop_time, verbose=false)
         simulation.output_writers[:zarr] =
             ZarrWriter(model, (; c=model.tracers.c);
                        filename=filepath,
@@ -241,7 +241,7 @@ end
         wta_path = abspath(joinpath(".", "test_zarr_wta.zarr"))
         isdir(wta_path) && rm(wta_path; recursive=true, force=true)
 
-        simulation = Simulation(model, Δt=1.0, stop_iteration=2)
+        simulation = Simulation(model; Δt=1.0, stop_iteration=2, verbose=false)
         simulation.output_writers[:ops] =
             ZarrWriter(model, outputs;
                        filename = "test_zarr_ops",
@@ -312,7 +312,7 @@ end
         bad_outputs = (h=f_scalar,)
         bad_path = abspath(joinpath(".", "test_zarr_bad.zarr"))
         isdir(bad_path) && rm(bad_path; recursive=true, force=true)
-        simulation2 = Simulation(NonhydrostaticModel(grid; tracers=:c), Δt=1.0, stop_iteration=1)
+        simulation2 = Simulation(NonhydrostaticModel(grid; tracers=:c); Δt=1.0, stop_iteration=1, verbose=false)
         simulation2.output_writers[:bad] =
             ZarrWriter(simulation2.model, bad_outputs;
                        filename = "test_zarr_bad",
@@ -349,7 +349,7 @@ using Oceananigans.Fields: Field
         zarrpath = abspath(joinpath(".", "test_zarr_grid.zarr"))
         isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
 
-        simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+        simulation = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
         simulation.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u);
                                                        filename = "test_zarr_grid",
                                                        dir = ".",
@@ -390,7 +390,7 @@ using Oceananigans.Fields: Field
         # Reset model clock for fresh sim
         model.clock.iteration = 0
         model.clock.time = 0.0
-        simulation2 = Simulation(model, Δt=1.0, stop_iteration=1)
+        simulation2 = Simulation(model; Δt=1.0, stop_iteration=1, verbose=false)
         simulation2.output_writers[:multi] = ZarrWriter(model, multi_outputs;
                                                        filename = "test_zarr_multigrid",
                                                        dir = ".",
@@ -439,7 +439,7 @@ end
         zarrpath = abspath(joinpath(".", "test_zarr_fts.zarr"))
         isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
 
-        simulation = Simulation(model, Δt=0.5, stop_iteration=3)
+        simulation = Simulation(model; Δt=0.5, stop_iteration=3, verbose=false)
         simulation.output_writers[:fields] = ZarrWriter(model, (u=model.velocities.u,
                                                                 v=model.velocities.v,
                                                                 c=model.tracers.c);
@@ -498,7 +498,7 @@ end
         isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
 
         # --- Run 1: 3 steps with a fresh store ---
-        sim1 = Simulation(model, Δt=1.0, stop_iteration=3)
+        sim1 = Simulation(model; Δt=1.0, stop_iteration=3, verbose=false)
         sim1.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u, c=model.tracers.c);
                                                   filename = "test_zarr_append",
                                                   dir = ".",
@@ -512,7 +512,7 @@ end
         # --- Run 2: model.clock not reset → new writer with overwrite=false appends ---
         # (Simulates a continued simulation: same in-memory model, new writer pointing at
         # the same path, the previous writer was dropped.)
-        sim2 = Simulation(model, Δt=1.0, stop_iteration=6)
+        sim2 = Simulation(model; Δt=1.0, stop_iteration=6, verbose=false)
         sim2.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u, c=model.tracers.c);
                                                   filename = "test_zarr_append",
                                                   dir = ".",
@@ -562,7 +562,7 @@ end
 
         # --- DictStore: writer runs entirely in memory ---
         dict_store = Zarr.DictStore()
-        sim = Simulation(model, Δt=1.0, stop_iteration=2)
+        sim = Simulation(model; Δt=1.0, stop_iteration=2, verbose=false)
         sim.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u);
                                                  store = dict_store,
                                                  schedule = IterationInterval(1),
@@ -582,7 +582,7 @@ end
 
         model.clock.iteration = 0
         model.clock.time = 0.0
-        sim2 = Simulation(model, Δt=1.0, stop_iteration=2)
+        sim2 = Simulation(model; Δt=1.0, stop_iteration=2, verbose=false)
         sim2.output_writers[:fields] = ZarrWriter(model, (; u=model.velocities.u);
                                                   filename = "test_zarr_zip",
                                                   dir = ".",
@@ -647,7 +647,7 @@ function zarr_round_trip(grid; tag::String, with_halos = false)
         path = abspath(joinpath(tmp, filename * ".zarr"))
         free_surface = SplitExplicitFreeSurface(grid; substeps=5)
         model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,), free_surface)
-        simulation = Simulation(model, Δt=1, stop_iteration=1)
+        simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
         simulation.output_writers[:zarr] =
             ZarrWriter(model, (; T=model.tracers.T);
                        filename,
@@ -772,7 +772,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
         zarrpath = abspath(joinpath(".", "test_zarr_tripolar.zarr"))
         isdir(zarrpath) && rm(zarrpath; recursive=true, force=true)
 
-        simulation = Simulation(model; Δt=1, stop_iteration=2)
+        simulation = Simulation(model; Δt=1, stop_iteration=2, verbose=false)
         simulation.output_writers[:fields] = ZarrWriter(model,
                                                         (; T=model.tracers.T, u=model.velocities.u);
                                                         filename = "test_zarr_tripolar",
@@ -860,7 +860,7 @@ guarding_scalar_indexing(f, arch) = f()
         directory = mktempdir()
         filepath = joinpath(directory, filename * ".zarr")
 
-        simulation = Simulation(model; Δt=1, stop_iteration=1)
+        simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
         simulation.output_writers[:zarr] = ZarrWriter(model, (; T=model.tracers.T);
                                                       filename,
                                                       dir = directory,

@@ -14,7 +14,7 @@ using KernelAbstractions: @index, @kernel
 # If every reconstructed value lies within the range of the cell it flows into and of that cell's neighbors, and
 #     c - (1 - ν)/ν (cᵐᵃˣ - c) ≤ cᵒᵘᵗ ≤ c + (1 - ν)/ν (c - cᵐⁱⁿ),
 # with cᵐⁱⁿ, cᵐᵃˣ the range of the cell and its neighbors, then cᵐⁱⁿ ≤ cⁿ⁺¹ ≤ cᵐᵃˣ in any dimension.
-# The outflow values closest to the WENO ones that satisfy these conditions are clamp(ĉ - λ, I), with one shift λ per cell.
+# The outflow values closest to the WENO ones that satisfy these conditions are clamp(ĉ - λ, I), with one outflow correction λ per cell.
 
 const BoundedGhostCellWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells{<:Any, <:NamedTuple}}
 
@@ -62,7 +62,7 @@ end
     ghost_cell_projection(grid, N)
 
 Allocate the state of the projection of a bounded `GhostCells` scheme of a `WENO` with `N` stencils: the neighbor mask,
-the list of band cells, the shift, and the face values reconstructed by `update_ghost_cell_projection!`.
+the list of band cells, the outflow corrections, and the face values reconstructed by `update_ghost_cell_projection!`.
 The state is a workspace that tracers advected with schemes of the same order share, since every tracer
 updates it right before its own tendency is computed.
 """
@@ -72,15 +72,15 @@ function ghost_cell_projection(grid, N)
     launch!(arch, grid, :xyz, _compute_ghost_cell_mask!, mask, grid, Val(N))
     fill_halo_regions!(mask)
 
-    # The shift kernel is mapped over the band cells, so that all its threads do the same work
+    # The outflow correction kernel is mapped over the band cells, so that all its threads do the same work
     band_indices = findall(m -> (m >> 6) & 0x01 == 0x01, on_architecture(CPU(), interior(mask)))
     IntType = minimal_index_type(maximum(size(grid)))
     band = on_architecture(arch, map(I -> IntType.(Tuple(I)), band_indices))
 
-    shift = CenterField(grid)
+    outflow_correction = CenterField(grid)
     faces = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
 
-    return (; band, mask, shift, faces)
+    return (; band, mask, outflow_correction, faces)
 end
 
 minimal_index_type(N) = N ≤ typemax(UInt8) ? UInt8 : N ≤ typemax(UInt16) ? UInt16 : N ≤ typemax(UInt32) ? UInt32 : UInt64
@@ -155,7 +155,7 @@ end
     upwind = ũ > 0
     up   = ifelse(upwind, L, R)
     down = ifelse(upwind, R, L)
-    λ = ifelse(in_band(projection.mask, up...), @inbounds(projection.shift[up...]), zero(ĉ))
+    λ = ifelse(in_band(projection.mask, up...), @inbounds(projection.outflow_correction[up...]), zero(ĉ))
     cᵐⁱⁿ, cᵐᵃˣ = neighborhood_range(down..., grid, c, projection.mask)
     projected = clamp(clamp(ĉ, cᵐⁱⁿ, cᵐᵃˣ) - λ, cᵐⁱⁿ, cᵐᵃˣ)
     return ifelse(in_band(projection.mask, L...) | in_band(projection.mask, R...), projected, ĉ)
@@ -227,7 +227,7 @@ function compute_ghost_cell_face_values!(faces, grid, advection, U, c)
 end
 
 #####
-##### The shift of one band cell
+##### The outflow correction of one band cell
 #####
 
 # Outflow transport, WENO value and admissible interval of the face of cell `(i, j, k)` on side `s`
@@ -256,15 +256,15 @@ for (dir, ξ, area, u) in ((1, :x, :Axᶠᶜᶜ, :u), (2, :y, :Ayᶜᶠᶜ, :v),
     end
 end
 
-# One pass of the active-set solution of Φ⁻¹ Σ w clamp(v - λ, I) = target, given the current shift λ
-@inline function active_set_shift(λ, β, w, v, bound, targetΦ, decrease)
+# One pass of the active-set solution of Φ⁻¹ Σ w clamp(v - λ, I) = target, given the current correction λ
+@inline function active_set_correction(λ, β, w, v, bound, targetΦ, decrease)
     active = map(βf -> ifelse(decrease, βf > λ, βf < λ), β)
     Wᵃ = sum(map((a, wf) -> ifelse(a, wf, zero(wf)), active, w))
     Sᵃ = sum(map((a, wf, vf, bf) -> wf * ifelse(a, vf, bf), active, w, v, bound))
     return ifelse(Wᵃ > 0, (Sᵃ - targetΦ) / max(Wᵃ, eps(typeof(λ))), λ)
 end
 
-@inline function ghost_cell_shift(i, j, k, grid, projection, U, c, Δt)
+@inline function cell_outflow_correction(i, j, k, grid, projection, U, c, Δt)
     FT = eltype(grid)
     cᵢ = @inbounds c[i, j, k]
 
@@ -287,28 +287,28 @@ end
     decrease = g₀ > cʰⁱ
     target = clamp(g₀, cˡᵒ, cʰⁱ)
 
-    # g(λ) = Φ⁻¹ Σ w clamp(v - λ, I) is piecewise linear and non-increasing. Shifting towards `target`, face f
+    # g(λ) = Φ⁻¹ Σ w clamp(v - λ, I) is piecewise linear and non-increasing. Moving g towards `target`, face f
     # saturates at the end `bound` of its interval once λ passes β = v - bound. Solving the linear equation on the
     # faces that have not saturated, and dropping those that have, is exact after at most one pass per face.
     bound = map(face -> ifelse(decrease, face[3][1], face[3][2]), faces)
     β = map(-, v, bound)
     λ = zero(FT)
     for _ in 1:length(faces)
-        λ = active_set_shift(λ, β, w, v, bound, target * Φ, decrease)
+        λ = active_set_correction(λ, β, w, v, bound, target * Φ, decrease)
     end
 
     return ifelse((Φ > 0) & (Δt > 0) & (g₀ != target), λ, zero(FT))
 end
 
-@kernel function _compute_ghost_cell_shift!(projection, grid, U, c, Δt)
+@kernel function _compute_outflow_corrections!(projection, grid, U, c, Δt)
     i, j, k = @index(Global, NTuple)
-    @inbounds projection.shift[i, j, k] = ghost_cell_shift(i, j, k, grid, projection, U, c, Δt)
+    @inbounds projection.outflow_correction[i, j, k] = cell_outflow_correction(i, j, k, grid, projection, U, c, Δt)
 end
 
 """
     update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt)
 
-Reconstruct the face values of `tracer` and compute the shifts of the band cells for the advecting `velocities`
+Reconstruct the face values of `tracer` and compute the outflow corrections of the band cells for the advecting `velocities`
 and the time step `Δt` of the tracer flux divergence that follows.
 """
 update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt) = nothing
@@ -322,8 +322,8 @@ function update_ghost_cell_projection!(scheme::BoundedGhostCellWENO, model, velo
 
     isempty(projection.band) && return nothing
     Δt = convert(eltype(grid), Δt)
-    launch!(arch, grid, :xyz, _compute_ghost_cell_shift!, projection, grid, velocities, tracer, Δt; active_cells_map = projection.band)
-    fill_halo_regions!(projection.shift)
+    launch!(arch, grid, projection.band, _compute_outflow_corrections!, projection, grid, velocities, tracer, Δt)
+    fill_halo_regions!(projection.outflow_correction)
 
     return nothing
 end

@@ -10,6 +10,27 @@ EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyC
 TimeSteppers.time_discretization(::EnergyConserving) = ExplicitTimeDiscretization()
 TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretization()
 
+"""
+    EnergyConservingUpwinding(scheme)
+
+Vorticity scheme for `VectorInvariant` that reconstructs vorticity with the upwind-biased `scheme` and pairs
+the reconstructed values symmetrically between the `u` and `v` equations, as in the TRiSK scheme of Ringler et al. (2010).
+The horizontal vorticity flux does no work on the flow for any reconstructed vorticity, so the upwinding
+dissipates enstrophy while conserving kinetic energy.
+"""
+struct EnergyConservingUpwinding{N, FT, TD, S} <: AbstractAdvectionScheme{N, FT, TD}
+    scheme :: S
+    EnergyConservingUpwinding{N, FT, TD}(scheme::S) where {N, FT, TD, S} = new{N, FT, TD, S}(scheme)
+end
+
+# the symmetric pairing reads the reconstructed vorticity one point further than `scheme` does
+EnergyConservingUpwinding(scheme::AbstractUpwindBiasedAdvectionScheme{N, FT, TD}) where {N, FT, TD} = EnergyConservingUpwinding{N+1, FT, TD}(scheme)
+
+Base.summary(a::EnergyConservingUpwinding) = string("EnergyConservingUpwinding(", summary(a.scheme), ")")
+
+Adapt.adapt_structure(to, a::EnergyConservingUpwinding{N, FT, TD}) where {N, FT, TD} = EnergyConservingUpwinding{N, FT, TD}(Adapt.adapt(to, a.scheme))
+Architectures.on_architecture(to, a::EnergyConservingUpwinding{N, FT, TD}) where {N, FT, TD} = EnergyConservingUpwinding{N, FT, TD}(on_architecture(to, a.scheme))
+
 struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionScheme{N, FT, TD}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
@@ -53,6 +74,7 @@ Keyword arguments
   * `WENO()`
   * `EnergyConserving()`
   * `EnstrophyConserving()`
+  * `EnergyConservingUpwinding(WENO())` (upwind-biased vorticity with a kinetic-energy-conserving flux)
 
 - `vorticity_stencil`: Stencil used for smoothness indicators for `WENO` schemes. Default: `VelocityStencil()`. Options:
   * `VelocityStencil()` (smoothness based on horizontal velocities)
@@ -119,6 +141,7 @@ const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantEnergyConserving           = VectorInvariant{<:Any, <:Any, <:Any, <:EnergyConserving}
 const VectorInvariantEnstrophyConserving        = VectorInvariant{<:Any, <:Any, <:Any, <:EnstrophyConserving}
 const VectorInvariantUpwindVorticity            = VectorInvariant{<:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
+const VectorInvariantEnergyConservingUpwinding  = VectorInvariant{<:Any, <:Any, <:Any, <:EnergyConservingUpwinding}
 
 #                                                 VectorInvariant{N,     FT,    TD,    Z,     ZS,    V (vertical scheme)
 const VectorInvariantVerticalEnergyConserving   = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:EnergyConserving}
@@ -405,6 +428,41 @@ end
     ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + û * ζᴿ
+end
+
+#####
+##### Energy-conserving upwinding (5.)
+#####
+##### Each u-point is paired with its four neighboring v-points (and vice versa) through (ζᵘ + ζᵛ) / 2,
+##### with ζᵘ upwinded in y by v̂ and ζᵛ upwinded in x by û. The pairing coefficient is symmetric,
+##### so Σ Vᶠᶜᶜ u Gᵘ + Σ Vᶜᶠᶜ v Gᵛ = 0 for any ζᵘ, ζᵛ.
+#####
+
+@inline function upwinded_vorticityᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+    v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    return _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(v̂), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+end
+
+@inline function upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+    û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    return _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(û), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+end
+
+@inline Δx_v_ζᶜᶠᶜ(i, j, k, grid, scheme, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, v) * upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+@inline Δy_u_ζᶠᶜᶜ(i, j, k, grid, scheme, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, u) * upwinded_vorticityᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+
+@inline function horizontal_advection_U(i, j, k, grid, scheme::VectorInvariantEnergyConservingUpwinding, u, v)
+    v̂   = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    ζᵘ  = upwinded_vorticityᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+    vζᵛ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_v_ζᶜᶠᶜ, scheme, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    return - (v̂ * ζᵘ + vζᵛ) / 2
+end
+
+@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantEnergyConservingUpwinding, u, v)
+    û   = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    ζᵛ  = upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+    uζᵘ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_u_ζᶠᶜᶜ, scheme, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    return + (û * ζᵛ + uζᵘ) / 2
 end
 
 #####

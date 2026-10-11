@@ -15,7 +15,7 @@ using Adapt
 using GPUArraysCore
 using CUDA
 
-MPI.Initialized() || MPI.Init()
+MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
@@ -63,8 +63,10 @@ import Oceananigans.Utils: launch!, getnamewrapper
 Logging.global_logger(OceananigansLogger())
 
 # Legacy tests index GPU arrays with scalars; the process-wide default is the only setting
-# that reaches every task ParallelTestRunner spawns.
-GPUArraysCore.allowscalar(true)
+# that reaches every task ParallelTestRunner spawns. The warning discouraging this is silenced.
+with_logger(NullLogger()) do
+    GPUArraysCore.allowscalar(true)
+end
 
 #####
 ##### Testing parameters

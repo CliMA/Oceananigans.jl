@@ -694,21 +694,36 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-# TODO: needs test
-function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition=nothing)
+"""
+    dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
+
+Store the dot product of `a` and `b` in the one-element array `r`, which lives on the same
+architecture as `a` and `b`, and return `r`. Unlike `LinearAlgebra.dot`, `dot!` does not copy
+the result to the host, so on a GPU it does not make the host wait for the device.
+"""
+dot!(r, a::AbstractField, b::AbstractField; condition = nothing) = local_dot!(r, a, b; condition)
+
+# The dot product over the cells of `a` and `b` that live on this rank; distributed fields
+# extend `dot!` to reduce it across ranks
+function local_dot!(r, a::AbstractField, b::AbstractField; condition = nothing)
     ca = condition_operand(a, condition, 0)
     cb = condition_operand(b, condition, 0)
 
     B = ca * cb # Binary operation
-    r = zeros(a.grid, 1)
+    fill!(r, 0)
 
-    Base.mapreducedim!(identity, +, r, B)
+    Base.mapreducedim!(identity, +, r, reduction_operand(B))
+    return r
+end
+
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField; condition = nothing)
+    r = dot!(zeros(a.grid, 1), a, b; condition)
     return @allowscalar r[1]
 end
 
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, reduction_operand(condition_operand(a, condition, 0)))
     return @allowscalar sqrt(r[1])
 end
 
@@ -796,6 +811,18 @@ const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
 @inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
+# Reductions get a field's interior: a 1-based array of the field's own size, which generic
+# reduction code (e.g. GPUArrays') can view, reshape and adapt, unlike the field itself
+@inline reduction_operand(c::Field) = interior(c)
+@inline reduction_operand(c) = c
+
+# Operations drop the indices of their fields when adapted for a kernel, which changes their
+# size, so a windowed operation is reduced through a view of its window, which keeps it
+@inline reduction_operand(c::AbstractField) = windowed_reduction_operand(c, indices(c))
+@inline windowed_reduction_operand(c, ::Tuple{Colon, Colon, Colon}) = c
+@inline windowed_reduction_operand(c, ::Tuple) = view(c, axes(c)...)
+@inline windowed_reduction_operand(c, indices) = c
+
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
 @inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
@@ -820,7 +847,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      operand;
+                                      reduction_operand(operand);
                                       kwargs...)
         end
 
@@ -834,7 +861,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(a, condition, mask);
+                                      reduction_operand(condition_operand(a, condition, mask));
                                       kwargs...)
         end
 
@@ -851,7 +878,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             if dims isa Colon
                 # Cartesian indexing: with Reactant on Julia 1.13, linear indexing
@@ -999,12 +1026,14 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = on_architecture(CPU(), parent(field)))
+    return (; data = on_architecture(CPU(), parent(field)),
+              boundary_conditions = prognostic_state(field.boundary_conditions))
 end
 
 function restore_prognostic_state!(restored::Field, from)
     # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
     @apply_regionally copyto!(parent(restored), from.data)
+    haskey(from, :boundary_conditions) && restore_prognostic_state!(restored.boundary_conditions, from.boundary_conditions)
     return restored
 end
 

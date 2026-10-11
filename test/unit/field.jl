@@ -8,6 +8,7 @@ using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
+using Oceananigans.Fields: dot!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -125,6 +126,10 @@ function run_field_reduction_tests(grid)
             positional = argmax(windowed_values)
             @test value == maximum(windowed_values)
             @test index == CartesianIndex(Tuple(positional) .+ first.(axes(w)) .- 1)
+
+            # Reductions of operations on windowed fields cover only the window
+            @test sum(2 * w) ≈ 2 * sum(windowed_values)
+            @test dot(w, w) ≈ sum(abs2, windowed_values)
         end
 
         for dims in dims_to_test
@@ -759,6 +764,49 @@ end
         end
     end
 
+    @testset "Setting fields with any Julia function [$(summary(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=(4, 6, 8), extent=(1, 2, 3))
+
+        # Values of `func` at the nodes of `field`, computed on the CPU
+        function expected_values(func, field)
+            xs, ys, zs = map(Array, nodes(field))
+            return [func(x, y, z) for x in xs, y in ys, z in zs]
+        end
+
+        # None of these functions can be compiled into a kernel
+        FT = Float32
+        captures_type(x, y, z) = FT(x + y + z)
+        table = collect(1.0:3.0)
+        captures_array(x, y, z) = table[end] * x + y * z
+        shift = 1
+        shift = 2 # assigned twice, so closures capture it in a `Core.Box`
+        captures_box(x, y, z) = x + shift * z
+        scale = 3
+        refers_to_itself(x, z) = scale * x * z
+        refers_to_itself(x, y, z) = refers_to_itself(x, z) + y
+        allocates(x, y, z) = sum([x, 2y, 3z])
+
+        for func in (captures_type, captures_array, captures_box, refers_to_itself, allocates)
+            c = CenterField(grid)
+            set!(c, func)
+            @test Array(interior(c)) ≈ expected_values(func, c)
+        end
+
+        # Windowed and reduced fields are evaluated at their own nodes
+        windowed = Field{Center, Center, Center}(grid; indices=(:, :, 8))
+        set!(windowed, captures_array)
+        @test Array(interior(windowed)) ≈ expected_values(captures_array, windowed)
+
+        reduced = Field{Center, Center, Nothing}(grid)
+        set!(reduced, (x, y) -> table[2] * x + y)
+        xs, ys = map(Array, nodes(reduced))
+        @test Array(interior(reduced))[:, :, 1] ≈ [table[2] * x + y for x in xs, y in ys]
+
+        # The error thrown by the function is reported, not the threads' wrapper around it
+        c = CenterField(grid)
+        @test_logs (:warn, r"^An error was encountered within set!") @test_throws MethodError set!(c, (x, y) -> x)
+    end
+
     @testset "isapprox on Fields" begin
         for arch in archs, FT in float_types
             # Make sure this doesn't require scalar indexing
@@ -1310,6 +1358,38 @@ end
             @test norm(Φ) ≈ sqrt(2 * 9 * 64)
             # dot: 2 · 3 · 3 · 4³ = 1152
             @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
+        end
+    end
+
+    @testset "In-place dot product" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            a = CenterField(grid)
+            b = CenterField(grid)
+            set!(a, 2)
+            set!(b, 3)
+
+            # `dot!` overwrites `r` rather than accumulating into it
+            r = zeros(grid, 1)
+            fill!(r, 7)
+            @test dot!(r, a, b) === r
+            @test Array(r)[1] == 2 * 3 * 64
+            @test dot(a, b) == 2 * 3 * 64
+
+            # Immersed cells, here the bottom half of the domain, are excluded
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-1/2))
+            c = CenterField(immersed_grid)
+            d = CenterField(immersed_grid)
+            set!(c, 2)
+            set!(d, 3)
+            @test Array(dot!(r, c, d))[1] == 2 * 3 * 32
+            @test dot(c, d) == 2 * 3 * 32
+
+            # A windowed field, like the free surface displacement at the top face
+            η = ZFaceField(grid, indices=(:, :, grid.Nz+1))
+            set!(η, 5)
+            @test Array(dot!(r, η, η))[1] == 5 * 5 * 16
+            @test dot(η, η) == 5 * 5 * 16
         end
     end
 end

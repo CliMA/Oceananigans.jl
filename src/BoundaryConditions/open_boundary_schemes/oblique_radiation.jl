@@ -46,7 +46,7 @@ ObliqueRadiation{Float64}
 ├── inflow_timescale: 0.0
 ├── outflow_timescale: Inf
 ├── use_boundary_velocity: false
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
@@ -92,6 +92,9 @@ radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
     (ntuple(_ -> zeros(arch, FT, tangential_size...), 3)...,
      zeros(arch, FT, tangential_size..., 2),
      zeros(arch, FT, tangential_size..., 2))
+
+radiation_buffers(radiation::ObliqueRadiation) =
+    (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior)
 
 radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior)) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
