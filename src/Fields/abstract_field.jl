@@ -42,9 +42,9 @@ $(TYPEDSIGNATURES)
 
 Returns the size of an `AbstractField{LX, LY, LZ}` located at `LX, LY, LZ`.
 This is a 3-tuple of integers corresponding to the number of interior nodes
-of `f` along `x, y, z`.
+of `f` along `x, y, z`, restricted to the `indices` of `f`.
 """
-Base.size(f::AbstractField) = size(f.grid, location(f))
+Base.size(f::AbstractField) = size(f.grid, location(f), indices(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
