@@ -52,24 +52,36 @@ bottom cells. That is, the height of the bottommost cell in each column is reduc
 to fit the provided `bottom_height`, which may be a `Field`, `Array`, or function
 of `(x, y)`.
 
-The height of partial bottom cells is greater than
+The height of partial bottom cells is greater than or equal to
 
 ```
 minimum_fractional_cell_height * Δz,
 ```
 
 where `Δz` is the original height of the bottom cell underlying grid.
+`minimum_fractional_cell_height` must be a finite real number in `[0, 1]`.
+A value of zero disables the minimum-height constraint. A positive value must
+remain positive when converted to the grid's floating-point type.
 """
 function PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
+    ϵ = minimum_fractional_cell_height
+    if !(ϵ isa Real && isfinite(ϵ) && 0 ≤ ϵ ≤ 1)
+        throw(ArgumentError("minimum_fractional_cell_height must be a finite real number in [0, 1]. Got $ϵ."))
+    end
+
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
+    minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
+    if iszero(minimum_fractional_cell_height) && !iszero(ib.minimum_fractional_cell_height)
+        throw(ArgumentError("minimum_fractional_cell_height = $(ib.minimum_fractional_cell_height) " *
+                            "underflows to zero when converted to $(eltype(grid))."))
+    end
+
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
-
-    minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
-    compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
+    compute_ib = PartialCellBottom(bottom_field; minimum_fractional_cell_height)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
