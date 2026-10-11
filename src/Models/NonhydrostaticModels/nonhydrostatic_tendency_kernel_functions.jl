@@ -1,4 +1,5 @@
 using Oceananigans.Advection
+using Oceananigans.Advection: without_ghost_cell_projection
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Coriolis
 using Oceananigans.Operators
@@ -294,7 +295,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
-             - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
+             - div_Uc(i, j, k, grid, without_ghost_cell_projection(advection), velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_index, closure_c, clock, closure_model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, closure_fields, val_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)

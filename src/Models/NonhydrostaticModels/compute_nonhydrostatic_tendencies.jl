@@ -1,6 +1,7 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
+using Oceananigans.Advection: adaptive_advection_timestep, update_ghost_cell_projection!
 using Oceananigans.Utils: get_active_cells_map
 
 """
@@ -97,6 +98,14 @@ end
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds forcing       = model.forcing[tracer_name]
     @inbounds c_immersed_bc = model.tracers[tracer_name].boundary_conditions.immersed
+
+    # The same velocities advect `c` in `tracer_tendency`
+    biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, Val(tracer_name))
+    total_velocities = sum_of_velocities(model.velocities, model.background_fields.velocities, biogeochemical_velocities)
+    total_velocities = with_advective_forcing(forcing, total_velocities)
+    # Tendencies are computed at the end of a substep for the next one
+    Δt = adaptive_advection_timestep(model.timestepper, model.clock)
+    update_ghost_cell_projection!(c_advection, model, total_velocities, model.tracers[tracer_name], Δt)
 
     launch!(arch, grid, kernel_parameters, compute_Gc!,
             c_tendency, grid,

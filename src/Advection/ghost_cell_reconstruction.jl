@@ -1,92 +1,110 @@
 using Oceananigans.ImmersedBoundaries: inactive_node
 
 """
-    GhostCells([FT=Oceananigans.defaults.FloatType;] curvature_weight = 100, monotone = true)
+    GhostCells([FT=Oceananigans.defaults.FloatType;] bounded = true)
 
-Boundary scheme of a `WENO` reconstruction whose stencil reaches inactive cells. Every inactive cell of the stencil is replaced by a ghost value,
-and the full-order reconstruction runs on the completed stencil. The ghost value blends the mirror image of the active run across the boundary with
-the quadratic extrapolation of its three cells closest to the boundary, `c₀, c₁, c₂`, as `(1 - θ) * mirror + θ * extrapolation` with
+Boundary scheme of a `WENO` reconstruction whose stencil reaches inactive cells, either inside an immersed boundary
+or outside a `Bounded` domain. Every inactive cell of the stencil is replaced by a ghost value and the full-order
+reconstruction runs on the completed stencil. The ghost value is the Lagrange extrapolation, along the stencil line,
+of the active cells closest to the boundary: quadratic when three active cells are available, linear or constant
+when fewer are.
 
-```math
-θ = δ⁴ / (δ⁴ + w κ⁴), \\quad δ = c₁ - c₀, \\quad κ = c₂ - 2c₁ + c₀,
-```
-
-so that smooth data are extrapolated, while jumps and data with vanishing gradient at the boundary are mirrored.
-
-- `curvature_weight`: the weight `w` of the curvature in `θ`.
-- `monotone`: where the reconstruction uses ghost values, bound it between the upwind and downwind cells and within twice the upwind gradient of the upwind cell,
-  as in [SureshHuynh97](@citet).
+- `bounded`: for tracers advected in flux form, project the reconstructed values in the cells whose stencils read
+  ghost values onto a cell-wise admissible set, so that the advective update of these cells stays within the range of
+  the cell and its neighbors. The projection uses the stage time step; it is exact for forward-Euler and
+  strong-stability-preserving Runge-Kutta stages and approximate for other time steppers.
 """
-struct GhostCells{S, FT}
+struct GhostCells{S, P}
     scheme :: S
-    curvature_weight :: FT
-    monotone :: Bool
+    projection :: P
+    bounded :: Bool
 end
 
-GhostCells(FT::DataType = Oceananigans.defaults.FloatType; curvature_weight = 100, monotone = true) = GhostCells(nothing, convert(FT, curvature_weight), monotone)
+GhostCells(FT::DataType = Oceananigans.defaults.FloatType; bounded = true) = GhostCells(nothing, nothing, bounded)
 
-Base.summary(scheme::GhostCells) = string("GhostCells(curvature_weight=", scheme.curvature_weight, ", monotone=", scheme.monotone, ")")
+Base.summary(scheme::GhostCells) = string("GhostCells(bounded=", scheme.bounded, ")")
 
 const GhostCellWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells}
 
-Adapt.adapt_structure(to, scheme::GhostCells) = GhostCells(Adapt.adapt(to, scheme.scheme), scheme.curvature_weight, scheme.monotone)
-Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) = GhostCells(on_architecture(to, scheme.scheme), scheme.curvature_weight, scheme.monotone)
+Adapt.adapt_structure(to, scheme::GhostCells) =
+    GhostCells(Adapt.adapt(to, scheme.scheme), Adapt.adapt(to, scheme.projection), scheme.bounded)
 
-@inline function extrapolation_weight(WCT, c₀, c₁, c₂, w)
-    δ = c₁ - c₀
-    κ = c₂ - 2c₁ + c₀
-    δ² = δ * δ
-    κ² = κ * κ
-    δ⁴ = δ² * δ²
-    Σ = δ⁴ + w * κ² * κ²
-    return δ, κ, newton_div(WCT, δ⁴, ifelse(Σ > 0, Σ, one(Σ)))
-end
+Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) =
+    GhostCells(on_architecture(to, scheme.scheme), on_architecture(to, scheme.projection), scheme.bounded)
 
-@inline ghost_value(mirror, c₀, δ, κ, θ, distance) = mirror + θ * (c₀ - distance * δ + (distance * (distance + 1) ÷ 2) * κ - mirror)
-
-@inline function monotone_bound(ψ̂, U, D, UU)
-    Uᴸ = U + 2 * (U - UU)
-    ψᵐᵃˣ = ifelse(D > Uᴸ, D, Uᴸ)
-    ψᵐⁱⁿ = ifelse(D > Uᴸ, Uᴸ, D)
-    return clamp(ψ̂, ifelse(U < ψᵐᵃˣ, U, ψᵐᵃˣ), ifelse(U > ψᵐⁱⁿ, U, ψᵐⁱⁿ))
+# Lagrange extrapolation from the cells at distances 0, 1, 2 from the boundary to the ghost at depth `d`;
+# `f₁` and `f₂` flag whether the second and third extrapolation nodes are active cells.
+@inline function ghost_value(c₀, c₁, c₂, f₁, f₂, d)
+    δ = ifelse(f₁, c₁ - c₀, zero(c₀))
+    κ = ifelse(f₁ & f₂, c₂ - 2c₁ + c₀, zero(c₀))
+    return c₀ - d * δ + (d * (d + 1) ÷ 2) * κ
 end
 
 @inline upwind_stencil_length(N) = max(2N - 1, N + 2)
 
-function clamped_to_run_start(N, q)
+function clamped_to_lower_end(N, q)
     if q < 1
-        return clamped_to_run_start(N, 1)
+        return clamped_to_lower_end(N, 1)
     elseif q ≥ N
         return :(S[$q])
     else
-        return :(ifelse(Aᵃ[$(N - q)], S[$q], $(clamped_to_run_start(N, q + 1))))
+        return :(ifelse(Aᵃ[$(N - q)], S[$q], $(clamped_to_lower_end(N, q + 1))))
     end
 end
 
-function clamped_to_run_end(N, q)
+function clamped_to_upper_end(N, q)
     if q > upwind_stencil_length(N)
-        return clamped_to_run_end(N, upwind_stencil_length(N))
+        return clamped_to_upper_end(N, upwind_stencil_length(N))
     elseif q ≤ N
         return :(S[$q])
     else
-        return :(ifelse(Aᵇ[$(q - N)], S[$q], $(clamped_to_run_end(N, q - 1))))
+        return :(ifelse(Aᵇ[$(q - N)], S[$q], $(clamped_to_upper_end(N, q - 1))))
     end
 end
 
-function run_start_anchor(N, k)
-    anchor = clamped_to_run_end(N, N + k)
-    for run in 1:N-2
-        anchor = :(ifelse(Aᵃ[$run], $(clamped_to_run_end(N, N - run + k)), $anchor))
+# Whether the stencil cell `q` is active, given the extent of the active segment on both sides of the upwind cell `N`
+function active_position(N, q)
+    if q == N
+        return true
+    elseif 1 ≤ q < N
+        return :(Aᵃ[$(N - q)])
+    elseif N < q ≤ upwind_stencil_length(N)
+        return :(Aᵇ[$(q - N)])
+    else
+        return false
     end
-    return anchor
 end
 
-function run_end_anchor(N, k)
-    anchor = clamped_to_run_start(N, N - k)
-    for run in 1:upwind_stencil_length(N)-N-1
-        anchor = :(ifelse(Aᵇ[$run], $(clamped_to_run_start(N, N + run - k)), $anchor))
+function lower_extrapolation_node(N, k)
+    node = clamped_to_upper_end(N, N + k)
+    for extent in 1:N-2
+        node = :(ifelse(Aᵃ[$extent], $(clamped_to_upper_end(N, N - extent + k)), $node))
     end
-    return anchor
+    return node
+end
+
+function lower_extrapolation_node_activity(N, k)
+    activity = active_position(N, N + k)
+    for extent in 1:N-2
+        activity = :(ifelse(Aᵃ[$extent], $(active_position(N, N - extent + k)), $activity))
+    end
+    return activity
+end
+
+function upper_extrapolation_node(N, k)
+    node = clamped_to_lower_end(N, N - k)
+    for extent in 1:upwind_stencil_length(N)-N-1
+        node = :(ifelse(Aᵇ[$extent], $(clamped_to_lower_end(N, N + extent - k)), $node))
+    end
+    return node
+end
+
+function upper_extrapolation_node_activity(N, k)
+    activity = active_position(N, N - k)
+    for extent in 1:upwind_stencil_length(N)-N-1
+        activity = :(ifelse(Aᵇ[$extent], $(active_position(N, N + extent - k)), $activity))
+    end
+    return activity
 end
 
 function completed_cell(N, q)
@@ -97,39 +115,38 @@ function completed_cell(N, q)
         (:Aᵇ, :gᵇ, q - N)
     end
     ghost = :($g[$depth])
-    for run in 1:depth-1
-        ghost = :(ifelse($A[$run], $g[$(depth - run)], $ghost))
+    for extent in 1:depth-1
+        ghost = :(ifelse($A[$extent], $g[$(depth - extent)], $ghost))
     end
     return :(ifelse($A[$depth], S[$q], $ghost))
 end
 
 for N in advection_buffers[2:end]
     @eval begin
-        @inline run_start_anchors(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (run_start_anchor(N, k) for k in 0:max(2, N - 2))...))
-        @inline   run_end_anchors(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (  run_end_anchor(N, k) for k in 0:max(2, N - 2))...))
+        @inline  lower_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (lower_extrapolation_node(N, k) for k in 0:2)...))
+        @inline  upper_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (upper_extrapolation_node(N, k) for k in 0:2)...))
+        @inline lower_extrapolation_activity(Aᵃ, Aᵇ, ::Val{$N})    = @inbounds $(Expr(:tuple, (lower_extrapolation_node_activity(N, k) for k in 1:2)...))
+        @inline upper_extrapolation_activity(Aᵃ, Aᵇ, ::Val{$N})    = @inbounds $(Expr(:tuple, (upper_extrapolation_node_activity(N, k) for k in 1:2)...))
         @inline completed_stencil(S, Aᵃ, Aᵇ, gᵃ, gᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (completed_cell(N, q) for q in 1:2N-1)...))
     end
 end
 
-@inline function ghost_cell_reconstruction(scheme::GhostCells{<:WENO{N, <:Any, WCT}}, bias, S, Aᵃ, Aᵇ, δˢ) where {N, WCT}
-    cᵃ = run_start_anchors(S, Aᵃ, Aᵇ, Val(N)) # Values nearest the (-) boundary for each stencil
-    cᵇ =   run_end_anchors(S, Aᵃ, Aᵇ, Val(N)) # Values nearest the (+) boundary for each stencil
+@inline function ghost_cell_reconstruction(scheme::GhostCells{<:WENO{N}}, bias, S, Aᵃ, Aᵇ, δˢ) where N
+    cᵃ = lower_extrapolation_stencil(S, Aᵃ, Aᵇ, Val(N)) # Active cells nearest the lower boundary of the stencil
+    cᵇ = upper_extrapolation_stencil(S, Aᵃ, Aᵇ, Val(N)) # Active cells nearest the upper boundary of the stencil
+    fᵃ = lower_extrapolation_activity(Aᵃ, Aᵇ, Val(N))
+    fᵇ = upper_extrapolation_activity(Aᵃ, Aᵇ, Val(N))
 
-    δᵃ, κᵃ, θᵃ = @inbounds extrapolation_weight(WCT, cᵃ[1], cᵃ[2], cᵃ[3], scheme.curvature_weight)
-    δᵇ, κᵇ, θᵇ = @inbounds extrapolation_weight(WCT, cᵇ[1], cᵇ[2], cᵇ[3], scheme.curvature_weight)
-
-    gᵃ = ntuple(d -> @inbounds(ghost_value(cᵃ[d], cᵃ[1], δᵃ, κᵃ, θᵃ, d)), Val(N - 1)) # ghost values inside the (-) boundary
-    gᵇ = ntuple(d -> @inbounds(ghost_value(cᵇ[d], cᵇ[1], δᵇ, κᵇ, θᵇ, d)), Val(N - 1)) # ghost values inside the (+) boundary
-    S̃  = completed_stencil(S, Aᵃ, Aᵇ, gᵃ, gᵇ, Val(N)) # Choose between ``real'' interior values (S) and ghost values (in immersed or boundary nodes)
+    gᵃ = @inbounds ntuple(d -> ghost_value(cᵃ[1], cᵃ[2], cᵃ[3], fᵃ[1], fᵃ[2], d), Val(N - 1))
+    gᵇ = @inbounds ntuple(d -> ghost_value(cᵇ[1], cᵇ[2], cᵇ[3], fᵇ[1], fᵇ[2], d), Val(N - 1))
+    S̃  = completed_stencil(S, Aᵃ, Aᵇ, gᵃ, gᵇ, Val(N))
 
     ghosted = @inbounds !(Aᵃ[N - 1] & Aᵇ[N - 1])
 
     δ = weno_differences(scheme.scheme, S̃)
     ω = biased_weno_weights(smoothness(ghosted, δ, δˢ), nothing, scheme.scheme)
-    ψ̂ = weno_reconstruction(scheme.scheme, weno_anchor(scheme.scheme, S̃), δ, ω)
-    ψ̃ = @inbounds monotone_bound(ψ̂, S[N], S̃[N + 1], S̃[N - 1])
 
-    return ifelse(scheme.monotone & ghosted, ψ̃, ψ̂)
+    return weno_reconstruction(scheme.scheme, weno_anchor(scheme.scheme, S̃), δ, ω)
 end
 
 # Stencils with ghost points do not obey the `VelocityStencil` and `FunctionStencil`,
@@ -144,8 +161,8 @@ end
     S = upwind_stencil(i, j, k, grid, scheme.scheme, bias, e, ψ, args...)
     A = upwind_stencil(i, j, k, grid, scheme.scheme, bias, e, active_node, ℓx, ℓy, ℓz)
 
-    Aᵃ = accumulate(&, ntuple(@inline(run -> @inbounds(A[N - run])), Val(N - 1)))
-    Aᵇ = accumulate(&, ntuple(@inline(run -> @inbounds(A[N + run])), Val(upwind_stencil_length(N) - N)))
+    Aᵃ = accumulate(&, ntuple(@inline(extent -> @inbounds(A[N - extent])), Val(N - 1)))
+    Aᵇ = accumulate(&, ntuple(@inline(extent -> @inbounds(A[N + extent])), Val(upwind_stencil_length(N) - N)))
 
     return ghost_cell_reconstruction(scheme, bias, S, Aᵃ, Aᵇ, δˢ)
 end
@@ -173,6 +190,6 @@ for (dir, ξ) in enumerate((:x, :y, :z))
 
     for location in (:ᶜ, :ᶠ)
         symmetric = Symbol(:symmetric_interpolate_, ξ, ntuple(d -> d == dir ? location : :ᵃ, 3)...)
-        @eval @inline $symmetric(i, j, k, grid, ::GhostCells{<:Any, FT}, args...) where FT = $symmetric(i, j, k, grid, Centered{1, FT}(nothing, ExplicitTimeDiscretization()), args...)
+        @eval @inline $symmetric(i, j, k, grid, ::GhostCells{<:WENO{<:Any, FT}}, args...) where FT = $symmetric(i, j, k, grid, Centered{1, FT}(nothing, ExplicitTimeDiscretization()), args...)
     end
 end

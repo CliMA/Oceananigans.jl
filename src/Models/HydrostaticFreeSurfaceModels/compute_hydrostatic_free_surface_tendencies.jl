@@ -7,6 +7,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
+using Oceananigans.Advection: update_ghost_cell_projection!
 using Oceananigans.Utils: get_active_cells_map
 
 """
@@ -75,6 +76,10 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
+# Tracer tendencies are computed within the substep that they advance
+tracer_substep(timestepper, clock) = clock.last_Δt
+tracer_substep(::SplitRungeKuttaTimeStepper, clock) = clock.last_stage_Δt
+
 # Fallback
 compute_free_surface_tendency!(grid, model, free_surface, Δt) = nothing
 
@@ -108,6 +113,13 @@ compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_ma
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
     @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+
+    # The same velocities advect `c` in `hydrostatic_free_surface_tracer_tendency`
+    biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, Val(tracer_name))
+    closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, Val(tracer_name))
+    total_velocities = sum_of_velocities(model.transport_velocities, biogeochemical_velocities, closure_velocities)
+    total_velocities = with_advective_forcing(c_forcing, total_velocities)
+    update_ghost_cell_projection!(c_advection, model, total_velocities, model.tracers[tracer_name], tracer_substep(model.timestepper, model.clock))
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gc!,
