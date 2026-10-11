@@ -21,10 +21,11 @@ MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 
 [sources]
 Oceananigans = {path = ".."}
+CUDA = {url = "https://github.com/juliagpu/cuda.jl", rev = "main"}
 
 [compat]
 ArgParse = "1"
-CUDA = "5, 6.0 - 6.1"
+CUDA = "5, 6"
 DataDeps = "0.7"
 Dates = "<0.0.1, 1"
 JLD2 = "0.5, 0.6"
