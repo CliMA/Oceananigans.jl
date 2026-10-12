@@ -449,9 +449,9 @@ function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, s
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
-    kernel_param = augmented_kernel_parameters(strategy, grid, kernel_sizes)
-    
-    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_param
+    kernel_parameters = augmented_kernel_parameters(strategy, grid, kernel_sizes)
+
+    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_parameters
 end
 
 augmented_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
