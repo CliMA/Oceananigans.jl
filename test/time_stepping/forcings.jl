@@ -164,6 +164,12 @@ function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
     return true
 end
 
+# The FFT-based pressure solver is only approximate on immersed rectilinear grids, and warns about it
+pressure_solver_logs(::Type{NonhydrostaticModel}, grid::ImmersedBoundaryGrid) = grid.underlying_grid isa RectilinearGrid ?
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),) : ()
+
+pressure_solver_logs(model_type, grid) = ()
+
 function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, immersed=false)
 
     if immersed
@@ -182,12 +188,12 @@ function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, im
     zero_forcing(x, y, z, t) = 0
     one_forcing(x, y, z, t) = 1
 
-    model = model_type(grid;
-                       timestepper = :QuasiAdamsBashforth2,
-                       tracers = (:a, :b, :c),
-                       forcing = (a = constant_slip,
-                                  b = (zero_forcing, velocity_field_slip),
-                                  c = (one_forcing, zero_slip)))
+    model = @test_logs pressure_solver_logs(model_type, grid)... model_type(grid;
+                                                                            timestepper = :QuasiAdamsBashforth2,
+                                                                            tracers = (:a, :b, :c),
+                                                                            forcing = (a = constant_slip,
+                                                                                       b = (zero_forcing, velocity_field_slip),
+                                                                                       c = (one_forcing, zero_slip)))
 
     noise(x, y, z) = rand()
     set!(model, a=noise, b=noise, c=0)
@@ -303,7 +309,7 @@ function test_momentum_flux_zero_at_peripheral_nodes(scheme)
     # node configurations (not just a uniform flat slab).
     bottom_height = -1 .+ rand(Nx, Ny) .* 0.8  # varies between -1 and -0.2
     ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-    model = NonhydrostaticModel(ibg, advection=scheme)
+    model = @test_logs pressure_solver_logs(NonhydrostaticModel, ibg)... NonhydrostaticModel(ibg, advection=scheme)
 
     # Set non-zero velocities everywhere, then zero out immersed cells via masking.
     set!(model, u=1, v=1, w=1)
@@ -352,7 +358,8 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     Nz = 16
     Lz = 1
 
-    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = Nz, z = (-Lz, 0))
+    # WENO(order=5) on the immersed grid needs one more halo point than on the regular grid
+    regular_grid = RectilinearGrid(arch, topology = (Flat, Flat, Bounded), size = Nz, z = (-Lz, 0), halo = 4)
     immersed_grid = ImmersedBoundaryGrid(regular_grid, GridFittedBottom(-3Lz/4))
 
     function build_settling_model(grid, w_settle)
@@ -374,7 +381,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
         # Create settling forcing with the velocity field
         settling_forcing = AdvectiveForcing(w = w_settle_field)
-        model = NonhydrostaticModel(grid; advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
+        model = @test_logs pressure_solver_logs(NonhydrostaticModel, grid)... NonhydrostaticModel(grid; advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
         # Initial condition: patch of tracer c=1 in the upper part
         z_center = -Lz/4  # Upper quarter of domain
@@ -399,8 +406,8 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     # Create simulations
     Δt = abs(w_settle) / minimum_zspacing(regular_grid)
     stop_time = 250
-    regular_simulation = Simulation(regular_model, Δt=Δt, stop_time=stop_time)
-    immersed_simulation = Simulation(immersed_model, Δt=Δt, stop_time=stop_time)
+    regular_simulation = Simulation(regular_model; Δt, stop_time, verbose=false)
+    immersed_simulation = Simulation(immersed_model; Δt, stop_time, verbose=false)
 
     # Run simulations
     run!(regular_simulation)
@@ -525,11 +532,7 @@ function temporal_test_fts(grid, times, g::Function)
 end
 
 @testset "Forcings" begin
-    @info "Testing forcings..."
-
     @testset "CosineRampMask cosine ramp" begin
-        @info "  Testing CosineRampMask cosine ramp..."
-
         for (D, eval_at) in ((:x, (m, ξ) -> m(ξ, 0, 0)),
                              (:y, (m, ξ) -> m(0, ξ, 0)),
                              (:z, (m, ξ) -> m(0, 0, ξ)))
@@ -560,26 +563,19 @@ end
     end
 
     for arch in archs
-        A = typeof(arch)
-        @testset "Forcing function time stepping [$A]" begin
-            @info "  Testing forcing function time stepping [$A]..."
-
-            @testset "Non-parameterized forcing functions [$A]" begin
-                @info "      Testing non-parameterized forcing functions [$A]..."
+        @testset "Forcing function time stepping [$(summary(arch))]" begin
+            @testset "Non-parameterized forcing functions [$(summary(arch))]" begin
                 @test time_step_with_forcing_functions(arch)
                 @test time_step_with_forcing_array(arch)
                 @test time_step_with_discrete_forcing(arch)
             end
 
-            @testset "Parameterized forcing functions [$A]" begin
-                @info "      Testing parameterized forcing functions [$A]..."
+            @testset "Parameterized forcing functions [$(summary(arch))]" begin
                 @test time_step_with_parameterized_continuous_forcing(arch)
                 @test time_step_with_parameterized_discrete_forcing(arch)
             end
 
-            @testset "Field-dependent forcing functions [$A]" begin
-                @info "      Testing field-dependent forcing functions [$A]..."
-
+            @testset "Field-dependent forcing functions [$(summary(arch))]" begin
                 for fld in (:u, :v, :w, :T, :A)
                     @test time_step_with_single_field_dependent_forcing(arch, fld)
                 end
@@ -588,25 +584,21 @@ end
                 @test time_step_with_parameterized_field_dependent_forcing(arch)
             end
 
-            @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$A]" begin
-                @info "      Testing hydrostatic continuous/discrete forcing consistency [$A]..."
+            @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$(summary(arch))]" begin
                 @test test_hydrostatic_continuous_discrete_forcing_consistency(arch)
             end
 
-            @testset "Field dependencies with heterogeneous model fields [$A]" begin
+            @testset "Field dependencies with heterogeneous model fields [$(summary(arch))]" begin
                 test_heterogeneous_model_fields_dependencies(arch)
             end
 
-            @testset "Relaxation forcing functions [$A]" begin
-                @info "      Testing relaxation forcing functions [$A]..."
+            @testset "Relaxation forcing functions [$(summary(arch))]" begin
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
             end
 
-            @testset "Relaxation with FieldTimeSeries target [$A]" begin
-                @info "      Testing Relaxation with FieldTimeSeries target [$A]..."
-
+            @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
                 grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
                 τ     = 60
                 c_ref = 5
@@ -644,9 +636,7 @@ end
                 @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
             end
 
-            @testset "Relaxation with Field target [$A]" begin
-                @info "      Testing Relaxation with Field target [$A]..."
-
+            @testset "Relaxation with Field target [$(summary(arch))]" begin
                 grid  = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
                 τ     = 60
                 c_ref = 5
@@ -703,9 +693,7 @@ end
                 @test all(isapprox.(c_grid_after, expected; atol=1e-6 * c_ref))
             end
 
-            @testset "Relaxation with transform=:horizontal_average [$A]" begin
-                @info "      Testing Relaxation with transform=:horizontal_average [$A]..."
-
+            @testset "Relaxation with transform=:horizontal_average [$(summary(arch))]" begin
                 Nx, Ny, Nz = 4, 4, 2
                 Lx, Ly, Lz = 100.0, 100.0, 100.0
                 grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
@@ -775,9 +763,7 @@ end
                     forcing=(; c=Relaxation(rate=1/τ, target=fts, transform=:horizontal_average)))
             end
 
-            @testset "Relaxation FTS-target cross-grid spatial interp [$A]" begin
-                @info "      Testing Relaxation FTS-target cross-grid spatial interp [$A]..."
-
+            @testset "Relaxation FTS-target cross-grid spatial interp [$(summary(arch))]" begin
                 Lx, Ly, Lz = 1000.0, 1000.0, 100.0
                 # Bounded topology so Face-node extrema reach the domain edges
                 # exactly, matching the physical setting for Davies-style fringes.
@@ -834,9 +820,7 @@ end
                 @test fringe_count > 0                            # sanity: mask is non-trivial
             end
 
-            @testset "Relaxation FTS-target temporal interp [$A]" begin
-                @info "      Testing Relaxation FTS-target temporal interp [$A]..."
-
+            @testset "Relaxation FTS-target temporal interp [$(summary(arch))]" begin
                 Lx, Ly, Lz = 1000.0, 1000.0, 100.0
                 # Bounded x mirrors the spatial-interp test for consistency.
                 topology = (Bounded, Bounded, Bounded)
@@ -881,8 +865,7 @@ end
                 @test fringe_count > 0
             end
 
-            @testset "Advective and multiple forcing [$A]" begin
-                @info "      Testing advective and multiple forcing [$A]..."
+            @testset "Advective and multiple forcing [$(summary(arch))]" begin
                 rectilinear_grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
                 latlon_grid = LatitudeLongitudeGrid(arch, size=(4, 5, 6), longitude=(-180, 180), latitude=(-85, 85), z=(-1, 0), halo=(4, 4, 4))
 
@@ -895,20 +878,17 @@ end
             end
 
             @testset "Momentum flux zero at immersed peripheral nodes" begin
-                @info "      Testing momentum flux is zero at immersed peripheral nodes..."
                 for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
                     scheme = Oceananigans.Advection.materialize_advection(scheme, MockGrid(arch))
                     @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
                 end
             end
 
-            @testset "FieldTimeSeries forcing on [$A]" begin
-                @info "      Testing FieldTimeSeries forcing [$A]..."
+            @testset "FieldTimeSeries forcing on [$(summary(arch))]" begin
                 @test time_step_with_field_time_series_forcing(arch)
             end
 
-            @testset "Settling tracer comparison [$A]" begin
-                @info "      Testing settling tracer on regular vs immersed grids [$A]..."
+            @testset "Settling tracer comparison [$(summary(arch))]" begin
                 @test test_settling_tracer_comparison(arch, open_bottom=true)
                 @test test_settling_tracer_comparison(arch, open_bottom=false)
             end
