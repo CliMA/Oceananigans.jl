@@ -276,10 +276,9 @@ function barotropic_substepper(timestepper::ForwardBackwardScheme, free_surface,
 
     filled_halos = substep_filled_halos(free_surface)
 
-    cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
-
-    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!, cells_map)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!, cells_map)
+    @apply_regionally workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
+    @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
     U_args = (grid, filled_halos, Δτᴮ, η, U, V, GUⁿ, GVⁿ, Gᵁᶜ, Gⱽᶜ, w, g, U̅, V̅, timestepper)
     η_args = (grid, filled_halos, Δτᴮ, η, U, V, F, clock, η̅, Ũ, Ṽ, timestepper)
@@ -310,11 +309,10 @@ function barotropic_substepper(timestepper::RungeKutta3Scheme, free_surface, arc
 
     filled_halos = substep_filled_halos(free_surface)
 
-    cells_map = Utils.possibly_load_active_cells_map(nothing, grid, parameters, false)
-
-    @apply_regionally first_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _first_barotropic_stage!, cells_map)
-    @apply_regionally stage_kernel!, _       = configure_kernel(arch, grid, parameters, _barotropic_stage!, cells_map)
-    @apply_regionally final_stage_kernel!, _ = configure_kernel(arch, grid, parameters, _final_barotropic_stage!, cells_map)
+    @apply_regionally workspec = Utils.possibly_load_active_cells_map(grid, parameters, false)
+    @apply_regionally first_stage_kernel!, _ = configure_kernel(arch, grid, workspec, _first_barotropic_stage!)
+    @apply_regionally stage_kernel!, _       = configure_kernel(arch, grid, workspec, _barotropic_stage!)
+    @apply_regionally final_stage_kernel!, _ = configure_kernel(arch, grid, workspec, _final_barotropic_stage!)
 
     stages_Δτ = stage_parameters(timestepper, Δτᴮ)
     Nstages   = length(stages_Δτ)

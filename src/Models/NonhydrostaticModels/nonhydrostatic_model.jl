@@ -372,7 +372,7 @@ timestepper(model::NonhydrostaticModel) = model.timestepper
 # `inflate_grid_halo_size` and would therefore be boxed.
 function materialize_model_advection(advection, grid)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
-    return map(scheme -> materialize_advection(scheme, grid), advection)
+    return materialize_advection(advection, grid)
 end
 
 Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)

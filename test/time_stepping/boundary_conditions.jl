@@ -37,6 +37,10 @@ function test_boundary_condition(arch, FT, Model, topo, side, field_name, bounda
     return success
 end
 
+# The FFT-based pressure solver is only approximate on immersed boundary grids, and warns about it
+pressure_solver_logs(grid) = grid isa ImmersedBoundaryGrid ?
+    ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),) : ()
+
 function test_nonhydrostatic_flux_budget(grid, name, side, L)
     FT = eltype(grid)
     flux = FT(π)
@@ -45,13 +49,13 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
 
-    model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
+    model = @test_logs pressure_solver_logs(grid)... NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
 
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
     set!(field, 0)
 
-    simulation = Simulation(model, Δt = 1.0, stop_iteration = 1)
+    simulation = Simulation(model; Δt = 1.0, stop_iteration = 1, verbose = false)
     run!(simulation)
 
     mean_ϕ = mean(field)
@@ -594,11 +598,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                               parameterized_discrete_function_bc(C, FT, ArrayType))
 
 @testset "Boundary condition integration tests" begin
-    @info "Testing boundary condition integration into NonhydrostaticModel..."
-
     @testset "Boundary condition regularization" begin
-        @info "  Testing boundary condition regularization in NonhydrostaticModel constructor..."
-
         FT = Float64
         arch = first(archs)
 
@@ -680,8 +680,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             # https://github.com/CliMA/Oceananigans.jl/issues/4165
             free_surface = SplitExplicitFreeSurface(; substeps=10)
 
-            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                @info "  Testing that time-stepping with $boundary_condition works [$(typeof(arch)), $FT]..."
+            @testset "$boundary_condition [$(summary(arch)), $FT]" for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
@@ -702,130 +701,98 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 
-    @testset "Budgets with Flux boundary conditions" begin
-        for arch in archs
-            A = typeof(arch)
-            @info "  Testing budgets with Flux boundary conditions [$A]..."
+    @testset "Budgets with Flux boundary conditions [$(summary(arch))]" for arch in archs
+        Lx = 0.3
+        Ly = 0.4
+        Lz = 0.5
 
-            Lx = 0.3
-            Ly = 0.4
-            Lz = 0.5
+        bottom(x, y) = 0
+        ib = GridFittedBottom(bottom)
+        grid_kw = (size = (2, 2, 2), x = (0, Lx), y = (0, Ly))
 
-            bottom(x, y) = 0
-            ib = GridFittedBottom(bottom)
-            grid_kw = (size = (2, 2, 2), x = (0, Lx), y = (0, Ly))
+        rectilinear_grid(topology) = RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...)
+        immersed_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)
+        immersed_active_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib; active_cells_map = true)
+        grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo), immersed_active_rectilinear_grid(topo)]
 
-            rectilinear_grid(topology) = RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...)
-            immersed_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)
-            immersed_active_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib; active_cells_map = true)
-            grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo), immersed_active_rectilinear_grid(topo)]
-
-            for grid in grids_to_test((Periodic, Bounded, Bounded))
-                for name in (:u, :c)
-                    for (side, L) in zip((:north, :south, :top, :bottom), (Ly, Ly, Lz, Lz))
-                        if grid isa ImmersedBoundaryGrid && side == :bottom
-                            side = :immersed
-                        end
-                        @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
-                        @test test_nonhydrostatic_flux_budget(grid, name, side, L)
-                    end
-                end
+        for grid in grids_to_test((Periodic, Bounded, Bounded)), name in (:u, :c)
+            bottom_side = grid isa ImmersedBoundaryGrid ? :immersed : :bottom
+            @testset "[$(summary(grid)), $name, $side]" for (side, L) in zip((:north, :south, :top, bottom_side), (Ly, Ly, Lz, Lz))
+                @test test_nonhydrostatic_flux_budget(grid, name, side, L)
             end
+        end
 
-            for grid in grids_to_test((Bounded, Periodic, Bounded))
-                for name in (:v, :c)
-                    for (side, L) in zip((:east, :west, :top, :bottom), (Lx, Lx, Lz, Lz))
-                        if grid isa ImmersedBoundaryGrid && side == :bottom
-                            side = :immersed
-                        end
-                        @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
-                        @test test_nonhydrostatic_flux_budget(grid, name, side, L)
-                    end
-                end
+        for grid in grids_to_test((Bounded, Periodic, Bounded)), name in (:v, :c)
+            bottom_side = grid isa ImmersedBoundaryGrid ? :immersed : :bottom
+            @testset "[$(summary(grid)), $name, $side]" for (side, L) in zip((:east, :west, :top, bottom_side), (Lx, Lx, Lz, Lz))
+                @test test_nonhydrostatic_flux_budget(grid, name, side, L)
             end
+        end
 
-            # Omit ImmersedBoundaryGrid from vertically-periodic test
-            grid = rectilinear_grid((Bounded, Bounded, Periodic))
-            for name in (:w, :c)
-                for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
-                    @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
-                    @test test_nonhydrostatic_flux_budget(grid, name, side, L)
-                end
+        # Omit ImmersedBoundaryGrid from vertically-periodic test
+        grid = rectilinear_grid((Bounded, Bounded, Periodic))
+        for name in (:w, :c)
+            @testset "[$(summary(grid)), $name, $side]" for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
+                @test test_nonhydrostatic_flux_budget(grid, name, side, L)
             end
         end
     end
 
-    @testset "Custom diffusivity boundary conditions" begin
-        for arch in archs, FT in (Float64,) #float_types
-            A = typeof(arch)
-            @info "  Testing flux budgets with diffusivity boundary conditions [$A, $FT]..."
-            @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+    @testset "Custom diffusivity boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
+        @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+    end
+
+    @testset "Open boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
+        test_perturbation_advection_open_boundary_conditions(arch, FT)
+        test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+        test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
+        test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
+        test_perturbation_advection_tracer_radiation_formula(arch, FT)
+        test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+
+        # Only PerturbationAdvection NormalFlowBoundaryCondition
+        U₀ = 1
+        inflow_timescale = 1e-1
+        outflow_timescale = Inf
+
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                        east = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
+        boundary_conditions = (; u = u_bcs)
+        test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+
+        @testset "Targeted open boundary transport with $(nameof(Scheme))" for Scheme in (PerturbationAdvection, NormalRadiation, ObliqueRadiation)
+            test_target_transport_interface(arch, FT, Scheme)
+            test_targeted_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
+            test_targeted_transport_conservation(arch, FT, NonhydrostaticModel, Scheme)
+            test_targeted_south_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
+            test_targeted_east_with_west_pool(arch, FT, NonhydrostaticModel, Scheme)
+        end
+
+        test_zero_inflow_open_boundary_conserves_mass(arch, FT)
+        test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
+    end
+
+    @testset "FieldTimeSeries boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,)
+        topo = (Bounded, Bounded, Bounded)
+        for C in (Flux, Value)
+            bc = field_time_series_bc(C, FT, array_type(arch))
+            @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
         end
     end
 
-    @testset "Open boundary conditions" begin
-        for arch in archs, FT in (Float64,) #float_types
-            A = typeof(arch)
-            @info "  Testing open boundary conditions [$A, $FT]..."
-            test_perturbation_advection_open_boundary_conditions(arch, FT)
-            test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
-            test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
-            test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
-            test_perturbation_advection_tracer_radiation_formula(arch, FT)
-            test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+    @testset "FieldTimeSeries in boundary conditions are advanced in time [$(summary(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+        bare  = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
+        param = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
 
-            # Only PerturbationAdvection NormalFlowBoundaryCondition
-            U₀ = 1
-            inflow_timescale = 1e-1
-            outflow_timescale = Inf
+        @inline ϕ_top(i, j, grid, clock, fields, p) = @inbounds p[i, j, 1, Time(clock.time)]
 
-            u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-                                            east = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
-            boundary_conditions = (; u = u_bcs)
-            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+        bcs = (T = FieldBoundaryConditions(top = ValueBoundaryCondition(bare)),
+               S = FieldBoundaryConditions(top = ValueBoundaryCondition(ϕ_top; discrete_form=true, parameters=param)))
+        model = NonhydrostaticModel(grid; tracers=(:T, :S), boundary_conditions=bcs)
 
-            for Scheme in (PerturbationAdvection, NormalRadiation, ObliqueRadiation)
-                @info "  Testing targeted open boundary transport with $Scheme [$A, $FT]..."
-                test_target_transport_interface(arch, FT, Scheme)
-                test_targeted_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
-                test_targeted_transport_conservation(arch, FT, NonhydrostaticModel, Scheme)
-                test_targeted_south_transport_achieved(arch, FT, NonhydrostaticModel, Scheme)
-                test_targeted_east_with_west_pool(arch, FT, NonhydrostaticModel, Scheme)
-            end
-
-            test_zero_inflow_open_boundary_conserves_mass(arch, FT)
-            test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
-        end
-    end
-
-    @testset "FieldTimeSeries boundary conditions" begin
-        for arch in archs, FT in (Float64,)
-            A = typeof(arch)
-            @info "  Testing FieldTimeSeries boundary conditions [$A, $FT]..."
-            topo = (Bounded, Bounded, Bounded)
-            for C in (Flux, Value)
-                bc = field_time_series_bc(C, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
-            end
-        end
-    end
-
-    @testset "FieldTimeSeries in boundary conditions are advanced in time" begin
-        for arch in archs
-            @info "  Testing FieldTimeSeries-in-boundary-condition time-advance [$(typeof(arch))]..."
-            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-            bare  = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
-            param = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
-
-            @inline ϕ_top(i, j, grid, clock, fields, p) = @inbounds p[i, j, 1, Time(clock.time)]
-
-            bcs = (T = FieldBoundaryConditions(top = ValueBoundaryCondition(bare)),
-                   S = FieldBoundaryConditions(top = ValueBoundaryCondition(ϕ_top; discrete_form=true, parameters=param)))
-            model = NonhydrostaticModel(grid; tracers=(:T, :S), boundary_conditions=bcs)
-
-            collected = flattened_unique_values(extract_field_time_series(possible_field_time_series(model)))
-            @test bare  ∈ collected
-            @test param ∈ collected
-        end
+        collected = flattened_unique_values(extract_field_time_series(possible_field_time_series(model)))
+        @test bare  ∈ collected
+        @test param ∈ collected
     end
 end

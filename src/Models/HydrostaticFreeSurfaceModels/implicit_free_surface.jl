@@ -1,5 +1,5 @@
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
-using Oceananigans.Models: surface_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!

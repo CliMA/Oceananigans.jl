@@ -29,7 +29,6 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -57,8 +56,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, tracers, buoyancy, closure_fields;
-                active_cells_map)
+                model.velocities, tracers, buoyancy, closure_fields)
 
         # ... and step forward.
         launch!(arch, grid, :xyz,
@@ -66,8 +64,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
                 Le, grid, closure,
                 model.velocities, previous_velocities,
                 tracers, buoyancy, closure_fields,
-                Δτ, χ, Gⁿe, G⁻e;
-                active_cells_map)
+                Δτ, χ, Gⁿe, G⁻e)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
@@ -101,7 +98,6 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -121,8 +117,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, tracers, buoyancy, closure_fields;
-                active_cells_map)
+                model.velocities, tracers, buoyancy, closure_fields)
 
         if m == 1
             # First substep: reset from cached state σe⁻
@@ -131,8 +126,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     Le, σe⁻, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         else
             # Subsequent substeps: Euler increment from current state
             launch!(arch, grid, :xyz,
@@ -140,8 +134,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     Le, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         end
 
         implicit_step!(e, implicit_solver, closure,
@@ -185,7 +178,6 @@ function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper,
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(grid)
     a, b = timestepper.coefficients[model.clock.stage]
@@ -208,8 +200,7 @@ function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper,
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
-                model.velocities, tracers, buoyancy, closure_fields;
-                active_cells_map)
+                model.velocities, tracers, buoyancy, closure_fields)
 
         if m == 1
             # The first substep carries the thickness rescaling σᵐ⁻¹/σᵐ that the others do not need.
@@ -218,16 +209,14 @@ function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper,
                     Le, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         else
             launch!(arch, grid, :xyz,
                     _rk_euler_substep_turbulent_kinetic_energy!,
                     Le, grid, closure,
                     model.velocities, previous_velocities,
                     tracers, buoyancy, closure_fields,
-                    Δτ, Gⁿ;
-                    active_cells_map)
+                    Δτ, Gⁿ)
         end
 
         implicit_step!(e, implicit_solver, closure,
@@ -238,8 +227,7 @@ function time_step_catke_equation!(model, timestepper::SSPRungeKuttaTimeStepper,
     end
 
     launch!(arch, grid, :xyz,
-            _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b);
-            active_cells_map)
+            _blend_turbulent_kinetic_energy!, e, σe⁻, grid, convert(FT, a), convert(FT, b))
 
     return nothing
 end

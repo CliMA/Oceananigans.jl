@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.Advection: adaptive_advection_timestep, update_ghost_cell_projection!
 using Oceananigans.Grids: topology, Flat
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
@@ -53,6 +54,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
     advection = getadvection(model.advection, tracer_name)
+    update_ghost_cell_projection!(advection, model, U, c, adaptive_advection_timestep(timestepper, model.clock))
 
     cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, stage, advection, U, c)
 
