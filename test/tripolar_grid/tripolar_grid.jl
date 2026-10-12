@@ -113,6 +113,25 @@ end
     end
 end
 
+@testset "Conditional reductions on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology [$(typeof(arch))]" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (8, 10, 1), z = (0, 1), fold_topology, pivot)
+            c = Field{Center, Center, Nothing}(grid)
+            set!(c, (λ, φ) -> φ)
+
+            box = Field{Center, Center, Nothing}(grid, Bool)
+            set!(box, (λ, φ) -> -30 < φ < 30)
+            φ = Array(interior(c))
+            inside = Array(interior(box))
+
+            @test maximum(c; condition=box) == maximum(φ[inside])
+            @test minimum(c; condition=box) == minimum(φ[inside])
+            @test maximum(c; condition=interior(box)) == maximum(φ[inside])
+        end
+    end
+end
+
 @testset "Model tests..." begin
     for arch in archs
         @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
