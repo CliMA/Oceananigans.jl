@@ -15,7 +15,6 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditio
 using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
                           LeftConnected, RightConnected, FullyConnected,
-                          RightCenterFolded, RightFaceFolded,
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                           LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 using Oceananigans.DistributedComputations: DistributedGrid

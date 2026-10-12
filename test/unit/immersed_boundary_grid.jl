@@ -166,10 +166,8 @@ end
 function test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid = false)
     Nz = 3; Lz = 1
     if mutable_grid
-        @info "    Testing grid with a MutableVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=MutableVerticalDiscretization((-Lz, 0)))
     else
-        @info "    Testing grid with a StaticVerticalDiscretization"
         underlying_grid = RectilinearGrid(arch, FT, topology=(Flat, Flat, Bounded), size=Nz, z=(-Lz, 0))
     end
 
@@ -567,8 +565,9 @@ end
     @testset "Grid spacings and metrics" begin
         for arch in archs, FT in float_types
             @testset "Spacings [$FT, $(typeof(arch))]" begin
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=false)
-                test_partial_cell_bottom_grid_spacings(FT, arch, mutable_grid=true)
+                @testset "PartialCellBottom spacings with a $(mutable_grid ? "Mutable" : "Static")VerticalDiscretization" for mutable_grid in (false, true)
+                    test_partial_cell_bottom_grid_spacings(FT, arch; mutable_grid)
+                end
                 test_partial_cell_bottom_face_spacings(FT, arch)
 
                 for boundary_type in (GridFittedBottom, PartialCellBottom)

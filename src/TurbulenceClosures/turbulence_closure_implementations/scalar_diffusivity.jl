@@ -9,8 +9,8 @@ end
 """
     ScalarDiffusivity(time_discretization = ExplicitTimeDiscretization(),
                       formulation = ThreeDimensionalFormulation(), FT = Float64;
-                      ν = 0,
-                      κ = 0,
+                      ν = nothing,
+                      κ = nothing,
                       discrete_form = false,
                       loc = (nothing, nothing, nothing),
                       parameters = nothing)
@@ -35,10 +35,12 @@ Arguments
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
+* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, `Function`, or `nothing`.
+       With `ν = nothing` the closure does not act on momentum and no viscous fluxes are computed.
 
-* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, `nothing`, or
        `NamedTuple` of diffusivities with entries for each tracer.
+       With `κ = nothing` the closure does not act on tracers and no diffusive fluxes are computed.
 
 * `discrete_form`: `Boolean`; default: `false`.
 
@@ -83,7 +85,7 @@ julia> @inline ν(x, y, z, t) = 1000 * exp(z / depth_scale)
 ν (generic function with 1 method)
 
 julia> ScalarDiffusivity(ν=ν)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=0.0)
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 method), κ=nothing)
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -96,7 +98,7 @@ julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)
 κ (generic function with 1 method)
 
 julia> ScalarDiffusivity(κ=κ, discrete_form=true)
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=nothing, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Nothing, typeof(κ)})
 ```
 
 ```jldoctest ScalarDiffusivity
@@ -107,13 +109,13 @@ julia> @inline function another_κ(i, j, k, grid, clock, fields, p)
 another_κ (generic function with 1 method)
 
 julia> ScalarDiffusivity(κ=another_κ, discrete_form=true, loc=(Center, Center, Face), parameters=(; depth_scale = 120.0))
-ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, @NamedTuple{depth_scale::Float64}, typeof(another_κ)})
+ScalarDiffusivity{ExplicitTimeDiscretization}(ν=nothing, κ=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Center, Center, Face, @NamedTuple{depth_scale::Float64}, typeof(another_κ)})
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(),
                            FT=Oceananigans.defaults.FloatType;
-                           ν=0, κ=0,
+                           ν=nothing, κ=nothing,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
@@ -221,3 +223,45 @@ function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, N})
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
+
+#####
+##### No viscosity or no tracer diffusivity
+#####
+
+const NoViscosityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation,     <:Any, Nothing}
+const NoViscosityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,           <:Any, Nothing}
+const NoViscosityDD = ScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation, <:Any, Nothing}
+const NoViscosityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,             <:Any, Nothing}
+
+const NoTracerDiffusivityID = ScalarDiffusivity{<:Any, <:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
+const NoTracerDiffusivityHD = ScalarDiffusivity{<:Any, <:HorizontalFormulation,       <:Any, <:Any, Nothing}
+const NoTracerDiffusivityVD = ScalarDiffusivity{<:Any, <:VerticalFormulation,         <:Any, <:Any, Nothing}
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy, :uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityID, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityHD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:ux, :vy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityDD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityVD, K, clk, fields, b) = zero(grid)
+end
+
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityID, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityHD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityHD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityVD, K, id, c, clk, fields, b) = zero(grid)
+
+@inline diffusivity(::ScalarDiffusivity{<:Any, <:Any, <:Any, <:Any, Nothing}, K, ::Val) = nothing
