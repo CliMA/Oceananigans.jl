@@ -13,8 +13,9 @@ using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃ�
 ##### When α > cfl: wⁱ = w * (1 - cfl/α)
 #####
 ##### `w` is the W field at (Center, Center, Face). For tracers (CCC) the value at (i, j, k) is correct;
-##### for u (FCC) and v (CFC) it must be reconstructed horizontally so the local CFL matches the actual
-##### face velocity advecting the field.
+##### for u (FCC) and v (CFC) it is the velocity the cell feels, `vertical_velocityᶠᶜᶠ` / `vertical_velocityᶜᶠᶠ`,
+##### so the local CFL matches the transport advecting the field and, multiplied by the cell's area in the
+##### coefficients below, the implicit transport is the remainder of the explicit one.
 #####
 
 @inline function implicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, scheme, td, W)
@@ -34,7 +35,7 @@ end
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -42,7 +43,7 @@ end
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
