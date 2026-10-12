@@ -1,8 +1,7 @@
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, interior
-using Oceananigans.Grids: topology
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, Vᶜᶜᶜ
-using Oceananigans.Utils: KernelParameters, launch!
+using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
 #####
@@ -204,25 +203,32 @@ end
     end
 end
 
-@kernel function _compute_ghost_cell_last_face_values!(ĉ, face_value, grid, advection, U, c)
-    i, j, k = @index(Global, NTuple)
+# The faces N + 1 of a direction, launched over the plane of the other two directions
+@inline last_x_face(j, k, grid) = (size(grid, 1) + 1, j, k)
+@inline last_y_face(i, k, grid) = (i, size(grid, 2) + 1, k)
+@inline last_z_face(i, j, grid) = (i, j, size(grid, 3) + 1)
+
+@kernel function _compute_ghost_cell_last_face_values!(ĉ, last_face, face_value, grid, advection, U, c)
+    m, n = @index(Global, NTuple)
+    i, j, k = last_face(m, n, grid)
     @inbounds ĉ[i, j, k] = face_value(i, j, k, grid, advection, U, c)
 end
+
+compute_last_face_values_x!(faces, grid, args...) = launch!(architecture(grid), grid, :yz, _compute_ghost_cell_last_face_values!, faces.x, last_x_face, ghost_cell_face_value_x, grid, args...)
+compute_last_face_values_y!(faces, grid, args...) = launch!(architecture(grid), grid, :xz, _compute_ghost_cell_last_face_values!, faces.y, last_y_face, ghost_cell_face_value_y, grid, args...)
+compute_last_face_values_z!(faces, grid, args...) = launch!(architecture(grid), grid, :xy, _compute_ghost_cell_last_face_values!, faces.z, last_z_face, ghost_cell_face_value_z, grid, args...)
+
+compute_last_face_values_x!(faces, ::XFG, args...) = nothing
+compute_last_face_values_y!(faces, ::YFG, args...) = nothing
+compute_last_face_values_z!(faces, ::ZFG, args...) = nothing
 
 # The faces 1 to N of the interior cells, and then the last face N + 1 of every non-flat direction.
 # Launching over the N + 1 faces at once adds an incomplete workgroup in each direction.
 function compute_ghost_cell_face_values!(faces, grid, advection, U, c)
-    arch = architecture(grid)
-    Nx, Ny, Nz = size(grid)
-    launch!(arch, grid, :xyz, _compute_ghost_cell_face_values!, faces, grid, advection, U, c)
-
-    topology(grid, 1) === Flat ||
-        launch!(arch, grid, KernelParameters(Nx+1:Nx+1, 1:Ny, 1:Nz), _compute_ghost_cell_last_face_values!, faces.x, ghost_cell_face_value_x, grid, advection, U, c)
-    topology(grid, 2) === Flat ||
-        launch!(arch, grid, KernelParameters(1:Nx, Ny+1:Ny+1, 1:Nz), _compute_ghost_cell_last_face_values!, faces.y, ghost_cell_face_value_y, grid, advection, U, c)
-    topology(grid, 3) === Flat ||
-        launch!(arch, grid, KernelParameters(1:Nx, 1:Ny, Nz+1:Nz+1), _compute_ghost_cell_last_face_values!, faces.z, ghost_cell_face_value_z, grid, advection, U, c)
-
+    launch!(architecture(grid), grid, :xyz, _compute_ghost_cell_face_values!, faces, grid, advection, U, c)
+    compute_last_face_values_x!(faces, grid, advection, U, c)
+    compute_last_face_values_y!(faces, grid, advection, U, c)
+    compute_last_face_values_z!(faces, grid, advection, U, c)
     return nothing
 end
 
@@ -245,10 +251,11 @@ for (dir, ξ, area, u) in ((1, :x, :Axᶠᶜᶜ, :u), (2, :y, :Ayᶜᶠᶜ, :v),
             @inbounds ũ = U.$u[f...]
             # Faces to inactive neighbors carry no flux, whatever the velocity there
             open_face = active_neighbor(@inbounds(projection.mask[i, j, k]), $(2dir - 1) + (s > 0))
-            T = ifelse(open_face, s * $area(f..., grid) * ũ, zero(ũ))
+            Tᶠ = s * $area(f..., grid) * ũ
+            T = ifelse(open_face, Tᶠ, zero(Tᶠ))
             # On a closed face the value and the range are read from inactive cells, and must not reach the sums below
-            ĉ = ifelse(open_face, @inbounds(projection.faces.$ξ[f...]), zero(ũ))
-            I = ifelse(open_face, neighborhood_range($(neighbor...), grid, c, projection.mask), (zero(ũ), zero(ũ)))
+            ĉ = ifelse(open_face, @inbounds(projection.faces.$ξ[f...]), zero(Tᶠ))
+            I = ifelse(open_face, neighborhood_range($(neighbor...), grid, c, projection.mask), (zero(Tᶠ), zero(Tᶠ)))
             return T, ĉ, I
         end
 
