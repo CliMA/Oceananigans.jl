@@ -32,6 +32,8 @@ definitions:
   test_command: &test_command |
     group="{{ matrix.group }}"
     export TEST_GROUP="\${group#* }"
+    # allocation baselines are single-threaded: multithreaded CPU kernel launches allocate tasks
+    if [ "\$TEST_GROUP" = "distributed_memory_allocation" ]; then export JULIA_NUM_THREADS=1; fi
     srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
 
 steps:
@@ -57,11 +59,13 @@ steps:
     key: "distributed_tests_cpu"
     env:
       TEST_ARCHITECTURE: "CPU"
+      JULIA_NUM_THREADS: 4
     command: *test_command
     timeout_in_minutes: 5440
     agents:
       slurm_mem: 100G
       slurm_ntasks: 4
+      slurm_cpus_per_task: 4
     retry: *retry_config
     matrix:
       setup:
@@ -71,11 +75,13 @@ steps:
     key: "distributed_tests_gpu"
     env:
       TEST_ARCHITECTURE: "GPU"
+      JULIA_NUM_THREADS: 4
     command: *test_command
     timeout_in_minutes: 5440
     agents:
       slurm_mem: 150G
       slurm_ntasks: 4
+      slurm_cpus_per_task: 4
       slurm_gpus_per_task: 1
     retry: *retry_config
     matrix:

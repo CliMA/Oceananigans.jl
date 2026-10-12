@@ -100,6 +100,11 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also submitted a number of model development papers. Please cite these if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
+* **Lee et al. (2026), ["NORi: An ML-augmented ocean boundary layer parameterization"](https://doi.org/10.1029/2025MS005667).**
+
+  *This paper describes the development of NORi, a machine-learning-augmented parameterization for ocean boundary layer mixing,
+  trained and validated using large eddy simulations with Oceananigans and tested in a centennial double-gyre simulation.*
+
 * **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
 
   *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
@@ -137,8 +142,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin–Helmholtz braids at high Reynolds number](https://doi.org/10.1017/jfm.2026.12012), _Journal of Fluid Mechanics_, **1043**, R2. DOI: [10.1017/jfm.2026.12012](https://doi.org/10.1017/jfm.2026.12012)
 
 1. Gui, W., Bhadouriya, A., Vreugdenhil, C. A., and Gayen, B. (2026). [The impact of fronts and eddies under various melt conditions on Antarctic ice shelves](https://doi.org/10.1029/2026GL123024), _Geophysical Research Letters_, **53(17)**, e2026GL123024. DOI: [10.1029/2026GL123024](https://doi.org/10.1029/2026GL123024)
-
-1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J., and Ferrari, R. (2026). [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.1029/2025MS005667), _Journal of Advances in Modeling Earth Systems_, **18(9)**, e2025MS005667. DOI: [10.1029/2025MS005667](https://doi.org/10.1029/2025MS005667)
 
 1. Liu, F. and Zemskova, V. E. (2026). [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions and internal wave drag](https://doi.org/10.5194/tc-20-4721-2026), _The Cryosphere_, **20**, 4721–4746. DOI: [10.5194/tc-20-4721-2026](https://doi.org/10.5194/tc-20-4721-2026)
 
