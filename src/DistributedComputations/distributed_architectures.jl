@@ -313,9 +313,6 @@ const DistributedGPU = Distributed{GPU}
 const SynchronizedDistributed = Distributed{<:Any, true}
 const AsynchronousDistributed = Distributed{<:Any, false}
 
-is_synchronized(arch::SynchronizedDistributed) = true
-is_synchronized(arch::AsynchronousDistributed) = false
-
 #####
 ##### All the architectures
 #####
