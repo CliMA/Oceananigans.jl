@@ -100,8 +100,7 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
 - `kernel_parameters`: Kernel parameters for subcycling kernel launching. This is `Val(:xy)` when the substeps span
-  the interior. When they extend into the halos, it is `surface_kernel_parameters(grid)` (an active cells map on an
-  `ImmersedBoundaryGrid` with `active_z_columns`) for `ExtendedHalos`, and a `KernelParameters` struct with the
+  the interior. When they extend into the halos, it is `surface_kernel_parameters(grid)` for `ExtendedHalos`, and a `KernelParameters` struct with the
   execution ranges for `LocalHaloFilling`.
 
 - `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
