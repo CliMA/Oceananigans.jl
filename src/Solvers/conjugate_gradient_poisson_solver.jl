@@ -4,6 +4,8 @@ using Oceananigans.Fields: Field, condition_operand, conditional_length
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Grids: Center
+using Oceananigans.Architectures: device
+using KernelAbstractions: @localmem, @synchronize, StaticSize
 
 #####
 ##### Volume-inverse-weighted residual norm
@@ -98,9 +100,9 @@ function ZeroMeanGaugeCondition(grid)
     solution_sum = Field{Nothing, Nothing, Nothing}(grid)
     residual_sum = Field{Nothing, Nothing, Nothing}(grid)
 
-    Nx, Ny, _ = size(grid)
-    laplacian_partial_sums = zeros(grid, Nx, Ny, 3)
-    residual_partial_sums = zeros(grid, Nx, Ny, 4)
+    columns = size(grid, 1) * size(grid, 2)
+    laplacian_partial_sums = zeros(grid, columns, 3)
+    residual_partial_sums = zeros(grid, columns, 4)
     laplacian_sums = zeros(grid, 3)
     residual_sums = zeros(grid, 4)
 
@@ -175,10 +177,10 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, 1] = Σx
-        partial_sums[i, j, 2] = Σr
-        partial_sums[i, j, 3] = rᵀr
-        partial_sums[i, j, 4] = n²
+        partial_sums[n, 1] = Σx
+        partial_sums[n, 2] = Σr
+        partial_sums[n, 3] = rᵀr
+        partial_sums[n, 4] = n²
     end
 end
 
@@ -201,9 +203,9 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, 1] = pᵀq
-        partial_sums[i, j, 2] = Σp
-        partial_sums[i, j, 3] = Σq
+        partial_sums[n, 1] = pᵀq
+        partial_sums[n, 2] = Σp
+        partial_sums[n, 3] = Σq
     end
 end
 
@@ -235,15 +237,55 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, 1] = Σx
-        partial_sums[i, j, 2] = Σr
-        partial_sums[i, j, 3] = rᵀr
-        partial_sums[i, j, 4] = n²
+        partial_sums[n, 1] = Σx
+        partial_sums[n, 2] = Σr
+        partial_sums[n, 3] = rᵀr
+        partial_sums[n, 4] = n²
+    end
+end
+
+@kernel function _column_dot!(partial_sums, grid, a, b)
+    n = @index(Global, Linear)
+    i, j = column_indices(n, grid)
+    aᵀb = zero(eltype(partial_sums))
+
+    for k in 1:size(grid, 3)
+        @inbounds aᵀb += a[i, j, k] * b[i, j, k] * !inactive_cell(i, j, k, grid)
+    end
+
+    @inbounds partial_sums[n, 1] = aᵀb
+end
+
+const reduction_workgroup_size = 256
+
+# One workgroup adds the column sums in a fixed order, so the result is deterministic
+@kernel function _reduce_partial_sums!(sums, partial_sums)
+    t = @index(Local, Linear)
+    workgroup_sums = @localmem eltype(sums) (reduction_workgroup_size, 4)
+
+    for m in 1:size(partial_sums, 2)
+        Σ = zero(eltype(sums))
+        for n in t:reduction_workgroup_size:size(partial_sums, 1)
+            @inbounds Σ += partial_sums[n, m]
+        end
+        @inbounds workgroup_sums[t, m] = Σ
+    end
+
+    @synchronize
+
+    m = @index(Local, Linear)
+    if m <= size(partial_sums, 2)
+        Σ = zero(eltype(sums))
+        for t in 1:reduction_workgroup_size
+            @inbounds Σ += workgroup_sums[t, m]
+        end
+        @inbounds sums[m] = Σ
     end
 end
 
 function reduce_partial_sums!(sums, partial_sums, arch)
-    sum!(reshape(sums, 1, 1, length(sums)), partial_sums)
+    workgroup = StaticSize((reduction_workgroup_size,))
+    _reduce_partial_sums!(device(arch), workgroup, workgroup)(sums, partial_sums)
     return sums
 end
 
@@ -272,7 +314,13 @@ function iterate!(x, solver::FusedPoissonSolver, b)
     # Preconditioned:   z = P * r, ρ = z ⋅ r
     # Unpreconditioned: z = r, so ρ = r ⋅ r is already in the residual sums
     z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
-    ρ = z === r ? view(gauge.residual_sums, 3:3) : dot!(solver.ρ, z, r)
+    if z === r
+        ρ = view(gauge.residual_sums, 3:3)
+    else
+        partial_sums = view(gauge.laplacian_partial_sums, :, 1:1)
+        launch!(arch, grid, columns_worksize(grid), _column_dot!, partial_sums, grid, z, r)
+        ρ = reduce_partial_sums!(solver.ρ, partial_sums, arch)
+    end
 
     if solver.iteration > 0
         solver.β .= ρ ./ solver.ρⁱ⁻¹
