@@ -92,9 +92,10 @@ subtracts the mean over the active cells of `grid` from the solution and from th
 after every iteration.
 
 The fused iteration of the `ConjugateGradientPoissonSolver` accumulates the sums it needs
-in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one column
-into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`) or `residual_partial_sums`
-(`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), which are then reduced into `laplacian_sums` and `residual_sums`.
+in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one column,
+every workgroup adds its threads' sums into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`)
+or `residual_partial_sums` (`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), and one workgroup reduces those
+into `laplacian_sums` and `residual_sums`.
 """
 function ZeroMeanGaugeCondition(grid)
     solution_sum = Field{Nothing, Nothing, Nothing}(grid)
