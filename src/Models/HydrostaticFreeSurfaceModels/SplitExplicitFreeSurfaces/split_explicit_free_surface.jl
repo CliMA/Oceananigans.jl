@@ -100,7 +100,9 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
 - `kernel_parameters`: Kernel parameters for subcycling kernel launching. This is `Val(:xy)` when the substeps span
-  the interior, and a `KernelParameters` struct with the execution ranges when they extend into the halos.
+  the interior. When they extend into the halos, it is `surface_kernel_parameters(grid)` (an active cells map on an
+  `ImmersedBoundaryGrid` with `active_z_columns`) for `ExtendedHalos`, and a `KernelParameters` struct with the
+  execution ranges for `LocalHaloFilling`.
 
 - `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
@@ -289,7 +291,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)
     else
-        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
+        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping, strategy)
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
@@ -441,16 +443,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = Val(:xy)
+maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
+function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
-
-    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : KernelParameters(kernel_sizes...)
+    kernel_param = augmented_kernel_parameters(strategy, grid, kernel_sizes)
+    
+    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_param
 end
+
+augmented_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
+augmented_kernel_parameters(::LocalHaloFilling, grid, kernel_sizes) = KernelParameters(kernel_sizes...)
 
 @inline split_explicit_kernel_size(topo, N, H)                   =    1:N
 @inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
