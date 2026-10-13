@@ -90,8 +90,22 @@ underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 # ## Bathymetry from ETOPO1
 #
 # We download NOAA's 1-arc-minute ETOPO1 relief sampled every 10 arc-minutes, a 4.5 MB
-# file. Averaging the samples in blocks, six per degree, then gives the mean elevation
-# of each grid cell rather than the elevation at a single point.
+# file hosted on OceananigansArtifacts.jl. Averaging the samples in blocks, six per degree,
+# then gives the mean elevation of each grid cell rather than the elevation at a single point.
+#
+# The same samples can be read straight from NOAA's OPeNDAP server, without downloading
+# the whole file:
+#
+# ```julia
+# stride = 10 # arc-minutes between samples
+# url = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO1_Ice_g_gmt4.nc"
+#
+# etopo_elevation = NCDataset(url) do dataset
+#     i = 1 + stride÷2 : stride : dataset.dim["lon"] - stride÷2
+#     j = 1 + stride÷2 : stride : dataset.dim["lat"] - stride÷2
+#     nomissing(dataset["z"][i, j])
+# end
+# ```
 
 etopo_url = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/etopo1/ETOPO1_Ice_g_10arcmin.nc"
 etopo_filename = basename(etopo_url)
