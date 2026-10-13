@@ -167,6 +167,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Knudsen, L., Wenegrat, J., Hilditch, J., and Thomas, L. N. (2026). [Parametric subharmonic instability in the ocean bottom boundary layer](https://doi.org/10.48550/arXiv.2605.28555), _arXiv preprint_, arXiv:2605.28555. DOI: [10.48550/arXiv.2605.28555](https://doi.org/10.48550/arXiv.2605.28555)
 
+1. Nguyen, V. H. (2026). [Shoal bathymetry influence on offshore transport and mixing](https://doi.org/10.17615/n59p-f272), _Honors thesis_, The University of North Carolina at Chapel Hill. DOI: [10.17615/n59p-f272](https://doi.org/10.17615/n59p-f272)
+
 1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
 
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
