@@ -179,6 +179,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Plotzki, T. and Peitz, S. (2026). [Koopman-based surrogate modeling for reinforcement-learning-control of Rayleigh-Bénard convection](https://doi.org/10.48550/arXiv.2603.28074), _arXiv preprint_, arXiv:2603.28074. DOI: [10.48550/arXiv.2603.28074](https://doi.org/10.48550/arXiv.2603.28074)
 
+1. Aladrah, N. (2026). [Extending Oceananigans.jl ocean model toward regional applications: Evaluation and implementation of radiative open boundary schemes](https://iris.sissa.it/handle/20.500.11767/151772), _Master's thesis_, Master in High Performance Computing, SISSA/ICTP.
+
 1. Zhao, K. X., Chor., T., Skyllingstad, E., Nash, J., Rosevear, M. G., McConnochie, C. (2026). [Direct numerical simulations of ice-ocean boundary turbulence](https://doi.org/10.48550/arXiv.2603.19542), _arXiv preprint_, arXiv:2603.19542. DOI: [10.48550/arXiv.2603.19542](https://doi.org/10.48550/arXiv.2603.19542)
 
 1. Wang, S., Kang, W., and Li, C. (2026). [A tug-of-war between baroclinic eddies and convection: implications for icy moon oceans](https://doi.org/10.48550/arXiv.2603.17185), _arXiv preprint_, arXiv:2603.17185. DOI: [10.48550/arXiv.2603.17185](https://doi.org/10.48550/arXiv.2603.17185)
