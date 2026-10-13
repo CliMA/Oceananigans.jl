@@ -47,13 +47,14 @@ free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, coriolis = FPlane(; f),
-                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5),
+                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5, bounds = (0, S_ocean)),
                                     tracers = :S,
                                     boundary_conditions = (; u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs, η = η_bcs, S = S_bcs))
 
 set!(model, S = S_ocean)
 
-simulation = Simulation(model; Δt = 60, stop_time)
+simulation = Simulation(model; Δt = 30, stop_time)
+conjure_time_step_wizard!(simulation, cfl = 0.5, max_Δt = 120)
 
 u, v, w = model.velocities
 S = model.tracers.S
@@ -74,10 +75,13 @@ end
 add_callback!(simulation, progress, TimeInterval(3hours))
 
 filename = "immersed_river_plume"
-simulation.output_writers[:surface] = JLD2Writer(model, (; u, v, S, η);
+simulation.output_writers[:surface] = JLD2Writer(model, (; u, v, S);
                                                  filename = filename * "_surface",
                                                  indices = (:, :, Nz), schedule = TimeInterval(1hour),
                                                  overwrite_files = true)
+simulation.output_writers[:free_surface] = JLD2Writer(model, (; η);
+                                                      filename = filename * "_free_surface",
+                                                      schedule = TimeInterval(1hour), overwrite_files = true)
 simulation.output_writers[:section] = JLD2Writer(model, (; v, w, S);
                                                  filename = filename * "_section",
                                                  indices = (Nx ÷ 2, :, :), schedule = TimeInterval(1hour),
@@ -86,7 +90,7 @@ run!(simulation)
 
 # Plot
 St = FieldTimeSeries(filename * "_surface.jld2", "S")
-ηt = FieldTimeSeries(filename * "_surface.jld2", "η")
+ηt = FieldTimeSeries(filename * "_free_surface.jld2", "η")
 Ss = FieldTimeSeries(filename * "_section.jld2", "S")
 times = St.times
 Nt = length(times)
@@ -115,6 +119,6 @@ hm = heatmap!(axs, ys / 1e3, zs, Ssn; colormap = :haline, colorrange = (20, S_oc
 Colorbar(fig[3, 2], hm)
 
 save(filename * ".png", fig)
-record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
+CairoMakie.record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
     n[] = i
 end

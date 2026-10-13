@@ -47,6 +47,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally begin
         mask_immersed_field!(model.tracers)
+        mask_immersed_field!(displacement(model.free_surface))
         update_model_field_time_series!(model, model.clock)
         compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)

@@ -39,12 +39,13 @@ free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, tracers = :S,
-                                    momentum_advection = WENO(order = 9), tracer_advection = WENO(order = 9),
+                                    momentum_advection = WENO(order = 9), tracer_advection = WENO(order = 9, bounds = (0, S_ocean)),
                                     boundary_conditions = (; u = u_bcs, S = S_bcs))
 
 set!(model, S = S_ocean)
 
-simulation = Simulation(model; Δt = 30, stop_time)
+simulation = Simulation(model; Δt = 10, stop_time)
+conjure_time_step_wizard!(simulation, cfl = 0.5, max_Δt = 60)
 
 u, v, w = model.velocities
 S = model.tracers.S
@@ -101,6 +102,6 @@ lines!(axη, xη / 1e3, ηn)
 ylims!(axη, -0.5, 0.5)
 
 save(filename * ".png", fig)
-record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
+CairoMakie.record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
     n[] = i
 end

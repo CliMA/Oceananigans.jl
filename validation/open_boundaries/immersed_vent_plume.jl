@@ -102,6 +102,6 @@ hm = heatmap!(axb, x, z, bn; colormap = :thermal, colorrange = (0, 0.01))
 Colorbar(fig[1, 6], hm)
 
 save(filename * ".png", fig)
-record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
+CairoMakie.record(fig, filename * ".mp4", 1:Nt; framerate = 12) do i
     n[] = i
 end
