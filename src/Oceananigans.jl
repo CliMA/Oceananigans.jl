@@ -50,7 +50,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!, RegriddedOperation,
+    interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
@@ -102,7 +102,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
+    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,

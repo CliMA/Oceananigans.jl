@@ -59,7 +59,7 @@ NormalRadiation{Float64}
 ├── inflow_timescale: 86400.0
 ├── outflow_timescale: 3.1104e7
 ├── use_boundary_velocity: false
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct NormalRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
