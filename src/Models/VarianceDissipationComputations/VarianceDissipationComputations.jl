@@ -88,18 +88,17 @@ function VarianceDissipation(tracer_name, grid;
     Fⁿ   = c_grid_vector(grid)
     Fⁿ⁻¹ = c_grid_vector(grid)
     cⁿ⁻¹ = CenterField(grid)
+    cᵐ⁻¹ = CenterField(grid)
 
-    # σ frozen at the flux-cache substep, so the assembly divides by the σ the flux was weighted with.
-    σ_cache = (x = Field{Face,   Center, Nothing}(grid),
-               y = Field{Center, Face,   Nothing}(grid),
-               z = Field{Center, Center, Nothing}(grid))
+    # stretching of the horizontal face areas at the end of the previous stage
+    σᵐ⁻¹ = (x = Field{Face,   Center, Nothing}(grid),
+            y = Field{Center, Face,   Nothing}(grid))
 
-    # The strong-stability-preserving path accumulates raw fluxes and leaves this cache at unity.
-    for σ in σ_cache
+    for σ in σᵐ⁻¹
         fill!(parent(σ), 1)
     end
 
-    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ, σ_cache)
+    previous_state   = (; cⁿ⁻¹, cᵐ⁻¹, Uⁿ⁻¹, Uⁿ, σᵐ⁻¹)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
     diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
 
@@ -123,11 +122,7 @@ function (ϵ::VarianceDissipation)(model)
         throw(ArgumentError("Model must have a tracer called $(ϵ.tracer_name)."))
     end
 
-    # First we compute the dissipation from previously computed fluxes
-    compute_dissipation!(ϵ, model, ϵ.tracer_name)
-
-    # Then we update the fluxes to be used in the next time step
-    cache_fluxes!(ϵ, model, ϵ.tracer_name)
+    update_variance_budget!(ϵ, model, transport_timing(model))
 
     return nothing
 end

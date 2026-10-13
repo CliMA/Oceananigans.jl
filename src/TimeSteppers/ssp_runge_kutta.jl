@@ -156,6 +156,7 @@ function time_step!(model::AbstractModel{<:SSPRungeKuttaTimeStepper}, Δt; callb
 
         if stage == model.timestepper.Nstages
             tick_time!(model.clock, Δt)
+            model.clock.last_Δt = Δt
         end
 
         update_state!(model, callbacks)

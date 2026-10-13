@@ -4,21 +4,19 @@
 """
 $(TYPEDSIGNATURES)
 
-Compute the numerical dissipation for tracer `tracer_name`, from the previously calculated advective and diffusive fluxes,
-the formulation is:
+Compute the numerical dissipation for tracer `tracer_name` from the cached advective and diffusive fluxes:
 
     A = 2 * δc★ * F - U δc²  # For advective dissipation
     D = 2 * δc★ * F          # For diffusive dissipation
 
-Where ``F'' is the flux associated with the particular process,``U'' is the advecting velocity,
-while ``c★'' and ``c²'' are functions defined above.
-Note that ``F'' and ``U'' need to be numerically accurate for the budgets to close,
-i.e. for the AB2 scheme:
+where `F` is the flux associated with the particular process, `U` the transport that advects the tracer, and `c★`
+and `c²` the functions defined above. `F` and `U` are those that advanced the tracer over the step: for the AB2
+scheme
 
-    F = 1.5 Fⁿ - 0.5 Fⁿ⁻¹
-    U = 1.5 Uⁿ - 0.5 Uⁿ⁻¹
+    F = (1.5 + χ) Fⁿ - (0.5 + χ) Fⁿ⁻¹
+    U = (1.5 + χ) Uⁿ - (0.5 + χ) Uⁿ⁻¹
 
-For a RK3 method (not implemented at the moment), the whole substepping procedure needs to be accounted for.
+and for the Runge-Kutta schemes the flux and transport of the final stage, or their quadrature over the stages.
 """
 function compute_dissipation!(dissipation, model, tracer_name)
 
@@ -27,7 +25,6 @@ function compute_dissipation!(dissipation, model, tracer_name)
     # General velocities
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
-    σc   = dissipation.previous_state.σ_cache
 
     cⁿ⁺¹ = model.tracers[tracer_name]
     cⁿ   = dissipation.previous_state.cⁿ⁻¹
@@ -44,7 +41,7 @@ function compute_dissipation!(dissipation, model, tracer_name)
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
 
     !(scheme isa Nothing) &&
-        assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σc, cⁿ⁺¹, cⁿ)
+        assemble_advective_dissipation!(P, grid, model.timestepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
     ####
     #### Assemble the diffusive dissipation
@@ -59,24 +56,19 @@ function compute_dissipation!(dissipation, model, tracer_name)
     return nothing
 end
 
-assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σc, cⁿ⁺¹, cⁿ) =
-    launch!(architecture(grid), grid, :xyz, _assemble_ab2_advective_dissipation!, P, grid, ts.χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
-
-function assemble_advective_dissipation!(P, grid, ts::SplitRungeKuttaTimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, σc, cⁿ⁺¹, cⁿ)
-    if substep == ts.Nstages
-        launch!(architecture(grid), grid, :xyz, _assemble_rk3_advective_dissipation!, P, grid, Fⁿ, Uⁿ, σc, cⁿ⁺¹, cⁿ)
-    end
+function assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
+    FT = eltype(grid)
+    C₁ = convert(FT, 1.5 + ts.χ)
+    C₂ = convert(FT, 0.5 + ts.χ)
+    launch!(architecture(grid), grid, :xyz, _assemble_advective_dissipation!, P, grid, C₁, C₂, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     return nothing
 end
 
-"""
-Assemble the advective production of the strong-stability-preserving composition, `P = 2 δc★ F̄ - δc² Ū`
-with `F̄ = Σₘ βₘ Fᵐ` and `Ū = Σₘ βₘ Uᵐ` the running sums held in `F̄`/`Ū`, evaluated at the endpoints
-`cⁿ` and `cⁿ⁺¹` of the whole step.
-"""
-function assemble_advective_dissipation!(P, grid, ts::SSPRungeKuttaTimeStepper, substep, Fⁿ, F̄, Uⁿ, Ū, σc, cⁿ⁺¹, cⁿ)
+function assemble_advective_dissipation!(P, grid, ts::MultiStageTimeStepper, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     if substep == ts.Nstages
-        launch!(architecture(grid), grid, :xyz, _assemble_rk3_advective_dissipation!, P, grid, F̄, Ū, σc, cⁿ⁺¹, cⁿ)
+        FT = eltype(grid)
+        launch!(architecture(grid), grid, :xyz, _assemble_advective_dissipation!, P, grid, one(FT), zero(FT),
+                Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     end
     return nothing
 end

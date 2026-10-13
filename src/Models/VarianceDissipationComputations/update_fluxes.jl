@@ -2,92 +2,81 @@ using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
-# Store advective and diffusive fluxes for dissipation computation
-function cache_fluxes!(dissipation, model, tracer_name)
-    grid = model.grid
-    sz   = size(model.tracers[1].data)
-    of   = model.tracers[1].data.offsets
+"""
+    StageTransport()
 
-    params = KernelParameters(sz, of)
+The tracers of a stage are advected by a transport that the stage itself builds, after its barotropic step, from
+the velocities the previous stage ended with. The flux of a stage is therefore known only at its end, from the
+tracer and the grid the previous stage ended with.
+"""
+struct StageTransport end
 
-    Uⁿ   = dissipation.previous_state.Uⁿ
-    Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
-    U    = model isa HydrostaticFreeSurfaceModel ? model.transport_velocities : model.velocities
-    timestepper = model.timestepper
-    stage = model.clock.stage
+"""
+    NextStageTransport()
 
-    update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
-    store_cache_σ!(dissipation.previous_state.σ_cache, grid, params, timestepper, stage)
-    tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
-    cache_fluxes!(dissipation, model, U, tracer_name, Val(tracer_id))
+The tracers of a stage are advected by the velocities the previous stage ended with. The flux of the next stage is
+known at the end of the current one.
+"""
+struct NextStageTransport end
 
+transport_timing(model) = NextStageTransport()
+transport_timing(::HydrostaticFreeSurfaceModel) = StageTransport()
+
+advecting_velocities(model) = model.velocities
+advecting_velocities(model::HydrostaticFreeSurfaceModel) = model.transport_velocities
+
+function update_variance_budget!(ϵ, model, timing::StageTransport)
+    cache_advective_fluxes!(ϵ, model, timing)
+    compute_dissipation!(ϵ, model, ϵ.tracer_name)
+    cache_diffusive_fluxes!(ϵ, model)
+    store_stage_state!(ϵ, model)
     return nothing
 end
 
-function flux_parameters(grid)
+function update_variance_budget!(ϵ, model, timing::NextStageTransport)
+    compute_dissipation!(ϵ, model, ϵ.tracer_name)
+    store_stage_state!(ϵ, model)
+    cache_advective_fluxes!(ϵ, model, timing)
+    cache_diffusive_fluxes!(ϵ, model)
+    return nothing
+end
+
+function face_ranges(grid)
     Nx, Ny, Nz = size(grid)
     TX, TY, TZ = topology(grid)
     Fx = ifelse(TX == Flat, 1:1, 1:Nx+1)
     Fy = ifelse(TY == Flat, 1:1, 1:Ny+1)
     Fz = ifelse(TZ == Flat, 1:1, 1:Nz+1)
-    return KernelParameters(Fx, Fy, Fz)
+    return Fx, Fy, Fz
 end
 
-function cache_fluxes!(dissipation, model, U, tracer_name::Symbol, tracer_id)
+flux_parameters(grid) = KernelParameters(face_ranges(grid)...)
 
-    # Grab tracer properties
-    c    = model.tracers[tracer_name]
-    cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
-
-    grid = model.grid
-    params = flux_parameters(grid)
-    stage  = model.clock.stage
-    timestepper = model.timestepper
-
-    ####
-    #### Update the advective fluxes and compute gradient squared
-    ####
-
-    Fⁿ   = dissipation.advective_fluxes.Fⁿ
-    Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
-    advection = getadvection(model.advection, tracer_name)
-
-    cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, stage, advection, U, c)
-
-    ####
-    #### Update the diffusive fluxes
-    ####
-
-    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
-    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
-
-    D = model.closure_fields
-    B = model.buoyancy
-    clk  = model.clock
-    clo  = model.closure
-    model_fields = fields(model)
-
-    cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, timestepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-
-    if timestepper isa QuasiAdamsBashforth2TimeStepper
-        parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa SplitRungeKuttaTimeStepper) && (stage == timestepper.Nstages)
-        parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa SSPRungeKuttaTimeStepper) && (stage == timestepper.Nstages)
-        parent(cⁿ⁻¹) .= parent(c)
-    end
-
-    return nothing
+function horizontal_flux_parameters(grid)
+    Fx, Fy, _ = face_ranges(grid)
+    return KernelParameters(Fx, Fy)
 end
 
-cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) =
-    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
+"""
+    stage_weights(timestepper, stage, timing, FT)
 
-function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, advection, U, c)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, advection, U, c)
-    end
+The weight with which the flux cached at the end of `stage` enters the flux of the step, and whether the sum
+already under way is kept, or `nothing` if that flux does not enter the step.
+"""
+stage_weights(::QuasiAdamsBashforth2TimeStepper, stage, timing, FT) = (one(FT), zero(FT))
+
+stage_weights(ts::SplitRungeKuttaTimeStepper, stage, ::StageTransport, FT) =
+    stage == ts.Nstages ? (one(FT), zero(FT)) : nothing
+
+stage_weights(ts::SplitRungeKuttaTimeStepper, stage, ::NextStageTransport, FT) =
+    stage == ts.Nstages - 1 ? (one(FT), zero(FT)) : nothing
+
+function stage_weights(ts::SSPRungeKuttaTimeStepper, stage, ::StageTransport, FT)
+    β = ssp_quadrature_weights(ts.coefficients)
+    return convert(FT, β[stage]), convert(FT, stage == 1 ? 0 : 1)
 end
+
+stage_weights(ts::SSPRungeKuttaTimeStepper, stage, ::NextStageTransport, FT) = ssp_accumulation_weights(ts, stage, FT)
 
 """
     ssp_accumulation_weights(ts, stage, FT)
@@ -106,9 +95,55 @@ that flux restarts it with `β₁` and seeds the next step.
     return convert(FT, w), convert(FT, seeds ? 0 : 1)
 end
 
-function cache_advective_fluxes!(Fⁿ, F̄, grid, params, ts::SSPRungeKuttaTimeStepper, stage, advection, U, c)
-    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
-    launch!(architecture(grid), grid, params, _accumulate_ssp_advective_fluxes!, F̄, grid, advection, U, c, β, keep)
+# Adams-Bashforth combines the flux of the step with the one of the previous step
+store_previous_advective_fluxes!(dissipation, timestepper) = nothing
+
+function store_previous_advective_fluxes!(dissipation, ::QuasiAdamsBashforth2TimeStepper)
+    Fⁿ, Fⁿ⁻¹ = dissipation.advective_fluxes
+    Uⁿ, Uⁿ⁻¹ = dissipation.previous_state.Uⁿ, dissipation.previous_state.Uⁿ⁻¹
+
+    for (previous, current) in zip((Fⁿ⁻¹..., Uⁿ⁻¹...), (Fⁿ..., Uⁿ...))
+        parent(previous) .= parent(current)
+    end
+
+    return nothing
+end
+
+function cache_advective_fluxes!(dissipation, model, timing)
+    grid = model.grid
+    timestepper = model.timestepper
+    weights = stage_weights(timestepper, model.clock.stage, timing, eltype(grid))
+    isnothing(weights) && return nothing
+
+    advection = getadvection(model.advection, dissipation.tracer_name)
+    advection isa Nothing && return nothing
+
+    weight, keep = weights
+    state = dissipation.previous_state
+
+    store_previous_advective_fluxes!(dissipation, timestepper)
+
+    launch!(architecture(grid), grid, flux_parameters(grid), _accumulate_advective_fluxes!,
+            dissipation.advective_fluxes.Fⁿ, state.Uⁿ, grid, advection, advecting_velocities(model),
+            state.cᵐ⁻¹, state.σᵐ⁻¹, weight, keep)
+
+    return nothing
+end
+
+function cache_diffusive_fluxes!(dissipation, model)
+    grid   = model.grid
+    params = flux_parameters(grid)
+    tracer_name = dissipation.tracer_name
+    tracer_id   = findfirst(x -> x == tracer_name, keys(model.tracers))
+    c = model.tracers[tracer_name]
+
+    Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
+    Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
+
+    cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, model.timestepper, model.clock.stage, model.closure,
+                           model.closure_fields, model.buoyancy, c, Val(tracer_id), model.clock, fields(model))
+
+    return nothing
 end
 
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
@@ -126,58 +161,28 @@ function cache_diffusive_fluxes(Vⁿ, V̄, grid, params, ts::SSPRungeKuttaTimeSt
             V̄, Vⁿ, grid, clo, D, B, c, tracer_id, clk, model_fields, β, keep)
 end
 
-update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
-    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
+end_of_step(::QuasiAdamsBashforth2TimeStepper, stage) = true
+end_of_step(ts::MultiStageTimeStepper, stage) = stage == ts.Nstages
 
-function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, U)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
+function store_stage_state!(dissipation, model)
+    grid  = model.grid
+    state = dissipation.previous_state
+    c     = model.tracers[dissipation.tracer_name]
+
+    parent(state.cᵐ⁻¹) .= parent(c)
+    launch!(architecture(grid), grid, horizontal_flux_parameters(grid), _store_horizontal_stretching!, state.σᵐ⁻¹, grid)
+
+    if end_of_step(model.timestepper, model.clock.stage)
+        parent(state.cⁿ⁻¹) .= parent(c)
     end
-end
 
-function update_transport!(Uⁿ, Ū, grid, params, ts::SSPRungeKuttaTimeStepper, stage, U)
-    β, keep = ssp_accumulation_weights(ts, stage, eltype(grid))
-    launch!(architecture(grid), grid, params, _accumulate_ssp_transport!, Ū, grid, U, β, keep)
-end
-
-@kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds begin
-        Uⁿ⁻¹.u[i, j, k] = Uⁿ.u[i, j, k]
-        Uⁿ⁻¹.v[i, j, k] = Uⁿ.v[i, j, k]
-        Uⁿ⁻¹.w[i, j, k] = Uⁿ.w[i, j, k]
-          Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
-          Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
-          Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
-    end
-end
-
-@kernel function _update_transport!(Uⁿ, grid, U)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds Uⁿ.u[i, j, k] = U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
-    @inbounds Uⁿ.v[i, j, k] = U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
-    @inbounds Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
-end
-
-store_cache_σ!(σ_cache, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage) = nothing
-
-# The strong-stability-preserving sum is raw, so its cache stays at the unity it was built with.
-store_cache_σ!(σ_cache, grid, params, ts::SSPRungeKuttaTimeStepper, stage) = nothing
-
-function store_cache_σ!(σ_cache, grid, params, ts::MultiStageTimeStepper, stage)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _store_cache_σ!, σ_cache, grid)
-    end
     return nothing
 end
 
-@kernel function _store_cache_σ!(σ_cache, grid)
-    i, j, k = @index(Global, NTuple)
+@kernel function _store_horizontal_stretching!(σ, grid)
+    i, j = @index(Global, NTuple)
     @inbounds begin
-        σ_cache.x[i, j, 1] = σⁿ(i, j, k, grid, f, c, c)
-        σ_cache.y[i, j, 1] = σⁿ(i, j, k, grid, c, f, c)
-        σ_cache.z[i, j, 1] = σⁿ(i, j, k, grid, c, c, f)
+        σ.x[i, j, 1] = σⁿ(i, j, 1, grid, f, c, c)
+        σ.y[i, j, 1] = σⁿ(i, j, 1, grid, c, f, c)
     end
 end
