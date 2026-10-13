@@ -7,7 +7,6 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Advection: update_ghost_cell_projection!
 
 """
 $(TYPEDSIGNATURES)
@@ -77,20 +76,6 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-# Tracer tendencies are computed within the substep that they advance
-tracer_substep(timestepper, clock) = clock.last_stage_Δt
-tracer_substep(::QuasiAdamsBashforth2TimeStepper, clock) = clock.last_Δt
-
-"""
-    tracer_substep_base(timestepper, model, tracer_name)
-
-Return the values of tracer `tracer_name` that the current substep advances by `tracer_substep` times the tracer
-tendency: the tracer itself, as in the forward-Euler step of a strong-stability-preserving Runge-Kutta stage, or the
-tracer cached at the beginning of the time step, from which every split Runge-Kutta stage restarts.
-"""
-tracer_substep_base(timestepper, model, tracer_name) = model.tracers[tracer_name]
-tracer_substep_base(timestepper::SplitRungeKuttaTimeStepper, model, tracer_name) = cached_tracer(model.grid, timestepper.Ψ⁻, tracer_name)
-
 # Fallback
 compute_free_surface_tendency!(grid, model, free_surface, Δt) = nothing
 
@@ -128,15 +113,6 @@ end
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
     @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-
-    # The same velocities advect `c` in `hydrostatic_free_surface_tracer_tendency`
-    biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, Val(tracer_name))
-    closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, Val(tracer_name))
-    total_velocities = sum_of_velocities(model.transport_velocities, biogeochemical_velocities, closure_velocities)
-    total_velocities = with_advective_forcing(c_forcing, total_velocities)
-    Δt = tracer_substep(model.timestepper, model.clock)
-    c⁰ = tracer_substep_base(model.timestepper, model, tracer_name)
-    update_ghost_cell_projection!(c_advection, model, total_velocities, model.tracers[tracer_name], Δt, c⁰)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gc!,

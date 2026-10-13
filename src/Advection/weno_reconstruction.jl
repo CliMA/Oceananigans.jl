@@ -129,8 +129,9 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         N = Int((order + 1) ÷ 2)
 
         if isnothing(buffer_scheme) && boundary_scheme isa GhostCells
+            order < 5 && throw(ArgumentError("GhostCells requires a WENO order of at least 5"))
             unbuffered = WENO{N, FT, weight_computation}(nothing, nothing, advecting_velocity_scheme, time_discretization)
-            buffer_scheme = GhostCells(unbuffered, nothing, boundary_scheme.bounded)
+            buffer_scheme = GhostCells(unbuffered)
         elseif isnothing(buffer_scheme)
             boundary_scheme = something(boundary_scheme, Centered(FT; order=2))
             buffer_scheme = order ≤ 3 ? boundary_scheme : WENO(FT; order=order-2, bounds, weight_computation, boundary_scheme)

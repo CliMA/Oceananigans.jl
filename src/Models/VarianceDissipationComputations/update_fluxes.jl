@@ -1,7 +1,6 @@
 using Oceananigans: fields
-using Oceananigans.Advection: adaptive_advection_timestep, update_ghost_cell_projection!
 using Oceananigans.Grids: topology, Flat
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, tracer_substep_base
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 
 # Store advective and diffusive fluxes for dissipation computation
 function cache_fluxes!(dissipation, model, tracer_name)
@@ -19,17 +18,9 @@ function cache_fluxes!(dissipation, model, tracer_name)
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
-    cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
+    cache_fluxes!(dissipation, model, U, tracer_name, Val(tracer_id))
 
     return nothing
-end
-
-# The fluxes are those of the substep that follows, which a split Runge-Kutta time step restarts from its cached tracers
-next_substep_base(timestepper, model, tracer_name, c) = c
-
-function next_substep_base(timestepper::SplitRungeKuttaTimeStepper, model::HydrostaticFreeSurfaceModel, tracer_name, c)
-    model.clock.stage == timestepper.Nstages && return c
-    return tracer_substep_base(timestepper, model, tracer_name)
 end
 
 function flux_parameters(grid)
@@ -41,14 +32,13 @@ function flux_parameters(grid)
     return KernelParameters(Fx, Fy, Fz)
 end
 
-function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
+function cache_fluxes!(dissipation, model, U, tracer_name::Symbol, tracer_id)
 
     # Grab tracer properties
     c    = model.tracers[tracer_name]
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    U = model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
     timestepper = model.timestepper
@@ -60,8 +50,6 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
     advection = getadvection(model.advection, tracer_name)
-    c⁰ = next_substep_base(timestepper, model, tracer_name, c)
-    update_ghost_cell_projection!(advection, model, U, c, adaptive_advection_timestep(timestepper, model.clock), c⁰)
 
     cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, stage, advection, U, c)
 

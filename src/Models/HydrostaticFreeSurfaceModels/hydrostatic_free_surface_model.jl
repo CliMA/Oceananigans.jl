@@ -246,7 +246,7 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
 
     # Fill any settings in advection scheme that might have been deferred until
     # the grid and backend is known
-    advection = materialize_advection(advection, grid)
+    advection = map(scheme -> materialize_advection(scheme, grid), advection)
 
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
