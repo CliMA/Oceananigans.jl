@@ -40,14 +40,16 @@ u_bcs = FieldBoundaryConditions(west = baroclinic(), east = baroclinic())
 U_bcs = FieldBoundaryConditions(west = flather(:west), east = flather(:east))
 V_bcs = FieldBoundaryConditions(north = flather(:north))
 η_bcs = FieldBoundaryConditions(west = chapman(), east = chapman(), north = chapman())
-S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(south = ValueBoundaryCondition(0)))
+# Fresh water enters through the river mouth; elsewhere the coastline returns the interior salinity, a no-flux wall
+@inline coast_salinity(i, j, k, grid, clock, fields) = ifelse(in_mouth(xnode(i, grid, Center()), znode(k, grid, Center())), zero(eltype(grid)), @inbounds fields.S[i, j, k])
+S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(south = ValueBoundaryCondition(coast_salinity, discrete_form = true)))
 
 closure = (VerticalScalarDiffusivity(ν = 1e-3, κ = 1e-4), HorizontalScalarDiffusivity(ν = 10, κ = 10))
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, coriolis = FPlane(; f),
-                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5, bounds = (0, S_ocean)),
+                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5),
                                     tracers = :S,
                                     boundary_conditions = (; u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs, η = η_bcs, S = S_bcs))
 
@@ -66,8 +68,8 @@ wall_clock = Ref(time_ns())
 function progress(sim)
     compute!(freshwater)
     elapsed = (time_ns() - wall_clock[]) / 1e9
-    @info @sprintf("iter %d, t = %s, max|u| = %.2f, max|v| = %.2f, min S = %.2f, freshwater / (Q t) = %.4f, mean η = %.3f m, wall %.1f s",
-                   iteration(sim), prettytime(sim), maximum(abs, u), maximum(abs, v), minimum(S),
+    @info @sprintf("iter %d, t = %s, max|u| = %.2f, max|v| = %.2f, S ∈ [%.2f, %.2f], mean S = %.3f, freshwater / (Q t) = %.4f, mean η = %.3f m, wall %.1f s",
+                   iteration(sim), prettytime(sim), maximum(abs, u), maximum(abs, v), minimum(S), maximum(S), mean(S),
                    Array(interior(freshwater))[1] / (Q_river * max(time(sim), 1e-9)), mean(η), elapsed)
     wall_clock[] = time_ns()
     return nothing

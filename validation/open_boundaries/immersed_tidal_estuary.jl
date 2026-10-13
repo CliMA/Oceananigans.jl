@@ -23,7 +23,7 @@ const ω = 2π / 12.42hours       # M2 frequency [s⁻¹]
 const S_ocean = 35              # ocean salinity [g kg⁻¹]
 stop_time = 10days
 
-grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (6, 6), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
+grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (4, 4), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> ifelse(x < head, 0, -Lz)))
 
 @inline river_velocity(i, j, k, grid, clock, fields) =
@@ -34,15 +34,17 @@ u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = Norm
                                 east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(; inflow_timescale = Inf, outflow_timescale = Inf)))
 U_bcs = FieldBoundaryConditions(east = GravityWaveRadiationBoundaryCondition((0, 0)))
 η_bcs = FieldBoundaryConditions(east = SurfaceWaveRadiationBoundaryCondition())
-S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(0)),
+# Fresh water enters through the river faces; below them the head returns the interior salinity, a no-flux wall
+@inline head_salinity(i, j, k, grid, clock, fields) = ifelse(znode(k, grid, Center()) > -river_depth, zero(eltype(grid)), @inbounds fields.S[i, j, k])
+S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(head_salinity, discrete_form = true)),
                                 east = ValueBoundaryCondition(S_ocean; scheme = PerturbationAdvection(inflow_timescale = 1hour, outflow_timescale = Inf)))
 
-closure = VerticalScalarDiffusivity(ν = 1e-3, κ = 1e-4)
+closure = (VerticalScalarDiffusivity(ν = 1e-3, κ = 1e-4), HorizontalScalarDiffusivity(ν = 5, κ = 5))
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, tracers = :S,
-                                    momentum_advection = WENO(order = 9), tracer_advection = WENO(order = 9, bounds = (0, S_ocean)),
+                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5),
                                     boundary_conditions = (; u = u_bcs, U = U_bcs, η = η_bcs, S = S_bcs))
 
 set!(model, S = S_ocean)
