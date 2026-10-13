@@ -2,15 +2,12 @@
 @kernel function _compute_realized_barotropic_tendency!(Gᵁ, Gⱽ, grid, u, v, u⁻, v⁻, Δt)
     i, j = @index(Global, NTuple)
 
-    locU = (Face(), Center(), Center())
-    locV = (Center(), Face(), Center())
-
     δU = zero(grid)
     δV = zero(grid)
 
     for k in 1:grid.Nz
-        @inbounds δU += Δzᶠᶜᶜ(i, j, k, grid) * (u[i, j, k] - u⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locU...)
-        @inbounds δV += Δzᶜᶠᶜ(i, j, k, grid) * (v[i, j, k] - v⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locV...)
+        @inbounds δU += Δzᶠᶜᶜ(i, j, k, grid) * (u[i, j, k] - u⁻[i, j, k])
+        @inbounds δV += Δzᶜᶠᶜ(i, j, k, grid) * (v[i, j, k] - v⁻[i, j, k])
     end
 
     @inbounds Gᵁ[i, j, 1] = δU / Δt

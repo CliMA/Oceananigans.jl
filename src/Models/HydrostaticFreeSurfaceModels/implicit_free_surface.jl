@@ -195,8 +195,8 @@ end
         immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
         immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
 
-        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ[i, j, k] + δuᵢ)
-        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ[i, j, k] + δvⱼ)
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, ũ[i, j, k], ũ[i, j, k] + δuᵢ)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, ṽ[i, j, k], ṽ[i, j, k] + δvⱼ)
     end
 end
 

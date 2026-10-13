@@ -43,7 +43,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
         compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
-        mask_immersed_horizontal_velocities!(model.velocities)
+        mask_immersed_horizontal_velocities!(model.velocities, model.clock, fields(model))
     end
 
     # Advance the free surface with the change the column actually underwent, boundary drain included
@@ -108,7 +108,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
     @apply_regionally begin
         correct_barotropic_mode!(model, Δt)
-        mask_immersed_horizontal_velocities!(model.velocities)
+        mask_immersed_horizontal_velocities!(model.velocities, model.clock, fields(model))
     end
 
     u, v, _ = model.velocities

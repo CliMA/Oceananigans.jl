@@ -989,6 +989,8 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 
 function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
+    fill_immersed_halo_regions!(field, positional_args...; kwargs...)
+
     arch = architecture(field.grid)
     args = (field.data,
             field.boundary_conditions,
@@ -1006,6 +1008,9 @@ function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...;
 
     return nothing
 end
+
+# Set the open immersed faces of `field` and fill the immersed nodes behind them
+fill_immersed_halo_regions!(field, args...; kwargs...) = nothing
 
 #####
 ##### nodes

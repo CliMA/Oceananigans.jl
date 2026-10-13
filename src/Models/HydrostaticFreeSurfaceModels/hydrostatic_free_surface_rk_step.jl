@@ -36,7 +36,7 @@ The order of operations for explicit free surfaces is:
 
         compute_momentum_flux_bcs!(model)
         rk_substep_velocities!(model.velocities, model, Δτ)
-        mask_immersed_horizontal_velocities!(model.velocities)
+        mask_immersed_horizontal_velocities!(model.velocities, model.clock, fields(model))
     end
 
     # Advance the free surface with the change the column actually underwent, boundary drain included
@@ -95,7 +95,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     @apply_regionally begin
         correct_barotropic_mode!(model, Δτ)
-        mask_immersed_horizontal_velocities!(model.velocities)
+        mask_immersed_horizontal_velocities!(model.velocities, model.clock, fields(model))
     end
 
     # Fill velocity halos

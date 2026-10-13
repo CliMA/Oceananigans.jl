@@ -4,7 +4,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
-using Oceananigans.Fields: compute!
+using Oceananigans.Fields: compute!, fill_immersed_halo_regions!
 using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -91,11 +91,14 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Set velocity field values to zero in immersed (solid) regions of the grid.
+Set the horizontal velocities to zero in immersed (solid) regions of the grid
+and to their `NormalFlow` conditions on open immersed faces.
 """
-function mask_immersed_horizontal_velocities!(velocities)
+function mask_immersed_horizontal_velocities!(velocities, clock, model_fields)
     mask_immersed_field!(velocities.u)
     mask_immersed_field!(velocities.v)
+    fill_immersed_halo_regions!(velocities.u, clock, model_fields)
+    fill_immersed_halo_regions!(velocities.v, clock, model_fields)
     return nothing
 end
 

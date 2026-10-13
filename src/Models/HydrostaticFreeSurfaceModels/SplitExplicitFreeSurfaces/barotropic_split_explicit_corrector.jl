@@ -42,9 +42,6 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
 
-    mask_immersed_field!(u)
-    mask_immersed_field!(v)
-
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!, u, v, U, V, U̅, V̅, grid)
 
@@ -65,8 +62,8 @@ end
     u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
     v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
 
-    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
-    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, u[i, j, k], u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, v[i, j, k], v[i, j, k] + v_correction)
 end
 
 @kernel function _compute_split_explicit_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
@@ -87,8 +84,8 @@ end
         ũ⁺ = u[i, j, k] + u_correction
         ṽ⁺ = v[i, j, k] + v_correction
 
-        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ⁺)
-        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ⁺)
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, u[i, j, k], ũ⁺)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, v[i, j, k], ṽ⁺)
     end
 end
 
