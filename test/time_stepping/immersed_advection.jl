@@ -99,9 +99,9 @@ end
 
 staircase(ξ) = (5 + sum(tanh(40 * (ξ - n / 6)) for n in 1:5)) / 20
 
-function run_kinetic_energy_conservation_test(arch)
+function run_kinetic_energy_conservation_test(arch, ImmersedBoundary)
     grid = RectilinearGrid(arch, size=(16, 16, 32), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
-    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> staircase(x) + staircase(y)))
+    ibg  = ImmersedBoundaryGrid(grid, ImmersedBoundary((x, y) -> staircase(x) + staircase(y)))
 
     pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
     model = NonhydrostaticModel(ibg; advection=Centered(), pressure_solver)
@@ -111,8 +111,9 @@ function run_kinetic_energy_conservation_test(arch)
     compute_tendencies!(model, [])
     G = model.timestepper.Gⁿ
 
-    production = sum(u * G.u) + sum(v * G.v) + sum(w * G.w)
-    magnitude  = sum(abs, u * G.u) + sum(abs, v * G.v) + sum(abs, w * G.w)
+    ∫(f) = sum(Field(Integral(f)))
+    production = ∫(u * G.u) + ∫(v * G.v) + ∫(w * G.w)
+    magnitude  = ∫(abs(u * G.u)) + ∫(abs(v * G.v)) + ∫(abs(w * G.w))
 
     @test abs(production) < 1e-12 * magnitude
 
@@ -215,8 +216,10 @@ for arch in archs
     end
 
     @testset "Immersed momentum advection conserves kinetic energy" begin
-        @info "Running immersed momentum advection kinetic energy test [$(typeof(arch))]..."
-        run_kinetic_energy_conservation_test(arch)
+        for ImmersedBoundary in (GridFittedBottom, PartialCellBottom)
+            @info "Running immersed momentum advection kinetic energy test [$(typeof(arch)), $ImmersedBoundary]..."
+            run_kinetic_energy_conservation_test(arch, ImmersedBoundary)
+        end
     end
 
     @testset "Convection over an immersed staircase stays bounded" begin
