@@ -12,18 +12,18 @@ using Printf
 using Statistics: mean
 
 arch = GPU()
-Lx, Ly, Lz = 2kilometers, 1kilometer, 20
+const Lx, Ly, Lz = 2kilometers, 1kilometer, 20
 Nx, Ny, Nz = 256, 128, 32
 
-coast = 200           # the coastline sits at x = 200 m
-inlet_width = 100     # [m]
-inlet_depth = 10      # [m]
-U = 0.5               # inlet velocity [m s⁻¹]
-N² = 1e-4             # ambient stratification [s⁻²]
-f = 1e-4              # Coriolis parameter [s⁻¹]
+const coast = 200           # the coastline sits at x = 200 m
+const inlet_width = 100     # [m]
+const inlet_depth = 10      # [m]
+const U = 0.5               # inlet velocity [m s⁻¹]
+const N² = 1e-4             # ambient stratification [s⁻²]
+const f = 1e-4              # Coriolis parameter [s⁻¹]
 stop_time = 2hours
 
-grid = RectilinearGrid(arch; size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
+grid = RectilinearGrid(arch; size = (Nx, Ny, Nz), halo = (5, 5, 5), x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                        topology = (Bounded, Bounded, Bounded))
 grid = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> x < coast))
 

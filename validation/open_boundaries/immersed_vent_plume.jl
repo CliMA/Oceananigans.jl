@@ -12,16 +12,16 @@ using CairoMakie
 using Printf
 
 arch = GPU()
-L = 200                   # domain width and height [m]
-N = 128
-seafloor = -L + 10        # the sea floor sits 10 m above the bottom of the domain
-vent_radius = 8           # [m]
-W = 0.2                   # vent velocity [m s⁻¹]
-b_vent = 0.03             # vent buoyancy anomaly [m s⁻²]
-N² = 1e-4                 # ambient stratification [s⁻²]
+const L = 200                   # domain width and height [m]
+const N = 128
+const seafloor = -L + 10        # the sea floor sits 10 m above the bottom of the domain
+const vent_radius = 8           # [m]
+const W = 0.2                   # vent velocity [m s⁻¹]
+const b_vent = 0.03             # vent buoyancy anomaly [m s⁻²]
+const N² = 1e-4                 # ambient stratification [s⁻²]
 stop_time = 30minutes
 
-grid = RectilinearGrid(arch; size = (N, N, N), x = (-L/2, L/2), y = (-L/2, L/2), z = (-L, 0),
+grid = RectilinearGrid(arch; size = (N, N, N), halo = (5, 5, 5), x = (-L/2, L/2), y = (-L/2, L/2), z = (-L, 0),
                        topology = (Bounded, Bounded, Bounded))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> seafloor))
 

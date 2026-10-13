@@ -11,18 +11,18 @@ using Printf
 using Statistics: mean
 
 arch = GPU()
-Lx, Lz = 50kilometers, 20
+const Lx, Lz = 50kilometers, 20
 Nx, Nz = 500, 40
 
-head = 2kilometers        # the estuary head (land) occupies x < head
-river_depth = 5           # [m]
-U_river = 0.3             # mean river velocity [m s⁻¹]
-U_tide = 0.25             # tidal modulation of the river velocity [m s⁻¹]
-ω = 2π / 12.42hours       # M2 frequency [s⁻¹]
-S_ocean = 35              # ocean salinity [g kg⁻¹]
+const head = 2kilometers        # the estuary head (land) occupies x < head
+const river_depth = 5           # [m]
+const U_river = 0.3             # mean river velocity [m s⁻¹]
+const U_tide = 0.25             # tidal modulation of the river velocity [m s⁻¹]
+const ω = 2π / 12.42hours       # M2 frequency [s⁻¹]
+const S_ocean = 35              # ocean salinity [g kg⁻¹]
 stop_time = 10days
 
-grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (5, 5), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
+grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (6, 6), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> ifelse(x < head, 0, -Lz)))
 
 @inline river_velocity(i, j, k, grid, clock, fields) =
