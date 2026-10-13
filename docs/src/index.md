@@ -137,11 +137,13 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Huang, X. (2026). [Statistical turbulence and high-fidelity disturbance fields for quadrotor flight control](https://doi.org/10.48550/arXiv.2610.06874), _arXiv preprint_, arXiv:2610.06874. DOI: [10.48550/arXiv.2610.06874](https://doi.org/10.48550/arXiv.2610.06874)
-
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. E. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/os-22-3055-2026), _Ocean Science_, **22**, 3055–3078. DOI: [10.5194/os-22-3055-2026](https://doi.org/10.5194/os-22-3055-2026)
 
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Flierl, G. R., and Ferrari, R. (2026). [A generative AI framework for inferring consistent ocean statistics at depth using sea surface data](https://doi.org/10.1175/JPO-D-25-0093.1), _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-25-0093.1](https://doi.org/10.1175/JPO-D-25-0093.1)
+
 1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin–Helmholtz braids at high Reynolds number](https://doi.org/10.1017/jfm.2026.12012), _Journal of Fluid Mechanics_, **1043**, R2. DOI: [10.1017/jfm.2026.12012](https://doi.org/10.1017/jfm.2026.12012)
+
+1. Huang, X. (2026). [Statistical turbulence and high-fidelity disturbance fields for quadrotor flight control](https://doi.org/10.48550/arXiv.2610.06874), _arXiv preprint_, arXiv:2610.06874. DOI: [10.48550/arXiv.2610.06874](https://doi.org/10.48550/arXiv.2610.06874)
 
 1. Gui, W., Bhadouriya, A., Vreugdenhil, C. A., and Gayen, B. (2026). [The impact of fronts and eddies under various melt conditions on Antarctic ice shelves](https://doi.org/10.1029/2026GL123024), _Geophysical Research Letters_, **53(17)**, e2026GL123024. DOI: [10.1029/2026GL123024](https://doi.org/10.1029/2026GL123024)
 
@@ -172,6 +174,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Nguyen, V. H. (2026). [Shoal bathymetry influence on offshore transport and mixing](https://doi.org/10.17615/n59p-f272), _Honors thesis_, The University of North Carolina at Chapel Hill. DOI: [10.17615/n59p-f272](https://doi.org/10.17615/n59p-f272)
 
 1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
+
+1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
 
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
@@ -227,8 +231,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Brenner, S., Thompson, A., and Gupta, M. (2025) [Patterns of sea ice floes shape ocean turbulence in the marginal ice zone](https://doi.org/10.21203/rs.3.rs-8099873/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-8099873/v1](https://doi.org/10.21203/rs.3.rs-8099873/v1)
 
-1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
-
 1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a unified data-driven boundary layer momentum flux parameterization for ocean and atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
 
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
@@ -236,8 +238,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
 
 1. Shikanian, A. and Parfenyev, V. (2025). [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.1063/5.0288507), _Physics of Fluids_, **37(9)**, 095127. DOI: [10.1063/5.0288507](https://doi.org/10.1063/5.0288507)
-
-1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Flierl, G. R., and Ferrari, R. (2026). [A generative AI framework for inferring consistent ocean statistics at depth using sea surface data](https://doi.org/10.1175/JPO-D-25-0093.1), _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-25-0093.1](https://doi.org/10.1175/JPO-D-25-0093.1)
 
 1. Vankevich, R. Y., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. (in Russian) DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
 
