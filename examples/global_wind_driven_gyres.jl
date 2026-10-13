@@ -41,6 +41,7 @@ using Oceananigans.Coriolis: DualGridScheme
 using Oceananigans.Grids: φnode
 using Oceananigans.ImmersedBoundaries: InterfaceImmersedCondition
 using NCDatasets
+using Downloads
 using Printf
 using CairoMakie
 using ConservativeRegridding
@@ -88,22 +89,18 @@ underlying_grid = TripolarGrid(arch; size=(Nx, Ny, Nz), z, halo=(5, 5, 5))
 
 # ## Bathymetry from ETOPO1
 #
-# NOAA's NCEI serves the 1-arc-minute ETOPO1 relief over OPeNDAP, so NCDatasets can read
-# every `stride`-th point, three per grid cell, without downloading the whole file.
-# Averaging the samples in 3 × 3 blocks then gives the mean elevation of each grid cell
-# rather than the elevation at a single point.
+# We download NOAA's 1-arc-minute ETOPO1 relief sampled every 10 arc-minutes, a 4.5 MB
+# file. Averaging the samples in blocks, six per degree, then gives the mean elevation
+# of each grid cell rather than the elevation at a single point.
 
-stride = round(Int, 20resolution) # arc-minutes between samples
-etopo_url = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO1_Ice_g_gmt4.nc"
+etopo_url = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/etopo1/ETOPO1_Ice_g_10arcmin.nc"
+etopo_filename = basename(etopo_url)
+isfile(etopo_filename) || Downloads.download(etopo_url, etopo_filename)
 
-etopo_elevation = NCDataset(etopo_url) do dataset
-    i = 1 + stride÷2 : stride : dataset.dim["lon"] - stride÷2
-    j = 1 + stride÷2 : stride : dataset.dim["lat"] - stride÷2
-    nomissing(dataset["z"][i, j])
-end
+etopo_elevation = NCDataset(dataset -> dataset["z"][:, :], etopo_filename)
 
 block_mean(a, n) = [sum(@view a[i:i+n-1, j:j+n-1]) / n^2 for i in 1:n:size(a, 1), j in 1:n:size(a, 2)]
-elevation = FT.(block_mean(etopo_elevation, 3))
+elevation = FT.(block_mean(etopo_elevation, round(Int, 6resolution)))
 nothing #hide
 
 # We put the elevation on a `LatitudeLongitudeGrid`, interpolate it onto the tripolar
