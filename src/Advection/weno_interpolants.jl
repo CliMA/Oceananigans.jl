@@ -399,14 +399,13 @@ for buffer in advection_buffers[2:end]
     end
 
     for FT in (Float32, BFloat16)
-        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT =
-            @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
+        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ) where WCT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
     end
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
+@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] -   β[2])
+@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] -   β[3])
 @inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
@@ -446,14 +445,17 @@ end
     return α .* Σα⁻¹
 end
 
-@inline weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
+@inline      weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
-@inline stencil_value(i, j, k, grid, ψ, args...) = @inbounds ψ[i, j, k]
+@inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
 @inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
 
 @inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, e, ψ, args...) where N
-    Ψ = ntuple(@inline(n -> stencil_value(((i, j, k) .+ (n - N - 1) .* e)..., grid, ψ, args...)), Val(2N))
+    Ψ = ntuple(Val(2N)) do n 
+        i′, j′, k′ = (i, j, k) .+ (n - N - 1) .* e
+        stencil_value(i′, j′, k′, grid, ψ, args...)
+    end
     return ifelse(bias == LeftBias, Ψ, reverse(Ψ))
 end
 
@@ -469,7 +471,6 @@ end
     for stencil = 1:buffer
         elem[stencil] = :(ω[$stencil] * biased_p(scheme, Val($(stencil-1)), $(stencil_differences(buffer, stencil-1))))
     end
-
     return Expr(:call, :+, :ψ₀, elem...)
 end
 
@@ -505,15 +506,19 @@ end
     return weno_reconstruction(scheme, weno_anchor(scheme, S), δ, ω)
 end
 
+@inline unit_vector(::Val{1}) = (1, 0, 0)
+@inline unit_vector(::Val{2}) = (0, 1, 0)
+@inline unit_vector(::Val{3}) = (0, 0, 1)
+
 # Interpolation functions
 for (dir, ξ) in enumerate((:x, :y, :z))
-    e = ntuple(d -> Int(d == dir), 3)
-    biased_face = Symbol(:biased_interpolate_, ξ, ntuple(d -> d == dir ? :ᶠ : :ᵃ, 3)...)
+    e = unit_vector(Val(dir))
+    interpolate = Symbol(:biased_interpolate_, ξ, ntuple(d -> d == dir ? :ᶠ : :ᵃ, 3)...)
 
     @eval begin
-        @inline $biased_face(i, j, k, grid, scheme::WENO, bias, ψ, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, nothing, ψ, args...)
+        @inline $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, nothing, ψ, args...)
 
-        @inline function $biased_face(i, j, k, grid, scheme::WENO, bias, ψ, stencil::AbstractSmoothnessStencil, args...)
+        @inline function $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, stencil::AbstractSmoothnessStencil, args...)
             δˢ = smoothness_differences(i, j, k, grid, scheme, bias, $e, stencil, args...)
             return weno_interpolate(i, j, k, grid, scheme, bias, $e, δˢ, ψ, args...)
         end

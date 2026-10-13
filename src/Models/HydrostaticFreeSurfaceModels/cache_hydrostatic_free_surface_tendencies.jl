@@ -1,7 +1,7 @@
 using KernelAbstractions: @index, @kernel
 using Oceananigans: prognostic_fields
-using Oceananigans.Grids: AbstractGrid, Flat, halo_size, topology
-using Oceananigans.Utils: launch!, KernelParameters
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: launch!
 
 import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
@@ -110,22 +110,12 @@ end
     return nothing
 end
 
-# The interior and the horizontal halo cells, where the ghost cell projection reads the cached tracers
-function cached_tracer_kernel_parameters(grid)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    TX, TY, _ = topology(grid)
-    ii = ifelse(TX == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
-    jj = ifelse(TY == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
-    return KernelParameters(ii, jj, 1:Nz)
-end
-
 @inline function cache_current_field!(model, ::Val{name}) where name
     grid = model.grid
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     Ψⁿ = prognostic_fields(model)[name]
     if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-        launch!(architecture(grid), grid, cached_tracer_kernel_parameters(grid), _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+        launch!(architecture(grid), grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
     else # Velocities and free surface are stored without the grid scaling
         parent(Ψ⁻) .= parent(Ψⁿ)
     end

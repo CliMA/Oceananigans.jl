@@ -65,20 +65,4 @@ materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
 materialize_advection(scheme::Centered{N, FT}, grid) where {N, FT} =
     Centered{N, FT}(materialize_advection(without_bounds_preservation(scheme.buffer_scheme), grid), scheme.time_discretization)
 
-materialize_advection(scheme::GhostCells, grid) = GhostCells(materialize_advection(scheme.scheme, grid), scheme.projection, scheme.bounded)
-
-"""
-    materialize_advection(advection::NamedTuple, grid)
-
-Materialize the schemes of a model's `advection`, a `NamedTuple` with a `momentum` entry and one entry per tracer.
-The bounded `GhostCells` schemes of the tracers get their projection state, shared by the tracers whose
-schemes have the same order.
-"""
-function materialize_advection(advection::NamedTuple, grid)
-    workspaces = Dict{Int, Any}()
-    names = keys(advection)
-    schemes = Tuple(name == :momentum ? materialize_advection(scheme, grid) :
-                    materialize_ghost_cell_projection(materialize_advection(scheme, grid), workspaces, grid)
-                    for (name, scheme) in pairs(advection))
-    return NamedTuple{names}(schemes)
-end
+materialize_advection(scheme::GhostCells, grid) = GhostCells(materialize_advection(scheme.scheme, grid))

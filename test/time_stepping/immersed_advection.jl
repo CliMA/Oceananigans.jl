@@ -1,7 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.Utils: NormalDivision
 using Oceananigans.Advection:
         GhostCells,
@@ -17,11 +16,7 @@ using Oceananigans.Advection:
         FluxFormAdvection,
         LeftBias,
         RightBias,
-        materialize_advection,
-        neighborhood_range,
-        update_ghost_cell_projection!
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: cache_current_fields!, cached_tracer
+        materialize_advection
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -158,15 +153,14 @@ for arch in archs
     end
 
     @testset "GhostCells boundary reconstruction" begin
-        scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells(bounded=false)).buffer_scheme
-        bounded_scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
+        scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
 
-        function reconstruct(scheme, bias, values, activity)
+        function reconstruct(scheme, bias, values, activity; positions = Tuple(1.0:7.0))
             upwind_values   = bias == LeftBias ? values   : reverse(values)
             upwind_activity = bias == LeftBias ? activity : reverse(activity)
-            upstream_run    = accumulate(&, upwind_activity[3:-1:1])
-            downstream_run  = accumulate(&, upwind_activity[5:7])
-            return ghost_cell_reconstruction(scheme, bias, upwind_values[1:7], upstream_run, downstream_run, nothing)
+            active_below = accumulate(&, upwind_activity[3:-1:1])
+            active_above = accumulate(&, upwind_activity[5:7])
+            return ghost_cell_reconstruction(scheme.scheme, upwind_values[1:7], positions, active_below, active_above, true, nothing)
         end
 
         # Averages over the unit cells [n - 1, n] of a polynomial with primitive P; the reconstructed face is at x = 4
@@ -175,27 +169,29 @@ for arch in archs
         active   = ntuple(_ -> true, 8)
         wall     = (false, false, true, true, true, true, true, true)
         two_left = (false, false, false, true, true, false, false, false)
+        alone    = (false, false, false, true, false, false, false, false)
 
-        quadratic_primitive(x) = x^3 / 3 - 3x^2 / 2 + x   # p(x) = x² - 3x + 1
-        linear_primitive(x)    = x^2 / 2 + 2x             # p(x) = x + 2
+        linear_primitive(x) = x^2 / 2 + 2x # p(x) = x + 2
 
         for bias in (LeftBias, RightBias)
             # the values in inactive cells never enter the reconstruction
             @test reconstruct(scheme, bias, (1e3, 1e3, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0), wall) == 3.0
             @test reconstruct(scheme, bias, Tuple(1.0:8.0), active) == 4.5
 
-            # the ghosts extrapolate quadratically, so quadratic data are reconstructed exactly next to the wall
-            @test reconstruct(scheme, bias, averages(quadratic_primitive), wall) ≈ 4^2 - 3 * 4 + 1
-
-            # with only two active cells the extrapolation is linear
+            # the ghosts extrapolate linearly, so a uniform stratification next to a wall is reconstructed exactly
+            @test reconstruct(scheme, bias, averages(linear_primitive), wall) ≈ 4 + 2
             @test reconstruct(scheme, bias, averages(linear_primitive), two_left) ≈ 4 + 2
-
-            # without a projection, a bounded scheme does not overshoot the extrapolated jump next to the wall
-            jump = (1e3, 1e3, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0)
-            @test reconstruct(scheme, bias, jump, wall) > 1.1
-            @test reconstruct(bounded_scheme, bias, jump, wall) == 1.0
-            @test reconstruct(bounded_scheme, bias, (1e3, 1e3, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0), wall) == 3.0
         end
+
+        # a cell without active neighbours along the line extends its own value
+        @test reconstruct(scheme, LeftBias, (9.0, 9.0, 9.0, 3.0, 9.0, 9.0, 9.0, 9.0), alone) == 3.0
+
+        # on a stretched line the ghosts lie on the line through the active cells in physical coordinates
+        positions = Tuple(cumsum([0.0; 1.08 .^ (0:5)]))
+        affine = Tuple(2.5 .- 0.7 .* positions)
+        lowest_inactive = (false, true, true, true, true, true, true, true)
+        @test reconstruct(scheme, LeftBias, (1e3, affine[2:7]..., 0.0), lowest_inactive; positions) ≈
+              reconstruct(scheme, LeftBias, (affine..., 0.0), active; positions)
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
@@ -212,7 +208,7 @@ for arch in archs
         end
     end
 
-    @testset "GhostCells projection" begin
+    @testset "GhostCells tracer advection" begin
         Nx, Nz = 64, 32
         grid = RectilinearGrid(arch, size=(Nx, Nz), x=(0, 1), z=(-1, 0), halo=(6, 6), topology=(Periodic, Flat, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> 0.35 < x < 0.65 ? -0.35 : -1.0))
@@ -226,14 +222,11 @@ for arch in archs
         set!(u, [-(Ψ[i, k+1] - Ψ[i, k]) * Nz for i in 1:Nx, _ in 1:1, k in 1:Nz])
         set!(w, [ (Ψ[i+1, k] - Ψ[i, k]) * Nx for i in 1:Nx, _ in 1:1, k in 1:Nz+1])
 
-        initial_conditions = (c = (x, z) -> ifelse(-0.6 < z < -0.4, 1.0, 0.0),
-                              d = (x, z) -> ifelse(-0.9 < z < -0.7, 1.0, 0.0))
-
-        function advected_tracers(scheme, tracers = (:c,))
-            model = HydrostaticFreeSurfaceModel(ibg; velocities = PrescribedVelocityFields(; u, w), tracers,
+        function advected_tracer(scheme)
+            model = HydrostaticFreeSurfaceModel(ibg; velocities = PrescribedVelocityFields(; u, w), tracers = :c,
                                                 tracer_advection = scheme, timestepper = :SplitRungeKutta3)
-            set!(model; NamedTuple{tracers}(map(name -> initial_conditions[name], tracers))...)
-            c = model.tracers[1]
+            set!(model, c = (x, z) -> ifelse(-0.6 < z < -0.4, 1.0, 0.0))
+            c = model.tracers.c
             total₀ = sum(interior(c))
             cmin, cmax = 0.0, 1.0
             for _ in 1:100
@@ -241,74 +234,35 @@ for arch in archs
                 cmin = min(cmin, minimum(interior(c)))
                 cmax = max(cmax, maximum(interior(c)))
             end
-            return (; model, cmin, cmax, drift = sum(interior(c)) - total₀)
+            return (; cmin, cmax, drift = sum(interior(c)) - total₀)
         end
 
-        bounded   = advected_tracers(WENO(order=7, boundary_scheme=GhostCells()))
-        unbounded = advected_tracers(WENO(order=7, boundary_scheme=GhostCells(bounded=false)))
+        ghost_cells = advected_tracer(WENO(order=7, boundary_scheme=GhostCells()))
+        chain = advected_tracer(WENO(order=7))
 
-        # The projection removes the extrema generated next to the boundary, leaving the quasi-bounds of the
-        # interior reconstruction, and conserves the tracer
-        @test unbounded.cmin < -0.1 < -1e-3 < bounded.cmin
-        @test unbounded.cmax > 1.1 > 1.05 > bounded.cmax
-        @test abs(bounded.drift) < 1e-10
-
-        # Tracers share the projection workspace, and each tracer evolves as if it were alone
-        both  = advected_tracers(WENO(order=7, boundary_scheme=GhostCells()), (:c, :d)).model
-        alone = advected_tracers(WENO(order=7, boundary_scheme=GhostCells()), (:d,)).model
-        @test both.advection.c.buffer_scheme.projection === both.advection.d.buffer_scheme.projection
-        @test Array(interior(both.tracers.c)) ≈ Array(interior(bounded.model.tracers.c))
-        @test Array(interior(both.tracers.d)) ≈ Array(interior(alone.tracers.d))
-
-        # The nonhydrostatic model projects its tracers, and advects background tracers without the projection
-        model = NonhydrostaticModel(ibg; tracers = :c, advection = WENO(order=7, boundary_scheme=GhostCells()),
-                                    pressure_solver = ConjugateGradientPoissonSolver(ibg),
-                                    background_fields = (; c = BackgroundField((x, z, t) -> z)))
-        set!(model, u = (x, z) -> 0.1, c = initial_conditions.c)
-        for _ in 1:10
-            time_step!(model, 0.01)
-        end
-        @test all(isfinite, Array(interior(model.tracers.c)))
-
-        # Next to a wall the admissible range reaches the value of a stratification extrapolated to the wall, within the
-        # range of the tracer, while a jump next to a wall is not extrapolated. The cell k = 22 sits on top of the hill,
-        # whose top is at z = -0.34375, and the bottom row holds the minimum of the stratification.
-        model = HydrostaticFreeSurfaceModel(ibg; velocities = PrescribedVelocityFields(; u, w), tracers = :c,
-                                            tracer_advection = WENO(order=7, boundary_scheme=GhostCells()))
-        c = model.tracers.c
-        function admissible_range(i, k)
-            update_ghost_cell_projection!(model.advection.c, model, model.velocities, c, 0.01)
-            return @allowscalar neighborhood_range(i, 1, k, ibg, c, model.advection.c.buffer_scheme.projection)
-        end
-
-        set!(model, c = (x, z) -> z)
-        @test admissible_range(Nx ÷ 2, 22)[1] ≈ -0.34375
-        @test admissible_range(1, 1)[1] ≈ -1 + 1 / 2Nz
-
-        set!(model, c = (x, z) -> ifelse(z < -0.3, 1.0, 0.0))
-        @test admissible_range(Nx ÷ 2, 22) == (0.0, 1.0)
+        # Next to the walls the clamped face values remove most of the extrema of the default buffer chain
+        @test chain.cmin < -0.2 < -0.02 < ghost_cells.cmin
+        @test chain.cmax > 1.4 > 1.05 > ghost_cells.cmax
+        @test abs(ghost_cells.drift) < 1e-10
     end
 
-    @testset "GhostCells projection on a z-star grid" begin
+    @testset "GhostCells on a z-star grid" begin
         Nx, Nz = 64, 32
         grid = RectilinearGrid(arch, size=(Nx, Nz), x=(-1e6, 1e6), z=MutableVerticalDiscretization((-2000, 0)), halo=(6, 6),
                                topology=(Periodic, Flat, Bounded))
-        ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> -2000 + 250 * exp(-x^2 / 8e8)))
+        ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> -2000 + 750 * exp(-x^2 / 8e8)))
         model = HydrostaticFreeSurfaceModel(ibg; timestepper = :SplitRungeKutta3, buoyancy = BuoyancyTracer(), tracers = :b,
-                                            tracer_advection = WENO(order=7, boundary_scheme=GhostCells()))
+                                            tracer_advection = WENO(order=7, boundary_scheme=GhostCells()),
+                                            momentum_advection = WENO(order=5, boundary_scheme=GhostCells()))
         set!(model, u = (x, z) -> 0.3 * exp(-x^2 / 1e10), b = (x, z) -> 1e-4 * z)
         for _ in 1:20
             time_step!(model, 600)
         end
 
-        # Every split Runge-Kutta stage projects the update of the tracer cached at the beginning of the time step,
-        # which the cached `σ * b` reproduces in the interior and in the halo cells that the projection reads
-        cache_current_fields!(model)
-        b = model.tracers.b
-        b⁰ = cached_tracer(model.grid, model.timestepper.Ψ⁻, :b)
+        b = Array(interior(model.tracers.b))
         @test @allowscalar maximum(abs, model.free_surface.displacement) > 0.1
-        @test @allowscalar all(b⁰[i, 1, k] ≈ b[i, 1, k] for i in -1:Nx+2, k in 1:Nz)
-        @test all(isfinite, Array(interior(b)))
+        @test all(isfinite, b)
+        @test -0.2 - 1e-10 ≤ minimum(b) && maximum(b) ≤ 1e-10
     end
 
     @testset "Immersed momentum reconstruction" begin
