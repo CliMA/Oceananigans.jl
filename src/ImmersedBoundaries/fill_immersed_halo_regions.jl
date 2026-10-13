@@ -50,8 +50,9 @@ end
 
 # The sides of the immersed boundary that are open, read from the face-normal velocities in `model_fields`
 @inline open_immersed_sides(args...) = (west=false, east=false, south=false, north=false, bottom=false, top=false)
+@inline open_immersed_sides(clock, model_fields::NamedTuple, args...) = open_immersed_sides(model_fields)
 
-@inline function open_immersed_sides(clock, model_fields::NamedTuple, args...)
+@inline function open_immersed_sides(model_fields::NamedTuple)
     u_ibc = immersed_boundary_condition(get(model_fields, :u, nothing))
     v_ibc = immersed_boundary_condition(get(model_fields, :v, nothing))
     w_ibc = immersed_boundary_condition(get(model_fields, :w, nothing))
@@ -127,7 +128,7 @@ its open immersed faces, or `nothing` when the immersed boundary has no open fac
 """
 function immersed_inflow_operation(velocities)
     u, v, w = velocities
-    open = open_immersed_sides(nothing, velocities)
+    open = open_immersed_sides(velocities)
     any(open) || return nothing
     return KernelFunctionOperation{Center, Center, Center}(immersed_inflow, u.grid, u, v, w, open)
 end
