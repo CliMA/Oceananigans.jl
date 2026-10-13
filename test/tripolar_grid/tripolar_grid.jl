@@ -128,6 +128,8 @@ end
             @test maximum(c; condition=box) == maximum(φ[inside])
             @test minimum(c; condition=box) == minimum(φ[inside])
             @test maximum(c; condition=interior(box)) == maximum(φ[inside])
+            @test first(findmax(c; condition=box)) == maximum(φ[inside])
+            @test first(findmin(c; condition=box)) == minimum(φ[inside])
         end
     end
 end
