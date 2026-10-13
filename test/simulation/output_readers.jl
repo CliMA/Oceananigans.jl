@@ -1057,10 +1057,7 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
     # A series captured only as a `KernelFunctionOperation` argument (eg forcing built from a
     # prescribed atmosphere) must still be found, so that `update_field_time_series!` advances
     # its in-memory window even though it never appears in the field's boundary conditions.
-    for arch in archs
-    @testset "Series held by a computed field's operand are extracted [$(typeof(arch))]" begin
-        @info "  Testing extraction of series held by a KernelFunctionOperation [$(typeof(arch))]..."
-
+    @testset "Series held by a computed field's operand are extracted [$(summary(arch))]" for arch in archs
         grid  = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
         times = [0.0, 1.0, 2.0, 3.0]
         fts   = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -1073,7 +1070,6 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
 
         @test length(extract_field_time_series(computed_field)) == 1
         @test first(extract_field_time_series(computed_field)) === fts
-    end
     end
 
 end
