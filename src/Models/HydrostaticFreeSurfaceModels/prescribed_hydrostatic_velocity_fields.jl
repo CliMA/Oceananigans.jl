@@ -147,7 +147,7 @@ materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFie
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
-compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
+compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
