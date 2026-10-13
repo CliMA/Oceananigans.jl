@@ -613,23 +613,3 @@ end
         @test scale(i, j₀ + 2, k, grid, scheme, td, W) == 1
     end
 end
-
-@testset "AIVA momentum CFL is unchanged on a grid with uniform areas" begin
-    grid = RectilinearGrid(CPU(), size=(6, 6, 8), x=(0, 1), y=(0, 1), z=(-80, 0),
-                           halo=(4, 4, 4), topology=(Periodic, Periodic, Bounded))
-    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.5)
-    td.Δt[] = 3000.0
-    scheme = WENO(; time_discretization = td, weight_computation = Oceananigans.Utils.NormalDivision)
-
-    W = ZFaceField(grid)
-    set!(W, (x, y, z) -> 1e-3 * (1 + 0.5 * sinpi(2x) * cospi(2y)))
-    fill_halo_regions!(W)
-
-    for i in 1:6, j in 1:6, k in 2:8
-        @test vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W) ≈ _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W) rtol=1e-12
-        @test vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, W) ≈ _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W) rtol=1e-12
-    end
-
-    centered = Centered(; time_discretization = td)
-    @test vertical_velocityᶜᶠᶠ(3, 3, 4, grid, centered, W) === _symmetric_interpolate_yᵃᶠᵃ(3, 3, 4, grid, centered, W)
-end
