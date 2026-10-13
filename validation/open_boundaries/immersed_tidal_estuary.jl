@@ -26,8 +26,10 @@ stop_time = 10days
 grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (4, 4), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> ifelse(x < head, 0, -Lz)))
 
+# The river velocity tapers to zero over the 2 m above the river bed
+@inline river_profile(z) = clamp((z + river_depth) / 2, 0, 1)
 @inline river_velocity(i, j, k, grid, clock, fields) =
-    ifelse(znode(k, grid, Center()) > -river_depth, U_river + U_tide * sin(ω * clock.time), zero(U_river))
+    (U_river + U_tide * sin(ω * clock.time)) * river_profile(znode(k, grid, Center()))
 
 # The mouth radiates the barotropic mode (Flather on `U`, Chapman on `η`) and the baroclinic flow
 u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(river_velocity, discrete_form = true)),
@@ -39,7 +41,7 @@ U_bcs = FieldBoundaryConditions(east = GravityWaveRadiationBoundaryCondition((0,
 S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(head_salinity, discrete_form = true)),
                                 east = ValueBoundaryCondition(S_ocean; scheme = PerturbationAdvection(inflow_timescale = 1hour, outflow_timescale = Inf)))
 
-closure = (VerticalScalarDiffusivity(ν = 1e-3, κ = 1e-4), HorizontalScalarDiffusivity(ν = 5, κ = 5))
+closure = (RiBasedVerticalDiffusivity(), HorizontalScalarDiffusivity(ν = 10, κ = 10))
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
@@ -50,7 +52,7 @@ model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, trace
 set!(model, S = S_ocean)
 
 simulation = Simulation(model; Δt = 10, stop_time)
-conjure_time_step_wizard!(simulation, cfl = 0.5, max_Δt = 60)
+conjure_time_step_wizard!(simulation, cfl = 0.3, max_Δt = 60)
 
 u, v, w = model.velocities
 S = model.tracers.S

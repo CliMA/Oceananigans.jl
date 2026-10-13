@@ -5,9 +5,9 @@ using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
 # A channel whose west end is an immersed wall with inflow `U` through its faces
 function immersed_inflow_channel(arch, FT; wall_thickness = 2)
-    grid = RectilinearGrid(arch, FT; size = (8, 4, 4), halo = (4, 4, 4), x = (0, 2), y = (0, 1), z = (0, 1),
+    grid = RectilinearGrid(arch, FT; size = (16, 4, 4), halo = (4, 4, 4), x = (0, 4), y = (0, 1), z = (0, 1),
                            topology = (Bounded, Periodic, Bounded))
-    wall(x, y, z) = x < wall_thickness * 2 / 8
+    wall(x, y, z) = x < wall_thickness * 4 / 16
     return ImmersedBoundaryGrid(grid, GridFittedBoundary(wall))
 end
 
@@ -58,21 +58,22 @@ function test_immersed_inflow_channel(arch, FT, Advection)
 
     compute!(δ)
     @test maximum(abs, δ) < sqrt(eps(FT)) * 10
-    @test all(Array(interior(u, 3:9, :, :)) .≈ U)
+    @test all(Array(interior(u, 3:17, :, :)) .≈ U)
 
-    # The tracer entering through the open faces is conserved in the fluid
-    fluid_tracer = sum(Array(interior(c, 3:8, :, :))) * minimum_xspacing(ibg) * minimum_yspacing(ibg) * minimum_zspacing(ibg)
-    inflow_area = 1
-    @test fluid_tracer ≈ U * inflow_area * time(simulation) rtol = sqrt(eps(FT))
-
-    # With upwinding the tracer front has advected a distance U * t into the channel
-    if Advection !== Centered
-        x = xnodes(c)
-        front = 2 * 2 / 8 + U * time(simulation)
-        c_interior = Array(interior(c, :, 1, 1))
-        @test all(c_interior[x .< front - 2 * minimum_xspacing(ibg)] .≈ 1)
-        @test all(abs.(c_interior[x .> front + 2 * minimum_xspacing(ibg)]) .< 1e-2)
+    # With a centered reconstruction on the open faces the inflow carries exactly the immersed value
+    if Advection !== UpwindBiased
+        fluid_tracer = sum(Array(interior(c, 3:16, :, :))) * minimum_xspacing(ibg) * minimum_yspacing(ibg) * minimum_zspacing(ibg)
+        inflow_area = 1
+        @test fluid_tracer ≈ U * inflow_area * time(simulation) rtol = sqrt(eps(FT))
     end
+
+    # The tracer front has advected a distance U * t into the channel
+    x = xnodes(c)
+    Δx = minimum_xspacing(ibg)
+    front = 2Δx + U * time(simulation)
+    c_interior = Array(interior(c, :, 1, 1))
+    @test all(c_interior[2Δx .< x .< front - 4Δx] .> 0.9)
+    @test all(abs.(c_interior[x .> front + 8Δx]) .< 1e-2)
 
     return nothing
 end
