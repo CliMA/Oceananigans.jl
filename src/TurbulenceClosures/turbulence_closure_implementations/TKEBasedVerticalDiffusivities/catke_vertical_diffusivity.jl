@@ -269,12 +269,10 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
-    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
-            active_cells_map)
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     return nothing
 end

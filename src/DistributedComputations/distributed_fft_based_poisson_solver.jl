@@ -1,9 +1,9 @@
 import FFTW
 
-using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
+using Oceananigans.Solvers: _spectral_poisson_solve!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -155,13 +155,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3], m)
-
-    # Set the zeroth wavenumber and volume mean, which are undetermined
-    # in the Poisson equation, to zero.
-    if arch.local_rank == 0 && m === 0
-        @allowscalar x̂[1, 1, 1] = 0
-    end
+    launch!(arch, storage.xfield.grid, :xyz, _spectral_poisson_solve!, x̂, b̂, λ[1], λ[2], λ[3], m)
 
     # Apply backward transforms to x̂ = parent(storage.xfield).
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
@@ -175,11 +169,6 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
             _copy_real_component!, x, parent(storage.zfield))
 
     return x
-end
-
-@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz, m)
-    i, j, k = @index(Global, NTuple)
-    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k] - m)
 end
 
 @kernel function _copy_real_component!(ϕ, ϕc)
