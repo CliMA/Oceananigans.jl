@@ -5,6 +5,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: xnode, ynode, znode
+using CUDA
 using CairoMakie
 using Printf
 using Statistics: mean

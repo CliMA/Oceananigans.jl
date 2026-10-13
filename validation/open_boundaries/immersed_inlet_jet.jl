@@ -5,6 +5,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: xnode, ynode, znode
+using CUDA
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
 using Printf
