@@ -24,18 +24,8 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-#####
-##### The vertical velocity a u- or v-cell feels
-#####
-##### The upwind-biased vertical momentum fluxes interpolate the vertical *transport* Az w of the
-##### neighbouring tracer columns, and the tendency divides it by the velocity cell's own volume, so the
-##### velocity the cell feels is ℑ(Az w) / Az at the velocity point. It equals ℑw where the areas vary
-##### smoothly and departs from it where a velocity cell is much smaller or larger than the columns
-##### either side of it (a strait whose faces are narrowed, say). The CFL test and the implicit split
-##### both use it, so the explicit and implicit parts always add up to the transport the explicit flux
-##### carries. The centered fluxes multiply ℑw by the local area instead, so for them it is ℑw.
-#####
-
+# Computed the vertical veloicty from the transport to correctly compute 
+# on curvilinear grids
 @inline function vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W)
     transport = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
     Az = Azᶠᶜᶠ(i, j, k, grid)
