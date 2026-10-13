@@ -134,7 +134,7 @@ grids) with NaNs;
 """
 function make_plottable_array(f)
     compute!(f)
-    mask_immersed_field!(f, NaN)
+    mask_immersed_field!(f, convert(eltype(f), NaN))
 
     Nx, Ny, Nz = size(f)
 
@@ -404,7 +404,7 @@ plt = geo_surface!(ax, T)
 """
 function geo_surface!(ax, f::Field; kwargs...)
     compute!(f)
-    mask_immersed_field!(f, NaN)
+    mask_immersed_field!(f, convert(eltype(f), NaN))
 
     fi = make_plottable_array(f)
     x, y, z = spherical_coordinates(f)
@@ -557,7 +557,7 @@ function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
     color_obs = @lift begin
         f = $f_obs
         compute!(f)
-        mask_immersed_field!(f, NaN)
+        mask_immersed_field!(f, convert(eltype(f), NaN))
         fi = make_plottable_array(f)
         mask_immersed_field!(f)
         fi
@@ -606,13 +606,25 @@ function quad_vertices(keep, Np, Nq, coords::Vararg{AbstractMatrix, D}) where D
     return verts
 end
 
-function build_quadmesh!(ax, coords, vals; drop_nan_cells=false, kwargs...)
+# Shift the longitudes of each quad's corners to within 180° of its first corner,
+# so that cells straddling the periodic seam or the tripolar fold are not drawn across the map.
+function unwrap_longitudes!(verts)
+    for v in 1:4:length(verts), c in v+1:v+3
+        λ₀ = verts[v][1]
+        λ, φ = verts[c]
+        verts[c] = Point(λ - 360 * round((λ - λ₀) / 360), φ)
+    end
+    return verts
+end
+
+function build_quadmesh!(ax, coords, vals; drop_nan_cells=false, periodic_longitude=false, kwargs...)
     vm = vals isa Observable ? vals[] : vals
     Np, Nq = size(vm)
     all(c -> size(c) == (Np + 1, Nq + 1), coords) ||
         throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1))"))
     keep = kept_cells(vm, drop_nan_cells)
     verts = quad_vertices(keep, Np, Nq, coords...)
+    periodic_longitude && unwrap_longitudes!(verts)
     color = vals isa Observable ? map(v -> quad_colors(v, keep), vals) : quad_colors(vm, keep)
     return mesh!(ax, verts, quad_faces(length(keep)); color, shading=NoShading, kwargs...)
 end
@@ -732,6 +744,55 @@ function quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs..
     fig = Figure(; figure_kwargs...)
     ax = (f.grid isa SphericalGrid) ? Axis3(fig[1, 1]; axis_kwargs...) : Axis(fig[1, 1]; axis_kwargs...)
     return fig, ax, quadmesh!(ax, f; kwargs...)
+end
+
+# The corners of cells centered at `Center` are the `Face` nodes 1:N+1, and vice versa
+# the corners of cells centered at `Face` are the `Center` nodes 0:N.
+corner_location(::Type{Center}) = Face()
+corner_location(::Type{Face}) = Center()
+
+corner_indices(::Type{Center}, N) = 1:N+1
+corner_indices(::Type{Face}, N) = 0:N
+
+underlying_grid(grid) = grid
+underlying_grid(grid::ImmersedBoundaryGrid) = grid.underlying_grid
+
+function longitude_latitude_corners(f::OSSGField)
+    size(f, 3) == 1 || throw(ArgumentError("Longitude–latitude quadmesh plots require a single vertical index."))
+    LX, LY, _ = location(f)
+    grid = on_architecture(CPU(), underlying_grid(f.grid))
+    ℓx, ℓy = corner_location(LX), corner_location(LY)
+    i, j = corner_indices(LX, size(f, 1)), corner_indices(LY, size(f, 2))
+    λ = λnodes(grid, ℓx, ℓy; with_halos=true)[i, j]
+    φ = φnodes(grid, ℓx, ℓy; with_halos=true)[i, j]
+    return λ, φ
+end
+
+"""
+    quadmesh!(ax::Axis, f::OSSGField; kwargs...)
+
+Plot a horizontal field on an `OrthogonalSphericalShellGrid` (including a
+`TripolarGrid`) as flat-colored cells in longitude–latitude coordinates. The field
+must have a single vertical index. Coordinates and colors are transferred to the
+CPU automatically, and immersed cells are masked with NaNs.
+"""
+function quadmesh!(ax::Axis, f::OSSGField; kwargs...)
+    λ, φ = longitude_latitude_corners(f)
+    colors = make_plottable_array(f)
+    return quadmesh!(ax, λ, φ, colors; periodic_longitude=true, kwargs...)
+end
+
+"""
+    quadmesh!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+
+Plot an observable horizontal field as flat-colored cells in longitude–latitude
+coordinates. Coordinates are taken from the initial field; colors and immersed masks
+update when the observable changes. All frames must use the same grid and location.
+"""
+function quadmesh!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+    λ, φ = longitude_latitude_corners(f_obs[])
+    colors = @lift make_plottable_array($f_obs)
+    return quadmesh!(ax, λ, φ, colors; periodic_longitude=true, kwargs...)
 end
 
 # Draw the cell-edge polylines (rows + columns) of a corner mesh — clean quad
