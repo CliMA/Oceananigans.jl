@@ -41,12 +41,12 @@ U_bcs = FieldBoundaryConditions(east = GravityWaveRadiationBoundaryCondition((0,
 S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(head_salinity, discrete_form = true)),
                                 east = ValueBoundaryCondition(S_ocean; scheme = PerturbationAdvection(inflow_timescale = 1hour, outflow_timescale = Inf)))
 
-closure = (RiBasedVerticalDiffusivity(), HorizontalScalarDiffusivity(ν = 10, κ = 10))
+closure = (VerticalScalarDiffusivity(ν = 1e-3, κ = 1e-4), HorizontalScalarDiffusivity(ν = 10, κ = 10))
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, tracers = :S,
-                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5),
+                                    momentum_advection = WENO(order = 5), tracer_advection = WENO(order = 5, bounds = (0, S_ocean)),
                                     boundary_conditions = (; u = u_bcs, U = U_bcs, η = η_bcs, S = S_bcs))
 
 set!(model, S = S_ocean)
