@@ -416,7 +416,7 @@ end
 
 @testset "Slow-forcing reconstruction across the barotropic sub-cycle" begin
     using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
-        dimensionless_reconstruction_weights, scale_reconstruction_weights,
+        dimensionless_reconstruction_weights, scale_reconstruction_weights, stage_reconstruction,
         reconstruction_degree, stage_sample_times, cached_stages,
         FrozenSlowForcing, StageQuadraticSlowForcing, ProgressiveSlowForcing, RungeKutta3Scheme
     using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, SSPRungeKuttaTimeStepper,
@@ -536,6 +536,25 @@ end
 
         # the stored nodes are the composition's own
         @test all(ProgressiveSlowForcing(ModifiedRungeKutta4TimeStepper(a=0.22)).nodes .≈ (0.0, 0.22, 1/3, 1/2))
+    end
+
+    @testset "Stage weights are scaled by the baroclinic step" begin
+        # Each stage passes its own step, Δt / βₘ for split Runge-Kutta and Δt for SSP, while the nodes are fractions of Δt
+        Δt = 600.0
+        ℓ(s) = 2.0 + 0.01s
+        for ts in (ModifiedRungeKutta4TimeStepper(), SplitRungeKuttaTimeStepper(stages=3),
+                   SSPRungeKuttaTimeStepper(coefficients=SSPRK3_COEFFICIENTS))
+            sf = ProgressiveSlowForcing(ts)
+            τ  = stage_sample_times(ts)
+            for m in 2:ts.Nstages
+                Δτ = ts isa SSPRungeKuttaTimeStepper ? Δt : Δt / ts.β[m]
+                _, _, w = stage_reconstruction(sf, ts, m, Δτ)
+                ℓs = slots(Tuple(ℓ(τⱼ * Δt) for τⱼ in τ[1:m]), cached_stages(sf))
+                for s in (0.0, Δτ / 2, Δτ)
+                    @test poly(w, ℓs, s) ≈ ℓ(s) rtol=1e-10
+                end
+            end
+        end
     end
 
     @testset "Model integration and tracer constancy" begin
