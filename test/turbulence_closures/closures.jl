@@ -410,13 +410,20 @@ end
 
                 κ = diffusivity(model.closure, model.closure_fields, Val(:c))
                 @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.closure_fields, Val(:c))
-                κ_dx_c = κ * ∂x(c)
 
                 ν = viscosity(model.closure, model.closure_fields)
                 @test viscosity(model) == viscosity(model.closure, model.closure_fields)
-                ν_dx_u = ν * ∂x(u)
-                @test ν_dx_u[1, 1, 1] == 0
-                @test κ_dx_c[1, 1, 1] == 0
+
+                # Closures constructed with default `ν = nothing` or `κ = nothing` have no viscosity or diffusivity
+                if !isnothing(κ)
+                    κ_dx_c = κ * ∂x(c)
+                    @test κ_dx_c[1, 1, 1] == 0
+                end
+
+                if !isnothing(ν)
+                    ν_dx_u = ν * ∂x(u)
+                    @test ν_dx_u[1, 1, 1] == 0
+                end
             end
         end
 
@@ -923,6 +930,40 @@ end
                 @test time_step_with_isopycnal_skew_symmetric_diffusivity(arch, FT, time_discretization, skew_flux_formulation)
             end
         end
+    end
+
+    @testset "Closures with nothing for ν or κ" begin
+        grid = RectilinearGrid(CPU(), size=(6, 6, 6), extent=(1, 1, 1), halo=(3, 3, 3), topology=(Periodic, Periodic, Bounded))
+
+        function step_with_closure(closure)
+            model = NonhydrostaticModel(grid; closure, tracers=:c)
+            set!(model, u=(x, y, z) -> sin(2π * x) * cos(2π * z), v=(x, y, z) -> cos(2π * y),
+                        w=(x, y, z) -> sin(2π * y) * z, c=(x, y, z) -> exp(-20 * ((x - 1/2)^2 + (y - 1/2)^2)))
+            time_step!(model, 1e-4)
+            return map(Array ∘ interior, (model.velocities.u, model.velocities.v, model.velocities.w, model.tracers.c))
+        end
+
+        constructors = (ScalarDiffusivity, HorizontalScalarDiffusivity, VerticalScalarDiffusivity,
+                        ScalarBiharmonicDiffusivity, HorizontalScalarBiharmonicDiffusivity, VerticalScalarBiharmonicDiffusivity)
+
+        for constructor in constructors, (ν, κ) in ((nothing, 1e-3), (1e-3, nothing), (nothing, nothing))
+            zero_ν = isnothing(ν) ? 0 : ν
+            zero_κ = isnothing(κ) ? 0 : κ
+            fields_with_nothing = step_with_closure(constructor(; ν, κ))
+            fields_with_zero = step_with_closure(constructor(; ν=zero_ν, κ=zero_κ))
+            @test all(fields_with_nothing .== fields_with_zero)
+        end
+
+        for (ν, κ) in ((nothing, 1e-3), (1e-3, nothing))
+            zero_ν = isnothing(ν) ? 0 : ν
+            zero_κ = isnothing(κ) ? 0 : κ
+            fields_with_nothing = step_with_closure(ScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν, κ))
+            fields_with_zero = step_with_closure(ScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=zero_ν, κ=zero_κ))
+            @test all(fields_with_nothing .== fields_with_zero)
+        end
+
+        closure = ScalarDiffusivity(ν=nothing, κ=nothing)
+        @test required_halo_size_x(on_architecture(CPU(), closure)) == 1
     end
 
     @testset "Diagnostics" begin

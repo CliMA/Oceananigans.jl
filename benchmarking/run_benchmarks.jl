@@ -81,6 +81,10 @@ function parse_commandline()
             help = "Use distributed architecture."
             action = :store_true
 
+        "--no_load_balancing"
+            help = "Run the distributed benchmark withought automatic load balancing of partitions"
+            action = :store_true
+
         "--partition"
             help = "Partition for distributed architecture as Rx x Ry x Rz (e.g., 2x2x1). Ignored unless --distributed is set."
             arg_type = String
@@ -300,8 +304,8 @@ function make_closure(name, FT)
     name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
                                           HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
-                                              IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
-                                              HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
+                                             IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
+                                             HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
@@ -316,6 +320,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
+    load_balancing_enabled = distributed_enabled && !args["no_load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
@@ -463,7 +468,8 @@ function run_benchmarks(args)
                 tracer_advection,
                 closure,
                 tracers,
-                timestepper
+                timestepper,
+                load_balanced_partition=load_balancing_enabled
             )
         elseif case == "nonhydrostatic"
             model = nonhydrostatic_box(arch; Nx, Ny, Nz, float_type = FT, pressure_solver)

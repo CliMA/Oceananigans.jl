@@ -46,7 +46,7 @@ ObliqueRadiation{Float64}
 ├── inflow_timescale: 0.0
 ├── outflow_timescale: Inf
 ├── use_boundary_velocity: false
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct ObliqueRadiation{FT, S, B, TF, TB, E} <: AbstractRadiationScheme{FT}
@@ -99,20 +99,21 @@ function materialize_radiation_storage(radiation::ObliqueRadiation, grid, loc, d
     FT = eltype(grid)
     arch = architecture(grid)
     Sx, Sy, Sz = size(grid, loc)
+    Hx, Hy, _ = halo_size(grid)
 
-    tangential_size = dim == 1 ? (Sy, Sz) :
-                      dim == 2 ? (Sx, Sz) :
-                                 (Sx, Sy)
+    d = dim == 1 ? 2 : 1
+    N = dim == 1 ? Sy : Sx
+    H = dim == 1 ? Hy : Hx
+    T = topology(grid, d)
+    r = connected_range(loc[d], T, N, H)
 
-    φᵇ, φ₁, φ₁ˡ = ntuple(_ -> zeros(arch, FT, tangential_size...), 3)
+    φᵇ, φ₁, φ₁ˡ = ntuple(_ -> radiation_buffer(arch, FT, r, 1:Sz), 3)
 
     state_fields = ntuple(_ -> boundary_state_field(grid, loc, dim), 4)
     previous_boundary = map(f -> along_boundary(f, dim), state_fields[1:2])
     previous_interior = map(f -> along_boundary(f, dim), state_fields[3:4])
 
-    T = topology(grid, dim == 1 ? 2 : 1)
-    N = tangential_size[1]
-    tangential_bounds = (ifelse(neighbour_on_left(T), 0, 1), ifelse(neighbour_on_right(T), N + 1, N))
+    tangential_bounds = (ifelse(neighbour_on_left(T), first(r) - 1, 1), ifelse(neighbour_on_right(T), last(r) + 1, N))
 
     return ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
                             φᵇ, φ₁, φ₁ˡ, previous_boundary, previous_interior, radiation.target_transport,
