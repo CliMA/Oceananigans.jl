@@ -212,14 +212,17 @@ end
 @inline zero_reconstruction_weights(::Val{N}, ::Type{FT}) where {N, FT} =
     ntuple(k -> ntuple(j -> zero(FT), Val(N + 1)), Val(3))
 
+@inline reconstruction_timestep(::SSPRungeKuttaTimeStepper, stage, Δτ) = Δτ
+@inline reconstruction_timestep(ts::SplitRungeKuttaTimeStepper, stage, Δτ) = @inbounds Δτ * ts.β[stage]
+
 # `nothing` caches specialize the substep kernel on the frozen case, keeping the plain `Gᴴ[i, j, 1]` load.
-@inline stage_reconstruction(::FrozenSlowForcing, timestepper, stage, Δt::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(1), FT))
+@inline stage_reconstruction(::FrozenSlowForcing, timestepper, stage, Δτ::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(1), FT))
 
 # Anything that is not a multi-stage scheme has no stage values to reconstruct from.
-@inline stage_reconstruction(sf::ReconstructedSlowForcing, timestepper, stage, Δt::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
+@inline stage_reconstruction(sf::ReconstructedSlowForcing, timestepper, stage, Δτ::FT) where FT = (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
 
-@inline function stage_reconstruction(sf::ReconstructedSlowForcing, ts::MultiStageTimeStepper, stage, Δt::FT) where FT
+@inline function stage_reconstruction(sf::ReconstructedSlowForcing, ts::MultiStageTimeStepper, stage, Δτ::FT) where FT
     @inbounds sf.frozen[stage] && return (nothing, nothing, zero_reconstruction_weights(Val(length(sf.Gᵁ)), FT))
     @inbounds w̃ = sf.weights[stage]
-    return (sf.Gᵁ, sf.Gⱽ, scale_reconstruction_weights(w̃, Δt))
+    return (sf.Gᵁ, sf.Gⱽ, scale_reconstruction_weights(w̃, reconstruction_timestep(ts, stage, Δτ)))
 end

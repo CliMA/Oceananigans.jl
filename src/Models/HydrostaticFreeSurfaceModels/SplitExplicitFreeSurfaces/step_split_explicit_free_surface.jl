@@ -404,7 +404,7 @@ end
                               Base.tail(stage_pins), averaging_weight, transport_weight, sᵐ)
 end
 
-# `Δt` is the baroclinic step and `Δτᴮ` the barotropic substep.
+# `Δt` is the step of the current baroclinic stage and `Δτᴮ` the barotropic substep.
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, Δt, F, clock, weights, transport_weights,
                                  baroclinic_timestepper, ::Val{Nsubsteps}) where Nsubsteps
 
