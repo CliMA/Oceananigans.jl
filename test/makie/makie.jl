@@ -163,6 +163,97 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         @test plt isa CairoMakie.Surface
     end
 
+    @testset "Longitude–latitude surface! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        bathymetry = Field{Center, Center, Nothing}(grid)
+        interior(bathymetry) .= ifelse.(interior(height) .< 0, .-interior(height), FT(NaN))
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = surface!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        λ, φ, _ = nodes(bathymetry)
+        colors = interior(bathymetry, :, :, 1)
+
+        @test plt isa CairoMakie.Surface
+        @test plt.converted[][1] ≈ Float32.(λ)
+        @test plt.converted[][2] ≈ Float32.(φ)
+        @test all(iszero, plt.converted[][3])
+        @test isequal(plt.color[], colors)
+        @test any(isnan, plt.color[])
+        @test any(==(1), plt.color[])
+
+        streamfunction = Field((bathymetry - 1) / 2)
+        streamfunction_plot = surface!(ax, streamfunction)
+        @test all(iszero, filter(!isnan, streamfunction_plot.color[]))
+        @test isnan.(streamfunction_plot.color[]) == isnan.(colors)
+
+        field = CenterField(grid)
+        set!(field, 2)
+        slice = view(field, :, :, size(grid, 3))
+        slice_plot = surface!(ax, slice)
+        @test all(==(2), slice_plot.color[])
+        @test_throws ArgumentError surface!(ax, field)
+
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        immersed_field = CenterField(immersed_grid)
+        set!(immersed_field, 2)
+        immersed_slice = view(immersed_field, :, :, size(grid, 3))
+        immersed_plot = surface!(ax, immersed_slice)
+        @test isnan.(immersed_plot.color[]) == isnan.(colors)
+        @test all(==(2), filter(!isnan, immersed_plot.color[]))
+
+        observable = CairoMakie.Observable(immersed_slice)
+        observable_plot = surface!(ax, observable)
+        coordinates = deepcopy(observable_plot.converted[])
+        set!(immersed_field, 3)
+        CairoMakie.notify(observable)
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test observable_plot.converted[] == coordinates
+    end
+
+    @testset "Longitude–latitude quadmesh! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        bathymetry = Field{Center, Center, Nothing}(immersed_grid)
+        set!(bathymetry, -height)
+        Nx, Ny = size(grid, 1), size(grid, 2)
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = quadmesh!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == 4 * Nx * Ny
+        @test any(isnan, colors)
+        @test all(==(1), filter(!isnan, colors))
+
+        # Away from the north poles, cells at the periodic seam are not drawn across the map
+        λ = [vertex[1] for vertex in vertices]
+        southern_cells = 1:4:4 * Nx * (Ny ÷ 2)
+        @test all(maximum(λ[q:q+3]) - minimum(λ[q:q+3]) < 180 for q in southern_cells)
+
+        streamfunction = Field{Face, Face, Nothing}(grid)
+        set!(streamfunction, 2)
+        streamfunction_plot = quadmesh!(ax, streamfunction)
+        @test all(==(2), streamfunction_plot.color[])
+
+        field = CenterField(immersed_grid)
+        set!(field, 2)
+        observable = CairoMakie.Observable(view(field, :, :, size(grid, 3)))
+        observable_plot = quadmesh!(ax, observable)
+        set!(field, 3)
+        CairoMakie.notify(observable)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+    end
+
     @testset "surface! with Observable on spherical grid" begin
         grid = LatitudeLongitudeGrid(size=(8, 6, 1),
                                      longitude=(0, 360),

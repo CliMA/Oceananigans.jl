@@ -23,10 +23,15 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
                                         tracers,
                                         buoyancy)
 
+    # Both models are compared below, so they start from the same initial conditions, set once
     Random.seed!(1234)
     Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
     Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
-    set!(model, T=Tᵢ, S=Sᵢ)
+    T₀ = CenterField(grid)
+    S₀ = CenterField(grid)
+    set!(T₀, Tᵢ)
+    set!(S₀, Sᵢ)
+    set!(model; T=T₀, S=S₀)
 
     simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
@@ -74,10 +79,7 @@ function run_cubed_sphere_simulation_test(grid, grid_suffix, FT, arch, cm, cm_su
                                                  tracers,
                                                  buoyancy)
 
-    Random.seed!(1234)
-    Tᵢ_no_halos(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-    Sᵢ_no_halos(λ, φ, z) = 28 - 5e-3 * z + rand()
-    set!(model_no_halos, T=Tᵢ_no_halos, S=Sᵢ_no_halos)
+    set!(model_no_halos; T=T₀, S=S₀)
 
     simulation_no_halos = Simulation(model_no_halos, Δt=1minute, stop_time=10minutes)
 

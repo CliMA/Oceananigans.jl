@@ -100,6 +100,11 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also submitted a number of model development papers. Please cite these if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
+* **Lee et al. (2026), ["NORi: An ML-augmented ocean boundary layer parameterization"](https://doi.org/10.1029/2025MS005667).**
+
+  *This paper describes the development of NORi, a machine-learning-augmented parameterization for ocean boundary layer mixing,
+  trained and validated using large eddy simulations with Oceananigans and tested in a centennial double-gyre simulation.*
+
 * **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
 
   *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
@@ -131,6 +136,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. E. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/os-22-3055-2026), _Ocean Science_, **22**, 3055–3078. DOI: [10.5194/os-22-3055-2026](https://doi.org/10.5194/os-22-3055-2026)
 
 1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin–Helmholtz braids at high Reynolds number](https://doi.org/10.1017/jfm.2026.12012), _Journal of Fluid Mechanics_, **1043**, R2. DOI: [10.1017/jfm.2026.12012](https://doi.org/10.1017/jfm.2026.12012)
 
@@ -178,8 +185,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Gupta, M., Thompon, A. F., and Klein P. (2026). [Energetics of the upper‐ocean under sea ice: Frictional dissipation versus baroclinic production](https://doi.org/10.1029/2025JC023026), _Journal of Geophysical Research: Oceans_, **131(2)**, e2025JC023026. DOI: [10.1029/2025JC023026](https://doi.org/10.1029/2025JC023026)
 
-1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
-
 1. Yuan, Q., Wang, S., Wang, B., Jing, R., and Chen, B. (2026). [The influence of wave steepness and age on wake dynamics and power performance of offshore wind farms](https://doi.org/10.1016/j.apenergy.2025.127147), _Applied Energy_, **404**, 127147. DOI: [10.1016/j.apenergy.2025.127147](https://doi.org/10.1016/j.apenergy.2025.127147)
 
 1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1103/jjdt-zp9n](https://doi.org/10.1103/jjdt-zp9n)
@@ -194,7 +199,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, **56(3)**, 643–664. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
 
-1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
+1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Meltwater transport and mixing layer growth near the ice–ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
 
 1. Zhang, Y., Kang, W., and Marshall, J. (2026). [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.1029/2025JE009528), _Journal of Geophysical Research: Planets_, **131(7)**, e2025JE009528. DOI: [10.1029/2025JE009528](https://doi.org/10.1029/2025JE009528)
 
@@ -205,8 +210,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Shu, R., Gou, R., Pennelly, C., Deng, Y., Wu, L., Xiao, K., Huang, Y., and Myers, P. G. (2025). [Impact of downwelling-favorable winds on eddy formation in the West Greenland current](https://doi.org/10.1175/JPO-D-24-0053.1), _Journal of Physical Oceanography_, **55(2)**, 191–201. DOI: [10.1175/JPO-D-24-0053.1](https://doi.org/10.1175/JPO-D-24-0053.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
-
-1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
 
 1. Liu, C.-L. and Drake, H. F. (2025). [Tidally-driven diapycnal upwelling in a rough sloping canyon](https://doi.org/10.31223/X5MJ28), _EarthArXiv preprint_. DOI: [10.31223/X5MJ28](https://doi.org/10.31223/X5MJ28)
 

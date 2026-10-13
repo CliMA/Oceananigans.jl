@@ -50,7 +50,7 @@ GravityWaveRadiation()
 # output
 GravityWaveRadiation{Float64}
 ├── gravitational_acceleration: 9.80665
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct GravityWaveRadiation{FT, TF}

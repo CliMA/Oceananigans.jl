@@ -4,7 +4,9 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
 
-using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
+using Oceananigans.Biogeochemistry: biogeochemical_transition,
+                                    biogeochemical_drift_velocity,
+                                    include_biogeochemistry_transitions
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
@@ -274,7 +276,6 @@ velocity components, tracer fields, and precalculated closure_fields where appli
                                  clock,
                                  forcing) where tracer_index
 
-
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
     total_velocities = sum_of_velocities(velocities, background_fields.velocities, biogeochemical_velocities)
@@ -293,10 +294,14 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
+    bgc_tendency = include_biogeochemistry_transitions(biogeochemistry, val_tracer_name) ?
+                   biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
+                   zero(grid)
+
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_index, closure_c, clock, closure_model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, closure_fields, val_index, clock, model_fields)
-             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end
