@@ -49,6 +49,16 @@ const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnec
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
 const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
 
+# Nothing locations just default to 1:N
+@inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
+@inline connected_range(::Nothing, topo, N, H) = 1:N
+
+@inline connected_range(topo, N, H)                                =    1:N
+@inline connected_range(::Type{FullyConnected}, N, H)              = -H+2:N+H-1
+@inline connected_range(::Type{RightConnected}, N, H)              =    1:N+H-1
+@inline connected_range(::Type{LeftConnected},  N, H)              = -H+2:N
+@inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
+
 const AT = AbstractTopology
 
 Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1

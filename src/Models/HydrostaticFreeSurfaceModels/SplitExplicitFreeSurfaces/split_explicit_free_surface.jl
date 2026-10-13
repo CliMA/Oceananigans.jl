@@ -1,6 +1,6 @@
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected
-using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
+using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo, connected_range
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime, KernelParameters
@@ -39,7 +39,7 @@ function substep_halo_filling(extend_halos::Bool, bcs)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 
-struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B, C} <: AbstractFreeSurface{H, FT}
+struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
@@ -48,10 +48,9 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B, C} <: AbstractFreeSu
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
     timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
     boundary_transport :: B # Target transports of the sides with a targeted `GravityWaveRadiation` condition (or `nothing`)
-    substep_boundary_conditions :: C # A namedtuple with the boundary conditions used to fill U, V, η halos between substeps
 
-    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, b::B, c::C) where {E, H, U, M, FT, K, S, T, B, C}
-        return new{E, H, U, M, FT, K, S, T, B, C}(η, u, m, g, k, s, t, b, c)
+    function SplitExplicitFreeSurface{E}(η::H, u::U, m::M, g::FT, k::K, s::S, t::T, b::B) where {E, H, U, M, FT, K, S, T, B}
+        return new{E, H, U, M, FT, K, S, T, B}(η, u, m, g, k, s, t, b)
     end
 end
 
@@ -197,7 +196,6 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   nothing,
                                                   substepping,
                                                   timestepper,
-                                                  nothing,
                                                   nothing)
 end
 
@@ -295,7 +293,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
-    substep_boundary_conditions = materialize_substep_boundary_conditions(strategy, maybe_extended_grid, (; U, V, η), kernel_parameters)
 
     return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                       barotropic_velocities,
@@ -304,8 +301,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                       kernel_parameters,
                                                       substepping,
                                                       timestepper,
-                                                      boundary_transport,
-                                                      substep_boundary_conditions)
+                                                      boundary_transport)
 end
 
 #####
@@ -451,21 +447,10 @@ function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
+    kernel_sizes = map(connected_range, (TX, TY), (Nx, Ny), (Hx, Hy))
 
     return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : KernelParameters(kernel_sizes...)
 end
-
-@inline split_explicit_kernel_size(topo, N, H)                   =    1:N
-@inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
-@inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
-@inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
-
-# Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
-@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
-@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
-@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
-@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
@@ -476,8 +461,7 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            nothing,
                                            Adapt.adapt(to, free_surface.substepping),
                                            Adapt.adapt(to, free_surface.timestepper),
-                                           Adapt.adapt(to, free_surface.boundary_transport),
-                                           nothing)
+                                           Adapt.adapt(to, free_surface.boundary_transport))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,

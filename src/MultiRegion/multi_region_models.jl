@@ -68,8 +68,7 @@ end
                                 getregion(fs.kernel_parameters, r),
                                 getregion(fs.substepping, r),
                                 getregion(fs.timestepper, r),
-                                getregion(fs.boundary_transport, r),
-                                getregion(fs.substep_boundary_conditions, r))
+                                getregion(fs.boundary_transport, r))
 
 @inline Utils.getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
     SplitExplicitFreeSurface{E}(_getregion(fs.displacement, r),
@@ -79,8 +78,7 @@ end
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
                                 _getregion(fs.timestepper, r),
-                                _getregion(fs.boundary_transport, r),
-                                _getregion(fs.substep_boundary_conditions, r))
+                                _getregion(fs.boundary_transport, r))
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyFormulations.BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
