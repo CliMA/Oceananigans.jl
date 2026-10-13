@@ -132,6 +132,23 @@ end
     end
 end
 
+@testset "Index reductions on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology $pivot fold topology [$(summary(arch))]" for (fold_topology, pivot) in fold_topologies
+            grid = TripolarGrid(arch; size = (8, 10, 1), z = (0, 1), fold_topology, pivot)
+
+            # The extrema are unique and lie away from the fold
+            distance = Field{Center, Center, Nothing}(grid)
+            set!(distance, (λ, φ) -> (mod(λ, 360) - 100)^2 + (φ - 10)^2)
+            d = Array(interior(distance))
+
+            @test findmin(distance) == findmin(d)
+            @test argmin(distance) == argmin(d)
+            @test argmax(-distance) == argmin(d)
+        end
+    end
+end
+
 @testset "Model tests..." begin
     for arch in archs
         @testset "$fold_topology $pivot fold topology" for (fold_topology, pivot) in fold_topologies
