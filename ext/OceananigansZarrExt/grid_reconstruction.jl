@@ -6,7 +6,7 @@
 ##### Grid reconstruction
 #####
 
-zarr_grid_type_string(g) = string(typeof(g).name.wrapper)
+zarr_grid_type_string(g) = string(nameof(typeof(g)))
 
 add_conformal_mapping_info_to_kwargs!(kwargs, grid) = nothing
 
@@ -180,7 +180,7 @@ reconstruct_immersed_boundary(grid_group, immersed_boundary_type, prefix) = erro
 function reconstruct_immersed_boundary(grid_group)
     grid_reconstruction_metadata = grid_group.attrs["grid_reconstruction_metadata"]
     immersed_boundary_type = grid_reconstruction_metadata["immersed_boundary_type"]
-    immersed_boundary = reconstruct_immersed_boundary(grid_group, Val(Symbol(immersed_boundary_type)))
+    immersed_boundary = reconstruct_immersed_boundary(grid_group, Val(Symbol(last(split(immersed_boundary_type, '.')))))
     return immersed_boundary
 end
 

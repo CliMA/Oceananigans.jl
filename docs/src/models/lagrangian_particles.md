@@ -62,6 +62,9 @@ If you want to keep track of custom properties, such as the species or DNA of a 
 representing a microbe in an agent-based model, then you can create your own custom particle type
 and pass a `StructArray` to the `LagrangianParticles` constructor.
 
+Fields passed through `tracked_fields` are sampled before custom `dynamics` and refreshed after
+advection and boundary handling. Recorded properties therefore match the recorded particle positions.
+
 ```jldoctest particles
 using Oceananigans
 using StructArrays

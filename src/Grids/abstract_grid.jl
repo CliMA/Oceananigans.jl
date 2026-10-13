@@ -9,6 +9,9 @@ abstract type AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
 
 grid(g::AbstractGrid) = g
 
+# Grids carry no field metadata, so CPU kernels take them unchanged (see `Architectures.convert_to_device`).
+@inline Adapt.adapt(::CPU, grid::AbstractGrid) = grid
+
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
 
@@ -120,4 +123,4 @@ halo_size(grid, d) = halo_size(grid)[d]
 
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
+grid_name(grid::AbstractGrid) = nameof(typeof(grid))

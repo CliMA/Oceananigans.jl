@@ -16,6 +16,9 @@
 #####   julia --project run_benchmarks.jl --size="180x90x25, 360x180x50"     # Multiple sizes
 #####   julia --project run_benchmarks.jl --device=CPU --size=90x45x10       # CPU benchmark
 #####
+##### Usage (nonhydrostatic case):
+#####   julia --project run_benchmarks.jl --case=nonhydrostatic --size=64x64x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient"
+#####
 ##### Usage (simulate mode):
 #####   julia --project run_benchmarks.jl --mode=simulate --size=360x180x50 --stop_time=24.0
 #####
@@ -31,7 +34,7 @@
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation,
+using OceananigansBenchmarks: earth_ocean, nonhydrostatic_box, benchmark_time_stepping, run_benchmark_simulation,
     run_io_benchmark, run_read_benchmark,
     BenchmarkResult, SimulationResult, IOBenchmarkResult, ReadBenchmarkResult
 using JSON: JSON
@@ -43,7 +46,7 @@ using CUDA
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
     IsopycnalSkewSymmetricDiffusivity, HorizontalScalarBiharmonicDiffusivity
 
-using Printf: @printf
+using Printf: @printf, @sprintf
 using Dates: DateTime, now, UTC
 
 #####
@@ -78,15 +81,26 @@ function parse_commandline()
             help = "Use distributed architecture."
             action = :store_true
 
+        "--no_load_balancing"
+            help = "Run the distributed benchmark withought automatic load balancing of partitions"
+            action = :store_true
+
         "--partition"
             help = "Partition for distributed architecture as Rx x Ry x Rz (e.g., 2x2x1). Ignored unless --distributed is set."
             arg_type = String
             default = "2x2x1"
 
         "--case"
-            help = "Benchmark case: earth_ocean"
+            help = "Benchmark case: earth_ocean or nonhydrostatic"
             arg_type = String
             default = "earth_ocean"
+
+        "--pressure_solver"
+            help = "Pressure solver (nonhydrostatic case only): FFT (uniform grid), " *
+                   "FourierTridiagonal (grid stretched in z), or ConjugateGradient (immersed seamount). " *
+                   "Multiple solvers can be specified as comma-separated list."
+            arg_type = String
+            default = "FFT"
 
         "--grid_type"
             help = "Grid type: tripolar, lat_lon (no bathymetry), or immersed_lat_lon (with bathymetry)"
@@ -139,6 +153,11 @@ function parse_commandline()
             help = "Number of warmup time steps (benchmark mode only)"
             arg_type = Int
             default = 5
+
+        "--samples"
+            help = "Number of timing windows of `time_steps` steps each; the minimum is reported (benchmark mode only)"
+            arg_type = Int
+            default = 1
 
         "--dt"
             help = "Time step size in seconds"
@@ -280,13 +299,13 @@ end
 
 function make_closure(name, FT)
     name == "nothing" && return nothing
-    name == "CATKE" && return CATKEVerticalDiffusivity()
+    name == "CATKE" && return CATKEVerticalDiffusivity(FT)
     name == "SmagorinskyLilly" && return SmagorinskyLilly(FT)
-    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                          HorizontalScalarBiharmonicDiffusivity(ν=1e12))
-    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(),
-                                              IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
-                                              HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                          HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
+    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(FT),
+                                             IsopycnalSkewSymmetricDiffusivity(FT; κ_skew=1e3, κ_symmetric=1e3),
+                                             HorizontalScalarBiharmonicDiffusivity(FT; ν=1e12))
     error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
@@ -301,6 +320,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
+    load_balancing_enabled = distributed_enabled && !args["no_load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
@@ -331,6 +351,7 @@ function run_benchmarks(args)
     zstar_coordinates = [lowercase(s) == "true" for s in parse_list(args["zstar_coordinate"])]
     timestepper = make_timestepper(args["timestepper"])
     tracers = Tuple(Symbol(strip(s)) for s in split(args["tracers"], ","))
+    pressure_solvers = case == "nonhydrostatic" ? parse_list(args["pressure_solver"]) : [nothing]
 
     group = args["group"]
 
@@ -338,6 +359,7 @@ function run_benchmarks(args)
     Δt = args["dt"]
     time_steps = args["time_steps"]
     warmup_steps = args["warmup_steps"]
+    samples = args["samples"]
     stop_time = args["stop_time"] * 3600  # Convert hours to seconds
     output_interval = args["output_interval"] * 3600  # Convert hours to seconds
     output_dir = args["output_dir"]
@@ -361,6 +383,9 @@ function run_benchmarks(args)
         println("Date: ", now(UTC))
         println("Mode: ", mode)
         println("Case: ", case)
+        if case == "nonhydrostatic"
+            println("Pressure solvers: ", pressure_solvers)
+        end
         println("Grid types: ", grid_types)
         println("Architecture: ", arch)
         println("Distributed: ", distributed_enabled ? "true" : "false")
@@ -375,7 +400,7 @@ function run_benchmarks(args)
         println("Tracers: ", tracers)
         println("Timestepper: ", timestepper)
         if mode == "benchmark"
-            println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+            println("Time steps: ", time_steps, " × ", samples, " windows (warmup: ", warmup_steps, ")")
         elseif mode == "io"
             println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
             println("Output format: ", output_format)
@@ -403,15 +428,23 @@ function run_benchmarks(args)
 
     # Loop over all combinations using Iterators.product
     # Advection pairs are zipped (not crossed) when both lists have the same length
-    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, (mom_adv_name, trc_adv_name), cls_name) in
-            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, advection_pairs, closures)
+    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, (mom_adv_name, trc_adv_name), cls_name, pressure_solver) in
+            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, advection_pairs, closures, pressure_solvers)
 
         # Build benchmark name
         size_str = "$(Nx)x$(Ny)x$(Nz)"
         ft_str = FT == Float32 ? "F32" : "F64"
         zst_str = zstar_coordinate ? "_zstar" : ""
         n_tracers = length(tracers)
-        name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
+        name = if case == "nonhydrostatic"
+            "Nonhydrostatic_$(pressure_solver)_$(size_str)_$(ft_str)_WENO5"
+        else
+            "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
+        end
+
+        if distributed_enabled
+            name *= "_" * join(partition_ranks, "x") * "ranks"
+        end
 
         @root begin
             println("\n", "-" ^ 70)
@@ -435,10 +468,13 @@ function run_benchmarks(args)
                 tracer_advection,
                 closure,
                 tracers,
-                timestepper
+                timestepper,
+                load_balanced_partition=load_balancing_enabled
             )
+        elseif case == "nonhydrostatic"
+            model = nonhydrostatic_box(arch; Nx, Ny, Nz, float_type = FT, pressure_solver)
         else
-            error("Unknown case: $case")
+            error("Unknown case: $case. Use earth_ocean or nonhydrostatic.")
         end
 
         # Verbose only for root/rank 0
@@ -446,7 +482,7 @@ function run_benchmarks(args)
         @root is_rank_0 = true
         # Run based on mode
         result = if mode == "benchmark"
-            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=is_rank_0)
+            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, samples, name, group, verbose=is_rank_0)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
                 stop_time, Δt, output_interval, output_dir, name, group, verbose=is_rank_0)
@@ -600,13 +636,16 @@ function generate_markdown_report(filename, entries)
                 println(io, "| CUDA | ", metadata["cuda_version"], " |")
             end
             println(io, "| Hostname | ", metadata["hostname"], " |")
+            for (name, version) in sort!(collect(get(metadata, "package_versions", Dict{String, Any}())))
+                println(io, "| ", name, " | ", version, " |")
+            end
             println(io)
         end
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Units/s | Points/s | Size | Chunks | Timestamp |")
-        println(io, "|-----------|-------------|-------|------|----------------|---------|----------|------|--------|-----------|")
+        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Spread | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------------|-------|------|----------------|--------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
@@ -626,12 +665,20 @@ function generate_markdown_report(filename, entries)
             chunks_raw = get(entry, "chunk_shape", nothing)
             chunks_str = isnothing(chunks_raw) ? "—" : string(Tuple(Int.(chunks_raw)))
 
-            @printf(io, "| `%s` | %s | %s | %s | %.2f | %.2f | %.2e | %s | %s | %s |\n",
+            # Spread of the timing windows relative to the reported minimum
+            spread_str = if haskey(entry, "time_per_step_max_seconds")
+                @sprintf("+%.1f%%", 100 * (entry["time_per_step_max_seconds"] / entry["time_per_step_seconds"] - 1))
+            else
+                "—"
+            end
+
+            @printf(io, "| `%s` | %s | %s | %s | %.2f | %s | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
                     distributed_str,
                     entry["float_type"],
                     grid_str,
                     time_per_unit_seconds * 1000,
+                    spread_str,
                     units_per_second,
                     entry["grid_points_per_second"],
                     size_str,

@@ -261,7 +261,7 @@ end
 
 # DefaultBC on a slab fold-north rank → local `Zipper` with sign
 BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SlabTRG, loc, dim, bound, prognostic_names, sign) =
-    north_fold_boundary_condition(grid)(sign)
+    north_fold_boundary_condition(grid, sign)
 
 # DefaultBC on a pencil fold-north rank → `DistributedZipper` comm BC with sign
 function BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::PencilTRG, loc, dim, bound, prognostic_names, sign)
@@ -277,6 +277,7 @@ BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::Di
 
 # Only to solve the ambiguities (this method should never be used)
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.TRVBC, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
 
 # Non-fold distributed ranks: no specific 7-arg method — the generic `args...`-accepting
 # methods in BoundaryConditions (lines 244-254) take over and drop the extra `sign` arg.
@@ -316,9 +317,7 @@ north_zipper_bc(::SlabFoldedTopology, ::Nothing, loc, grid) = nothing
 north_zipper_bc(::PencilFoldedTopology, ::Nothing, loc, grid) = nothing
 
 # Distributed slab fold-north rank: local Zipper BC (sign from incoming BC)
-function north_zipper_bc(::TY, north_bc, loc, grid) where TY <: SlabFoldedTopology
-    return north_fold_boundary_condition(TY)(zipper_sign(north_bc))
-end
+north_zipper_bc(::SlabFoldedTopology, north_bc, loc, grid) = north_fold_boundary_condition(grid, zipper_sign(north_bc))
 
 # Distributed pencil fold-north rank (y-topology is `Connected` but carries the fold via MPI):
 # wrap the sign into a `DistributedZipper` communication BC
@@ -388,7 +387,8 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(grid.conformal_mapping))
+                        fold_topology = fold_topology(grid.conformal_mapping),
+                        pivot = fold_pivot(grid.conformal_mapping))
 end
 
 function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
@@ -409,7 +409,8 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(old_grid.conformal_mapping))
+                        fold_topology = fold_topology(old_grid.conformal_mapping),
+                        pivot = fold_pivot(old_grid.conformal_mapping))
 end
 
 #####

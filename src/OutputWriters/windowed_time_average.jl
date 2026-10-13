@@ -386,12 +386,12 @@ $(TYPEDSIGNATURES)
 
 Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
 
-Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `Dict` of the wrapped
-outputs.
+Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `OrderedDict` of the wrapped
+outputs, in the order of `outputs`.
 """
-function time_average_outputs(schedule::AveragedTimeSchedule, outputs::Dict, model)
-    averaged_outputs = Dict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
-                            for (name, output) in outputs)
+function time_average_outputs(schedule::AveragedTimeSchedule, outputs::AbstractDict, model)
+    averaged_outputs = OrderedDict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
+                                   for (name, output) in outputs)
 
     return TimeInterval(schedule), averaged_outputs
 end

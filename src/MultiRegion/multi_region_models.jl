@@ -67,7 +67,8 @@ end
                                 getregion(fs.gravitational_acceleration, r),
                                 getregion(fs.kernel_parameters, r),
                                 getregion(fs.substepping, r),
-                                getregion(fs.timestepper, r))
+                                getregion(fs.timestepper, r),
+                                getregion(fs.boundary_transport, r))
 
 @inline Utils.getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
     SplitExplicitFreeSurface{E}(_getregion(fs.displacement, r),
@@ -76,7 +77,8 @@ end
                                 _getregion(fs.gravitational_acceleration, r),
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
-                                _getregion(fs.timestepper, r),)
+                                _getregion(fs.timestepper, r),
+                                _getregion(fs.boundary_transport, r))
 
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyFormulations.BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
@@ -184,5 +186,14 @@ function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHal
         @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, η_args)
     end
 
+    return nothing
+end
+
+# The barotropic face integral behind `target_transport` is region-local, so targets are refused here.
+function HydrostaticFreeSurfaceModels.validate_free_surface_boundary_conditions(::SplitExplicitFreeSurfaces.SplitExplicitFreeSurface, boundary_conditions, ::MultiRegionGrids)
+    U_bcs, V_bcs = get(boundary_conditions, :U, nothing), get(boundary_conditions, :V, nothing)
+    if SplitExplicitFreeSurfaces.has_targeted_barotropic_sides(U_bcs, V_bcs)
+        throw(ArgumentError("`target_transport` on `GravityWaveRadiation` boundary conditions is not supported on multi-region grids."))
+    end
     return nothing
 end

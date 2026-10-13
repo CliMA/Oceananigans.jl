@@ -1,3 +1,7 @@
+#####
+##### Utilities for general use
+#####
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 

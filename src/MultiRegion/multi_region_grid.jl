@@ -13,18 +13,18 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   FixedTimeStepSize,
                                                                                   maybe_augmented_kernel_parameters
 
-struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch <: AbstractSerialArchitecture} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, Nothing}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
 
-    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A}
+    function MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C, region_grids::G) where {FT, TX, TY, TZ, CZ, P, C, G, A <: AbstractSerialArchitecture}
         return new{FT, TX, TY, TZ, CZ, P, C, G, A}(arch, partition, connectivity, region_grids)
     end
 end
 
-const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid}
+const ImmersedMultiRegionGrid{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:MultiRegionGrid, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
 
 const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, ImmersedMultiRegionGrid{FT, TX, TY, TZ}}
 
@@ -246,11 +246,11 @@ function Grids.on_architecture(arch, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) w
 end
 
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
+    "MultiRegionGrid{$FT, $(nameof(TX)), $(nameof(TY)), $(nameof(TZ))} with $(summary(mrg.partition)) on $(nameof(typeof(mrg.region_grids[1])))"
 
 function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
-    TX, TY, TZ = topology(mrg)
-    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(summary(architecture(mrg))): \n",
+    nTX, nTY, nTZ = map(nameof, topology(mrg))
+    return print(io, "$(grid_name(mrg)){$FT, $nTX, $nTY, $nTZ} partitioned on $(summary(architecture(mrg))): \n",
                      "├── region_grids: $(summary(mrg.region_grids[1])) \n",
                      "├── partition: $(summary(mrg.partition)) \n",
                      "└── connectivity: $(summary(mrg.connectivity))")

@@ -8,9 +8,12 @@ struct BenchmarkResult
     float_type::String
     grid_size::Tuple{Int, Int, Int}
     time_steps::Int
+    samples::Int
     Δt::Float64
     total_time_seconds::Float64
     time_per_step_seconds::Float64
+    time_per_step_median_seconds::Float64
+    time_per_step_max_seconds::Float64
     steps_per_second::Float64
     grid_points_per_second::Float64
     gpu_memory_used::Int64
@@ -27,10 +30,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::BenchmarkResult)
     println(io, "├── group: ", r.group)
     println(io, "├── float_type: ", r.float_type)
     println(io, "├── grid_size: ", r.grid_size)
-    println(io, "├── time_steps: ", r.time_steps)
+    println(io, "├── time_steps: ", r.time_steps, " × ", r.samples, " windows")
     println(io, "├── Δt: ", r.Δt)
     println(io, "├── total_time: ", @sprintf("%.3f s", r.total_time_seconds))
-    println(io, "├── time_per_step: ", @sprintf("%.6f s", r.time_per_step_seconds))
+    println(io, "├── time_per_step: ", @sprintf("%.6f s (min), %.6f s (median), %.6f s (max)",
+                                                r.time_per_step_seconds, r.time_per_step_median_seconds, r.time_per_step_max_seconds))
     println(io, "├── steps_per_second: ", @sprintf("%.6f/s", r.steps_per_second))
     println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
     println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))

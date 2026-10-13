@@ -93,3 +93,21 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[5], buoyancy)
+
+# Longer tuples recurse down to the unrolled methods above
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, first(closure_tuple), buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, Base.tail(closure_tuple), buoyancy)
