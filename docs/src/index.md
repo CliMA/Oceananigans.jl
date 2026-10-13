@@ -133,7 +133,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
   *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
-## Papers, preprints, and theses using Oceananigans
+## Publications using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
