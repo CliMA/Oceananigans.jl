@@ -68,7 +68,7 @@ function progress(sim)
     elapsed = (time_ns() - wall_clock[]) / 1e9
     @info @sprintf("iter %d, t = %s, max|u| = %.2f, max|v| = %.2f, min S = %.2f, freshwater / (Q t) = %.4f, mean η = %.3f m, wall %.1f s",
                    iteration(sim), prettytime(sim), maximum(abs, u), maximum(abs, v), minimum(S),
-                   first(freshwater) / (Q_river * max(time(sim), 1e-9)), mean(η), elapsed)
+                   Array(interior(freshwater))[1] / (Q_river * max(time(sim), 1e-9)), mean(η), elapsed)
     wall_clock[] = time_ns()
     return nothing
 end

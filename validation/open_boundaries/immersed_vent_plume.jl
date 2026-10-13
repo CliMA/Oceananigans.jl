@@ -59,7 +59,7 @@ function progress(sim)
     elapsed = (time_ns() - wall_clock[]) / 1e9
     @info @sprintf("iter %d, t = %s, Δt = %s, max w = %.2f, ∫c dV / (Q t) = %.4f, wall %.1f s",
                    iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(w),
-                   first(∫c) / (Q_vent * max(time(sim), 1e-9)), elapsed)
+                   Array(interior(∫c))[1] / (Q_vent * max(time(sim), 1e-9)), elapsed)
     wall_clock[] = time_ns()
     return nothing
 end

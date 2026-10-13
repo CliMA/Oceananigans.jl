@@ -60,7 +60,7 @@ function progress(sim)
     compute!(∫u_mouth)
     elapsed = (time_ns() - wall_clock[]) / 1e9
     @info @sprintf("iter %d, t = %s, river = %.2f m² s⁻¹, mouth = %.2f m² s⁻¹, ∫η dx = %.1f m², min S = %.2f, wall %.1f s",
-                   iteration(sim), prettytime(sim), river_transport(time(sim)), first(∫u_mouth), first(∫η), minimum(S), elapsed)
+                   iteration(sim), prettytime(sim), river_transport(time(sim)), Array(interior(∫u_mouth))[1], Array(interior(∫η))[1], minimum(S), elapsed)
     wall_clock[] = time_ns()
     return nothing
 end
