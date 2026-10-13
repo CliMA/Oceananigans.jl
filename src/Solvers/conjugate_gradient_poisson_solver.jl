@@ -72,8 +72,6 @@ end
 ##### Zero-mean gauge condition
 #####
 
-const column_segment_length = 64
-
 struct ZeroMeanGaugeCondition{S, P, V, N}
     solution_sum :: S
     residual_sum :: S
@@ -92,16 +90,17 @@ subtracts the mean over the active cells of `grid` from the solution and from th
 after every iteration.
 
 The fused iteration of the `ConjugateGradientPoissonSolver` accumulates the sums it needs
-in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one column
-segment into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`) or `residual_partial_sums`
+in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one segment of a column
+into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`) or `residual_partial_sums`
 (`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), which are then reduced into `laplacian_sums` and `residual_sums`.
 """
 function ZeroMeanGaugeCondition(grid)
     solution_sum = Field{Nothing, Nothing, Nothing}(grid)
     residual_sum = Field{Nothing, Nothing, Nothing}(grid)
 
+    # Enough column segments for the fused kernels to launch about 2^20 threads
     Nx, Ny, Nz = size(grid)
-    segments = cld(Nz, column_segment_length)
+    segments = clamp(cld(2^20, Nx * Ny), 1, cld(Nz, 16))
     laplacian_partial_sums = zeros(grid, Nx, Ny, segments, 3)
     residual_partial_sums = zeros(grid, Nx, Ny, segments, 4)
     laplacian_sums = zeros(grid, 3)
@@ -144,11 +143,19 @@ end
 #####
 ##### Fused iteration: the Laplacian kernel accumulates p ⋅ q, Σp and Σq while it writes q, and
 ##### the update kernel applies the gauge and the mask while it writes x and r, accumulating
-##### Σx, Σr, r ⋅ r and ‖V⁻¹r‖². One thread sums a column segment of `column_segment_length` cells.
+##### Σx, Σr, r ⋅ r and ‖V⁻¹r‖². One thread sums one segment of a column.
 #####
 
 const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
                                                    <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
+
+# The fused kernels launch over the column segments in one dimension, so consecutive threads read consecutive i
+@inline segments_worksize(partial_sums) = (size(partial_sums, 1) * size(partial_sums, 2) * size(partial_sums, 3),)
+
+@inline function segment_indices(n, partial_sums)
+    Nx, Ny = size(partial_sums, 1), size(partial_sums, 2)
+    return (n - 1) % Nx + 1, (n - 1) ÷ Nx % Ny + 1, (n - 1) ÷ (Nx * Ny) + 1
+end
 
 @inline function segment_range(s, grid, partial_sums)
     segment_length = cld(size(grid, 3), size(partial_sums, 3))
@@ -156,7 +163,8 @@ const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_
 end
 
 @kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
-    i, j, s = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, partial_sums)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -182,7 +190,8 @@ end
 end
 
 @kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
-    i, j, s = @index(Global, NTuple)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, partial_sums)
     FT = eltype(partial_sums)
     pᵀq = Σp = Σq = zero(FT)
 
@@ -205,15 +214,28 @@ end
     end
 end
 
-@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, α, laplacian_sums, residual_sums, number_of_active_cells)
-    i, j, s = @index(Global, NTuple)
+@kernel function _update_search_direction!(p, z, ρ, ρⁱ⁻¹, iteration)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        β = ρ[1] / ρⁱ⁻¹[1]
+        zᵢ = z[i, j, k]
+        p[i, j, k] = ifelse(iteration == 0, zᵢ, zᵢ + β * p[i, j, k])
+    end
+end
+
+@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, ρ, ρⁱ⁻¹, laplacian_sums, residual_sums, number_of_active_cells)
+    n = @index(Global, Linear)
+    i, j, s = segment_indices(n, partial_sums)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
     @inbounds begin
-        a = α[1]
+        a = ρ[1] / laplacian_sums[1]
         x̄ = (residual_sums[1] + a * laplacian_sums[2]) / number_of_active_cells
         r̄ = (residual_sums[2] - a * laplacian_sums[3]) / number_of_active_cells
+
+        # Without a preconditioner ρ lives in the residual sums, which this kernel's reduction overwrites
+        n == 1 && (ρⁱ⁻¹[1] = ρ[1])
     end
 
     for k in segment_range(s, grid, partial_sums)
@@ -244,8 +266,6 @@ function reduce_partial_sums!(sums, partial_sums, arch)
     return sums
 end
 
-@inline segments_worksize(grid, partial_sums) = (size(grid, 1), size(grid, 2), size(partial_sums, 3))
-
 function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
     r = solver.residual
     grid = r.grid
@@ -254,7 +274,7 @@ function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
     partial_sums = gauge.residual_partial_sums
 
     compute_symmetric_laplacian!(q, x)
-    launch!(arch, grid, segments_worksize(grid, partial_sums), _initialize_residual!, partial_sums, r, grid, x, b, q)
+    launch!(arch, grid, segments_worksize(partial_sums), _initialize_residual!, partial_sums, r, grid, x, b, q)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     return nothing
@@ -273,23 +293,16 @@ function iterate!(x, solver::FusedPoissonSolver, b)
     z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
     ρ = z === r ? view(gauge.residual_sums, 3:3) : dot!(solver.ρ, z, r)
 
-    if solver.iteration > 0
-        solver.β .= ρ ./ solver.ρⁱ⁻¹
-    end
-
-    update_search_direction!(p, z, solver.β, solver.iteration)
-
+    launch!(arch, grid, :xyz, _update_search_direction!, p, z, ρ, solver.ρⁱ⁻¹, solver.iteration)
     fill_halo_regions!(p)
+
     partial_sums = gauge.laplacian_partial_sums
-    launch!(arch, grid, segments_worksize(grid, partial_sums), _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    launch!(arch, grid, segments_worksize(partial_sums), _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
     reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
 
-    solver.α .= ρ ./ view(gauge.laplacian_sums, 1:1)
-    solver.ρⁱ⁻¹ .= ρ
-
     partial_sums = gauge.residual_partial_sums
-    launch!(arch, grid, segments_worksize(grid, partial_sums), _update_solution_and_residual!,
-            partial_sums, x, r, grid, p, q, solver.α, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+    launch!(arch, grid, segments_worksize(partial_sums), _update_solution_and_residual!,
+            partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     solver.iteration += 1
