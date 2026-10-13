@@ -145,7 +145,7 @@ function Fields.interior(mrf::MultiRegionField, I...)
     return interior_mrf
 end
 
-@inline Diagnostics.hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
+@inline Diagnostics.hasnan(field::MultiRegionField) = any(construct_regionally(hasnan, field).regional_objects)
 
 Fields.validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)

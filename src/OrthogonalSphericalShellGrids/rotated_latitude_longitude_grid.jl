@@ -1,4 +1,5 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
+using Oceananigans.Grids: Center, LatitudeLongitudeGrid, validate_lat_lon_grid_args, λnode, φnode
+using Oceananigans.Operators: Operators
 using Oceananigans.Utils: KernelParameters, launch!
 using StaticArrays: @SMatrix, SVector
 
@@ -167,16 +168,15 @@ arguments are interpreted in degrees. The rotation aligns the grid pole with the
 geographic pole, then maps the rotated point back to geographic coordinates.
 """
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π / 180
-    φ′ *= π / 180
-    λ₀ *= π / 180
-    φ₀ *= π / 180
+    FT = typeof(float(λ′))
+    λ′ʳ = deg2rad(convert(FT, λ′))
+    φ′ʳ = deg2rad(convert(FT, φ′))
 
-    dλ = λ₀
-    dφ = π/2 - φ₀
+    dλ = deg2rad(convert(FT, λ₀))
+    dφ = convert(FT, π) / 2 - deg2rad(convert(FT, φ₀))
 
     # Convert to Cartesian
-    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+    X′ = SVector(spherical_to_cartesian(φ′ʳ, λ′ʳ; check_latitude_bounds = false)...)
 
     # Rotate Cartesian coordinates
     Ry = y_rotation_matrix(dφ)
@@ -186,10 +186,29 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     # Convert back to Spherical
     φ, λ = cartesian_to_spherical(X)
 
-    λ *= 180 / π
-    φ *= 180 / π
+    return rad2deg(λ), rad2deg(φ)
+end
 
-    return λ, φ
+# The angle θ (radians) from the geographic basis at the geographic point `(λ, φ)` to the basis of a frame whose north
+# pole is at `(λ₀, φ₀)` (degrees), with the convention of `Operators.rotation_angle`: the bearing of the frame's pole.
+@inline function rotated_basis_angle(λ, φ, λ₀, φ₀)
+    λʳ = deg2rad(λ)
+    φʳ = deg2rad(φ)
+    λ₀ʳ = deg2rad(convert(typeof(λʳ), λ₀))
+    φ₀ʳ = deg2rad(convert(typeof(λʳ), φ₀))
+
+    sinθ = cos(φ₀ʳ) * sin(λ₀ʳ - λʳ)
+    cosθ = cos(φʳ) * sin(φ₀ʳ) - sin(φʳ) * cos(φ₀ʳ) * cos(λʳ - λ₀ʳ)
+
+    return atan(sinθ, cosθ)
+end
+
+# The closed-form angle between the intrinsic and geographic bases at the node `(i, j)` at `(ℓx, ℓy)`
+@inline function Operators.rotation_angle(i, j, grid::RotatedLatitudeLongitudeGrid, ℓx, ℓy)
+    λ = λnode(i, j, 1, grid, ℓx, ℓy, Center())
+    φ = φnode(i, j, 1, grid, ℓx, ℓy, Center())
+    λ₀, φ₀ = grid.conformal_mapping.north_pole
+    return rotated_basis_angle(λ, φ, λ₀, φ₀)
 end
 
 @kernel function _rotate_metrics!(grid, source_grid)
