@@ -13,7 +13,7 @@ import Oceananigans.Fields: fill_immersed_halo_regions!, immersed_boundary_condi
 ##### like halo nodes from the adjacent fluid node, following each field's own immersed condition.
 #####
 
-const IBGField = Field{<:Any, <:Any, <:Any, <:Any, <:IBG}
+const IBGField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:IBG}
 
 function fill_immersed_halo_regions!(field::IBGField, args...; fill_normal_flow_bcs=true, kwargs...)
     grid = field.grid
