@@ -873,6 +873,18 @@ end
                 @test values[argmin(c)] == minimum(c)
                 @test findmax(c) == (maximum(c), argmax(c))
             end
+
+            @testset "Conditional index reductions of reduced fields [$(typeof(arch)), $FT]" begin
+                r = Field{Center, Center, Nothing}(regular_grid)
+                set!(r, (x, y) -> (x - 1/3)^2 + (y - 2)^2)
+                reduced_values = Array(interior(r))
+                everywhere(i, j, k, grid, r) = true
+                @test argmin(r; condition = everywhere) == argmin(reduced_values)
+
+                # Adapted operations drop their indices but keep their size
+                conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
+                @test Base.size(Adapt.adapt(Array, conditioned_r)) == Base.size(r)
+            end
         end
 
         @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
