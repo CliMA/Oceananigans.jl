@@ -5,6 +5,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition
 using CUDA
 using CairoMakie
 using Printf
@@ -28,9 +29,11 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> ifelse(x < head, 0, -Lz)
 @inline river_velocity(i, j, k, grid, clock, fields) =
     ifelse(znode(k, grid, Center()) > -river_depth, U_river + U_tide * sin(ω * clock.time), zero(U_river))
 
-radiation = PerturbationAdvection(inflow_timescale = 1hour, outflow_timescale = 6hours)
+# The mouth radiates the barotropic mode (Flather on `U`, Chapman on `η`) and the baroclinic flow
 u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(river_velocity, discrete_form = true)),
-                                east = NormalFlowBoundaryCondition(0; scheme = radiation))
+                                east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(; inflow_timescale = Inf, outflow_timescale = Inf)))
+U_bcs = FieldBoundaryConditions(east = GravityWaveRadiationBoundaryCondition((0, 0)))
+η_bcs = FieldBoundaryConditions(east = SurfaceWaveRadiationBoundaryCondition())
 S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(0)),
                                 east = ValueBoundaryCondition(S_ocean; scheme = PerturbationAdvection(inflow_timescale = 1hour, outflow_timescale = Inf)))
 
@@ -40,7 +43,7 @@ buoyancy = SeawaterBuoyancy(constant_temperature = 10)
 
 model = HydrostaticFreeSurfaceModel(grid; free_surface, closure, buoyancy, tracers = :S,
                                     momentum_advection = WENO(order = 9), tracer_advection = WENO(order = 9, bounds = (0, S_ocean)),
-                                    boundary_conditions = (; u = u_bcs, S = S_bcs))
+                                    boundary_conditions = (; u = u_bcs, U = U_bcs, η = η_bcs, S = S_bcs))
 
 set!(model, S = S_ocean)
 
