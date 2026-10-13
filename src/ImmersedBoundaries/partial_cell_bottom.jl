@@ -6,29 +6,34 @@ import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
                                Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
 
 #####
-##### PartialCellBottom
+##### PartialCellVerticalBoundaries
 #####
 
-struct PartialCellBottom{H, T, E} <: AbstractGridFittedBottom{H}
+struct PartialCellVerticalBoundaries{H, T, E} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     minimum_fractional_cell_height :: E
 end
 
-PartialCellBottom(bottom_height, minimum_fractional_cell_height) = PartialCellBottom(bottom_height, nothing, minimum_fractional_cell_height)
+const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, Nothing, E}
 
-const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
+PartialCellBottom(bottom_height, minimum_fractional_cell_height) = PartialCellVerticalBoundaries(bottom_height, nothing, minimum_fractional_cell_height)
 
-# PartialCellBottom with an immersed top
-const PCBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom{<:Any, <:AbstractArray}}
+const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellVerticalBoundaries} where {FT, TX, TY, TZ}
 
-function Base.summary(ib::PartialCellBottom)
+# PartialCellVerticalBoundaries with an immersed top
+const PCBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellVerticalBoundaries{<:Any, <:AbstractArray}}
+
+immersed_boundary_name(::PartialCellBottom) = "PartialCellBottom"
+immersed_boundary_name(::PartialCellVerticalBoundaries) = "PartialCellVerticalBoundaries"
+
+function Base.summary(ib::PartialCellVerticalBoundaries)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     zmax = maximum(bottom_interior)
     zmin = minimum(bottom_interior)
     zmean = sum(bottom_interior) / length(bottom_interior)
 
-    summary1 = "PartialCellBottom("
+    summary1 = immersed_boundary_name(ib) * "("
 
     summary2 = string("mean(zb)=", prettysummary(zmean),
                       ", min(zb)=", prettysummary(zmin),
@@ -41,22 +46,24 @@ function Base.summary(ib::PartialCellBottom)
     return summary1 * summary2 * summary3
 end
 
-Base.summary(ib::PartialCellBottom{<:Function}) = @sprintf("PartialCellBottom(%s%s, ϵ=%.1f)",
-                                                           prettysummary(ib.bottom_height, false),
-                                                           top_height_summary(ib.top_height),
-                                                           ib.minimum_fractional_cell_height)
+Base.summary(ib::PartialCellVerticalBoundaries{<:Function}) = @sprintf("%s(%s%s, ϵ=%.1f)",
+                                                                       immersed_boundary_name(ib),
+                                                                       prettysummary(ib.bottom_height, false),
+                                                                       top_height_summary(ib.top_height),
+                                                                       ib.minimum_fractional_cell_height)
 
-Base.summary(ib::PartialCellBottom{Nothing}) = @sprintf("PartialCellBottom(nothing%s, ϵ=%.1f)",
-                                                        top_height_summary(ib.top_height),
-                                                        ib.minimum_fractional_cell_height)
+Base.summary(ib::PartialCellVerticalBoundaries{Nothing}) = @sprintf("%s(nothing%s, ϵ=%.1f)",
+                                                                    immersed_boundary_name(ib),
+                                                                    top_height_summary(ib.top_height),
+                                                                    ib.minimum_fractional_cell_height)
 
-function Base.show(io::IO, ib::PartialCellBottom{<:Any, Nothing})
+function Base.show(io::IO, ib::PartialCellBottom)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
-function Base.show(io::IO, ib::PartialCellBottom)
+function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
@@ -64,9 +71,9 @@ function Base.show(io::IO, ib::PartialCellBottom)
 end
 
 """
-    PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
+    PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
 
-Return `PartialCellBottom` representing an immersed boundary with "partial"
+Return `PartialCellVerticalBoundaries` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
 to fit the provided `bottom_height`, which may be a `Field`, `Array`, or function
 of `(x, y)`. If `bottom_height` is `nothing`, the bottom is the bottom of the domain.
@@ -91,36 +98,62 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 8, 10), x=(0, 100), y=(0, 100), z=(-100, 0));
 
-julia> ImmersedBoundaryGrid(grid, PartialCellBottom(-95; top_height=(x, y) -> -20 - 0.2y))
+julia> ImmersedBoundaryGrid(grid, PartialCellVerticalBoundaries(bottom_height=-95, top_height=(x, y) -> -20 - 0.2y))
 2×8×10 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo:
-├── immersed_boundary: PartialCellBottom(mean(zb)=-95.0, min(zb)=-95.0, max(zb)=-95.0, mean(zt)=-29.8125, min(zt)=-38.0, max(zt)=-21.25, ϵ=0.2)
+├── immersed_boundary: PartialCellVerticalBoundaries(mean(zb)=-95.0, min(zb)=-95.0, max(zb)=-95.0, mean(zt)=-29.8125, min(zt)=-38.0, max(zt)=-21.25, ϵ=0.2)
 ├── underlying_grid: 2×8×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── Periodic x ∈ [0.0, 100.0)  regularly spaced with Δx=50.0
 ├── Periodic y ∈ [0.0, 100.0)  regularly spaced with Δy=12.5
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2)
-    return PartialCellBottom(bottom_height, top_height, minimum_fractional_cell_height)
+function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
+    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height)
 end
 
-function materialize_immersed_boundary(grid, ib::PartialCellBottom)
+"""
+    PartialCellBottom(bottom_height=nothing; minimum_fractional_cell_height=0.2)
+
+Return a [`PartialCellVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 8, 10), x=(0, 100), y=(0, 100), z=(-100, 0));
+
+julia> ImmersedBoundaryGrid(grid, PartialCellBottom(-95))
+2×8×10 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo:
+├── immersed_boundary: PartialCellBottom(mean(zb)=-95.0, min(zb)=-95.0, max(zb)=-95.0, ϵ=0.2)
+├── underlying_grid: 2×8×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── Periodic x ∈ [0.0, 100.0)  regularly spaced with Δx=50.0
+├── Periodic y ∈ [0.0, 100.0)  regularly spaced with Δy=12.5
+└── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
+```
+"""
+function PartialCellBottom(bottom_height=nothing; minimum_fractional_cell_height=0.2)
+    return PartialCellVerticalBoundaries(bottom_height, nothing, minimum_fractional_cell_height)
+end
+
+function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
     top_field = materialize_top_height(grid, ib.top_height)
 
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
-    compute_ib = PartialCellBottom(bottom_field, top_field, minimum_fractional_cell_height)
+    compute_ib = PartialCellVerticalBoundaries(bottom_field, top_field, minimum_fractional_cell_height)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     @apply_regionally compute_numerical_top_height!(bottom_field, top_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
     fill_top_height_halo_regions!(top_field)
 
-    return PartialCellBottom(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height)
+    return PartialCellVerticalBoundaries(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height)
 end
 
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellVerticalBoundaries)
     i, j = @index(Global, NTuple)
 
     # Save analytical bottom height
@@ -149,7 +182,7 @@ end
     @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
-@kernel function _compute_numerical_top_height!(bottom_field, top_field, grid, ib::PartialCellBottom)
+@kernel function _compute_numerical_top_height!(bottom_field, top_field, grid, ib::PartialCellVerticalBoundaries)
     i, j = @index(Global, NTuple)
 
     domain_bottom = rnode(i, j, 1, grid, c, c, f)
@@ -177,13 +210,15 @@ end
     @inbounds top_field[i, j, 1] = ifelse(closed, domain_top, ẑᵗ)
 end
 
-Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     adapt(to, ib.top_height),
-                                                                     ib.minimum_fractional_cell_height)
+Adapt.adapt_structure(to, ib::PartialCellVerticalBoundaries) =
+    PartialCellVerticalBoundaries(adapt(to, ib.bottom_height),
+                                  adapt(to, ib.top_height),
+                                  ib.minimum_fractional_cell_height)
 
-Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                                             on_architecture(to, ib.top_height),
-                                                                             on_architecture(to, ib.minimum_fractional_cell_height))
+Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
+    PartialCellVerticalBoundaries(on_architecture(to, ib.bottom_height),
+                                  on_architecture(to, ib.top_height),
+                                  on_architecture(to, ib.minimum_fractional_cell_height))
 
 """
     immersed     underlying
@@ -206,7 +241,7 @@ Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_
 Criterion is zb ≥ z - ϵ Δz
 
 """
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellVerticalBoundaries)
     r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
     Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
@@ -215,9 +250,9 @@ Criterion is zb ≥ z - ϵ Δz
     return (r★ < rᵇ) | immersed_by_top(i, j, k, underlying_grid, ib)
 end
 
-@inline immersed_by_top(i, j, k, underlying_grid, ::PartialCellBottom{<:Any, Nothing}) = false
+@inline immersed_by_top(i, j, k, underlying_grid, ::PartialCellBottom) = false
 
-@inline function immersed_by_top(i, j, k, underlying_grid, ib::PartialCellBottom)
+@inline function immersed_by_top(i, j, k, underlying_grid, ib::PartialCellVerticalBoundaries)
     r⁻ = rnode(i, j, k, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
     Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
@@ -310,10 +345,10 @@ end
 @inline Δrᶠᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶠ(i, j-1, k, ibg), Δrᶠᶜᶠ(i, j, k, ibg))
 
 # Make sure Δz works for horizontally-Flat topologies.
-# (There's no point in using z-Flat with PartialCellBottom).
-const XFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:PartialCellBottom}
-const YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:PartialCellBottom}
-const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:PartialCellBottom}
+# (There's no point in using z-Flat with PartialCellVerticalBoundaries).
+const XFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:PartialCellVerticalBoundaries}
+const YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:PartialCellVerticalBoundaries}
+const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <:PartialCellVerticalBoundaries}
 
 @inline Δrᶠᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δrᶠᶜᶠ(i, j, k, ibg::XFlatPCBIBG) = Δrᶜᶜᶠ(i, j, k, ibg)
@@ -325,7 +360,7 @@ const XYFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Flat, <:Any, <:Any, <
 @inline Δrᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 
 # Vertically-static, partial cell bottom, immersed boundary grid
-VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellBottom}
+VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid, <:PartialCellVerticalBoundaries}
 @inline Δzᶜᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶜᶜ(i, j, k, ibg)
 @inline Δzᶠᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶜ(i, j, k, ibg)
 @inline Δzᶜᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶜ(i, j, k, ibg)
@@ -342,7 +377,7 @@ function Grids.constructor_arguments(grid::PCBIBG)
     return underlying_grid_args, underlying_grid_kwargs, partial_cell_bottom_args
 end
 
-function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
+function Base.:(==)(pcb1::PartialCellVerticalBoundaries, pcb2::PartialCellVerticalBoundaries)
     return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) &&
            bottom_heights_equal(pcb1.top_height, pcb2.top_height) &&
            pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height

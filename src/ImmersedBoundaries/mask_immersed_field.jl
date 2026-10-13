@@ -159,7 +159,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 # Grid-fitted bottoms without an immersed top
 const BottomOnlyIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
-                                           <:Union{GridFittedBottom{<:Any, Nothing}, PartialCellBottom{<:Any, Nothing}}}
+                                           <:Union{GridFittedBottom, PartialCellBottom}}
 
 const CenterOrFace = Union{Center, Face}
 const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}

@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: FBC
 using OffsetArrays: OffsetArray
 
 #####
-##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
+##### GridFittedVerticalBoundaries (2.5D immersed boundary with modified bottom and top heights)
 #####
 
 abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
@@ -14,33 +14,33 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedBottom{H, T, I} <: AbstractGridFittedBottom{H}
+struct GridFittedVerticalBoundaries{H, T, I} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     immersed_condition :: I
 end
 
-GridFittedBottom(bottom_height, immersed_condition) = GridFittedBottom(bottom_height, nothing, immersed_condition)
+const GridFittedBottom{H, I} = GridFittedVerticalBoundaries{H, Nothing, I}
+
+GridFittedBottom(bottom_height, immersed_condition) = GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedVerticalBoundaries}
 
 """
-    GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition())
+    GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition())
 
-Return a bottom immersed boundary, optionally with an immersed top.
+Return an immersed boundary that bounds each column from below by `bottom_height`
+and from above by `top_height`.
 
-Arguments
-=========
+Keyword arguments
+=================
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates. Default: `nothing`
                    (the bottom of the domain, e.g. for a flat-bottomed domain with only a top).
-
-Keyword arguments
-=================
 
 * `top_height`: an array or function that gives the height of the underside of
                 a solid top (e.g. an ice-shelf draft) in absolute ``z`` coordinates.
@@ -51,8 +51,8 @@ Keyword arguments
                         `bottom_height` (`CenterImmersedCondition()`; default)
                         or all the cell faces that lie below `bottom_height`
                         (`InterfaceImmersedCondition()`). The only purpose of
-                        `immersed_condition` to allow `GridFittedBottom` and
-                        `PartialCellBottom` to have the same behavior when the
+                        `immersed_condition` to allow `GridFittedVerticalBoundaries` and
+                        `PartialCellVerticalBoundaries` to have the same behavior when the
                         minimum fractional cell height for partial cells is set
                         to 0. The same condition applies to the top.
 
@@ -66,17 +66,42 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 8, 10), x=(0, 100), y=(0, 100), z=(-100, 0));
 
-julia> ImmersedBoundaryGrid(grid, GridFittedBottom(-90; top_height=(x, y) -> -20 - 0.2y))
+julia> ImmersedBoundaryGrid(grid, GridFittedVerticalBoundaries(bottom_height=-90, top_height=(x, y) -> -20 - 0.2y))
 2×8×10 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=-90.0, min(z)=-90.0, max(z)=-90.0, mean(zt)=-30.0, min(zt)=-40.0, max(zt)=-20.0)
+├── immersed_boundary: GridFittedVerticalBoundaries(mean(z)=-90.0, min(z)=-90.0, max(z)=-90.0, mean(zt)=-30.0, min(zt)=-40.0, max(zt)=-20.0)
 ├── underlying_grid: 2×8×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── Periodic x ∈ [0.0, 100.0)  regularly spaced with Δx=50.0
 ├── Periodic y ∈ [0.0, 100.0)  regularly spaced with Δy=12.5
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-GridFittedBottom(bottom_height=nothing; top_height=nothing, immersed_condition=CenterImmersedCondition()) =
-    GridFittedBottom(bottom_height, top_height, immersed_condition)
+GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition()) =
+    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition)
+
+"""
+    GridFittedBottom(bottom_height=nothing; immersed_condition=CenterImmersedCondition())
+
+Return a [`GridFittedVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 8, 10), x=(0, 100), y=(0, 100), z=(-100, 0));
+
+julia> ImmersedBoundaryGrid(grid, GridFittedBottom(-90))
+2×8×10 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo:
+├── immersed_boundary: GridFittedBottom(mean(z)=-90.0, min(z)=-90.0, max(z)=-90.0)
+├── underlying_grid: 2×8×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── Periodic x ∈ [0.0, 100.0)  regularly spaced with Δx=50.0
+├── Periodic y ∈ [0.0, 100.0)  regularly spaced with Δy=12.5
+└── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
+```
+"""
+GridFittedBottom(bottom_height=nothing; immersed_condition=CenterImmersedCondition()) =
+    GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
 
 # 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
@@ -134,13 +159,16 @@ end
 
 top_height_summary(top_height::Function) = string(", top_height=", prettysummary(top_height, false))
 
-function Base.summary(ib::GridFittedBottom)
+immersed_boundary_name(::GridFittedBottom) = "GridFittedBottom"
+immersed_boundary_name(::GridFittedVerticalBoundaries) = "GridFittedVerticalBoundaries"
+
+function Base.summary(ib::GridFittedVerticalBoundaries)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     zmax  = maximum(bottom_interior)
     zmin  = minimum(bottom_interior)
     zmean = sum(bottom_interior) / length(bottom_interior)
 
-    summary1 = "GridFittedBottom("
+    summary1 = immersed_boundary_name(ib) * "("
 
     summary2 = string("mean(z)=", prettysummary(zmean),
                       ", min(z)=", prettysummary(zmin),
@@ -152,26 +180,29 @@ function Base.summary(ib::GridFittedBottom)
     return summary1 * summary2 * summary3
 end
 
-Base.summary(ib::GridFittedBottom{<:Union{Function, Nothing}}) = @sprintf("GridFittedBottom(%s%s)", ib.bottom_height, top_height_summary(ib.top_height))
+Base.summary(ib::GridFittedVerticalBoundaries{<:Union{Function, Nothing}}) =
+    @sprintf("%s(%s%s)", immersed_boundary_name(ib), ib.bottom_height, top_height_summary(ib.top_height))
 
-function Base.show(io::IO, ib::GridFittedBottom{<:Any, Nothing})
+function Base.show(io::IO, ib::GridFittedBottom)
     print(io, summary(ib), '\n')
     print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
-function Base.show(io::IO, ib::GridFittedBottom)
+function Base.show(io::IO, ib::GridFittedVerticalBoundaries)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "└── top_height: ", prettysummary(ib.top_height), '\n')
 end
 
-Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height),
-                                                                             on_architecture(arch, ib.top_height),
-                                                                             ib.immersed_condition)
+Architectures.on_architecture(arch, ib::GridFittedVerticalBoundaries) =
+    GridFittedVerticalBoundaries(on_architecture(arch, ib.bottom_height),
+                                 on_architecture(arch, ib.top_height),
+                                 ib.immersed_condition)
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height),
-                                                                   adapt(to, ib.top_height),
-                                                                   adapt(to, ib.immersed_condition))
+Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
+    GridFittedVerticalBoundaries(adapt(to, ib.bottom_height),
+                                 adapt(to, ib.top_height),
+                                 adapt(to, ib.immersed_condition))
 
 """
 $(TYPEDSIGNATURES)
@@ -182,19 +213,19 @@ z-coordinate of the top-most interface of the last ``immersed`` cell in the colu
 `Field` with [`bottom_height_field`](@ref)). If `ib` is a `GridFittedBoundary`, `ib.mask` is a `Field` of
 booleans that indicates whether a cell is immersed or not.
 """
-function materialize_immersed_boundary(grid, ib::GridFittedBottom)
+function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
     top_field = materialize_top_height(grid, ib.top_height)
 
-    compute_ib = GridFittedBottom(bottom_field, top_field, ib.immersed_condition)
+    compute_ib = GridFittedVerticalBoundaries(bottom_field, top_field, ib.immersed_condition)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     @apply_regionally compute_numerical_top_height!(bottom_field, top_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
     fill_top_height_halo_regions!(top_field)
 
-    return GridFittedBottom(bottom_field.data, top_height_data(top_field), ib.immersed_condition)
+    return GridFittedVerticalBoundaries(bottom_field.data, top_height_data(top_field), ib.immersed_condition)
 end
 
 materialize_top_height(grid, ::Nothing) = nothing
@@ -219,7 +250,7 @@ compute_numerical_top_height!(bottom_field, ::Nothing, grid, ib) = nothing
 compute_numerical_top_height!(bottom_field, top_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_top_height!, bottom_field, top_field, grid, ib)
 
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedVerticalBoundaries)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
@@ -232,7 +263,7 @@ compute_numerical_top_height!(bottom_field, top_field, grid, ib) =
     end
 end
 
-@kernel function _compute_numerical_top_height!(bottom_field, top_field, grid, ib::GridFittedBottom)
+@kernel function _compute_numerical_top_height!(bottom_field, top_field, grid, ib::GridFittedVerticalBoundaries)
     i, j = @index(Global, NTuple)
     zᵗ = @inbounds top_field[i, j, 1]
     ẑᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
@@ -252,7 +283,7 @@ end
     @inbounds top_field[i, j, 1] = ifelse(closed, domain_top, ẑᵗ)
 end
 
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedVerticalBoundaries)
     # We use `rnode` for the `immersed_cell` because we do not want to have
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
@@ -263,7 +294,7 @@ end
 @inline above_top(i, j, z, ::Nothing) = false
 @inline above_top(i, j, z, top_height) = @inbounds z ≥ top_height[i, j, 1]
 
-@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom{<:Any, Nothing})
+@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
@@ -272,7 +303,7 @@ end
     return z .≤ _zb
 end
 
-@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
+@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedVerticalBoundaries)
     z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
     zt = @inbounds ib.top_height[i, j, 1]
@@ -312,7 +343,7 @@ function Grids.constructor_arguments(grid::AGFBIBG)
     return underlying_grid_args, underlying_grid_kwargs, grid_fitted_bottom_args
 end
 
-function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
+function Base.:(==)(gfb1::GridFittedVerticalBoundaries, gfb2::GridFittedVerticalBoundaries)
     return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) &&
            bottom_heights_equal(gfb1.top_height, gfb2.top_height) &&
            gfb1.immersed_condition == gfb2.immersed_condition

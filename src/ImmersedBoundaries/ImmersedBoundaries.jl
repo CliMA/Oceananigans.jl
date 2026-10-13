@@ -1,6 +1,7 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition, bottom_height_field
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+       GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, ImmersedBoundaryCondition, bottom_height_field
 
 using Printf: @sprintf
 
