@@ -229,7 +229,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
 
-1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a Unified Data-Driven Boundary Layer Momentum Flux Parameterization for Ocean and Atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
+1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a unified data-driven boundary layer momentum flux parameterization for ocean and atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
 
 1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
 
@@ -271,9 +271,9 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Pružina, P. (2025) [A one-dimensional model of staircase formation in diffusive convection](https://doi.org/10.1017/jfm.2025.141), _Journal of Fluid Mechanics_, **1008**, A29. DOI: [10.1017/jfm.2025.141](https://doi.org/10.1017/jfm.2025.141)
 
-1. Lee, A., Hutchings, J., Horvat, C., Tavri, A., and Pearson, B. (2025) [Impact of Surface Waves on Mixing and Circulation in a Summertime Lead](https://doi.org/10.5194/egusphere-2025-4239), _EGUsphere preprint_. DOI: [10.5194/egusphere-2025-4239](https://doi.org/10.5194/egusphere-2025-4239)
+1. Lee, A., Hutchings, J., Horvat, C., Tavri, A., and Pearson, B. (2025) [Impact of surface waves on mixing and circulation in a summertime lead](https://doi.org/10.5194/egusphere-2025-4239), _EGUsphere preprint_. DOI: [10.5194/egusphere-2025-4239](https://doi.org/10.5194/egusphere-2025-4239)
 
-1. Fromme, F., Harder, H., Allen-Blanchette, C., and Peitz, S. (2025) [Surrogate Modeling of 3D Rayleigh-Bénard Convection with Equivariant Autoencoders](https://doi.org/10.48550/arXiv.2505.13569), _arXiv preprint_, arXiv:2505.13569. DOI: [10.48550/arXiv.2505.13569](https://doi.org/10.48550/arXiv.2505.13569)
+1. Fromme, F., Harder, H., Allen-Blanchette, C., and Peitz, S. (2025) [Surrogate modeling of 3D Rayleigh-Bénard convection with equivariant autoencoders](https://doi.org/10.48550/arXiv.2505.13569), _arXiv preprint_, arXiv:2505.13569. DOI: [10.48550/arXiv.2505.13569](https://doi.org/10.48550/arXiv.2505.13569)
 
 1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
 
