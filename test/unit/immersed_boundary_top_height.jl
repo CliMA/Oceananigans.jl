@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Grids: znodes, static_column_depthᶜᶜᵃ
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
                                        immersed_cell, _immersed_cell,
-                                       mask_immersed_field!, bottom_height_interior
+                                       mask_immersed_field!, bottom_height_interior, bottom_height_field
+using Oceananigans.Fields: ConstantField
 using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ
 
 center_values(op, grid, args...) =
@@ -35,7 +36,7 @@ function test_top_height_construction(FT, arch, Boundary)
     @test all(Array(bottom_height_interior(ib.top_height)) .> Array(bottom_height_interior(ib.bottom_height)))
 
     @test isnothing(Boundary(bottom_height=bottom).top_height)
-    @test isnothing(ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom)).immersed_boundary.top_height)
+    @test ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom)).immersed_boundary.top_height isa ConstantField
 
     Nx, Ny = size(underlying_grid)[1:2]
     bottom_array = on_architecture(arch, fill(FT(-0.8), Nx, Ny))
@@ -249,11 +250,15 @@ function test_no_bottom_height(FT, arch, Boundary)
     no_bottom   = ImmersedBoundaryGrid(underlying_grid, Boundary(; top_height=top))
     flat_bottom = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=top))
 
-    @test Array(bottom_height_interior(no_bottom.immersed_boundary.bottom_height)) ==
-          Array(bottom_height_interior(flat_bottom.immersed_boundary.bottom_height))
+    @test no_bottom.immersed_boundary.bottom_height isa ConstantField
+    @test Array(interior(bottom_height_field(no_bottom))) == Array(interior(bottom_height_field(flat_bottom)))
     @test center_values(immersed_cell, no_bottom) == center_values(immersed_cell, flat_bottom)
     @test center_values(Δrᶜᶜᶜ, no_bottom) == center_values(Δrᶜᶜᶜ, flat_bottom)
     @test center_values(column_depthᶜᶜᵃ, no_bottom) == center_values(column_depthᶜᶜᵃ, flat_bottom)
+
+    constant_top = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=ConstantField(-0.5)))
+    numeric_top  = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=-0.5))
+    @test center_values(immersed_cell, constant_top) == center_values(immersed_cell, numeric_top)
 
     no_boundary = ImmersedBoundaryGrid(underlying_grid, Boundary())
     @test !any(center_values(immersed_cell, no_boundary) .== 1)

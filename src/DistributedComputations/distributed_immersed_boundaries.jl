@@ -2,6 +2,7 @@ using Oceananigans.Utils: getnamewrapper
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
+    ConstantField,
     GridFittedVerticalBoundaries,
     PartialCellVerticalBoundaries,
     GridFittedBoundary,
@@ -35,21 +36,19 @@ end
 
 function reconstruct_global_immersed_boundary(ib::GridFittedVerticalBoundaries, arch, grid)
     Nx, Ny, _ = size(grid)
-    bottom_interior = bottom_height_interior(ib.bottom_height)
-    global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
+    global_bottom_height = global_height_array(ib.bottom_height, arch, (Nx, Ny, 1))
     global_top_height = global_height_array(ib.top_height, arch, (Nx, Ny, 1))
     return GridFittedVerticalBoundaries(global_bottom_height, global_top_height, ib.immersed_condition)
 end
 
 function reconstruct_global_immersed_boundary(ib::PartialCellVerticalBoundaries, arch, grid)
     Nx, Ny, _ = size(grid)
-    bottom_interior = bottom_height_interior(ib.bottom_height)
-    global_bottom_height = construct_global_array(bottom_interior, arch, (Nx, Ny, 1))
+    global_bottom_height = global_height_array(ib.bottom_height, arch, (Nx, Ny, 1))
     global_top_height = global_height_array(ib.top_height, arch, (Nx, Ny, 1))
     return PartialCellVerticalBoundaries(global_bottom_height, global_top_height, ib.minimum_fractional_cell_height)
 end
 
-global_height_array(::Nothing, arch, global_size) = nothing
+global_height_array(::ConstantField, arch, global_size) = nothing
 global_height_array(height, arch, global_size) = construct_global_array(bottom_height_interior(height), arch, global_size)
 
 function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid)
@@ -76,8 +75,7 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     local_ug = scatter_local_grids(ug, arch, local_size)
 
     nx, ny, _ = local_size
-    bottom_interior = bottom_height_interior(ib.bottom_height)
-    local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
+    local_bottom_height = local_height_array(ib.bottom_height, arch, (nx, ny, 1))
     local_top_height = local_height_array(ib.top_height, arch, (nx, ny, 1))
     ImmersedBoundaryConstructor = getnamewrapper(ib)
     local_ib = ImmersedBoundaryConstructor(; bottom_height=local_bottom_height, top_height=local_top_height)
@@ -85,7 +83,7 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
 
-local_height_array(::Nothing, arch, local_size) = nothing
+local_height_array(::ConstantField, arch, local_size) = nothing
 local_height_array(height, arch, local_size) = partition(bottom_height_interior(height), arch, local_size)
 
 """
@@ -94,7 +92,6 @@ local_height_array(height, arch, local_size) = partition(bottom_height_interior(
 If the immersed condition is an `OffsetArray`, resize it to match
 the total size of `grid`
 """
-resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
 resize_immersed_boundary(ib::GridFittedBoundary, grid) = ib
 
 function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
@@ -115,15 +112,15 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
     return ib
 end
 
-function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+function resize_immersed_boundary(ib::AbstractGridFittedBottom, grid)
 
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    bottom_height_size = (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
+    height_size = (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
 
     # Check that the size of the bottom height is consistent with the grid's halos
-    if any(size(ib.bottom_height) .!= bottom_height_size)
+    if wrong_height_size(ib.bottom_height, height_size) || wrong_height_size(ib.top_height, height_size)
         @warn "Resizing the bottom height to match the grid's halos"
         bottom_height = resize_height(ib.bottom_height, grid)
         top_height    = resize_height(ib.top_height, grid)
@@ -133,7 +130,10 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     return ib
 end
 
-resize_height(::Nothing, grid) = nothing
+wrong_height_size(::Union{Nothing, ConstantField}, height_size) = false
+wrong_height_size(height, height_size) = any(size(height) .!= height_size)
+
+resize_height(::Union{Nothing, ConstantField}, grid) = nothing
 
 function resize_height(height, grid)
     Nx, Ny, _ = size(grid)

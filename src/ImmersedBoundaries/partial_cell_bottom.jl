@@ -15,23 +15,21 @@ struct PartialCellVerticalBoundaries{H, T, E} <: AbstractGridFittedBottom{H}
     minimum_fractional_cell_height :: E
 end
 
-const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, Nothing, E}
+# A missing top is materialized as a `ConstantField` at the top of the domain
+const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, <:Union{Nothing, ConstantField}, E}
 
 PartialCellBottom(bottom_height, minimum_fractional_cell_height) = PartialCellVerticalBoundaries(bottom_height, nothing, minimum_fractional_cell_height)
 
 const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellVerticalBoundaries} where {FT, TX, TY, TZ}
 
-# PartialCellVerticalBoundaries with an immersed top
-const PCBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellVerticalBoundaries{<:Any, <:AbstractArray}}
+# PartialCellVerticalBoundaries with a materialized immersed top
+const PCBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellVerticalBoundaries{<:Any, <:OffsetArray}}
 
 immersed_boundary_name(::PartialCellBottom) = "PartialCellBottom"
 immersed_boundary_name(::PartialCellVerticalBoundaries) = "PartialCellVerticalBoundaries"
 
 function Base.summary(ib::PartialCellVerticalBoundaries)
-    bottom_interior = bottom_height_interior(ib.bottom_height)
-    zmax = maximum(bottom_interior)
-    zmin = minimum(bottom_interior)
-    zmean = sum(bottom_interior) / length(bottom_interior)
+    zmean, zmin, zmax = height_statistics(ib.bottom_height)
 
     summary1 = immersed_boundary_name(ib) * "("
 
@@ -138,57 +136,27 @@ function PartialCellBottom(bottom_height=nothing; minimum_fractional_cell_height
 end
 
 function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
-    bottom_field = Field{Center, Center, Nothing}(grid)
-    set_bottom_height!(bottom_field, ib.bottom_height)
-    top_field = materialize_top_height(grid, ib.top_height)
+    domain_bottom, domain_top = z_domain(grid)
+    bottom = materialize_height(grid, ib.bottom_height, domain_bottom)
+    top    = materialize_height(grid, ib.top_height, domain_top)
 
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
-    compute_ib = PartialCellVerticalBoundaries(bottom_field, top_field, minimum_fractional_cell_height)
+    compute_ib = PartialCellVerticalBoundaries(bottom, top, minimum_fractional_cell_height)
 
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
-    @apply_regionally compute_numerical_top_height!(bottom_field, top_field, grid, compute_ib)
-    fill_halo_regions!(bottom_field)
-    fill_top_height_halo_regions!(top_field)
+    @apply_regionally compute_numerical_heights!(bottom, top, grid, compute_ib)
+    fill_halo_regions!(bottom)
+    fill_halo_regions!(top)
 
-    return PartialCellVerticalBoundaries(bottom_field.data, top_height_data(top_field), minimum_fractional_cell_height)
+    return PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height)
 end
 
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellVerticalBoundaries)
-    i, j = @index(Global, NTuple)
-
-    # Save analytical bottom height
-    zb = @inbounds bottom_field[i, j, 1]
-
-    # Cap bottom height at Lz and at rnode(i, j, grid.Nz+1, grid, c, c, f)
-
-    domain_bottom = rnode(i, j, 1, grid, c, c, f)
-    domain_top    = rnode(i, j, grid.Nz+1, grid, c, c, f)
-    @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
-    adjusted_zb = bottom_field[i, j, 1]
-
-    ϵ  = ib.minimum_fractional_cell_height
-
-    for k in 1:grid.Nz
-        z⁻ = rnode(i, j, k,   grid, c, c, f)
-        z⁺ = rnode(i, j, k+1, grid, c, c, f)
-        Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = z⁻ ≤ adjusted_zb < z⁺
-        capped_zb   = min(z⁺ - ϵ * Δz, adjusted_zb)
-
-        # If the size of the bottom cell is less than ϵ Δz,
-        # we enforce a minimum size of ϵ Δz.
-        adjusted_zb = ifelse(bottom_cell, capped_zb, adjusted_zb)
-    end
-    @inbounds bottom_field[i, j, 1] = adjusted_zb
-end
-
-@kernel function _compute_numerical_top_height!(bottom_field, top_field, grid, ib::PartialCellVerticalBoundaries)
+@kernel function _compute_numerical_heights!(bottom, top, grid, ib::PartialCellVerticalBoundaries)
     i, j = @index(Global, NTuple)
 
     domain_bottom = rnode(i, j, 1, grid, c, c, f)
     domain_top    = rnode(i, j, grid.Nz+1, grid, c, c, f)
-    ẑᵗ = clamp(@inbounds(top_field[i, j, 1]), domain_bottom, domain_top)
-    ẑᵇ = @inbounds bottom_field[i, j, 1]
+    ẑᵇ = clamp(@inbounds(bottom[i, j, 1]), domain_bottom, domain_top)
+    ẑᵗ = clamp(@inbounds(top[i, j, 1]), domain_bottom, domain_top)
 
     ϵ  = ib.minimum_fractional_cell_height
     Δzᵇ = zero(grid)
@@ -197,18 +165,23 @@ end
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        top_cell = z⁻ < ẑᵗ ≤ z⁺
+        bottom_cell = z⁻ ≤ ẑᵇ < z⁺
+        top_cell    = z⁻ < ẑᵗ ≤ z⁺
 
-        # If the size of the top cell is less than ϵ Δz, we enforce a minimum size of ϵ Δz
-        ẑᵗ = ifelse(top_cell, max(z⁻ + ϵ * Δz, ẑᵗ), ẑᵗ)
-        Δzᵇ = ifelse(z⁻ ≤ ẑᵇ < z⁺, Δz, Δzᵇ)
+        # If the size of a bottom or top cell is less than ϵ Δz, we enforce a minimum size of ϵ Δz
+        ẑᵇ  = ifelse(bottom_cell, min(z⁺ - ϵ * Δz, ẑᵇ), ẑᵇ)
+        ẑᵗ  = ifelse(top_cell,    max(z⁻ + ϵ * Δz, ẑᵗ), ẑᵗ)
+        Δzᵇ = ifelse(bottom_cell, Δz, Δzᵇ)
     end
 
-    # Close columns in which the top and bottom leave less than ϵ Δz of fluid
-    closed = (ẑᵗ ≤ ẑᵇ) | (ẑᵗ - ẑᵇ < ϵ * Δzᵇ)
-    @inbounds bottom_field[i, j, 1] = ifelse(closed, domain_top, ẑᵇ)
-    @inbounds top_field[i, j, 1] = ifelse(closed, domain_top, ẑᵗ)
+    closed = (ẑᵗ ≤ ẑᵇ) | thin_column(ẑᵇ, ẑᵗ, ϵ * Δzᵇ, top)
+    store_column_heights!(bottom, top, i, j, grid, ẑᵇ, ẑᵗ, closed)
 end
+
+@inline thin_column(ẑᵇ, ẑᵗ, ϵΔzᵇ, top) = ẑᵗ - ẑᵇ < ϵΔzᵇ
+
+# Without a top, the bottom cell already holds at least ϵ Δz; skipping the test avoids round-off closing it
+@inline thin_column(ẑᵇ, ẑᵗ, ϵΔzᵇ, ::ConstantField) = false
 
 Adapt.adapt_structure(to, ib::PartialCellVerticalBoundaries) =
     PartialCellVerticalBoundaries(adapt(to, ib.bottom_height),
