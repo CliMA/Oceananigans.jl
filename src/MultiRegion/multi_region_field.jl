@@ -156,6 +156,9 @@ Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) =
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
+# Yin-Yang halos are interpolated from the other panel's data without buffers
+Fields.communication_buffers(grid::YinYangGrid, data, ::MultiRegionObject) = nothing
+
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  mrg::MultiRegionGrids,
                                                                  field_name::Symbol,

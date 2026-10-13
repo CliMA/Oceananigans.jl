@@ -121,10 +121,11 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
     ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
-    # MultiRegion and Cubed sphere
+    # MultiRegion, cubed sphere and Yin-Yang
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+    YinYangGrid,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
