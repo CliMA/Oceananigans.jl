@@ -2,6 +2,7 @@ using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
     column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
@@ -100,6 +101,20 @@ end
         z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
     end
 end
+
+# Tracers are cached as `σ * c`, with `σ` the stretching of the free surface `η` cached alongside them
+@inline function unscaled_tracer(i, j, k, grid, σc, η)
+    h = static_column_depthᶜᶜᵃ(i, j, grid)
+    H = column_depthᶜᶜᵃ(i, j, size(grid, 3) + 1, grid, η)
+    σ = ifelse(h == 0, one(grid), H / h)
+    return @inbounds σc[i, j, k] / σ
+end
+
+cached_tracer(grid, Ψ⁻, name) = Ψ⁻[name]
+cached_tracer(grid::MutableGridOfSomeKind, Ψ⁻, name) = cached_tracer(grid, Ψ⁻, name, Val(haskey(Ψ⁻, :η)))
+cached_tracer(grid::MutableGridOfSomeKind, Ψ⁻, name, ::Val{false}) = Ψ⁻[name]
+cached_tracer(grid::MutableGridOfSomeKind, Ψ⁻, name, ::Val{true}) =
+    KernelFunctionOperation{Center, Center, Center}(unscaled_tracer, grid, Ψ⁻[name], Ψ⁻.η.data)
 
 """
     update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate;

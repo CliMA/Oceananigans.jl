@@ -1,4 +1,4 @@
-using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, interior
+using Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, interior
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Operators: Axᶠᶜᶜ, Ayᶜᶠᶜ, Azᶜᶜᶠ, Vᶜᶜᶜ
 using Oceananigans.Utils: launch!
@@ -8,12 +8,18 @@ using KernelAbstractions: @index, @kernel
 ##### Cell-wise projection of the tracer values reconstructed in the cells whose stencils read ghost values
 #####
 #
-# For a cell with inflow Courant number ν, inflow mean cⁱⁿ and outflow mean cᵒᵘᵗ, a forward-Euler update reads
-#     cⁿ⁺¹ = c + ν (cⁱⁿ - c) - ν (cᵒᵘᵗ - c).
-# If every reconstructed value lies within the range of the cell it flows into and of that cell's neighbors, and
-#     c - (1 - ν)/ν (cᵐᵃˣ - c) ≤ cᵒᵘᵗ ≤ c + (1 - ν)/ν (c - cᵐⁱⁿ),
-# with cᵐⁱⁿ, cᵐᵃˣ the range of the cell and its neighbors, then cᵐⁱⁿ ≤ cⁿ⁺¹ ≤ cᵐᵃˣ in any dimension.
+# A stage advances the cell value c⁰ it starts from with fluxes reconstructed from the current tracer. For a cell with
+# inflow Courant number ν, inflow mean cⁱⁿ and outflow mean cᵒᵘᵗ, the update reads
+#     c⁺ = c⁰ + ν (cⁱⁿ - c⁰) - ν (cᵒᵘᵗ - c⁰).
+# If every reconstructed value lies within the admissible range of the cell it flows into, and
+#     c⁰ - (1 - ν)/ν (cᵐᵃˣ - c⁰) ≤ cᵒᵘᵗ ≤ c⁰ + (1 - ν)/ν (c⁰ - cᵐⁱⁿ),
+# with [cᵐⁱⁿ, cᵐᵃˣ] the admissible range of the cell, then cᵐⁱⁿ ≤ c⁺ ≤ cᵐᵃˣ in any dimension.
 # The outflow values closest to the WENO ones that satisfy these conditions are clamp(ĉ - λ, I), with one outflow correction λ per cell.
+#
+# The admissible range of a cell spans c⁰ in the cell and its active neighbors. Across an inactive neighbor it also
+# spans the value extrapolated to the boundary, which the average of a cell next to a wall approaches when the fluid
+# next to the wall is replaced, as a stratification does under up- or downwelling. Extrapolated values never leave
+# the range of c⁰ over the whole domain, so that the projection does not create new extrema.
 
 const BoundedGhostCellWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells{<:Any, <:NamedTuple}}
 
@@ -61,7 +67,8 @@ end
     ghost_cell_projection(grid, N)
 
 Allocate the state of the projection of a bounded `GhostCells` scheme of a `WENO` with `N` stencils: the neighbor mask,
-the list of band cells, the outflow corrections, and the face values reconstructed by `update_ghost_cell_projection!`.
+the list of band cells, the range of the projected tracer over the domain, the outflow corrections, and the face values
+reconstructed and projected by `update_ghost_cell_projection!`.
 The state is a workspace that tracers advected with schemes of the same order share, since every tracer
 updates it right before its own tendency is computed.
 """
@@ -76,10 +83,11 @@ function ghost_cell_projection(grid, N)
     IntType = minimal_index_type(maximum(size(grid)))
     band = on_architecture(arch, map(I -> IntType.(Tuple(I)), band_indices))
 
+    tracer_range = (minimum = Field{Nothing, Nothing, Nothing}(grid), maximum = Field{Nothing, Nothing, Nothing}(grid))
     outflow_correction = CenterField(grid)
     faces = (x = XFaceField(grid), y = YFaceField(grid), z = ZFaceField(grid))
 
-    return (; band, mask, outflow_correction, faces)
+    return (; band, mask, tracer_range, outflow_correction, faces)
 end
 
 minimal_index_type(N) = N ≤ typemax(UInt8) ? UInt8 : N ≤ typemax(UInt16) ? UInt16 : N ≤ typemax(UInt32) ? UInt32 : UInt64
@@ -109,39 +117,55 @@ end
 end
 
 #####
-##### Range of a cell and its active neighbors
+##### Admissible range of a cell
 #####
 
-@inline neighbor_or_self(m, b, c, cᵢ, i, j, k) = ifelse(active_neighbor(m, b), @inbounds(c[i, j, k]), cᵢ)
+@inline minmod(a, b) = ifelse(a * b > 0, ifelse(abs(a) < abs(b), a, b), zero(a))
 
-@inline function neighborhood_range_x(i, j, k, grid, c, cᵢ, m)
-    w = neighbor_or_self(m, 1, c, cᵢ, i - 1, j, k)
-    e = neighbor_or_self(m, 2, c, cᵢ, i + 1, j, k)
+# The value of the active neighbor in direction `e` of the cell, or, if that neighbor is inactive, the value extrapolated
+# to the boundary from the two active cells on the other side with the minmod slope, so that jumps are not extrapolated.
+# `b` is the mask bit of the neighbor, and `b ± 1` that of the neighbor on the other side.
+@inline function neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, b, e, projection)
+    n = (i, j, k) .+ e
+    i₂, j₂, k₂ = (i, j, k) .- e
+    i₃, j₃, k₃ = (i, j, k) .- 2 .* e
+    c₂ = @inbounds c[i₂, j₂, k₂]
+    c₃ = @inbounds c[i₃, j₃, k₃]
+    other_side = active_neighbor(m, b + ifelse(isodd(b), 1, -1)) & active_center(i₃, j₃, k₃, grid)
+    cᵐⁱⁿ = @inbounds projection.tracer_range.minimum[1, 1, 1]
+    cᵐᵃˣ = @inbounds projection.tracer_range.maximum[1, 1, 1]
+    cᵇ = clamp(cᵢ + minmod(cᵢ - c₂, c₂ - c₃) / 2, cᵐⁱⁿ, cᵐᵃˣ)
+    return ifelse(active_neighbor(m, b), @inbounds(c[n...]), ifelse(other_side, cᵇ, cᵢ))
+end
+
+@inline function neighborhood_range_x(i, j, k, grid, c, cᵢ, m, projection)
+    w = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 1, (-1, 0, 0), projection)
+    e = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 2, (+1, 0, 0), projection)
     return min(w, e), max(w, e)
 end
 
-@inline function neighborhood_range_y(i, j, k, grid, c, cᵢ, m)
-    s = neighbor_or_self(m, 3, c, cᵢ, i, j - 1, k)
-    n = neighbor_or_self(m, 4, c, cᵢ, i, j + 1, k)
+@inline function neighborhood_range_y(i, j, k, grid, c, cᵢ, m, projection)
+    s = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 3, (0, -1, 0), projection)
+    n = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 4, (0, +1, 0), projection)
     return min(s, n), max(s, n)
 end
 
-@inline function neighborhood_range_z(i, j, k, grid, c, cᵢ, m)
-    b = neighbor_or_self(m, 5, c, cᵢ, i, j, k - 1)
-    t = neighbor_or_self(m, 6, c, cᵢ, i, j, k + 1)
+@inline function neighborhood_range_z(i, j, k, grid, c, cᵢ, m, projection)
+    b = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 5, (0, 0, -1), projection)
+    t = neighbor_or_boundary_value(i, j, k, grid, c, cᵢ, m, 6, (0, 0, +1), projection)
     return min(b, t), max(b, t)
 end
 
-@inline neighborhood_range_x(i, j, k, ::XFG, c, cᵢ, m) = (cᵢ, cᵢ)
-@inline neighborhood_range_y(i, j, k, ::YFG, c, cᵢ, m) = (cᵢ, cᵢ)
-@inline neighborhood_range_z(i, j, k, ::ZFG, c, cᵢ, m) = (cᵢ, cᵢ)
+@inline neighborhood_range_x(i, j, k, ::XFG, c, cᵢ, m, projection) = (cᵢ, cᵢ)
+@inline neighborhood_range_y(i, j, k, ::YFG, c, cᵢ, m, projection) = (cᵢ, cᵢ)
+@inline neighborhood_range_z(i, j, k, ::ZFG, c, cᵢ, m, projection) = (cᵢ, cᵢ)
 
-@inline function neighborhood_range(i, j, k, grid, c, mask)
+@inline function neighborhood_range(i, j, k, grid, c, projection)
     cᵢ = @inbounds c[i, j, k]
-    m  = @inbounds mask[i, j, k]
-    xᵐⁱⁿ, xᵐᵃˣ = neighborhood_range_x(i, j, k, grid, c, cᵢ, m)
-    yᵐⁱⁿ, yᵐᵃˣ = neighborhood_range_y(i, j, k, grid, c, cᵢ, m)
-    zᵐⁱⁿ, zᵐᵃˣ = neighborhood_range_z(i, j, k, grid, c, cᵢ, m)
+    m  = @inbounds projection.mask[i, j, k]
+    xᵐⁱⁿ, xᵐᵃˣ = neighborhood_range_x(i, j, k, grid, c, cᵢ, m, projection)
+    yᵐⁱⁿ, yᵐᵃˣ = neighborhood_range_y(i, j, k, grid, c, cᵢ, m, projection)
+    zᵐⁱⁿ, zᵐᵃˣ = neighborhood_range_z(i, j, k, grid, c, cᵢ, m, projection)
     return min(cᵢ, xᵐⁱⁿ, yᵐⁱⁿ, zᵐⁱⁿ), max(cᵢ, xᵐᵃˣ, yᵐᵃˣ, zᵐᵃˣ)
 end
 
@@ -149,29 +173,15 @@ end
 ##### Projected tracer fluxes
 #####
 
-# `L` and `R` are the cells on the two sides of the face; `ũ` the velocity through it.
-@inline function projected_value(ĉ, ũ, L, R, grid, projection, c)
-    upwind = ũ > 0
-    up   = ifelse(upwind, L, R)
-    down = ifelse(upwind, R, L)
-    λ = ifelse(in_band(projection.mask, up...), @inbounds(projection.outflow_correction[up...]), zero(ĉ))
-    cᵐⁱⁿ, cᵐᵃˣ = neighborhood_range(down..., grid, c, projection.mask)
-    projected = clamp(clamp(ĉ, cᵐⁱⁿ, cᵐᵃˣ) - λ, cᵐⁱⁿ, cᵐᵃˣ)
-    return ifelse(in_band(projection.mask, L...) | in_band(projection.mask, R...), projected, ĉ)
-end
-
-# The face values are reconstructed once per stage by `update_ghost_cell_projection!`
+# The face values are reconstructed and projected once per stage by `update_ghost_cell_projection!`
 for (dir, ξ, area) in ((1, :x, :Axᶠᶜᶜ), (2, :y, :Ayᶜᶠᶜ), (3, :z, :Azᶜᶜᶠ))
     flux = Symbol(:advective_tracer_flux_, ξ)
     FG = (:XFG, :YFG, :ZFG)[dir]
-    L = (:((i - 1, j, k)), :((i, j - 1, k)), :((i, j, k - 1)))[dir]
 
     @eval begin
         @inline function $flux(i, j, k, grid, scheme::BoundedGhostCellWENO, ::ETD, U, c)
-            projection = scheme.buffer_scheme.projection
             @inbounds ũ = U[i, j, k]
-            @inbounds ĉ = projection.faces.$ξ[i, j, k]
-            c̃ = projected_value(ĉ, ũ, $L, (i, j, k), grid, projection, c)
+            @inbounds c̃ = scheme.buffer_scheme.projection.faces.$ξ[i, j, k]
             return $area(i, j, k, grid) * ũ * c̃
         end
 
@@ -208,27 +218,34 @@ end
 @inline last_y_face(i, k, grid) = (i, size(grid, 2) + 1, k)
 @inline last_z_face(i, j, grid) = (i, j, size(grid, 3) + 1)
 
-@kernel function _compute_ghost_cell_last_face_values!(ĉ, last_face, face_value, grid, advection, U, c)
+@kernel function _compute_ghost_cell_last_face_values!(ĉ, last_face, face_value, grid, a, b, c)
     m, n = @index(Global, NTuple)
     i, j, k = last_face(m, n, grid)
-    @inbounds ĉ[i, j, k] = face_value(i, j, k, grid, advection, U, c)
+    @inbounds ĉ[i, j, k] = face_value(i, j, k, grid, a, b, c)
 end
 
-compute_last_face_values_x!(faces, grid, args...) = launch!(architecture(grid), grid, :yz, _compute_ghost_cell_last_face_values!, faces.x, last_x_face, ghost_cell_face_value_x, grid, args...)
-compute_last_face_values_y!(faces, grid, args...) = launch!(architecture(grid), grid, :xz, _compute_ghost_cell_last_face_values!, faces.y, last_y_face, ghost_cell_face_value_y, grid, args...)
-compute_last_face_values_z!(faces, grid, args...) = launch!(architecture(grid), grid, :xy, _compute_ghost_cell_last_face_values!, faces.z, last_z_face, ghost_cell_face_value_z, grid, args...)
+compute_last_face_values_x!(faces, face_value, grid, args...) = launch!(architecture(grid), grid, :yz, _compute_ghost_cell_last_face_values!, faces.x, last_x_face, face_value.x, grid, args...)
+compute_last_face_values_y!(faces, face_value, grid, args...) = launch!(architecture(grid), grid, :xz, _compute_ghost_cell_last_face_values!, faces.y, last_y_face, face_value.y, grid, args...)
+compute_last_face_values_z!(faces, face_value, grid, args...) = launch!(architecture(grid), grid, :xy, _compute_ghost_cell_last_face_values!, faces.z, last_z_face, face_value.z, grid, args...)
 
-compute_last_face_values_x!(faces, ::XFG, args...) = nothing
-compute_last_face_values_y!(faces, ::YFG, args...) = nothing
-compute_last_face_values_z!(faces, ::ZFG, args...) = nothing
+compute_last_face_values_x!(faces, face_value, ::XFG, args...) = nothing
+compute_last_face_values_y!(faces, face_value, ::YFG, args...) = nothing
+compute_last_face_values_z!(faces, face_value, ::ZFG, args...) = nothing
 
-# The faces 1 to N of the interior cells, and then the last face N + 1 of every non-flat direction.
+# The last face N + 1 of every non-flat direction, after the faces 1 to N of the interior cells.
 # Launching over the N + 1 faces at once adds an incomplete workgroup in each direction.
+function compute_last_face_values!(faces, face_value, grid, args...)
+    compute_last_face_values_x!(faces, face_value, grid, args...)
+    compute_last_face_values_y!(faces, face_value, grid, args...)
+    compute_last_face_values_z!(faces, face_value, grid, args...)
+    return nothing
+end
+
+const ghost_cell_face_value = (x = ghost_cell_face_value_x, y = ghost_cell_face_value_y, z = ghost_cell_face_value_z)
+
 function compute_ghost_cell_face_values!(faces, grid, advection, U, c)
     launch!(architecture(grid), grid, :xyz, _compute_ghost_cell_face_values!, faces, grid, advection, U, c)
-    compute_last_face_values_x!(faces, grid, advection, U, c)
-    compute_last_face_values_y!(faces, grid, advection, U, c)
-    compute_last_face_values_z!(faces, grid, advection, U, c)
+    compute_last_face_values!(faces, ghost_cell_face_value, grid, advection, U, c)
     return nothing
 end
 
@@ -246,7 +263,7 @@ for (dir, ξ, area, u) in ((1, :x, :Axᶠᶜᶜ, :u), (2, :y, :Ayᶜᶠᶜ, :v),
     neighbor[dir] = :($(neighbor[dir]) + s)
 
     @eval begin
-        @inline function $face_state(i, j, k, grid, projection, U, c, s)
+        @inline function $face_state(i, j, k, grid, projection, U, c⁰, s)
             f = ($(face...),)
             @inbounds ũ = U.$u[f...]
             # Faces to inactive neighbors carry no flux, whatever the velocity there
@@ -255,11 +272,11 @@ for (dir, ξ, area, u) in ((1, :x, :Axᶠᶜᶜ, :u), (2, :y, :Ayᶜᶠᶜ, :v),
             T = ifelse(open_face, Tᶠ, zero(Tᶠ))
             # On a closed face the value and the range are read from inactive cells, and must not reach the sums below
             ĉ = ifelse(open_face, @inbounds(projection.faces.$ξ[f...]), zero(Tᶠ))
-            I = ifelse(open_face, neighborhood_range($(neighbor...), grid, c, projection.mask), (zero(Tᶠ), zero(Tᶠ)))
+            I = ifelse(open_face, neighborhood_range($(neighbor...), grid, c⁰, projection), (zero(Tᶠ), zero(Tᶠ)))
             return T, ĉ, I
         end
 
-        @inline $face_state(i, j, k, grid::$FG, projection, U, c, s) = (zero(grid), zero(grid), (zero(grid), zero(grid)))
+        @inline $face_state(i, j, k, grid::$FG, projection, U, c⁰, s) = (zero(grid), zero(grid), (zero(grid), zero(grid)))
     end
 end
 
@@ -271,13 +288,13 @@ end
     return ifelse(Wᵃ > 0, (Sᵃ - targetΦ) / max(Wᵃ, eps(typeof(λ))), λ)
 end
 
-@inline function cell_outflow_correction(i, j, k, grid, projection, U, c, Δt)
+@inline function cell_outflow_correction(i, j, k, grid, projection, U, c⁰, Δt)
     FT = eltype(grid)
-    cᵢ = @inbounds c[i, j, k]
+    cᵢ = @inbounds c⁰[i, j, k]
 
-    faces = (face_state_x(i, j, k, grid, projection, U, c, -1), face_state_x(i, j, k, grid, projection, U, c, +1),
-             face_state_y(i, j, k, grid, projection, U, c, -1), face_state_y(i, j, k, grid, projection, U, c, +1),
-             face_state_z(i, j, k, grid, projection, U, c, -1), face_state_z(i, j, k, grid, projection, U, c, +1))
+    faces = (face_state_x(i, j, k, grid, projection, U, c⁰, -1), face_state_x(i, j, k, grid, projection, U, c⁰, +1),
+             face_state_y(i, j, k, grid, projection, U, c⁰, -1), face_state_y(i, j, k, grid, projection, U, c⁰, +1),
+             face_state_z(i, j, k, grid, projection, U, c⁰, -1), face_state_z(i, j, k, grid, projection, U, c⁰, +1))
 
     # Outflow weights, and outflow values clipped to their admissible intervals
     w = map(face -> max(face[1], zero(FT)), faces)
@@ -286,7 +303,7 @@ end
     ν = Δt * Φ / Vᶜᶜᶜ(i, j, k, grid)
     α = ifelse(ν > 0, max((1 - ν) / max(ν, eps(FT)), zero(FT)), zero(FT))
 
-    cᵐⁱⁿ, cᵐᵃˣ = neighborhood_range(i, j, k, grid, c, projection.mask)
+    cᵐⁱⁿ, cᵐᵃˣ = neighborhood_range(i, j, k, grid, c⁰, projection)
     cˡᵒ = cᵢ - α * (cᵐᵃˣ - cᵢ)
     cʰⁱ = cᵢ + α * (cᵢ - cᵐⁱⁿ)
 
@@ -307,30 +324,79 @@ end
     return ifelse((Φ > 0) & (Δt > 0) & (g₀ != target), λ, zero(FT))
 end
 
-@kernel function _compute_outflow_corrections!(projection, grid, U, c, Δt)
+@kernel function _compute_outflow_corrections!(projection, grid, U, c⁰, Δt)
     i, j, k = @index(Global, NTuple)
-    @inbounds projection.outflow_correction[i, j, k] = cell_outflow_correction(i, j, k, grid, projection, U, c, Δt)
+    @inbounds projection.outflow_correction[i, j, k] = cell_outflow_correction(i, j, k, grid, projection, U, c⁰, Δt)
 end
 
-"""
-    update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt)
+#####
+##### Projected face values
+#####
 
-Reconstruct the face values of `tracer` and compute the outflow corrections of the band cells for the advecting `velocities`
-and the time step `Δt` of the tracer flux divergence that follows.
-"""
-update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt) = nothing
+# `L` and `R` are the cells on the two sides of the face; `ũ` the velocity through it.
+@inline function projected_value(ĉ, ũ, L, R, grid, projection, c⁰)
+    upwind = ũ > 0
+    up   = ifelse(upwind, L, R)
+    down = ifelse(upwind, R, L)
+    λ = ifelse(in_band(projection.mask, up...), @inbounds(projection.outflow_correction[up...]), zero(ĉ))
+    cᵐⁱⁿ, cᵐᵃˣ = neighborhood_range(down..., grid, c⁰, projection)
+    return clamp(clamp(ĉ, cᵐⁱⁿ, cᵐᵃˣ) - λ, cᵐⁱⁿ, cᵐᵃˣ)
+end
 
-function update_ghost_cell_projection!(scheme::BoundedGhostCellWENO, model, velocities, tracer, Δt)
+for (dir, ξ, u) in ((1, :x, :u), (2, :y, :v), (3, :z, :w))
+    projected_face_value = Symbol(:projected_face_value_, ξ)
+    FG = (:XFG, :YFG, :ZFG)[dir]
+    L = (:((i - 1, j, k)), :((i, j - 1, k)), :((i, j, k - 1)))[dir]
+
+    @eval begin
+        @inline function $projected_face_value(i, j, k, grid, projection, U, c⁰)
+            @inbounds ĉ = projection.faces.$ξ[i, j, k]
+            near_band = in_band(projection.mask, $L...) | in_band(projection.mask, i, j, k)
+            return near_band ? projected_value(ĉ, @inbounds(U.$u[i, j, k]), $L, (i, j, k), grid, projection, c⁰) : ĉ
+        end
+
+        @inline $projected_face_value(i, j, k, grid::$FG, projection, U, c⁰) = zero(grid)
+    end
+end
+
+@kernel function _project_ghost_cell_face_values!(faces, grid, projection, U, c⁰)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        faces.x[i, j, k] = projected_face_value_x(i, j, k, grid, projection, U, c⁰)
+        faces.y[i, j, k] = projected_face_value_y(i, j, k, grid, projection, U, c⁰)
+        faces.z[i, j, k] = projected_face_value_z(i, j, k, grid, projection, U, c⁰)
+    end
+end
+
+const projected_face_value = (x = projected_face_value_x, y = projected_face_value_y, z = projected_face_value_z)
+
+"""
+    update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt, c⁰ = tracer)
+
+Reconstruct the face values of `tracer` for the advecting `velocities`, and project those of the faces of the band
+cells for a stage that advances the cell values `c⁰` by `Δt` times the tracer flux divergence that follows.
+`c⁰` must hold valid values in the halo cells adjacent to the domain.
+"""
+update_ghost_cell_projection!(scheme, model, velocities, tracer, Δt, c⁰ = tracer) = nothing
+
+function update_ghost_cell_projection!(scheme::BoundedGhostCellWENO, model, velocities, tracer, Δt, c⁰ = tracer)
     grid = model.grid
     arch = architecture(grid)
     projection = scheme.buffer_scheme.projection
+    faces = projection.faces
 
-    compute_ghost_cell_face_values!(projection.faces, grid, scheme, velocities, tracer)
+    compute_ghost_cell_face_values!(faces, grid, scheme, velocities, tracer)
 
     isempty(projection.band) && return nothing
+    minimum!(projection.tracer_range.minimum, c⁰)
+    maximum!(projection.tracer_range.maximum, c⁰)
+
     Δt = convert(eltype(grid), Δt)
-    launch!(arch, grid, projection.band, _compute_outflow_corrections!, projection, grid, velocities, tracer, Δt)
+    launch!(arch, grid, projection.band, _compute_outflow_corrections!, projection, grid, velocities, c⁰, Δt)
     fill_halo_regions!(projection.outflow_correction)
+
+    launch!(arch, grid, :xyz, _project_ghost_cell_face_values!, faces, grid, projection, velocities, c⁰)
+    compute_last_face_values!(faces, projected_face_value, grid, projection, velocities, c⁰)
 
     return nothing
 end

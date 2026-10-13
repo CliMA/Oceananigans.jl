@@ -11,8 +11,20 @@ when fewer are.
 
 - `bounded`: for tracers advected in flux form, project the reconstructed values in the cells whose stencils read
   ghost values onto a cell-wise admissible set, so that the advective update of these cells stays within the range of
-  the cell and its neighbors. The projection uses the stage time step; it is exact for forward-Euler and
-  strong-stability-preserving Runge-Kutta stages and approximate for other time steppers.
+  the cell and its neighbors. Next to a boundary the range extends to the value extrapolated to the boundary, within
+  the range of the tracer over the domain, so that a stratification evolves next to the boundary without being
+  clipped. The projection bounds the update of the state that each stage advances by the stage time step; it is exact
+  for forward-Euler, strong-stability-preserving and split Runge-Kutta stages and approximate for other time steppers.
+  Where no projection is attached, as for momentum, the ghost values blend the extrapolation with the mirror image of
+  the active cells across the boundary, as `(1 - θ) * mirror + θ * extrapolation` with
+
+  ```math
+  θ = δ⁴ / (δ⁴ + 100 κ⁴), \\quad δ = c₁ - c₀, \\quad κ = c₂ - 2c₁ + c₀,
+  ```
+
+  so that smooth data are extrapolated while jumps are mirrored, and every reconstruction that reads ghost values is
+  bounded between the upwind and downwind cells and within twice the upwind gradient of the upwind cell, as in
+  [SureshHuynh97](@citet).
 """
 struct GhostCells{S, P}
     scheme :: S
@@ -39,6 +51,24 @@ Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) =
     κ = ifelse(f₁ & f₂, c₂ - 2c₁ + c₀, zero(c₀))
     return c₀ - d * δ + (d * (d + 1) ÷ 2) * κ
 end
+
+# Blend of the mirror image of the active cells across the boundary with their Lagrange extrapolation, which turns to
+# the mirror where the curvature is large compared with the gradient, so that jumps are not extrapolated
+@inline function blended_ghost_value(mirror, c₀, c₁, c₂, f₁, f₂, d)
+    δ = ifelse(f₁, c₁ - c₀, zero(c₀))
+    κ = ifelse(f₁ & f₂, c₂ - 2c₁ + c₀, zero(c₀))
+    δ⁴ = (δ * δ) * (δ * δ)
+    Σ = δ⁴ + 100 * (κ * κ) * (κ * κ)
+    θ = δ⁴ / ifelse(Σ > 0, Σ, one(Σ))
+    return mirror + θ * (c₀ - d * δ + (d * (d + 1) ÷ 2) * κ - mirror)
+end
+
+@inline lagrange_ghost_values(c, f, ::Val{N}) where N = @inbounds ntuple(d -> ghost_value(c[1], c[2], c[3], f[1], f[2], d), Val(N - 1))
+@inline blended_ghost_values(c, f, ::Val{N}) where N = @inbounds ntuple(d -> blended_ghost_value(c[d], c[1], c[2], c[3], f[1], f[2], d), Val(N - 1))
+
+# The projection bounds the tracers that carry one; without it a bounded scheme mirrors the active cells across jumps
+@inline ghost_values(scheme::GhostCells{<:Any, Nothing}, c, f, N) = ifelse(scheme.bounded, blended_ghost_values(c, f, N), lagrange_ghost_values(c, f, N))
+@inline ghost_values(scheme::GhostCells, c, f, N) = lagrange_ghost_values(c, f, N)
 
 @inline upwind_stencil_length(N) = max(2N - 1, N + 2)
 
@@ -123,8 +153,8 @@ end
 
 for N in advection_buffers[2:end]
     @eval begin
-        @inline  lower_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (lower_extrapolation_node(N, k) for k in 0:2)...))
-        @inline  upper_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (upper_extrapolation_node(N, k) for k in 0:2)...))
+        @inline  lower_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (lower_extrapolation_node(N, k) for k in 0:max(2, N - 2))...))
+        @inline  upper_extrapolation_stencil(S, Aᵃ, Aᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (upper_extrapolation_node(N, k) for k in 0:max(2, N - 2))...))
         @inline lower_extrapolation_activity(Aᵃ, Aᵇ, ::Val{$N})    = @inbounds $(Expr(:tuple, (lower_extrapolation_node_activity(N, k) for k in 1:2)...))
         @inline upper_extrapolation_activity(Aᵃ, Aᵇ, ::Val{$N})    = @inbounds $(Expr(:tuple, (upper_extrapolation_node_activity(N, k) for k in 1:2)...))
         @inline completed_stencil(S, Aᵃ, Aᵇ, gᵃ, gᵇ, ::Val{$N}) = @inbounds $(Expr(:tuple, (completed_cell(N, q) for q in 1:2N-1)...))
@@ -137,17 +167,31 @@ end
     fᵃ = lower_extrapolation_activity(Aᵃ, Aᵇ, Val(N))
     fᵇ = upper_extrapolation_activity(Aᵃ, Aᵇ, Val(N))
 
-    gᵃ = @inbounds ntuple(d -> ghost_value(cᵃ[1], cᵃ[2], cᵃ[3], fᵃ[1], fᵃ[2], d), Val(N - 1))
-    gᵇ = @inbounds ntuple(d -> ghost_value(cᵇ[1], cᵇ[2], cᵇ[3], fᵇ[1], fᵇ[2], d), Val(N - 1))
+    gᵃ = ghost_values(scheme, cᵃ, fᵃ, Val(N))
+    gᵇ = ghost_values(scheme, cᵇ, fᵇ, Val(N))
     S̃  = completed_stencil(S, Aᵃ, Aᵇ, gᵃ, gᵇ, Val(N))
 
     ghosted = @inbounds !(Aᵃ[N - 1] & Aᵇ[N - 1])
 
     δ = weno_differences(scheme.scheme, S̃)
     ω = biased_weno_weights(smoothness(ghosted, δ, δˢ), nothing, scheme.scheme)
+    ψ̂ = weno_reconstruction(scheme.scheme, weno_anchor(scheme.scheme, S̃), δ, ω)
+    ψ̃ = @inbounds bounded_ghost_cell_value(scheme, ψ̂, S[N], S̃[N + 1], S̃[N - 1])
 
-    return weno_reconstruction(scheme.scheme, weno_anchor(scheme.scheme, S̃), δ, ω)
+    return ifelse(ghosted, ψ̃, ψ̂)
 end
+
+# Between the upwind and the downwind cells, and within twice the upwind gradient of the upwind cell
+@inline function monotone_bound(ψ̂, U, D, UU)
+    Uᴸ = U + 2 * (U - UU)
+    ψᵐᵃˣ = ifelse(D > Uᴸ, D, Uᴸ)
+    ψᵐⁱⁿ = ifelse(D > Uᴸ, Uᴸ, D)
+    return clamp(ψ̂, ifelse(U < ψᵐᵃˣ, U, ψᵐᵃˣ), ifelse(U > ψᵐⁱⁿ, U, ψᵐⁱⁿ))
+end
+
+# The projection bounds the tracers that carry one, so the reconstruction is bounded face by face only without it
+@inline bounded_ghost_cell_value(scheme::GhostCells{<:Any, Nothing}, ψ̂, U, D, UU) = ifelse(scheme.bounded, monotone_bound(ψ̂, U, D, UU), ψ̂)
+@inline bounded_ghost_cell_value(scheme::GhostCells, ψ̂, U, D, UU) = ψ̂
 
 # Stencils with ghost points do not obey the `VelocityStencil` and `FunctionStencil`,
 # they always treat the weno reconstruction as if there was a `DefaultStencil`
