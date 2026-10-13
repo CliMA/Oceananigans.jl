@@ -759,6 +759,10 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
+A `ValueBoundaryCondition` also fixes the tracer diffusively on the closed faces of that side. To open only
+the river mouth, a discrete-form condition can return the interior value elsewhere, for example
+`ifelse(4000 < ynode(j, grid, Center()) < 6000, 0, fields.S[i, j, k])`, which is a no-flux condition there.
+
 The transport through open immersed faces raises the free surface of a `HydrostaticFreeSurfaceModel`
 like any other inflow. In a `NonhydrostaticModel` without a free surface it must leave through open
 domain boundaries: the net transport correction of boundaries with a radiation scheme accounts for it.
