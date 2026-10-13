@@ -195,8 +195,7 @@ for arch in archs
         free_surface = ImplicitFreeSurface(gravitational_acceleration = 1, solver_method = :PreconditionedConjugateGradient)
         ηs = Array(interior(solid_body_rotation_test(grid; free_surface).η))
 
-        for P in partitioning
-            @info "  Testing 2 $(P)s with a PCG implicit free surface on the $arch"
+        @testset "2 $(P)s with a PCG implicit free surface [$(summary(arch))]" for P in partitioning
             η = solid_body_rotation_test(grid; P, regions=2, free_surface).η
             @test isapprox(interior(reconstruct_global_field(η)), ηs, rtol=1e-14)
         end
