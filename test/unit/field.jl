@@ -879,7 +879,9 @@ end
                 set!(r, (x, y) -> (x - 1/3)^2 + (y - 2)^2)
                 reduced_values = Array(interior(r))
                 everywhere(i, j, k, grid, r) = true
+                @test findmin(r; condition = everywhere) == findmin(reduced_values)
                 @test argmin(r; condition = everywhere) == argmin(reduced_values)
+                @test argmax(-r; condition = everywhere) == argmin(reduced_values)
 
                 # Adapted operations drop their indices but keep their size
                 conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
