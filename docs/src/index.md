@@ -151,6 +151,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Liang, H., Zakem, E. J., Lauderdale, J. M., and Ferrari, R. (2026). [Beyond the Martin Curve: A mechanistic yet simple model for dynamic ocean particulate organic carbon fluxes](https://doi.org/10.1029/2026GB009184), _Global Biogeochemical Cycles_, **40(8)**, e2026GB009184. DOI: [10.1029/2026GB009184](https://doi.org/10.1029/2026GB009184)
 
+1. Garraway, C. A. J. (2026). [Evaluating the potential of macroalgal cultivation & intentional biomass sinking as an mCDR strategy in the Northeastern United States: A case study for Point Judith, Rhode Island](https://doi.org/10.17760/d20869480), _Master's thesis_, Northeastern University. DOI: [10.17760/d20869480](https://doi.org/10.17760/d20869480)
+
 1. Wu, W. (2026). [Ageostrophic velocities of curved ocean fronts](https://doi.org/10.1029/2025JC023961), _Journal of Geophysical Research: Oceans_, **131(8)**, e2025JC023961. DOI: [10.1029/2025JC023961](https://doi.org/10.1029/2025JC023961)
 
 1. Alexander, A., Piermattei, L., Assmy, P., Popp, A. L., Zhao, K., Valiente, N., Tallentire, G. D., Filhol, S., Schuler, T. V., Nanni, U., Kohler, J., Schmidt, L. S., Decaux, L., Cowie, G., Bailey, A., Noormets, R., Lefeuvre, P.-M., Earlie, C. S., Kruusmaa, M., and Hodson, A. (2026). [The impact of subglacial drainage system evolution and glacier lake outburst on Arctic fjord macronutrient dynamics](https://doi.org/10.1029/2023JG007969), _Journal of Geophysical Research: Biogeosciences_, **131(7)**, e2023JG007969. DOI: [10.1029/2023JG007969](https://doi.org/10.1029/2023JG007969)
