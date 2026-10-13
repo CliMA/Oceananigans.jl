@@ -69,11 +69,11 @@ filename = "immersed_inlet_jet"
 simulation.output_writers[:surface] = JLD2Writer(model, (; u, v, c, ζ, b = model.tracers.b);
                                                  filename = filename * "_surface",
                                                  indices = (:, :, Nz), schedule = TimeInterval(2minutes),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 simulation.output_writers[:section] = JLD2Writer(model, (; u, w, c, b = model.tracers.b);
                                                  filename = filename * "_section",
                                                  indices = (:, Ny ÷ 2, :), schedule = TimeInterval(2minutes),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 run!(simulation)
 
 # Plot

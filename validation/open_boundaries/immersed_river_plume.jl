@@ -77,11 +77,11 @@ filename = "immersed_river_plume"
 simulation.output_writers[:surface] = JLD2Writer(model, (; u, v, S, η);
                                                  filename = filename * "_surface",
                                                  indices = (:, :, Nz), schedule = TimeInterval(1hour),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 simulation.output_writers[:section] = JLD2Writer(model, (; v, w, S);
                                                  filename = filename * "_section",
                                                  indices = (Nx ÷ 2, :, :), schedule = TimeInterval(1hour),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 run!(simulation)
 
 # Plot

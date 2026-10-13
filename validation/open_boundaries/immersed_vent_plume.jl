@@ -69,7 +69,7 @@ filename = "immersed_vent_plume"
 simulation.output_writers[:section] = JLD2Writer(model, (; w, b, c);
                                                  filename = filename * "_section",
                                                  indices = (:, N ÷ 2, :), schedule = TimeInterval(30),
-                                                 overwrite_existing = true)
+                                                 overwrite_files = true)
 run!(simulation)
 
 # Plot

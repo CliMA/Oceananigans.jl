@@ -67,7 +67,7 @@ add_callback!(simulation, progress, TimeInterval(6hours))
 
 filename = "immersed_tidal_estuary"
 simulation.output_writers[:fields] = JLD2Writer(model, (; u, w, S, η);
-                                                filename, schedule = TimeInterval(30minutes), overwrite_existing = true)
+                                                filename, schedule = TimeInterval(30minutes), overwrite_files = true)
 run!(simulation)
 
 # Plot
