@@ -128,6 +128,12 @@ or [`SphericalCoriolis`](@ref) (for nonhydrostatic models). Both evaluate the Co
 `HydrostaticSphericalCoriolis` uses the traditional approximation (only the locally vertical component
 of rotation). `SphericalCoriolis` additionally includes the horizontal component
 (the non-traditional terms), which matter in strongly stratified or near-equatorial regimes.
+`SphericalCoriolis` discretizes ``f \hat{\boldsymbol{z}} \times \boldsymbol{v}`` with the horizontal
+stencil of its `scheme`, as `HydrostaticSphericalCoriolis` does, and adds the non-traditional terms
+``(\tilde{f}^y w, -\tilde{f}^x w, \tilde{f}^x v - \tilde{f}^y u)``, where ``(\tilde{f}^x, \tilde{f}^y)``
+are the components of ``\tilde{f} = 2\Omega\cos\varphi`` along the grid's axes, rotated or not. They do
+no net work on the discrete kinetic energy. The `NonhydrostaticFormulation` supports only the five
+schemes below.
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis()
@@ -170,7 +176,7 @@ Five schemes are available:
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
 
-The default scheme is `EnstrophyConserving()` for `HydrostaticSphericalCoriolis`,
+The default scheme is `EnstrophyConserving()` for `SphericalCoriolis`, `HydrostaticSphericalCoriolis`,
 `FPlane`, and `BetaPlane`.
 
 ### Selecting a scheme
