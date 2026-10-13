@@ -4,6 +4,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: xnode, ynode, znode
 using CairoMakie
 using Printf
 using Statistics: mean
@@ -21,7 +22,7 @@ S_ocean = 35              # ocean salinity [g kg⁻¹]
 stop_time = 10days
 
 grid = RectilinearGrid(arch; size = (Nx, Nz), halo = (5, 5), x = (0, Lx), z = (-Lz, 0), topology = (Bounded, Flat, Bounded))
-grid = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, z) -> x < head))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> ifelse(x < head, 0, -Lz)))
 
 @inline river_velocity(i, j, k, grid, clock, fields) =
     ifelse(znode(k, grid, Center()) > -river_depth, U_river + U_tide * sin(ω * clock.time), zero(U_river))

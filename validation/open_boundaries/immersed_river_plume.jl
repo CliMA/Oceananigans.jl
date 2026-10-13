@@ -4,6 +4,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition
 using CairoMakie
 using Printf
@@ -23,7 +24,7 @@ stop_time = 5days
 
 grid = RectilinearGrid(arch; size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                        topology = (Bounded, Bounded, Bounded))
-grid = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> y < coast))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> ifelse(y < coast, 0, -Lz)))
 
 @inline in_mouth(x, z) = abs(x - Lx / 2) < mouth / 2 && z > -river_depth
 @inline river_velocity(i, j, k, grid, clock, fields) = ifelse(in_mouth(xnode(i, grid, Center()), znode(k, grid, Center())), V_river, zero(V_river))

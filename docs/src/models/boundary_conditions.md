@@ -736,12 +736,14 @@ bay through the west-facing faces of a coastline, with velocity 0.5 m s⁻¹ and
 prescribed with
 
 ```jldoctest immersed_bc
+using Oceananigans.Grids: ynode
+
 river(i, j, k, grid, clock, fields) = ifelse(4000 < ynode(j, grid, Center()) < 6000, 0.5, 0)
 
 u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(river, discrete_form=true)))
 S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(0)))
 
-coastline = GridFittedBoundary((x, y, z) -> x < 2000)
+coastline = GridFittedBottom((x, y) -> ifelse(x < 2000, 0, -20))
 grid = ImmersedBoundaryGrid(RectilinearGrid(size=(20, 10, 4), x=(0, 20000), y=(0, 10000), z=(-20, 0)), coastline)
 model = HydrostaticFreeSurfaceModel(grid; tracers=:S, boundary_conditions=(u=u_bcs, S=S_bcs))
 

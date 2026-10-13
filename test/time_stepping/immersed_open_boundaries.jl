@@ -111,7 +111,7 @@ end
 function test_immersed_river_inflow(arch, FT, free_surface)
     grid = RectilinearGrid(arch, FT; size = (8, 8, 2), x = (0, 8), y = (0, 8), z = (-1, 0),
                            topology = (Bounded, Bounded, Bounded))
-    ibg = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> x < 2))
+    ibg = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> ifelse(x < 2, 0, -1)))
     U = FT(0.1)
 
     river(i, j, k, grid, clock, fields) = ifelse((3 ≤ j) & (j ≤ 6), U, zero(U))
