@@ -67,6 +67,7 @@ include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
+include("yin_yang_reductions.jl")
 include("multi_region_models.jl")
 include("multi_region_output_writers.jl")
 
