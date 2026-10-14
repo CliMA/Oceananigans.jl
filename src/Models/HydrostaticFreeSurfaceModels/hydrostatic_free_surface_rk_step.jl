@@ -148,24 +148,24 @@ function rk_substep_velocities!(velocities, model, Δt)
     rk_substep_velocity!(velocities, model, Δt, Val(:u))
     rk_substep_velocity!(velocities, model, Δt, Val(:v))
 
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    ηⁿ = get(model.timestepper.Ψ⁻, :η, nothing)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
 
 @inline function rk_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[name]
     Ψ⁻ = model.timestepper.Ψ⁻[name]
     velocity_field = velocities[name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
+            _rk_substep_field!, velocity_field, Δt, Gⁿ, Ψ⁻; exclude_periphery=true)
 
     return nothing
 end
@@ -205,15 +205,9 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
-    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
-
-@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
-    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 
@@ -222,16 +216,19 @@ end
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
 
     grid = model.grid
-    FT = eltype(grid)
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
     c  = model.tracers[tracer_name]
 
     launch!(architecture(grid), grid, :xyz,
-            _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+            _rk_substep_tracer_field!, c, grid, Δt, Gⁿ, Ψ⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(c,
                    model.timestepper.implicit_solver,
                    closure,
@@ -241,7 +238,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
     return nothing
 end
 

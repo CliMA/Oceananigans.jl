@@ -1,5 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
+using Oceananigans.Fields: dot!
+
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
     a = 1
@@ -152,4 +154,28 @@ end
             end
         end
     end
+end
+
+@testset "Multi region dot products [$(summary(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(8, 8, 4), extent=(1, 1, 1))
+    mrg = MultiRegionGrid(grid; partition=XPartition(2))
+
+    a = CenterField(mrg)
+    b = CenterField(mrg)
+    set!(a, 2)
+    set!(b, 3)
+
+    Ncells = prod(size(grid))
+    @test dot(a, b) == 2 * 3 * Ncells
+    @test norm(a) == 2 * sqrt(Ncells)
+
+    # `dot!` sums the regional dot products into the one-element array `r`
+    r = zeros(mrg, 1)
+    @test dot!(r, a, b) === r
+    @test Array(r)[1] == 2 * 3 * Ncells
+
+    # The condition is evaluated on each regional grid
+    western_half(i, j, k, grid, c) = i <= size(grid, 1) ÷ 2
+    @test dot(a, b; condition=western_half) == 2 * 3 * Ncells ÷ 2
+    @test Array(dot!(r, a, b; condition=western_half))[1] == 2 * 3 * Ncells ÷ 2
 end

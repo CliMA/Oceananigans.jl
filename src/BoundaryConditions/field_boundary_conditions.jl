@@ -372,3 +372,15 @@ default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:no
 default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc, default) = default
  default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc) = nothing
  default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc) = nothing
+
+Oceananigans.prognostic_state(bcs::FieldBoundaryConditions) =
+    Oceananigans.prognostic_state((; bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top))
+
+function Oceananigans.restore_prognostic_state!(bcs::FieldBoundaryConditions, from)
+    for side in keys(from)
+        Oceananigans.restore_prognostic_state!(getproperty(bcs, side), from[side])
+    end
+    return bcs
+end
+
+Oceananigans.restore_prognostic_state!(::FieldBoundaryConditions, ::Nothing) = nothing
