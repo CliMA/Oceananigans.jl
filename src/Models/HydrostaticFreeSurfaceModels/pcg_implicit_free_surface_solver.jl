@@ -98,9 +98,8 @@ end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
-    solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = architecture(solver)
-    grid = solver.grid
+    grid = rhs.grid
+    arch = architecture(grid)
     launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end
@@ -268,6 +267,7 @@ function Solvers.iterate!(η, solver::FusedFreeSurfaceSolver, rhs, ∫ᶻ_Axᶠ�
     arch = architecture(grid)
     residual_norm = solver.residual_norm
     partial_sums = residual_norm.partial_sums
+    column_sums = reshape(partial_sums, :, 1)
     worksize = (size(grid, 1), size(partial_sums, 2))
 
     # Preconditioned:   z = P * r, ρ = z ⋅ r
@@ -283,13 +283,13 @@ function Solvers.iterate!(η, solver::FusedFreeSurfaceSolver, rhs, ∫ᶻ_Axᶠ�
 
     fill_halo_regions!(p)
     launch!(arch, grid, worksize, _implicit_free_surface_linear_operation_with_pᵀq!, partial_sums, q, grid, p, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-    reduce_partial_sums!(solver.pᵀq, partial_sums, arch)
+    reduce_partial_sums!(solver.pᵀq, column_sums, arch)
 
     solver.α .= ρ ./ solver.pᵀq
     solver.ρⁱ⁻¹ .= ρ
 
     launch!(arch, grid, worksize, _update_solution_and_residual_with_rᵀr!, partial_sums, η, r, grid, p, q, solver.α)
-    reduce_partial_sums!(residual_norm.rᵀr, partial_sums, arch)
+    reduce_partial_sums!(residual_norm.rᵀr, column_sums, arch)
 
     solver.iteration += 1
 

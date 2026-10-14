@@ -4,6 +4,8 @@ using Oceananigans.Fields: Field, condition_operand, conditional_length
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Grids: Center
+using Oceananigans.Architectures: device
+using KernelAbstractions: @localmem, @synchronize, StaticSize
 
 #####
 ##### Volume-inverse-weighted residual norm
@@ -90,21 +92,20 @@ subtracts the mean over the active cells of `grid` from the solution and from th
 after every iteration.
 
 The fused iteration of the `ConjugateGradientPoissonSolver` accumulates the sums it needs
-in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one segment of a column
-into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`) or `residual_partial_sums`
-(`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), which are then reduced into `laplacian_sums` and `residual_sums`.
+in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one segment of a column,
+every workgroup adds its threads' sums into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`)
+or `residual_partial_sums` (`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), and one workgroup reduces those
+into `laplacian_sums` and `residual_sums`.
 """
 function ZeroMeanGaugeCondition(grid)
     solution_sum = Field{Nothing, Nothing, Nothing}(grid)
     residual_sum = Field{Nothing, Nothing, Nothing}(grid)
 
-    # Enough column segments for the fused kernels to launch about 2^20 threads
-    Nx, Ny, Nz = size(grid)
-    segments = clamp(cld(2^20, Nx * Ny), 1, cld(Nz, 16))
-    laplacian_partial_sums = zeros(grid, Nx, Ny, segments, 3)
-    residual_partial_sums = zeros(grid, Nx, Ny, segments, 4)
-    laplacian_sums = zeros(grid, 3)
-    residual_sums = zeros(grid, 4)
+    workgroups = column_workgroups(grid)
+    laplacian_partial_sums = zeros(grid, workgroups, 3)
+    residual_partial_sums = zeros(grid, workgroups, 4)
+    laplacian_sums = zeros(grid, 1, 3)
+    residual_sums = zeros(grid, 1, 4)
 
     # The normalization of `mean(c)` for a field `c` at cell centers
     c = CenterField(grid)
@@ -149,26 +150,52 @@ end
 const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
                                                    <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
 
-# The fused kernels launch over the column segments in one dimension, so consecutive threads read consecutive i
-@inline segments_worksize(partial_sums) = (size(partial_sums, 1) * size(partial_sums, 2) * size(partial_sums, 3),)
+const reduction_workgroup_size = 256
 
-@inline function segment_indices(n, partial_sums)
-    Nx, Ny = size(partial_sums, 1), size(partial_sums, 2)
-    return (n - 1) % Nx + 1, (n - 1) ÷ Nx % Ny + 1, (n - 1) ÷ (Nx * Ny) + 1
+# Enough column segments for the fused kernels to launch about 2^20 threads
+@inline column_segments(grid) = clamp(cld(2^20, size(grid, 1) * size(grid, 2)), 1, cld(size(grid, 3), 16))
+
+@inline column_workgroups(grid) = cld(size(grid, 1) * size(grid, 2) * column_segments(grid), reduction_workgroup_size)
+
+# The fused kernels launch over the column segments in one dimension, so consecutive threads read consecutive i.
+# The launch is padded to whole workgroups, and the padding threads get an empty k-range.
+function launch_columns!(arch, grid, kernel!, args...)
+    workgroup = StaticSize((reduction_workgroup_size,))
+    worksize = StaticSize((column_workgroups(grid) * reduction_workgroup_size,))
+    kernel!(device(arch), workgroup, worksize)(args...)
+    return nothing
 end
 
-@inline function segment_range(s, grid, partial_sums)
-    segment_length = cld(size(grid, 3), size(partial_sums, 3))
-    return (s - 1) * segment_length + 1 : min(s * segment_length, size(grid, 3))
+@inline function column_indices(n, grid)
+    Nx, Ny, Nz = size(grid)
+    S = column_segments(grid)
+    L = cld(Nz, S)
+    s = (n - 1) ÷ (Nx * Ny) + 1
+    return (n - 1) % Nx + 1, (n - 1) ÷ Nx % Ny + 1, (s - 1) * L + 1:ifelse(n <= Nx * Ny * S, min(s * L, Nz), 0)
+end
+
+# Thread m adds the m-th sum of the workgroup's threads into partial_sums[g, m]
+@inline function add_workgroup_sums!(partial_sums, workgroup_sums, g, m)
+    if m <= size(partial_sums, 2)
+        Σ = zero(eltype(partial_sums))
+        for t in 1:reduction_workgroup_size
+            @inbounds Σ += workgroup_sums[t, m]
+        end
+        @inbounds partial_sums[g, m] = Σ
+    end
+    return nothing
 end
 
 @kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
     n = @index(Global, Linear)
-    i, j, s = segment_indices(n, partial_sums)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 4)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
-    for k in segment_range(s, grid, partial_sums)
+    for k in ks
         @inbounds begin
             active = !inactive_cell(i, j, k, grid)
             rᵢ = b[i, j, k] - q[i, j, k]
@@ -182,20 +209,26 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, s, 1] = Σx
-        partial_sums[i, j, s, 2] = Σr
-        partial_sums[i, j, s, 3] = rᵀr
-        partial_sums[i, j, s, 4] = n²
+        workgroup_sums[t, 1] = Σx
+        workgroup_sums[t, 2] = Σr
+        workgroup_sums[t, 3] = rᵀr
+        workgroup_sums[t, 4] = n²
     end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
 end
 
 @kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
     n = @index(Global, Linear)
-    i, j, s = segment_indices(n, partial_sums)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 3)
     FT = eltype(partial_sums)
     pᵀq = Σp = Σq = zero(FT)
 
-    for k in segment_range(s, grid, partial_sums)
+    for k in ks
         @inbounds begin
             active = !inactive_cell(i, j, k, grid)
             pᵢ = p[i, j, k]
@@ -208,10 +241,13 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, s, 1] = pᵀq
-        partial_sums[i, j, s, 2] = Σp
-        partial_sums[i, j, s, 3] = Σq
+        workgroup_sums[t, 1] = pᵀq
+        workgroup_sums[t, 2] = Σp
+        workgroup_sums[t, 3] = Σq
     end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
 end
 
 @kernel function _update_search_direction!(p, z, ρ, ρⁱ⁻¹, iteration)
@@ -225,7 +261,10 @@ end
 
 @kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, ρ, ρⁱ⁻¹, laplacian_sums, residual_sums, number_of_active_cells)
     n = @index(Global, Linear)
-    i, j, s = segment_indices(n, partial_sums)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 4)
     FT = eltype(partial_sums)
     Σx = Σr = rᵀr = n² = zero(FT)
 
@@ -238,7 +277,7 @@ end
         n == 1 && (ρⁱ⁻¹[1] = ρ[1])
     end
 
-    for k in segment_range(s, grid, partial_sums)
+    for k in ks
         @inbounds begin
             active = !inactive_cell(i, j, k, grid)
             xᵢ = (x[i, j, k] + a * p[i, j, k] - x̄) * active
@@ -254,15 +293,54 @@ end
     end
 
     @inbounds begin
-        partial_sums[i, j, s, 1] = Σx
-        partial_sums[i, j, s, 2] = Σr
-        partial_sums[i, j, s, 3] = rᵀr
-        partial_sums[i, j, s, 4] = n²
+        workgroup_sums[t, 1] = Σx
+        workgroup_sums[t, 2] = Σr
+        workgroup_sums[t, 3] = rᵀr
+        workgroup_sums[t, 4] = n²
     end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+@kernel function _column_dot!(partial_sums, grid, a, b)
+    n = @index(Global, Linear)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 1)
+    aᵀb = zero(eltype(partial_sums))
+
+    for k in ks
+        @inbounds aᵀb += a[i, j, k] * b[i, j, k] * !inactive_cell(i, j, k, grid)
+    end
+
+    @inbounds workgroup_sums[t, 1] = aᵀb
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+# One workgroup adds the workgroups' sums in a fixed order, so the result is deterministic
+@kernel function _reduce_partial_sums!(sums, partial_sums)
+    t = @index(Local, Linear)
+    workgroup_sums = @localmem eltype(sums) (reduction_workgroup_size, 4)
+
+    for m in 1:size(partial_sums, 2)
+        Σ = zero(eltype(sums))
+        for g in t:reduction_workgroup_size:size(partial_sums, 1)
+            @inbounds Σ += partial_sums[g, m]
+        end
+        @inbounds workgroup_sums[t, m] = Σ
+    end
+
+    @synchronize
+    add_workgroup_sums!(sums, workgroup_sums, 1, t)
 end
 
 function reduce_partial_sums!(sums, partial_sums, arch)
-    sum!(reshape(sums, ntuple(Returns(1), ndims(partial_sums) - 1)..., length(sums)), partial_sums)
+    workgroup = StaticSize((reduction_workgroup_size,))
+    _reduce_partial_sums!(device(arch), workgroup, workgroup)(sums, partial_sums)
     return sums
 end
 
@@ -274,7 +352,7 @@ function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
     partial_sums = gauge.residual_partial_sums
 
     compute_symmetric_laplacian!(q, x)
-    launch!(arch, grid, segments_worksize(partial_sums), _initialize_residual!, partial_sums, r, grid, x, b, q)
+    launch_columns!(arch, grid, _initialize_residual!, partial_sums, r, grid, x, b, q)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     return nothing
@@ -291,18 +369,24 @@ function iterate!(x, solver::FusedPoissonSolver, b)
     # Preconditioned:   z = P * r, ρ = z ⋅ r
     # Unpreconditioned: z = r, so ρ = r ⋅ r is already in the residual sums
     z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
-    ρ = z === r ? view(gauge.residual_sums, 3:3) : dot!(solver.ρ, z, r)
+    if z === r
+        ρ = view(gauge.residual_sums, 3:3)
+    else
+        partial_sums = view(gauge.laplacian_partial_sums, :, 1:1)
+        launch_columns!(arch, grid, _column_dot!, partial_sums, grid, z, r)
+        ρ = reduce_partial_sums!(solver.ρ, partial_sums, arch)
+    end
 
     launch!(arch, grid, :xyz, _update_search_direction!, p, z, ρ, solver.ρⁱ⁻¹, solver.iteration)
     fill_halo_regions!(p)
 
     partial_sums = gauge.laplacian_partial_sums
-    launch!(arch, grid, segments_worksize(partial_sums), _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    launch_columns!(arch, grid, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
     reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
 
     partial_sums = gauge.residual_partial_sums
-    launch!(arch, grid, segments_worksize(partial_sums), _update_solution_and_residual!,
-            partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+    launch_columns!(arch, grid, _update_solution_and_residual!,
+                    partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
     reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
 
     solver.iteration += 1
