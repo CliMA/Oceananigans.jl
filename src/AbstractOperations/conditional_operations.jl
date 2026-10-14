@@ -17,11 +17,19 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
-        T = eltype(operand)
+        T = conditional_eltype(func, eltype(operand), condition, mask)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
     end
 end
+
+# The type of the values: `func`'s of the operand's elements, or the mask where the condition doesn't hold
+@inline conditional_eltype(::Nothing, T, condition, mask) = T
+@inline conditional_eltype(::Nothing, T, ::Nothing, mask) = T
+@inline conditional_eltype(func, T, ::Nothing, mask) = concrete_or(Base.promote_op(func, T), T)
+@inline conditional_eltype(func, T, condition, mask) = promote_type(conditional_eltype(func, T, nothing, mask), typeof(mask))
+
+@inline concrete_or(T, fallback) = isconcretetype(T) ? T : fallback
 
 # Some special cases
 const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
