@@ -1096,7 +1096,6 @@ end
             end
 
             @testset "Settling tracer comparison [$(summary(arch))]" begin
-                @info "      Testing settling tracer on regular vs immersed grids [$(summary(arch))]..."
                 @test test_immersed_advective_normal_flow(arch)
                 @test test_immersed_advective_callbacks(arch)
                 arch isa CPU && @test test_reject_immersed_prognostic_normal_flow(arch)
