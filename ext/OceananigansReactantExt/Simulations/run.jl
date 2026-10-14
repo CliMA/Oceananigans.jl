@@ -97,7 +97,7 @@ function traced_schedule(schedule::SpecifiedTimes, sim)
     return SpecifiedTimes{FT, typeof(times)}(times, schedule.previous_actuation)   # FT is the times' float type, not the device array's traced eltype
 end
 
-function (schedule::SpecifiedTimes{<:Any, <:Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}})(model)
+function (schedule::DeviceSpecifiedTimes)(model)
     times = schedule.times
     t = model.clock.time
     t₋ = t - model.clock.last_Δt                           # the step just taken is (t₋, t]
