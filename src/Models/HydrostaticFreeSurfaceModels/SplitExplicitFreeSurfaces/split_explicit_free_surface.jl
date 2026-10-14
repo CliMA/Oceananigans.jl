@@ -442,20 +442,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
+materialize_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)
+function materialize_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
-    kernel_parameters = augmented_kernel_parameters(strategy, grid, kernel_sizes)
+    kernel_parameters = materialized_kernel_parameters(strategy, grid, kernel_sizes)
 
     return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_parameters
 end
 
-augmented_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
-augmented_kernel_parameters(::LocalHaloFilling, grid, kernel_sizes) = KernelParameters(kernel_sizes...)
+materialized_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
+materialized_kernel_parameters(::LocalHaloFilling, grid, kernel_sizes) = KernelParameters(kernel_sizes...)
 
 @inline split_explicit_kernel_size(topo, N, H)                   =    1:N
 @inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
