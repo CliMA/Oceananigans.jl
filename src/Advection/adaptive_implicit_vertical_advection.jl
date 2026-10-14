@@ -24,7 +24,7 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-# Computed the vertical veloicty from the transport to correctly compute 
+# Computed the vertical veloicty from the transport to correctly compute
 # on curvilinear grids
 @inline function vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W)
     transport = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
