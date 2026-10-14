@@ -1,7 +1,6 @@
 ---
 name: add-feature
 description: Checklist for adding new physics or features to Oceananigans
-user_invocable: true
 ---
 
 # Add Feature

@@ -90,12 +90,15 @@ end
 # Fallback for `KernelFunctionOperation`s with no argument
 compute_operand_intersection(::Colon, to_loc; kw...) = Colon()
 
+# Fields adapted for a kernel drop their indices
+@inline operand_indices(op) = something(indices(op), default_indices(3))
+
 compute_operand_intersection(to_idx, to_loc, op; dim) =
-    compute_index_intersection(to_idx, indices(op)[dim],
+    compute_index_intersection(to_idx, operand_indices(op)[dim],
                                to_loc, location(op, dim))
 
 """Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
 function compute_operand_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
-    new_to_idx = compute_index_intersection(to_idx, indices(op1)[dim], to_loc, location(op1, dim))
+    new_to_idx = compute_index_intersection(to_idx, operand_indices(op1)[dim], to_loc, location(op1, dim))
     return compute_operand_intersection(new_to_idx, to_loc, op2, more_ops...; dim)
 end

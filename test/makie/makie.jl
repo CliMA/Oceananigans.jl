@@ -214,6 +214,46 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         @test observable_plot.converted[] == coordinates
     end
 
+    @testset "Longitude–latitude quadmesh! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        bathymetry = Field{Center, Center, Nothing}(immersed_grid)
+        set!(bathymetry, -height)
+        Nx, Ny = size(grid, 1), size(grid, 2)
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = quadmesh!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == 4 * Nx * Ny
+        @test any(isnan, colors)
+        @test all(==(1), filter(!isnan, colors))
+
+        # Away from the north poles, cells at the periodic seam are not drawn across the map
+        λ = [vertex[1] for vertex in vertices]
+        southern_cells = 1:4:4 * Nx * (Ny ÷ 2)
+        @test all(maximum(λ[q:q+3]) - minimum(λ[q:q+3]) < 180 for q in southern_cells)
+
+        streamfunction = Field{Face, Face, Nothing}(grid)
+        set!(streamfunction, 2)
+        streamfunction_plot = quadmesh!(ax, streamfunction)
+        @test all(==(2), streamfunction_plot.color[])
+
+        field = CenterField(immersed_grid)
+        set!(field, 2)
+        observable = CairoMakie.Observable(view(field, :, :, size(grid, 3)))
+        observable_plot = quadmesh!(ax, observable)
+        set!(field, 3)
+        CairoMakie.notify(observable)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+    end
+
     @testset "surface! with Observable on spherical grid" begin
         grid = LatitudeLongitudeGrid(size=(8, 6, 1),
                                      longitude=(0, 360),
