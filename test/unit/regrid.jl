@@ -114,11 +114,6 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 @test interior(super_fine_1d_regular_c)[5] ≈ c₂
             end
 
-            #=
-            # This test does not work, because we can only regrid in one direction.
-            # To make this work, we have to transfer the reduced data to a "reduced" grid
-            # (ie with one grid point in each reduced direction).
-
             # Fine-graining from reduction
             ind1 = dim == :x ? (1, :, :) : dim == :y ? (:, 1, :) : (:, :, 1)
             ind2 = dim == :x ? (2, :, :) : dim == :y ? (:, 2, :) : (:, :, 2)
@@ -130,21 +125,57 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
             fine_stretched_c_mean_xy = Field(Reduction(mean!, fine_stretched_c; dims))
             compute!(fine_stretched_c_mean_xy)
 
-            @show size(fine_stretched_c_mean_xy.grid)
-            @show size(super_fine_from_reduction_regular_c.grid)
-
             regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
 
             @allowscalar begin
-            @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
-            @test interior(super_fine_from_reduction_regular_c)[2] ≈ c₁
-            @test interior(super_fine_from_reduction_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁
-            @test interior(super_fine_from_reduction_regular_c)[4] ≈ c₂
-            @test interior(super_fine_from_reduction_regular_c)[5] ≈ c₂
+                @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
+                @test interior(super_fine_from_reduction_regular_c)[2] ≈ c₁
+                @test interior(super_fine_from_reduction_regular_c)[3] ≈ (3 - ℓ/(L/5)) * c₂ + (-2 + ℓ/(L/5)) * c₁
+                @test interior(super_fine_from_reduction_regular_c)[4] ≈ c₂
+                @test interior(super_fine_from_reduction_regular_c)[5] ≈ c₂
             end
-            =#
         end
     end
+end
+
+@testset "Regridding a reduced field on LatitudeLongitudeGrid [$dim, $(typeof(arch))]" for arch in archs, dim in (:x, :y)
+    c₁ = 1
+    c₂ = 3
+
+    # Two source cells of unequal width along `dim`, averaged over the other two dimensions
+    source_faces = dim == :x ? [0, 5, 11] : [-20, 10, 40]
+    source_coordinates = dim == :x ? (; longitude=source_faces, latitude=(-10, 10)) :
+                                     (; longitude=(0, 10), latitude=source_faces)
+    source_size = dim == :x ? (2, 4, 3) : (4, 2, 3)
+    source_grid = LatitudeLongitudeGrid(arch; size=source_size, z=(-1, 0),
+                                        topology=(Bounded, Bounded, Bounded), source_coordinates...)
+
+    ξℓ = source_faces[2]
+    source_field = CenterField(source_grid)
+    if dim == :x
+        set!(source_field, (λ, φ, z) -> λ < ξℓ ? c₁ : c₂)
+    else
+        set!(source_field, (λ, φ, z) -> φ < ξℓ ? c₁ : c₂)
+    end
+
+    dims = dim == :x ? (2, 3) : (1, 3)
+    reduced_field = Field(Reduction(mean!, source_field; dims))
+    compute!(reduced_field)
+
+    target_coordinates = dim == :x ? (; longitude=(0, 11)) : (; latitude=(-20, 40))
+    topology = dim == :x ? (Bounded, Flat, Flat) : (Flat, Bounded, Flat)
+    target_grid = LatitudeLongitudeGrid(arch; size=5, topology, target_coordinates...)
+    target_field = CenterField(target_grid)
+    regrid!(target_field, reduced_field)
+
+    # Cells are weighted by Δλ in longitude and by Δsinφ in latitude.
+    # Only the third target cell straddles the two source cells.
+    measure = dim == :x ? ((a, b) -> b - a) : ((a, b) -> sind(b) - sind(a))
+    target_faces = range(first(source_faces), last(source_faces), length=6)
+    ξ₋, ξ₊ = target_faces[3], target_faces[4]
+    straddling = (c₁ * measure(ξ₋, ξℓ) + c₂ * measure(ξℓ, ξ₊)) / measure(ξ₋, ξ₊)
+
+    @test vec(Array(interior(target_field))) ≈ [c₁, c₁, straddling, c₂, c₂]
 end
 
 overlap_length(left1, right1, left2, right2) = max(0, min(right1, right2) - max(left1, left2))
