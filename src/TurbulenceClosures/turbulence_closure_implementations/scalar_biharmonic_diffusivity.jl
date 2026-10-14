@@ -20,8 +20,8 @@ HorizontalVectorInvariantScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.d
 
 """
     ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
-                                ν = 0,
-                                κ = 0,
+                                ν = nothing,
+                                κ = nothing,
                                 discrete_form = false,
                                 loc = (nothing, nothing, nothing),
                                 parameters = nothing)
@@ -45,10 +45,12 @@ Arguments
 Keyword arguments
 =================
 
-* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
+* `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, `Function`, or `nothing`.
+       With `ν = nothing` the closure does not act on momentum and no viscous fluxes are computed.
 
-* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, `nothing`, or
        `NamedTuple` of diffusivities with entries for each tracer.
+       With `κ = nothing` the closure does not act on tracers and no diffusive fluxes are computed.
 
 * `discrete_form`: `Boolean`; default: `false`.
 
@@ -75,8 +77,8 @@ value of keyword argument `discrete_form`, the constructor expects:
 For examples see [`ScalarDiffusivity`](@ref).
 """
 function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Oceananigans.defaults.FloatType;
-                                     ν = 0,
-                                     κ = 0,
+                                     ν = nothing,
+                                     κ = nothing,
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
@@ -129,4 +131,51 @@ function Architectures.on_architecture(to, closure::ScalarBiharmonicDiffusivity{
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+end
+
+#####
+##### No viscosity or no tracer diffusivity
+#####
+
+const NoTracerDiffusivityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation, <:Any, <:Any, Nothing}
+const NoTracerDiffusivityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,       <:Any, <:Any, Nothing}
+const NoTracerDiffusivityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,         <:Any, <:Any, Nothing}
+
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityIBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoTracerDiffusivityHBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoTracerDiffusivityHBD, K, id, c, clk, fields, b) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoTracerDiffusivityVBD, K, id, c, clk, fields, b) = zero(grid)
+
+# `κ = nothing` is not indexed by tracer
+@inline diffusivity(::ScalarBiharmonicDiffusivity{<:Any, <:Any, <:Any, Nothing}, K, ::Val) = nothing
+
+const NoViscosityIBD = ScalarBiharmonicDiffusivity{<:ThreeDimensionalFormulation,          <:Any, Nothing}
+const NoViscosityHBD = ScalarBiharmonicDiffusivity{<:HorizontalFormulation,                <:Any, Nothing}
+const NoViscosityDBD = ScalarBiharmonicDiffusivity{<:HorizontalDivergenceFormulation,      <:Any, Nothing}
+const NoViscosityVBD = ScalarBiharmonicDiffusivity{<:VerticalFormulation,                  <:Any, Nothing}
+const NoViscosityZBD = ScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantFormulation, <:Any, Nothing}
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy, :uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityIBD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:ux, :vx, :wx, :uy, :vy, :wy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval begin
+        @inline $viscous_flux(i, j, k, grid, ::NoViscosityHBD, K, clk, fields, b) = zero(grid)
+        @inline $viscous_flux(i, j, k, grid, ::NoViscosityZBD, K, clk, fields, b) = zero(grid)
+    end
+end
+
+for flux in (:ux, :vy)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityDBD, K, clk, fields, b) = zero(grid)
+end
+
+for flux in (:uz, :vz, :wz)
+    viscous_flux = Symbol(:viscous_flux_, flux)
+    @eval @inline $viscous_flux(i, j, k, grid, ::NoViscosityVBD, K, clk, fields, b) = zero(grid)
 end

@@ -25,14 +25,10 @@ end
 
 const CellMaps = Union{AbstractArray, NamedTuple, Tuple}
 const ActiveInteriorIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveInteriorIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 const ActiveZColumnsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 
-has_active_cells_map(::ActiveInteriorIBG) = true
-has_active_z_columns(::ActiveZColumnsIBG) = true
-has_active_cells_map(::NoActiveInteriorIBG) = false
-has_active_z_columns(::NoActiveZColumnsIBG) = false
+has_active_cells_map(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.interior_active_cells)
+has_active_z_columns(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.active_z_columns)
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
@@ -71,13 +67,9 @@ end
 
 function with_halo(halo, ibg::ImmersedBoundaryGrid)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
-    materialized_ib = materialize_immersed_boundary(underlying_grid, ibg.immersed_boundary)
-    TX, TY, TZ = topology(underlying_grid)
-    # The active cells maps hold interior indices, which do not depend on the halo
-    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
-                                            materialized_ib,
-                                            ibg.interior_active_cells,
-                                            ibg.active_z_columns)
+    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
+                                active_cells_map = has_active_cells_map(ibg),
+                                active_z_columns = has_active_z_columns(ibg))
 end
 
 const IBG = ImmersedBoundaryGrid
