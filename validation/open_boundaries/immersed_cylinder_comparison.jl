@@ -29,17 +29,18 @@ cylinder(x, y) = (x - 6D)^2 + (y - D / 4)^2 < (D / 2)^2
 
 function cylinder_simulation(immersed_inlet, filename)
     outflow = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale = 1, outflow_timescale = Inf))
+    # The lee of the cylinder faces west too: both runs open it with zero velocity, so that only the inlet differs
+    inlet = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(immersed_inflow, discrete_form = true))
 
     if immersed_inlet
         underlying_grid = RectilinearGrid(arch; size = (Nx + Nwall, Ny), halo = (5, 5), x = (-Nwall * Lx / Nx, Lx), y = (-Ly / 2, Ly / 2),
                                           topology = (Bounded, Bounded, Flat))
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y) -> (x < 0) | cylinder(x, y)))
-        inlet = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(immersed_inflow, discrete_form = true))
         u_bcs = FieldBoundaryConditions(immersed = inlet, east = outflow)
     else
         underlying_grid = RectilinearGrid(arch; size = (Nx, Ny), halo = (5, 5), x = (0, Lx), y = (-Ly / 2, Ly / 2), topology = (Bounded, Bounded, Flat))
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))
-        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(domain_inflow, discrete_form = true), east = outflow)
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(domain_inflow, discrete_form = true), immersed = inlet, east = outflow)
     end
 
     pressure_solver = ConjugateGradientPoissonSolver(grid; reltol = 1e-9, abstol = 0, maxiter = 1000)
