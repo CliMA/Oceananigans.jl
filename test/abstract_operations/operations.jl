@@ -322,6 +322,10 @@ for arch in archs
                 add_surface, profile_grid, (profile, surface), Float32; indices=(:, :, :))) == Float32
             @test Oceananigans.Fields.indices(on_architecture(CPU(), selected_profile)) == (:, :, 2:3)
             @test Oceananigans.Fields.indices(Adapt.adapt(Array, selected_profile)) == (:, :, 2:3)
+            # GPU reductions adapt their operand inside the kernel, which needs an inferable adapt rule
+            field_kernel_function(i, j, k, grid, q) = @inbounds q[i, j, k]
+            op = KernelFunctionOperation{Center, Center, Center}(field_kernel_function, grid, q)
+            @test minimum(op) == 2
         end
 
         @testset "InterpolatedOperations [$A]" begin

@@ -39,10 +39,36 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
         bc      = select_bc(side_bcs)
         size    = fill_halo_size(data, side, indices, bc, loc, grid)
         offset  = fill_halo_offset(size, side, indices)
+        size, offset = connected_fill_extent(side, bc, size, offset, indices, loc, grid)
         fill_halo_kernel(side, bc, grid, size, offset, data, reduced_dims)
     end
 
     return NamedTuple{names}(kernels!), NamedTuple{names}(ordered_bcs)
+end
+
+# Direction spanned by the first index of a lateral fill kernel
+@inline tangential_dimension(::WEB) = 2
+@inline tangential_dimension(::SNB) = 1
+
+connected_fill_extent(side, bc, size, offset, indices, loc, grid) = size, offset
+connected_fill_extent(side::Union{WEB, SNB}, ::PBC, size, offset, indices, loc, grid) = size, offset
+
+# Extent for lateral fills that also cover the Connected halo along the boundary. Only needed for horizontal boundaries
+function connected_fill_extent(side::Union{WEB, SNB}, bc, size, offset, indices, loc, grid)
+    d = tangential_dimension(side)
+
+    if !(indices[d] isa Colon) # Windowed fields... we bypass
+        return size, offset
+    end
+
+    tangential_size, vertical_size = size # The vertical direction is always the last
+    _, vertical_offset = offset
+
+    range = connected_range(loc[d], topology(grid, d), tangential_size, halo_size(grid, d))
+    new_size   = (length(range),    vertical_size)
+    new_offset = (first(range) - 1, vertical_offset)
+
+    return new_size, new_offset
 end
 
 @inline reduced_dimension(::Nothing, dim) = (dim,)
