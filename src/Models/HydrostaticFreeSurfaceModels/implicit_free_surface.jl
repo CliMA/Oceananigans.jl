@@ -192,11 +192,13 @@ end
     δvⱼ = ifelse(Hᶜᶠ == 0, zero(grid), (Ṽᵐ⁺¹ - Ṽ) / Hᶜᶠ)
 
     @inbounds for k in 1:Nz
-        immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
-        immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+        boundaryᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+        boundaryᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+        immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+        immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
 
-        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, ũ[i, j, k], ũ[i, j, k] + δuᵢ)
-        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, ṽ[i, j, k], ṽ[i, j, k] + δvⱼ)
+        ũ[i, j, k] = ifelse(boundaryᶠᶜᶜ, ifelse(immersedᶠᶜᶜ, ũ[i, j, k], zero(grid)), ũ[i, j, k] + δuᵢ)
+        ṽ[i, j, k] = ifelse(boundaryᶜᶠᶜ, ifelse(immersedᶜᶠᶜ, ṽ[i, j, k], zero(grid)), ṽ[i, j, k] + δvⱼ)
     end
 end
 
