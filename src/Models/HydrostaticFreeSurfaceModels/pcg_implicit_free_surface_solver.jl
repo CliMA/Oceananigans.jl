@@ -54,7 +54,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
     settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
-    settings[:residual_norm] = get(settings, :residual_norm, FreeSurfaceResidualNorm(grid))
+    settings[:residual_norm] = get(settings, :residual_norm, default_residual_norm(grid))
 
     if grid isa DistributedGrid
         settings[:preconditioner] = nothing
@@ -213,6 +213,8 @@ function (residual_norm::FreeSurfaceResidualNorm)(r)
 end
 
 Base.summary(::FreeSurfaceResidualNorm) = "FreeSurfaceResidualNorm"
+
+default_residual_norm(grid) = FreeSurfaceResidualNorm(grid)
 
 const FusedFreeSurfaceSolver = ConjugateGradientSolver{<:Any, <:Any, ImplicitFreeSurfaceOperation, <:Any, <:Any,
                                                        <:Any, <:Any, <:Any, <:FreeSurfaceResidualNorm}
