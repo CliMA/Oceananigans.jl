@@ -96,9 +96,8 @@ end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
-    solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = architecture(solver)
-    grid = solver.grid
+    grid = rhs.grid
+    arch = architecture(grid)
     launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end

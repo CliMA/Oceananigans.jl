@@ -873,6 +873,20 @@ end
                 @test values[argmin(c)] == minimum(c)
                 @test findmax(c) == (maximum(c), argmax(c))
             end
+
+            @testset "Conditional index reductions of reduced fields [$(typeof(arch)), $FT]" begin
+                r = Field{Center, Center, Nothing}(regular_grid)
+                set!(r, (x, y) -> (x - 1/3)^2 + (y - 2)^2)
+                reduced_values = Array(interior(r))
+                everywhere(i, j, k, grid, r) = true
+                @test findmin(r; condition = everywhere) == findmin(reduced_values)
+                @test argmin(r; condition = everywhere) == argmin(reduced_values)
+                @test argmax(-r; condition = everywhere) == argmin(reduced_values)
+
+                # Adapted operations drop their indices but keep their size
+                conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
+                @test Base.size(Adapt.adapt(Array, conditioned_r)) == Base.size(r)
+            end
         end
 
         @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
@@ -911,6 +925,15 @@ end
             wet_pattern = copy(pattern)
             wet_pattern[:, :, 1] .= false
             @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
+
+            # Boolean functions of a floating-point field, where immersed cells are masked
+            for c in (CenterField(grid), CenterField(immersed_grid))
+                set!(c, 1)
+                @test !any(isnan, c)
+                @test all(isfinite, c)
+                @test maximum(isnan, c) == 0
+                @test !any(Array(interior(any(isnan, c; dims=1))))
+            end
         end
 
         for arch in archs, FT in float_types
