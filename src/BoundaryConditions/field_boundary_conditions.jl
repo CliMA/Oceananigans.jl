@@ -74,6 +74,15 @@ end
 
 const boundarynames = (:west, :east, :south, :north, :bottom, :top, :immersed)
 
+function regularize_field_defaults(bcs::FieldBoundaryConditions, grid, loc)
+    sides = (getproperty(bcs, side) for side in boundarynames)
+    any(bc -> bc isa DefaultBoundaryCondition, sides) || return bcs
+    return regularize_field_boundary_conditions(bcs, grid, loc)
+end
+
+regularize_field_defaults(::Nothing, grid, loc) = nothing
+regularize_field_defaults(::Missing, grid, loc) = missing
+
 const NoKernelFBC = FieldBoundaryConditions{W, E, S, N, B, T, I, Nothing, Nothing} where {W, E, S, N, B, T, I}
 
 # Internal constructor that fills up computational details in the "auxiliaries" spot.
