@@ -4,7 +4,7 @@ using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
-using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, immersed_peripheral_node
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.DistributedComputations: synchronize_communication!

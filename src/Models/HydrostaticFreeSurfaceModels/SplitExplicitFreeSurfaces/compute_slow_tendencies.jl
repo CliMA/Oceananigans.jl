@@ -32,7 +32,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     @apply_regionally launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
 
-    fill_halo_regions!((GUⁿ, GVⁿ); async=true)
+    fill_halo_regions!((GUⁿ, GVⁿ); fill_normal_flow_bcs=false, async=true)
 
     return nothing
 end
