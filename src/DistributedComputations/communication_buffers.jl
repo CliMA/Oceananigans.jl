@@ -87,8 +87,10 @@ function communication_buffers(grid::DistributedGrid, data, bcs::FieldBoundaryCo
 
         for (slot, overlap) in enumerate(halo_overlaps(layout, rank, local_rank, loc, sign, H))
             (; side, cells, image) = overlap
-            i = image.σx .* cells[1] .+ (image.ox - offset(local_rank, 1))
-            j = image.σy .* cells[2] .+ (image.oy - offset(local_rank, 2))
+            ox = image.ox - offset(local_rank, 1)
+            oy = image.oy - offset(local_rank, 2)
+            i = image.σx * first(cells[1]) + ox : image.σx : image.σx * last(cells[1]) + ox
+            j = image.σy * first(cells[2]) + oy : image.σy : image.σy * last(cells[2]) + oy
             buffer = zeros(arch, FT, length(i), length(j), Nz)
             # A copy leaves through the opposite side, a mirror image through the same side
             sending_side = image.σx == 1 ? opposite_side(side) : side
