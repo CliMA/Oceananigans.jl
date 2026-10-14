@@ -406,7 +406,7 @@ end
 
 # `Δt` is the step of the current baroclinic stage and `Δτᴮ` the barotropic substep.
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, Δt, F, clock, weights, transport_weights,
-                                 baroclinic_timestepper, ::Val{Nsubsteps}) where Nsubsteps
+                                 baroclinic_timestepper, Nsubsteps::Int)
 
     # Note: `free_surface.displacement.grid` carries the extended halos, where `grid` may not.
     grid        = free_surface.displacement.grid
@@ -422,7 +422,7 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, Δt,
 
     # The substepper holds device values that do not root the fields they point into.
     GC.@preserve free_surface GUⁿ GVⁿ Gᵁᶜ Gⱽᶜ F begin
-        @unroll for substep in 1:Nsubsteps
+        for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
             sᵐ = (substep - oneunit(substep) / 2) * Δτᴮ   # MIDPOINT of the substep, measured from tⁿ
@@ -496,7 +496,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, Δt, F, model.clock, weights,
-                            transport_weights, baroclinic_timestepper, Val(Nsubsteps))
+                            transport_weights, baroclinic_timestepper, Nsubsteps)
 
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)

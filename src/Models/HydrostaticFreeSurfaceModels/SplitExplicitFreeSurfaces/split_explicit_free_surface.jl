@@ -364,6 +364,8 @@ struct FixedSubstepNumber{B, F}
     transport_weights    :: F
 end
 
+Adapt.adapt_structure(to, s::FixedSubstepNumber) = FixedSubstepNumber(s.fractional_step_size, nothing, nothing)
+
 function FixedTimeStepSize(grid;
                            cfl = 0.7,
                            averaging_kernel = averaging_shape_function,

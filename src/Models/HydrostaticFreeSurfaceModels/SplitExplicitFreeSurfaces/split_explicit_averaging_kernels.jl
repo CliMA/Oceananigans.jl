@@ -54,7 +54,7 @@ end
 function weights_from_shape(FT, substeps, shape, retain = !=(0))
     Δτ, w = trimmed_weights(FT, substeps, shape, retain)
     t = [Δτ * sum(@view w[m:end]) for m in eachindex(w)]
-    return Δτ, map(FT, tuple(w...)), map(FT, tuple(t...))
+    return Δτ, FT.(w), FT.(t)
 end
 
 # Bisect the leading amplitude of `shape(a)` so that μ₂ vanishes; the higher amplitudes are fixed.
@@ -81,8 +81,8 @@ weights_from_substeps(FT, substeps, averaging_kernel) = weights_from_shape(FT, s
 # Without an averaging kernel we take the endpoint.
 @inline function weights_from_substeps(FT, substeps, ::Nothing)
     fractional_step   = one(FT) / substeps
-    averaging_weights = ntuple(m -> m == substeps ? one(FT) : zero(FT), substeps)
-    transport_weights = ntuple(_ -> one(FT) / substeps, substeps)
+    averaging_weights = FT[m == substeps ? one(FT) : zero(FT) for m in 1:substeps]
+    transport_weights = FT[one(FT) for _ in 1:substeps]
     return fractional_step, averaging_weights, transport_weights
 end
 
