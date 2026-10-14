@@ -1,6 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.BoundaryConditions: NFBC, VBC
+using Oceananigans.Grids: xnode
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
 # A channel whose west end is an immersed wall with inflow `U` through its faces
@@ -108,6 +111,41 @@ function test_immersed_bottom_vent(arch, FT)
     return nothing
 end
 
+# Inflow through a wall past a block: the block's faces that the condition is not normal to stay closed
+function test_immersed_inflow_past_block(arch, FT)
+    grid = RectilinearGrid(arch, FT; size = (24, 12), halo = (4, 4), x = (0, 2), y = (0, 1), topology = (Bounded, Bounded, Flat))
+    solid(x, y) = (x < 1/4) | ((3/4 < x < 1) & (1/3 < y < 2/3))
+    ibg = ImmersedBoundaryGrid(grid, GridFittedBoundary(solid))
+    U = one(FT)
+
+    inflow(i, j, k, grid, clock, fields) = ifelse(xnode(i, grid, Face()) < 1/2, U, zero(U))
+    u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(inflow; discrete_form = true)),
+                                    east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection()))
+
+    pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol = sqrt(eps(FT)), abstol = 0, maxiter = 500)
+    model = NonhydrostaticModel(ibg; pressure_solver, boundary_conditions = (; u = u_bcs))
+    set!(model, u = U)
+
+    Δt = FT(0.1) * minimum_xspacing(ibg) / U
+    simulation = Simulation(model; Δt, stop_iteration = 10, verbose = false)
+    run!(simulation)
+
+    u, v, w = model.velocities
+    δ = Field(∂x(u) + ∂y(v))
+    compute!(δ)
+    @test maximum(abs, δ) < sqrt(eps(FT)) * 10
+
+    cpu_grid = on_architecture(CPU(), ibg)
+    Nx, Ny = size(grid)
+    on_solid_surface(i, j, ℓx, ℓy) = immersed_peripheral_node(i, j, 1, cpu_grid, ℓx, ℓy, Center()) & !immersed_inactive_node(i, j, 1, cpu_grid, ℓx, ℓy, Center())
+    v_solid = [on_solid_surface(i, j, Center(), Face()) for i in 1:Nx, j in 1:Ny+1]
+    u_block = [on_solid_surface(i, j, Face(), Center()) & (xnode(i, cpu_grid, Face()) > 1/2) for i in 1:Nx+1, j in 1:Ny]
+    @test all(iszero, Array(interior(v, :, :, 1))[v_solid])
+    @test all(iszero, Array(interior(u, :, :, 1))[u_block])
+
+    return nothing
+end
+
 # A river entering a bay through the coastline raises the free surface by the inflow volume
 function test_immersed_river_inflow(arch, FT, free_surface)
     grid = RectilinearGrid(arch, FT; size = (8, 8, 2), x = (0, 8), y = (0, 8), z = (-1, 0),
@@ -155,6 +193,10 @@ end
 
         @testset "Inflow through a bottom vent [$(summary(arch)), $FT]" begin
             test_immersed_bottom_vent(arch, FT)
+        end
+
+        @testset "Inflow past a block [$(summary(arch)), $FT]" begin
+            test_immersed_inflow_past_block(arch, FT)
         end
 
         for free_surface in (SplitExplicitFreeSurface(substeps = 10), ImplicitFreeSurface(), ExplicitFreeSurface())

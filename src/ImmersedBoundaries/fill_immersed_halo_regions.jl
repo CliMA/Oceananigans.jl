@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BoundaryConditions: NFBC, VBC, GBC, FieldBoundaryConditions, getbc
-using Oceananigans.Grids: inactive_cell, interior_indices
+using Oceananigans.Grids: inactive_cell, interior_indices, XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.Operators: Δx, Δy, Δz, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
 
 import Oceananigans.Fields: fill_immersed_halo_regions!, immersed_boundary_condition
@@ -110,15 +110,24 @@ end
 ##### Net inflow through the open immersed faces
 #####
 
-@inline function immersed_inflow(i, j, k, grid, u, v, w, open)
-    Qᵂ = Ax_qᶠᶜᶜ(i,   j,   k,   grid, u) * (open.west   & west_immersed_face(i,   j,   k,   grid))
-    Qᴱ = Ax_qᶠᶜᶜ(i+1, j,   k,   grid, u) * (open.east   & east_immersed_face(i+1, j,   k,   grid))
-    Qˢ = Ay_qᶜᶠᶜ(i,   j,   k,   grid, v) * (open.south  & south_immersed_face(i,  j,   k,   grid))
-    Qᴺ = Ay_qᶜᶠᶜ(i,   j+1, k,   grid, v) * (open.north  & north_immersed_face(i,  j+1, k,   grid))
-    Qᴮ = Az_qᶜᶜᶠ(i,   j,   k,   grid, w) * (open.bottom & bottom_immersed_face(i, j,   k,   grid))
-    Qᵀ = Az_qᶜᶜᶠ(i,   j,   k+1, grid, w) * (open.top    & top_immersed_face(i,    j,   k+1, grid))
-    return Qᵂ - Qᴱ + Qˢ - Qᴺ + Qᴮ - Qᵀ
-end
+@inline immersed_inflow(i, j, k, grid, u, v, w, open) =
+    x_immersed_inflow(i, j, k, grid, u, open) + y_immersed_inflow(i, j, k, grid, v, open) + z_immersed_inflow(i, j, k, grid, w, open)
+
+@inline x_immersed_inflow(i, j, k, grid, u, open) =
+    Ax_qᶠᶜᶜ(i,   j, k, grid, u) * (open.west & west_immersed_face(i,   j, k, grid)) -
+    Ax_qᶠᶜᶜ(i+1, j, k, grid, u) * (open.east & east_immersed_face(i+1, j, k, grid))
+
+@inline y_immersed_inflow(i, j, k, grid, v, open) =
+    Ay_qᶜᶠᶜ(i, j,   k, grid, v) * (open.south & south_immersed_face(i, j,   k, grid)) -
+    Ay_qᶜᶠᶜ(i, j+1, k, grid, v) * (open.north & north_immersed_face(i, j+1, k, grid))
+
+@inline z_immersed_inflow(i, j, k, grid, w, open) =
+    Az_qᶜᶜᶠ(i, j, k,   grid, w) * (open.bottom & bottom_immersed_face(i, j, k,   grid)) -
+    Az_qᶜᶜᶠ(i, j, k+1, grid, w) * (open.top    & top_immersed_face(i,    j, k+1, grid))
+
+@inline x_immersed_inflow(i, j, k, grid::XFlatGrid, u, open) = zero(grid)
+@inline y_immersed_inflow(i, j, k, grid::YFlatGrid, v, open) = zero(grid)
+@inline z_immersed_inflow(i, j, k, grid::ZFlatGrid, w, open) = zero(grid)
 
 """
 $(TYPEDSIGNATURES)
@@ -149,7 +158,7 @@ end
 
 @inline function immersed_halo_value(i, j, k, grid, loc, ibc, open, ψ, args...)
     ℓx, ℓy, ℓz = loc
-    halo = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    halo = immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds ψᵢ = ψ[i, j, k]
     ψᵢ = x_halo_value(i, j, k, grid, ℓx, ℓy, ℓz, ibc, open, ψ, ψᵢ, halo, args...)
     ψᵢ = y_halo_value(i, j, k, grid, ℓx, ℓy, ℓz, ibc, open, ψ, ψᵢ, halo, args...)
@@ -157,10 +166,13 @@ end
     return ψᵢ
 end
 
-# A field is not extrapolated across the faces it lives on
+# A field is not extrapolated across the faces it lives on, nor in flat directions
 @inline x_halo_value(i, j, k, grid, ::Face, ℓy, ℓz, ibc, open, ψ, ψᵢ, args...) = ψᵢ
 @inline y_halo_value(i, j, k, grid, ℓx, ::Face, ℓz, ibc, open, ψ, ψᵢ, args...) = ψᵢ
 @inline z_halo_value(i, j, k, grid, ℓx, ℓy, ::Face, ibc, open, ψ, ψᵢ, args...) = ψᵢ
+@inline x_halo_value(i, j, k, grid::XFlatGrid, ::Center, ℓy, ℓz, ibc, open, ψ, ψᵢ, args...) = ψᵢ
+@inline y_halo_value(i, j, k, grid::YFlatGrid, ℓx, ::Center, ℓz, ibc, open, ψ, ψᵢ, args...) = ψᵢ
+@inline z_halo_value(i, j, k, grid::ZFlatGrid, ℓx, ℓy, ::Center, ibc, open, ψ, ψᵢ, args...) = ψᵢ
 
 @inline function x_halo_value(i, j, k, grid, ℓx::Center, ℓy, ℓz, ibc, open, ψ, ψᵢ, halo, args...)
     fluid_east = halo & !peripheral_node(i+1, j, k, grid, ℓx, ℓy, ℓz)

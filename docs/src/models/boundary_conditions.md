@@ -727,7 +727,9 @@ faces whose fluid cell lies to their east and prescribes the velocity on those f
 value flows into the fluid; the `east` condition applies to faces whose fluid cell lies to their west,
 so that a positive value flows out of the fluid. The `south`, `north`, `bottom`, and `top` conditions
 on `v` and `w` follow the same convention. A function condition is evaluated at the fluid cell adjacent
-to the face, like every other immersed boundary condition.
+to the face, like every other immersed boundary condition. The condition applies to every face on its
+side, the lee of an island included, so a function that returns zero away from the intended opening
+keeps the other faces closed.
 
 The immersed cells behind open faces act as halo cells for every other field. The inflow carries
 the value of a tracer's immersed `ValueBoundaryCondition` on that side, and a tracer with the default
