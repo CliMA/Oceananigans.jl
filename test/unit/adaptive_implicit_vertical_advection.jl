@@ -186,6 +186,12 @@ end
     @test column_momentum(q) ≈ momentum₀
     @test minimum(q[1, 1, k] for k in 1:Nz) ≥ -sqrt(eps(eltype(grid)))
     @test momentum_height(q) > height₀
+
+    # A downdraft carries the top-face value into the column, so a uniform q stays uniform
+    set!(W, -5)
+    set!(q, 1)
+    implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), Δt, scheme, (; w=W))
+    @test all(≈(1), interior(q))
 end
 
 @testset "NonhydrostaticModel steps w at vertical CFL ≫ 1" begin
