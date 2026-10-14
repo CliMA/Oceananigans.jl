@@ -1,6 +1,7 @@
 using Oceananigans.Grids: topology
 using Oceananigans.ImmersedBoundaries: inactive_node
 using Oceananigans.Operators: Δx, Δy, Δz
+using Oceananigans.Utils: newton_div
 
 """
     GhostCells([FT=Oceananigans.defaults.FloatType])
@@ -25,6 +26,13 @@ Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) = GhostCells(
 
 @inline active_node(i, j, k, grid, ℓx, ℓy, ℓz) = !inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
+# Selects instead of `min` and `max`, which order signed zeros and propagate NaN at the cost of several GPU instructions
+@inline smallest(a, b) = ifelse(a < b, a, b)
+@inline  largest(a, b) = ifelse(a > b, a, b)
+@inline smallest(a, b, c...) = smallest(smallest(a, b), c...)
+@inline  largest(a, b, c...) = largest(largest(a, b),   c...)
+@inline ordered(a, b) = ifelse(a < b, (a, b), (b, a))
+
 # Distance between the node (i, j, k) and the previous node along the direction
 @inline node_spacing(i, j, k, grid, ::Val{1}, ::Center, ℓy, ℓz) = Δx(i, j, k, grid, Face(), ℓy, ℓz)
 @inline node_spacing(i, j, k, grid, ::Val{1}, ::Face,   ℓy, ℓz) = Δx(i - 1, j, k, grid, Center(), ℓy, ℓz)
@@ -40,89 +48,111 @@ Oceananigans.Architectures.on_architecture(to, scheme::GhostCells) = GhostCells(
     return ifelse(next_is_active, stepped_nodes, nodes)
 end
 
-@inline function boundary_line(values, positions, active, side, extrapolable, ::Val{N}) where N
-    upwind_nodes = @inbounds (values[N], positions[N], values[N - side], positions[N - side])
+# The last two active nodes of the run that leaves the stencil node n on the given side
+@inline function extrapolation_nodes(values, positions, run, n, side, ::Val{N}) where N
+    first_nodes = @inbounds (values[n], positions[n], values[n - side], positions[n - side])
 
-    side_nodes = ntuple(Val(N - 2)) do n
-        @inline @inbounds values[N + n * side], positions[N + n * side], active[n]
+    side_nodes = ntuple(Val(N - 2)) do m
+        @inline @inbounds values[n + m * side], positions[n + m * side], run[m]
     end
 
-    outer_value, outer_position, inner_value, inner_position = foldl(step_outward, side_nodes; init = upwind_nodes)
-    slope = ifelse(extrapolable, (outer_value - inner_value) / (outer_position - inner_position), zero(outer_value))
-
-    return outer_value, outer_position, slope
+    return foldl(step_outward, side_nodes; init = first_nodes)
 end
 
-@inline function ghost_cell_reconstruction(weno::WENO{N}, values, positions, active_below, active_above, ghosted_face, δˢ) where N
-    extrapolable = @inbounds active_below[1] | active_above[1]
-
-    below_value, below_position, below_slope = boundary_line(values, positions, active_below, -1, extrapolable, Val(N))
-    above_value, above_position, above_slope = boundary_line(values, positions, active_above, +1, extrapolable, Val(N))
-
-    below = ntuple(Val(N - 1)) do n
+# WENO reconstruction of the face between the stencil nodes N and N + 1, given in index order,
+# after the inactive nodes of each side are moved onto the line through the last two active nodes of that side
+@inline @muladd function ghost_cell_reconstruction(weno::WENO{N, FT, WCT}, values, positions, active, bias, δˢ) where {N, FT, WCT}
+    left_run = accumulate(&, ntuple(Val(N - 1)) do m
         @inline
-        node = N - n
-        ghost = @inbounds below_value + (positions[node] - below_position) * below_slope
-        @inbounds ifelse(active_below[n], values[node], ghost)
+        @inbounds active[N - m]
+    end)
+
+    right_run = accumulate(&, ntuple(Val(N - 1)) do m
+        @inline
+        @inbounds active[N + 1 + m]
+    end)
+
+    ψᴸ₀, xᴸ₀, ψᴸ₁, xᴸ₁ = extrapolation_nodes(values, positions, left_run,  N,     -1, Val(N))
+    ψᴿ₀, xᴿ₀, ψᴿ₁, xᴿ₁ = extrapolation_nodes(values, positions, right_run, N + 1, +1, Val(N))
+
+    # one division for the slopes of both lines
+    inverse_spacings = newton_div(WCT, one(xᴸ₀), (xᴸ₀ - xᴸ₁) * (xᴿ₀ - xᴿ₁))
+    left_slope  = (ψᴸ₀ - ψᴸ₁) * (xᴿ₀ - xᴿ₁) * inverse_spacings
+    right_slope = (ψᴿ₀ - ψᴿ₁) * (xᴸ₀ - xᴸ₁) * inverse_spacings
+
+    left = ntuple(Val(N - 1)) do m
+        @inline
+        node  = N - m
+        ghost = @inbounds ψᴸ₀ + (positions[node] - xᴸ₀) * left_slope
+        @inbounds ifelse(left_run[m], values[node], ghost)
     end
 
-    above = ntuple(Val(N - 1)) do n
+    right = ntuple(Val(N - 1)) do m
         @inline
-        node = N + n
-        ghost = @inbounds above_value + (positions[node] - above_position) * above_slope
-        @inbounds ifelse(active_above[n], values[node], ghost)
+        node  = N + 1 + m
+        ghost = @inbounds ψᴿ₀ + (positions[node] - xᴿ₀) * right_slope
+        @inbounds ifelse(right_run[m], values[node], ghost)
     end
 
-    completed_stencil = (reverse(below)..., @inbounds(values[N]), above...)
+    completed_stencil = (reverse(left)..., @inbounds(values[N]), @inbounds(values[N + 1]), right...)
 
-    δ = weno_differences(weno, completed_stencil)
+    # the upwind stencil is made of the first 2N - 1 nodes for a LeftBias, of the last 2N - 1 reversed for a RightBias
+    left_is_upwind = bias === LeftBias
+    upwind_values = ntuple(Val(2N - 1)) do n
+        @inline
+        @inbounds ifelse(left_is_upwind, completed_stencil[n], completed_stencil[2N + 1 - n])
+    end
+
+    # nodes 1 to 2N - 1 form the stencil of a LeftBias reconstruction, nodes 2 to 2N that of a RightBias one
+    left_bias_stencil_is_active  = @inbounds left_run[N - 1] & right_run[N - 2]
+    right_bias_stencil_is_active = @inbounds left_run[N - 2] & right_run[N - 1]
+    ghosted_face = !ifelse(left_is_upwind, left_bias_stencil_is_active, right_bias_stencil_is_active)
+
+    δ = weno_differences(weno, upwind_values)
     ω = biased_weno_weights(smoothness(ghosted_face, δ, δˢ), nothing, weno)
+    ψ̂ = weno_reconstruction(weno, weno_anchor(weno, upwind_values), δ, ω)
 
-    return weno_reconstruction(weno, weno_anchor(weno, completed_stencil), δ, ω)
+    return ψ̂, ghosted_face
 end
 
 @inline smoothness(ghosted_face, δ,  ::Nothing) = δ
 @inline smoothness(ghosted_face, δ, δˢ::NTuple) = ifelse(ghosted_face, δ, δˢ)
 @inline smoothness(ghosted_face, δ, δˢ::Tuple{Tuple, Tuple}) = ifelse(ghosted_face, (δ, δ), δˢ)
 
-# Neighbor of the stencil node n on the given side, or the boundary value between the two if the neighbor is inactive,
-# extrapolated from node n and the three nodes behind it
-@inline function neighbor_or_boundary_value(values, positions, active, n, side)
-    n₁ = n - side
-    n₂ = n - 2side
-    n₃ = n - 3side
-
+# Value at the boundary between the stencil nodes n and n - 1, extrapolated from node n and the three nodes after it
+@inline @muladd function boundary_value(values, positions, active, n, WCT)
     ψ₀ = @inbounds values[n]
-    ψ₁ = @inbounds values[n₁]
-    ψ₂ = @inbounds values[n₂]
-    ψ₃ = @inbounds values[n₃]
+    ψ₁ = @inbounds values[n + 1]
+    ψ₂ = @inbounds values[n + 2]
+    ψ₃ = @inbounds values[n + 3]
 
-    x₀ = @inbounds positions[n]
-    x₁ = @inbounds positions[n₁]
-    x₂ = @inbounds positions[n₂]
-    x₃ = @inbounds positions[n₃]
+    h₀ = @inbounds positions[n] - positions[n + 1]
+    h₁ = @inbounds positions[n + 1] - positions[n + 2]
+    h₂ = @inbounds positions[n + 2] - positions[n + 3]
 
-    # differences over the spacing between nodes n and n₁
-    δ₁ = ψ₀ - ψ₁
-    δ₂ = (ψ₁ - ψ₂) * (x₀ - x₁) / (x₁ - x₂)
-    δ₃ = (ψ₂ - ψ₃) * (x₀ - x₁) / (x₂ - x₃)
+    # differences over the spacing between nodes n and n + 1, multiplied by h₁ h₂ so that no spacing divides them
+    δ₁ = (ψ₀ - ψ₁) * h₁ * h₂
+    δ₂ = (ψ₁ - ψ₂) * h₀ * h₂
+    δ₃ = (ψ₂ - ψ₃) * h₀ * h₁
 
-    same_sign = (sign(δ₁) == sign(δ₂)) & (sign(δ₂) == sign(δ₃))
-    minmod_difference = ifelse(same_sign, sign(δ₁) * min(abs(δ₁), abs(δ₂), abs(δ₃)), zero(δ₁))
+    increasing = (δ₁ > 0) & (δ₂ > 0) & (δ₃ > 0)
+    decreasing = (δ₁ < 0) & (δ₂ < 0) & (δ₃ < 0)
+    smallest_difference = smallest(abs(δ₁), abs(δ₂), abs(δ₃))
+    minmod_difference = ifelse(increasing, smallest_difference, ifelse(decreasing, -smallest_difference, zero(δ₁)))
 
     # Ratio of the harmonic to the arithmetic mean of the squared differences, scaled by the largest difference
-    largest_difference = max(abs(δ₁), abs(δ₂), abs(δ₃))
-    scale = ifelse(largest_difference > floatmin(largest_difference), 1 / largest_difference, zero(largest_difference))
+    largest_difference = largest(abs(δ₁), abs(δ₂), abs(δ₃))
+    scale = ifelse(largest_difference > floatmin(largest_difference), newton_div(WCT, one(largest_difference), largest_difference), zero(largest_difference))
     a = (δ₁ * scale)^2
     b = (δ₂ * scale)^2
     c = (δ₃ * scale)^2
     denominator = (a + b + c) * (a * b + b * c + c * a)
-    slope_agreement = 9 * a * b * c / ifelse(denominator > 0, denominator, one(denominator))
 
-    extrapolable   = @inbounds active[n₁] & active[n₂] & active[n₃]
-    boundary_value = ψ₀ + ifelse(extrapolable, slope_agreement * minmod_difference / 2, zero(ψ₀))
+    # the agreement times half the minmod difference, divided back by h₁ h₂
+    extension = newton_div(WCT, 9 * a * b * c * minmod_difference, 2 * h₁ * h₂ * ifelse(denominator > 0, denominator, one(denominator)))
+    extrapolable = @inbounds active[n + 1] & active[n + 2] & active[n + 3]
 
-    return @inbounds ifelse(active[n + side], values[n + side], boundary_value)
+    return ψ₀ + ifelse(extrapolable, extension, zero(ψ₀))
 end
 
 # The two neighbors of the node along a direction, each replaced by the node value if it is inactive
@@ -148,62 +178,60 @@ end
     ψⱼ₊₁, ψⱼ₋₁, inactive_y_neighbor = neighbors_or_node(i, j, k, ψ₀, Val(2), topology(grid, 2), grid, ℓx, ℓy, ℓz, ψ, args...)
     ψₖ₊₁, ψₖ₋₁, inactive_z_neighbor = neighbors_or_node(i, j, k, ψ₀, Val(3), topology(grid, 3), grid, ℓx, ℓy, ℓz, ψ, args...)
 
-    ψ⁻ = min(ψ₀, ψᵢ₊₁, ψᵢ₋₁, ψⱼ₊₁, ψⱼ₋₁, ψₖ₊₁, ψₖ₋₁)
-    ψ⁺ = max(ψ₀, ψᵢ₊₁, ψᵢ₋₁, ψⱼ₊₁, ψⱼ₋₁, ψₖ₊₁, ψₖ₋₁)
+    ψˣ⁻, ψˣ⁺ = ordered(ψᵢ₊₁, ψᵢ₋₁)
+    ψʸ⁻, ψʸ⁺ = ordered(ψⱼ₊₁, ψⱼ₋₁)
+    ψᶻ⁻, ψᶻ⁺ = ordered(ψₖ₊₁, ψₖ₋₁)
+
+    ψ⁻ = smallest(ψ₀, ψˣ⁻, ψʸ⁻, ψᶻ⁻)
+    ψ⁺ =  largest(ψ₀, ψˣ⁺, ψʸ⁺, ψᶻ⁺)
     near_boundary = inactive_x_neighbor | inactive_y_neighbor | inactive_z_neighbor
 
     return ψ⁻, ψ⁺, near_boundary
 end
 
-@inline function ghost_cell_interpolate(i, j, k, grid, scheme::GhostCells{<:WENO{N}}, bias, d, ℓx, ℓy, ℓz, δˢ, ψ, args...) where N
+@inline @muladd function ghost_cell_interpolate(i, j, k, grid, scheme::GhostCells{<:WENO{N, FT, WCT}}, bias, d, ℓx, ℓy, ℓz, δˢ, ψ, args...) where {N, FT, WCT}
     weno = scheme.scheme
     e = unit_vector(d)
 
-    values      = upwind_stencil(i, j, k, grid, weno, bias, e, ψ, args...)
-    active_cell = upwind_stencil(i, j, k, grid, weno, bias, e, active_node, ℓx, ℓy, ℓz)
+    # The stencil in index order: node N is the cell L on the left of the face, node N + 1 the cell R on its right
+    values    = upwind_stencil(i, j, k, grid, weno, LeftBias, e, ψ, args...)
+    active    = upwind_stencil(i, j, k, grid, weno, LeftBias, e, active_node, ℓx, ℓy, ℓz)
+    positions = accumulate(+, upwind_stencil(i, j, k, grid, weno, LeftBias, e, node_spacing, d, ℓx, ℓy, ℓz))
 
-    # distances along the grid line, increasing with the index like the nodes of a LeftBias stencil
-    distances = accumulate(+, upwind_stencil(i, j, k, grid, weno, LeftBias, e, node_spacing, d, ℓx, ℓy, ℓz))
-    positions = ifelse(bias === LeftBias, distances, reverse(distances))
-
-    active_cell_below = ntuple(Val(N - 1)) do n
-        @inline
-        @inbounds active_cell[N - n]
-    end
-
-    active_cell_above = ntuple(Val(N - 1)) do n
-        @inline
-        @inbounds active_cell[N + n]
-    end
-
-    active_below = accumulate(&, active_cell_below)
-    active_above = accumulate(&, active_cell_above)
-    ghosted_face = @inbounds !(active_below[N - 1] & active_above[N - 1])
-
-    ψ̂ = ghost_cell_reconstruction(weno, values, positions, active_below, active_above, ghosted_face, δˢ)
+    ψ̂, ghosted_face = ghost_cell_reconstruction(weno, values, positions, active, bias, δˢ)
 
     di, dj, dk = e
-    left_extrema  = local_extrema(i - di, j - dj, k - dk, grid, ℓx, ℓy, ℓz, ψ, args...)
-    right_extrema = local_extrema(i, j, k, grid, ℓx, ℓy, ℓz, ψ, args...)
+    ψᴸ⁻, ψᴸ⁺, left_near_boundary  = local_extrema(i - di, j - dj, k - dk, grid, ℓx, ℓy, ℓz, ψ, args...)
+    ψᴿ⁻, ψᴿ⁺, right_near_boundary = local_extrema(i, j, k, grid, ℓx, ℓy, ℓz, ψ, args...)
 
-    ψᵁ⁻, ψᵁ⁺, upwind_near_boundary   = ifelse(bias === LeftBias, left_extrema, right_extrema)
-    ψᴰ⁻, ψᴰ⁺, downwind_near_boundary = ifelse(bias === LeftBias, right_extrema, left_extrema)
+    # One boundary value serves the face: beyond L it needs node N + 2 active, beyond R it needs it inactive
+    beyond_left = @inbounds active[N + 2]
+    oriented_values    = ifelse(beyond_left, values,    reverse(values))
+    oriented_positions = ifelse(beyond_left, positions, reverse(positions))
+    oriented_activity  = ifelse(beyond_left, active,    reverse(active))
+    ψᵇ = boundary_value(oriented_values, oriented_positions, oriented_activity, N, WCT)
 
-    # the extrema also contain the nodes beyond U and D along the line, or the boundary values if they are inactive
-    ψᵁᵁ = neighbor_or_boundary_value(values, positions, active_cell, N, -1)
-    ψᴰᴰ = neighbor_or_boundary_value(values, positions, active_cell, N + 1, +1)
+    # the extrema also contain the nodes beyond L and R along the line, or the boundary value if they are inactive
+    ψᴸᴸ = @inbounds ifelse(active[N - 1], values[N - 1], ifelse(beyond_left, ψᵇ, values[N]))
+    ψᴿᴿ = @inbounds ifelse(active[N + 2], values[N + 2], ψᵇ)
 
-    ψᵁ⁻ = min(ψᵁ⁻, ψᵁᵁ)
-    ψᵁ⁺ = max(ψᵁ⁺, ψᵁᵁ)
-    ψᴰ⁻ = min(ψᴰ⁻, ψᴰᴰ)
-    ψᴰ⁺ = max(ψᴰ⁺, ψᴰᴰ)
+    ψᴸ⁻ = smallest(ψᴸ⁻, ψᴸᴸ)
+    ψᴸ⁺ = largest(ψᴸ⁺, ψᴸᴸ)
+    ψᴿ⁻ = smallest(ψᴿ⁻, ψᴿᴿ)
+    ψᴿ⁺ = largest(ψᴿ⁺, ψᴿᴿ)
 
-    ψᵁ = @inbounds values[N]
+    left_is_upwind = bias === LeftBias
+    ψᵁ  = @inbounds ifelse(left_is_upwind, values[N], values[N + 1])
+    ψᵁ⁻ = ifelse(left_is_upwind, ψᴸ⁻, ψᴿ⁻)
+    ψᵁ⁺ = ifelse(left_is_upwind, ψᴸ⁺, ψᴿ⁺)
+    ψᴰ⁻ = ifelse(left_is_upwind, ψᴿ⁻, ψᴸ⁻)
+    ψᴰ⁺ = ifelse(left_is_upwind, ψᴿ⁺, ψᴸ⁺)
+
     α  = convert(typeof(ψ̂), 3//2)
-    ψ̂⁻ = max(ψᵁ - α * (ψᵁ⁺ - ψᵁ),  ψᴰ⁻)
-    ψ̂⁺ = min(ψᵁ + α * (ψᵁ  - ψᵁ⁻), ψᴰ⁺)
+    ψ̂⁻ =  largest(ψᵁ - α * (ψᵁ⁺ - ψᵁ),  ψᴰ⁻)
+    ψ̂⁺ = smallest(ψᵁ + α * (ψᵁ  - ψᵁ⁻), ψᴰ⁺)
 
-    limited_face = ghosted_face | upwind_near_boundary | downwind_near_boundary
+    limited_face = ghosted_face | left_near_boundary | right_near_boundary
 
     return ifelse(limited_face, clamp(ψ̂, ψ̂⁻, ψ̂⁺), ψ̂)
 end

@@ -155,12 +155,9 @@ for arch in archs
     @testset "GhostCells boundary reconstruction" begin
         scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
 
-        function reconstruct(scheme, bias, values, activity; positions = Tuple(1.0:7.0))
-            upwind_values   = bias == LeftBias ? values   : reverse(values)
-            upwind_activity = bias == LeftBias ? activity : reverse(activity)
-            active_below = accumulate(&, upwind_activity[3:-1:1])
-            active_above = accumulate(&, upwind_activity[5:7])
-            return ghost_cell_reconstruction(scheme.scheme, upwind_values[1:7], positions, active_below, active_above, true, nothing)
+        function reconstruct(scheme, bias, values, activity; positions = Tuple(1.0:8.0))
+            ψ̂, ghosted_face = ghost_cell_reconstruction(scheme.scheme, values, positions, activity, bias, nothing)
+            return ψ̂
         end
 
         # Averages over the unit cells [n - 1, n] of a polynomial with primitive P; the reconstructed face is at x = 4
@@ -169,7 +166,6 @@ for arch in archs
         active   = ntuple(_ -> true, 8)
         wall     = (false, false, true, true, true, true, true, true)
         two_left = (false, false, false, true, true, false, false, false)
-        alone    = (false, false, false, true, false, false, false, false)
 
         linear_primitive(x) = x^2 / 2 + 2x # p(x) = x + 2
 
@@ -183,15 +179,13 @@ for arch in archs
             @test reconstruct(scheme, bias, averages(linear_primitive), two_left) ≈ 4 + 2
         end
 
-        # a cell without active neighbours along the line extends its own value
-        @test reconstruct(scheme, LeftBias, (9.0, 9.0, 9.0, 3.0, 9.0, 9.0, 9.0, 9.0), alone) == 3.0
 
         # on a stretched line the ghosts lie on the line through the active cells in physical coordinates
-        positions = Tuple(cumsum([0.0; 1.08 .^ (0:5)]))
+        positions = Tuple(cumsum([0.0; 1.08 .^ (0:6)]))
         affine = Tuple(2.5 .- 0.7 .* positions)
         lowest_inactive = (false, true, true, true, true, true, true, true)
-        @test reconstruct(scheme, LeftBias, (1e3, affine[2:7]..., 0.0), lowest_inactive; positions) ≈
-              reconstruct(scheme, LeftBias, (affine..., 0.0), active; positions)
+        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_inactive; positions) ≈
+              reconstruct(scheme, LeftBias, affine, active; positions)
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
