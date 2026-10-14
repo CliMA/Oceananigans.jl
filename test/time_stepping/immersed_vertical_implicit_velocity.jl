@@ -200,7 +200,7 @@ end
             expected = matrix \ vec(w★[][1, 1, 2:Nz])
             observed = Array(interior(model.velocities.w))
             @test any(!iszero, expected)
-            @test observed[1, 1, 2:Nz] ≈ expected rtol=1e-12 atol=1e-14
+            @test observed[1, 1, 2:Nz] ≈ expected rtol=1e-12
             @test all(iszero, observed[:, :, 1])
             @test all(iszero, observed[:, :, end])
         end
@@ -273,7 +273,7 @@ end
             w_after_implicit_step = Array(interior(model.velocities.w))
             observed = vec(w_after_implicit_step[1, 1, kb+1:Nz])
 
-            @test observed ≈ expected rtol=1e-12 atol=1e-14
+            @test observed ≈ expected rtol=1e-12
             @test iszero(w_after_implicit_step[1, 1, kb])
             @test iszero(w_after_implicit_step[1, 1, end])
         end
@@ -334,7 +334,7 @@ end
             for component in eachindex(with_immersed_forcing)
                 wet_with = with_immersed_forcing[component][:, :, kb+1:Nz]
                 wet_zeroed = zeroed_immersed_forcing[component][:, :, kb+1:Nz]
-                @test wet_with ≈ wet_zeroed rtol=1e-10 atol=1e-12
+                @test wet_with ≈ wet_zeroed rtol=1e-10
             end
 
             w = with_immersed_forcing[3]
