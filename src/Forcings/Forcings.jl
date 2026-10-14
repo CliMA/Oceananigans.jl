@@ -1,10 +1,11 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!, tidal_forcing
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 
+using Oceananigans: Oceananigans
 using Oceananigans.Fields: field, location
 using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.OutputReaders: FlavorOfFTS
@@ -20,5 +21,6 @@ include("advective_forcing.jl")
 include("forcing.jl")
 include("model_forcing.jl")
 include("compute_forcing.jl")
+include("tidal_forcing.jl")
 
 end # module

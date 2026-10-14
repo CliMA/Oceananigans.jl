@@ -89,7 +89,7 @@ end
     m, M = reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
 
     θᵐᵃˣ = abs((cᵐᵃˣ - cᵢ) / (M - cᵢ + ε₂))
-    θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ + ε₂))
+    θᵐⁱⁿ = abs((cᵐⁱⁿ - cᵢ) / (m - cᵢ - ε₂))
 
     return min(θᵐᵃˣ, θᵐⁱⁿ, one(FT))
 end
