@@ -1,7 +1,6 @@
 ---
 name: build-docs
 description: Build Oceananigans documentation locally with optional fast-build shortcuts
-user_invocable: true
 ---
 
 # Build Documentation

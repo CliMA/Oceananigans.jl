@@ -199,18 +199,28 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
     end
 end
 
-@testset "Time-dependent barotropic boundary conditions see the correct substep time" begin
+@testset "Time-dependent barotropic boundary conditions see the correct substep time [$(summary(arch))]" for arch in archs
     # A frozen substep clock would report the same time on every evaluation; `GravityWaveRadiation`
     # is documented to apply at every barotropic substep, so a time-dependent exterior value must
     # see each substep's own time, evenly spaced by the barotropic Δτ.
-    grid = RectilinearGrid(size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
+    grid = RectilinearGrid(arch; size=(8, 1, 1), x=(0, 1000), y=(0, 100), z=(-100, 0),
                            topology=(Bounded, Periodic, Bounded))
 
-    times = Float64[]
-    recording_U_ext(i, j, grid, clock, model_fields) = (push!(times, clock.time); 0.0)
+    # Boundary conditions are evaluated in kernels, so the times are recorded in an array, at
+    # the position of each substep (substep clocks have `last_stage_Δt = Δτ`). In kernels both
+    # clocks are `NamedTuple`s, but only the model clock has a `last_Δt`.
+    times = on_architecture(arch, fill(NaN, 100))
     recording_η_ext(i, j, grid, clock, model_fields) = 0.0
 
-    U_bc = GravityWaveRadiationBoundaryCondition((DiscreteBoundaryFunction(recording_U_ext, nothing),
+    function recording_U_ext(i, j, grid, clock, model_fields, times)
+        if !hasproperty(clock, :last_Δt)
+            n = clamp(unsafe_trunc(Int, round(clock.time / clock.last_stage_Δt)) + 1, 1, length(times))
+            @inbounds times[n] = clock.time
+        end
+        return zero(grid)
+    end
+
+    U_bc = GravityWaveRadiationBoundaryCondition((DiscreteBoundaryFunction(recording_U_ext, times),
                                                   DiscreteBoundaryFunction(recording_η_ext, nothing)))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east=U_bc)
 
@@ -219,7 +229,7 @@ end
 
     time_step!(model, 100.0)
 
-    substep_times = sort(unique(times))
+    substep_times = filter(!isnan, Array(times))
     @test length(substep_times) > 1
 
     Δτ = diff(substep_times)

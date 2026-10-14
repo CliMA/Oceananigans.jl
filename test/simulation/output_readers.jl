@@ -19,9 +19,10 @@ function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
     model = NonhydrostaticModel(grid; tracers = (:T, :S), advection = nothing)
     set!(model, T=30, S=35)
-    simulation = Simulation(model; Δt, stop_iteration=100)
+    simulation = Simulation(model; Δt, stop_iteration=100, verbose=false)
 
-    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers,
+    simulation.output_writers[:constant_fields] = JLD2Writer(model, model.tracers;
+                                                             dir = mktempdir(),
                                                              filename = "constant_fields",
                                                              schedule = IterationInterval(10),
                                                              array_type = Array{FT},
@@ -67,15 +68,17 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     # Determine file extension based on output writer type
     file_ext = output_writer == JLD2Writer ? ".jld2" : ".nc"
+    dir = mktempdir()
 
-    filepath3d = "test_3d_output_with_halos" * file_ext
+    filepath3d = joinpath(dir, "test_3d_output_with_halos" * file_ext)
     simulation.output_writers[:writer_3d_with_halos] = output_writer(model, fields_to_output,
                                                                      filename = filepath3d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
                                                                      overwrite_files = true)
 
-    filepath2d = "test_2d_output_with_halos" * file_ext
+    filepath2d = joinpath(dir, "test_2d_output_with_halos" * file_ext)
+    # NetCDFWriter does not support non-default indices with `with_halos = true`
     if output_writer == JLD2Writer
         simulation.output_writers[:writer_2d_with_halos] = output_writer(model, fields_to_output,
                                                                          filename = filepath2d,
@@ -83,27 +86,25 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                                                                          with_halos = true,
                                                                          schedule = TimeInterval(30seconds),
                                                                          overwrite_files = true)
-    else
-        @warn "Skipping 2D output writer since you cannot pass non-default indices to NetCDFWriter if `with_halos=true`."
     end
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    filepath1d = "test_1d_output_with_halos" * file_ext
+    filepath1d = joinpath(dir, "test_1d_output_with_halos" * file_ext)
     simulation.output_writers[:writer_1d_with_halos] = output_writer(model, profiles,
                                                                      filename = filepath1d,
                                                                      with_halos = true,
                                                                      schedule = TimeInterval(30seconds),
                                                                      overwrite_files = true)
 
-    unsplit_filepath = "test_unsplit_output" * file_ext
+    unsplit_filepath = joinpath(dir, "test_unsplit_output" * file_ext)
     simulation.output_writers[:unsplit_writer] = output_writer(model, profiles,
                                                                filename = unsplit_filepath,
                                                                with_halos = true,
                                                                schedule = TimeInterval(10seconds),
                                                                overwrite_files = true)
 
-    split_filepath = "test_split_output" * file_ext
+    split_filepath = joinpath(dir, "test_split_output" * file_ext)
     simulation.output_writers[:split_writer] = output_writer(model, profiles,
                                                              filename = split_filepath,
                                                              with_halos = true,
@@ -120,7 +121,7 @@ function test_pickup_with_inaccurate_times()
     # Testing pickup using example that was failing in https://github.com/CliMA/Oceananigans.jl/issues/4077
     grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
     times = collect(0:0.1:3)
-    filename = "fts_inaccurate_times_test.jld2"
+    filename = joinpath(mktempdir(), "fts_inaccurate_times_test.jld2")
     f_tmp = Field{Center,Center,Center}(grid)
     f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
 
@@ -331,7 +332,7 @@ function test_field_time_series_split_files(arch)
     dir = mktempdir()
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid, tracers=:c)
-    simulation = Simulation(model, Δt=1, stop_time=10)
+    simulation = Simulation(model; Δt=1, stop_time=10, verbose=false)
 
     set_tracer_to_iteration!(sim) = fill!(parent(sim.model.tracers.c), sim.model.clock.iteration)
     add_callback!(simulation, set_tracer_to_iteration!, IterationInterval(1))
@@ -387,11 +388,14 @@ function test_field_time_series_pickup(arch)
                 @test all(interior(Tfts[t]) .== 30)
                 @test all(interior(Sfts[t]) .== 35)
             end
+
+            rm(dirname(filename); recursive=true)
         end
     end
 
-    @info "  Testing FieldTimeSeries pickup with slightly inaccurate times..."
-    test_pickup_with_inaccurate_times()
+    @testset "FieldTimeSeries pickup with slightly inaccurate times" begin
+        test_pickup_with_inaccurate_times()
+    end
 
     return nothing
 end
@@ -405,18 +409,21 @@ function test_field_time_series_array_boundary_conditions(arch)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs, v=v_bcs))
-    simulation = Simulation(model; Δt=1, stop_iteration=1)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
+    dir = mktempdir()
     filename = arch isa GPU ? "test_cuarray_bc.jld2" : "test_array_bc.jld2"
 
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
+                                                  dir,
                                                   filename,
                                                   schedule=IterationInterval(1),
                                                   overwrite_files = true)
     run!(simulation)
 
-    ut = FieldTimeSeries(filename, "u")
-    vt = FieldTimeSeries(filename, "v")
+    filepath = simulation.output_writers[:jld2].filepath
+    ut = FieldTimeSeries(filepath, "u")
+    vt = FieldTimeSeries(filepath, "v")
     @test ut.boundary_conditions.top.classification isa Flux
     @test ut.boundary_conditions.top.condition isa Array
 
@@ -424,7 +431,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     @test τy_ow isa Field{Center, Face, Nothing}
     @test architecture(τy_ow) isa CPU
     @test parent(τy_ow) isa Array
-    rm(filename)
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -436,17 +443,18 @@ function test_field_time_series_function_boundary_conditions(arch)
     u_east(x, y, t) = 0
     u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(u_west), east = NormalFlowBoundaryCondition(u_east, scheme=PerturbationAdvection()))
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
-    simulation = Simulation(model; Δt=1, stop_iteration=1)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
 
-    filename = "test_function_bc.jld2"
+    dir = mktempdir()
     simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities;
-                                                  filename,
+                                                  dir,
+                                                  filename = "test_function_bc.jld2",
                                                   schedule=IterationInterval(1),
                                                   overwrite_files = true)
     run!(simulation)
 
-    @test FieldTimeSeries(filename, "u") isa FieldTimeSeries
-    rm(filename)
+    @test FieldTimeSeries(simulation.output_writers[:jld2].filepath, "u") isa FieldTimeSeries
+    rm(dir; recursive=true)
 
     return nothing
 end
@@ -723,6 +731,37 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
     return nothing
 end
 
+function test_field_time_series_with_subsetted_times(backend)
+    grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+    output_times = 0:0.1:1
+    dir = mktempdir()
+    path = joinpath(dir, "test_fts_subsetted_times.jld2")
+    name = "c"
+
+    field_time_series = FieldTimeSeries{Center, Center, Center}(
+        grid, output_times;  backend = OnDisk(), path, name
+    )
+
+    for (i, t) in enumerate(output_times)
+        field= CenterField(grid)
+        set!(field, Returns(t))
+        set!(field_time_series, field, i)
+    end
+
+    subset_times = output_times[end-5:end]
+
+    field_time_series_subset = FieldTimeSeries(path, name; backend, times=subset_times)
+
+    @test field_time_series_subset.times == subset_times
+
+    for (i, t) in enumerate(subset_times)
+        @test field_time_series_subset[i][1, 1, 1] == t
+        @test field_time_series_subset[i] == field_time_series[Time(subset_times[i])]
+    end
+
+    rm(dir; recursive=true, force=true)
+end
+
 function test_field_time_series_time_average(arch)
     grid = RectilinearGrid(arch, size=(2, 1, 4), extent=(1, 1, 1))
     times = 0:7
@@ -734,7 +773,8 @@ function test_field_time_series_time_average(arch)
     end
 
     # Windows of 31, 31, and the 2 units left over, so samples 4 and 8 straddle an edge.
-    averaged = @test_logs (:warn, r"last window") time_average(ramp, bounds, 31)
+    last_window_log = (:warn, "The last window spans 2 rather than 31")
+    averaged = @test_logs last_window_log time_average(ramp, bounds, 31)
     values = Array(interior(averaged))
 
     @test Array(averaged.times) == [15.5, 46.5, 63]
@@ -742,7 +782,7 @@ function test_field_time_series_time_average(arch)
     @test values[1, 1, 1, 2] ≈ (1 * 4 + 8 * 5 + 8 * 6 + 8 * 7 + 6 * 8) / 31
     @test values[1, 1, 1, 3] ≈ 8
 
-    whole_record = time_average(ramp, bounds, 100)
+    whole_record = @test_logs (:warn, "The last window spans 64 rather than 100") time_average(ramp, bounds, 100)
     @test Array(whole_record.times) == [32]
     @test Array(interior(whole_record))[1, 1, 1, 1] ≈ mean(1:8)
 
@@ -752,14 +792,14 @@ function test_field_time_series_time_average(arch)
     gap = Array(interior(ramp[2]))
     gap[1, 1, :] .= NaN
     copyto!(interior(ramp[2]), gap)
-    gappy = Array(interior(time_average(ramp, bounds, 31)))
+    gappy = Array(interior(@test_logs last_window_log time_average(ramp, bounds, 31)))
     @test gappy[1, 1, 1, 1] ≈ (8 * 1 + 8 * 3 + 7 * 4) / 23
     @test gappy[2, 1, 1, 1] ≈ (8 * 1 + 8 * 2 + 8 * 3 + 7 * 4) / 31
 
     for n in 1:8
         set!(ramp[n], NaN)
     end
-    @test all(isnan, Array(interior(time_average(ramp, bounds, 31))))
+    @test all(isnan, Array(interior(@test_logs last_window_log time_average(ramp, bounds, 31))))
 
     # A partly resident series streamed from disk averages to the same numbers.
     path = joinpath(mktempdir(), "ramp.jld2")
@@ -770,19 +810,19 @@ function test_field_time_series_time_average(arch)
         set!(ondisk, sample, n)
     end
     windowed = FieldTimeSeries(path, "ramp"; architecture=arch, backend=InMemory(2))
-    @test Array(interior(time_average(windowed, bounds, 31))) == values
+    @test Array(interior(@test_logs last_window_log time_average(windowed, bounds, 31))) == values
 
     surface = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, :, 4))
     for n in 1:8
         set!(surface[n], n)
     end
-    sliced = time_average(surface, bounds, 31)
+    sliced = @test_logs last_window_log time_average(surface, bounds, 31)
     @test sliced.indices == surface.indices
     @test size(interior(sliced)) == (2, 1, 1, 3)
     @test Array(interior(sliced))[1, 1, 1, 3] ≈ 8
 
     cyclic = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical())
-    @test time_average(cyclic, bounds, 31).time_indexing isa Cyclical
+    @test (@test_logs last_window_log time_average(cyclic, bounds, 31)).time_indexing isa Cyclical
 
     return nothing
 end
@@ -814,15 +854,15 @@ function test_precomputed_time_interpolator(arch)
     return nothing
 end
 
-@testset "OutputReaders" begin
-    @info "Testing output readers..."
+netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
+                            "Using default FieldBoundaryConditions for `grid` and `location`.")
 
+@testset "OutputReaders" begin
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
 
     for arch in archs
         @testset "FieldTimeSeries rejects AbstractOperations [$(typeof(arch))]" begin
-            @info "  Testing that FieldTimeSeries operands are rejected by AbstractOperations [$(typeof(arch))]..."
             grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
             times = 0:1.0:3
             a = FieldTimeSeries{Center, Center, Center}(grid, times)
@@ -850,13 +890,11 @@ end
     for arch in archs
         if arch isa CPU
             @testset "FieldTimeSeries pickup" begin
-                @info "  Testing FieldTimeSeries pickup"
                 test_field_time_series_pickup(arch)
             end
         end
 
         @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))]" begin
-            @info "  Testing FieldTimeSeries with Array boundary conditions..."
             test_field_time_series_array_boundary_conditions(arch)
         end
     end
@@ -864,10 +902,12 @@ end
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
+        # Each test reads six series
+        reader_logs = output_writer == NetCDFWriter ? ntuple(_ -> netcdf_reader_log, 6) : ()
+
         for arch in archs
             @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
-                @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
-                test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
+                @test_logs reader_logs... test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
 
                 if output_writer == JLD2Writer
                     test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt) # NetCDFWriter does not support 2D sliced fields with halos yet
@@ -878,14 +918,12 @@ end
 
             if output_writer == JLD2Writer
                 @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))] with $output_writer" begin
-                    @info "  Testing FieldTimeSeries with Function boundary conditions..."
                     test_field_time_series_function_boundary_conditions(arch)
                 end
             end
 
             if output_writer == JLD2Writer
                 @testset "FieldTimeSeries with split files [$(typeof(arch))]" begin
-                    @info "  Testing FieldTimeSeries with split files [$(typeof(arch))]..."
                     test_field_time_series_split_files(arch)
                 end
             end
@@ -893,58 +931,48 @@ end
             # TODO: Make FieldTimeSeries{OnDisk} work with NetCDFWriter
             if output_writer == JLD2Writer
                 @testset "FieldTimeSeries{OnDisk} [$(typeof(arch))] with $output_writer" begin
-                    @info "  Testing FieldTimeSeries{OnDisk} [$(typeof(arch))]..."
                     test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz, Nt)
                 end
             end
 
             @testset "FieldTimeSeries{InMemory} reductions with $output_writer" begin
-                @info "  Testing FieldTimeSeries{InMemory} reductions..."
-                test_field_time_series_reductions(filepath3d, Nt)
+                @test_logs reader_logs... test_field_time_series_reductions(filepath3d, Nt)
             end
         end
 
         # TODO: Make all of these features work with NetCDFWriter
         if output_writer == JLD2Writer
             @testset "Test chunked abstraction with $output_writer" begin
-                @info "  Testing Chunked abstraction..."
                 test_chunked_abstraction(filepath3d, "T")
             end
 
             for Backend in [InMemory, OnDisk]
                 @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
-                    @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
                     test_field_time_series_parallel_reading(Backend, filepath3d)
                 end
             end
 
             for Backend in [InMemory, OnDisk]
                 @testset "FieldDataset{$Backend} indexing with $output_writer" begin
-                    @info "  Testing FieldDataset{$Backend} indexing..."
                     test_field_dataset_indexing(Backend, filepath3d)
                 end
             end
 
             for Backend in [InMemory, OnDisk]
                 @testset "FieldDataset{$Backend} parallel reading with $output_writer" begin
-                    @info "  Testing FieldDataset{$Backend} parallel reading..."
                     test_field_dataset_parallel_reading(Backend, filepath3d)
                 end
             end
         end
 
-        rm(filepath1d)
-        rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
-        rm(filepath3d)
+        rm(dirname(filepath3d); recursive=true)
     end
 
     @testset "FieldTimeSeries reductions with dims" begin
-        @info "  Testing FieldTimeSeries reductions with dims..."
         test_field_time_series_reductions_with_dims()
     end
 
     @testset "FieldTimeSeries with singleton integer indices" begin
-        @info "  Testing FieldTimeSeries with singleton integer indices..."
         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
         times = [0.0, 1.0]
 
@@ -982,18 +1010,20 @@ end
         end
     end
 
-    filepath_sine = "one_dimensional_sine.jld2"
+    filepath_sine = joinpath(mktempdir(), "one_dimensional_sine.jld2")
     @testset "Test interpolation using `InMemory` backend" begin
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
     rm(filepath_sine)
 
+    @testset "Test indexing of FieldTimeSeries with specified times and backend $backend" for backend in (OnDisk(), InMemory(), InMemory(2))
+        test_field_time_series_with_subsetted_times(backend)
+    end
+
     # A series reachable only through a boundary condition must still be found, so that
     # `update_field_time_series!` advances its in-memory window.
     for arch in archs
     @testset "Series held by a boundary condition are extracted [$(typeof(arch))]" begin
-        @info "  Testing extraction of series held by boundary conditions [$(typeof(arch))]..."
-
         grid  = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
         times = [0.0, 1.0, 2.0, 3.0]
         fts   = FieldTimeSeries{Center, Center, Center}(grid, times)
