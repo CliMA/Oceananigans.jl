@@ -5,6 +5,8 @@ using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, Gr
 using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
 using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
 using Oceananigans.Units
+using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.Models: BoundaryAdjacentMean
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 using Statistics: mean
 using Test
@@ -552,6 +554,23 @@ function test_oblique_radiation_mirror_symmetry()
     return c ≈ reverse(c_mirrored, dims = 2)
 end
 
+# Updating a normal-flow condition with a boundary-adjacent mean and an oblique scheme computes the mean and fills the
+# halos of the scheme's previous values, here from the other end of a periodic boundary.
+function test_oblique_boundary_mean_update()
+    grid = RectilinearGrid(size = (8, 6, 2), x = (0, 1), y = (0, 1), z = (0, 1), topology = (Bounded, Periodic, Bounded))
+    mean_u = BoundaryAdjacentMean(grid, :east; flux_field = Field{Face, Nothing, Nothing}(grid))
+    u_bcs = FieldBoundaryConditions(grid, (Face(), Center(), Center()); east = NormalFlowBoundaryCondition(mean_u; scheme = ObliqueRadiation()))
+    u = XFaceField(grid; boundary_conditions = u_bcs)
+    set!(u, (x, y, z) -> x)
+
+    bc = u.boundary_conditions.east
+    previous = bc.classification.scheme.previous_boundary[1]
+    previous[1:6, 1:2] .= reshape(1:12, 6, 2)
+    update_boundary_condition!(bc, Val(:east), u, nothing)
+
+    return mean_u.value[] ≈ 7 / 8 && previous[0, 1:2] == previous[6, 1:2] && previous[7, 1:2] == previous[1, 1:2]
+end
+
 #####
 ##### Test: tidal forcing and boundary conditions
 #####
@@ -805,6 +824,7 @@ end
 
     @testset "ObliqueRadiation is mirror-symmetric along the boundary" begin
         @test test_oblique_radiation_mirror_symmetry()
+        @test test_oblique_boundary_mean_update()
     end
 
     @testset "Equilibrium tidal body force" begin
