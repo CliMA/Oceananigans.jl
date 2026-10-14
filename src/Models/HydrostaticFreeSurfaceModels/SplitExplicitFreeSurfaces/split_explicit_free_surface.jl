@@ -290,7 +290,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)
     else
-        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping, strategy)
+        materialize_kernel_parameters(TX, TY, maybe_extended_grid, substepping, strategy)
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
