@@ -209,7 +209,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
   *This article in the Journal of Open Source Software describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
-We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
+We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Publications-using-Oceananigans).
 If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
