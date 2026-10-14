@@ -8,9 +8,12 @@ struct BenchmarkResult
     float_type::String
     grid_size::Tuple{Int, Int, Int}
     time_steps::Int
+    samples::Int
     Δt::Float64
     total_time_seconds::Float64
     time_per_step_seconds::Float64
+    time_per_step_median_seconds::Float64
+    time_per_step_max_seconds::Float64
     steps_per_second::Float64
     grid_points_per_second::Float64
     gpu_memory_used::Int64
@@ -27,10 +30,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::BenchmarkResult)
     println(io, "├── group: ", r.group)
     println(io, "├── float_type: ", r.float_type)
     println(io, "├── grid_size: ", r.grid_size)
-    println(io, "├── time_steps: ", r.time_steps)
+    println(io, "├── time_steps: ", r.time_steps, " × ", r.samples, " windows")
     println(io, "├── Δt: ", r.Δt)
     println(io, "├── total_time: ", @sprintf("%.3f s", r.total_time_seconds))
-    println(io, "├── time_per_step: ", @sprintf("%.6f s", r.time_per_step_seconds))
+    println(io, "├── time_per_step: ", @sprintf("%.6f s (min), %.6f s (median), %.6f s (max)",
+                                                r.time_per_step_seconds, r.time_per_step_median_seconds, r.time_per_step_max_seconds))
     println(io, "├── steps_per_second: ", @sprintf("%.6f/s", r.steps_per_second))
     println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
     println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))
@@ -99,6 +103,7 @@ struct IOBenchmarkResult
     grid_points_per_second::Float64
     output_file::String
     total_output_size_bytes::Int64
+    chunk_shape::Union{Nothing, Vector{Int}}
     gpu_memory_used::Int64
     metadata::BenchmarkMetadata
 end
@@ -123,6 +128,52 @@ function Base.show(io::IO, ::MIME"text/plain", r::IOBenchmarkResult)
     println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
     println(io, "├── output_file: ", r.output_file)
     println(io, "├── total_output_size: ", Base.format_bytes(r.total_output_size_bytes))
+    println(io, "├── chunk_shape: ", isnothing(r.chunk_shape) ? "—" : string(Tuple(r.chunk_shape)))
     println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))
+    print(io,   "└── metadata: ", r.metadata.architecture, " @ ", r.metadata.timestamp)
+end
+
+#####
+##### Read benchmark result container (measures reading a previously-written store)
+#####
+
+struct ReadBenchmarkResult
+    name::String
+    group::String
+    format::String
+    float_type::String
+    grid_size::Tuple{Int, Int, Int}
+    snapshots::Int
+    output_file::String
+    file_size_bytes::Int64
+    chunk_shape::Union{Nothing, Vector{Int}}
+    bulk_read_seconds::Float64
+    iteration_seconds::Float64
+    time_per_snapshot_seconds::Float64
+    snapshots_per_second::Float64
+    grid_points_per_second::Float64
+    metadata::BenchmarkMetadata
+end
+
+function Base.show(io::IO, r::ReadBenchmarkResult)
+    print(io, "ReadBenchmarkResult: ", r.name, " (", r.format, ", ", r.snapshots, " snapshots)")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", r::ReadBenchmarkResult)
+    println(io, "ReadBenchmarkResult")
+    println(io, "├── name: ", r.name)
+    println(io, "├── group: ", r.group)
+    println(io, "├── format: ", r.format)
+    println(io, "├── float_type: ", r.float_type)
+    println(io, "├── grid_size: ", r.grid_size)
+    println(io, "├── snapshots: ", r.snapshots)
+    println(io, "├── output_file: ", r.output_file)
+    println(io, "├── file_size: ", Base.format_bytes(r.file_size_bytes))
+    println(io, "├── chunk_shape: ", isnothing(r.chunk_shape) ? "—" : string(Tuple(r.chunk_shape)))
+    println(io, "├── bulk_read_time: ", @sprintf("%.6f s", r.bulk_read_seconds))
+    println(io, "├── iteration_time: ", @sprintf("%.6f s", r.iteration_seconds))
+    println(io, "├── time_per_snapshot: ", @sprintf("%.6f s", r.time_per_snapshot_seconds))
+    println(io, "├── snapshots_per_second: ", @sprintf("%.6f/s", r.snapshots_per_second))
+    println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
     print(io,   "└── metadata: ", r.metadata.architecture, " @ ", r.metadata.timestamp)
 end

@@ -1,9 +1,11 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition,
+using Oceananigans.BoundaryConditions: BoundaryConditions,
+                                       BoundaryCondition,
                                        DefaultBoundaryCondition,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux
+                                       VBC, GBC, FBC, Flux,
+                                       needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
                                         bc_str,
@@ -41,7 +43,12 @@ Base.show(io::IO, ibc::IBC) =
               "└── top: ", summary(ibc.top))
 
 """
-    ImmersedBoundaryCondition(; interfaces...)
+    ImmersedBoundaryCondition(; west=nothing,
+                               east=nothing,
+                               south=nothing,
+                               north=nothing,
+                               bottom=nothing,
+                               top=nothing)
 
 Return an `ImmersedBoundaryCondition` with conditions on individual cell
 `interfaces ∈ (west, east, south, north, bottom, top)` between the fluid
@@ -57,11 +64,13 @@ function ImmersedBoundaryCondition(; west = nothing,
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
+BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs_implicit_solver(ibc.bottom) | needs_implicit_solver(ibc.top)
+
 #####
 ##### Boundary condition "regularization"
 #####
 
-const ZFBC = BoundaryCondition{Flux, Nothing}
+const ZFBC = BoundaryCondition{<:Flux, Nothing}
 regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
 regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =
@@ -74,7 +83,7 @@ function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::
 end
 
 """
-    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+$(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 

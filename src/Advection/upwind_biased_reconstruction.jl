@@ -13,7 +13,7 @@ end
 
 scheme_order(::UpwindBiased{N}) where N = 2N + 1
 
-function UpwindBiased(FT::DataType = Float64;
+function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
                       order = 3,
                       time_discretization = ExplicitTimeDiscretization(),
                       buffer_scheme = DecreasingOrderAdvectionScheme(),

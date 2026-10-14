@@ -18,7 +18,7 @@ using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 #####
 
 """
-    div_uc(i, j, k, grid, advection, U, c)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence of the flux of a tracer quantity ``c`` being advected by
 a velocity field, ``𝛁⋅(𝐯 c)``,

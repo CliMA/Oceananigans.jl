@@ -382,7 +382,7 @@ simulation = Simulation(ks_model; Δt=0.002, stop_time=60)
 simulation.output_writers[:solution] = JLD2Writer(ks_model, (; u=ks_model.solution),
                                                   filename = "ks_solution.jld2",
                                                   schedule = TimeInterval(1),
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 run!(simulation)
 nothing # hide

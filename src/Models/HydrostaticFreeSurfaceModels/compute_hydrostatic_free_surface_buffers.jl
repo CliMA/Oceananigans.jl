@@ -1,4 +1,3 @@
-using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.ImmersedBoundaries: SplitActiveCellsMapIBG
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
@@ -10,7 +9,7 @@ complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
 
 """
-    complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
@@ -46,7 +45,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 end
 
 """
-    compute_momentum_buffer_contributions!(grid::DistributedGrid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute momentum tendencies in the four halo-dependent buffer regions.
 """
@@ -61,19 +60,18 @@ function compute_momentum_buffer_contributions!(grid::DistributedGrid, arch, mod
     return nothing
 end
 
-@inline buffer_region_active_cells_map(grid::SplitActiveCellsMapIBG, name) = @inbounds grid.interior_active_cells[name]
-@inline buffer_region_active_cells_map(grid, name) = nothing
+@inline buffer_region_workspec(grid::SplitActiveCellsMapIBG, name, params) = @inbounds grid.interior_active_cells[name]
+@inline buffer_region_workspec(grid, name, params) = params[name]
 
 @inline function compute_buffer_region_momentum_tendencies!(grid, arch, model, name, params)
-    kernel_parameters = params[name]
-    isnothing(kernel_parameters) && return nothing
-    active_cells_map = buffer_region_active_cells_map(grid, name)
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map, region=name)
+    workspec = buffer_region_workspec(grid, name, params)
+    isnothing(workspec) && return nothing
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, workspec; region=name)
     return nothing
 end
 
 """
-    complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
@@ -97,7 +95,7 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
 end
 
 """
-    compute_tracer_buffer_contributions!(grid::DistributedGrid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute tracer tendencies in the halo-dependent buffer regions (from 1 to 4).
 """
@@ -113,22 +111,21 @@ function compute_tracer_buffer_contributions!(grid::DistributedGrid, arch, model
 end
 
 @inline function compute_buffer_region_tracer_tendencies!(grid, arch, model, name, params)
-    kernel_parameters = params[name]
-    isnothing(kernel_parameters) && return nothing # This side is not at a processor boundary
-    active_cells_map = buffer_region_active_cells_map(grid, name)
-    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map, region=name)
+    workspec = buffer_region_workspec(grid, name, params)
+    isnothing(workspec) && return nothing # This side is not at a processor boundary
+    compute_hydrostatic_tracer_tendencies!(model, workspec; region=name)
     return nothing
 end
 
 """
-    buffer_surface_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 2D (surface) variables in buffer regions.
 
 The buffer regions are strips along processor boundaries where computations depend on halo data.
 Returns parameters for west, east, south, and north buffer regions.
 """
-function buffer_surface_kernel_parameters(grid, arch)
+@inline function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
@@ -148,14 +145,14 @@ function buffer_surface_kernel_parameters(grid, arch)
 end
 
 """
-    buffer_volume_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 3D (volume) variables in buffer regions.
 
 Similar to `buffer_surface_kernel_parameters` but for three-dimensional fields.
 The buffer regions span the full vertical extent of the grid.
 """
-function buffer_volume_kernel_parameters(grid, arch)
+@inline function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 

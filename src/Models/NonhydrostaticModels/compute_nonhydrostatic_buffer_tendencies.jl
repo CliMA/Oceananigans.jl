@@ -1,7 +1,4 @@
-import Oceananigans.Models: compute_buffer_tendencies!
-
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
-using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Utils: worksize
 using Oceananigans.Models: buffer_tendency_kernel_parameters, buffer_parameters
 
@@ -9,7 +6,7 @@ using Oceananigans.Models: buffer_tendency_kernel_parameters, buffer_parameters
 # Rewriting it may be helpful.
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_buffer_tendencies!(model::NonhydrostaticModel)
+function Oceananigans.Models.compute_buffer_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 
@@ -27,7 +24,7 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
 end
 
 # p needs computing in the range  0 : 0 and W + 1 : W + 1 where W = worksize
-function buffer_p_kernel_parameters(grid, arch)
+@inline function buffer_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Wx, Wy, _ = worksize(grid)
 
@@ -41,7 +38,7 @@ function buffer_p_kernel_parameters(grid, arch)
 end
 
 # closure_fields need recomputing in the range 0 : B and W - B + 1 : W + 1 where W = worksize
-function buffer_κ_kernel_parameters(grid, closure, arch)
+@inline function buffer_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, _  = worksize(grid)
 
@@ -56,3 +53,4 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
     params = (param_west, param_east, param_south, param_north)
     return buffer_parameters(params, grid, arch)
 end
+

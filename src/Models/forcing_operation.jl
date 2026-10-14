@@ -19,7 +19,7 @@ const ForcingOperation{LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ, <:Any, <:ForcingKernelFunction} where {LX, LY, LZ}
 
 """
-    ForcingOperation(name::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Create a `KernelFunctionOperation` that evaluates the `model.forcing` for
 prognostic variable `name`.

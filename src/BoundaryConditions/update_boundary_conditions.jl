@@ -14,13 +14,12 @@ function update_boundary_conditions!(bcs::FieldBoundaryConditions, field, model)
     return nothing
 end
 
-update_boundary_conditions!(fields::NamedTuple, model) = update_boundary_conditions!(values(fields), model)
+@inline update_boundary_conditions!(fields::NamedTuple, model) = update_boundary_conditions!(values(fields), model)
+@inline update_boundary_conditions!(::Tuple{},          model) = nothing
 
-function update_boundary_conditions!(fields::Tuple, model)
-    for field in fields
-        bcs = boundary_conditions(field)
-        update_boundary_conditions!(bcs, field, model)
-    end
-
+@inline function update_boundary_conditions!(fields::Tuple, model)
+    field = first(fields)
+    update_boundary_conditions!(boundary_conditions(field), field, model)
+    update_boundary_conditions!(Base.tail(fields), model)
     return nothing
 end

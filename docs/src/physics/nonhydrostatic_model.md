@@ -5,7 +5,7 @@ Boussinesq approximation and an arbitrary number of tracer conservation equation
 Physics associated with individual terms in the momentum and tracer conservation
 equations -- the background rotation rate of the equation's reference frame,
 gravitational effects associated with buoyant tracers under the Boussinesq
-approximation, generalized stresses and tracer fluxes associated with viscous and
+approximation, generalized momentum and tracer fluxes associated with viscous and
 diffusive physics, and arbitrary "forcing functions" -- are determined by the whims of the
 user.
 
@@ -30,7 +30,7 @@ at the top of the domain via the Craik-Leibovich approximation are
     \end{align}
 ```
 where ``b \boldsymbol{\hat g}`` the is the buoyancy (a vector whose default direction is upward),
-``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
+``\boldsymbol{\tau}`` is the momentum flux (i.e. the negative of the kinematic stress tensor), ``\boldsymbol{F_v}``
 denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic
 pressure, ``\boldsymbol{u}^S`` is the horizontal, two-dimensional 'Stokes drift' velocity field associated with surface gravity
 waves, and ``\boldsymbol{f}`` is the Coriolis parameter, or the background vorticity associated
@@ -50,7 +50,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
 * buoyant acceleration: ``b``,
 * vertical unit vector (pointing to the direction opposite to gravity): ``\boldsymbol{\hat g}``,
-* molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
+* divergence of the molecular or turbulent momentum flux: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
 * a source of momentum due to forcing or damping of surface waves: ``\partial_t \boldsymbol{u}^S``, and
 * an arbitrary internal source of momentum: ``\boldsymbol{F_v}``.
 

@@ -25,13 +25,14 @@ export BulkDragFunction,
        LinearFormulation,
        QuadraticFormulation
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
                                        LeftBoundary, RightBoundary
+using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
-
-using Adapt: Adapt
 
 #####
 ##### Drag formulations
@@ -287,7 +288,7 @@ const BulkDragBoundaryCondition = BoundaryCondition{<:Flux, <:BulkDragFunction}
 #####
 
 """
-    regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_names)
+$(TYPEDSIGNATURES)
 
 Regularize a `BulkDragFunction` by:
 1. Inferring the direction from the field location if not specified
@@ -400,7 +401,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: PeriodicBoundaryCondition
 ├── north: PeriodicBoundaryCondition
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
@@ -457,12 +458,12 @@ model.velocities.u.boundary_conditions
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: NormalFlowBoundaryCondition{Nothing}: Nothing
-├── east: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── west: NormalFlowBoundaryCondition{Nothing}: nothing
+├── east: NormalFlowBoundaryCondition{Nothing}: nothing
 ├── south: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── north: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Flux, north=Flux, bottom=Flux, top=Flux
 ```
 

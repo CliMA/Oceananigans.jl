@@ -7,7 +7,7 @@ struct StateChecker{T, F} <: AbstractDiagnostic
 end
 
 """
-    StateChecker(; schedule, fields)
+    StateChecker(model; schedule, fields=fields(model))
 
 Returns a `StateChecker` that logs field information (minimum, maximum, mean)
 for each field in a named tuple of `fields` when `schedule` actuates.

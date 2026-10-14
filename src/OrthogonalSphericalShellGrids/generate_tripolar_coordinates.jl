@@ -1,10 +1,7 @@
 using CubedSphere.SphericalGeometry: lat_lon_to_cartesian, spherical_area_quadrilateral
 
 """
-    _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                   λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                   first_pole_longitude,
-                                   focal_distance, Nλ)
+$(TYPEDSIGNATURES)
 
 Compute the tripolar coordinates for a given set of input parameters following
 the formulation by [Murray (1996)](@cite Murray1996).

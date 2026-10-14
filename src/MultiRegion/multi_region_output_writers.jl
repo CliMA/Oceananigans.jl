@@ -1,5 +1,5 @@
-using Oceananigans.Fields: compute_at!
-using Oceananigans.OutputWriters: OutputWriters, _saveproperty!, serializeproperty!
+using Oceananigans.Fields: Fields, compute_at!, set!
+using Oceananigans.OutputWriters: OutputWriters, WindowedTimeAverage, _saveproperty!, serializeproperty!
 
 # This is working just fine at the moment?
 # But it will be veeeeery slow, as reconstruct_global_field is not
@@ -9,6 +9,8 @@ function OutputWriters.fetch_output(mrf::MultiRegionField, model)
     compute_at!(field, model.clock.time)
     return parent(field)
 end
+
+Fields.set!(mrf::MultiRegionField, wta::WindowedTimeAverage) = set!(mrf, wta.result)
 
 OutputWriters.saveproperty!(file, address, p::Union{MultiRegionObject, MultiRegionField}) = _saveproperty!(file, address, p)
 

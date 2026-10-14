@@ -1,17 +1,17 @@
-using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
+using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, UPivot, TPivot, FPivot, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    struct Tripolar{N, F, S, TY<:AbstractTopology}
+    struct Tripolar{N, F, S, TY<:AbstractTopology, P}
 
 A structure to represent a tripolar grid on an orthogonal spherical shell.
-The fold topology `FT` (e.g., `RightCenterFolded` or `RightFaceFolded`) is stored
-as a type parameter rather than a field, keeping the struct `isbits` for GPU kernels.
+The fold topology `TY` (e.g., `RightCenterFolded` or `RightFaceFolded`) and the fold pivot `P`
+(`UPivot`, `TPivot` or `FPivot`) are stored as type parameters.
 """
-struct Tripolar{N, F, S, TY<:AbstractTopology}
+struct Tripolar{N, F, S, TY<:AbstractTopology, P}
     north_poles_latitude :: N
     first_pole_longitude :: F
     southernmost_latitude :: S
@@ -19,19 +19,20 @@ end
 
 # Getter: returns the fold topology Type
 fold_topology(::Tripolar{<:Any, <:Any, <:Any, TY}) where TY = TY
+fold_pivot(::Tripolar{<:Any, <:Any, <:Any, <:Any, P}) where P = P
 
-# Constructor accepting fold topology as a Type argument
-Tripolar(n, f, s, ::Type{TY}) where {TY<:AbstractTopology} =
-    Tripolar{typeof(n), typeof(f), typeof(s), TY}(n, f, s)
+default_pivot(fold_topology) = ifelse(fold_topology === RightFaceFolded, FPivot, UPivot)
+
+Tripolar(n, f, s, ::Type{TY}, P = default_pivot(TY)) where TY<:AbstractTopology = Tripolar{typeof(n), typeof(f), typeof(s), TY, P}(n, f, s)
 
 # Backward-compatible constructor (defaults to UPivot)
 Tripolar(n, f, s) = Tripolar(n, f, s, RightCenterFolded)
 
-Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, TY}) where TY =
+Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, TY, P}) where {TY, P} =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
              Adapt.adapt(to, t.southernmost_latitude),
-             TY)
+             TY, P)
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
@@ -45,7 +46,8 @@ const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ
                  z = (0, 1),
                  north_poles_latitude = 55,
                  first_pole_longitude = 70,
-                 fold_topology = RightCenterFolded)
+                 fold_topology = RightCenterFolded,
+                 pivot = default_pivot(fold_topology))
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North Pole singularity with two other singularities
@@ -62,18 +64,22 @@ Positional Arguments
 Keyword Arguments
 =================
 
-- `size`: The number of cells in the (longitude, latitude, vertical) dimensions.
+- `size`: The number of cells in the (longitude, latitude, vertical) dimensions. The vertical
+          entry is optional when `z = nothing` (a 2D grid); then a 2-tuple `(Nx, Ny)` suffices.
 - `southernmost_latitude`: The southernmost `Center` latitude of the grid. Default: -80.
 - `halo`: The halo size in the (longitude, latitude, vertical) dimensions. Default: (4, 4, 4).
+          As with `size`, the vertical entry is optional when `z = nothing`.
 - `radius`: The radius of the spherical shell. Default: `Oceananigans.defaults.planet_radius`.
 - `z`: The vertical ``z``-coordinate range of the grid. Could either be:
        (i) 2-tuple that specifies the end points of the coordinate,
        (ii) an array with the ``z`` interfaces, or
        (iii) a function of `k` index that returns the locations of cell interfaces
-             in ``z``-direction. Default: (0, 1).
+             in ``z``-direction, or
+       (iv) `nothing`, which builds a purely horizontal (2D) grid with a `Flat` vertical
+            (e.g. for surface forcing). Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
-                          Default: 75.
+                          Default: 70.
 - `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
 - `fold_topology`: The folding topology to use. Either `RightCenterFolded` or `RightFaceFolded`:
     - `RightCenterFolded` folds the north boundary along cell `XFace`s and `Center`s,
@@ -81,6 +87,9 @@ Keyword Arguments
     - `RightFaceFolded` corresponds to folding the north boundary along `YFace`s,
         with a pivot point located on a corner location `(Face, Face)`.
         Default: `RightCenterFolded`.
+- `pivot`: The pivot of the fold. `UPivot` or `TPivot` for `RightCenterFolded`, `FPivot` for `RightFaceFolded`.
+           With `TPivot` the singularities sit on `(Center, Center)` at `i = Nx ÷ 2` and `i = Nx`.
+           Default: `UPivot` for `RightCenterFolded`, `FPivot` for `RightFaceFolded`.
 
 !!! warning "Longitude coordinate must have an even number of cells"
     `size` is a 3-tuple of the grid size in longitude, latitude, and vertical directions.
@@ -160,29 +169,38 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
-                      fold_topology = RightCenterFolded)
+                      fold_topology = RightCenterFolded,
+                      pivot = default_pivot(fold_topology))
 
-    # Set the topology
-    topology = (Periodic, fold_topology, Bounded)
+    # Set the topology: passing `z = nothing` builds a purely horizontal (2D) tripolar grid with a
+    # `Flat` vertical (e.g. for surface forcing); otherwise the vertical is `Bounded`.
+    TZ = isnothing(z) ? Flat : Bounded
+    topology = (Periodic, fold_topology, TZ)
 
     # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become slow for
     # sub-kilometer resolution grids.
     latitude  = (southernmost_latitude, 90)
-    longitude = (-180, 180)
+
+    # A `TPivot` fold puts the singularities on cell centers: half a cell east of the `UPivot` faces
+    longitude = (-180, 180) .+ ifelse(pivot === TPivot, 180 / size[1], 0)
 
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
-    Nx, Ny, Nz = size
-    Hx, Hy, Hz = halo
+    # The vertical entry of `size` and `halo` is optional for a `Flat` (2D) grid.
+    Nx, Ny = size[1], size[2]
+    Hx, Hy = halo[1], halo[2]
+    Nz = TZ === Flat ? 1 : size[3]
+    Hz = TZ === Flat ? 0 : halo[3]
+    size = (Nx, Ny, Nz)
+    halo = (Hx, Hy, Hz)
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
 
     # Generate coordinates
-    TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
@@ -241,7 +259,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     # Boundary conditions to fill halos of the metric terms
     # We define them manually because the helper RectilinearGrid
     # does not know how to fold the north boundary...
-    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
+    boundary_conditions = FieldBoundaryConditions(north  = BoundaryCondition(Zipper{pivot}(), 1),
                                                   south  = NoFluxBoundaryCondition(), # The south should be `continued`
                                                   west   = Oceananigans.PeriodicBoundaryCondition(),
                                                   east   = Oceananigans.PeriodicBoundaryCondition(),
@@ -339,7 +357,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      on_architecture(arch, map(FT, Azᶜᶠᵃ)),
                                                      on_architecture(arch, map(FT, Azᶠᶠᵃ)),
                                                      convert(FT, radius),
-                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
+                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology, pivot))
 
     return grid
 end
@@ -379,7 +397,7 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
                                     topology = (TX, TY, Flat))
 
     # Boundary conditions for halo filling (same as in the TripolarGrid constructor)
-    bcs = FieldBoundaryConditions(north  = north_fold_boundary_condition(TY)(),
+    bcs = FieldBoundaryConditions(north  = BoundaryCondition(Zipper{fold_pivot(old_grid.conformal_mapping)}(), 1),
                                   south  = NoFluxBoundaryCondition(),
                                   west   = Oceananigans.PeriodicBoundaryCondition(),
                                   east   = Oceananigans.PeriodicBoundaryCondition(),
