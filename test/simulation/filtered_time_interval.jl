@@ -69,9 +69,15 @@ for arch in archs
             continuous = read_filtered(first(filtered_tidal_signal(arch, Writer, mktempdir(); stop_time = 20days)))
 
             directory = mktempdir()
+            pickup_iteration = Int(5days / 10minutes)
             filtered_tidal_signal(arch, Writer, directory; stop_time = 10days)
+
+            # Filtered outputs are not checkpointed, so neither are their operands
+            checkpoint_filepath = joinpath(directory, "checkpoint_iteration$(pickup_iteration).jld2")
+            @test jldopen(file -> file["simulation/diagnostics/TimeFilteredOutput1"], checkpoint_filepath) === nothing
+
             restarted = read_filtered(first(filtered_tidal_signal(arch, Writer, directory; stop_time = 20days,
-                                                                  pickup = Int(5days / 10minutes))))
+                                                                  pickup = pickup_iteration)))
 
             @test restarted.times ≈ continuous.times
             @test frames(restarted) == frames(continuous)
