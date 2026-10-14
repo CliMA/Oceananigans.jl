@@ -14,14 +14,12 @@ struct HaloMessage{E}
     pending_messages :: Threads.Atomic{UInt64}
 end
 
-# Each side of a communication state has one [send, recv] pair of requests
 function HaloMessage(state, send, array, rank, tag, communicator, requests)
     buffer = MPI.Buffer(array)
     keep_alive = Base.cconvert(MPI.MPIPtr, buffer.data)
     pointer = Base.unsafe_convert(MPI.MPIPtr, keep_alive)
     buffer = MPI.Buffer(pointer, buffer.count, buffer.datatype)
-    request = requests[send ? 1 : 2]
-    return HaloMessage(send, buffer, keep_alive, rank, tag, mpi_communicator(communicator), request, state.pack_event, state.pending_messages)
+    return HaloMessage(send, buffer, keep_alive, rank, tag, mpi_communicator(communicator), requests[1], state.pack_event, state.pending_messages)
 end
 
 # Communicators that wrap an MPI communicator (e.g. `NCCLCommunicator`) extend this to unwrap it
@@ -30,7 +28,7 @@ mpi_communicator(communicator::MPI.Comm) = communicator
 isend!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, true, array, rank, tag, communicator, requests))
 irecv!(state, array, rank, tag, communicator, requests) = submit!(state, HaloMessage(state, false, array, rank, tag, communicator, requests))
 
-function submit!(state::CommunicationState{<:Any, <:Any, Nothing}, message)
+function submit!(state::CommunicationState{<:Any, Nothing}, message)
     wait_for_event(state.pack_event)
     post!(message)
     return nothing

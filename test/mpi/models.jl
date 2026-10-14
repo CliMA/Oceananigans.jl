@@ -22,7 +22,7 @@ using MPI
 MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+using Oceananigans.DistributedComputations: Distributed, Sizes, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
                                             synchronize_communication!
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
@@ -106,119 +106,11 @@ comm = MPI.COMM_WORLD
 mpi_ranks = MPI.Comm_size(comm)
 @assert mpi_ranks == 4
 
-#####
-##### Multi architectures and rank connectivity
-#####
-
-function test_triply_periodic_rank_connectivity_with_411_ranks()
-    arch = Distributed(CPU(), partition=Partition(4))
-
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
-
-    connectivity = arch.connectivity
-
-    # No communication in y.
-    @test isnothing(connectivity.south)
-    @test isnothing(connectivity.north)
-
-    # +---+---+---+---+
-    # | 0 | 1 | 2 | 3 |
-    # +---+---+---+---+
-
-    if local_rank == 0
-        @test connectivity.east == 1
-        @test connectivity.west == 3
-    elseif local_rank == 1
-        @test connectivity.east == 2
-        @test connectivity.west == 0
-    elseif local_rank == 2
-        @test connectivity.east == 3
-        @test connectivity.west == 1
-    elseif local_rank == 3
-        @test connectivity.east == 0
-        @test connectivity.west == 2
-    end
-
-    return nothing
-end
-
-function test_triply_periodic_rank_connectivity_with_141_ranks()
-    arch = Distributed(CPU(), partition=Partition(1, 4))
-
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
-
-    connectivity = arch.connectivity
-
-    # No communication in x.
-    @test isnothing(connectivity.east)
-    @test isnothing(connectivity.west)
-
-    # +---+
-    # | 3 |
-    # +---+
-    # | 2 |
-    # +---+
-    # | 1 |
-    # +---+
-    # | 0 |
-    # +---+
-
-    if local_rank == 0
-        @test connectivity.north == 1
-        @test connectivity.south == 3
-    elseif local_rank == 1
-        @test connectivity.north == 2
-        @test connectivity.south == 0
-    elseif local_rank == 2
-        @test connectivity.north == 3
-        @test connectivity.south == 1
-    elseif local_rank == 3
-        @test connectivity.north == 0
-        @test connectivity.south == 2
-    end
-
-    return nothing
-end
-
-function test_triply_periodic_rank_connectivity_with_221_ranks()
-    arch = Distributed(CPU(), partition=Partition(2, 2))
-
-    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
-
-    connectivity = arch.connectivity
-
-    # +---+---+
-    # | 0 | 2 |
-    # +---+---+
-    # | 1 | 3 |
-    # +---+---+
-
-    if local_rank == 0
-        @test connectivity.east == 2
-        @test connectivity.west == 2
-        @test connectivity.north == 1
-        @test connectivity.south == 1
-    elseif local_rank == 1
-        @test connectivity.east == 3
-        @test connectivity.west == 3
-        @test connectivity.north == 0
-        @test connectivity.south == 0
-    elseif local_rank == 2
-        @test connectivity.east == 0
-        @test connectivity.west == 0
-        @test connectivity.north == 3
-        @test connectivity.south == 3
-    elseif local_rank == 3
-        @test connectivity.east == 1
-        @test connectivity.west == 1
-        @test connectivity.north == 2
-        @test connectivity.south == 2
-    end
-
-    return nothing
+# Rank of the neighbor `di` ranks east and `dj` ranks north on a doubly periodic layout of ranks
+function neighboring_rank(arch, di, dj)
+    i, j, k = arch.local_index
+    Rx, Ry, Rz = arch.ranks
+    return index2rank(mod1(i + di, Rx), mod1(j + dj, Ry), k, Rx, Ry, Rz)
 end
 
 #####
@@ -385,8 +277,8 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=false) .== neighboring_rank(arch, 1, 0))
+        @test all(west_halo(field, include_corners=false) .== neighboring_rank(arch, -1, 0))
 
         @test all(interior(field) .== arch.local_rank)
         @test all(north_halo(field, include_corners=false) .== arch.local_rank)
@@ -407,8 +299,8 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== neighboring_rank(arch, 0, 1))
+        @test all(south_halo(field, include_corners=false) .== neighboring_rank(arch, 0, -1))
 
         @test all(interior(field) .== arch.local_rank)
         @test all(east_halo(field, include_corners=false) .== arch.local_rank)
@@ -431,17 +323,36 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
 
         @test all(interior(field) .== arch.local_rank)
 
-        @test all(east_halo(field, include_corners=false)  .== arch.connectivity.east)
-        @test all(west_halo(field, include_corners=false)  .== arch.connectivity.west)
-        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=false)  .== neighboring_rank(arch, 1, 0))
+        @test all(west_halo(field, include_corners=false)  .== neighboring_rank(arch, -1, 0))
+        @test all(north_halo(field, include_corners=false) .== neighboring_rank(arch, 0, 1))
+        @test all(south_halo(field, include_corners=false) .== neighboring_rank(arch, 0, -1))
 
         @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(southwest_halo(field) .== arch.connectivity.southwest)
-        @test all(southeast_halo(field) .== arch.connectivity.southeast)
-        @test all(northwest_halo(field) .== arch.connectivity.northwest)
-        @test all(northeast_halo(field) .== arch.connectivity.northeast)
+        @test all(southwest_halo(field) .== neighboring_rank(arch, -1, -1))
+        @test all(southeast_halo(field) .== neighboring_rank(arch, 1, -1))
+        @test all(northwest_halo(field) .== neighboring_rank(arch, -1, 1))
+        @test all(northeast_halo(field) .== neighboring_rank(arch, 1, 1))
+    end
+
+    return nothing
+end
+
+# On a jagged partition every halo cell, corners included, holds the value of its global position
+function test_jagged_halo_communication(partition, child_arch)
+    arch = Distributed(child_arch; partition)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(8, 8, 4), extent=(1, 1, 1), halo=(3, 3, 3))
+    periodic_function(x, y, z) = sinpi(2x) * cospi(2y) + z
+
+    for loc in ((Center, Center, Center), (Face, Center, Center), (Center, Face, Center), (Face, Face, Center))
+        field = Field{loc...}(grid)
+        set!(field, periodic_function)
+        fill_halo_regions!(field)
+
+        x, y, _ = nodes(field; with_halos=true)
+        expected = [periodic_function(xᵢ, yⱼ, zₖ) for xᵢ in x, yⱼ in y, zₖ in znodes(field)]
+        @test Array(view(parent(field), :, :, grid.Hz+1:grid.Hz+size(grid, 3))) ≈ expected
     end
 
     return nothing
@@ -485,13 +396,6 @@ end
 
 @testset "Distributed MPI Oceananigans" begin
     @info "Testing distributed MPI Oceananigans..."
-    @testset "Multi architectures rank connectivity" begin
-        @info "  Testing multi architecture rank connectivity..."
-        test_triply_periodic_rank_connectivity_with_411_ranks()
-        test_triply_periodic_rank_connectivity_with_141_ranks()
-        test_triply_periodic_rank_connectivity_with_221_ranks()
-    end
-
     @testset "Local grids for distributed models" begin
         @info "  Testing local grids for distributed models..."
         test_triply_periodic_local_grid_with_411_ranks()
@@ -514,6 +418,9 @@ end
             test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
+
+        test_jagged_halo_communication(Partition(x = 2, y = (Sizes(3, 5), Sizes(5, 3))), child_arch)
+        test_jagged_halo_communication(Partition(x = (Sizes(3, 5), Sizes(5, 3)), y = 2), child_arch)
 
         test_halo_communication_after_asynchronous_fill(child_arch)
         test_mismatched_field_creation(child_arch)

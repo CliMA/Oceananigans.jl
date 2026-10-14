@@ -9,23 +9,53 @@ struct GeneralizedBlockDistribution <: BalancingStrategy end
 # x and y partitioning balanced separately
 struct SimplifiedGeneralizedBlockDistribution <: BalancingStrategy end
 
+# x partitioning balanced first, then the y partitioning of every column of ranks separately
+struct JaggedBlockDistribution <: BalancingStrategy end
+
 create_balanced_partition(strategy, partition, cost_map) = partition
 
-function partition_1d(costs, ranks)
-    csum = cumsum(costs)
-    total = csum[end]
-    # Optimal cost of each partition
-    optimal_cost = total / ranks
-    # Indices of ends of partitions
-    left = [searchsortedfirst(csum, optimal_cost * i) for i in 0:ranks-1]
-    right = [searchsortedlast(csum, optimal_cost * i) for i in 1:ranks]
-
-    return zip(left, right)
+# Number of contiguous parts of `costs` that cost at most `B` each
+function count_parts(costs, B)
+    parts = 1
+    part_cost = zero(eltype(costs))
+    for c in costs
+        if part_cost + c > B
+            parts += 1
+            part_cost = zero(part_cost)
+        end
+        part_cost += c
+    end
+    return parts
 end
 
-function ends_to_sizes(ends)
-    sizes = [r-l+1 for (l,r) in ends]
-    return sizes
+"""
+    balanced_ranges(costs, R)
+
+Split `costs` into `R` contiguous nonempty ranges, minimizing the cost of the most expensive one.
+"""
+function balanced_ranges(costs, R)
+    lower, upper = maximum(costs), sum(costs)
+    for bisection in 1:64
+        middle = (lower + upper) / 2
+        count_parts(costs, middle) ≤ R ? (upper = middle) : (lower = middle)
+    end
+
+    ranges = UnitRange{Int}[]
+    first_index = 1
+    part_cost = zero(eltype(costs))
+    N = length(costs)
+    for n in 1:N
+        open_parts = R - length(ranges)
+        if n > first_index && open_parts > 1 && (part_cost + costs[n] > upper || N - n < open_parts - 1)
+            push!(ranges, first_index:n-1)
+            first_index = n
+            part_cost = zero(part_cost)
+        end
+        part_cost += costs[n]
+    end
+    push!(ranges, first_index:N)
+
+    return ranges
 end
 
 function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribution, unbalanced_partition, cost_map)
@@ -33,16 +63,10 @@ function create_balanced_partition(strategy::SimplifiedGeneralizedBlockDistribut
     costs = on_architecture(CPU(), cost_map)
 
     # Partition each direction independently
-    x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
-    x_ends = partition_1d(x_costs, Rx)
-    x_sizes = ends_to_sizes(x_ends)
+    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
+    y = balanced_ranges(vec(sum(costs; dims=(1, 3))), Ry)
 
-    y_costs = Iterators.flatten(sum(costs; dims=(1,3)))
-    y_ends = partition_1d(y_costs, Ry)
-    y_sizes = ends_to_sizes(y_ends)
-
-    return Partition(; x=Sizes(x_sizes...), y=Sizes(y_sizes...))
-
+    return Partition(; x=Sizes(length.(x)...), y=Sizes(length.(y)...))
 end
 
 function create_balanced_partition(strategy::GeneralizedBlockDistribution, unbalanced_partition, cost_map)
@@ -50,42 +74,34 @@ function create_balanced_partition(strategy::GeneralizedBlockDistribution, unbal
     Rx, Ry, _ = ranks(unbalanced_partition)
     costs = on_architecture(CPU(), cost_map)
 
-    # Partition x first
-    x_costs = Iterators.flatten(sum(costs; dims=(2,3)))
-    x_ends = partition_1d(x_costs, Rx)
+    x_costs(y) = vec(maximum([sum(costs[i, j, :]) for i in axes(costs, 1), j in y]; dims=2))
+    y_costs(x) = vec(maximum([sum(costs[i, j, :]) for i in x, j in axes(costs, 2)]; dims=1))
 
-    # Reduce map from mxn to pxn
-    y_costs = Iterators.flatten(maximum([sum(costs[l:r,j]) for (l,r) in x_ends, j in axes(costs, 2)]; dims=1))
-    y_ends = partition_1d(y_costs, Ry)
+    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
+    y = balanced_ranges(y_costs(x), Ry)
 
-    x_sizes = ends_to_sizes(x_ends)
-    y_sizes = ends_to_sizes(y_ends)
-
-    old_x_sizes = x_sizes
-    old_y_sizes = y_sizes
-
-    optimized = false
-
-    while !optimized
-        x_costs = Iterators.flatten(maximum([sum(costs[i,l:r]) for i in axes(costs, 1), (l,r) in y_ends]; dims=2))
-        x_ends = partition_1d(x_costs, Rx)
-
-        y_costs = Iterators.flatten(maximum([sum(costs[l:r,j]) for (l,r) in x_ends, j in axes(costs, 2)]; dims=1))
-        y_ends = partition_1d(y_costs, Ry)
-
-        x_sizes = ends_to_sizes(x_ends)
-        y_sizes = ends_to_sizes(y_ends)
+    while true
+        new_x = balanced_ranges(x_costs(y), Rx)
+        new_y = balanced_ranges(y_costs(new_x), Ry)
 
         # If the partition stays the same, we have reached a (local) optimum
-        if x_sizes == old_x_sizes && y_sizes == old_y_sizes
-            optimized = true
-        else
-            old_x_sizes = x_sizes
-            old_y_sizes = y_sizes
-        end
+        (new_x, new_y) == (x, y) && break
+        x, y = new_x, new_y
     end
 
-    return Partition(; x=Sizes(x_sizes...), y=Sizes(y_sizes...))
+    return Partition(; x=Sizes(length.(x)...), y=Sizes(length.(y)...))
+end
+
+function create_balanced_partition(strategy::JaggedBlockDistribution, unbalanced_partition, cost_map)
+    Rx, Ry, _ = ranks(unbalanced_partition)
+    costs = on_architecture(CPU(), cost_map)
+
+    column_costs(i) = vec(sum(costs[i, :, :]; dims=(1, 3)))
+
+    x = balanced_ranges(vec(sum(costs; dims=(2, 3))), Rx)
+    y = Tuple(Sizes(length.(balanced_ranges(column_costs(i), Ry))...) for i in x)
+
+    return Partition(; x=Sizes(length.(x)...), y)
 end
 
 function create_cost_map(grid, ib)

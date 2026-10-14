@@ -1,8 +1,8 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.DistributedComputations: partition_1d, ends_to_sizes, create_cost_map, Sizes,
-                                            GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution
+using Oceananigans.DistributedComputations: balanced_ranges, create_cost_map, Sizes,
+                                            GeneralizedBlockDistribution, SimplifiedGeneralizedBlockDistribution, JaggedBlockDistribution
 
 sizes = [ (60, 60, 30) ]
 halos = [ (4, 4, 4) ]
@@ -53,7 +53,7 @@ ib_constructors = [
     bottom_height -> PartialCellBottom(bottom_height)
 ]
 
-strategies = [SimplifiedGeneralizedBlockDistribution(), GeneralizedBlockDistribution()]
+strategies = [SimplifiedGeneralizedBlockDistribution(), GeneralizedBlockDistribution(), JaggedBlockDistribution()]
 
 partitions = [Partition(x, y) for (x,y) in Iterators.product([1,2,4],[1,2,4])]
 
@@ -82,13 +82,20 @@ end
 @testset "Partitioning consistent" begin
 
     @testset "1d - len:$len, ranks:$ranks" for (len, ranks) in Iterators.product((10, 100, 1000), (2,4,8))
-        costs = rand(len)
+        ranges = balanced_ranges(rand(len), ranks)
+        @test length(ranges) == ranks
+        @test vcat(ranges...) == 1:len
+    end
 
-        partitions = partition_1d(costs, ranks)
+    @testset "1d - zero costs at a cut" begin
+        @test vcat(balanced_ranges([1, 1, 0, 1, 1], 2)...) == 1:5
+    end
 
-        sizes = ends_to_sizes(partitions)
-
-        @test sum(sizes) == len
+    @testset "1d - optimal against all cuts" for trial in 1:10
+        costs = rand(0:9, 8)
+        most_expensive(ranges) = maximum(r -> sum(costs[r]), ranges)
+        optimum = minimum(most_expensive([1:a, a+1:b, b+1:8]) for a in 1:6 for b in a+1:7)
+        @test most_expensive(balanced_ranges(costs, 3)) == optimum
     end
 
     @testset "2d - $arch, $gridc, $ibc, $strategy, $partition" for (arch, gridc, ibc, strategy, partition) in
@@ -110,11 +117,13 @@ end
             @test sum(balanced_partition.x.sizes) == Nx
         end
 
-        # If partitioning in y
+        # If partitioning in y (one partitioning per column of ranks for a jagged partition)
         if !isnothing(partition.y)
-            @test balanced_partition.y isa Sizes
-            @test length(balanced_partition.y.sizes) == partition.y
-            @test sum(balanced_partition.y.sizes) == Ny
+            for y in (balanced_partition.y isa Tuple ? balanced_partition.y : (balanced_partition.y,))
+                @test y isa Sizes
+                @test length(y.sizes) == partition.y
+                @test sum(y.sizes) == Ny
+            end
         end
 
     end

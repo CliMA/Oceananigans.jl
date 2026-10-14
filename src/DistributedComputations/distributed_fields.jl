@@ -30,9 +30,8 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
     validate_boundary_conditions(loc, grid, global_bcs)
 
     arch = architecture(grid)
-    rank = arch.local_rank
-    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, rank, arch.connectivity, topology(grid))
-    buffers = communication_buffers(grid, data, local_bcs)
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity)
+    buffers = communication_buffers(grid, data, local_bcs, loc)
 
     return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
@@ -94,7 +93,7 @@ complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
     wait_for_messages!(field)
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+    recv_from_buffers!(field.data, field.communication_buffers)
     return nothing
 end
 
