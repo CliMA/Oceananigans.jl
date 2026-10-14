@@ -10,6 +10,7 @@ using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: architecture
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ

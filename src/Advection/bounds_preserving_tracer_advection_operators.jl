@@ -37,6 +37,9 @@ const _ε₂ = 1e-20
 # Note: this can probably be generalized to include UpwindBiased
 const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservation}
 
+# The limiter reads `scheme.bounds`, which a fixed order wrapper does not carry
+fixed_order_scheme(scheme::BoundsPreservingWENO) = scheme
+
 #####
 ##### Cell-wise rescaling factor, from cᵢ = ω̂₁ c⁻ + ω̂₁ c⁺ + (1 - 2ω̂₁) p̃ in each direction
 #####
