@@ -82,7 +82,7 @@ weights_from_substeps(FT, substeps, averaging_kernel) = weights_from_shape(FT, s
 @inline function weights_from_substeps(FT, substeps, ::Nothing)
     fractional_step   = one(FT) / substeps
     averaging_weights = FT[m == substeps ? one(FT) : zero(FT) for m in 1:substeps]
-    transport_weights = FT[one(FT) for _ in 1:substeps]
+    transport_weights = FT[one(FT) / substeps for _ in 1:substeps]
     return fractional_step, averaging_weights, transport_weights
 end
 
