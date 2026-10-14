@@ -31,24 +31,24 @@ grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π), topology=(Peri
 coriolis = FPlane(f=0.2)
 
 # On an `FPlane`, the domain is idealized as rotating at a constant rate with
-# rotation period `2π/f`. `coriolis` is passed to `NonhydrostaticModel` below.
+# rotation period ``2π/f``. `coriolis` is passed to `NonhydrostaticModel` below.
 # Our units are arbitrary.
 
 # We use Oceananigans' `background_fields` abstraction to define a background
-# buoyancy field `B(z) = N^2 * z`, where `z` is the vertical coordinate
-# and `N` is the "buoyancy frequency". This means that the modeled buoyancy field
-# perturbs the basic state `B(z)`.
+# buoyancy field ``B(z) = N^2 z``, where ``z`` is the vertical coordinate
+# and ``N`` is the "buoyancy frequency". This means that the modeled buoyancy field
+# perturbs the basic state ``B(z)``.
+#
+# Background fields are functions of the coordinates (here `x, z` since `y` is `Flat`),
+# time `t`, and optional parameters. Here we have one parameter, the buoyancy frequency.
 
-## Background fields are functions of `x, y, z, t`, and optional parameters.
-## Here we have one parameter, the buoyancy frequency
-
-N = 1       # buoyancy frequency [s⁻¹]
-B_func(x, z, t, N) = N^2 * z
-B = BackgroundField(B_func, parameters=N)
+N = 1
+stratification(x, z, t, N) = N^2 * z
+B = BackgroundField(stratification, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
 # and `B` to the `NonhydrostaticModel` constructor.
-# We add a small amount of `IsotropicDiffusivity` to keep the model stable
+# We add a small amount of `ScalarDiffusivity` to keep the model stable
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
@@ -57,7 +57,7 @@ model = NonhydrostaticModel(grid; coriolis,
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            background_fields = (; b=B)) # `background_fields` is a `NamedTuple`
+                            background_fields = (; b=B))
 
 # ## A Gaussian wavepacket
 #
@@ -72,33 +72,31 @@ model = NonhydrostaticModel(grid; coriolis,
 # ``ω`` is the wave frequency, and ``a(x, z)`` is a Gaussian envelope.
 # The internal wave dispersion relation links the wave numbers ``k`` and ``m``,
 # the Coriolis parameter ``f``, and the buoyancy frequency ``N``:
+#
+# ```math
+# ω^2 = \frac{N^2 k^2 + f^2 m^2}{k^2 + m^2} \, .
+# ```
 
-# Non-dimensional internal wave parameters
-m = 16      # vertical wavenumber
-k = 8       # horizontal wavenumber
+m = 16
+k = 8
 f = coriolis.f
 
-## Dispersion relation for inertia-gravity waves
-ω² = (N^2 * k^2 + f^2 * m^2) / (k^2 + m^2)
-
-ω = sqrt(ω²)
+ω = sqrt((N^2 * k^2 + f^2 * m^2) / (k^2 + m^2))
 nothing #hide
 
-# We define a Gaussian envelope for the wave packet so that we can
-# observe wave propagation.
+# We define a Gaussian envelope with amplitude ``A`` and width ``δ``, centered at
+# ``(x, z) = (0, 0)``, so that we can observe wave propagation.
 
-## Some Gaussian parameters
-gaussian_amplitude = 1e-9
-gaussian_width = grid.Lx / 15
+A = 1e-9
+δ = grid.Lx / 15
 
-## A Gaussian envelope centered at `(x, z) = (0, 0)`
-a(x, z) = gaussian_amplitude * exp( -( x^2 + z^2 ) / 2gaussian_width^2 )
+a(x, z) = A * exp(-(x^2 + z^2) / 2δ^2)
 nothing #hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
 # In order that our initial condition excites an inertia-gravity wave, we
 # initialize the velocity and buoyancy perturbation fields to be consistent
-# with the pressure field ``p = a \, \cos(kx + mx - ωt)`` at ``t=0``.
+# with the pressure field ``p = a \, \cos(k x + m z - ω t)`` at ``t=0``.
 # These relations are sometimes called the "polarization
 # relations". At ``t=0``, the polarization relations yield
 
@@ -118,7 +116,7 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
 simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 
-# and add an output writer that saves the vertical velocity field every two iterations:
+# and add an output writer that saves the velocity fields every iteration:
 
 filename = "internal_wave.jld2"
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; filename,
@@ -133,7 +131,7 @@ run!(simulation)
 
 # ## Animating a propagating packet
 #
-# To animate a the propagating wavepacket we just simulated, we load CairoMakie
+# To animate the propagating wavepacket we just simulated, we load CairoMakie
 # and make a Figure and an Axis for the animation,
 
 using CairoMakie
@@ -146,8 +144,8 @@ ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
 
 nothing #hide
 
-# Next, we load `w` data with `FieldTimeSeries` of `w` and make contour
-# plots of vertical velocity. We use Makie's `Observable` to animate the data.
+# Next, we load the vertical velocity `w` as a `FieldTimeSeries` and make contour
+# plots of it. We use Makie's `Observable` to animate the data.
 # To dive into how `Observable`s work, refer to
 # [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
@@ -155,19 +153,18 @@ n = Observable(1)
 
 w_timeseries = FieldTimeSeries(filename, "w")
 w = @lift w_timeseries[$n]
-w_lim = 1e-8
+wmax = 1e-8
 
 contourf!(ax, w;
-          levels = range(-w_lim, stop=w_lim, length=10),
+          levels = range(-wmax, wmax, length=10),
           colormap = :balance,
           extendlow = :auto,
           extendhigh = :auto)
 
-title = @lift "ωt = " * string(round(w_timeseries.times[$n] * ω, digits=2))
+title = @lift "ωt = $(round(ω * w_timeseries.times[$n], digits=2))"
 fig[1, 1] = Label(fig, title, fontsize=24, tellwidth=false)
 
 # And, finally, we record a movie.
-using Printf
 
 frames = 1:length(w_timeseries.times)
 
