@@ -10,7 +10,7 @@ using Oceananigans.Solvers: get_coefficient
 using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitDiffusionLowerDiagonal,
                                        VerticallyImplicitDiffusionDiagonal,
-                                       VerticallyImplicitDiffusionUpperDiagonal
+                                       VerticallyImplicitDiffusionUpperDiagonal, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
                                        viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
@@ -866,6 +866,16 @@ end
                 @test maximum(abs, u¹ .- factor .* u⁰) < 1e-10 * maximum(abs, u⁰)
             end
         end
+    end
+
+    @testset "Vertically-implicit diffusion of w with a nonzero top face velocity [$(typeof(arch))]" for arch in archs
+        grid = RectilinearGrid(arch, size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+        VITD = VerticallyImplicitTimeDiscretization()
+        w = ZFaceField(grid)
+        set!(w, z -> z) # ∂z² w = 0 with w = 1 on the top face, as under a free surface or an open top
+        w⁰ = Array(interior(w))
+        implicit_step!(w, implicit_diffusion_solver(VITD, grid), VerticalScalarDiffusivity(VITD; ν=1), nothing, nothing, Clock(grid), (;), 1)
+        @test Array(interior(w)) ≈ w⁰
     end
 
     @testset "Vertically-implicit diffusion beneath an immersed bottom" begin
