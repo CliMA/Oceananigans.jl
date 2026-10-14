@@ -74,9 +74,7 @@ const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 ##### Storage allocation during BC regularization
 #####
 
-radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_size) =
-    ntuple(_ -> zeros(arch, FT, tangential_size...), 2) # cʳ, cʳˡ
-
+radiation_buffers(reservoir::TracerReservoir, arch, FT, tangential_ranges) = ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 2) # cʳ, cʳˡ
 radiation_buffers(reservoir::TracerReservoir) = (reservoir.cʳ, reservoir.cʳˡ)
 
 radiation_storage(reservoir::TracerReservoir, (cʳ, cʳˡ)) =
