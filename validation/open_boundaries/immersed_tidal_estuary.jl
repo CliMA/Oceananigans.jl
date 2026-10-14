@@ -58,16 +58,29 @@ u, v, w = model.velocities
 S = model.tracers.S
 η = model.free_surface.displacement
 ∫η = Field(Integral(η, dims = 1))
-river_transport(t) = (U_river + U_tide * sin(ω * t)) * river_depth
+head_face = findfirst(x -> x > head, xnodes(grid, Center()))
+∫u_head = Field(Integral(view(u, head_face, :, :), dims = 3))
 ∫u_mouth = Field(Integral(view(u, Nx + 1, :, :), dims = 3))
+
+# The free-surface volume must follow the net transport through the river faces and the mouth
+net_inflow = Ref(0.0)
+function accumulate_inflow!(sim)
+    Δt = sim.model.clock.last_Δt
+    isfinite(Δt) || return nothing
+    compute!(∫u_head)
+    compute!(∫u_mouth)
+    net_inflow[] += Δt * (Array(interior(∫u_head))[1] - Array(interior(∫u_mouth))[1])
+    return nothing
+end
+add_callback!(simulation, accumulate_inflow!, IterationInterval(1))
 
 wall_clock = Ref(time_ns())
 function progress(sim)
     compute!(∫η)
-    compute!(∫u_mouth)
     elapsed = (time_ns() - wall_clock[]) / 1e9
-    @info @sprintf("iter %d, t = %s, river = %.2f m² s⁻¹, mouth = %.2f m² s⁻¹, ∫η dx = %.1f m², min S = %.2f, wall %.1f s",
-                   iteration(sim), prettytime(sim), river_transport(time(sim)), Array(interior(∫u_mouth))[1], Array(interior(∫η))[1], minimum(S), elapsed)
+    @info @sprintf("iter %d, t = %s, river = %.2f m² s⁻¹, mouth = %.2f m² s⁻¹, ∫η dx = %.1f m², ∫(river - mouth) dt = %.1f m², min S = %.2f, wall %.1f s",
+                   iteration(sim), prettytime(sim), Array(interior(∫u_head))[1], Array(interior(∫u_mouth))[1],
+                   Array(interior(∫η))[1], net_inflow[], minimum(S), elapsed)
     wall_clock[] = time_ns()
     return nothing
 end
