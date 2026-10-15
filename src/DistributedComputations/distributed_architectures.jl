@@ -148,6 +148,9 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
+Base.isodd(r::Sizes) = isodd(length(r.sizes))
+Base.isodd(r::Fractional) = isodd(length(r.sizes))
+
 Base.size(p::Partition) = ranks(p)
 
 # If a direction has only 1 rank, then it is not partitioned
