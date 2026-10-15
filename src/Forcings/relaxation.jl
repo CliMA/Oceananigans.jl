@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: node, xnodes, ynodes
+using Oceananigans.Grids: _node, node, xnodes, ynodes
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
@@ -112,10 +112,11 @@ apply_transform(::Val{S}, field) where S =
 # unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
-    X  = node(i, j, k, grid, r.location...)
+    X  = relaxation_node(r.target, i, j, k, grid, r.location)
     ϕ  = @inbounds r.relaxed[i, j, k]
     ϕᵣ = evaluate_target(r.target, i, j, k, X, clock.time)
-    return r.rate * r.mask(X...) * (ϕᵣ - ϕ)
+    μ  = r.mask(relaxation_node(r.mask, i, j, k, grid, r.location)...)
+    return r.rate * μ * (ϕᵣ - ϕ)
 end
 
 """
@@ -299,14 +300,9 @@ struct GaussianMask{D, T}
     end
 end
 
-@inline (g::GaussianMask)(dim) = exp(-(=dim - g.center)^2 / (2 * g.width^2))
-
-@inline (g::GaussianMask{:x})(x, dim) = g(x)
-@inline (g::GaussianMask{:z})(dim, z) = g(z)
-
-@inline (g::GaussianMask{:x})(x, y, z) = g(x)
-@inline (g::GaussianMask{:y})(x, y, z) = g(y)
-@inline (g::GaussianMask{:z})(x, y, z) = g(z)
+@inline (g::GaussianMask{:x})(x, y, z) = exp(-(x - g.center)^2 / (2 * g.width^2))
+@inline (g::GaussianMask{:y})(x, y, z) = exp(-(y - g.center)^2 / (2 * g.width^2))
+@inline (g::GaussianMask{:z})(x, y, z) = exp(-(z - g.center)^2 / (2 * g.width^2))
 
 show_exp_arg(D, c) = c == 0 ? "$D^2" :
                      c > 0  ? "($D - $c)^2" :
@@ -467,3 +463,9 @@ end
 Base.summary(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
 Base.summary(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
 Base.summary(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"
+
+const DirectionalFunction = Union{GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget}
+
+# Directional functions take (x, y, z) on every grid, including the coordinates of Flat dimensions.
+@inline relaxation_node(f, i, j, k, grid, ℓ) = node(i, j, k, grid, ℓ...)
+@inline relaxation_node(f::DirectionalFunction, i, j, k, grid, ℓ) = _node(i, j, k, grid, ℓ...)

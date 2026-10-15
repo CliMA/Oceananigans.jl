@@ -164,6 +164,22 @@ function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
     return true
 end
 
+function relaxed_time_stepping_in_column(arch, mask_type; mask_kwargs...)
+    mask = mask_type{:z}(; mask_kwargs...)
+    target = LinearTarget{:z}(intercept=π, gradient=ℯ)
+    forcing = Relaxation(; rate=1, mask, target)
+
+    grid = RectilinearGrid(arch, size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, forcing=(; c=forcing))
+    Δt = 0.1
+    time_step!(model, Δt)
+
+    z = Array(znodes(grid, Center()))
+    expected = @. Δt * mask(0, 0, z) * target(0, 0, z, 0)
+
+    return Array(interior(model.tracers.c, 1, 1, :)) ≈ expected
+end
+
 # The FFT-based pressure solver is only approximate on immersed rectilinear grids, and warns about it
 pressure_solver_logs(::Type{NonhydrostaticModel}, grid::ImmersedBoundaryGrid) = grid.underlying_grid isa RectilinearGrid ?
     ((:warn, r"^The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid"),) : ()
@@ -596,6 +612,10 @@ end
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+
+                @test relaxed_time_stepping_in_column(arch, GaussianMask;        center=0.5, width=0.1)
+                @test relaxed_time_stepping_in_column(arch, PiecewiseLinearMask; center=0.5, width=0.1)
+                @test relaxed_time_stepping_in_column(arch, CosineRampMask;      start=0.4, stop=0.6)
             end
 
             @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
