@@ -43,7 +43,7 @@ using CUDA
 using CairoMakie
 using Printf
 
-# A single column is small, so we run Reactant on the CPU even when a GPU is available,
+# A single column is small, so we run Reactant on the CPU even when a GPU is available.
 
 Reactant.set_default_backend("cpu")
 
@@ -94,7 +94,6 @@ scales = (Cu₀ = 0.1, Cc₀ = 0.1, τˣ = 1e-4, Jᵇ = 1e-8)
 # for the dependence of `𝕊u₀` on `Cu₀`.
 
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: VariableStabilityFunctions
-const vitd = VerticallyImplicitTimeDiscretization()
 
 function assign_parameters!(model, normalized_parameters)
     Cu₀ = scales.Cu₀ * normalized_parameters.Cu₀
@@ -102,7 +101,7 @@ function assign_parameters!(model, normalized_parameters)
     FT = typeof(Cu₀)
 
     stability_functions = VariableStabilityFunctions(FT; Cu₀, Cc₀)
-    model.closure = TKEDissipationVerticalDiffusivity(vitd, FT; stability_functions)
+    model.closure = TKEDissipationVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; stability_functions)
 
     τˣ = model.velocities.u.boundary_conditions.top.condition
     Jᵇ = model.tracers.b.boundary_conditions.top.condition
@@ -131,7 +130,7 @@ N² = 1e-5
 bᵢ = set!(CenterField(grid), z -> N² * z)
 
 Δt = 1minute
-Nt = 720
+Nt = round(Int, 12hours / Δt)
 
 function run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
     assign_parameters!(model, normalized_parameters)
@@ -169,7 +168,7 @@ set!(u★, model.velocities.u)
 set!(v★, model.velocities.v)
 set!(b★, model.tracers.b)
 
-obs = (; u★, v★, b★)
+observations = (; u★, v★, b★)
 
 # ## Cost function and its gradient
 #
@@ -178,12 +177,12 @@ obs = (; u★, v★, b★)
 
 using Statistics: mean
 
-function cost(normalized_parameters, model, bᵢ, obs, Δt, Nt)
+function cost(normalized_parameters, model, bᵢ, observations, Δt, Nt)
     run_column!(model, normalized_parameters, bᵢ, Δt, Nt)
 
     u, v = model.velocities
     b = model.tracers.b
-    u★, v★, b★ = obs
+    u★, v★, b★ = observations
 
     U² = 1e-2
     B² = (N² * 10)^2
@@ -199,13 +198,13 @@ end
 # gradient of the cost with respect to the parameters into the "shadow" parameters `cost_gradient`.
 # The model is also mutated by `cost`, so we give it a shadow as well.
 
-function cost_and_gradient!(cost_gradient, parameters, model, shadow, bᵢ, obs, Δt, Nt)
+function cost_and_gradient!(cost_gradient, parameters, model, shadow, bᵢ, observations, Δt, Nt)
     mode = Enzyme.set_strong_zero(Enzyme.ReverseWithPrimal)
     _, 𝒥 = Enzyme.autodiff(mode, cost, Enzyme.Active,
                            Enzyme.Duplicated(parameters, cost_gradient),
                            Enzyme.Duplicated(model, shadow),
                            Enzyme.Const(bᵢ),
-                           Enzyme.Const(obs),
+                           Enzyme.Const(observations),
                            Enzyme.Const(Δt),
                            Enzyme.Const(Nt))
     return 𝒥
@@ -221,17 +220,17 @@ shadow = Enzyme.make_zero(model)
 cost_gradient = reactant_parameters(zeros(4))
 
 compiled_cost = @compile raise=true raise_first=true sync=true cost(
-    reactant_parameters(θ₀), model, bᵢ, obs, Δt, Nt)
+    reactant_parameters(θ₀), model, bᵢ, observations, Δt, Nt)
 
 compiled_cost_and_gradient! = @compile raise=true raise_first=true sync=true cost_and_gradient!(
-    cost_gradient, reactant_parameters(θ₀), model, shadow, bᵢ, obs, Δt, Nt)
+    cost_gradient, reactant_parameters(θ₀), model, shadow, bᵢ, observations, Δt, Nt)
 
-𝒥(θ) = Float64(compiled_cost(reactant_parameters(θ), model, bᵢ, obs, Δt, Nt))
+𝒥(θ) = Float64(compiled_cost(reactant_parameters(θ), model, bᵢ, observations, Δt, Nt))
 
 function cost_and_gradient(θ)
     shadow = Enzyme.make_zero(model)
     cost_gradient = reactant_parameters(zeros(4))
-    𝒥θ = compiled_cost_and_gradient!(cost_gradient, reactant_parameters(θ), model, shadow, bᵢ, obs, Δt, Nt)
+    𝒥θ = compiled_cost_and_gradient!(cost_gradient, reactant_parameters(θ), model, shadow, bᵢ, observations, Δt, Nt)
     return Float64(𝒥θ), Float64.(collect(cost_gradient))
 end
 
@@ -293,14 +292,13 @@ title = @lift @sprintf("Iteration %d, 𝒥 = %.1e", $n - 1, history[$n].𝒥)
 Label(fig[1, 1], title, fontsize=20, tellwidth=false)
 
 iterations = 0:length(history)-1
-labels = ["Cu₀", "Cc₀", "τˣ", "Jᵇ"]
 
 ax = Axis(top[1, 1]; xlabel="Iteration", ylabel="Parameter / nature run value", title="Parameters")
 hlines!(ax, 1; color=:gray, linestyle=:dash)
-for i in 1:4
+for (i, name) in enumerate(keys(scales))
     ratio = [h.θ[i] / θ★[i] for h in history]
     points = @lift Point2f.(iterations[1:$n], ratio[1:$n])
-    scatterlines!(ax, points; label=labels[i])
+    scatterlines!(ax, points; label=string(name))
 end
 xlims!(ax, -0.5, length(history) - 0.5)
 ylims!(ax, 0, 2)
@@ -360,7 +358,9 @@ gradient_time = @elapsed cost_and_gradient(θ₀)
 
 @info @sprintf("Evaluating the cost takes %.2f s and evaluating its gradient takes %.2f s", forward_time, gradient_time)
 
-for (name, result) in (("BFGS", bfgs_result), ("Gradient descent", gradient_descent_result))
+results = ("BFGS" => bfgs_result, "gradient descent" => gradient_descent_result)
+
+for (name, result) in results
     θ = Optim.minimizer(result)
     @info @sprintf("%s: 𝒥 = %.2e after %d iterations with %d cost and %d gradient evaluations; θ / θ★ = %s",
                    name, Optim.minimum(result), Optim.iterations(result),
@@ -370,7 +370,7 @@ end
 fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1]; xlabel="Iteration", ylabel="𝒥", yscale=log10, title="Cost")
 
-for (label, result) in (("BFGS", bfgs_result), ("gradient descent", gradient_descent_result))
+for (label, result) in results
     cost_trace = Optim.f_trace(result)
     scatterlines!(ax, 0:length(cost_trace)-1, cost_trace; label)
 end

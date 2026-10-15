@@ -69,6 +69,22 @@ end
             @test maximum(abs, u .- 1) < 1e-12
         end
 
+        @testset "Implicit drag at a long step does not amplify the free surface [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch, size=(32, 4), x=(0, 1e4), z=(-10, 0), topology=(Periodic, Flat, Bounded))
+            ηᵢ = 1e-3 .* randn(MersenneTwister(1), 32, 1, 1)
+
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3), Cᴰ in (0.5, 50)
+                m = HydrostaticFreeSurfaceModel(grid; timestepper,
+                        free_surface = SplitExplicitFreeSurface(grid; substeps=11),
+                        momentum_advection = nothing, tracer_advection = nothing,
+                        tracers = (), buoyancy = nothing, coriolis = nothing, closure = nothing,
+                        boundary_conditions = (u = FieldBoundaryConditions(bottom = IMEXFluxBoundaryCondition(0, -Cᴰ)),))
+                set!(m, η = ηᵢ)
+                for _ in 1:100; time_step!(m, 80); end
+                @test maximum(abs, interior(m.free_surface.displacement)) < maximum(abs, ηᵢ)
+            end
+        end
+
         @testset "Steady drag balance feels the free surface [$(typeof(arch))]" begin
             # One level, periodic: continuity holds u uniform, so the steady balance r u = F(x) - g ∂ₓη
             # sets u from the mean forcing and the free-surface tilt from the rest.

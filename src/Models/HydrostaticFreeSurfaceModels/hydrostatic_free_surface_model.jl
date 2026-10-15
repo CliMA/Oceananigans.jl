@@ -460,6 +460,7 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             free_surface = prognostic_state(model.free_surface),
+            coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
             vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
@@ -470,6 +471,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.coriolis, from.coriolis)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
