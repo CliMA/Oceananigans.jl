@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ, Azᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
 using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
 using Oceananigans.Grids: constructor_arguments, halo_size, pop_flat_elements, reconstruction_faces,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
@@ -125,9 +125,7 @@ function regrid_in_y!(a, target_grid, source_grid, b)
     location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
     source_y_faces = closed_face_nodes(source_grid, c, f, c, 2)
-    # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
-    Nx_source_faces = topology(source_grid, 1) == Flat ? 1 : source_grid.Nx + 1
-    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
+    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
     return a
 end
 
@@ -135,9 +133,7 @@ function regrid_in_x!(a, target_grid, source_grid, b)
     location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
     source_x_faces = closed_face_nodes(source_grid, f, c, c, 1)
-    # A Periodic dimension has a closing face in the halo, so the face count is N+1 as for Bounded
-    Ny_source_faces = topology(source_grid, 2) == Flat ? 1 : source_grid.Ny + 1
-    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
+    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
     return a
 end
 
@@ -298,15 +294,23 @@ end
     end
 end
 
-@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces, Nx_source_faces)
+# On both supported grids the horizontal cell area factorizes into a part depending only on x
+# (Δx or Δλ) and a part depending only on y (Δy or Δsinφ). Regridding in one horizontal
+# direction therefore weights cells by their measure in that direction only, which stays
+# correct when source and target differ in the other direction, e.g. for a source reduced in y.
+@inline x_measure(::RectilinearGrid, x₁, x₂) = x₂ - x₁
+@inline x_measure(::LatitudeLongitudeGrid, λ₁, λ₂) = λ₂ - λ₁
+
+@inline y_measure(::RectilinearGrid, y₁, y₂) = y₂ - y₁
+@inline y_measure(::LatitudeLongitudeGrid, φ₁, φ₂) = hack_sind(φ₂) - hack_sind(φ₁)
+
+@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces)
     i, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
     Nx_source, Ny_source, Nz_source = size(source_grid)
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-
-    i⁺_src = min(Nx_source_faces, i_src + 1)
 
     fo = ForwardOrdering()
 
@@ -330,7 +334,9 @@ end
         else
             # Add contribution from all full cells in the integration range
             for j_src = j₋_src:j₊_src-1
-                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+                yj_src  = ηnode(i_src, j_src,   k_src, source_grid, c, f, c)
+                yj⁺_src = ηnode(i_src, j_src+1, k_src, source_grid, c, f, c)
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * y_measure(source_grid, yj_src, yj⁺_src)
             end
 
             yj₋_src = ηnode(i_src, j₋_src, k_src, source_grid, c, f, c)
@@ -338,42 +344,27 @@ end
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
-            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if j₋_src > 1
-                j_left = j₋_src - 1
-
-                ξ₁ = ξnode(i_src,  j_left, k_src, source_grid, f, c, c)
-                ξ₂ = ξnode(i⁺_src, j_left, k_src, source_grid, f, c, c)
-                Az_left = fractional_horizontal_area(source_grid, ξ₁, ξ₂, y₋, yj₋_src)
-
-                target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_src, j₋_src - 1, k_src] * y_measure(source_grid, y₋, yj₋_src)
             end
 
             # Similar to above, add contribution to integral from fractional right part.
             if j₊_src < source_grid.Ny+1
-                j_right = j₊_src
-
-                ξ₁ = ξnode(i_src,  j_right, k_src, source_grid, f, c, c)
-                ξ₂ = ξnode(i⁺_src, j_right, k_src, source_grid, f, c, c)
-                Az_right = fractional_horizontal_area(source_grid, ξ₁, ξ₂, yj₊_src, y₊)
-
-                target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_src, j₊_src, k_src] * y_measure(source_grid, yj₊_src, y₊)
             end
 
-            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= y_measure(target_grid, y₋, y₊)
         end
     end
 end
 
-@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces, Ny_source_faces)
+@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces)
     j, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
     Nx_source, Ny_source, Nz_source = size(source_grid)
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-
-    j⁺_src = min(Ny_source_faces, j_src + 1)
 
     fo = ForwardOrdering()
 
@@ -403,7 +394,9 @@ end
 
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
             for i_src = i₋_src:i₊_src-1
-                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+                ξi_src  = ξnode(i_src,   j_src, k_src, source_grid, f, c, c)
+                ξi⁺_src = ξnode(i_src+1, j_src, k_src, source_grid, f, c, c)
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * x_measure(source_grid, ξi_src, ξi⁺_src)
             end
 
             # Next, we add contributions from the "fractional" source cells on the right
@@ -413,44 +406,16 @@ end
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
-            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if i₋_src > 1
-                i_left = i₋_src - 1
-
-                η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
-                η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
-                Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
-
-                target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
+                target_field[i, j, k] += source_field[i₋_src - 1, j_src, k_src] * x_measure(source_grid, ξ₋, ξi₋_src)
             end
-
 
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
-                i_right = i₊_src
-
-                η₁ = ηnode(i_right, j_src,  k_src, source_grid, c, f, c)
-                η₂ = ηnode(i_right, j⁺_src, k_src, source_grid, c, f, c)
-                Az_right = fractional_horizontal_area(source_grid, ξi₊_src, ξ₊, η₁, η₂)
-
-                target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
+                target_field[i, j, k] += source_field[i₊_src, j_src, k_src] * x_measure(source_grid, ξi₊_src, ξ₊)
             end
 
-            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= x_measure(target_grid, ξ₋, ξ₊)
         end
     end
 end
-
-@inline fractional_horizontal_area(grid::RectilinearGrid, x₁, x₂, y₁, y₂) = (x₂ - x₁) * (y₂ - y₁)
-@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Flat}, x₁, x₂, y₁, y₂) = y₂ - y₁
-@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Any, <:Flat}, x₁, x₂, y₁, y₂) = (x₂ - x₁)
-@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Flat, <:Flat}, x₁, x₂, y₁, y₂) = one(eltype(grid))
-
-@inline function fractional_horizontal_area(grid::LatitudeLongitudeGrid, λ₁, λ₂, φ₁, φ₂)
-    Δλ = λ₂ - λ₁
-    return grid.radius^2 * deg2rad(Δλ) * (hack_sind(φ₂) - hack_sind(φ₁))
-end
-
-@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * (hack_sind(φ₂) - hack_sind(φ₁))
-@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * deg2rad(λ₂ - λ₁)
-@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat, <:Flat}, λ₁, λ₂, φ₁, φ₂) = one(eltype(grid))

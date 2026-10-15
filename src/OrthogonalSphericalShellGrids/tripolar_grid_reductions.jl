@@ -73,9 +73,9 @@ const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
     arch = architecture(op)
 
     if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = PrognosticTripolarCells()
+        tripolar_condition = PrognosticTripolarCells(condition)
     else # intermediate cores
-        tripolar_condition = nothing
+        tripolar_condition = condition
     end
 
     return ConditionalOperation(op; func, condition=tripolar_condition, mask)
