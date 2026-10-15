@@ -418,6 +418,13 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds @muladd abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds @muladd abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
+# 1 / ∑α with the division method of the weight computation. ∑α ≲ 2¹²⁴ in Float32 and BFloat16
+# (see `zweno_regularization`), so its approximate reciprocal cannot flush to zero.
+@inline function weight_normalization(::WENO{N, FT, WCT}, α) where {N, FT, WCT}
+    Σα = sum(α)
+    return newton_div(WCT, one(Σα), Σα)
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -441,7 +448,7 @@ The ``α`` values are normalized before returning
     β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ = 1 / sum(α)
+    Σα⁻¹ = weight_normalization(scheme, α)
     return α .* Σα⁻¹
 end
 
@@ -456,7 +463,7 @@ end
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ = 1 / sum(α)
+    Σα⁻¹ = weight_normalization(scheme, α)
     return α .* Σα⁻¹
 end
 
