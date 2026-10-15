@@ -127,7 +127,7 @@ import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ
 using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
-using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, active_weighted_ℑxzᶠᶜᶜ, active_weighted_ℑyzᶜᶠᶜ
 using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
 #####
@@ -222,17 +222,24 @@ const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bound
 ##### Chain-rule-correct x-derivatives: ∂ϕ/∂x|_z = ∂ϕ/∂x|_r - (∂z/∂x|_r)(∂ϕ/∂z)
 #####
 
+@inline vertical_derivativeᶠᶜᶜ(i, j, k, grid, args...) = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+@inline vertical_derivativeᶜᶠᶜ(i, j, k, grid, args...) = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+
+# Faces masked next to the immersed top would bias the average
+@inline vertical_derivativeᶠᶜᶜ(i, j, k, grid::MutableImmersedTopGrid, args...) = active_weighted_ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+@inline vertical_derivativeᶜᶠᶜ(i, j, k, grid::MutableImmersedTopGrid, args...) = active_weighted_ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, args...)
+
 # ∂xᶠᶜᶜ: tracer/buoyancy/pressure x-derivatives (most common)
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = vertical_derivativeᶠᶜᶜ(i, j, k, grid, ϕ)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = vertical_derivativeᶠᶜᶜ(i, j, k, grid, f, args...)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -304,14 +311,14 @@ end
 # ∂yᶜᶠᶜ: tracer/buoyancy/pressure y-derivatives (most common)
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = vertical_derivativeᶜᶠᶜ(i, j, k, grid, ϕ)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = vertical_derivativeᶜᶠᶜ(i, j, k, grid, f, args...)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
