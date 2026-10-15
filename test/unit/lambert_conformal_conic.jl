@@ -6,7 +6,8 @@ using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConic,
     lcc_xnode, lcc_ynode, spherical_distance, spherical_unit_vector,
     spherical_quadrilateral_area, fill_lcc_coordinates_and_metrics!
 using Oceananigans.Grids: architecture, constructor_arguments, topology, halo_size,
-                          with_halo, with_number_type, znodes
+                          with_halo, with_number_type, znodes,
+                          λnodes, φnodes, λnode, φnode
 using Oceananigans.Fields: interior
 using Oceananigans.Operators: intrinsic_vector, extrinsic_vector, rotation_angle
 using Oceananigans.Architectures: on_architecture
@@ -949,6 +950,57 @@ end
         @test float32_grid.conformal_mapping.y₁ ≈ grid.conformal_mapping.y₁
         @test float32_grid.conformal_mapping.Δx ≈ grid.conformal_mapping.Δx
         @test float32_grid.conformal_mapping.Δy ≈ grid.conformal_mapping.Δy
+    end
+
+    @testset "coordinate arrays match scalar nodes with unequal halos" begin
+        grid = LambertConformalConicGrid(CPU(), Float64;
+                                         size = (12, 10, 1),
+                                         center = (-95, 40),
+                                         spacing = 50e3,
+                                         standard_parallel = 25,
+                                         z = (0, 1),
+                                         halo = (3, 5, 2))
+
+        locations = ((Center(), Center()), (Face(), Center()),
+                     (Center(), Face()), (Face(), Face()))
+
+        for (ℓx, ℓy) in locations
+            λ = λnodes(grid, ℓx, ℓy)
+            φ = φnodes(grid, ℓx, ℓy)
+            Nx = size(grid, 1) + (ℓx isa Face ? 1 : 0)
+            Ny = size(grid, 2) + (ℓy isa Face ? 1 : 0)
+
+            @test size(λ) == (Nx, Ny)
+            @test size(φ) == (Nx, Ny)
+            @test axes(λ) == (1:Nx, 1:Ny)
+            @test axes(φ) == (1:Nx, 1:Ny)
+
+            for j in (1, 5, Ny), i in (1, 6, Nx)
+                @test λ[i, j] ≈ λnode(i, j, 1, grid, ℓx, ℓy, Center()) atol=1e-10
+                @test φ[i, j] ≈ φnode(i, j, 1, grid, ℓx, ℓy, Center()) atol=1e-10
+            end
+
+            selected_λ = λnodes(grid, ℓx, ℓy; indices=(2:4, 3:5))
+            selected_φ = φnodes(grid, ℓx, ℓy; indices=(2:4, 3:5))
+            @test selected_λ == λ[2:4, 3:5]
+            @test selected_φ == φ[2:4, 3:5]
+
+            λ_with_halos = λnodes(grid, ℓx, ℓy; with_halos=true)
+            φ_with_halos = φnodes(grid, ℓx, ℓy; with_halos=true)
+            @test size(λ_with_halos, 1) > size(λ, 1)
+            @test size(φ_with_halos, 2) > size(φ, 2)
+            @test λ_with_halos[1, 1] == λ[1, 1]
+            @test φ_with_halos[1, 1] == φ[1, 1]
+        end
+
+        tripolar_grid = TripolarGrid(CPU(), Float64; size=(8, 10, 1), z=(0, 1))
+
+        for (ℓx, ℓy) in locations
+            λ = λnodes(tripolar_grid, ℓx, ℓy)
+            φ = φnodes(tripolar_grid, ℓx, ℓy)
+            @test λ[1, 1] ≈ λnode(1, 1, 1, tripolar_grid, ℓx, ℓy, Center())
+            @test φ[1, 1] ≈ φnode(1, 1, 1, tripolar_grid, ℓx, ℓy, Center())
+        end
     end
 
     @testset "Float32 coordinate and metric arrays" begin
