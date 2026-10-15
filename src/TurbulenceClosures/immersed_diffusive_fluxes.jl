@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
 using Oceananigans.BoundaryConditions: getbc
-using Oceananigans.BoundaryConditions: FBC, ZFBC
+using Oceananigans.BoundaryConditions: FBC, ZFBC, NFBC
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
 using Oceananigans.Advection: conditional_flux
@@ -54,7 +54,7 @@ const IBG = ImmersedBoundaryGrid
 for side in (:west, :south, :bottom)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
-        @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
+        @inline $side_ib_flux(i, j, k, ibg, ::Union{Nothing, NFBC}, args...) = zero(eltype(ibg))
         @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = + getbc(bc, i, j, k, ibg, args...)
     end
 end
@@ -62,7 +62,7 @@ end
 for side in (:east, :north, :top)
     side_ib_flux = Symbol(side, :_ib_flux)
     @eval begin
-        @inline $side_ib_flux(i, j, k, ibg, ::Nothing, args...) = zero(eltype(ibg))
+        @inline $side_ib_flux(i, j, k, ibg, ::Union{Nothing, NFBC}, args...) = zero(eltype(ibg))
         @inline $side_ib_flux(i, j, k, ibg, bc::FBC, loc, c, closure, K, id, args...) = - getbc(bc, i, j, k, ibg, args...)
     end
 end

@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Fields: instantiated_location
+using Oceananigans.Fields: instantiated_location, fill_immersed_halo_regions!
 
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions:
@@ -45,15 +45,18 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N =
-    fill_halo_regions!(field.data,
-                       field.boundary_conditions,
-                       field.indices,
-                       instantiated_location(field),
-                       field.grid,
-                       field.communication_buffers,
-                       args...;
-                       kwargs...)
+function fill_halo_regions!(field::DistributedField, args::Vararg{Any, N}; kwargs...) where N
+    fill_immersed_halo_regions!(field, args...; kwargs...)
+
+    return fill_halo_regions!(field.data,
+                              field.boundary_conditions,
+                              field.indices,
+                              instantiated_location(field),
+                              field.grid,
+                              field.communication_buffers,
+                              args...;
+                              kwargs...)
+end
 
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly

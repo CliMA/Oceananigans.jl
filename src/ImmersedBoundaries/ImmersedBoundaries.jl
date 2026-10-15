@@ -38,6 +38,7 @@ include("partial_cell_bottom.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")
+include("fill_immersed_halo_regions.jl")
 include("immersed_reductions.jl")
 include("mutable_immersed_grid.jl")
 

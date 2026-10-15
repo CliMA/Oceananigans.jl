@@ -719,6 +719,56 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
 
+### Open immersed boundaries
+
+A `NormalFlowBoundaryCondition` on a velocity component opens the immersed faces that the component
+is normal to, so that fluid flows through the immersed boundary. The `west` condition applies to the
+faces whose fluid cell lies to their east and prescribes the velocity on those faces, so that a positive
+value flows into the fluid; the `east` condition applies to faces whose fluid cell lies to their west,
+so that a positive value flows out of the fluid. The `south`, `north`, `bottom`, and `top` conditions
+on `v` and `w` follow the same convention. A function condition is evaluated at the fluid cell adjacent
+to the face, like every other immersed boundary condition. The condition applies to every face on its
+side, the lee of an island included, so a function that returns zero away from the intended opening
+keeps the other faces closed.
+
+The immersed cells behind open faces act as halo cells for every other field. The inflow carries
+the value of a tracer's immersed `ValueBoundaryCondition` on that side, and a tracer with the default
+no-flux condition enters with the value of the adjacent fluid cell. For example, a river entering a
+bay through the west-facing faces of a coastline, with velocity 0.5 m s⁻¹ and zero salinity, is
+prescribed with
+
+```jldoctest immersed_bc
+using Oceananigans.Grids: ynode
+
+river(i, j, k, grid, clock, fields) = ifelse(4000 < ynode(j, grid, Center()) < 6000, 0.5, 0)
+
+u_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = NormalFlowBoundaryCondition(river, discrete_form=true)))
+S_bcs = FieldBoundaryConditions(immersed = ImmersedBoundaryCondition(west = ValueBoundaryCondition(0)))
+
+coastline = GridFittedBottom((x, y) -> ifelse(x < 2000, 0, -20))
+grid = ImmersedBoundaryGrid(RectilinearGrid(size=(20, 10, 4), x=(0, 20000), y=(0, 10000), z=(-20, 0)), coastline)
+model = HydrostaticFreeSurfaceModel(grid; tracers=:S, boundary_conditions=(u=u_bcs, S=S_bcs))
+
+model.velocities.u.boundary_conditions.immersed
+
+# output
+ImmersedBoundaryCondition:
+├── west: NormalFlowBoundaryCondition{Nothing}: DiscreteBoundaryFunction with river
+├── east: Nothing
+├── south: Nothing
+├── north: Nothing
+├── bottom: Nothing
+└── top: Nothing
+```
+
+A `ValueBoundaryCondition` also fixes the tracer diffusively on the closed faces of that side. To open only
+the river mouth, a discrete-form condition can return the interior value elsewhere, for example
+`ifelse(4000 < ynode(j, grid, Center()) < 6000, 0, fields.S[i, j, k])`, which is a no-flux condition there.
+
+The transport through open immersed faces raises the free surface of a `HydrostaticFreeSurfaceModel`
+like any other inflow. In a `NonhydrostaticModel` without a free surface it must leave through open
+domain boundaries: the net transport correction of boundaries with a radiation scheme accounts for it.
+
 ```@setup immersed_bc
 # Restore original stderr
 redirect_stderr(original_stderr)

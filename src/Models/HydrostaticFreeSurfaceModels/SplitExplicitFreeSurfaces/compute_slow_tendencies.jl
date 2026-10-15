@@ -8,9 +8,10 @@
     δU = zero(grid)
     δV = zero(grid)
 
+    # Domain boundary faces follow their own barotropic conditions; immersed faces are kept, as open ones carry transport
     for k in 1:grid.Nz
-        @inbounds δU += Δzᶠᶜᶜ(i, j, k, grid) * (u[i, j, k] - u⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locU...)
-        @inbounds δV += Δzᶜᶠᶜ(i, j, k, grid) * (v[i, j, k] - v⁻[i, j, k]) * !peripheral_node(i, j, k, grid, locV...)
+        @inbounds δU += Δzᶠᶜᶜ(i, j, k, grid) * (u[i, j, k] - u⁻[i, j, k]) * !peripheral_node(i, j, k, underlying_grid(grid), locU...)
+        @inbounds δV += Δzᶜᶠᶜ(i, j, k, grid) * (v[i, j, k] - v⁻[i, j, k]) * !peripheral_node(i, j, k, underlying_grid(grid), locV...)
     end
 
     @inbounds Gᵁ[i, j, 1] = δU / Δt
@@ -31,7 +32,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     @apply_regionally launch!(architecture(grid), grid, :xy, _compute_realized_barotropic_tendency!, GUⁿ, GVⁿ, grid, u, v, u⁻, v⁻, Δt)
 
-    fill_halo_regions!((GUⁿ, GVⁿ); async=true)
+    fill_halo_regions!((GUⁿ, GVⁿ); fill_normal_flow_bcs=false, async=true)
 
     return nothing
 end
