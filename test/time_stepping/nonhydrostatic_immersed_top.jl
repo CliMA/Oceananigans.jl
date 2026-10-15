@@ -10,7 +10,7 @@ sloping_top_height(x) = min(0, -0.93 + 1.6x)
 function immersed_top_grid(arch, FT, ImmersedBoundary; top_load=nothing)
     underlying_grid = RectilinearGrid(arch, FT, size=(16, 20), x=(0, 1), z=(-1, 0),
                                       topology=(Bounded, Flat, Bounded))
-    return ImmersedBoundaryGrid(underlying_grid, ImmersedBoundary(-1; top_height=sloping_top_height, top_load))
+    return ImmersedBoundaryGrid(underlying_grid, ImmersedBoundary(; bottom_height=-1, top_height=sloping_top_height, top_load))
 end
 
 immersed_top_pressure_solver(grid) = ConjugateGradientPoissonSolver(grid; reltol=100eps(eltype(grid)), abstol=0, maxiter=10_000)
@@ -72,7 +72,7 @@ end
 function test_open_top_free_surface(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(16, 8), x=(0, 1), z=(-1, 0),
                                       topology=(Bounded, Flat, Bounded))
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-1; top_height=1))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedVerticalBoundaries(bottom_height=-1, top_height=1))
 
     free_surface = ImplicitFreeSurface(gravitational_acceleration=1)
     model = immersed_top_model(grid, free_surface)
@@ -125,7 +125,7 @@ function test_immersed_top_free_surface_wave(FT, arch, ImmersedBoundary)
 end
 
 function test_immersed_top_free_surface_needs_conjugate_gradient(arch)
-    grid = immersed_top_grid(arch, Float64, GridFittedBottom)
+    grid = immersed_top_grid(arch, Float64, GridFittedVerticalBoundaries)
     pressure_solver = FFTBasedPoissonSolver(grid.underlying_grid)
     @test_throws ArgumentError NonhydrostaticModel(grid; pressure_solver, free_surface=ImplicitFreeSurface())
 
@@ -134,13 +134,13 @@ end
 
 @testset "Nonhydrostatic immersed top" begin
     for arch in archs, FT in float_types
-        for ImmersedBoundary in (GridFittedBottom, PartialCellBottom), free_surface in (nothing, ImplicitFreeSurface(gravitational_acceleration=1))
+        for ImmersedBoundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries), free_surface in (nothing, ImplicitFreeSurface(gravitational_acceleration=1))
             label = "$ImmersedBoundary, $(isnothing(free_surface) ? "rigid lid" : "free surface") [$FT, $(typeof(arch))]"
             @testset "Rest state, $label" test_nonhydrostatic_immersed_top_rest_state(FT, arch, ImmersedBoundary, free_surface)
             @testset "Divergence, $label" test_nonhydrostatic_immersed_top_divergence(FT, arch, ImmersedBoundary, free_surface)
         end
         @testset "Open-top free surface [$FT, $(typeof(arch))]" test_open_top_free_surface(FT, arch)
-        for ImmersedBoundary in (GridFittedBottom, PartialCellBottom)
+        for ImmersedBoundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
             @testset "Free-surface wave, $ImmersedBoundary [$FT, $(typeof(arch))]" test_immersed_top_free_surface_wave(FT, arch, ImmersedBoundary)
         end
     end

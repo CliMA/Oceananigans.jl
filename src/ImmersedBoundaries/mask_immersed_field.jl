@@ -159,7 +159,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 # Grid-fitted bottoms without an immersed top
 const BottomOnlyIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any,
-                                           <:Union{GridFittedBottom{<:Any, Nothing}, PartialCellBottom{<:Any, Nothing}}}
+                                           <:Union{GridFittedBottom, PartialCellBottom}}
 
 const CenterOrFace = Union{Center, Face}
 const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
@@ -182,7 +182,8 @@ end
 @kernel function _mask_immersed_w_field!(field, (ℓx, ℓy, ℓz), grid, value)
     i, j, k = @index(Global, NTuple)
     Nz = size(grid, 3)
-    covered = immersed_cell(i, j, Nz, grid) | (column_top_height(i, j, grid, grid.immersed_boundary.top_height) < rnode(i, j, Nz+1, grid, c, c, f))
+    zᵗ = @inbounds grid.immersed_boundary.top_height[i, j, 1]
+    covered = immersed_cell(i, j, Nz, grid) | (zᵗ < rnode(i, j, Nz+1, grid, c, c, f))
     masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | ((k == Nz + 1) & covered)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
