@@ -23,6 +23,7 @@ mutable struct NetCDFWriter{G, GM, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     file_splitting :: FS
     dimension_name_generator :: DN
     dimension_type :: DT
+    start_datetime :: Union{Nothing, DateTime}
     initialized :: Bool
 end
 
@@ -46,7 +47,8 @@ end
                  part = 1,
                  file_splitting = NoFileSplitting(),
                  dimension_name_generator = trilocation_dim_name,
-                 dimension_type = Float64)
+                 dimension_type = Float64,
+                 start_datetime = nothing)
 
 Construct a `NetCDFWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
 
@@ -159,6 +161,13 @@ Optional keyword arguments
 
 - `dimension_type`: Floating point type for dimension coordinate arrays. Default: `Float64`.
                     Use `Float32` to reduce file size if needed.
+
+- `start_datetime`: The date and time at which the model clock reads zero, written to the `time`
+                    variable as CF units `"seconds since <start_datetime>"` with a
+                    `"proleptic_gregorian"` calendar so that standard tools decode valid times.
+                    With a `DateTime` clock, times are stored as seconds since `start_datetime`.
+                    Default: `nothing`, which labels the time variable `"seconds"` for a
+                    numeric clock and `"seconds since 2000-01-01 00:00:00"` for a `DateTime` clock.
 
 Examples
 ========

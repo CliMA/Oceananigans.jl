@@ -27,6 +27,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN, DT} <: AbstractOutputWri
     chunks :: CH
     dimension_name_generator :: DN
     dimension_type :: DT
+    start_datetime :: Union{Nothing, DateTime}
     initialized :: Bool
 end
 
@@ -44,6 +45,7 @@ end
                file_splitting = NoFileSplitting(),
                dimension_name_generator = trilocation_dim_name,
                dimension_type = Float64,
+               start_datetime = nothing,
                overwrite_files = false,
                verbose = false,
                part = 1,
@@ -136,6 +138,13 @@ Keyword arguments
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
 - `dimension_type`: Element type for coordinate and time arrays. Default: `Float64`.
+
+- `start_datetime`: The date and time at which the model clock reads zero, written to the `time`
+                    coordinate as CF units `"seconds since <start_datetime>"` with a
+                    `"proleptic_gregorian"` calendar so that standard tools decode valid times.
+                    With a `DateTime` clock, times are stored as seconds since `start_datetime`.
+                    Default: `nothing`, which labels the time coordinate `"seconds"` for a
+                    numeric clock and `"seconds since 2000-01-01 00:00:00"` for a `DateTime` clock.
 
 - `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding

@@ -8,7 +8,7 @@
 # grid metrics.
 #
 
-using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes
+using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes, time_attributes
 
 #####
 ##### Extend defVar to be able to write fields to NetCDF directly
@@ -94,7 +94,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       part = 1,
                       file_splitting = NoFileSplitting(),
                       dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                      dimension_type = Float64,
+                      start_datetime = nothing)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -149,6 +150,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
                         file_splitting,
                         dimension_name_generator,
                         dimension_type,
+                        isnothing(start_datetime) ? nothing : DateTime(start_datetime),
                         false)
 end
 
@@ -200,7 +202,8 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
                                                     overwrite_files,
                                                     deflatelevel,
                                                     dimension_name_generator,
-                                                    dimension_type)
+                                                    dimension_type,
+                                                    start_datetime)
 
     mode = (overwrite_files || !isfile(filepath)) ? "c" : "a"
 
@@ -232,10 +235,8 @@ Base.@nospecializeinfer function initialize_nc_file(@nospecialize(model),
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
-        # DateTime and TimeDate are both <: AbstractTime
-        time_attrib = model.clock.time isa AbstractTime ?
-            Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
-            Dict("long_name" => "Time", "units" => "seconds")
+        time_attrib = merge(Dict{String, Any}("long_name" => "Time"),
+                            time_attributes(model.clock.time, start_datetime))
 
         create_time_dimension!(dataset, attrib=time_attrib, dimension_type=dimension_type)
 
@@ -338,7 +339,8 @@ initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
                                                                  ow.overwrite_files,
                                                                  ow.deflatelevel,
                                                                  ow.dimension_name_generator,
-                                                                 ow.dimension_type)
+                                                                 ow.dimension_type,
+                                                                 ow.start_datetime)
 
 #####
 ##### Variable definition
@@ -447,8 +449,9 @@ function write_time_dependent_output!(ds, output::LagrangianParticles, data, tim
 end
 
 # Convert to a base Julia type (a float or DateTime).
-float_or_date_time(t) = t
-float_or_date_time(t::AbstractTime) = DateTime(t)
+float_or_date_time(t, start_datetime) = t
+float_or_date_time(t::AbstractTime, start_datetime) = DateTime(t)
+float_or_date_time(t::Number, start_datetime::DateTime) = start_datetime + Millisecond(round(Int64, 1000 * t))
 
 """
     time_index_for_writing(ds, t, ow, filepath)
@@ -508,7 +511,7 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     # still depends on (which frame's accumulated sum is "current").
     fetched = OrderedDict(output_name => fetch_and_convert_output(output, model, ow) for (output_name, output) in ow.outputs)
 
-    t = float_or_date_time(output_time(model.clock, ow.schedule))
+    t = float_or_date_time(output_time(model.clock, ow.schedule), ow.start_datetime)
     time_index = time_index_for_writing(ds, t, ow, filepath)
 
     if isnothing(time_index)

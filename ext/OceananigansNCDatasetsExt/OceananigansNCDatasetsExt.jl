@@ -16,7 +16,7 @@ using NCDatasets: NCDataset, defDim, defGroup, dimnames, name, sync
 using NCDatasets.CommonDataModel: AbstractDataset
 using NCDatasets.DiskArrays: AbstractDiskArray
 
-using Dates: AbstractTime, UTC, now, DateTime
+using Dates: AbstractTime, UTC, now, DateTime, Millisecond
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
