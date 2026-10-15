@@ -65,7 +65,7 @@ end
 @inline zerofunction(args...) = 0
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a set of functions for a Stokes drift velocity field
 corresponding to a horizontally-uniform surface gravity wave field, with optional `parameters`.
@@ -219,7 +219,7 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a set of functions of space and time for a Stokes drift velocity field
 corresponding to a surface gravity wave field with an envelope that (potentially) varies

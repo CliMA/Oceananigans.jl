@@ -16,7 +16,7 @@ struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
 

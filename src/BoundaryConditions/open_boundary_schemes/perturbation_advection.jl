@@ -11,7 +11,7 @@ struct PerturbationAdvection{FT, D, TF}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Create a `PerturbationAdvection` scheme, passed as the `scheme` keyword to an
 `NormalFlowBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a

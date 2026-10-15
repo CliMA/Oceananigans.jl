@@ -37,7 +37,7 @@ const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
 const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return an abstract representation of a masking procedure applied when `condition` is satisfied on a field
 described by `func(operand)`.

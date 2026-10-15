@@ -1,7 +1,7 @@
 using Printf: @sprintf
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Convert a floating point value `s` representing a file size to a more human-friendly
 formatted string with one decimal places with a `suffix` defaulting to "B". Depending on

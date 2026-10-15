@@ -59,7 +59,7 @@ end
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.

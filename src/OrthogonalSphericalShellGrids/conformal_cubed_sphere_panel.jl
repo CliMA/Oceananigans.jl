@@ -191,7 +191,7 @@ function Grids.with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
 the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, both take values in the range

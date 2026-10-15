@@ -55,7 +55,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B} <: AbstractFreeSurfa
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization of
 a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:

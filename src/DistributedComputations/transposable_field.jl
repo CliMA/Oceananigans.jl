@@ -16,7 +16,7 @@ const SlabYFields = TransposableField{<:Any, <:Any, <:Any, <:Nothing} # Y-direct
 const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X-direction is free
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a TransposableField object that containes the allocated memory and the ruleset required
 for distributed transpositions. This includes:

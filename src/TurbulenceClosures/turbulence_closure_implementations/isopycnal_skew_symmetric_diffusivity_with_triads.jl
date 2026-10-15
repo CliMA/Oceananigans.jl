@@ -20,7 +20,7 @@ const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for

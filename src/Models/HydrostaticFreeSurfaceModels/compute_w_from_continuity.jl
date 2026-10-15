@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Grids: surface_kernel_parameters
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Update the vertical velocity field `w` and grid vertical velocity (for z-star coordinates).
 

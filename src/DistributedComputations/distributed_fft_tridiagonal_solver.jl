@@ -40,7 +40,7 @@ architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
 @inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return an FFT-based solver for the Poisson equation evaluated on a `local_grid` that has a non-uniform
 spacing in exactly one direction (i.e. either in x, y or z)

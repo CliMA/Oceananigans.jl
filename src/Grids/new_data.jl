@@ -47,7 +47,7 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return an `OffsetArray` that maps to `underlying_data` in memory, with offset indices
 appropriate for the `data` of a field on a `grid` of `size(grid)` and located at `loc`.

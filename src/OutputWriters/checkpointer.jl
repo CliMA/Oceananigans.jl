@@ -16,7 +16,7 @@ mutable struct Checkpointer{T} <: AbstractOutputWriter
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -224,7 +224,7 @@ function load_nested_data(obj)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Load checkpoint data from a JLD2 file and return it as a nested NamedTuple.
 """
@@ -445,7 +445,7 @@ Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
 #####
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Manually checkpoint `simulation` state to a JLD2 file.
 

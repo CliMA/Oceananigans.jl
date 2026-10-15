@@ -47,7 +47,7 @@ end
 @inline no_dynamics(args...) = nothing
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct some `LagrangianParticles` that can be passed to a model. The particles have initial locations
 `x`, `y`, and `z`. The coefficient of restitution for particle-wall collisions is specified by `restitution`.

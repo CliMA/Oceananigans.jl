@@ -99,7 +99,7 @@ end
 #####
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Check if the stencil required for reconstruction contains immersed nodes
 

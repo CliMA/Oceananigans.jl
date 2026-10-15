@@ -1,5 +1,5 @@
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Create a tuple corresponding to the solution variables `u`, `v`, `w`,
 and `tracer_names`. `initial_tuple` is a `NamedTuple` that at least has

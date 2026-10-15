@@ -71,7 +71,7 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or number of `stages`.
 
@@ -148,7 +148,7 @@ function spectral_coefficients(c::AbstractVector)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Step forward `model` one time step `Δt` using the split Runge-Kutta method.
 

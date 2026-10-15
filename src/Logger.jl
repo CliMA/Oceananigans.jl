@@ -23,7 +23,7 @@ struct OceananigansLogger <: Logging.AbstractLogger
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Based on Logging.SimpleLogger, it tries to log all messages in the following format:
 

@@ -27,7 +27,7 @@ end
 @inline extract_centered_scheme(scheme::AUAS) = scheme.advecting_velocity_scheme
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Upwinding treatment of Kinetic Energy Gradient and Divergence fluxes in the Vector Invariant formulation, whereas only
 the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and
@@ -56,7 +56,7 @@ OnlySelfUpwinding(; cross_scheme = Centered(),
                     ) = OnlySelfUpwinding(extract_centered_scheme(cross_scheme), δU_stencil, δV_stencil, δu²_stencil, δv²_stencil)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Upwinding treatment of Divergence fluxes in the Vector Invariant formulation, whereas both terms corresponding to
 the transporting velocity (`u` in the zonal direction and terms in `v` in the meridional direction) and the

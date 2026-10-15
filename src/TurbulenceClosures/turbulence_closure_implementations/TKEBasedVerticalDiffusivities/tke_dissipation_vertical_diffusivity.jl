@@ -64,7 +64,7 @@ function Adapt.adapt_structure(to, closure::TKEDissipationVerticalDiffusivity{TD
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
 microscale ocean turbulence based on the prognostic evolution of two variables: the

@@ -25,7 +25,7 @@ struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
 `rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate

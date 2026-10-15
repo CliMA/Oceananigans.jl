@@ -11,7 +11,7 @@ struct FieldDataset{F, B, M, P, KW}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `FieldDataset` containing a `FieldTimeSeries` for each field in the JLD2 file located
 at `filepath`, in the order the fields are stored in the file.
@@ -89,7 +89,7 @@ function Base.show(io::IO, fds::FieldDataset)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `FieldDataset` containing a new `FieldTimeSeries` for each key in `fields`
 on `grid` at `times`.

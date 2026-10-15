@@ -132,7 +132,7 @@ end
 #####
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `NamedTuple` with fields `u`, `v`, `w` initialized on `grid`.
 Boundary conditions `bcs` may be specified via a named tuple of

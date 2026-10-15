@@ -30,7 +30,7 @@ materialize_operand(operand) = operand
 materialize_operand(operand::Union{AbstractOperation, Scan}) = Field(operand)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return an object that computes the time derivative of `operand` while a simulation runs,
 

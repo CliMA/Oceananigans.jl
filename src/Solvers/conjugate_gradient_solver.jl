@@ -40,7 +40,7 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 @inline no_gauge_enforcement!(x, r) = nothing
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
 using a iterative conjugate gradient method with optional preconditioning.

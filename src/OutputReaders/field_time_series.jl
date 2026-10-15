@@ -429,7 +429,7 @@ time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
 
@@ -751,7 +751,7 @@ function manually_reconstruct_rectilinear_grid(grid, file, architecture)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.

@@ -93,7 +93,7 @@ end
 #
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Find the RankOutputData with local_index == (i, j, k).
 """

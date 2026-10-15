@@ -19,7 +19,7 @@ struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractSc
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a convective adjustment vertical diffusivity closure that applies different values of diffusivity and/or viscosity depending
 whether the region is statically stable (positive or zero buoyancy gradient) or statically unstable (negative buoyancy gradient).

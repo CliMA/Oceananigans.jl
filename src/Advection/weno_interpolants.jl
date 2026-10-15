@@ -453,7 +453,7 @@ end
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Stencils for WENO reconstruction calculations
 

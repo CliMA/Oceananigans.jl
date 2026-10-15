@@ -43,7 +43,7 @@ struct ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a "continuous form" forcing with optional `parameters` and optional
 `field_dependencies` on other fields in a model.

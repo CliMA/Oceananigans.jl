@@ -24,7 +24,7 @@ mutable struct AveragedTimeInterval{I, T} <: AbstractSchedule
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Returns a `schedule` that specifies periodic time-averaging of output.
 The time `window` specifies the extent of the time-average, which
@@ -188,7 +188,7 @@ stride(wta::IntervalWindowedTimeAverage) = wta.schedule.stride
 stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Returns an object for computing running averages of `operand` over `schedule.window` and
 recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval` or `AveragedSpecifiedTimes`.

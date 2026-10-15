@@ -9,7 +9,7 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a boundary condition of type `classification` with a function boundary `condition`.
 
@@ -114,7 +114,7 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryConditio
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 

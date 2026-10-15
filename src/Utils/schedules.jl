@@ -139,7 +139,7 @@ struct IterationInterval <: AbstractSchedule
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
@@ -169,7 +169,7 @@ mutable struct WallTimeInterval{FT} <: AbstractSchedule
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a callable `WallTimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of "wall time" while a simulation runs, in units of seconds.
@@ -310,7 +310,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -356,7 +356,7 @@ struct PrecedingIterations{S, FT} <: AbstractSchedule
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `schedule::PrecedingIterations` that actuates both when `parent_schedule` actuates,
 and at the iteration immediately preceding the actuation of `parent_schedule`. This is the

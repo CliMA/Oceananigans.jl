@@ -11,7 +11,7 @@ struct FPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.

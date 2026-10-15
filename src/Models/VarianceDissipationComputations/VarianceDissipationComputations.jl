@@ -43,7 +43,7 @@ function c_grid_vector(grid)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.

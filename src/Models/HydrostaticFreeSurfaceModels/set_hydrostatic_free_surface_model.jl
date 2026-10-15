@@ -84,7 +84,7 @@ const IntrinsicCoordinateGrid = Union{
 }
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Set the velocities of `model` from `u` and `v`.
 

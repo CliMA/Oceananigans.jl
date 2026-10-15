@@ -115,7 +115,7 @@ Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.ordered_bcs))
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a template for boundary conditions on prognostic fields.
 
@@ -257,7 +257,7 @@ end
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.

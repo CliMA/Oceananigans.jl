@@ -72,7 +72,7 @@ function Field(operand::OperationOrFunctionField;
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Compute `comp.operand` and store the result in `comp.data`.
 If `time` then only compute dependency fields with `time != field.status.time`.

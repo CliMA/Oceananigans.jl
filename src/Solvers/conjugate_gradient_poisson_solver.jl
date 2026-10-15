@@ -135,7 +135,7 @@ end
 struct DefaultPreconditioner end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the

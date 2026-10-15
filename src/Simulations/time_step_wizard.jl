@@ -23,7 +23,7 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                               ", min_Δt=",        prettysummary(wizard.min_Δt), ")")
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Callback function that adjusts the simulation time step to meet specified target values
 for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`),
@@ -108,7 +108,7 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
 called on `schedule` which is `IterationInterval(10)` by default.

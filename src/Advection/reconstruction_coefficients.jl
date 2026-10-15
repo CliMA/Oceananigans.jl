@@ -32,7 +32,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 
@@ -102,7 +102,7 @@ uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ?
 uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
 

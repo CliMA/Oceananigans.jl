@@ -7,7 +7,7 @@ struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return `ScalarDiffusivity` turbulence closure with viscosity `ν` and tracer diffusivities `κ`
 for each tracer field in `tracers`. If a single `κ` is provided, it is applied to all tracers.
@@ -142,7 +142,7 @@ const HorizontalScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalFormulat
 const HorizontalDivergenceScalarDiffusivity{TD} = ScalarDiffusivity{TD, HorizontalDivergenceFormulation} where TD
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -151,7 +151,7 @@ Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDi
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
@@ -160,7 +160,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. See [`ScalarDiffusivity`](@ref).
 """

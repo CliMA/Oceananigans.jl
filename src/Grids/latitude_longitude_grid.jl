@@ -105,7 +105,7 @@ const YNonRegularLLG = LLGSpacing{<:Any, <:Any, <:Any, <:AbstractArray, <:Abstra
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.

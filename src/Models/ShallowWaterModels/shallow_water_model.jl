@@ -62,7 +62,7 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 

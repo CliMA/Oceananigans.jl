@@ -33,7 +33,7 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
               "└─ settings: ", fs.solver_settings)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return an implicit free-surface solver. The implicit free-surface equation is
 

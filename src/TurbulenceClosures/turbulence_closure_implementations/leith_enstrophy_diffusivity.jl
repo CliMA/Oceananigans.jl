@@ -18,7 +18,7 @@ struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractScalarDiffusivity{ExplicitT
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
 [Leith (1968)](@cite leith1968diffusion) and [Fox‐Kemper and Menemenlis (2008)](@cite Fox-Kemper2008)

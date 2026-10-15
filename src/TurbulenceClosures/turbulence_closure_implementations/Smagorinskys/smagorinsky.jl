@@ -47,7 +47,7 @@ Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `Smagorinsky` type associated with the turbulence closure proposed by
 [Smagorinsky1958](@citet) and [Smagorinsky1963](@citet)

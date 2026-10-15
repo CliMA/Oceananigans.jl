@@ -9,7 +9,7 @@ struct CubedSpherePartition{M, P} <: AbstractPartition
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a cubed sphere partition with `R` partitions in each horizontal dimension of each
 panel of the sphere.

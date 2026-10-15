@@ -33,7 +33,7 @@ materialize_forcing(fts::FlavorOfFTS, field::AbstractField, field_name, model_fi
 
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a `NamedTuple` of forcing functions for each field in `model_fields`, wrapping
 forcing functions in `ContinuousForcing`s and ensuring that `ContinuousForcing`s are

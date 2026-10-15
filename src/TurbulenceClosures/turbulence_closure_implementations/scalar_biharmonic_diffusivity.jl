@@ -19,7 +19,7 @@ end
 HorizontalVectorInvariantScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalVectorInvariantFormulation(), FT; kwargs...)
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a scalar biharmonic diffusivity turbulence closure with viscosity coefficient `ν` and tracer
 diffusivities `κ` for each tracer field in `tracers`. If a single `κ` is provided, it is applied to

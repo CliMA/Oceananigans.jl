@@ -8,7 +8,7 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
 on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to
@@ -53,7 +53,7 @@ function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeS
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Construct a `QuasiAdamsBashforth2TimeStepper` by specifying the `χ` parameter.
 """
@@ -64,7 +64,7 @@ QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{ty
 #####
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
 Setting `euler=true` will take a forward Euler time step.

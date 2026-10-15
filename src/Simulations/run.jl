@@ -56,7 +56,7 @@ function aligned_time_step(sim::Simulation, Δt)
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Restore `simulation` state from a checkpoint file.
 
@@ -109,7 +109,7 @@ function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
 such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.

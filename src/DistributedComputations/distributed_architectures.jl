@@ -210,7 +210,7 @@ end
 #####
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a distributed architecture that uses MPI for communications.
 

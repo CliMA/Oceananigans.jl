@@ -18,7 +18,7 @@ SeawaterPolynomials.with_float_type(FT::DataType, eos::LinearEquationOfState) = 
                                                                                                       convert(FT, eos.haline_contraction))
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return `LinearEquationOfState` for `SeawaterBuoyancy` with
 `thermal_expansion` coefficient and `haline_contraction` coefficient.

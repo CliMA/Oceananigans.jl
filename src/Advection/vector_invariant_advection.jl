@@ -56,7 +56,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionSche
 end
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant momentum advection scheme.
 
@@ -186,7 +186,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-    $(MethodSignatures(; defaults = true))
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.
