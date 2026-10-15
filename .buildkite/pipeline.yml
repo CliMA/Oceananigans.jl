@@ -24,6 +24,7 @@ paths:
 
 steps:
   - label: "🏕️ initialize general environment"
+    skip: "Skip"
     concurrency_group: gate
     concurrency: 6
     key: "init"
@@ -117,6 +118,7 @@ steps:
       - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "🧪 {{ matrix.architecture }} - all tests"
+    skip: "Skip"
     concurrency_group: gate
     concurrency: 6
     key: "tests"

@@ -17,6 +17,9 @@ env:
   CUDA_AWARE_OPENMPI: "/storage4/simone/TestsScaling/openmpi"
   MPIWRAPPER_VERSION: "2.11.0"
   MPIWRAPPER_HOME: "$TARTARUS_HOME/mpiwrapper-$MPIWRAPPER_VERSION"
+  # This is needed to load Julia's libgcc_s under `nsys`, which does its own
+  # preloading shenanigans.
+  LD_PRELOAD: "$TARTARUS_HOME/julia-$JULIA_VERSION/lib/julia/libgcc_s.so.1"
 
 steps:
   - label: "🏕️ Initialize tartarus environment"
