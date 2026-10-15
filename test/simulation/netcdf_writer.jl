@@ -3734,7 +3734,15 @@ function test_netcdf_rectilinear_mvd_output(arch)
     # Field dim signature ends in `r_aac` for a Center field.
     @test dimnames(ds["T"]) == ("x_caa", "y_aca", "r_aac", "time")
 
+    # Only the reference interfaces of the mutable coordinate are serialized.
+    r_faces = collect(range(-100.0, 0.0; length=6))
+    @test ds.group["underlying_grid_reconstruction_kwargs"].attrib["z"] == "MutableVerticalDiscretization($r_faces)"
     close(ds)
+
+    reconstructed = reconstruct_grid(fp; architecture=arch)
+    @test reconstructed.z isa Oceananigans.Grids.MutableVerticalDiscretization
+    @test Array(Oceananigans.Grids.rnodes(reconstructed, Face())) == r_faces
+
     rm(fp)
     return nothing
 end
