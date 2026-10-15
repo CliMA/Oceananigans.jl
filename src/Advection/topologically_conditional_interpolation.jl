@@ -15,12 +15,18 @@ using Oceananigans.Grids: AbstractGrid,
                           RightConnected,
                           LeftConnected,
                           topology,
-                          architecture
+                          architecture,
+                          LeftConnectedRightCenterConnected,
+                          LeftConnectedRightCenterFolded,
+                          LeftConnectedRightFaceConnected,
+                          LeftConnectedRightFaceFolded
 
 const AG = AbstractGrid
 
 # topologies bounded at least on one side
-const BT = Union{Bounded, RightConnected, LeftConnected}
+const BT = Union{Bounded, RightConnected, LeftConnected,
+                  LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                  LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 
 # Bounded underlying Grids
 const AGX   = AG{<:Any, <:BT}
@@ -84,7 +90,6 @@ for bias in (:symmetric, :biased)
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt1_interp = Symbol(alt1, interp)
             alt2_interp = Symbol(alt2, interp)
@@ -123,11 +128,11 @@ for bias in (:symmetric, :biased)
 end
 
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) =
-                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme),
+                    ifelse(outside_symmetric_halo_xᶜ(i, topology(grid, 1), grid.Nx, scheme),
                            multi_dimensional_reconstruction_x(i, j, k, grid, scheme, interp, args...),
                            interp(i, j, k, grid, scheme, args...))
 
 @inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) =
-                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme),
+                    ifelse(outside_symmetric_halo_yᶜ(j, topology(grid, 2), grid.Ny, scheme),
                             multi_dimensional_reconstruction_y(i, j, k, grid, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))

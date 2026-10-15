@@ -1,12 +1,10 @@
-using Oceananigans.Grids: ynode, znode
-
 """
-    struct NonTraditionalBetaPlane{FT} <: AbstractRotation
+    struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
 
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
 The "traditional" approximation in ocean models accounts for only the locally
-vertical component of the rotation vector (see [`BetaPlane`](@reface)).
+vertical component of the rotation vector (see [`BetaPlane`](@ref)).
 
 This implementation is based off of section 5 of paper by [Dellar (2011)](@cite Dellar2011)
 and it conserves energy, angular momentum, and potential vorticity.
@@ -18,7 +16,7 @@ Dellar, P. (2011). Variations on a beta-plane: Derivation of non-traditional
     beta-plane equations from Hamilton's principle on a sphere. Journal of
     Fluid Mechanics, 674, 174-195. doi:10.1017/S0022112010006464
 """
-struct NonTraditionalBetaPlane{FT} <: AbstractRotation
+struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
     fz :: FT
     fy :: FT
     β  :: FT
@@ -46,7 +44,7 @@ If `fz`, `fy`, `β`, and `γ` are not specified, they are calculated from `rotat
 `fy = 2 * rotation_rate * cosd(latitude)`, `β = 2 * rotation_rate * cosd(latitude) / radius`,
 and `γ = - 4 * rotation_rate * sind(latitude) / radius`.
 
-By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
+By default, the `rotation_rate` and planet `radius` are assumed to be Earth's.
 """
 function NonTraditionalBetaPlane(FT = Oceananigans.defaults.FloatType;
                                  fz = nothing,
@@ -93,6 +91,13 @@ end
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     - two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, face), znode(i, j, k, grid, center, center, face)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+
+Adapt.adapt_structure(to, coriolis::NonTraditionalBetaPlane) =
+    NonTraditionalBetaPlane{typeof(coriolis.fz)}(Adapt.adapt(to, coriolis.fz),
+                                                 Adapt.adapt(to, coriolis.fy),
+                                                 Adapt.adapt(to, coriolis.β),
+                                                 Adapt.adapt(to, coriolis.γ),
+                                                 Adapt.adapt(to, coriolis.R))
 
 Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
     string("NonTraditionalBetaPlane{$FT}",

@@ -76,7 +76,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     max_Δt = 1e-5
 
     if solver == "FFT"
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     # advection = Centered(),
                                     advection = WENO(order=7),
                                     tracers = (:b),
@@ -85,7 +85,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
                                     # timestepper = :RungeKutta3,
                                     boundary_conditions=(; u=u_bcs, v=v_bcs, w=w_bcs, b=b_bcs))
     else
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=IPS_reltol),
                                     # advection = Centered(),
                                     advection = WENO(order=7),
@@ -169,14 +169,14 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
                                                   filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields",
                                                   # schedule = TimeInterval(5e-4),
                                                   schedule = IterationInterval(10000),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   init = init_save_some_metadata!)
 
     simulation.output_writers[:timeseries] = JLD2Writer(model, (; WB);
                                                         filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series",
                                                         #   schedule = TimeInterval(5e-4),
                                                         schedule = IterationInterval(10000),
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         init = init_save_some_metadata!)
 
     run!(simulation)

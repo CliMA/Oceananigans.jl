@@ -2,19 +2,19 @@
 ##### First derivative operators
 #####
 
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
+for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
 
-    x_derivative  = Symbol(:∂x, LX, LY, LZ)
-    rcp_x_spacing = Symbol(:Δx⁻¹, LX, LY, LZ)
-    x_difference  = Symbol(:δx, LX, LY, LZ)
+    x_derivative  = Symbol(:∂x,   ℓ1, ℓ2, ℓ3)
+    rcp_x_spacing = Symbol(:Δx⁻¹, ℓ1, ℓ2, ℓ3)
+    x_difference  = Symbol(:δx,   ℓ1, ℓ2, ℓ3)
 
-    y_derivative  = Symbol(:∂y, LX, LY, LZ)
-    rcp_y_spacing = Symbol(:Δy⁻¹, LX, LY, LZ)
-    y_difference  = Symbol(:δy, LX, LY, LZ)
+    y_derivative  = Symbol(:∂y,   ℓ2, ℓ1, ℓ3)
+    rcp_y_spacing = Symbol(:Δy⁻¹, ℓ2, ℓ1, ℓ3)
+    y_difference  = Symbol(:δy,   ℓ2, ℓ1, ℓ3)
 
-    z_derivative  = Symbol(:∂z, LX, LY, LZ)
-    rcp_z_spacing = Symbol(:Δz⁻¹, LX, LY, LZ)
-    z_difference  = Symbol(:δz, LX, LY, LZ)
+    z_derivative  = Symbol(:∂z,   ℓ2, ℓ3, ℓ1)
+    rcp_z_spacing = Symbol(:Δz⁻¹, ℓ2, ℓ3, ℓ1)
+    z_difference  = Symbol(:δz,   ℓ2, ℓ3, ℓ1)
 
     @eval begin
         @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) * $rcp_x_spacing(i, j, k, grid)
@@ -30,11 +30,8 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
         @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) * $rcp_z_spacing(i, j, k, grid)
 
         export $x_derivative
-        export $x_difference
         export $y_derivative
-        export $y_difference
         export $z_derivative
-        export $z_difference
     end
 end
 
@@ -95,3 +92,21 @@ for dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ 
         @inline $operator(i, j, k, grid, c) = $area(i, j, k, grid) * $derivative(i, j, k, grid, c)
     end
 end
+
+# x-direction slopes at different staggerings
+@inline ∂x_zᶠᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶠᶜᶠ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶜᶠ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶠᶠ(i, j, k, grid) = zero(grid)
+
+# y-direction slopes at different staggerings
+@inline ∂y_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶠᶠ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶠᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶜᶠ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶠᶜᶠ(i, j, k, grid) = zero(grid)

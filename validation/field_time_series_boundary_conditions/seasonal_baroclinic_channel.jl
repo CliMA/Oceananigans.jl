@@ -96,8 +96,7 @@ closure = (convective_adjustment, vertical_diffusivity, horizontal_diffusivity)
 ##### Create the model and initial conditions
 #####
 
-model = HydrostaticFreeSurfaceModel(;
-                                     grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                      momentum_advection,
                                      tracer_advection,
                                      tracers = :T,
@@ -133,7 +132,7 @@ output_file = "seasonal_baroclinic_channel.jld2"
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers);
                                                 schedule = TimeInterval(1day),
                                                 filename = output_file,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

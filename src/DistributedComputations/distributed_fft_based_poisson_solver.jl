@@ -1,9 +1,9 @@
 import FFTW
 
-using GPUArraysCore
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve!
+import Oceananigans.Solvers: poisson_eigenvalues, solve!, compute_preconditioner_rhs!
+using Oceananigans.Solvers: _spectral_poisson_solve!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: interior
 
@@ -20,7 +20,7 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
     architecture(solver.global_grid)
 
 """
-    DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+    DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
 Return an FFT-based solver for the Poisson equation,
 
@@ -103,9 +103,9 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
 
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
-    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
-    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
-    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
+    λx = dropdims(poisson_eigenvalues(global_grid, global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
+    λy = dropdims(poisson_eigenvalues(global_grid, global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
+    λz = dropdims(poisson_eigenvalues(global_grid, global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
 
     λx = partition_coordinate(λx, size(storage.xfield.grid, 1), arch, 1)
     λy = partition_coordinate(λy, size(storage.xfield.grid, 2), arch, 2)
@@ -138,7 +138,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side)
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::DistributedFFTBasedPoissonSolver)
+function solve!(x, solver::DistributedFFTBasedPoissonSolver, m=0)
     storage = solver.storage
     buffer  = solver.buffer
     arch    = architecture(storage.xfield.grid)
@@ -155,13 +155,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
 
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3])
-
-    # Set the zeroth wavenumber and volume mean, which are undetermined
-    # in the Poisson equation, to zero.
-    if arch.local_rank == 0
-        @allowscalar x̂[1, 1, 1] = 0
-    end
+    launch!(arch, storage.xfield.grid, :xyz, _spectral_poisson_solve!, x̂, b̂, λ[1], λ[2], λ[3], m)
 
     # Apply backward transforms to x̂ = parent(storage.xfield).
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
@@ -177,14 +171,28 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     return x
 end
 
-@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz)
-    i, j, k = @index(Global, NTuple)
-    @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k])
-end
-
 @kernel function _copy_real_component!(ϕ, ϕc)
     i, j, k = @index(Global, NTuple)
     @inbounds ϕ[i, j, k] = real(ϕc[i, j, k])
+end
+
+#####
+##### Preconditioning support for ConjugateGradientPoissonSolver
+#####
+
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
+
+@kernel function distributed_fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+function compute_preconditioner_rhs!(solver::DistributedFFTBasedPoissonSolver, rhs)
+    grid = solver.local_grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, distributed_fft_preconditioner_rhs!,
+            solver.storage.zfield, rhs, grid)
+    return nothing
 end
 
 # TODO: bring up to speed the PCG to remove this error

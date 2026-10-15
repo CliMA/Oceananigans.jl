@@ -1,5 +1,6 @@
-import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-import Oceananigans.Grids: xspacings, yspacings, zspacings
+using Oceananigans.Grids: Grids, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, RectilinearGrid,
+    cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+    xspacings, yspacings, zspacings
 
 const c = Center()
 const f = Face()
@@ -23,6 +24,7 @@ const f = Face()
 @inline ξnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ξnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline ηnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ηnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline rnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = rnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline rnode(i::AbstractArray, j::AbstractArray, k, ibg::IBG, ℓx, ℓy, ℓz) = rnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 @inline node(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = node(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
@@ -31,6 +33,8 @@ nodes(ibg::IBG, (ℓx, ℓy, ℓz); kwargs...) = nodes(ibg, ℓx, ℓy, ℓz; kw
 
 xnodes(ibg::IBG, loc; kwargs...) = xnodes(ibg.underlying_grid, loc; kwargs...)
 ynodes(ibg::IBG, loc; kwargs...) = ynodes(ibg.underlying_grid, loc; kwargs...)
+xnodes(ibg::IBG, ::Nothing; kwargs...) = 1:1
+ynodes(ibg::IBG, ::Nothing; kwargs...) = 1:1
 znodes(ibg::IBG, loc; kwargs...) = znodes(ibg.underlying_grid, loc; kwargs...)
 
 λnodes(ibg::IBG, loc; kwargs...) = λnodes(ibg.underlying_grid, loc; kwargs...)
@@ -51,9 +55,9 @@ znodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = znodes(ibg.underlying_grid, ℓx
 ηnodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = ηnodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 rnodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = rnodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 
-@inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
-@inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
-@inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
 
 node_names(ibg::IBG, ℓx, ℓy, ℓz) = node_names(ibg.underlying_grid, ℓx, ℓy, ℓz)
 
@@ -73,17 +77,17 @@ const RGIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:RectilinearGrid}
 const LLIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:LatitudeLongitudeGrid}
 const OSIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:OrthogonalSphericalShellGrid}
 
-@inline xspacings(grid::RGIBG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
-@inline yspacings(grid::RGIBG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
-@inline zspacings(grid::RGIBG, ℓz) = zspacings(grid, nothing, nothing, ℓz)
+@inline Grids.xspacings(grid::RGIBG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
+@inline Grids.yspacings(grid::RGIBG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
+@inline Grids.zspacings(grid::RGIBG, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
-@inline xspacings(grid::LLIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
-@inline yspacings(grid::LLIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
-@inline zspacings(grid::LLIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+@inline Grids.xspacings(grid::LLIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.yspacings(grid::LLIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.zspacings(grid::LLIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
 
-@inline xspacings(grid::OSIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
-@inline yspacings(grid::OSIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
-@inline zspacings(grid::OSIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+@inline Grids.xspacings(grid::OSIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.yspacings(grid::OSIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.zspacings(grid::OSIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
 
 @inline λspacings(grid::LLIBG, ℓx) = λspacings(grid, ℓx, nothing, nothing)
 @inline φspacings(grid::LLIBG, ℓy) = φspacings(grid, nothing, ℓy, nothing)

@@ -1,42 +1,34 @@
-using Glob
+using Glob: Glob, glob
+using StructArrays: StructArray
 
-using Oceananigans
-using Oceananigans: fields, prognostic_fields
-using Oceananigans.Fields: offset_data
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set!
+const NonCheckpointingOutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
 
-mutable struct Checkpointer{T, P} <: AbstractOutputWriter
+mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
-    properties :: P
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     cleanup :: Bool
 end
-
-required_checkpoint_properties(model) = [:grid, :clock]
 
 """
     Checkpointer(model;
                  schedule,
                  dir = ".",
                  prefix = "checkpoint",
-                 overwrite_existing = false,
+                 overwrite_files = false,
                  verbose = false,
-                 cleanup = false,
-                 properties = required_checkpoint_properties(model))
+                 cleanup = false)
 
-Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
+Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
 To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
 that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
-
-Note that extra model `properties` can be specified, but removing crucial properties
-such as `:timestepper` will render restoring from the checkpoint impossible.
 
 The checkpointer attempts to serialize as much of the model to disk as possible,
 but functions or objects containing functions cannot be serialized at this time.
@@ -49,51 +41,28 @@ Keyword arguments
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
+            On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
-- `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
+- `overwrite_files`: Remove existing files if their filenames conflict. Default: `false`.
 
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
 
 - `cleanup`: Previous checkpoint files are deleted once a new checkpoint file is written.
              Default: `false`.
-
-- `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid` and `:clock`, and if there is a timestepper then also
-                `:timestepper`. Default: calls [`required_checkpoint_properties`](@ref) on
-                `model` to get these properties.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
                       prefix = "checkpoint",
-                      overwrite_existing = false,
+                      overwrite_files = false,
                       verbose = false,
-                      cleanup = false,
-                      properties = required_checkpoint_properties(model))
-
-    required_properties = required_checkpoint_properties(model)
-
-    # Certain properties are required for `set!` to pickup from a checkpoint.
-    for rp in required_properties
-        if rp ∉ properties
-            @warn "$rp is required for checkpointing. It is added to checkpointed properties."
-            push!(properties, rp)
-        end
-    end
-
-    for p in properties
-        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
-        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
-
-        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
-            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
-            filter!(e -> e != p, properties)
-        end
-    end
+                      cleanup = false)
 
     mkpath(dir)
+    filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
+    prefix = String(chop(filename, tail=length(".jld2")))
 
-    return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup)
 end
 
 #####
@@ -105,16 +74,13 @@ checkpointer_address(model) = ""
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
-# This is the default name used in the simulation.output_writers ordered dict.
-defaultname(::Checkpointer, nelems) = :checkpointer
-
 """
-    checkpoint_path(iteration::Int, c::Checkpointer)
+$(TYPEDSIGNATURES)
 
-Return the path to the `c`heckpointer file associated with model `iteration`.
+Return the path to the `checkpointer` file associated with model `iteration`.
 """
-checkpoint_path(iteration::Int, c::Checkpointer) =
-    joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
+checkpoint_path(iteration::Int, checkpointer::Checkpointer) =
+    joinpath(checkpointer.dir, string(checkpoint_superprefix(checkpointer.prefix), iteration, ".jld2"))
 
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
 checkpoint_path(filepath::String, output_writers) = filepath
@@ -127,53 +93,111 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
+`checkpointer.prefix` and return the path to the most recently modified
+checkpoint file.
 """
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+    pickup || return nothing
+    return checkpoint_path(:recent_time_stamp, checkpointer)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+For symbol-based pickup modes:
+
+- `pickup=:recent_time_stamp` returns the most recently modified checkpoint file.
+- `pickup=:highest_iteration` returns the checkpoint file with the largest iteration in its name.
+- `pickup=:latest` is an alias for `:recent_time_stamp`.
+"""
+function checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+    mode = pickup === :latest ? :recent_time_stamp : pickup
+    mode in (:recent_time_stamp, :highest_iteration) || throw(ArgumentError("Unsupported pickup mode $pickup. Supported modes are :recent_time_stamp and :highest_iteration."))
+
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
     if length(filepaths) == 0 # no checkpoint files found
         # https://github.com/CliMA/Oceananigans.jl/issues/1159
-        @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
+        @warn "pickup=$pickup but no checkpoints were found. Simulation will run without picking up."
         return nothing
+    elseif mode === :highest_iteration
+        return latest_checkpoint_by_iteration(checkpointer, filepaths)
     else
-        return latest_checkpoint(checkpointer, filepaths)
+        return latest_checkpoint_by_time_stamp(checkpointer, filepaths)
     end
 end
 
-function latest_checkpoint(checkpointer, filepaths)
+function latest_checkpoint_by_iteration(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
     iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
-    latest_iteration, idx = findmax(iterations)
+    _, idx = findmax(iterations)
     return filepaths[idx]
 end
+
+function latest_checkpoint_by_time_stamp(checkpointer, filepaths)
+    modification_times = map(filepath -> stat(filepath).mtime, filepaths)
+    latest_time = maximum(modification_times)
+    indices_with_latest_time = findall(==(latest_time), modification_times)
+    candidate_paths = filepaths[indices_with_latest_time]
+
+    length(candidate_paths) == 1 && return first(candidate_paths)
+
+    # Deterministic tie-breaker for coarse filesystem mtimes:
+    # if multiple files have the same latest timestamp, pick the highest iteration.
+    return latest_checkpoint_by_iteration(checkpointer, candidate_paths)
+end
+
+# Backward-compatibility shim: historical "latest_checkpoint" means "latest by iteration".
+# Keep this behavior for existing internal/external callsites (for example cleanup logic),
+# while the new :recent_time_stamp mode is selected explicitly via checkpoint_path(::Symbol, ...).
+latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(checkpointer, filepaths)
 
 #####
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
-    filepath = checkpoint_path(model.clock.iteration, c)
-    c.verbose && @info "Checkpointing to file $filepath..."
-    addr = checkpointer_address(model)
+Oceananigans.prognostic_state(obj) = obj
+Oceananigans.prognostic_state(::NamedTuple{()}) = nothing
+Oceananigans.prognostic_state(::NoFileSplitting) = nothing
+Oceananigans.prognostic_state(::FileSizeLimit) = nothing
+
+Oceananigans.prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
+
+function Oceananigans.prognostic_state(nt::NamedTuple)
+    ks = keys(nt)
+    vs = Tuple(prognostic_state(v) for v in values(nt))
+    return NamedTuple{ks}(vs)
+end
+
+function Oceananigans.prognostic_state(dict::AbstractDict)
+    isempty(dict) && return nothing
+    ks = tuple(keys(dict)...)
+    vs = Tuple(prognostic_state(v) for v in values(dict))
+    return NamedTuple{ks}(vs)
+end
+
+function cleanup_checkpoints(checkpointer)
+    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
+    latest_checkpoint_filepath = latest_checkpoint(checkpointer, filepaths)
+    [rm(filepath) for filepath in filepaths if filepath != latest_checkpoint_filepath]
+    return nothing
+end
+
+function Oceananigans.write_output!(c::Checkpointer, simulation)
+    iter = iteration(simulation)
+    filepath = checkpoint_path(iter, c)
 
     t1 = time_ns()
 
+    state = prognostic_state(simulation)
+
     jldopen(filepath, "w") do file
-        file["$addr/checkpointed_properties"] = c.properties
-        serializeproperties!(file, model, c.properties, addr)
-        model_fields = prognostic_fields(model)
-        field_names = keys(model_fields)
-        for name in field_names
-            full_address = "$addr/$name"
-            serializeproperty!(file, full_address, model_fields[name])
-        end
+        serializeproperty!(file, "simulation", state)
     end
 
     t2, sz = time_ns(), filesize(filepath)
@@ -184,45 +208,280 @@ function write_output!(c::Checkpointer, model)
     return nothing
 end
 
-function cleanup_checkpoints(checkpointer)
-    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
-    latest_checkpoint_filepath = latest_checkpoint(checkpointer, filepaths)
-    [rm(filepath) for filepath in filepaths if filepath != latest_checkpoint_filepath]
-    return nothing
+#####
+##### Reading checkpoints and restoring from them
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Recursively load data from a JLD2 group or dataset, reconstructing nested NamedTuples for
+groups and returning raw data for leaf nodes.
+"""
+function load_nested_data(obj)
+    if obj isa JLD2.Group
+        group_keys = keys(obj)
+        key_symbols = Symbol.(collect(group_keys))
+        child_values = Tuple(load_nested_data(obj[key]) for key in group_keys)
+        return NamedTuple{tuple(key_symbols...)}(child_values)
+    else
+        return obj
+    end
 end
 
-# Fallback set! from filepath for a generic model
-
 """
-    set!(model, filepath::AbstractString)
+    load_checkpoint_state(filepath; base_path="simulation")
 
-Set data in `prognostic_fields(model)` and `checkpointed_properties`
-to checkpointed data stored at `filepath`.
+Load checkpoint data from a JLD2 file and return it as a nested NamedTuple.
 """
-function set!(model, filepath::AbstractString)
-    addr = checkpointer_address(model)
-
+function load_checkpoint_state(filepath; base_path="simulation")
     jldopen(filepath, "r") do file
+        return load_nested_data(file[base_path])
+    end
+end
 
-        # Validate the grid
-        checkpointed_grid = file["$addr/grid"]
-        model_fields = prognostic_fields(model)
+# Handle case when no checkpoint file exists (filepath is nothing)
+load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
-        for name in keys(model_fields)
-            if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
-                model_field = model_fields[name]
-                parent_data = on_architecture(model.architecture, file["$addr/$name/data"])
-                @apply_regionally copyto!(parent(model_field), parent_data)
-            else
-                @warn "Field $name does not exist in checkpoint and could not be restored."
+Oceananigans.restore_prognostic_state!(obj, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, from) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
+
+# Disambiguation methods for `restore_prognostic_state!(obj, ::Nothing)`
+Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonCheckpointingOutputWriters, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
+
+function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
+    copyto!(restored, from)
+    return restored
+end
+
+function Oceananigans.restore_prognostic_state!(restored::AbstractDict, from)
+    for (name, value) in pairs(from)
+        haskey(restored, name) && restore_prognostic_state!(restored[name], value)
+    end
+    return restored
+end
+
+function Oceananigans.restore_prognostic_state!(restored::NamedTuple, from)
+    for (name, value) in pairs(from)
+        restore_prognostic_state!(restored[name], value)
+    end
+    return restored
+end
+
+function Oceananigans.restore_prognostic_state!(restored::Tuple, from::Tuple)
+    for (j, value) in pairs(from)
+        restore_prognostic_state!(restored[j], value)
+    end
+    return restored
+end
+
+function Oceananigans.restore_prognostic_state!(restored::StructArray, from)
+    # Get the architecture from one of the component arrays
+    some_property = first(propertynames(restored))
+    arch = architecture(getproperty(restored, some_property))
+
+    # Copy each property
+    for name in propertynames(restored)
+        data = on_architecture(arch, getproperty(from, name))
+        copyto!(getproperty(restored, name), data)
+    end
+
+    return restored
+end
+
+# Ref handling: dereference on save, set on restore
+Oceananigans.prognostic_state(r::Ref) = r[]
+Oceananigans.restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
+
+#####
+##### Checkpointing the checkpointer
+#####
+
+function Oceananigans.prognostic_state(checkpointer::Checkpointer)
+    return (; schedule = prognostic_state(checkpointer.schedule))
+end
+
+function Oceananigans.restore_prognostic_state!(restored::Checkpointer, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    return restored
+end
+
+#####
+##### Checkpointing file-based output writers
+#####
+
+output_key_to_symbol(name::Symbol) = name
+output_key_to_symbol(name::AbstractString) = Symbol(name)
+
+output_lookup_key(::JLD2Writer, name::Symbol) = name
+output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
+output_lookup_key(::ZarrWriter, name::Symbol) = name
+
+function Oceananigans.prognostic_state(writer::NonCheckpointingOutputWriters)
+    wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
+                             for (name, output) in pairs(writer.outputs)
+                             if output isa WindowedTimeAverage)
+
+    derivative_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
+                                    for (name, output) in pairs(writer.outputs)
+                                    if output isa TimeDerivative)
+
+    return (schedule = prognostic_state(writer.schedule),
+            part = writer.part,
+            file_splitting = prognostic_state(writer.file_splitting),
+            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
+            time_derivatives = isempty(derivative_outputs) ? nothing : derivative_outputs)
+end
+
+function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutputWriters, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    restored.part = from.part
+
+    # Update the filepath to match the restored part number so that
+    # the writer appends to the correct part file after pickup.
+    restored.filepath = filepath_for_part(restored.filepath, restored.part)
+
+    # Restore file_splitting schedule state (e.g., TimeInterval actuations)
+    # so splitting doesn't re-trigger immediately after pickup.
+    # Backward compatible: old checkpoints may not have file_splitting.
+    if hasproperty(from, :file_splitting) && !isnothing(from.file_splitting)
+        restore_prognostic_state!(restored.file_splitting, from.file_splitting)
+    end
+
+    if hasproperty(from, :windowed_time_averages) && !isnothing(from.windowed_time_averages)
+        for (name, wta_state) in pairs(from.windowed_time_averages)
+            key = output_lookup_key(restored, name)
+            if haskey(restored.outputs, key) && restored.outputs[key] isa WindowedTimeAverage
+                restore_prognostic_state!(restored.outputs[key], wta_state)
             end
         end
 
-        checkpointed_clock = file["$addr/clock"]
+        averaged_outputs = [output for output in values(restored.outputs)
+                            if output isa WindowedTimeAverage]
+        if !isempty(averaged_outputs)
+            first_average = first(averaged_outputs)::WindowedTimeAverage
+            restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
+            restored.schedule.actuations = first_average.schedule.actuations
+        end
+    end
 
-        # Update model clock
-        set!(model, checkpointed_clock)
+    if hasproperty(from, :time_derivatives) && !isnothing(from.time_derivatives)
+        for (name, derivative_state) in pairs(from.time_derivatives)
+            key = output_lookup_key(restored, name)
+            if haskey(restored.outputs, key) && restored.outputs[key] isa TimeDerivative
+                restore_prognostic_state!(restored.outputs[key], derivative_state)
+            end
+        end
+    end
+
+    return restored
+end
+
+reconcile_restored_output_schedule!(writer, model) = nothing
+
+function reset_restored_time_average!(average::WindowedTimeAverage, clock)
+    initialize_actuations!(average.schedule, clock.time)
+    average.schedule.collecting = false
+    average.window_start_time = clock.time
+    average.window_start_iteration = clock.iteration
+    average.previous_collection_time = clock.time
+    return nothing
+end
+
+function reconcile_restored_output_schedule!(writer::NonCheckpointingOutputWriters, model)
+    averaged_outputs = [output for output in values(writer.outputs)
+                        if output isa IntervalWindowedTimeAverage]
+    isempty(averaged_outputs) && return nothing
+
+    first_average = first(averaged_outputs)::IntervalWindowedTimeAverage
+    schedule = first_average.schedule
+    clock = model.clock
+    next_time = next_actuation_time(schedule)
+    latest_valid_next_time = Utils.add_time_interval(clock.time, schedule.interval)
+
+    # A restored periodic schedule must actuate no more than one interval after the
+    # restored clock. Older checkpoints may pair a new interval with an actuation
+    # count from the old interval, which can put the next output far in the future.
+    if next_time < clock.time || next_time > latest_valid_next_time
+        for average in averaged_outputs
+            reset_restored_time_average!(average, clock)
+        end
+
+        writer.schedule.first_actuation_time = clock.time
+        writer.schedule.actuations = 0
     end
 
     return nothing
+end
+
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
+    restored_parent = parent(restored)
+    return restore_prognostic_state!(restored_parent, from)
+end
+
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
+    restored_parent = parent(restored)
+    from_parent = parent(from)
+    return restore_prognostic_state!(restored_parent, from_parent)
+end
+
+function Oceananigans.restore_prognostic_state!(restored::Number, from::Number)
+    restored = convert(typeof(restored), from)
+    return restored
+end
+
+# Immutable labels such as the open boundary side names in `boundary_transport`
+Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
+
+#####
+##### Manual checkpointing
+#####
+
+"""
+    checkpoint(simulation; filepath=nothing)
+
+Manually checkpoint `simulation` state to a JLD2 file.
+
+If `filepath` is provided, the checkpoint is written there. Otherwise, if
+`simulation.output_writers` contains a single `Checkpointer`, it is used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings); if no
+`filepath` is given and there is no single `Checkpointer`, the checkpoint is
+written to `"checkpoint_iteration{N}.jld2"` in the current directory.
+"""
+function checkpoint(simulation; filepath=nothing)
+    checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))
+
+    if !isnothing(filepath)
+        write_checkpoint_file(filepath, simulation)
+    elseif length(checkpointers) == 1
+        write_output!(first(checkpointers), simulation)
+    else
+        iter = iteration(simulation)
+        default_filepath = "checkpoint_iteration$(iter).jld2"
+        @warn "No checkpointer (or multiple checkpointers) found, using default filepath: $default_filepath"
+        write_checkpoint_file(default_filepath, simulation)
+    end
+
+    return nothing
+end
+
+function write_checkpoint_file(filepath, simulation)
+    state = prognostic_state(simulation)
+    jldopen(filepath, "w") do file
+        serializeproperty!(file, "simulation", state)
+    end
+    return filepath
 end

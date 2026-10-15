@@ -1,36 +1,37 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme, AdamsBashforth3Scheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Architectures: convert_to_device
-using Oceananigans.Fields
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: AbstractGrid, topology
-using Oceananigans.ImmersedBoundaries: linear_index_to_tuple, mask_immersed_field!
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
+
+using Oceananigans.Architectures: convert_to_device, architecture, device
+using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
+using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
+using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
+using Oceananigans.Fields: Field, instantiated_location
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
+                          LeftConnected, RightConnected, FullyConnected,
+                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
+                                       column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
+                                       column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
+                                                        free_surface_displacement_field,
+                                                        update_vertical_velocities!
 
-using Adapt
-using Base
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-using Oceananigans.Grids: column_depthᶜᶜᵃ,
-                          column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ,
-                          column_depthᶠᶠᵃ
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
+                                                         default_free_surface_boundary_conditions,
+                                                         validate_free_surface_boundary_conditions,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
+                                                         compute_transport_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 
@@ -39,6 +40,7 @@ include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("initialize_split_explicit_substepping.jl")
 include("compute_slow_tendencies.jl")
+include("barotropic_targeted_transport.jl")
 include("step_split_explicit_free_surface.jl")
 include("barotropic_split_explicit_corrector.jl")
 

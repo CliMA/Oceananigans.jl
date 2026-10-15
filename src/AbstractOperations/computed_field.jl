@@ -3,9 +3,9 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
-using Oceananigans.Utils: launch!
+using Oceananigans.Grids: default_indices, new_data
+using Oceananigans.Fields: FunctionField, FieldBoundaryConditions, FieldStatus, validate_indices, offset_index, instantiated_location, set_status!
+using Oceananigans.Utils: KernelParameters, launch!, @apply_regionally
 
 import Oceananigans.Fields: Field, compute!
 
@@ -54,7 +54,7 @@ function Field(operand::OperationOrFunctionField;
     @apply_regionally boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
 
     if isnothing(data)
-        @apply_regionally data = new_data(grid, loc, indices)
+        @apply_regionally data = new_data(eltype(operand), grid, loc, indices)
         recompute_safely = false
     end
 

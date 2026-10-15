@@ -17,13 +17,14 @@ The [NonhydrostaticModel](@ref) integrates the Boussinesq equations _without_ ma
 and therefore possessing a prognostic vertical momentum equation. The NonhydrostaticModel is useful for simulations
 that resolve three-dimensional turbulence, such as large eddy simulations on [RectilinearGrid](@ref) with grid
 spacings of O(1 m), as well as direct numerical simulation. The NonhydrostaticModel may also be used for
-idealized classroom problems, as in the [two-dimensional turbulence example](@ref "Two dimensional turbulence example").
+idealized classroom problems, as in the [two-dimensional turbulence example](@ref two_dimensional_turbulence).
 
 The [HydrostaticFreeSurfaceModel](@ref) integrates the hydrostatic or "primitive" Boussinesq equations
 with a free surface on its top boundary. The hydrostatic approximation allows the HydrostaticFreeSurfaceModel
 to achieve much higher efficiency in simulations on curvilinear grids used for large-scale regional or global
 simulations such as [LatitudeLongitudeGrid](@ref), [TripolarGrid](@ref), [ConformalCubedSphereGrid](@ref),
-and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid).
+and other [OrthogonalSphericalShellGrid](@ref)s such as [RotatedLatitudeLongitudeGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
+and [LambertConformalConicGrid](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid).
 Because they span larger domains, simulations with the HydrostaticFreeSurfaceModel also usually involve coarser
 grid spacings of O(30 m) up to O(100 km). Such coarse-grained simulations are usually paired with more elaborate
 turbulence closures or "parameterizations" than small-scale simulations with NonhydrostaticModel, such as the
@@ -49,7 +50,7 @@ For our first example, we build  the default `NonhydrostaticModel` (which is qui
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(8, 8, 8))
-nh = NonhydrostaticModel(; grid)
+nh = NonhydrostaticModel(grid)
 ```
 
 The default `NonhydrostaticModel` has no tracers, no buoyancy force, no Coriolis force, and a second-order advection scheme.
@@ -74,7 +75,7 @@ u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
 @inline Jc(x, t, Lx) = cos(2π / Lx * x)
 c_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Jc, parameters=grid.Lx))
 
-model = NonhydrostaticModel(; grid, advection, buoyancy, coriolis,
+model = NonhydrostaticModel(grid; advection, buoyancy, coriolis,
                             tracers = (:b, :c),
                             boundary_conditions = (; u=u_bcs, c=c_bcs))
 ```
@@ -131,7 +132,7 @@ The HydrostaticFreeSurfaceModel has a similar interface as the NonhydrostaticMod
 ```@example
 using Oceananigans
 grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid) # default free surface, no tracers
+model = HydrostaticFreeSurfaceModel(grid) # default free surface, no tracers
 ```
 
 The full array of keyword arguments used to configure a HydrostaticFreeSurfaceModel are detailed
@@ -175,8 +176,8 @@ end
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(zonal_wind_stress))
 
-model = HydrostaticFreeSurfaceModel(; grid, momentum_advection, coriolis, closure, buoyancy,
-                                    boundary_conditions = (; u=u_bcs), tracers=(:T, :S, :e))
+model = HydrostaticFreeSurfaceModel(grid; momentum_advection, coriolis, closure, buoyancy,
+                                    boundary_conditions = (; u=u_bcs), tracers=(:T, :S))
 ```
 
 Mutating the state of the HydrostaticFreeSurfaceModel works similarly as for the NonhydrostaticModel ---

@@ -71,12 +71,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        tracers = (:c, :d, :e),
-                                        velocities = PrescribedVelocityFields(u=uᵢ),
-                                        coriolis = nothing,
-                                        buoyancy = nothing,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = (:c, :d, :e), velocities = PrescribedVelocityFields(u=uᵢ))
 
     # Tracer patch for visualization
     Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
@@ -113,7 +108,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
                                                     schedule = TimeInterval(super_rotation_period / 20),
                                                     filename = output_prefix,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     run!(simulation)
 

@@ -12,12 +12,15 @@ set!(c_forcing[3], 1)
 set!(c_forcing[4], -1)
 
 clock = Clock(time=start_time)
-model = HydrostaticFreeSurfaceModel(; grid, clock, tracers=:c, forcing=(; c=c_forcing))
+model = HydrostaticFreeSurfaceModel(grid;
+                                    clock,
+                                    tracers = :c,
+                                    forcing = (; c=c_forcing))
 simulation = Simulation(model, Δt=60, stop_time=stop_time)
 
 ow = JLD2Writer(model, model.tracers,
                 filename = "datetime_clock_timestepping.jld2",
-                overwrite_existing = true,
+                overwrite_files = true,
                 schedule = IterationInterval(1))
 
 simulation.output_writers[:jld2] = ow

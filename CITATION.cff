@@ -1,4 +1,18 @@
 cff-version: 1.2.0
+title: Oceananigans.jl
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - family-names: Oceananigans contributors
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.4019271
+repository-code: 'https://github.com/CliMA/Oceananigans.jl'
+url: 'https://clima.github.io/OceananigansDocumentation/stable/'
+abstract: Julia software for fast, friendly, flexible, ocean-flavored fluid dynamics on CPUs and GPUs.
+license: MIT
 preferred-citation:
   type: article
   authors:
@@ -17,14 +31,16 @@ preferred-citation:
     orcid: "https://orcid.org/0000-0002-9033-165X"
   - family-names: "Souza"
     given-names: "Andre"
+    orcid: "https://orcid.org/0000-0001-8025-3558"
   - family-names: "Edelman"
-    given-names: "Adam"
-    orcid: "https://orcid.org/0000-0002-9033-165X"
+    given-names: "Alan"
+    orcid: "https://orcid.org/0000-0001-7676-3133"
   - family-names: "Ferrari"
     given-names: "Raffaele"
     orcid: "https://orcid.org/0000-0003-1895-4294"
   - family-names: "Marshall"
     given-names: "John"
+    orcid: "https://orcid.org/0000-0001-9230-3591"
   title: "Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"
   journal: "Journal of Open Source Software"
   doi: "10.21105/joss.02018"
