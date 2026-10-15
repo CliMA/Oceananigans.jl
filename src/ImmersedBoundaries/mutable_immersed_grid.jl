@@ -156,7 +156,7 @@ const C = Center
 const F = Face
 
 const MutableImmersedTopGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Bounded, <:UnderlyingMutableGrid,
-                                                    <:Union{GridFittedBottom{<:Any, <:AbstractArray}, PartialCellBottom{<:Any, <:AbstractArray}}}
+                                                    <:Union{GridFittedVerticalBoundaries{<:Any, <:OffsetArray}, PartialCellVerticalBoundaries{<:Any, <:OffsetArray}}}
 
 # Stretch about the immersed top `zᵗ` so the bottom stays put and the top moves with `η`
 @inline top_stretched_znode(r, σ, η, zᵗ) = zᵗ + η + σ * (r - zᵗ)

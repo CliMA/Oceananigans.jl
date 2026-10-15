@@ -19,7 +19,7 @@ function test_immersed_top_wall_distances(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(2, 2, 10), extent=(1, 1, 1))
 
     top(x, y) = x < 0.5 ? -0.25 : 0
-    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.85; top_height=top))
+    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedVerticalBoundaries(bottom_height=-0.85, top_height=top))
 
     @test all(immersed_top_values(z_topᶜᶜᵃ, ibg)[1, :, 1] .≈ FT(-0.3))
     @test all(immersed_top_values(z_topᶜᶜᵃ, ibg)[2, :, 1] .≈ 0)
@@ -42,7 +42,7 @@ function test_immersed_top_catke(FT, arch)
                                       topology=(Periodic, Flat, Bounded))
 
     top(x) = min(0, -0.6 + x)
-    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-1; top_height=top))
+    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedVerticalBoundaries(bottom_height=-1, top_height=top))
 
     model = HydrostaticFreeSurfaceModel(ibg; buoyancy=BuoyancyTracer(), tracers=:b,
                                         closure=CATKEVerticalDiffusivity(FT))
@@ -69,7 +69,7 @@ function test_immersed_top_uniform_tracer(FT, arch)
                                       topology=(Periodic, Bounded, Bounded))
 
     top(x, y) = y < 1.5 ? -0.8 + 0.5y : 1
-    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-1; top_height=top))
+    ibg = ImmersedBoundaryGrid(underlying_grid, PartialCellVerticalBoundaries(bottom_height=-1, top_height=top))
 
     u = XFaceField(ibg)
     v = YFaceField(ibg)
@@ -110,8 +110,8 @@ function test_immersed_top_zstar_conservation(FT, arch)
     top(x, y) = x < Lx / 2 ? -1.5 - 2x / Lx : 0
     bᵢ(x, y, z) = x < Lx / 4 ? 0.06 : 0.01
 
-    for Bottom in (GridFittedBottom, PartialCellBottom)
-        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-4.5; top_height=top))
+    for Boundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-4.5, top_height=top))
 
         for (free_surface, Δt) in ((ExplicitFreeSurface(), 10), (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes))
             model = HydrostaticFreeSurfaceModel(ibg; free_surface,
@@ -166,8 +166,8 @@ function test_immersed_top_zstar_freshwater_flux(FT, arch)
     Fη(x, y, z, t) = ifelse(x < Lx / 2, F₀, zero(F₀))
     top(x, y) = x < Lx / 2 ? -1.5 - 2x / Lx : 0
 
-    for Bottom in (GridFittedBottom, PartialCellBottom)
-        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-4.5; top_height=top))
+    for Boundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-4.5, top_height=top))
         free_surfaces = ((ExplicitFreeSurface(), 10),
                          (SplitExplicitFreeSurface(ibg; substeps=8), 2minutes),
                          (ImplicitFreeSurface(), 2minutes))
@@ -219,8 +219,8 @@ function test_immersed_top_zstar_freshwater_flux_rest_state(FT, arch)
                                       topology=(Bounded, Periodic, Bounded))
     F₀ = convert(FT, 1e-4)
 
-    for Bottom in (GridFittedBottom, PartialCellBottom)
-        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-4.5; top_height=-1.5))
+    for Boundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-4.5, top_height=-1.5))
         model = HydrostaticFreeSurfaceModel(ibg; free_surface = SplitExplicitFreeSurface(ibg; substeps=8),
                                             forcing = (; η = Forcing((x, y, z, t) -> F₀)),
                                             timestepper = :SplitRungeKutta3,
@@ -246,8 +246,8 @@ function test_immersed_top_zstar_znode(FT, arch)
     top(x) = x < 1/2 ? -1/2 : 0
     η₀ = FT(0.01)
 
-    for Bottom in (GridFittedBottom, PartialCellBottom)
-        ibg = ImmersedBoundaryGrid(underlying_grid, Bottom(-1; top_height=top))
+    for Boundary in (GridFittedVerticalBoundaries, PartialCellVerticalBoundaries)
+        ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=top))
         model = HydrostaticFreeSurfaceModel(ibg; vertical_coordinate=ZStarCoordinate())
         set!(model.free_surface.displacement, η₀)
         update_zstar_scaling!(ibg, model.free_surface.displacement)

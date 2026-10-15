@@ -1,6 +1,8 @@
 module ImmersedBoundaries
 
-export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition, bottom_height_field
+export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+       GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, ImmersedBoundaryCondition, bottom_height_field,
+       materialize_immersed_boundary
 
 using Printf: @sprintf
 
@@ -23,7 +25,7 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            inactive_cell, immersed_peripheral_node, immersed_inactive_node
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Fields: AbstractField, ConstantField
 using DocStringExtensions: TYPEDSIGNATURES
 
 include("immersed_boundary_grid.jl")
