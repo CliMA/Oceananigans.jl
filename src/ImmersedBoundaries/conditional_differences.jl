@@ -68,7 +68,6 @@ for (d, ξ) in enumerate((:x, :y, :z))
             (loc[1], loc[2])
         end
 
-        # `other_locs` holds the names `c` and `f` of the locations, so the operand cannot be called `f`
         @eval begin
             @inline Operators.$δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, args...)
             @inline Operators.$δξ(i, j, k, ibg::IBG, ϕ::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξᵃ, ϕ, args...)
