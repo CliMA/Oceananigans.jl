@@ -238,6 +238,8 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
 
     # Solve tridiagonal system of linear equations at every column.
     ϕ = solver.storage
+    homogeneous_neumann = solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
+    homogeneous_neumann && fill!(ϕ, zero(eltype(ϕ)))
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
@@ -247,7 +249,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
-    if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
+    if homogeneous_neumann
         ϕ .= ϕ .- mean(ϕ)
     end
 
