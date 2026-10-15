@@ -28,7 +28,7 @@ Clock{TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage) where {TT
     Clock{TT, TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage)
 
 """
-    Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
+    $(MethodSignatures(; defaults = true))
 
 Return a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.

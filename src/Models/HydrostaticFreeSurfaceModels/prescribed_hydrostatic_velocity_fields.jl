@@ -25,10 +25,7 @@ end
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
 """
-    PrescribedVelocityFields(; u = ZeroField(),
-                               v = ZeroField(),
-                               w = ZeroField(),
-                               parameters = nothing)
+    $(MethodSignatures(; defaults = true))
 
 Builds `PrescribedVelocityFields` with prescribed functions `u`, `v`, and `w`.
 

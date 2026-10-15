@@ -10,10 +10,7 @@ struct BetaPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-    BetaPlane([FT = Float64;] f₀=nothing, β=nothing,
-              scheme = EnstrophyConserving(),
-              rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-              latitude = nothing, radius = Oceananigans.defaults.planet_radius)
+    $(MethodSignatures(; defaults = true))
 
 Return a β-plane Coriolis parameter, `f = f₀ + β y`, with floating-point type `FT`.
 

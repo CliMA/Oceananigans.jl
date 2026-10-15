@@ -99,8 +99,7 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side;
-                             xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
+    $(MethodSignatures(; defaults = true))
 
 Check if the stencil required for reconstruction contains immersed nodes
 

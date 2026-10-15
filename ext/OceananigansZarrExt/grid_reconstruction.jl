@@ -185,7 +185,7 @@ function reconstruct_immersed_boundary(grid_group)
 end
 
 """
-    reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
+    $(MethodSignatures(; defaults = true))
 
 Read a grid back from a Zarr group written by `ZarrWriter`. Looks for `grid/` (single)
 then `grid_<index>/` (multi).

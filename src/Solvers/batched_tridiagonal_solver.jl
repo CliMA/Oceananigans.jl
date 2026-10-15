@@ -34,13 +34,7 @@ const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirecti
 Architectures.architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
-    BatchedTridiagonalSolver(grid;
-                             lower_diagonal,
-                             diagonal,
-                             upper_diagonal,
-                             scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
-                             tridiagonal_direction = ZDirection()
-                             parameters = nothing)
+    $(MethodSignatures(; defaults = true))
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 

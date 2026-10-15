@@ -38,16 +38,7 @@ const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSpheric
 const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
-    TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
-                 size,
-                 southernmost_latitude = -80,
-                 halo = (4, 4, 4),
-                 radius = Oceananigans.defaults.planet_radius,
-                 z = (0, 1),
-                 north_poles_latitude = 55,
-                 first_pole_longitude = 70,
-                 fold_topology = RightCenterFolded,
-                 pivot = default_pivot(fold_topology))
+    $(MethodSignatures(; defaults = true))
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North Pole singularity with two other singularities

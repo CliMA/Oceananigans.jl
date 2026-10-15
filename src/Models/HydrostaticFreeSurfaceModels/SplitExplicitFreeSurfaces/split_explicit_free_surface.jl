@@ -55,14 +55,7 @@ struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T, B} <: AbstractFreeSurfa
 end
 
 """
-    SplitExplicitFreeSurface(grid = nothing;
-                             gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
-                             substeps = nothing,
-                             cfl = nothing,
-                             fixed_Δt = nothing,
-                             extend_halos = true,
-                             averaging_kernel = averaging_shape_function,
-                             timestepper = ForwardBackwardScheme())
+    $(MethodSignatures(; defaults = true))
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization of
 a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:

@@ -93,7 +93,7 @@ end
 #
 
 """
-    get_rank(all_ranks, i, j, k=1)
+    $(MethodSignatures(; defaults = true))
 
 Find the RankOutputData with local_index == (i, j, k).
 """

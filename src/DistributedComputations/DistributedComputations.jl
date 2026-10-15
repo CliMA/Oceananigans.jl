@@ -19,7 +19,7 @@ using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 
 include("distributed_macros.jl")
 include("sanitize_environ.jl")

@@ -19,7 +19,7 @@ validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
     validate_fft_implicit_solver_grid(ibg.underlying_grid)
 
 """
-    FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acceleration=nothing)
+    $(MethodSignatures(; defaults = true))
 
 Return a solver based on the fast Fourier transform for the elliptic equation
 

@@ -115,14 +115,7 @@ Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.ordered_bcs))
 
 """
-    FieldBoundaryConditions(default_bounded_bc=NoFluxBoundaryCondition();
-                            west     = DefaultBoundaryCondition(default_bounded_bc),
-                            east     = DefaultBoundaryCondition(default_bounded_bc),
-                            south    = DefaultBoundaryCondition(default_bounded_bc),
-                            north    = DefaultBoundaryCondition(default_bounded_bc),
-                            bottom   = DefaultBoundaryCondition(default_bounded_bc),
-                            top      = DefaultBoundaryCondition(default_bounded_bc),
-                            immersed = DefaultBoundaryCondition(default_bounded_bc))
+    $(MethodSignatures(; defaults = true))
 
 Return a template for boundary conditions on prognostic fields.
 
@@ -264,10 +257,7 @@ end
 end
 
 """
-    regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                         grid::AbstractGrid,
-                                         field_name::Symbol,
-                                         prognostic_names=nothing)
+    $(MethodSignatures(; defaults = true))
 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.

@@ -64,19 +64,7 @@ function Adapt.adapt_structure(to, closure::TKEDissipationVerticalDiffusivity{TD
 end
 
 """
-    TKEDissipationVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
-                                      FT = Oceananigans.defaults.FloatType;]
-                                      tke_dissipation_equations = TKEDissipationEquations(),
-                                      stability_functions = VariableStabilityFunctions(),
-                                      minimum_length_scale = StratifiedDisplacementScale(),
-                                      maximum_tracer_diffusivity = Inf,
-                                      maximum_tke_diffusivity = Inf,
-                                      maximum_dissipation_diffusivity = Inf,
-                                      maximum_viscosity = Inf,
-                                      minimum_tke = 1e-6,
-                                      minimum_stratification_number_safety_factor = 0.73,
-                                      negative_tke_damping_time_scale = 1minute,
-                                      tke_dissipation_time_step = nothing)
+    $(MethodSignatures(; defaults = true))
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
 microscale ocean turbulence based on the prognostic evolution of two variables: the

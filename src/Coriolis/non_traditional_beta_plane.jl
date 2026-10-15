@@ -25,14 +25,7 @@ struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
 end
 
 """
-    NonTraditionalBetaPlane([FT = Oceananigans.defaults.FloatType;]
-                            fz = nothing,
-                            fy = nothing,
-                            β = nothing,
-                            γ = nothing,
-                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                            latitude = nothing,
-                            radius = Oceananigans.defaults.planet_radius)
+    $(MethodSignatures(; defaults = true))
 
 The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
 `rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate

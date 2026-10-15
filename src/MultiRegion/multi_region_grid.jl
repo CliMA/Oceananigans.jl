@@ -69,7 +69,7 @@ BoundaryConditions.FieldBoundaryConditions(mrg::MultiRegionGrids, loc::Tuple, in
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 """
-    MultiRegionGrid(global_grid; partition = XPartition(2))
+    $(MethodSignatures(; defaults = true))
 
 Split a `global_grid` into different regions.
 

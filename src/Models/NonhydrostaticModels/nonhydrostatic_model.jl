@@ -59,28 +59,7 @@ end
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
-    NonhydrostaticModel(grid;
-                        clock = Clock(grid),
-                        advection = Centered(),
-                        momentum_advection = advection,
-                        tracer_advection = advection,
-                        buoyancy = nothing,
-                        coriolis = nothing,
-                        stokes_drift = nothing,
-                        forcing::NamedTuple = NamedTuple(),
-                        closure = nothing,
-                        boundary_conditions::NamedTuple = NamedTuple(),
-                        tracers = (),
-                        timestepper = :RungeKutta3,
-                        background_fields::NamedTuple = NamedTuple(),
-                        particles::ParticlesOrNothing = nothing,
-                        biogeochemistry::AbstractBGCOrNothing = nothing,
-                        velocities = nothing,
-                        nonhydrostatic_pressure = nothing,
-                        hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                        closure_fields = nothing,
-                        pressure_solver = nothing,
-                        auxiliary_fields = NamedTuple())
+    $(MethodSignatures(; defaults = true))
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.

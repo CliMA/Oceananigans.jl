@@ -4,7 +4,7 @@ export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 using OffsetArrays: OffsetArray

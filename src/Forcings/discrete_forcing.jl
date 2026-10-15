@@ -11,7 +11,7 @@ struct DiscreteForcing{P, F}
 end
 
 """
-    DiscreteForcing(func; parameters=nothing)
+    $(MethodSignatures(; defaults = true))
 
 Construct a "discrete form" forcing function with optional parameters.
 The forcing function is applied at grid point `i, j, k`.

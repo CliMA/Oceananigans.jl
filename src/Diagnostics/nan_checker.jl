@@ -24,7 +24,7 @@ end
 Base.show(io::IO, nc::NaNChecker) = print(io, summary(nc))
 
 """
-    NaNChecker(; fields, erroring=false)
+    $(MethodSignatures(; defaults = true))
 
 Return a `NaNChecker`, which sets `sim.running=false` if a `NaN` is detected
 in any member of `fields` when `NaNChecker(sim)` is called. `fields` should be

@@ -21,11 +21,7 @@ const DynamicSmagorinsky = Union{
 }
 
 """
-    DynamicSmagorinsky([time_discretization=ExplicitTimeDiscretization(), FT=Float64;]
-                       averaging = LagrangianAveraging(),
-                       Pr = 1,
-                       schedule = IterationInterval(1),
-                       minimum_numerator = 1e-32)
+    $(MethodSignatures(; defaults = true))
 
 Returns a `Smagorinsky`-type closure with dynamic computation of the Smagorinsky coefficient
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).
@@ -133,7 +129,7 @@ tupleit(a::Number) = tuple(a)
 tupleit(a::Tuple) = a
 
 """
-    DynamicCoefficient([FT=Oceananigans.defaults.FloatType;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+    $(MethodSignatures(; defaults = true))
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
 according to the scale invariant procedure described by [Bou-Zeid et al. (2005)](@cite BouZeid05).

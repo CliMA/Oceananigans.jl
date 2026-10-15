@@ -210,11 +210,7 @@ end
 #####
 
 """
-    Distributed(child_architecture = CPU();
-                partition = nothing,
-                devices = nothing,
-                communicator = nothing,
-                synchronized_communication = false)
+    $(MethodSignatures(; defaults = true))
 
 Return a distributed architecture that uses MPI for communications.
 

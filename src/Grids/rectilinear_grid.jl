@@ -66,14 +66,7 @@ stretched_dimensions(::XYRegularRG) = tuple(3)
 stretched_dimensions(::XYZRegularRG) = tuple()
 
 """
-    RectilinearGrid([architecture = CPU(), FT = Float64];
-                    size,
-                    x = nothing,
-                    y = nothing,
-                    z = nothing,
-                    halo = nothing,
-                    extent = nothing,
-                    topology = (Periodic, Periodic, Bounded))
+    $(MethodSignatures(; defaults = true))
 
 Create a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 

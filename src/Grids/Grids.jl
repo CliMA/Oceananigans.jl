@@ -29,7 +29,7 @@ export offset_data, new_data
 export on_architecture
 
 using Adapt: Adapt
-using DocStringExtensions: FIELDS, TYPEDSIGNATURES
+using DocStringExtensions: FIELDS, MethodSignatures, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf

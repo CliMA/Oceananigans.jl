@@ -11,12 +11,7 @@ struct FieldDataset{F, B, M, P, KW}
 end
 
 """
-    FieldDataset(filepath;
-                 architecture = CPU(),
-                 grid = nothing,
-                 backend = InMemory(),
-                 metadata_paths = ["metadata"],
-                 reader_kw = NamedTuple())
+    $(MethodSignatures(; defaults = true))
 
 Return a `FieldDataset` containing a `FieldTimeSeries` for each field in the JLD2 file located
 at `filepath`, in the order the fields are stored in the file.
@@ -94,14 +89,7 @@ function Base.show(io::IO, fds::FieldDataset)
 end
 
 """
-    FieldDataset(grid, times, fields;
-                 backend = OnDisk(),
-                 path = nothing,
-                 location = NamedTuple(),
-                 indices = NamedTuple(),
-                 boundary_conditions = NamedTuple(),
-                 metadata = Dict(),
-                 reader_kw = NamedTuple())
+    $(MethodSignatures(; defaults = true))
 
 Return a `FieldDataset` containing a new `FieldTimeSeries` for each key in `fields`
 on `grid` at `times`.

@@ -23,16 +23,7 @@ function latitude_longitude_shift((λ₀, φ₀))
 end
 
 """
-    RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
-                                 FT::DataType = Oceananigans.defaults.FloatType;
-                                 size,
-                                 north_pole,
-                                 longitude,
-                                 latitude,
-                                 z,
-                                 halo = (3, 3, 3),
-                                 radius = Oceananigans.defaults.planet_radius,
-                                 topology = nothing)
+    $(MethodSignatures(; defaults = true))
 
 Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
 giving the longitude and latitude of the "grid north pole", which may differ from the

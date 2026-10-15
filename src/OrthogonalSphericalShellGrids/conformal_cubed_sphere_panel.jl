@@ -191,19 +191,7 @@ function Grids.with_halo(new_halo, old_grid::ConformalCubedSpherePanelGrid; arch
 end
 
 """
-    ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(),
-                                  FT::DataType = Float64;
-                                  size,
-                                  z,
-                                  topology = (Bounded, Bounded, Bounded),
-                                  ξ = (-1, 1),
-                                  η = (-1, 1),
-                                  radius = Oceananigans.defaults.planet_radius,
-                                  halo = (1, 1, 1),
-                                  rotation = nothing,
-                                  non_uniform_conformal_mapping = false,
-                                  spacing = GeometricSpacing(),
-                                  provided_conformal_mapping = nothing)
+    $(MethodSignatures(; defaults = true))
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
 the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, both take values in the range

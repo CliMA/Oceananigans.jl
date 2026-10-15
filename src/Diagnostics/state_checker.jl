@@ -7,7 +7,7 @@ struct StateChecker{T, F} <: AbstractDiagnostic
 end
 
 """
-    StateChecker(model; schedule, fields=fields(model))
+    $(MethodSignatures(; defaults = true))
 
 Returns a `StateChecker` that logs field information (minimum, maximum, mean)
 for each field in a named tuple of `fields` when `schedule` actuates.

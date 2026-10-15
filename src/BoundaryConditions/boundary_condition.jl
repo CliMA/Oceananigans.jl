@@ -9,10 +9,7 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-    BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
-                      parameters = nothing,
-                      discrete_form = false,
-                      field_dependencies=())
+    $(MethodSignatures(; defaults = true))
 
 Construct a boundary condition of type `classification` with a function boundary `condition`.
 
@@ -117,7 +114,7 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryConditio
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 """
-    FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(), kwargs...)
+    $(MethodSignatures(; defaults = true))
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 

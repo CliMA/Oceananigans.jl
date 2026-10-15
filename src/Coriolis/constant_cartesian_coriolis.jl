@@ -14,10 +14,7 @@ struct ConstantCartesianCoriolis{FT} <: AbstractRotation{EnergyConserving}
 end
 
 """
-    ConstantCartesianCoriolis([FT = Float64;] fx=nothing, fy=nothing, fz=nothing,
-                              f=nothing, rotation_axis=ZDirection(),
-                              rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                              latitude=nothing)
+    $(MethodSignatures(; defaults = true))
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This

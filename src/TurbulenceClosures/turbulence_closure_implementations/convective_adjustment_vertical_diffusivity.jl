@@ -19,11 +19,7 @@ struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractSc
 end
 
 """
-    ConvectiveAdjustmentVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(), FT=Float64;]
-                                            convective_κz = 0,
-                                            convective_νz = 0,
-                                            background_κz = 0,
-                                            background_νz = 0)
+    $(MethodSignatures(; defaults = true))
 
 Return a convective adjustment vertical diffusivity closure that applies different values of diffusivity and/or viscosity depending
 whether the region is statically stable (positive or zero buoyancy gradient) or statically unstable (negative buoyancy gradient).
