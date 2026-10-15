@@ -96,9 +96,8 @@ end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
-    solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = architecture(solver)
-    grid = solver.grid
+    grid = rhs.grid
+    arch = architecture(grid)
     launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end
@@ -214,7 +213,7 @@ end
 @inline ∇H_∇η(i, j, k, grid, η) = zero(grid) # fallback
 @inline depth(i, j, k, grid) = grid.Lz
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedVerticalBoundaries}
 
 # Assumes surface is z=0:
 @inline depth(i, j, k, ibg::GFBIBG) = @inbounds max(zero(eltype(ibg)), min(ibg.Lz, -ibg.immersed_boundary.bottom[i, j]))

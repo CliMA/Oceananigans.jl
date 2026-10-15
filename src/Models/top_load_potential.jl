@@ -30,7 +30,7 @@ which keeps a fluid whose stratification equals `reference_tracers` at rest.
 Arguments
 =========
 
-- `grid`: an `ImmersedBoundaryGrid` with a `GridFittedBottom` or `PartialCellBottom` that has a `top_height`.
+- `grid`: an `ImmersedBoundaryGrid` with a `GridFittedVerticalBoundaries` or `PartialCellVerticalBoundaries` that has a `top_height`.
 - `buoyancy`: the model's buoyancy formulation, e.g. `BuoyancyTracer()` or `SeawaterBuoyancy()`.
 - `reference_tracers`: a `NamedTuple` of the tracers required by `buoyancy`, whose values
   may be anything accepted by `set!`. Typically the initial condition.
@@ -45,7 +45,7 @@ julia> underlying_grid = RectilinearGrid(size=(1, 4, 10), x=(0, 1), y=(0, 4), z=
 
 julia> top_height(x, y) = y < 2 ? -40 : 0;
 
-julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-100; top_height));
+julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedVerticalBoundaries(; bottom_height=-100, top_height));
 
 julia> Φ = top_load_potential(grid, BuoyancyTracer(), (; b = (x, y, z) -> 1e-5 * z));
 

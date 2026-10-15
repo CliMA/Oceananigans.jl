@@ -28,7 +28,8 @@ export
 
     # Immersed boundaries
     ImmersedBoundaryGrid,
-    GridFittedBoundary, GridFittedBottom, PartialCellBottom, TopLoad,
+    GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+    GridFittedVerticalBoundaries, PartialCellVerticalBoundaries, TopLoad,
     ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed

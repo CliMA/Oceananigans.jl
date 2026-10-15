@@ -12,9 +12,9 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return a `top_load` for a [`GridFittedBottom`](@ref) or [`PartialCellBottom`](@ref) with an immersed
-top that is computed by [`top_load_potential`](@ref) from `buoyancy` and `reference_tracers` when the
-`ImmersedBoundaryGrid` is built. A fluid whose stratification equals `reference_tracers` is then at rest.
+Return a `top_load` for a [`GridFittedVerticalBoundaries`](@ref) or [`PartialCellVerticalBoundaries`](@ref)
+with an immersed top that is computed by [`top_load_potential`](@ref) from `buoyancy` and `reference_tracers`
+when the `ImmersedBoundaryGrid` is built. A fluid whose stratification equals `reference_tracers` is then at rest.
 
 Example
 =======
@@ -28,7 +28,7 @@ julia> top_height(x, y) = y < 2 ? -40 : 0;
 
 julia> top_load = TopLoad(BuoyancyTracer(), (; b = (x, y, z) -> 1e-5 * z));
 
-julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-100; top_height, top_load));
+julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedVerticalBoundaries(; bottom_height=-100, top_height, top_load));
 
 julia> grid.immersed_boundary.top_load[1, 1:4, 1]
 4-element Vector{Float64}:
