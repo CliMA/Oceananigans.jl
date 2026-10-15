@@ -60,8 +60,7 @@ julia> using Oceananigans
 
 julia> WENO()
 WENO{3, Float64, Nothing}(order=5)
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 
@@ -71,10 +70,7 @@ yet minimally-dissipative advection scheme):
 ```jldoctest weno
 julia> WENO(order=9)
 WENO{5, Float64, Nothing}(order=9)
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│           └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
@@ -92,10 +88,7 @@ WENO{4, Float64, Nothing}(order=7)
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
 WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7, bounds=(0.0, 1.0))
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
-│           └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
@@ -103,8 +96,7 @@ To build a WENO scheme that uses approximate division on a GPU to execute faster
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
-├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 """

@@ -13,7 +13,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, construct_regionally
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -245,8 +245,8 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
 
     # Fill any settings in advection scheme that might have been deferred until
-    # the grid and backend is known
-    advection = map(scheme -> materialize_advection(scheme, grid), advection)
+    # the grid and backend is known; each region materializes its own scheme
+    advection = map(scheme -> construct_regionally(materialize_advection, scheme, grid), advection)
 
     buoyancy = materialize_buoyancy(buoyancy, grid)
 

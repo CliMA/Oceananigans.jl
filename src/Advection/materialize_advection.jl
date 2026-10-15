@@ -67,5 +67,5 @@ materialize_advection(scheme::Centered{N, FT}, grid) where {N, FT} =
 
 function materialize_advection(scheme::GhostCells, grid)
     weno = materialize_advection(scheme.scheme, grid)
-    return GhostCells(weno, ghost_cell_connectivity(weno, grid))
+    return GhostCells(weno, ghost_cell_boundary_distances(grid))
 end

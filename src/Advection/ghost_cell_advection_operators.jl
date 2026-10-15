@@ -7,7 +7,7 @@
 const GhostCellWENOWithoutBoundsPreservation = WENO{<:Any, <:Any, <:Any, <:Any, Nothing, <:GhostCells}
 const VectorInvariantVerticalGhostCells = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCellWENO}
 
-@inline node_extrema(i, j, k, grid, scheme, d, ℓ, ψ) = local_extrema(i, j, k, grid, face_connectivity(scheme, ψ, i, j, k, grid, ℓ..., d), ψ)
+@inline node_extrema(i, j, k, grid, scheme, d, ℓ, ψ) = local_extrema(i, j, k, grid, face_boundary_distances(scheme, ψ, i, j, k, grid, ℓ..., d), ψ)
 
 # The local extrema of the neighbors behind and ahead of the node along d
 @inline neighbor_extrema(i, j, k, grid, ::Type{Flat}, scheme, d, ℓ, ψ) = nothing, nothing

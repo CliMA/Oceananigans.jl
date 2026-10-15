@@ -5,6 +5,7 @@ using Oceananigans.Utils: NormalDivision
 using Oceananigans.Advection:
         GhostCells,
         ghost_cell_reconstruction,
+        node_differences,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -155,24 +156,27 @@ for arch in archs
     @testset "GhostCells boundary reconstruction" begin
         scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
 
-        function reconstruct(scheme, bias, values, activity)
-            ψ̂, ghosted_face = ghost_cell_reconstruction(scheme.scheme, values, activity, bias, nothing)
+        # L and R are the nodes 4 and 5; nᴸ and nᴿ count the nodes beyond them before the first peripheral one
+        function reconstruct(scheme, bias, values, peripheral)
+            nᴸ = something(findfirst(peripheral[3:-1:1]), 4) - 1
+            nᴿ = something(findfirst(peripheral[6:8]), 4) - 1
+            ψ̂, _ = ghost_cell_reconstruction(scheme.scheme, values, node_differences(values), nᴸ, nᴿ, bias, nothing)
             return ψ̂
         end
 
         # Averages over the unit cells [n - 1, n] of a polynomial with primitive P; the reconstructed face is at x = 4
         averages(P) = ntuple(n -> P(n) - P(n - 1), 8)
 
-        active   = ntuple(_ -> true, 8)
-        wall     = (false, false, true, true, true, true, true, true)
-        two_left = (false, false, false, true, true, false, false, false)
+        none     = ntuple(_ -> false, 8)
+        wall     = (true, true, false, false, false, false, false, false)
+        two_left = (true, true, true, false, false, true, true, true)
 
         linear_primitive(x) = x^2 / 2 + 2x # p(x) = x + 2
 
         for bias in (LeftBias, RightBias)
             # the values in inactive cells never enter the reconstruction
             @test reconstruct(scheme, bias, (1e3, 1e3, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0), wall) == 3.0
-            @test reconstruct(scheme, bias, Tuple(1.0:8.0), active) == 4.5
+            @test reconstruct(scheme, bias, Tuple(1.0:8.0), none) == 4.5
 
             # the ghosts extrapolate linearly, so a uniform stratification next to a wall is reconstructed exactly
             @test reconstruct(scheme, bias, averages(linear_primitive), wall) ≈ 4 + 2
@@ -182,8 +186,8 @@ for arch in archs
 
         # the ghosts lie on the line through the active cells in index coordinates, those of the WENO reconstruction
         affine = Tuple(2.5 .- 0.7 .* (1:8))
-        lowest_inactive = (false, true, true, true, true, true, true, true)
-        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_inactive) ≈ reconstruct(scheme, LeftBias, affine, active)
+        lowest_peripheral = (true, false, false, false, false, false, false, false)
+        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_peripheral) ≈ reconstruct(scheme, LeftBias, affine, none)
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
@@ -230,9 +234,9 @@ for arch in archs
         end
 
         ghost_cells = advected_tracer(WENO(order=7, boundary_scheme=GhostCells()))
-        chain = advected_tracer(WENO(order=7))
+        chain = advected_tracer(WENO(order=7, boundary_scheme=Centered(order=2)))
 
-        # Next to the walls the clamped face values remove most of the extrema of the default buffer chain
+        # Next to the walls the clamped face values remove most of the extrema of the buffer chain
         @test chain.cmin < -0.2 < -0.02 < ghost_cells.cmin
         @test chain.cmax > 1.4 > 1.05 > ghost_cells.cmax
         @test abs(ghost_cells.drift) < 1e-10
