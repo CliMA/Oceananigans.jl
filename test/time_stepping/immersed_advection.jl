@@ -155,8 +155,8 @@ for arch in archs
     @testset "GhostCells boundary reconstruction" begin
         scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
 
-        function reconstruct(scheme, bias, values, activity; positions = Tuple(1.0:8.0))
-            ψ̂, ghosted_face = ghost_cell_reconstruction(scheme.scheme, values, positions, activity, bias, nothing)
+        function reconstruct(scheme, bias, values, activity)
+            ψ̂, ghosted_face = ghost_cell_reconstruction(scheme.scheme, values, activity, bias, nothing)
             return ψ̂
         end
 
@@ -180,12 +180,10 @@ for arch in archs
         end
 
 
-        # on a stretched line the ghosts lie on the line through the active cells in physical coordinates
-        positions = Tuple(cumsum([0.0; 1.08 .^ (0:6)]))
-        affine = Tuple(2.5 .- 0.7 .* positions)
+        # the ghosts lie on the line through the active cells in index coordinates, those of the WENO reconstruction
+        affine = Tuple(2.5 .- 0.7 .* (1:8))
         lowest_inactive = (false, true, true, true, true, true, true, true)
-        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_inactive; positions) ≈
-              reconstruct(scheme, LeftBias, affine, active; positions)
+        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_inactive) ≈ reconstruct(scheme, LeftBias, affine, active)
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
