@@ -546,3 +546,70 @@ Oceananigans.Biogeochemistry.biogeochemical_drift_velocity(bgc::SinkingParticles
         end
     end
 end
+
+#####
+##### Velocity cells whose area differs from the tracer columns either side (a narrowed strait face)
+#####
+
+using Oceananigans.Advection: vertical_velocityᶠᶜᶠ, vertical_velocityᶜᶠᶠ,
+                              explicit_velocity_scaleᶠᶜᶠ, explicit_velocity_scaleᶜᶠᶠ,
+                              implicit_vertical_velocityᶠᶜᶠ, implicit_vertical_velocityᶜᶠᶠ,
+                              _symmetric_interpolate_xᶠᵃᵃ, _symmetric_interpolate_yᵃᶠᵃ
+using Oceananigans.Operators: Az_qᶜᶜᶠ, Azᶠᶜᶠ, Azᶜᶠᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ
+
+# Shrink the area of one row of u- or v-cells by `factor`, leaving the tracer columns and the face widths alone.
+function narrow_velocity_cells!(A, j, factor)
+    if ndims(A) == 1
+        A[j] /= factor
+    else
+        A[:, j] ./= factor
+    end
+    return A
+end
+
+@testset "AIVA momentum CFL and implicit split follow the transport at narrowed velocity cells" begin
+    w₀     = 1e-3
+    Δz     = 10.0
+    cfl    = 0.5
+    factor = 8.5
+    j₀     = 5
+
+    for (location, A, scale, implicit_w, velocity, transport, Az, Δzᶠ) in
+        ((:u, :Azᶠᶜᵃ, explicit_velocity_scaleᶠᶜᶠ, implicit_vertical_velocityᶠᶜᶠ, vertical_velocityᶠᶜᶠ, _symmetric_interpolate_xᶠᵃᵃ, Azᶠᶜᶠ, Δzᶠᶜᶠ),
+         (:v, :Azᶜᶠᵃ, explicit_velocity_scaleᶜᶠᶠ, implicit_vertical_velocityᶜᶠᶠ, vertical_velocityᶜᶠᶠ, _symmetric_interpolate_yᵃᶠᵃ, Azᶜᶠᶠ, Δzᶜᶠᶠ))
+
+        grid = LatitudeLongitudeGrid(CPU(); size=(6, 10, 8), longitude=(0, 12), latitude=(-10, 10), z=(-80, 0),
+                                     halo=(4, 4, 4), topology=(Periodic, Bounded, Bounded))
+        narrow_velocity_cells!(getproperty(grid, A), j₀, factor)
+
+        td = AdaptiveVerticallyImplicitDiscretization(cfl=cfl)
+        scheme = WENO(; time_discretization = td, weight_computation = Oceananigans.Utils.NormalDivision)
+
+        W = ZFaceField(grid)
+        set!(W, w₀)
+        fill_halo_regions!(W)
+
+        i, k = 3, 4
+        for (Δt, j) in ((0.2Δz / w₀, j₀), (0.2Δz / w₀, j₀ + 2), (5Δz / w₀, j₀ + 2))
+            td.Δt[] = Δt
+            T  = transport(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
+            Azᵥ = Az(i, j, k, grid)
+            α  = abs(T) * Δt / (Azᵥ * Δzᶠ(i, j, k, grid))   # the CFL of the transport the flux carries
+            s  = scale(i, j, k, grid, scheme, td, W)
+
+            @testset "$location cell (j = $j, α = $(round(α, digits=2)))" begin
+                @test velocity(i, j, k, grid, scheme, W) ≈ T / Azᵥ rtol=1e-12
+                @test s ≈ min(1, cfl / α) rtol=1e-12
+                @test s * α ≤ cfl * (1 + 1e-12)
+                # explicit and implicit transports add up to the explicit flux's transport
+                @test s * T + Azᵥ * implicit_w(i, j, k, grid, scheme, td, W) ≈ T rtol=1e-12
+            end
+        end
+
+        # At the narrowed cells the transport-based CFL is `factor` times the interpolated w's, so a step that
+        # is explicit for ℑw (α = 0.2) must be partly implicit here.
+        td.Δt[] = 0.2Δz / w₀
+        @test scale(i, j₀, k, grid, scheme, td, W) < 1
+        @test scale(i, j₀ + 2, k, grid, scheme, td, W) == 1
+    end
+end
