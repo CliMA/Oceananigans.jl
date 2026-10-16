@@ -39,6 +39,9 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 # Work done on `c` before the filling kernel is launched
 @inline prepare_halo_fill!(bc, c, grid, loc) = nothing
 
+# Work done on the host boundary conditions before they are converted to the device
+update_boundary_time_series!(boundary_conditions, args...) = nothing
+
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
