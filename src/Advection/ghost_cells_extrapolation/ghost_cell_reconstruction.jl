@@ -78,6 +78,9 @@ with `Δʷ` the slope towards `cʷ`, half a node beyond `c₁`, `K` the curvatur
 quadratic where the line is smooth and the slope towards `cʷ`, limited by `2Δ₁`, otherwise. Downwind ghosts, and those of
 fields without stored wall values, extrapolate as `HierarchicalExtrapolation`.
 
+On the walls of the domain where the tracer has a `Value`, `Gradient` or `Mixed` boundary condition, `cʷ = (c₀ + c₁) / 2`
+comes from the halo `c₀` that the condition fills.
+
 !!!NOTE:
     This extraplation technique is used only for tracers and assumes `(Center, Center, Center)` variables.
 """
@@ -228,7 +231,7 @@ end
     nᴸ = boundary_distance(i - di, j - dj, k - dk, grid, ℓx, ℓy, ℓz, d, -1, Val(N))
     nᴿ = boundary_distance(i,      j,      k,      grid, ℓx, ℓy, ℓz, d, +1, Val(N))
     δˢ = smoothness_differences(i, j, k, grid, weno, bias, e, stencil, args...)
-    cʷ = stored_wall_value(scheme.extrapolation, i, j, k, grid, d, nᴸ, nᴿ, bias, Val(N))
+    cʷ = stored_wall_value(scheme.extrapolation, i, j, k, grid, d, nᴸ, nᴿ, bias, ψ, Val(N))
 
     return ghost_cell_reconstruction(weno, S, ΔS, nᴸ, nᴿ, bias, δˢ, cʷ)
 end

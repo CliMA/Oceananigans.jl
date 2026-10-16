@@ -248,8 +248,6 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     # Fill any settings in advection scheme that might have been deferred until
     # the grid and backend is known; each region materializes its own scheme
     advection = map(scheme -> construct_regionally(materialize_advection, scheme, grid), advection)
-    # the tracers that closures step themselves extrapolate as HierarchicalExtrapolation
-    advection = materialize_wall_values(advection, grid, filter(∉(closure_required_tracers(closure)), tracer_names))
 
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
@@ -283,6 +281,9 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
                                                                    grid,
                                                                    tracer_names,
                                                                    buoyancy)
+
+    # the tracers that closures step themselves extrapolate as HierarchicalExtrapolation
+    advection = materialize_wall_values(advection, grid, boundary_conditions, filter(∉(closure_required_tracers(closure)), tracer_names))
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracer_names, closure)

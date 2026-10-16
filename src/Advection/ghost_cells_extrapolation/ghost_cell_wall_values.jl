@@ -1,5 +1,6 @@
 using KernelAbstractions: @kernel, @index
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Architectures: synchronize_field_tags!
+using Oceananigans.BoundaryConditions: BoundaryCondition, Gradient, Mixed, Value, fill_halo_regions!
 using Oceananigans.Fields: Field, CenterField
 using Oceananigans.Grids: Bounded, LeftConnected, RightConnected, inactive_node, topology
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, labeled_indices
@@ -10,27 +11,27 @@ using Oceananigans.Utils: launch!
 ##### Stored wall values of `TransportedWallValue`
 #####
 
-# Values at the inactive nodes beyond the immersed walls; tendencies, previous tendencies and caches at the positions of `nodes`
+# The cache holds σ cʷ at the start of a split Runge-Kutta step, or the previous tendency of Adams-Bashforth and Runge-Kutta 3
+
+# Values at the inactive nodes beyond the immersed walls; tendencies and caches at the positions of `nodes`
 struct ImmersedWallValues{N, V, T}
-                nodes :: N
-               values :: V
-             tendency :: T
-    previous_tendency :: T
-                cache :: T
+       nodes :: N
+      values :: V
+    tendency :: T
+       cache :: T
 end
 
-# Fields reduced along d, indexed by the halo nodes beyond the wall of the domain normal to d on the side s
-struct DomainWallValues{d, s, V}
-               values :: V
-             tendency :: V
-    previous_tendency :: V
-                cache :: V
+# Values in a field reduced along d, indexed by the halo nodes beyond the wall of the domain normal to d on the side s;
+# tendencies and caches in arrays of the same size
+struct DomainWallValues{d, s, V, T}
+      values :: V
+    tendency :: T
+       cache :: T
 end
 
-DomainWallValues{d, s}(values::V, tendency::V, previous_tendency::V, cache::V) where {d, s, V} =
-    DomainWallValues{d, s, V}(values, tendency, previous_tendency, cache)
+DomainWallValues{d, s}(values::V, tendency::T, cache::T) where {d, s, V, T} = DomainWallValues{d, s, V, T}(values, tendency, cache)
 
-const StoredWallValueWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells{<:Any, <:TransportedWallValue{<:ImmersedWallValues}}}
+const StoredWallValueWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:GhostCells{<:Any, <:TransportedWallValue{<:Any, <:NamedTuple}}}
 
 transported_wall_value(advection::StoredWallValueWENO) = advection.buffer_scheme.extrapolation
 
@@ -51,68 +52,80 @@ end
                                 stores_wall_value_along(i, j, k, grid, topology(grid, 3), Val(3))
 end
 
-function ImmersedWallValues(grid)
+ImmersedWallValues(grid) = nothing
+
+function ImmersedWallValues(grid::ImmersedBoundaryGrid)
     labels = Field{Center, Center, Center}(grid, Int8)
     launch!(architecture(grid), grid, size(grid), _label_wall_nodes!, labels, grid)  # size(grid), since :xyz skips the inactive nodes on grids with an active cells map
     nodes, _ = labeled_indices(grid, labels.data, (1,))
     wall_vector() = on_architecture(architecture(grid), zeros(eltype(grid), length(nodes)))
-    return ImmersedWallValues(nodes, CenterField(grid), wall_vector(), wall_vector(), wall_vector())
+    return ImmersedWallValues(nodes, CenterField(grid), wall_vector(), wall_vector())
 end
 
 wall_field(grid, ::Val{1}) = Field{Nothing, Center, Center}(grid)
 wall_field(grid, ::Val{2}) = Field{Center, Nothing, Center}(grid)
 wall_field(grid, ::Val{3}) = Field{Center, Center, Nothing}(grid)
 
-DomainWallValues(grid, ::Val{d}, s) where d = DomainWallValues{d, s}(wall_field(grid, Val(d)), wall_field(grid, Val(d)),
-                                                                     wall_field(grid, Val(d)), wall_field(grid, Val(d)))
+function DomainWallValues(grid, ::Val{d}, s) where d
+    values = wall_field(grid, Val(d))
+    wall_array() = on_architecture(architecture(grid), zeros(eltype(grid), size(values)))
+    return DomainWallValues{d, s}(values, wall_array(), wall_array())
+end
 
-domain_wall_values(grid, d, topology)               = (left = nothing,                       right = nothing)
-domain_wall_values(grid, d, ::Type{Bounded})        = (left = DomainWallValues(grid, d, -1), right = DomainWallValues(grid, d, +1))
-domain_wall_values(grid, d, ::Type{RightConnected}) = (left = DomainWallValues(grid, d, -1), right = nothing)
-domain_wall_values(grid, d, ::Type{LeftConnected})  = (left = nothing,                       right = DomainWallValues(grid, d, +1))
+domain_wall(grid, d, s, bc) = DomainWallValues(grid, d, s)
+domain_wall(grid, d, s, bc::BoundaryCondition{<:Union{Value, Gradient, Mixed}}) = bc
+
+domain_walls(grid, d, topology,               bcᴸ, bcᴿ) = (left = nothing,                       right = nothing)
+domain_walls(grid, d, ::Type{Bounded},        bcᴸ, bcᴿ) = (left = domain_wall(grid, d, -1, bcᴸ), right = domain_wall(grid, d, +1, bcᴿ))
+domain_walls(grid, d, ::Type{RightConnected}, bcᴸ, bcᴿ) = (left = domain_wall(grid, d, -1, bcᴸ), right = nothing)
+domain_walls(grid, d, ::Type{LeftConnected},  bcᴸ, bcᴿ) = (left = nothing,                       right = domain_wall(grid, d, +1, bcᴿ))
 
 """
-    materialize_wall_values(advection, grid)
+    materialize_wall_values(advection, grid, boundary_conditions)
 
-Return `advection` with the storage of its wall values on `grid`, when its boundary scheme is
-`GhostCells(extrapolation = TransportedWallValue())`; without storage, `TransportedWallValue` extrapolates as
-`HierarchicalExtrapolation`.
+Return `advection` with the storage of its wall values on `grid`, when its boundary scheme is `GhostCells(extrapolation = TransportedWallValue())`; without storage,
+`TransportedWallValue` extrapolates as `HierarchicalExtrapolation`. The walls of the domain with a Value, Gradient or Mixed condition in `boundary_conditions`
+store nothing and read their wall value from the halo that the condition fills.
 """
-materialize_wall_values(advection, grid) = advection
+materialize_wall_values(advection, grid, boundary_conditions) = advection
 
-function materialize_wall_values(weno::WENO{N, FT, WCT, <:Any, <:Any, <:GhostCells{<:Any, <:TransportedWallValue}}, grid) where {N, FT, WCT}
-    domain_walls  = (x = domain_wall_values(grid, Val(1), topology(grid, 1)),
-                     y = domain_wall_values(grid, Val(2), topology(grid, 2)),
-                     z = domain_wall_values(grid, Val(3), topology(grid, 3)))
-    extrapolation = TransportedWallValue(ImmersedWallValues(grid), domain_walls)
+function materialize_wall_values(weno::WENO{N, FT, WCT, <:Any, <:Any, <:GhostCells{<:Any, <:TransportedWallValue}}, grid, bcs) where {N, FT, WCT}
+    arch = architecture(grid)
+
+    # each rank builds the walls it touches, and all ranks continue from the same field tag after each direction
+    x = domain_walls(grid, Val(1), topology(grid, 1), bcs.west, bcs.east)
+    synchronize_field_tags!(arch)
+    y = domain_walls(grid, Val(2), topology(grid, 2), bcs.south, bcs.north)
+    synchronize_field_tags!(arch)
+    z = domain_walls(grid, Val(3), topology(grid, 3), bcs.bottom, bcs.top)
+    synchronize_field_tags!(arch)
+
+    extrapolation = TransportedWallValue(ImmersedWallValues(grid), (; x, y, z))
     buffer_scheme = GhostCells(weno.buffer_scheme.scheme, extrapolation)
     return WENO{N, FT, WCT}(weno.bounds, buffer_scheme, weno.advecting_velocity_scheme, weno.time_discretization)
 end
 
 """
-    materialize_wall_values(advection::NamedTuple, grid, names)
+    materialize_wall_values(advection::NamedTuple, grid, boundary_conditions, names)
 
-Return `advection` with the storage of the wall values of the tracers `names`.
+Return `advection` with the storage of the wall values of the tracers `names`, whose `boundary_conditions` are regularized.
 """
-function materialize_wall_values(advection::NamedTuple, grid, names)
-    stored = map(name -> materialize_wall_values(advection[name], grid), names)
+function materialize_wall_values(advection::NamedTuple, grid, boundary_conditions, names)
+    stored = map(name -> materialize_wall_values(advection[name], grid, boundary_conditions[name]), names)
     return merge(advection, NamedTuple{names}(stored))
 end
 
 Adapt.adapt_structure(to, w::ImmersedWallValues) =
-    ImmersedWallValues(Adapt.adapt(to, w.nodes), Adapt.adapt(to, w.values), Adapt.adapt(to, w.tendency),
-                       Adapt.adapt(to, w.previous_tendency), Adapt.adapt(to, w.cache))
+    ImmersedWallValues(Adapt.adapt(to, w.nodes), Adapt.adapt(to, w.values), Adapt.adapt(to, w.tendency), Adapt.adapt(to, w.cache))
 
 Adapt.adapt_structure(to, w::DomainWallValues{d, s}) where {d, s} =
-    DomainWallValues{d, s}(Adapt.adapt(to, w.values), Adapt.adapt(to, w.tendency), Adapt.adapt(to, w.previous_tendency), Adapt.adapt(to, w.cache))
+    DomainWallValues{d, s}(Adapt.adapt(to, w.values), Adapt.adapt(to, w.tendency), Adapt.adapt(to, w.cache))
 
 Architectures.on_architecture(to, w::ImmersedWallValues) =
-    ImmersedWallValues(on_architecture(to, w.nodes), on_architecture(to, w.values), on_architecture(to, w.tendency),
-                       on_architecture(to, w.previous_tendency), on_architecture(to, w.cache))
+    ImmersedWallValues(on_architecture(to, w.nodes), on_architecture(to, w.values), on_architecture(to, w.tendency), on_architecture(to, w.cache))
 
 Architectures.on_architecture(to, w::DomainWallValues{d, s}) where {d, s} =
-    DomainWallValues{d, s}(on_architecture(to, w.values), on_architecture(to, w.tendency),
-                           on_architecture(to, w.previous_tendency), on_architecture(to, w.cache))
+    DomainWallValues{d, s}(on_architecture(to, w.values), on_architecture(to, w.tendency), on_architecture(to, w.cache))
 
 Adapt.adapt_structure(to, extrapolation::TransportedWallValue) = TransportedWallValue(Adapt.adapt(to, extrapolation.immersed_walls), Adapt.adapt(to, extrapolation.domain_walls))
 Architectures.on_architecture(to, extrapolation::TransportedWallValue) = TransportedWallValue(on_architecture(to, extrapolation.immersed_walls), on_architecture(to, extrapolation.domain_walls))
@@ -132,38 +145,62 @@ Architectures.on_architecture(to, extrapolation::TransportedWallValue) = Transpo
 @inline Base.getindex(w::DomainWallValues{d}, i, j, k)     where d = @inbounds w.values[wall_index(i, j, k, Val(d))...]
 @inline Base.setindex!(w::DomainWallValues{d}, v, i, j, k) where d = @inbounds w.values[wall_index(i, j, k, Val(d))...] = v
 
-@inline domain_wall(::Nothing, i, j, k, grid, d) = (false, zero(grid))
-@inline domain_wall(cʷ,        i, j, k, grid, d) = (true, @inbounds(cʷ[wall_index(i, j, k, d)...]))
+# The wall value that `walls` give at the peripheral node iᵖ, jᵖ, kᵖ
+@inline wall_value(::Nothing, iᵖ, jᵖ, kᵖ, grid, d, s, c) = zero(grid)
+@inline wall_value(walls::Union{ImmersedWallValues, DomainWallValues}, iᵖ, jᵖ, kᵖ, grid, d, s, c) = @inbounds walls[iᵖ, jᵖ, kᵖ]
 
-@inline stored_wall_value(extrapolation, i, j, k, grid, d, nᴸ, nᴿ, bias, ::Val{N}) where N = nothing
+# c₀ is the halo that the boundary condition fills and c₁ the node next to it; cʷ lies half a node beyond the boundary node cᵇ
+@inline function wall_value(::BoundaryCondition, iᵖ, jᵖ, kᵖ, grid, ::Val{d}, s, c) where d
+    di, dj, dk = unit_vector(Val(d))
+    pᵈ = (iᵖ, jᵖ, kᵖ)[d]
+    hᵈ = ifelse(s == -1, 0, size(grid, d) + 1)
+    h  = hᵈ - pᵈ
+
+    iʰ, jʰ, kʰ = iᵖ + h * di, jᵖ + h * dj, kᵖ + h * dk
+    i₁, j₁, k₁ = iʰ - s * di, jʰ - s * dj, kʰ - s * dk
+
+    c₀ = @inbounds c[iʰ, jʰ, kʰ]
+    c₁ = @inbounds c[i₁, j₁, k₁]
+
+    # the stencil starts at the halo on the wall face
+    cᵇ = ifelse(pᵈ == hᵈ, c₁, c₀)
+
+    return cᵇ - (c₁ - c₀) / 2
+end
+
+@inline stored_wall_value(extrapolation, i, j, k, grid, d, nᴸ, nᴿ, bias, c, ::Val{N}) where N = nothing
 
 # pᵈ is the index along d of the upwind peripheral node, which stores the wall value of an immersed wall
-@inline function stored_wall_value(extrapolation::TransportedWallValue{<:Any, <:NamedTuple}, i, j, k, grid, ::Val{d}, nᴸ, nᴿ, bias, ::Val{N}) where {d, N}
+@inline function stored_wall_value(extrapolation::TransportedWallValue{<:Any, <:NamedTuple}, i, j, k, grid, ::Val{d}, nᴸ, nᴿ, bias, c, ::Val{N}) where {d, N}
     left = bias === LeftBias
+    s  = ifelse(left, -1, 1)
     m  = ifelse(left, nᴸ, nᴿ) + 1
     iᵈ = (i, j, k)[d]
     pᵈ = ifelse(left, iᵈ - 1 - m, iᵈ + m)
-    cᵖ = @inbounds extrapolation.immersed_walls[Base.setindex((i, j, k), pᵈ, d)...]
 
-    cᴸ, cᴿ     = extrapolation.domain_walls[d]
-    wallᴸ, cʷᴸ = domain_wall(cᴸ, i, j, k, grid, Val(d))
-    wallᴿ, cʷᴿ = domain_wall(cᴿ, i, j, k, grid, Val(d))
-    beyond     = ifelse(left, wallᴸ & (pᵈ < 1), wallᴿ & (pᵈ > size(grid, d)))
+    di, dj, dk = unit_vector(Val(d))
+    p  = pᵈ - iᵈ
+    iᵖ, jᵖ, kᵖ = i + p * di, j + p * dj, k + p * dk
+
+    cᴸ, cᴿ = extrapolation.domain_walls[d]
+    cᵖ  = wall_value(extrapolation.immersed_walls, iᵖ, jᵖ, kᵖ, grid, Val(d), s, c)
+    cʷᴸ = wall_value(cᴸ, iᵖ, jᵖ, kᵖ, grid, Val(d), -1, c)
+    cʷᴿ = wall_value(cᴿ, iᵖ, jᵖ, kᵖ, grid, Val(d), +1, c)
+
+    wallᴸ  = !isnothing(cᴸ) & (pᵈ < 1)
+    wallᴿ  = !isnothing(cᴿ) & (pᵈ > size(grid, d))
+    beyond = ifelse(left, wallᴸ, wallᴿ)
 
     return ifelse(beyond, ifelse(left, cʷᴸ, cʷᴿ), cᵖ)
 end
-
-@inline domain_wall_node(a, b, grid, ::Val{1}, s) = (ifelse(s == -1, 0, size(grid, 1) + 1), a, b)
-@inline domain_wall_node(a, b, grid, ::Val{2}, s) = (a, ifelse(s == -1, 0, size(grid, 2) + 1), b)
-@inline domain_wall_node(a, b, grid, ::Val{3}, s) = (a, b, ifelse(s == -1, 0, size(grid, 3) + 1))
 
 #####
 ##### Tendency
 #####
 
-@inline face_transport(i, j, k, grid, U, ::Val{1}) = @inbounds U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
-@inline face_transport(i, j, k, grid, U, ::Val{2}) = @inbounds U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
-@inline face_transport(i, j, k, grid, U, ::Val{3}) = @inbounds U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
+@inline face_transport(i, j, k, grid, U, ::Val{1}) = Ax_qᶠᶜᶜ(i, j, k, grid, U.u)
+@inline face_transport(i, j, k, grid, U, ::Val{2}) = Ay_qᶜᶠᶜ(i, j, k, grid, U.v)
+@inline face_transport(i, j, k, grid, U, ::Val{3}) = Az_qᶜᶜᶠ(i, j, k, grid, U.w)
 
 # The node 1, 1, 1 keeps the discarded evaluations in bounds where there is no wall cell
 @inline function adjacent_fluid_cell(i, j, k, grid, d, s)
@@ -301,12 +338,12 @@ end
 ##### Kernels over the stored wall values
 #####
 
-# I is the position in `nodes` of an immersed wall, and the position along a wall of the domain
+# I indexes the tendencies and caches: the position in `nodes` of an immersed wall, the index in the reduced fields of a wall
+# of the domain, whose node is the halo node beyond the wall
 @inline wall_node(walls::ImmersedWallValues, I, grid) = @inbounds walls.nodes[I[1]]
-@inline wall_node(::DomainWallValues{d, s}, I, grid) where {d, s} = domain_wall_node(I[1], I[2], grid, Val(d), s)
-
-@inline wall_slot(::ImmersedWallValues, I, i, j, k) = I
-@inline wall_slot(::DomainWallValues{d}, I, i, j, k) where d = wall_index(i, j, k, Val(d))
+@inline wall_node(::DomainWallValues{1, s}, I, grid) where s = (ifelse(s == -1, 0, size(grid, 1) + 1), I[2], I[3])
+@inline wall_node(::DomainWallValues{2, s}, I, grid) where s = (I[1], ifelse(s == -1, 0, size(grid, 2) + 1), I[3])
+@inline wall_node(::DomainWallValues{3, s}, I, grid) where s = (I[1], I[2], ifelse(s == -1, 0, size(grid, 3) + 1))
 
 # The walls of the domain store cʷ, the immersed walls σ cʷ
 @inline stretching(::ImmersedWallValues, i, j, k, grid) = σⁿ(i, j, k, grid, Center(), Center(), Center())
@@ -318,7 +355,7 @@ end
 @kernel function _compute_wall_value_tendency!(walls, grid, weno, U, c)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    @inbounds walls.tendency[wall_slot(walls, I, i, j, k)...] = wall_value_tendency(walls, i, j, k, grid, weno, U, c)
+    @inbounds walls.tendency[I...] = wall_value_tendency(walls, i, j, k, grid, weno, U, c)
 end
 
 @kernel function _initialize_wall_values!(walls, grid, weno, c)
@@ -330,20 +367,18 @@ end
 @kernel function _cache_wall_values!(walls, grid)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    @inbounds walls.cache[wall_slot(walls, I, i, j, k)...] = walls[i, j, k] * stretching(walls, i, j, k, grid)
+    @inbounds walls.cache[I...] = walls[i, j, k] * stretching(walls, i, j, k, grid)
 end
 
 @kernel function _rk_substep_wall_values!(walls, grid, Δt)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    n = wall_slot(walls, I, i, j, k)
-    @inbounds walls[i, j, k] = (walls.cache[n...] + Δt * walls.tendency[n...]) / stretching(walls, i, j, k, grid)
+    @inbounds walls[i, j, k] = (walls.cache[I...] + Δt * walls.tendency[I...]) / stretching(walls, i, j, k, grid)
 end
 
 @kernel function _ab2_step_wall_values!(walls, grid, Δt, χ)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    n = wall_slot(walls, I, i, j, k)
 
     FT = eltype(χ)
     α = 3 * one(FT) / 2 + χ
@@ -354,36 +389,34 @@ end
     σᶜᶜ⁻ = previous_stretching(walls, i, j, k, grid)
 
     @inbounds begin
-        Gⁿ = walls.tendency[n...]
-        ∂t_σcʷ = α * Gⁿ - β * walls.previous_tendency[n...] * not_euler
+        Gⁿ = walls.tendency[I...]
+        ∂t_σcʷ = α * Gⁿ - β * walls.cache[I...] * not_euler
         walls[i, j, k] = (σᶜᶜ⁻ * walls[i, j, k] + Δt * ∂t_σcʷ) / σᶜᶜⁿ
-        walls.previous_tendency[n...] = Gⁿ
+        walls.cache[I...] = Gⁿ
     end
 end
 
 @kernel function _rk3_substep_wall_values!(walls, grid, Δt, γⁿ, ζⁿ)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    n = wall_slot(walls, I, i, j, k)
     @inbounds begin
-        Gⁿ = walls.tendency[n...]
-        walls[i, j, k] += Δt * (γⁿ * Gⁿ + ζⁿ * walls.previous_tendency[n...])
-        walls.previous_tendency[n...] = Gⁿ
+        Gⁿ = walls.tendency[I...]
+        walls[i, j, k] += Δt * (γⁿ * Gⁿ + ζⁿ * walls.cache[I...])
+        walls.cache[I...] = Gⁿ
     end
 end
 
 @kernel function _rk3_substep_wall_values!(walls, grid, Δt, γ¹, ::Nothing)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
-    n = wall_slot(walls, I, i, j, k)
     @inbounds begin
-        Gⁿ = walls.tendency[n...]
+        Gⁿ = walls.tendency[I...]
         walls[i, j, k] += Δt * γ¹ * Gⁿ
-        walls.previous_tendency[n...] = Gⁿ
+        walls.cache[I...] = Gⁿ
     end
 end
 
-launch_over_wall_values!(::Nothing, kernel!::K, args::Vararg{Any, N}) where {K, N} = nothing
+launch_over_wall_values!(::Union{Nothing, BoundaryCondition}, kernel!::K, args::Vararg{Any, N}) where {K, N} = nothing
 
 # A map over the positions in `nodes` launches the same kernel for any number of nodes, whose count is known only at runtime
 function launch_over_wall_values!(walls::ImmersedWallValues, kernel!::K, args::Vararg{Any, N}) where {K, N}
@@ -392,10 +425,11 @@ function launch_over_wall_values!(walls::ImmersedWallValues, kernel!::K, args::V
     return nothing
 end
 
-# The positions on the walls of the domain normal to d run along the other two directions
-launch_over_wall_values!(walls::DomainWallValues{1}, kernel!::K, args::Vararg{Any, N}) where {K, N} = launch!(architecture(walls.values.grid), walls.values.grid, Val(:yz), kernel!, walls, walls.values.grid, args...)
-launch_over_wall_values!(walls::DomainWallValues{2}, kernel!::K, args::Vararg{Any, N}) where {K, N} = launch!(architecture(walls.values.grid), walls.values.grid, Val(:xz), kernel!, walls, walls.values.grid, args...)
-launch_over_wall_values!(walls::DomainWallValues{3}, kernel!::K, args::Vararg{Any, N}) where {K, N} = launch!(architecture(walls.values.grid), walls.values.grid, Val(:xy), kernel!, walls, walls.values.grid, args...)
+function launch_over_wall_values!(walls::DomainWallValues, kernel!::K, args::Vararg{Any, N}) where {K, N}
+    grid = walls.values.grid
+    launch!(architecture(grid), grid, size(walls.values), kernel!, walls, grid, args...)
+    return nothing
+end
 
 function launch_over_wall_values!(advection::StoredWallValueWENO, kernel!::K, args::Vararg{Any, N}) where {K, N}
     extrapolation = transported_wall_value(advection)
@@ -448,11 +482,11 @@ Return the fields of the wall values that `advection` stores, whose halos the re
 """
 wall_value_fields(advection) = ()
 wall_value_fields(collection::NamedTuple)  = map(wall_value_fields, values(collection))
-wall_value_fields(walls::DomainWallValues) = walls.values
+wall_value_fields(walls::Union{ImmersedWallValues, DomainWallValues}) = walls.values
 
 function wall_value_fields(advection::StoredWallValueWENO)
     extrapolation = transported_wall_value(advection)
-    return (extrapolation.immersed_walls.values, wall_value_fields(extrapolation.domain_walls))
+    return (wall_value_fields(extrapolation.immersed_walls), wall_value_fields(extrapolation.domain_walls))
 end
 
 fill_wall_value_halos!(advection) = fill_halo_regions!(wall_value_fields(advection); async = true)
@@ -468,15 +502,11 @@ Oceananigans.prognostic_state(extrapolation::TransportedWallValue) =
     (immersed_walls = Oceananigans.prognostic_state(extrapolation.immersed_walls),
      domain_walls   = Oceananigans.prognostic_state(extrapolation.domain_walls))
 
-Oceananigans.prognostic_state(walls::ImmersedWallValues) =
-    (values = Oceananigans.prognostic_state(walls.values), previous_tendency = on_architecture(CPU(), walls.previous_tendency))
-
-Oceananigans.prognostic_state(walls::DomainWallValues) =
-    (values = Oceananigans.prognostic_state(walls.values), previous_tendency = Oceananigans.prognostic_state(walls.previous_tendency))
+Oceananigans.prognostic_state(walls::Union{ImmersedWallValues, DomainWallValues}) =
+    (values = Oceananigans.prognostic_state(walls.values), cache = on_architecture(CPU(), walls.cache))
 
 Oceananigans.restore_prognostic_state!(advection::StoredWallValueWENO, ::Nothing) = advection
-Oceananigans.restore_prognostic_state!(::ImmersedWallValues, ::Nothing) = nothing
-Oceananigans.restore_prognostic_state!(::DomainWallValues, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Union{ImmersedWallValues, DomainWallValues}, ::Nothing) = nothing
 
 function Oceananigans.restore_prognostic_state!(advection::StoredWallValueWENO, from)
     extrapolation = transported_wall_value(advection)
@@ -485,14 +515,8 @@ function Oceananigans.restore_prognostic_state!(advection::StoredWallValueWENO, 
     return advection
 end
 
-function Oceananigans.restore_prognostic_state!(walls::ImmersedWallValues, from)
+function Oceananigans.restore_prognostic_state!(walls::Union{ImmersedWallValues, DomainWallValues}, from)
     Oceananigans.restore_prognostic_state!(walls.values, from.values)
-    copyto!(walls.previous_tendency, from.previous_tendency)
-    return walls
-end
-
-function Oceananigans.restore_prognostic_state!(walls::DomainWallValues, from)
-    Oceananigans.restore_prognostic_state!(walls.values, from.values)
-    Oceananigans.restore_prognostic_state!(walls.previous_tendency, from.previous_tendency)
+    copyto!(walls.cache, from.cache)
     return walls
 end

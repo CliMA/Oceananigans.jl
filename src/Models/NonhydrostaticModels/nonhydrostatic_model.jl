@@ -257,7 +257,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
                                           default_generator, with_velocities=false)
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
-    advection = materialize_model_advection(advection, grid, tracer_names)
+    advection = materialize_model_advection(advection, grid)
 
     grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
@@ -294,6 +294,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
     end
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
+    advection = materialize_wall_values(advection, grid, boundary_conditions, tracer_names)
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracer_names, closure)
@@ -371,10 +372,9 @@ timestepper(model::NonhydrostaticModel) = model.timestepper
 
 # Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
 # `inflate_grid_halo_size` and would therefore be boxed.
-function materialize_model_advection(advection, grid, tracer_names)
+function materialize_model_advection(advection, grid)
     adapted = map(scheme -> adapt_advection_order(scheme, grid), advection)
-    materialized = map(scheme -> materialize_advection(scheme, grid), adapted)
-    return materialize_wall_values(materialized, grid, tracer_names)
+    return map(scheme -> materialize_advection(scheme, grid), adapted)
 end
 
 reconcile_state!(model::NonhydrostaticModel) = initialize_wall_values!(model.advection, model.tracers)

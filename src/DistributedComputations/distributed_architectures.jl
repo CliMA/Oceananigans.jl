@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology
 
-import Oceananigans.Architectures: device, device!, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
+import Oceananigans.Architectures: device, device!, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device, synchronize_field_tags!
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
@@ -363,6 +363,14 @@ function check_field_tags(communicator::MPI.Comm, field_count)
     MPI.Allreduce(field_count, min, communicator) == MPI.Allreduce(field_count, max, communicator) ||
         throw(ArgumentError("MPI ranks created different numbers of distributed fields, so their halo exchanges would never match. " *
                             "All ranks must create the same distributed fields, in the same order."))
+    return nothing
+end
+
+synchronize_field_tags!(arch::Distributed) = synchronize_field_tags!(arch.communicator, arch.field_count)
+synchronize_field_tags!(communicator, field_count) = nothing # e.g. Reactant meshes
+
+function synchronize_field_tags!(communicator::MPI.Comm, field_count)
+    field_count[] = MPI.Allreduce(field_count[], max, communicator)
     return nothing
 end
 
