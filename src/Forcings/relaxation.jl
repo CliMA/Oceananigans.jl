@@ -3,7 +3,7 @@ using Oceananigans.Grids: node, xnodes, ynodes, Face, Center
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 using Oceananigans.Utils: prettysummary
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
@@ -315,12 +315,12 @@ Base.summary(r::InflowOutflowRate{D}) where D =
 # dispatch on `loc` so u-points, v-points, and centers each get the right interpolation stencil
 @inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Face, Center, Center})
     u = @inbounds model_fields.u[i, j, k]
-    v = ℑxyᶠᶜᵃ(i, j, k, grid, model_fields.v)
+    v = active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, model_fields.v)
     return u, v
 end
 
 @inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Face, Center})
-    u = ℑxyᶜᶠᵃ(i, j, k, grid, model_fields.u)
+    u = active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, model_fields.u)
     v = @inbounds model_fields.v[i, j, k]
     return u, v
 end
