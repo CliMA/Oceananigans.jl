@@ -197,19 +197,10 @@ end
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
-@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
+# The source term of the tridiagonal solve is the right-hand side times the spacing in the tridiagonal direction
+@kernel function fourier_tridiagonal_preconditioner_rhs!(source_term, tridiagonal_direction, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-end
-
-@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
-    i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-end
-
-@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
-    i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    @inbounds source_term[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid) * Δξᶜᶜᶜ(i, j, k, grid, tridiagonal_direction)
 end
 
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
@@ -224,7 +215,7 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, fourier_tridiagonal_preconditioner_rhs!,
-            solver.storage, tridiagonal_dir, grid, rhs)
+            solver.source_term, tridiagonal_dir, grid, rhs)
     return nothing
 end
 
@@ -232,7 +223,7 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 @inline function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    solve!(p, preconditioner, preconditioner.storage)
+    solve!(p, preconditioner)
     return p
 end
 
