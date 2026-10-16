@@ -13,7 +13,8 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
 using Oceananigans.Grids: Center, Face, znode
 using Oceananigans.Operators: volume, ℑzᵃᵃᶠ
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
-                                 RungeKutta3TimeStepper, time_discretization, implicit_step!, reset!
+                                 RungeKutta3TimeStepper, time_discretization, implicit_step!, reset!,
+                                 SSPRungeKuttaTimeStepper, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
@@ -362,6 +363,31 @@ end
 
     @test isfinite(scheme.time_discretization.Δt[])
     @test all(isfinite, interior(scheme.bounds.limiter))
+end
+
+@testset "adaptive_advection_timestep across timesteppers" begin
+    grid = RectilinearGrid(CPU(), size=(1, 1, 4), extent=(1, 1, 1))
+    Δt = 60.0
+
+    # Each SSP stage is a forward-Euler step over the full Δt, so the explicit scaling and the implicit solve
+    # must see the same Δt at every stage.
+    ssp = SSPRungeKuttaTimeStepper()
+    for stage in 1:3
+        clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt, stage=stage)
+        @test adaptive_advection_timestep(ssp, clock) == Δt
+    end
+
+    # The low-storage stages are Euler steps of Δt / βᵐ, and the scheme must be primed with the *next* one.
+    split = SplitRungeKuttaTimeStepper(stages=3)
+    for stage in 1:3
+        clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt/split.β[stage], stage=stage)
+        nstage = stage < split.Nstages ? stage + 1 : 1
+        @test adaptive_advection_timestep(split, clock) ≈ Δt / split.β[nstage]
+    end
+
+    qab2 = QuasiAdamsBashforth2TimeStepper(grid, (; c = CenterField(grid)))
+    clock = Clock(time=0.0, last_Δt=Δt, last_stage_Δt=Δt, stage=1)
+    @test adaptive_advection_timestep(qab2, clock) == Δt
 end
 
 @testset "AIVA Δt is the Δt of the upcoming RK3 stage" begin
