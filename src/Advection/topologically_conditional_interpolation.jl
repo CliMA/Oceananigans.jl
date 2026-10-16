@@ -77,6 +77,12 @@ for dir in (:x, :y, :z)
     end
 end
 
+# The high-order interpolant and its buffer-scheme fallback may have different types (for example a BFloat16 field
+# reconstructed by WENO in Float32 and by Centered in BFloat16). `ifelse` of two types returns a `Union`, which GPU
+# compilers lower to branches and a local-memory slot, so both branches are promoted to a common type.
+@inline promoting_ifelse(condition, a::Number, b::Number) = ifelse(condition, promote(a, b)...)
+@inline promoting_ifelse(condition, a, b) = ifelse(condition, a, b)
+
 # Separate High order advection from low order advection
 const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
@@ -104,23 +110,23 @@ for bias in (:symmetric, :biased)
             if ξ == :x
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AGX, scheme::HOADV, args...) =
-                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
-                                   $interp(i, j, k, grid, scheme, args...),
-                                   $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                            promoting_ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                                             $interp(i, j, k, grid, scheme, args...),
+                                             $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AGY, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                        promoting_ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
+                                         $interp(i, j, k, grid, scheme, args...),
+                                         $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AGZ, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                        promoting_ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
+                                         $interp(i, j, k, grid, scheme, args...),
+                                         $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             end
         end

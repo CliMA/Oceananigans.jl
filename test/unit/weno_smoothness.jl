@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans: fully_supported_float_types
 using Oceananigans.Advection: beta_loop, biased_weno_weights, global_smoothness_indicator, C★, ϵ
+using Oceananigans.Advection: biased_interpolate_xᶠᵃᵃ, _biased_interpolate_zᵃᵃᶠ, LeftBias, RightBias, BFloat16
 using Oceananigans.Utils: NormalDivision, BackendOptimizedDivision
 
 # ZWENO weights evaluated in BigFloat from the smoothness indicators of `scheme`, so that only the α computation
@@ -70,5 +71,36 @@ end
             # the β agree only to FT rounding, so τ ≠ 0 moves the weights off the optimal ones by O((τ / β)²)
             @test all(isapprox.(ω, optimal; rtol=1e-6 + (τ / minimum(β))^2))
         end
+    end
+end
+
+# BFloat16 is a storage format for WENO: the reconstruction of a BFloat16 field is computed and returned in Float32
+@testset "BFloat16 WENO reconstruction is the Float32 reconstruction" begin
+    for order in (3, 5, 7, 9), bias in (LeftBias, RightBias), weight_computation in (NormalDivision, BackendOptimizedDivision)
+        buffer = (order + 1) ÷ 2
+        profiles = [jump_stencil(BFloat16, buffer, slope, jump) for slope in (0, 1000) for jump in exp2.(8:8:56)]
+        push!(profiles, smooth_stencil(BFloat16, buffer))
+
+        for S in profiles
+            ψ = reshape(collect((S..., S[end])), :, 1, 1)
+            i = buffer + 1
+            ψ̂ = biased_interpolate_xᶠᵃᵃ(i, 1, 1, nothing, WENO(BFloat16; order, weight_computation), bias, ψ)
+            ψ̂³² = biased_interpolate_xᶠᵃᵃ(i, 1, 1, nothing, WENO(Float32; order, weight_computation), bias, Float32.(ψ))
+            @test ψ̂ isa Float32
+            @test isfinite(ψ̂)
+            @test isapprox(ψ̂, ψ̂³²; rtol=2eps(Float32)) # @muladd may contract differently
+        end
+    end
+end
+
+# The boundary fallback (Centered in BFloat16) is promoted to the Float32 type of the WENO reconstruction
+@testset "BFloat16 WENO interpolation beside a boundary is type-stable" begin
+    grid = RectilinearGrid(CPU(), BFloat16; size=12, z=(0, 1), halo=5, topology=(Flat, Flat, Bounded))
+    c = CenterField(grid)
+    set!(c, z -> z^2)
+
+    for order in (3, 5, 7, 9), bias in (LeftBias, RightBias), k in 1:13
+        scheme = WENO(BFloat16; order, weight_computation=NormalDivision)
+        @test @inferred(_biased_interpolate_zᵃᵃᶠ(1, 1, k, grid, scheme, bias, c)) isa Float32
     end
 end
