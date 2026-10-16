@@ -2,6 +2,12 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Zarr
 using Dates: value
+using Oceananigans.Grids: MutableVerticalDiscretization, rnodes
+
+struct ExtraPayloadTestVerticalCoordinate{C, P} <: Oceananigans.Grids.AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    payload :: P
+end
 
 #####
 ##### ZarrWriter construction and display
@@ -86,6 +92,10 @@ using Dates: value
     @test materialize("-Inf") === -Inf
     @test materialize("+Inf") === Inf
     @test_throws ArgumentError materialize("run(\`touch unsafe_output_metadata\`)")
+
+    mutable_coordinate = materialize("MutableVerticalDiscretization([-1.0, -0.5, 0.0])")
+    @test mutable_coordinate isa MutableVerticalDiscretization
+    @test mutable_coordinate.cᵃᵃᶠ == [-1.0, -0.5, 0.0]
 end
 
 #####
@@ -417,7 +427,45 @@ using Oceananigans.Fields: Field
         @test size(rg_coarse) == (2, 2, 2)
 
         rm(multi_path; recursive=true, force=true)
+
+        # --- Mutable vertical coordinate: only the reference interfaces are serialized ---
+        r_faces = collect(range(-100.0, 0.0; length=5))
+        mutable_grid = RectilinearGrid(arch; size=(4, 4, 4), x=(0, 1), y=(0, 1),
+                                       z=MutableVerticalDiscretization(r_faces),
+                                       topology=(Periodic, Periodic, Bounded))
+        ZStar = Oceananigans.Models.HydrostaticFreeSurfaceModels.ZStarCoordinate
+        mutable_model = HydrostaticFreeSurfaceModel(mutable_grid;
+                                                    free_surface=SplitExplicitFreeSurface(mutable_grid; substeps=10),
+                                                    tracers=(:T,),
+                                                    vertical_coordinate=ZStar())
+
+        mutable_path = abspath(joinpath(".", "test_zarr_mutable_grid.zarr"))
+        isdir(mutable_path) && rm(mutable_path; recursive=true, force=true)
+
+        simulation3 = Simulation(mutable_model; Δt=0.5, stop_iteration=1, verbose=false)
+        simulation3.output_writers[:fields] = ZarrWriter(mutable_model, (; T=mutable_model.tracers.T);
+                                                         filename = "test_zarr_mutable_grid",
+                                                         dir = ".",
+                                                         schedule = IterationInterval(1),
+                                                         overwrite_files = true)
+        run!(simulation3)
+
+        gz = Zarr.zopen(mutable_path)
+        @test gz.groups["grid"].attrs["underlying_grid_reconstruction_kwargs"]["z"] ==
+              "MutableVerticalDiscretization($r_faces)"
+
+        reconstructed_mutable = reconstruct_zarr_grid(gz; architecture=arch)
+        @test reconstructed_mutable.z isa MutableVerticalDiscretization
+        @test Array(rnodes(reconstructed_mutable, Face())) == r_faces
+
+        rm(mutable_path; recursive=true, force=true)
     end
+
+    # A vertical coordinate defined outside Oceananigans (e.g. terrain-following) is serialized
+    # by type name and reference interfaces alone, whatever else it carries.
+    large_payload = zeros(1000, 1000)
+    custom = ExtraPayloadTestVerticalCoordinate([0.0, 1.0, 2.0], large_payload)
+    @test ZarrExt.convert_for_zarr(custom) == "ExtraPayloadTestVerticalCoordinate([0.0, 1.0, 2.0])"
 end
 
 #####
