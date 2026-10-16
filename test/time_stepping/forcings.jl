@@ -658,6 +658,34 @@ end
                 @test c_west > c_east # inflow relaxes toward target faster than outflow
             end
 
+            @testset "Relaxation rate normal velocities near immersed boundaries [$(summary(arch))]" begin
+                # Single interior land cell, away from the domain edges, so wall halo
+                # treatment can't be confused with immersed boundary masking.
+                underlying_grid = RectilinearGrid(arch, size=(6, 6, 1), extent=(6, 6, 1), topology=(Periodic, Periodic, Bounded))
+                bottom = [(i == 3 && j == 3) ? 1 : -1 for i in 1:6, j in 1:6]
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+                u = XFaceField(grid)
+                v = YFaceField(grid)
+                set!(u, 1)
+                set!(v, 1/2)
+                mask_immersed_field!(u)
+                mask_immersed_field!(v)
+                fill_halo_regions!(u)
+                fill_halo_regions!(v)
+                model_fields = (u=u, v=v)
+
+                # At these wet faces, a plain 2D interpolation of the transverse velocity
+                # pulls in the masked (zeroed) land value and dilutes the result toward
+                # zero; `normal_velocities` must use the active-weighted interpolation
+                # instead, recovering the true open-water value exactly.
+                _, v_at_u_point = Oceananigans.Forcings.normal_velocities(3, 2, 1, grid, model_fields, (Face(), Center(), Center()))
+                u_at_v_point, _ = Oceananigans.Forcings.normal_velocities(2, 3, 1, grid, model_fields, (Center(), Face(), Center()))
+
+                @test v_at_u_point ≈ 1/2
+                @test u_at_v_point ≈ 1
+            end
+
             @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
                 grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
                 τ     = 60
