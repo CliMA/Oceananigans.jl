@@ -1,3 +1,4 @@
+using Oceananigans.Advection: wall_value_fields
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
@@ -17,7 +18,7 @@ $(TYPEDSIGNATURES)
 Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
 This method is called after interior momentum tendencies are computed to:
-1. synchronize halo communication for tracers and velocities,
+1. synchronize halo communication for tracers, their wall values and velocities,
 2. compute diagnostic fields (buoyancy gradients, pressure, closure_fields) in the buffer regions, and
 3. compute momentum tendencies in cells that depend on halo data.
 """
@@ -25,10 +26,11 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize tracers
+    # Synchronize tracers and their wall values
     for tracer in model.tracers
         synchronize_communication!(tracer)
     end
+    synchronize_communication!(wall_value_fields(model.advection))
 
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)

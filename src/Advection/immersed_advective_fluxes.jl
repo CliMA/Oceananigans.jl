@@ -221,6 +221,10 @@ for bias in (:symmetric, :biased)
                            $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, $(b...), args...),
                            $interp(i, j, k, ibg, scheme, $(b...), args...))
             end
+
+            if bias == :biased
+                @eval @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::GhostCellWENO, bias, ψ, args...) = $interp(i, j, k, ibg, scheme.buffer_scheme, bias, ψ, args...)
+            end
         end
     end
 end

@@ -2,6 +2,7 @@ import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.Advection: compute_wall_value_tendencies!
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
@@ -68,6 +69,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     compute_biogeochemical_transitions!(model, :xyz)
 
     compute_tracer_flux_bcs!(model)
+    compute_wall_value_tendencies!(model.advection, model.transport_velocities, model.tracers)
 
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
 

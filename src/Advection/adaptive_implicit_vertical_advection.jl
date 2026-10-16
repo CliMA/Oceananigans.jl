@@ -119,6 +119,7 @@ end
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
     update_bounds_preserving_limiter!(scheme, model.grid, tracer)
+    fill_wall_value_halos!(scheme)
     return nothing
 end
 

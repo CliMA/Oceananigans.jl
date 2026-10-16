@@ -19,7 +19,7 @@ end
     WENO([FT=Oceananigans.defaults.FloatType;]
          weight_computation=Nothing,
          order = 5,
-         boundary_scheme = Centered(FT; order=2),
+         boundary_scheme = nothing,
          time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
          maximum_courant_number = 5//18)
@@ -39,7 +39,9 @@ Keyword arguments
 - `order`: The order of the WENO advection scheme. Default: 5.
 - `boundary_scheme`: The reconstruction the buffer chain terminates in, used in a cell whose stencil no longer
                      fits, i.e. against a boundary. The chain steps the order down by two until third order and
-                     then reaches for it. Default: `Centered(FT; order=2)`.
+                     then reaches for it. A [`GhostCells`](@ref) instead keeps the full order and completes the
+                     stencil with ghost values. Default: `nothing`, which selects `GhostCells()` from fifth order
+                     and `Centered(FT; order=2)` below.
 - `bounds` (experimental): A tuple `(cᵐⁱⁿ, cᵐᵃˣ)` switching on the maximum-principle-satisfying limiter of
                            Zhang and Shu (2010), which rescales the reconstruction of every cell towards the cell
                            mean so that the advective update stays within `bounds`. One rescaling factor is
@@ -60,8 +62,7 @@ julia> using Oceananigans
 
 julia> WENO()
 WENO{3, Float64, Nothing}(order=5)
-├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 
@@ -71,10 +72,7 @@ yet minimally-dissipative advection scheme):
 ```jldoctest weno
 julia> WENO(order=9)
 WENO{5, Float64, Nothing}(order=9)
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
-│           └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
@@ -92,10 +90,7 @@ WENO{4, Float64, Nothing}(order=7)
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
 WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
-├── buffer_scheme: WENO{4, Float64, Nothing}(order=7, bounds=(0.0, 1.0))
-│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
-│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
-│           └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
@@ -103,15 +98,14 @@ To build a WENO scheme that uses approximate division on a GPU to execute faster
 ```jldoctest weno
 julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
-├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
-│   └── buffer_scheme: Centered(order=2)
+├── buffer_scheme: GhostCells()
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,
               order = 5,
-              boundary_scheme = Centered(FT; order=2),
+              boundary_scheme = nothing,
               buffer_scheme = nothing,
               time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
@@ -127,12 +121,18 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         return UpwindBiased(FT; order=1)
     else
         advecting_velocity_scheme = Centered(FT; order=order-1)
+        N = Int((order + 1) ÷ 2)
 
-        if isnothing(buffer_scheme)
+        boundary_scheme = something(boundary_scheme, order ≥ 5 ? GhostCells(FT) : Centered(FT; order=2))
+
+        if isnothing(buffer_scheme) && boundary_scheme isa GhostCells
+            order < 5 && throw(ArgumentError("GhostCells requires a WENO order of at least 5"))
+            unbuffered = WENO{N, FT, weight_computation}(nothing, nothing, advecting_velocity_scheme, time_discretization)
+            buffer_scheme = GhostCells(unbuffered, boundary_scheme.extrapolation)
+        elseif isnothing(buffer_scheme)
             buffer_scheme = order ≤ 3 ? boundary_scheme : WENO(FT; order=order-2, bounds, maximum_courant_number, weight_computation, boundary_scheme)
         end
 
-        N = Int((order + 1) ÷ 2)
         preserved_bounds = isnothing(bounds) ? nothing :
             BoundsPreservation(convert(FT, bounds[1]), convert(FT, bounds[2]), convert(FT, maximum_courant_number), nothing)
 
