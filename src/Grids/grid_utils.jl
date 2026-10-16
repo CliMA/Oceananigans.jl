@@ -12,8 +12,9 @@ for (instantiated) location `ℓ`, topology `T`, dimension length `N` and halo s
     if with_halos
         return ξ
     else
-        i = interior_parent_indices(ℓ, T(), N, H)
-        return view(parent(ξ), i)
+        i = interior_indices(ℓ, T(), N)
+        parent_i = i .- firstindex(ξ) .+ 1
+        return view(parent(ξ), parent_i)
     end
 end
 
