@@ -1,6 +1,36 @@
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt, compute_flux_bc_tendencies!
 import Oceananigans.TimeSteppers: rk3_substep!
 
+@kernel function _rk3_substep_immersed_velocity!(U, grid, (ℓx, ℓy, ℓz), Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        value = U[i, j, k] + Δt * (γⁿ * Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+        masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+        U[i, j, k] = ifelse(masked, zero(eltype(grid)), value)
+    end
+end
+
+@kernel function _rk3_substep_immersed_velocity!(U, grid, (ℓx, ℓy, ℓz), Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        value = U[i, j, k] + Δt * γ¹ * G¹[i, j, k]
+        masked = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+        U[i, j, k] = ifelse(masked, zero(eltype(grid)), value)
+    end
+end
+
+@inline function rk3_substep_velocity!(u, grid, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, implicit_solver)
+    if implicit_solver !== nothing && u isa Field
+        launch!(architecture(grid), grid, :xyz, _rk3_substep_immersed_velocity!,
+                u, grid, instantiated_location(u), Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    else
+        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!,
+                u, Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    end
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -35,7 +65,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     compute_flux_bc_tendencies!(model)
 
     # Prognostic variables stepping
-    @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, u, Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)
+    @inline substep_velocity!(u, Gⁿ, G⁻) = rk3_substep_velocity!(u, grid, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, model.timestepper.implicit_solver)
     @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, c, Δt, γⁿ, ζⁿ, Gⁿ, G⁻)
 
     step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δτ)
