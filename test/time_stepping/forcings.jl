@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
+using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation,
+                              InterpolatedFieldTarget, InflowOutflowRelaxation, MaterializedRelaxationTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -596,6 +597,71 @@ end
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+            end
+
+            @testset "Relaxation with InflowOutflowRate [$(summary(arch))]" begin
+                grid = RectilinearGrid(arch, size=(4, 4, 1), extent=(4, 4, 1), topology=(Bounded, Bounded, Bounded))
+                c_ref = 5
+                west_edge, east_edge = extrema(xnodes(grid, Center(), Center(), Center()))
+
+                # Spatial shaping is `mask`'s job, same as any other `Relaxation`; `InflowOutflowRate`
+                # only chooses between `inflow_rate` and `outflow_rate`. One `Relaxation` per sponged edge.
+                west_relaxation = Relaxation(rate=InflowOutflowRate{:west}(inflow_rate=1/60, outflow_rate=1/6000),
+                                              mask=GaussianMask{:x}(center=west_edge, width=0.3), target=c_ref)
+                east_relaxation = Relaxation(rate=InflowOutflowRate{:east}(inflow_rate=1/60, outflow_rate=1/6000),
+                                              mask=GaussianMask{:x}(center=east_edge, width=0.3), target=c_ref)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=(west_relaxation, east_relaxation),))
+
+                # Materialization bypasses ContinuousForcing (which has no `model_fields` hook)
+                # and wires in the field index + location directly.
+                rm = model.forcing.c
+                @test rm isa MultipleForcings
+                @test all(f isa InflowOutflowRelaxation for f in rm.forcings)
+                @test all(f.target isa MaterializedRelaxationTarget for f in rm.forcings)
+
+                # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ inflow_rate),
+                # east edge sees outflow (u_n < 0 is false ⇒ outflow_rate).
+                # enforce_incompressibility=false: the pressure correction otherwise
+                # drives this uniform flow back to zero against the default open
+                # boundary condition on u.
+                set!(model, u=1, c=0; enforce_incompressibility=false)
+                Δt = 1
+                time_step!(model, Δt)
+
+                c_after = Array(interior(model.tracers.c))
+                c_west  = c_after[1, 2, 1] # near the west (inflow) edge
+                c_east  = c_after[4, 2, 1] # near the east (outflow) edge
+
+                @test all(isfinite, c_after)
+                @test c_west > c_east # inflow relaxes toward target faster than outflow
+            end
+
+            @testset "Relaxation rate normal velocities near immersed boundaries [$(summary(arch))]" begin
+                # Single interior land cell, away from the domain edges, so wall halo
+                # treatment can't be confused with immersed boundary masking.
+                underlying_grid = RectilinearGrid(arch, size=(6, 6, 1), extent=(6, 6, 1), topology=(Periodic, Periodic, Bounded))
+                bottom = [(i == 3 && j == 3) ? 1 : -1 for i in 1:6, j in 1:6]
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+                u = XFaceField(grid)
+                v = YFaceField(grid)
+                set!(u, 1)
+                set!(v, 1/2)
+                mask_immersed_field!(u)
+                mask_immersed_field!(v)
+                fill_halo_regions!(u)
+                fill_halo_regions!(v)
+                model_fields = (u=u, v=v)
+
+                # At these wet faces, a plain 2D interpolation of the transverse velocity
+                # pulls in the masked (zeroed) land value and dilutes the result toward
+                # zero; `normal_velocities` must use the active-weighted interpolation
+                # instead, recovering the true open-water value exactly.
+                _, v_at_u_point = Oceananigans.Forcings.normal_velocities(3, 2, 1, grid, model_fields, (Face(), Center(), Center()))
+                u_at_v_point, _ = Oceananigans.Forcings.normal_velocities(2, 3, 1, grid, model_fields, (Center(), Face(), Center()))
+
+                @test v_at_u_point ≈ 1/2
+                @test u_at_v_point ≈ 1
             end
 
             @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
