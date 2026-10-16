@@ -126,14 +126,14 @@ end
     ℓx, ℓy, ℓz = loc
     i = grid.Nx + 1
     uₙ = @inbounds model_fields.u[i, j, k]
-    closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
+    closed = immersed_peripheral_node(grid.Nx, j, closure_level(k, grid, ℓz), grid, Center(), ℓy, ℓz)
     return reservoir_halo!((i, j, k), (i-1, j, k), j, k, grid, c, bc, uₙ, uₙ >= 0, closed, clock, model_fields)
 end
 
 @inline function _fill_west_halo!(j, k, grid, c, bc::TRVBC, loc::CAA, clock, model_fields)
     ℓx, ℓy, ℓz = loc
     uₙ = @inbounds model_fields.u[1, j, k]
-    closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
+    closed = immersed_peripheral_node(1, j, closure_level(k, grid, ℓz), grid, Center(), ℓy, ℓz)
     return reservoir_halo!((0, j, k), (1, j, k), j, k, grid, c, bc, uₙ, uₙ <= 0, closed, clock, model_fields)
 end
 
@@ -141,14 +141,14 @@ end
     ℓx, ℓy, ℓz = loc
     j = grid.Ny + 1
     uₙ = @inbounds model_fields.v[i, j, k]
-    closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
+    closed = immersed_peripheral_node(i, grid.Ny, closure_level(k, grid, ℓz), grid, ℓx, Center(), ℓz)
     return reservoir_halo!((i, j, k), (i, j-1, k), i, k, grid, c, bc, uₙ, uₙ >= 0, closed, clock, model_fields)
 end
 
 @inline function _fill_south_halo!(i, k, grid, c, bc::TRVBC, loc::ACA, clock, model_fields)
     ℓx, ℓy, ℓz = loc
     uₙ = @inbounds model_fields.v[i, 1, k]
-    closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
+    closed = immersed_peripheral_node(i, 1, closure_level(k, grid, ℓz), grid, ℓx, Center(), ℓz)
     return reservoir_halo!((i, 0, k), (i, 1, k), i, k, grid, c, bc, uₙ, uₙ <= 0, closed, clock, model_fields)
 end
 

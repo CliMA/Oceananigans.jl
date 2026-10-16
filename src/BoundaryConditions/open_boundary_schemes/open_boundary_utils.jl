@@ -22,6 +22,10 @@ const AAC = Tuple{Any, Any, Center}
 @inline anchored_fill(clock) = clock.stage ≤ 1
 @inline anchored_fill(::Nothing) = true
 
+# Fields with no vertical location (e.g. sea ice) are closed only where the top cell is immersed.
+@inline closure_level(k, grid, ℓz) = k
+@inline closure_level(k, grid, ::Nothing) = size(grid, 3)
+
 # A `target_transport` is `nothing`, a fixed transport, or a callable of the grid (kept as is).
 convert_target_transport(FT, ::Nothing) = nothing
 convert_target_transport(FT, target_transport::Number) = convert(FT, target_transport)

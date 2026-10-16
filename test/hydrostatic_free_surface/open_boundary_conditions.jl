@@ -678,6 +678,34 @@ function test_tracer_reservoir_recovers_exported_water()
            isapprox(mirrored, partial, rtol = 1e-10)
 end
 
+# A field with no vertical location on a 3D immersed grid is closed only where the boundary column is dry,
+# not wherever the column is shallower than the grid: inflow on all four sides imports the exterior value.
+function test_open_boundary_no_vertical_location(scheme, bottom_height)
+    Lx, Ly = 8e3, 6e3
+    underlying_grid = RectilinearGrid(size = (8, 6, 10), x = (0, Lx), y = (0, Ly), z = (-5000, 0),
+                                      topology = (Bounded, Bounded, Bounded), halo = (3, 3, 3))
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom((x, y) -> bottom_height))
+
+    cᵉˣᵗ = 0.7
+    bc = ValueBoundaryCondition(cᵉˣᵗ; scheme)
+    bcs = FieldBoundaryConditions(grid, (Center(), Center(), nothing); west = bc, east = bc, south = bc, north = bc)
+    c = Field{Center, Center, Nothing}(grid; boundary_conditions = bcs)
+
+    u = Field{Face, Center, Nothing}(grid)
+    v = Field{Center, Face, Nothing}(grid)
+    set!(u, (x, y) -> x < Lx / 2 ? 0.1 : -0.1)
+    set!(v, (x, y) -> y < Ly / 2 ? 0.1 : -0.1)
+    fill_halo_regions!((u, v))
+    fill_halo_regions!(c, Clock(grid), (; u, v))
+
+    expected = bottom_height < 0 ? cᵉˣᵗ : 0
+    data = on_architecture(CPU(), c.data)
+    Nx, Ny = size(grid)
+    halos = (data[0, 1:Ny, 1], data[Nx+1, 1:Ny, 1], data[1:Nx, 0, 1], data[1:Nx, Ny+1, 1])
+
+    return all(h -> all(==(expected), h), halos)
+end
+
 #####
 ##### Test: GravityWaveRadiation with a target transport
 #####
@@ -817,5 +845,10 @@ end
 
     @testset "TracerReservoir recovers exported water" begin
         @test test_tracer_reservoir_recovers_exported_water()
+    end
+
+    @testset "$(nameof(typeof(scheme))) closes fields with no vertical location only at dry columns" for
+            scheme in (TracerReservoir(), NormalRadiation()), bottom_height in (-6000.0, -1000.0, 1.0)
+        @test test_open_boundary_no_vertical_location(scheme, bottom_height)
     end
 end

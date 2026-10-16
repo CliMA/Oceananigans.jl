@@ -219,7 +219,7 @@ end
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
+        closed = immersed_peripheral_node(grid.Nx, j, closure_level(k, grid, ℓz), grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[j, k]  = φ₁ⁿ
@@ -251,7 +251,7 @@ end
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
+        closed = immersed_peripheral_node(1, j, closure_level(k, grid, ℓz), grid, Center(), ℓy, ℓz)
         c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[j, k]  = φ₁ⁿ
@@ -283,7 +283,7 @@ end
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
+        closed = immersed_peripheral_node(i, grid.Ny, closure_level(k, grid, ℓz), grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[i, k]  = φ₁ⁿ
@@ -315,7 +315,7 @@ end
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-        closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
+        closed = immersed_peripheral_node(i, 1, closure_level(k, grid, ℓz), grid, ℓx, Center(), ℓz)
         c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹)
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor old values for sub-stages
         radiation.φ₁[i, k]  = φ₁ⁿ
