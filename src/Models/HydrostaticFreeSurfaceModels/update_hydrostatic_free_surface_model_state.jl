@@ -78,9 +78,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
     update_biogeochemical_state!(model.biogeochemistry, model)
+    update_advection!(model.advection, model)
 
     @apply_regionally begin
-        update_advection!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
         compute_coriolis_prognostic_tendencies!(model.coriolis, model)
     end

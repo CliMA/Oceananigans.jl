@@ -81,5 +81,7 @@ function panel_error(field, exact; nodes = halo_nodes)
     return error
 end
 
+interior_nodes(grid) = [(i, j) for j in 1:size(grid, 2) for i in 1:size(grid, 1)]
+
 panel_u(velocity, grid) = (λ, φ, r) -> panel_components(velocity, λ, φ, north_pole(grid[r]))[1]
 panel_v(velocity, grid) = (λ, φ, r) -> panel_components(velocity, λ, φ, north_pole(grid[r]))[2]

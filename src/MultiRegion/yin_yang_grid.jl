@@ -82,6 +82,9 @@ Keyword arguments
 - `overlap`: the number of cells by which each panel extends beyond its core on every side.
 - `radius`: the radius of the sphere.
 
+Horizontal velocities are stored in each panel's basis. `set!(model; u, v)` takes geographic components,
+unless `intrinsic_velocities = true`, while `PrescribedVelocityFields` takes each panel's components.
+
 Reductions over both horizontal dimensions count every point of the sphere once. `sum`, `mean`, `Integral`
 and `Average` weight each point by the fraction of its cell that the panel owns (see `owned_weights`),
 lumped from the adjacent cells at staggered locations, and `maximum`, `minimum`, `all`, `any` and `prod`

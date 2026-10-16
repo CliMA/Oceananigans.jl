@@ -1,0 +1,108 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+include(joinpath(@__DIR__, "..", "setup", "yin_yang_test_utils.jl"))
+
+using Oceananigans.MultiRegion: YinYangField, latitude_longitude_grid, remapped_field, yin_yang_masks
+
+prescribed_flow_model(grid, u, v) = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing, closure = nothing,
+                                                                velocities = PrescribedVelocityFields(; u, v))
+
+@testset "Output of Yin-Yang fields [$(summary(arch))]" for arch in archs
+    dir = mktempdir()
+    grid = YinYangGrid(arch; size=(48, 16, 2), z=(-1, 0), radius=1)
+    u = XFaceField(grid)
+    v = YFaceField(grid)
+    set_panel_components!(u, v, solid_body_velocity)
+    fill_halo_regions!((u, v))
+
+    model = prescribed_flow_model(grid, u, v)
+    set!(model, c = (λ, φ, z) -> spherical_harmonics(λ, φ) * (1 + z))
+    c = model.tracers.c
+
+    # The tracer rotates by 1/4 radian over the averaging window, which ends exactly on the last time step
+    Δt = 1/16
+    Nt = 4
+    simulation = Simulation(model; Δt, stop_iteration = Nt, verbose = false)
+
+    for with_halos in (true, false)
+        simulation.output_writers[Symbol(with_halos)] = JLD2Writer(model, (; c, u, v); dir, filename = "panels_$with_halos",
+                                                                   schedule = IterationInterval(Nt), with_halos)
+    end
+
+    c̄ = Field(Average(remapped_field(c), dims=1))
+    simulation.output_writers[:averages] = JLD2Writer(model, (; c, c̄); dir, filename = "averages",
+                                                      schedule = AveragedTimeInterval(Nt * Δt))
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model; dir, prefix = "checkpoint", schedule = IterationInterval(Nt))
+
+    # The right Riemann sum of the interior of each panel
+    expected = [zero(Array(interior(getregion(c, r)))) for r in 1:2]
+    function accumulate_expected(sim)
+        sim.model.clock.iteration == 0 && return nothing
+        for r in 1:2
+            expected[r] .+= Array(interior(getregion(c, r))) ./ Nt
+        end
+        return nothing
+    end
+    simulation.callbacks[:expected] = Callback(accumulate_expected, IterationInterval(1))
+
+    run!(simulation)
+
+    cpu_grid = on_architecture(CPU(), grid)
+
+    jldopen(joinpath(dir, "panels_true.jld2")) do file
+        loaded = file["serialized/grid"]
+        @test sprint(show, loaded) == sprint(show, cpu_grid)
+        for r in 1:2
+            @test loaded[r].φᶠᶠᵃ == cpu_grid[r].φᶠᶠᵃ
+            @test loaded[r].Azᶜᶜᵃ == cpu_grid[r].Azᶜᶜᵃ
+        end
+        @test yin_yang_masks(loaded).cell_weights == yin_yang_masks(cpu_grid).cell_weights
+        @test loaded.connectivity.interpolation.face_center.weights.x == cpu_grid.connectivity.interpolation.face_center.weights.x
+        @test file["timeseries/u/serialized/location"] == (Face, Center, Center)
+
+        # Each panel's data, halos included, is saved
+        for (name, field) in (("c", c), ("u", u), ("v", v)), r in 1:2
+            @test file["timeseries/$name/$Nt"].regional_objects[r] ≈ Array{Float32}(on_architecture(CPU(), parent(getregion(field, r))))
+        end
+    end
+
+    # Every panel is read back as a panel of a field on the Yin-Yang grid
+    for with_halos in (true, false)
+        time_series = FieldTimeSeries(joinpath(dir, "panels_$with_halos.jld2"), "c")
+        @test time_series.grid isa YinYangGrid
+        @test length(time_series) == 2
+        last_field = time_series[end]
+        @test last_field isa YinYangField
+        for r in 1:2
+            @test interior(getregion(last_field, r)) ≈ Array(interior(getregion(c, r))) rtol=1e-6
+        end
+    end
+
+    jldopen(joinpath(dir, "averages.jld2")) do file
+        @test keys(file["timeseries/t"]) == ["0", string(Nt)]
+        Nx, Ny, Nz = size(grid)
+        Hx, Hy, Hz = halo_size(grid)
+        for r in 1:2
+            average = file["timeseries/c/$Nt"].regional_objects[r][Hx+1:Hx+Nx, Hy+1:Hy+Ny, Hz+1:Hz+Nz]
+            @test average ≈ expected[r] rtol=1e-6
+            @test maximum(abs, average .- Array(interior(getregion(c, r)))) > 1e-2
+        end
+        @test all(isfinite, file["timeseries/c̄/$Nt"])
+    end
+
+    # Pick up from the checkpoint and take one more step, as the original simulation does
+    new_model = prescribed_flow_model(grid, u, v)
+    new_simulation = Simulation(new_model; Δt, stop_iteration = Nt + 1, verbose = false)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model; dir, prefix = "checkpoint", schedule = IterationInterval(Nt))
+    @test_logs (:info, r"^Picking up simulation from checkpoint file") run!(new_simulation, pickup = true)
+
+    simulation.stop_iteration = Nt + 1
+    run!(simulation)
+
+    @test new_model.clock.iteration == Nt + 1
+    for r in 1:2
+        @test interior(getregion(new_model.tracers.c, r)) == interior(getregion(c, r))
+    end
+
+    rm(dir; recursive = true)
+end
