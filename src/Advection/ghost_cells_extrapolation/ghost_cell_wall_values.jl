@@ -447,25 +447,20 @@ ab2_step_wall_values!(advection::NamedTuple, Δt, χ) = (map(a -> ab2_step_wall_
 rk3_substep_wall_values!(advection::NamedTuple, Δt, γⁿ, ζⁿ) = (map(a -> rk3_substep_wall_values!(a, Δt, γⁿ, ζⁿ), values(advection)); nothing)
 
 """
-    fill_wall_value_halos!(advection)
+    wall_value_fields(advection)
 
-Fill the halos of the wall values that `advection` stores, which the reconstruction and the tendencies read across the
-boundaries of the grid.
+Return the fields of the wall values that `advection` stores, whose halos the reconstruction and the tendencies read across the boundaries of the grid.
 """
-fill_wall_value_halos!(advection) = nothing
+wall_value_fields(advection) = ()
+wall_value_fields(collection::NamedTuple)  = map(wall_value_fields, values(collection))
+wall_value_fields(walls::DomainWallValues) = walls.values
 
-wall_values_field(::Nothing) = nothing
-wall_values_field(walls) = walls.values
-
-function fill_wall_value_halos!(advection::StoredWallValueWENO)
+function wall_value_fields(advection::StoredWallValueWENO)
     extrapolation = transported_wall_value(advection)
-    walls = extrapolation.domain_walls
-    fill_halo_regions!((extrapolation.immersed_walls.values,
-                        wall_values_field(walls.x.left), wall_values_field(walls.x.right),
-                        wall_values_field(walls.y.left), wall_values_field(walls.y.right),
-                        wall_values_field(walls.z.left), wall_values_field(walls.z.right)))
-    return nothing
+    return (extrapolation.immersed_walls.values, wall_value_fields(extrapolation.domain_walls))
 end
+
+fill_wall_value_halos!(advection) = fill_halo_regions!(wall_value_fields(advection); async = true)
 
 #####
 ##### Checkpointing

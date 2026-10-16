@@ -1,3 +1,4 @@
+using Oceananigans.Advection: wall_value_fields
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
@@ -88,7 +89,7 @@ $(TYPEDSIGNATURES)
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
 This function is called after interior tracer tendencies are computed to:
-1. synchronize halo communication for transport velocities and free surface,
+1. synchronize halo communication for transport velocities, free surface and the wall values of the tracers,
 2. update the vertical transport velocities in buffer regions, and
 3. compute the tracer tendencies in cells that depend on halo data.
 """
@@ -96,10 +97,11 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize velocities and free surface
+    # Synchronize velocities, free surface and wall values
     synchronize_communication!(model.free_surface)
     synchronize_communication!(model.velocities.u)
     synchronize_communication!(model.velocities.v)
+    synchronize_communication!(wall_value_fields(model.advection))
 
     compute_tracer_buffer_contributions!(grid, arch, model)
 
