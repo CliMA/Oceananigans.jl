@@ -174,10 +174,10 @@ function relaxed_time_stepping_in_column(arch, mask_type; mask_kwargs...)
     Δt = 0.1
     time_step!(model, Δt)
 
-    z = Array(znodes(grid, Center()))
-    expected = @. Δt * mask(0, 0, z) * target(0, 0, z, 0)
+    expected = CenterField(grid)
+    set!(expected, z -> Δt * mask(0, 0, z) * target(0, 0, z, 0))
 
-    return Array(interior(model.tracers.c, 1, 1, :)) ≈ expected
+    return model.tracers.c ≈ expected
 end
 
 # The FFT-based pressure solver is only approximate on immersed rectilinear grids, and warns about it
