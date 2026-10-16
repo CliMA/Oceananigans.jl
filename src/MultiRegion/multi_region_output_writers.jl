@@ -1,3 +1,4 @@
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate
 using Oceananigans.Fields: Fields, compute_at!, set!
 using Oceananigans.OutputWriters: OutputWriters, WindowedTimeAverage, _saveproperty!, serializeproperty!,
                                   accumulate_average!, set_average!
@@ -71,3 +72,18 @@ end
 function OutputWriters.serializeproperty!(file, location, grid::Union{ConformalCubedSphereGridOfSomeKind, YinYangGridOfSomeKind})
     file[location] = on_architecture(CPU(), grid)
 end
+
+function Oceananigans.prognostic_state(coordinate::ZStarCoordinate, grid::MultiRegionGrids)
+    states = Tuple(on_architecture(CPU(), Oceananigans.prognostic_state(coordinate, getregion(grid, r))) for r in regions(grid))
+    return (; regions=states)
+end
+
+function Oceananigans.restore_prognostic_state!(coordinate::ZStarCoordinate, grid::MultiRegionGrids, from::NamedTuple{(:regions,)})
+    for r in regions(grid)
+        Oceananigans.restore_prognostic_state!(coordinate, getregion(grid, r), from.regions[r])
+    end
+    return coordinate
+end
+
+Oceananigans.restore_prognostic_state!(::ZStarCoordinate, ::MultiRegionGrids, from) =
+    throw(ArgumentError("A z-star checkpoint of a multi-region grid must hold the vertical coordinate of every region."))

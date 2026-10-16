@@ -106,3 +106,31 @@ prescribed_flow_model(grid, u, v) = HydrostaticFreeSurfaceModel(grid; tracers = 
 
     rm(dir; recursive = true)
 end
+
+@testset "Checkpoints of z-star coordinates on Yin-Yang grids [$(summary(arch))]" for arch in archs
+    dir = mktempdir()
+    grid = YinYangGrid(arch; size=(48, 16, 2), z=MutableVerticalDiscretization((-1000, 0)), radius=1e6)
+    free_surface = SplitExplicitFreeSurface(substeps = 4, extend_halos = false)
+    zstar_model() = HydrostaticFreeSurfaceModel(grid; free_surface, tracers = :c, buoyancy = nothing)
+
+    model = zstar_model()
+    set!(model, u = (λ, φ, z) -> 20cosd(φ), η = (λ, φ, z) -> cosd(λ) * cosd(φ), c = (λ, φ, z) -> 1 + sind(φ))
+    simulation = Simulation(model; Δt = 10, stop_iteration = 3, verbose = false)
+    simulation.output_writers[:checkpointer] = Checkpointer(model; dir, prefix = "zstar", schedule = IterationInterval(3))
+    run!(simulation)
+    simulation.stop_iteration = 6
+    run!(simulation)
+
+    new_model = zstar_model()
+    new_simulation = Simulation(new_model; Δt = 10, stop_iteration = 6, verbose = false)
+    @test_logs (:info, r"^Picking up simulation from checkpoint file") run!(new_simulation, pickup = joinpath(dir, "zstar_iteration3.jld2"))
+
+    for r in 1:2
+        @test interior(getregion(new_model.tracers.c, r)) == interior(getregion(model.tracers.c, r))
+        @test interior(getregion(new_model.free_surface.displacement, r)) == interior(getregion(model.free_surface.displacement, r))
+    end
+
+    @test_throws r"vertical coordinate of every region" Oceananigans.restore_prognostic_state!(model.vertical_coordinate, grid, NamedTuple())
+
+    rm(dir; recursive = true)
+end
