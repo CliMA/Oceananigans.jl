@@ -233,7 +233,7 @@ end
 
 True if the store already contains a Zarr v2 group (i.e. a `.zgroup` key at root).
 """
-zarr_store_has_group(store) = Zarr.is_zgroup(Zarr.ZarrFormat(Val(2)), store, "")
+zarr_store_has_group(store) = haskey(store, ".zgroup")
 
 """
     validate_existing_zarr_store(writer)

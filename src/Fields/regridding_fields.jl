@@ -21,6 +21,7 @@ a time, through intermediate fields on grids that combine the coordinates of the
 in the dimensions already regridded with the coordinates of the source grid in the remaining
 ones. This requires grids of the same type (`RectilinearGrid` or `LatitudeLongitudeGrid`)
 with the same topology, and `Center` locations in the differing dimensions.
+Fields on grids with identical cell faces are copied.
 
 Examples
 ========
@@ -142,16 +143,14 @@ regrid_in_y!(a, b) = regrid_in_y!(a, a.grid, b.grid, b)
 regrid_in_z!(a, b) = regrid_in_z!(a, a.grid, b.grid, b)
 
 function regrid!(a, target_grid, source_grid, b)
-    arch = architecture(a)
-
-    if we_can_regrid_in_z(a, target_grid, source_grid, b)
+    if we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    elseif we_can_regrid_in_z(a, target_grid, source_grid, b)
         return regrid_in_z!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
         return regrid_in_y!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
         return regrid_in_x!(a, target_grid, source_grid, b)
-    elseif we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
-        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -163,7 +162,7 @@ function regrid!(a, target_grid, source_grid, b)
 end
 
 #####
-##### Multi-dimensional regridding, one dimension at a time
+##### Dimension-by-dimension regridding
 #####
 
 coordinate_keys(::RectilinearGrid) = (:x, :y, :z)
@@ -177,7 +176,7 @@ end
 function dimension_differs(target_grid, source_grid, dimension)
     topology(source_grid, dimension) == Flat && return false
     size(source_grid, dimension) == size(target_grid, dimension) || return true
-    return !isapprox(dimension_faces(source_grid, dimension), dimension_faces(target_grid, dimension))
+    return dimension_faces(source_grid, dimension) != dimension_faces(target_grid, dimension)
 end
 
 function we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
@@ -216,9 +215,8 @@ function dimension_swapped_grid(source_grid, target_grid, dimension)
 end
 
 function regrid_multiple_dimensions!(a, target_grid, source_grid, b)
-    # At least two dimensions differ here: with fewer, one of the single-dimension
-    # paths in regrid! passes its size checks and is dispatched to instead.
     differing_dimensions = Tuple(n for n in 1:3 if dimension_differs(target_grid, source_grid, n))
+    isempty(differing_dimensions) && return set!(a, b)
 
     regrid_dimension! = (regrid_in_x!, regrid_in_y!, regrid_in_z!)
 
