@@ -338,14 +338,14 @@ end
     @inbounds walls.cache[wall_slot(walls, I, i, j, k)...] = walls[i, j, k] * stretching(walls, i, j, k, grid)
 end
 
-@kernel function _split_runge_kutta_substep_wall_values!(walls, grid, Δt)
+@kernel function _rk_substep_wall_values!(walls, grid, Δt)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
     n = wall_slot(walls, I, i, j, k)
     @inbounds walls[i, j, k] = (walls.cache[n...] + Δt * walls.tendency[n...]) / stretching(walls, i, j, k, grid)
 end
 
-@kernel function _adams_bashforth_2_step_wall_values!(walls, grid, Δt, χ)
+@kernel function _ab2_step_wall_values!(walls, grid, Δt, χ)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
     n = wall_slot(walls, I, i, j, k)
@@ -366,7 +366,7 @@ end
     end
 end
 
-@kernel function _runge_kutta_3_substep_wall_values!(walls, grid, Δt, γⁿ, ζⁿ)
+@kernel function _rk3_substep_wall_values!(walls, grid, Δt, γⁿ, ζⁿ)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
     n = wall_slot(walls, I, i, j, k)
@@ -377,7 +377,7 @@ end
     end
 end
 
-@kernel function _runge_kutta_3_substep_wall_values!(walls, grid, Δt, γ¹, ::Nothing)
+@kernel function _rk3_substep_wall_values!(walls, grid, Δt, γ¹, ::Nothing)
     I = @index(Global, NTuple)
     i, j, k = wall_node(walls, I, grid)
     n = wall_slot(walls, I, i, j, k)
@@ -428,23 +428,23 @@ initialize_wall_values!(advection::StoredWallValueWENO, c) = launch_over_wall_va
 cache_wall_values!(advection) = nothing
 cache_wall_values!(advection::StoredWallValueWENO) = launch_over_wall_values!(advection, _cache_wall_values!)
 
-split_runge_kutta_substep_wall_values!(advection, Δt) = nothing
-split_runge_kutta_substep_wall_values!(advection::StoredWallValueWENO, Δt) = launch_over_wall_values!(advection, _split_runge_kutta_substep_wall_values!, Δt)
+rk_substep_wall_values!(advection, Δt) = nothing
+rk_substep_wall_values!(advection::StoredWallValueWENO, Δt) = launch_over_wall_values!(advection, _rk_substep_wall_values!, Δt)
 
-adams_bashforth_2_step_wall_values!(advection, Δt, χ) = nothing
-adams_bashforth_2_step_wall_values!(advection::StoredWallValueWENO, Δt, χ) = launch_over_wall_values!(advection, _adams_bashforth_2_step_wall_values!, Δt, χ)
+ab2_step_wall_values!(advection, Δt, χ) = nothing
+ab2_step_wall_values!(advection::StoredWallValueWENO, Δt, χ) = launch_over_wall_values!(advection, _ab2_step_wall_values!, Δt, χ)
 
-runge_kutta_3_substep_wall_values!(advection, Δt, γⁿ, ζⁿ) = nothing
-runge_kutta_3_substep_wall_values!(advection::StoredWallValueWENO, Δt, γⁿ, ζⁿ) = launch_over_wall_values!(advection, _runge_kutta_3_substep_wall_values!, Δt, γⁿ, ζⁿ)
+rk3_substep_wall_values!(advection, Δt, γⁿ, ζⁿ) = nothing
+rk3_substep_wall_values!(advection::StoredWallValueWENO, Δt, γⁿ, ζⁿ) = launch_over_wall_values!(advection, _rk3_substep_wall_values!, Δt, γⁿ, ζⁿ)
 
 # The tracers of a model, and the wall values that the advection of each stores.
 # map over the values: map over a NamedTuple does not specialize on the function, and boxes the advection schemes
 compute_wall_value_tendencies!(advection::NamedTuple, U, tracers) = (map((a, c) -> compute_wall_value_tendency!(a, U, c), values(NamedTuple{keys(tracers)}(advection)), values(tracers)); nothing)
 initialize_wall_values!(advection::NamedTuple, tracers) = (map(initialize_wall_values!, values(NamedTuple{keys(tracers)}(advection)), values(tracers)); nothing)
 cache_wall_values!(advection::NamedTuple) = (map(cache_wall_values!, values(advection)); nothing)
-split_runge_kutta_substep_wall_values!(advection::NamedTuple, Δt) = (map(a -> split_runge_kutta_substep_wall_values!(a, Δt), values(advection)); nothing)
-adams_bashforth_2_step_wall_values!(advection::NamedTuple, Δt, χ) = (map(a -> adams_bashforth_2_step_wall_values!(a, Δt, χ), values(advection)); nothing)
-runge_kutta_3_substep_wall_values!(advection::NamedTuple, Δt, γⁿ, ζⁿ) = (map(a -> runge_kutta_3_substep_wall_values!(a, Δt, γⁿ, ζⁿ), values(advection)); nothing)
+rk_substep_wall_values!(advection::NamedTuple, Δt) = (map(a -> rk_substep_wall_values!(a, Δt), values(advection)); nothing)
+ab2_step_wall_values!(advection::NamedTuple, Δt, χ) = (map(a -> ab2_step_wall_values!(a, Δt, χ), values(advection)); nothing)
+rk3_substep_wall_values!(advection::NamedTuple, Δt, γⁿ, ζⁿ) = (map(a -> rk3_substep_wall_values!(a, Δt, γⁿ, ζⁿ), values(advection)); nothing)
 
 """
     fill_wall_value_halos!(advection)

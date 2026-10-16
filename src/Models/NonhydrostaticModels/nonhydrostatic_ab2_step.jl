@@ -1,4 +1,4 @@
-using Oceananigans.Advection: adams_bashforth_2_step_wall_values!
+using Oceananigans.Advection: ab2_step_wall_values!
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -36,7 +36,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, Δt, χ, Gⁿ, G⁻)
 
     step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δt)
-    adams_bashforth_2_step_wall_values!(model.advection, Δt, χ)
+    ab2_step_wall_values!(model.advection, Δt, χ)
 
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
