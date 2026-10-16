@@ -73,7 +73,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
-supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5, :SSPRungeKutta3)
 
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
@@ -354,14 +354,14 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     return model
 end
 
-# The state cached by `SplitRungeKuttaTimeStepper`, as a keyword argument for `TimeStepper`.
+# The state cached by the multi-stage timesteppers, as a keyword argument for `TimeStepper`.
 # The free surface displacement is windowed at the top of the grid, so it is rebuilt from the
 # grid rather than with `similar`, whose halo-filling kernels depend on the runtime window.
 previous_hydrostatic_state_fields(timestepper, velocities, free_surface, tracers) = NamedTuple()
 
-const SplitRungeKutta = Union{SplitRungeKuttaName, SplitRungeKuttaTimeStepper}
+const MultiStage = Union{SplitRungeKuttaName, Val{:SSPRungeKutta3}, MultiStageTimeStepper}
 
-previous_hydrostatic_state_fields(::SplitRungeKutta, velocities, free_surface, tracers) =
+previous_hydrostatic_state_fields(::MultiStage, velocities, free_surface, tracers) =
     (; Ψ⁻ = merge(map(similar, horizontal_velocities(velocities)),
                   map(similar, tracers),
                   previous_free_surface_fields(velocities, free_surface)))
