@@ -112,10 +112,9 @@ apply_transform(::Val{S}, field) where S =
 # unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
 @inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
-    X  = relaxation_node(i, j, k, grid, r.target, r.location)
     ϕ  = @inbounds r.relaxed[i, j, k]
-    ϕᵣ = evaluate_target(i, j, k, grid, r.target, X, clock.time)
-    μ  = r.mask(relaxation_node(i, j, k, grid, r.mask, r.location)...)
+    ϕᵣ = evaluate_target(i, j, k, grid, r.target, r.location, clock.time)
+    μ  = evaluate_mask(i, j, k, grid, r.mask, r.location)
     return r.rate * μ * (ϕᵣ - ϕ)
 end
 
@@ -159,13 +158,13 @@ Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
 const FieldRelaxation           = Relaxation{<:Any, <:Any, <:Any, <:AbstractField}
 const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, FieldTimeSeriesTarget}}
 
-@inline evaluate_target(i, j, k, grid, c::Number,                  X, t) = c
-@inline evaluate_target(i, j, k, grid, f,                          X, t) = f(X..., t)
-@inline evaluate_target(i, j, k, grid, f::AbstractArray,           X, t) = @inbounds f[i, j, k]
-@inline evaluate_target(i, j, k, grid, t::InterpolatedFieldTarget, X, time) =
-    interpolate(X, t.field, t.loc, t.grid)
-@inline evaluate_target(i, j, k, grid, t::FieldTimeSeriesTarget,   X, time) =
-    interpolate(X, Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
+@inline evaluate_target(i, j, k, grid, c::Number,                  ℓ, t) = c
+@inline evaluate_target(i, j, k, grid, f,                          ℓ, t) = f(node(i, j, k, grid, ℓ...)..., t)
+@inline evaluate_target(i, j, k, grid, f::AbstractArray,           ℓ, t) = @inbounds f[i, j, k]
+@inline evaluate_target(i, j, k, grid, t::InterpolatedFieldTarget, ℓ, time) =
+    interpolate(node(i, j, k, grid, ℓ...), t.field, t.loc, t.grid)
+@inline evaluate_target(i, j, k, grid, t::FieldTimeSeriesTarget,   ℓ, time) =
+    interpolate(node(i, j, k, grid, ℓ...), Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
 
 # Default: take user-supplied target as-is (Numbers, callables, plain arrays, …).
 materialize_target(target, field) = target
@@ -464,8 +463,10 @@ Base.summary(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
 Base.summary(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
 Base.summary(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"
 
-const DirectionalFunction = Union{GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget}
+const DirectionalMask = Union{GaussianMask, PiecewiseLinearMask, CosineRampMask}
 
-# Directional functions take (x, y, z) on every grid, including the coordinates of Flat dimensions.
-@inline relaxation_node(i, j, k, grid, f, ℓ) = node(i, j, k, grid, ℓ...)
-@inline relaxation_node(i, j, k, grid, f::DirectionalFunction, ℓ) = _node(i, j, k, grid, ℓ...)
+# Directional masks and targets take (x, y, z) on every grid, including the coordinates of Flat dimensions.
+@inline evaluate_target(i, j, k, grid, f::LinearTarget, ℓ, t) = f(_node(i, j, k, grid, ℓ...)..., t)
+
+@inline evaluate_mask(i, j, k, grid, mask, ℓ)                  = mask(node(i, j, k, grid, ℓ...)...)
+@inline evaluate_mask(i, j, k, grid, mask::DirectionalMask, ℓ) = mask(_node(i, j, k, grid, ℓ...)...)
