@@ -3,6 +3,7 @@ module Simulations
 export first_time_step!, time_step_for!
 
 using Reactant
+using Reactant: Periodic, Binomial
 using Oceananigans
 
 using OrderedCollections: OrderedDict
@@ -18,6 +19,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.OutputWriters: write_output!
 
 using Oceananigans.Simulations:
+    AutomaticDifferentiation,
     validate_Δt,
     stop_iteration_exceeded,
     add_dependencies!,
