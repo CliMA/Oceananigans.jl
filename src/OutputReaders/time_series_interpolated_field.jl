@@ -78,6 +78,12 @@ function Adapt.adapt_structure(to, f::TimeSeriesInterpolation{LX, LY, LZ}) where
         adapted_time_series, f.clock.time, indices(f))
 end
 
+function Adapt.adapt_structure(to, f::GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, <:Any, <:Any, <:Any, T}) where {LX, LY, LZ, T}
+    time_series = Adapt.adapt(to, f.time_series)
+    time = Adapt.adapt(to, f.time)
+    return GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, typeof(time_series), typeof(time), typeof(f.indices), T}(time_series, time, f.indices)
+end
+
 #####
 ##### on_architecture
 #####
