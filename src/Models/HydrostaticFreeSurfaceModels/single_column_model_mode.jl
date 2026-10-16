@@ -5,6 +5,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
@@ -78,6 +79,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_closure_fields!(model.closure_fields, model.closure, model)
 
     fill_halo_regions!(model.closure_fields, model.clock, fields(model))
+
+    compute_forcing!(model.forcing, model.clock, fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
