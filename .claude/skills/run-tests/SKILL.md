@@ -1,6 +1,6 @@
 ---
 name: run-tests
-description: Run targeted Oceananigans tests, prioritized by what's likely to break
+description: Use after changing src/, ext/, or test/ to pick and run the tests most likely to break, on CPU, one file or group at a time.
 ---
 
 # Run Tests
