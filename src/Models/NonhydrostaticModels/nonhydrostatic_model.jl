@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: Centered, adapt_advection_order, initialize_wall_values!, materialize_advection, materialize_wall_values
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition, needs_implicit_solver,
@@ -19,6 +19,7 @@ using Oceananigans.Utils: tupleit
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
+import Oceananigans.TimeSteppers: reconcile_state!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
@@ -256,7 +257,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
                                           default_generator, with_velocities=false)
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
-    advection = materialize_model_advection(advection, grid)
+    advection = materialize_model_advection(advection, grid, tracer_names)
 
     grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
@@ -370,10 +371,13 @@ timestepper(model::NonhydrostaticModel) = model.timestepper
 
 # Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
 # `inflate_grid_halo_size` and would therefore be boxed.
-function materialize_model_advection(advection, grid)
-    advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
-    return map(scheme -> materialize_advection(scheme, grid), advection)
+function materialize_model_advection(advection, grid, tracer_names)
+    adapted = map(scheme -> adapt_advection_order(scheme, grid), advection)
+    materialized = map(scheme -> materialize_advection(scheme, grid), adapted)
+    return materialize_wall_values(materialized, grid, tracer_names)
 end
+
+reconcile_state!(model::NonhydrostaticModel) = initialize_wall_values!(model.advection, model.tracers)
 
 Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = halo_size(grid)
@@ -425,7 +429,8 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_transport = prognostic_state(model.boundary_transport))
+            boundary_transport = prognostic_state(model.boundary_transport),
+            advection = prognostic_state(model.advection))
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
@@ -437,6 +442,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    haskey(from, :advection) && restore_prognostic_state!(restored.advection, from.advection)
     return restored
 end
 

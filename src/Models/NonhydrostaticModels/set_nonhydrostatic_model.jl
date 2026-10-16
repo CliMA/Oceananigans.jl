@@ -1,3 +1,4 @@
+using Oceananigans.Advection: initialize_wall_values!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.TurbulenceClosures: initialize_closure_fields!
@@ -59,6 +60,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
+    initialize_wall_values!(model.advection, model.tracers)
     velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
     update_state!(model)
 

@@ -1,7 +1,13 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!, immersed_cell
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Utils: NormalDivision
 using Oceananigans.Advection:
+        GhostCells,
+        HierarchicalExtrapolation,
+        ghost_cell_reconstruction,
+        node_differences,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -147,6 +153,147 @@ for arch in archs
                 @test_logs reduced_z_advection_logs(adv, buffer)... run_tracer_conservation_test(g, scheme)
             end
         end
+    end
+
+    @testset "GhostCells boundary reconstruction" begin
+        scheme = WENO(order=7, weight_computation=NormalDivision, boundary_scheme=GhostCells()).buffer_scheme
+
+        # L and R are the nodes 4 and 5; nᴸ and nᴿ count the nodes beyond them before the first peripheral one
+        function reconstruct(scheme, bias, values, peripheral)
+            nᴸ = something(findfirst(peripheral[3:-1:1]), 4) - 1
+            nᴿ = something(findfirst(peripheral[6:8]), 4) - 1
+            return ghost_cell_reconstruction(scheme.scheme, values, node_differences(values), nᴸ, nᴿ, bias, nothing, nothing)
+        end
+
+        # Averages over the unit cells [n - 1, n] of a polynomial with primitive P; the reconstructed face is at x = 4
+        averages(P) = ntuple(n -> P(n) - P(n - 1), 8)
+
+        none     = ntuple(_ -> false, 8)
+        wall     = (true, true, false, false, false, false, false, false)
+        two_left = (true, true, true, false, false, true, true, true)
+
+        linear_primitive(x) = x^2 / 2 + 2x # p(x) = x + 2
+
+        for bias in (LeftBias, RightBias)
+            # the values in inactive cells never enter the reconstruction
+            @test reconstruct(scheme, bias, (1e3, 1e3, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0), wall) == 3.0
+            @test reconstruct(scheme, bias, Tuple(1.0:8.0), none) == 4.5
+
+            # the ghosts extrapolate linearly, so a uniform stratification next to a wall is reconstructed exactly
+            @test reconstruct(scheme, bias, averages(linear_primitive), wall) ≈ 4 + 2
+            @test reconstruct(scheme, bias, averages(linear_primitive), two_left) ≈ 4 + 2
+        end
+
+
+        # the ghosts lie on the line through the active cells in index coordinates, those of the WENO reconstruction
+        affine = Tuple(2.5 .- 0.7 .* (1:8))
+        lowest_peripheral = (true, false, false, false, false, false, false, false)
+        @test reconstruct(scheme, LeftBias, (1e3, affine[2:8]...), lowest_peripheral) ≈ reconstruct(scheme, LeftBias, affine, none)
+
+        grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo=(6, 6), topology=(Bounded, Bounded, Flat))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+
+        c = CenterField(ibg)
+        set!(c, 1)
+        mask_immersed_field!(c, 1e3)
+        fill_halo_regions!(c)
+
+        weno = materialize_advection(WENO(order=7, boundary_scheme=GhostCells()), ibg)
+        for j in 6:19, i in 6:19, bias in (LeftBias, RightBias)
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, weno, bias, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, weno, bias, c) ≈ 1.0
+        end
+    end
+
+    @testset "GhostCells tracer advection" begin
+        Nx, Nz = 64, 32
+        grid = RectilinearGrid(arch, size=(Nx, Nz), x=(0, 1), z=(-1, 0), halo=(6, 6), topology=(Periodic, Flat, Bounded))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> 0.35 < x < 0.65 ? -0.35 : -1.0))
+
+        # A divergence-free velocity from a streamfunction that vanishes on the staircase
+        ψ(x, z) = 0.05 * sin(2π * x) * sin(π * (z + 1))
+        dry(i, k) = k < 1 || k > Nz || (0.35 < (mod1(i, Nx) - 0.5) / Nx < 0.65 && -1 + (k - 0.5) / Nz < -0.35)
+        Ψ = [(dry(i-1, k-1) | dry(i, k-1) | dry(i-1, k) | dry(i, k)) ? 0.0 : ψ((i - 1) / Nx, -1 + (k - 1) / Nz) for i in 1:Nx+1, k in 1:Nz+1]
+        u = XFaceField(ibg)
+        w = ZFaceField(ibg)
+        set!(u, [-(Ψ[i, k+1] - Ψ[i, k]) * Nz for i in 1:Nx, _ in 1:1, k in 1:Nz])
+        set!(w, [ (Ψ[i+1, k] - Ψ[i, k]) * Nx for i in 1:Nx, _ in 1:1, k in 1:Nz+1])
+
+        # The inactive cells of a tracer advected with the default `TransportedWallValue` store the wall values
+        cpu_ibg = on_architecture(CPU(), ibg)
+        wet = [!immersed_cell(i, 1, k, cpu_ibg) for i in 1:Nx, _ in 1:1, k in 1:Nz]
+
+        function advected_tracer(scheme; timestepper = :SplitRungeKutta3, Δt = 0.01, steps = 100)
+            model = HydrostaticFreeSurfaceModel(ibg; velocities = PrescribedVelocityFields(; u, w), tracers = :c,
+                                                tracer_advection = scheme, timestepper)
+            set!(model, c = (x, z) -> ifelse(-0.6 < z < -0.4, 1.0, 0.0))
+            c = model.tracers.c
+            total₀ = sum(Array(interior(c))[wet])
+            cmin, cmax = 0.0, 1.0
+            for _ in 1:steps
+                time_step!(model, Δt)
+                cmin = min(cmin, minimum(Array(interior(c))[wet]))
+                cmax = max(cmax, maximum(Array(interior(c))[wet]))
+            end
+            return (; cmin, cmax, drift = sum(Array(interior(c))[wet]) - total₀)
+        end
+
+        hierarchical = advected_tracer(WENO(order=7, boundary_scheme=GhostCells(extrapolation=HierarchicalExtrapolation())))
+        wall_values = advected_tracer(WENO(order=7))
+        chain = advected_tracer(WENO(order=7, boundary_scheme=Centered(order=2)))
+
+        # The ghosts remove the extrema of the buffer chain next to the walls; the one-cell wall jet of this flow
+        # leaves the interior WENO reconstruction an excess of about 5%
+        @test chain.cmin < -0.2 < -0.02 < hierarchical.cmin
+        @test chain.cmax > 1.4 > 1.06 > hierarchical.cmax
+        @test abs(hierarchical.drift) < 1e-10
+
+        @test -0.02 < wall_values.cmin
+        @test wall_values.cmax < 1.05
+        @test abs(wall_values.drift) < 1e-10
+
+        # The Adams-Bashforth time stepper advances the wall values too, within its smaller stable time step
+        adams_bashforth = advected_tracer(WENO(order=7); timestepper = :QuasiAdamsBashforth2, Δt = 0.0025, steps = 400)
+        @test -0.02 < adams_bashforth.cmin
+        @test adams_bashforth.cmax < 1.05
+        @test abs(adams_bashforth.drift) < 1e-10
+    end
+
+    @testset "GhostCells wall values in a NonhydrostaticModel" begin
+        grid = RectilinearGrid(arch, size=(64, 16), x=(0, 4), z=(-1, 0), halo=(6, 6), topology=(Bounded, Flat, Bounded))
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> -1 + 0.4 * exp(-(x - 2)^2 / 0.1)))
+        cpu_ibg = on_architecture(CPU(), ibg)
+        wet = [!immersed_cell(i, 1, k, cpu_ibg) for i in 1:64, _ in 1:1, k in 1:16]
+
+        for timestepper in (:RungeKutta3, :QuasiAdamsBashforth2)
+            model = NonhydrostaticModel(ibg; tracers = :b, buoyancy = BuoyancyTracer(), timestepper, advection = WENO(order=5),
+                                        pressure_solver = ConjugateGradientPoissonSolver(ibg))
+            set!(model, b = (x, z) -> ifelse(x < 1, 0.01, 0.0))
+            for _ in 1:100
+                time_step!(model, 0.05)
+            end
+            b = Array(interior(model.tracers.b))[wet]
+            @test -2e-5 < minimum(b) && maximum(b) < 0.01 + 2e-5
+        end
+    end
+
+    @testset "GhostCells on a z-star grid" begin
+        Nx, Nz = 64, 32
+        grid = RectilinearGrid(arch, size=(Nx, Nz), x=(-1e6, 1e6), z=MutableVerticalDiscretization((-2000, 0)), halo=(6, 6),
+                               topology=(Periodic, Flat, Bounded))
+        ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> -2000 + 750 * exp(-x^2 / 8e8)))
+        model = HydrostaticFreeSurfaceModel(ibg; timestepper = :SplitRungeKutta3, buoyancy = BuoyancyTracer(), tracers = :b,
+                                            tracer_advection = WENO(order=7, boundary_scheme=GhostCells()),
+                                            momentum_advection = WENO(order=5, boundary_scheme=GhostCells()))
+        set!(model, u = (x, z) -> 0.3 * exp(-x^2 / 1e10), b = (x, z) -> 1e-4 * z)
+        for _ in 1:20
+            time_step!(model, 600)
+        end
+
+        b = Array(interior(model.tracers.b))
+        @test @allowscalar maximum(abs, model.free_surface.displacement) > 0.1
+        @test all(isfinite, b)
+        @test -0.2 - 1e-10 ≤ minimum(b) && maximum(b) ≤ 1e-10
     end
 
     @testset "Immersed momentum reconstruction" begin

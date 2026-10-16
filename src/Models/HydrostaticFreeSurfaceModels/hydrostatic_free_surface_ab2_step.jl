@@ -1,3 +1,4 @@
+using Oceananigans.Advection: adams_bashforth_2_step_wall_values!
 using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
@@ -221,6 +222,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
+    adams_bashforth_2_step_wall_values!(model.advection, Δt, χ)
     return nothing
 end
 

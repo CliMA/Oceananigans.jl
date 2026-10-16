@@ -1,3 +1,4 @@
+using Oceananigans.Advection: split_runge_kutta_substep_wall_values!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
@@ -208,6 +209,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
+    split_runge_kutta_substep_wall_values!(model.advection, Δt)
     return nothing
 end
 

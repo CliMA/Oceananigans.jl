@@ -1,4 +1,5 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
+using Oceananigans.Advection: compute_wall_value_tendencies!
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
@@ -28,6 +29,7 @@ function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticMode
     compute_interior_tendency_contributions!(model, kernel_parameters)
     complete_communication_and_compute_buffer!(model, grid, arch)
     compute_biogeochemical_transitions!(model, :xyz)
+    compute_wall_value_tendencies!(model.advection, sum_of_velocities(model.velocities, model.background_fields.velocities), model.tracers)
 
     for callback in callbacks
         callback.callsite isa TendencyCallsite && callback(model)
