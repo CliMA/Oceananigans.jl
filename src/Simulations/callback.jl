@@ -43,8 +43,7 @@ Oceananigans.initialize!(func, sim) = nothing
 finalize!(func, sim) = nothing
 
 """
-    Callback(func, schedule=IterationInterval(1);
-             parameters=nothing, callsite=TimeStepCallsite())
+$(MethodSignatures(; defaults = true))
 
 Return `Callback` that executes `func` on `schedule`
 at the `callsite` with optional `parameters`. By default,
@@ -94,7 +93,7 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
 const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
 
 """
-    TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1))
+$(MethodSignatures(; defaults = true))
 
 Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
 `schedule`, so that the derivative is differenced over the interval between actuations.

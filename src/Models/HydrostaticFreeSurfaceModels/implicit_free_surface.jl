@@ -33,9 +33,7 @@ Base.show(io::IO, fs::ImplicitFreeSurface) =
               "└─ settings: ", fs.solver_settings)
 
 """
-    ImplicitFreeSurface(; solver_method = :Default,
-                        gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
-                        solver_settings...)
+$(MethodSignatures(; defaults = true))
 
 Return an implicit free-surface solver. The implicit free-surface equation is
 

@@ -23,15 +23,7 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                                               ", min_Δt=",        prettysummary(wizard.min_Δt), ")")
 
 """
-    TimeStepWizard([FT=Float64;]
-                   cfl = 0.2,
-                   diffusive_cfl = Inf,
-                   max_change = 1.1,
-                   min_change = 0.5,
-                   max_Δt = Inf,
-                   min_Δt = 0.0,
-                   cell_advection_timescale = cell_advection_timescale,
-                   cell_diffusion_timescale = infinite_diffusion_timescale)
+$(MethodSignatures(; defaults = true))
 
 Callback function that adjusts the simulation time step to meet specified target values
 for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`),
@@ -116,7 +108,7 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
+$(MethodSignatures(; defaults = true))
 
 Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
 called on `schedule` which is `IterationInterval(10)` by default.

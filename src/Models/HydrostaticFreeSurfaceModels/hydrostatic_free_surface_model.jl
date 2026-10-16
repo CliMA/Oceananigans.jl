@@ -82,25 +82,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
-    HydrostaticFreeSurfaceModel(grid;
-                                clock = Clock(grid),
-                                momentum_advection = VectorInvariant(),
-                                tracer_advection = Centered(),
-                                buoyancy = nothing,
-                                coriolis = nothing,
-                                free_surface = [default_free_surface],
-                                forcing::NamedTuple = NamedTuple(),
-                                closure = nothing,
-                                timestepper = :QuasiAdamsBashforth2,
-                                boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = nothing,
-                                particles::ParticlesOrNothing = nothing,
-                                biogeochemistry::AbstractBGCOrNothing = nothing,
-                                velocities = nothing,
-                                pressure = nothing,
-                                closure_fields = nothing,
-                                auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+$(MethodSignatures(; defaults = true))
 
 Construct a hydrostatic model with a free surface on `grid`.
 

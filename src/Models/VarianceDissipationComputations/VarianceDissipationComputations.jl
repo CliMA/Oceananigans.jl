@@ -3,7 +3,7 @@ module VarianceDissipationComputations
 export VarianceDissipation, flatten_dissipation_fields
 
 using KernelAbstractions: @kernel, @index
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans, UpdateStateCallsite
 using Oceananigans.Advection
@@ -43,9 +43,7 @@ function c_grid_vector(grid)
 end
 
 """
-    VarianceDissipation(tracer_name, grid;
-                        Uⁿ⁻¹ = VelocityFields(grid),
-                        Uⁿ   = VelocityFields(grid))
+$(MethodSignatures(; defaults = true))
 
 Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.

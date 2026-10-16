@@ -479,7 +479,7 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 """
-    add_halos(data, loc, topo, sz, halo_sz; warnings=true)
+$(MethodSignatures(; defaults = true))
 
 Add halos of size `halo_sz :: NTuple{3}{Int}` to `data` that corresponds to
 size `sz :: NTuple{3}{Int}`, location `loc :: NTuple{3}`, and topology

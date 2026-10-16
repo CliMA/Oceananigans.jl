@@ -429,14 +429,7 @@ time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
 """
-    FieldTimeSeries(loc, grid [, times=()];
-                    indices = (:, :, :),
-                    backend = InMemory(),
-                    path = nothing,
-                    name = nothing,
-                    time_indexing = Clamp(),
-                    boundary_conditions = FieldBoundaryConditions(grid, loc),
-                    reader_kw = NamedTuple())
+$(MethodSignatures(; defaults = true))
 
 Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
 
@@ -758,17 +751,7 @@ function manually_reconstruct_rectilinear_grid(grid, file, architecture)
 end
 
 """
-    FieldTimeSeries(path, name;
-                    backend = InMemory(),
-                    architecture = nothing,
-                    grid = nothing,
-                    location = nothing,
-                    boundary_conditions = UnspecifiedBoundaryConditions(),
-                    time_indexing = Linear(),
-                    iterations = nothing,
-                    times = nothing,
-                    combine = true,
-                    reader_kw = NamedTuple())
+$(MethodSignatures(; defaults = true))
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.

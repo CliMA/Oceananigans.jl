@@ -59,7 +59,7 @@ const InhomogeneousYFormulation = InhomogeneousFormulation{<:YDirection}
 const InhomogeneousZFormulation = InhomogeneousFormulation{<:ZDirection}
 
 """
-    FourierTridiagonalPoissonSolver(grid, planner_flag = FFTW.PATIENT; tridiagonal_formulation=nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct a `FourierTridiagonalPoissonSolver` on `grid` with `tridiagonal_formulation` either
 `XDirection()`, `YDirection()`, or `ZDirection()`. The `tridiagonal_formulation` can be used to tweak

@@ -135,12 +135,7 @@ end
 struct DefaultPreconditioner end
 
 """
-    ConjugateGradientPoissonSolver(grid;
-                                   preconditioner = DefaultPreconditioner(),
-                                   reltol = sqrt(eps(grid)),
-                                   abstol = sqrt(eps(grid)),
-                                   enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
-                                   kw...)
+$(MethodSignatures(; defaults = true))
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the

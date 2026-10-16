@@ -36,7 +36,7 @@ struct Relaxation{R, F, M, T, L, Tr}
 end
 
 """
-    Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing)
+$(MethodSignatures(; defaults = true))
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.

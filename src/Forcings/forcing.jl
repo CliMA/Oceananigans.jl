@@ -1,5 +1,5 @@
 """
-    Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=false)
+$(MethodSignatures(; defaults = true))
 
 Return a `Forcing` `func`tion, which can be added to the tendency of a model field.
 

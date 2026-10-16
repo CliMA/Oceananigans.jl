@@ -453,7 +453,7 @@ end
 end
 
 """
-    load_weno_stencil(buffer, dir, func::Bool = false)
+$(MethodSignatures(; defaults = true))
 
 Stencils for WENO reconstruction calculations
 
