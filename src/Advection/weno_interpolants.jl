@@ -418,11 +418,19 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds @muladd abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds @muladd abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
-# 1 / ∑α with the division method of the weight computation. ∑α ≲ 2¹²⁴ in Float32 and BFloat16
-# (see `zweno_regularization`), so its approximate reciprocal cannot flush to zero.
-@inline function weight_normalization(::WENO{N, FT, WCT}, α) where {N, FT, WCT}
+# 1 / ∑α. Ordinary division by default: the approximate reciprocal slows the Float64 tracer kernels on CUDA.
+@inline function weight_normalization(scheme, α)
     Σα = sum(α)
-    return newton_div(WCT, one(Σα), Σα)
+    return one(Σα) / Σα
+end
+
+# In Float32 and BFloat16, the division method of the weight computation is faster. ∑α ≲ 2¹²⁴
+# (see `zweno_regularization`), so its approximate reciprocal cannot flush to zero.
+for FT in (Float32, BFloat16)
+    @eval @inline function weight_normalization(::WENO{N, $FT, WCT}, α) where {N, WCT}
+        Σα = sum(α)
+        return newton_div(WCT, one(Σα), Σα)
+    end
 end
 
 """
