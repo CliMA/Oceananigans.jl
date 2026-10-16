@@ -183,6 +183,16 @@ end
 
 validate_schedule(func, schedule) = schedule
 
+"""
+    add_conservation_fixer!(simulation)
+
+Add the conservation fixer of `simulation.model.grid` to `simulation`, if the grid has one, as the callback
+`simulation.callbacks[:conservation_fixer]`; calling it again replaces that callback. Grids whose
+discretization conserves volume and tracers have none, and leave `simulation` unchanged.
+"""
+add_conservation_fixer!(simulation) = add_conservation_fixer!(simulation, simulation.model.grid)
+add_conservation_fixer!(simulation, grid) = nothing
+
 Oceananigans.prognostic_state(::Function) = nothing
 
 function Oceananigans.prognostic_state(callback::Callback)

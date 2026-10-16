@@ -99,11 +99,17 @@ end
 
             # A refill right after `time_step!` must change nothing: no kernel writes to the halos after the step's fills
             model = explicit_model(step_grid; tracer_advection = WENO(order=5), coriolis = HydrostaticSphericalCoriolis(),
-                                   tracers = :c, timestepper)
-            set!(model, u = geographic_velocity(1), v = geographic_velocity(2), η = bump, c = (λ, φ, z) -> bump(λ + 60, φ, z))
+                                   tracers = (:c, :one), timestepper)
+            set!(model, u = geographic_velocity(1), v = geographic_velocity(2), η = bump, c = (λ, φ, z) -> bump(λ + 60, φ, z), one = 1)
+            V₀ = wet_volume(model)
+            callbacks = conservation_fixer_callbacks(model)
             for _ in 1:3
-                time_step!(model, 300)
+                time_step!(model, 300; callbacks)
             end
+
+            # The conservation fixer conserves the volume and keeps uniform tracers uniform
+            @test wet_volume(model) ≈ V₀ rtol = 1e-14
+            @test maximum(abs, model.tracers.one - 1) < 1e-13
 
             u, v, _ = model.velocities
             c = model.tracers.c

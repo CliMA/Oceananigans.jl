@@ -116,6 +116,9 @@ end
     model = zstar_model()
     set!(model, u = (λ, φ, z) -> 20cosd(φ), η = (λ, φ, z) -> cosd(λ) * cosd(φ), c = (λ, φ, z) -> 1 + sind(φ))
     simulation = Simulation(model; Δt = 10, stop_iteration = 3, verbose = false)
+
+    # The conservation fixer keeps no state, so the restart is bitwise with it too
+    add_conservation_fixer!(simulation)
     simulation.output_writers[:checkpointer] = Checkpointer(model; dir, prefix = "zstar", schedule = IterationInterval(3))
     run!(simulation)
     simulation.stop_iteration = 6
@@ -123,6 +126,7 @@ end
 
     new_model = zstar_model()
     new_simulation = Simulation(new_model; Δt = 10, stop_iteration = 6, verbose = false)
+    add_conservation_fixer!(new_simulation)
     @test_logs (:info, r"^Picking up simulation from checkpoint file") run!(new_simulation, pickup = joinpath(dir, "zstar_iteration3.jld2"))
 
     for r in 1:2

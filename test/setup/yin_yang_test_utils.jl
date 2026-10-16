@@ -85,3 +85,25 @@ interior_nodes(grid) = [(i, j) for j in 1:size(grid, 2) for i in 1:size(grid, 1)
 
 panel_u(velocity, grid) = (λ, φ, r) -> panel_components(velocity, λ, φ, north_pole(grid[r]))[1]
 panel_v(velocity, grid) = (λ, φ, r) -> panel_components(velocity, λ, φ, north_pole(grid[r]))[2]
+
+# Wet contents and volumes, summed so that every point of a Yin-Yang grid counts once
+using Oceananigans.Grids: immersed_inactive_node
+using Oceananigans.Operators: Azᶜᶜᶜ, Δrᶜᶜᶜ, Vᶜᶜᶜ
+
+@inline wet(i, j, k, grid) = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+@inline wet_content(i, j, k, grid, c) = ifelse(wet(i, j, k, grid), Vᶜᶜᶜ(i, j, k, grid) * c[i, j, k], zero(grid))
+@inline wet_reference_volume(i, j, k, grid) = ifelse(wet(i, j, k, grid), Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
+@inline top_area(i, j, k, grid) = ifelse((k == size(grid, 3)) & wet(i, j, k, grid), Azᶜᶜᶜ(i, j, k, grid), zero(grid))
+@inline top_volume(i, j, k, grid, η) = @inbounds top_area(i, j, k, grid) * η[i, j, size(grid, 3) + 1]
+
+owned_sum(f, grid, args...) = sum(KernelFunctionOperation{Center, Center, Center}(f, grid, args...))
+wet_content(c) = owned_sum(wet_content, c.grid, c)
+
+# The reference volume plus the volume of the free surface, for static and moving vertical coordinates
+wet_volume(model) = owned_sum(wet_reference_volume, model.grid) + owned_sum(top_volume, model.grid, model.free_surface.displacement.data)
+
+# The callbacks with which `time_step!(model, Δt; callbacks)` removes the content that the panels add
+using Oceananigans: TracerTendencyCallsite
+using Oceananigans.MultiRegion: materialize_conservation_fixer
+
+conservation_fixer_callbacks(model) = (Callback(materialize_conservation_fixer(YinYangConservationFixer(), model), callsite = TracerTendencyCallsite()),)

@@ -3,7 +3,7 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
-export YinYangGrid, owned_weights
+export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
@@ -70,6 +70,7 @@ include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
 include("yin_yang_reductions.jl")
 include("multi_region_models.jl")
+include("yin_yang_conservation_fixers.jl")
 include("multi_region_output_writers.jl")
 
 end #module

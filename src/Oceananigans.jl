@@ -102,7 +102,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
+    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, add_conservation_fixer!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -125,7 +125,7 @@ export
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
-    YinYangGrid,
+    YinYangGrid, YinYangConservationFixer,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
