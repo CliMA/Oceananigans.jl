@@ -142,5 +142,18 @@ zonal_average(source) = Field(Average(source, dims=1))
             deeper_grid = LatitudeLongitudeGrid(arch; size=(8, 4, 2), longitude=(-180, 180), latitude=(-90, 90), z=(-10, 0))
             @test_throws ArgumentError remap!(CenterField(deeper_grid), c)
         end
+
+        @testset "Remapped coastal scalars [$(typeof(arch)), $(nameof(Bottom))]" for Bottom in (GridFittedBottom, PartialCellBottom)
+            land(λ, φ) = (φ > 50) | ((abs(λ - 30) < 10) & (φ > -30))
+            immersed_grid = ImmersedBoundaryGrid(grid, Bottom((λ, φ) -> ifelse(land(λ, φ), 0, -1)))
+            c = CenterField(immersed_grid)
+            set!(c, (λ, φ, z) -> ifelse(land(λ, φ), 0, 3))
+
+            # The destination nodes do not coincide with the cell centers of either panel
+            cˡ = remapped_field(c, latitude_longitude_grid(immersed_grid; size=(72, 36)))
+            @test cˡ.grid isa ImmersedBoundaryGrid
+            @test minimum(cˡ) ≈ 3
+            @test maximum(cˡ) ≈ 3
+        end
     end
 end

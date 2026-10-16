@@ -1,5 +1,7 @@
 using Oceananigans.Fields: Fields, AbstractField, FieldStatus, compute!, compute_at!, set_status!
 using Oceananigans.Grids: λnode, φnode, znodes, cpu_face_constructor_z, halo_size, new_data
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, AbstractGridFittedBottom, GridFittedBottom, PartialCellBottom
+using Oceananigans.Utils: getregion
 
 #####
 ##### Remapping from a Yin-Yang grid to a grid in geographic coordinates
@@ -33,7 +35,8 @@ Base.show(io::IO, remapping::YinYangRemapping) = print(io, summary(remapping))
     latitude_longitude_grid(grid::YinYangGridOfSomeKind; size = (4Nφ, 2Nφ), halo = halo_size(grid))
 
 Return a global `LatitudeLongitudeGrid` with the vertical coordinate of the Yin-Yang `grid` and, by default,
-the spacing of its panels, which have `Nφ` cells in latitude.
+the spacing of its panels, which have `Nφ` cells in latitude. If `grid` has an immersed bottom, so does the
+returned grid, with the bottom height of the panel cell that contains each column.
 """
 function latitude_longitude_grid(grid::YinYangGridOfSomeKind;
                                  size = (4, 2) .* yin_yang_connectivity(grid).core_size[2],
@@ -49,6 +52,29 @@ function latitude_longitude_grid(grid::YinYangGridOfSomeKind;
                                  latitude = (-90, 90),
                                  radius = panel.radius)
 end
+
+const ImmersedBottomYinYangGrid =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:YinYangGrid, <:AbstractGridFittedBottom, <:Any, <:Any, <:AbstractSerialArchitecture}
+
+function latitude_longitude_grid(grid::ImmersedBottomYinYangGrid; kwargs...)
+    underlying_grid = latitude_longitude_grid(grid.underlying_grid; kwargs...)
+    location = (Center(), Center())
+    _, stencils = destination_stencils(grid, underlying_grid, location, (location,))
+    panel_bottom_heights = map(r -> on_architecture(CPU(), getregion(grid.immersed_boundary.bottom_height, r)), (1, 2))
+
+    bottom_height = map(stencils) do stencil
+        i★, j★ = only(stencil.fractional_indices)
+        return panel_bottom_heights[stencil.panel][round(Int, i★), round(Int, j★), 1]
+    end
+
+    Nx, Ny, _ = Base.size(underlying_grid)
+    immersed_boundary = with_bottom_height(grid.immersed_boundary, reshape(bottom_height, Nx, Ny))
+
+    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+end
+
+with_bottom_height(ib::GridFittedBottom, bottom_height) = GridFittedBottom(bottom_height, ib.immersed_condition)
+with_bottom_height(ib::PartialCellBottom, bottom_height) = PartialCellBottom(bottom_height, ib.minimum_fractional_cell_height)
 
 """
     YinYangRemapping(grid::YinYangGridOfSomeKind;
@@ -70,25 +96,8 @@ function YinYangRemapping(grid::YinYangGridOfSomeKind;
 
     validate_destination_grid(destination_grid)
 
-    connectivity = yin_yang_connectivity(grid)
-    s = connectivity.stencil_width
-    λᶠ, φᶠ = yin_yang_panel_face_coordinates(connectivity.core_size, connectivity.overlap)
-    frame = panel_frame(λᶠ, φᶠ)
-    interior_size = (length(λᶠ) - 1, length(φᶠ) - 1)
-    destination = on_architecture(CPU(), destination_grid)
-
-    ℓx, ℓy = destination_location
-    Nx, Ny, _ = Base.size(destination, (ℓx, ℓy, Center()))
-    nodes = [(i, j) for j in 1:Ny for i in 1:Nx]
-    coordinates = [(Float64(λnode(i, j, 1, destination, ℓx, ℓy, Center())),
-                    Float64(φnode(i, j, 1, destination, ℓx, ℓy, Center()))) for (i, j) in nodes]
-
-    stencils = [remapping_stencils(λ, φ, frame, interior_size, s, source_locations) for (λ, φ) in coordinates]
-
-    unfilled = findfirst(isnothing, stencils)
-    isnothing(unfilled) ||
-        throw(ArgumentError("The destination node $(nodes[unfilled]) has no $s×$s stencil of interior nodes on either panel."))
-
+    nodes, stencils = destination_stencils(grid, destination_grid, destination_location, source_locations)
+    s = yin_yang_connectivity(grid).stencil_width
     arch = architecture(destination_grid)
     FT = eltype(grid)
 
@@ -108,6 +117,30 @@ end
 validate_destination_grid(grid) = nothing
 validate_destination_grid(::MultiRegionGrids) =
     throw(ArgumentError("Fields cannot be remapped from a Yin-Yang grid onto a multi-region grid."))
+
+# The nodes at `destination_location` of `destination_grid`, in column-major order, and the stencils that fill them
+function destination_stencils(grid, destination_grid, destination_location, source_locations)
+    connectivity = yin_yang_connectivity(grid)
+    s = connectivity.stencil_width
+    λᶠ, φᶠ = yin_yang_panel_face_coordinates(connectivity.core_size, connectivity.overlap)
+    frame = panel_frame(λᶠ, φᶠ)
+    interior_size = (length(λᶠ) - 1, length(φᶠ) - 1)
+    destination = on_architecture(CPU(), destination_grid)
+
+    ℓx, ℓy = destination_location
+    Nx, Ny, _ = Base.size(destination, (ℓx, ℓy, Center()))
+    nodes = [(i, j) for j in 1:Ny for i in 1:Nx]
+    coordinates = [(Float64(λnode(i, j, 1, destination, ℓx, ℓy, Center())),
+                    Float64(φnode(i, j, 1, destination, ℓx, ℓy, Center()))) for (i, j) in nodes]
+
+    stencils = [remapping_stencils(λ, φ, frame, interior_size, s, source_locations) for (λ, φ) in coordinates]
+
+    unfilled = findfirst(isnothing, stencils)
+    isnothing(unfilled) ||
+        throw(ArgumentError("The destination node $(nodes[unfilled]) has no $s×$s stencil of interior nodes on either panel."))
+
+    return nodes, stencils
+end
 
 # The panel that fills the destination node at geographic `(λ, φ)` (degrees), and its stencils: the owner, unless
 # it lacks interior stencils near its edges, or `nothing` if neither panel has them
@@ -196,7 +229,8 @@ end
 
 Remap the scalar `source`, or the horizontal vector with panel components `(u, v)`, from a Yin-Yang grid
 onto the interior nodes of `destination`, or onto the geographic components `(uᵍ, vᵍ)`. The halos of the
-source need not be filled, and those of the destination are not filled.
+source need not be filled, and those of the destination are not filled. On an immersed grid, scalars are
+interpolated from wet cells only, and nodes whose stencils hold no wet cell are set to zero.
 """
 function remap!(destination::AbstractField, source::YinYangField, remapping::YinYangRemapping = YinYangRemapping(destination, source))
     validate_remapping(destination, source, remapping)
@@ -205,11 +239,18 @@ function remap!(destination::AbstractField, source::YinYangField, remapping::Yin
     for r in 1:2
         table = remapping.tables[r][m]
         donor = source.data.regional_objects[r]
-        launch_remapping!(destination, table, _interpolate_yin_yang_scalar_halo!, destination, donor, table)
+        launch_scalar_remapping!(destination, donor, source.grid, r, instantiated_location(source), table)
     end
 
     return destination
 end
+
+launch_scalar_remapping!(destination, donor, grid, r, loc, table) =
+    launch_remapping!(destination, table, _interpolate_yin_yang_scalar_halo!, destination, donor, table)
+
+launch_scalar_remapping!(destination, donor, grid::ImmersedBoundaryGrid, r, loc, table) =
+    launch_remapping!(destination, table, _interpolate_immersed_yin_yang_scalar_halo!,
+                      destination, donor, getregion(grid, r), loc, table)
 
 function remap!(geographic::Tuple{<:AbstractField, <:AbstractField}, panel::YinYangVectorComponents,
                 remapping::YinYangRemapping = YinYangRemapping(geographic, panel))

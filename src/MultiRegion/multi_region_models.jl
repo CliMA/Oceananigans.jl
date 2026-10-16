@@ -107,6 +107,7 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 # reconcile_state! for a multi-region model.
 # A cubed-sphere grid needs to fill u and v velocity halos together.
 function TimeSteppers.reconcile_state!(model::MultiRegionModel)
+    @apply_regionally HydrostaticFreeSurfaceModels.mask_immersed_horizontal_velocities!(model.velocities)
 
     u = model.velocities.u
     v = model.velocities.v
@@ -134,7 +135,7 @@ Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) =
 Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) =
     @apply_regionally Oceananigans.TimeSteppers.cache_current_fields!(model)
 
-TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
+TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrids) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
