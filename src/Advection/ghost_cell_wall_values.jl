@@ -390,9 +390,10 @@ end
 
 launch_over_wall_values!(::Nothing, kernel!::K, args::Vararg{Any, N}) where {K, N} = nothing
 
+# A map over the positions in `nodes` launches the same kernel for any number of nodes, whose count is known only at runtime
 function launch_over_wall_values!(walls::ImmersedWallValues, kernel!::K, args::Vararg{Any, N}) where {K, N}
     grid = walls.values.grid
-    isempty(walls.nodes) || launch!(architecture(grid), grid, (length(walls.nodes),), kernel!, walls, grid, args...)
+    launch!(architecture(grid), grid, Base.OneTo(length(walls.nodes)), kernel!, walls, grid, args...)
     return nothing
 end
 
