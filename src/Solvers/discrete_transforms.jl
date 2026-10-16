@@ -57,14 +57,11 @@ function twiddle_factors(arch::GPU, grid, dims)
     Ns = size(grid)
     N = Ns[dim]
 
-    inds⁺ = reshape(0:N-1, reshaped_size(N, dim)...)
-    inds⁻ = reshape(0:-1:-(N-1), reshaped_size(N, dim)...)
-
     # Match the grid's precision: not all backends can store ComplexF64 (e.g. Metal),
     # and mixed-precision broadcasts would promote the transformed array anyway.
     C = complex(eltype(grid))
-    ω_4N⁺ = C.(ω.(4N, inds⁺))
-    ω_4N⁻ = C.(ω.(4N, inds⁻))
+    ω_4N⁺ = C.(ω.(4N, 0:N-1))
+    ω_4N⁻ = C.(ω.(4N, 0:-1:-(N-1)))
 
     # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01)
     # is not multiplied by 2.
@@ -96,7 +93,8 @@ function DiscreteTransform(plan, direction, grid, dims)
     # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
     # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
     # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
-    transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
+    # The cosine transform's permutation kernels transpose as they permute.
+    transpose = arch isa GPU && dims == [2] && topo[2] != Bounded ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]
     topos = length(topos) == 1 ? topos[1] : topos
@@ -121,33 +119,33 @@ function apply_transforms!(transforms::Tuple, A, buffer)
 end
 
 function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
-    maybe_permute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
-    apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
-    maybe_twiddle_forward!(A, transform.twiddle_factors)
+    arch = architecture(transform)
+    B = maybe_permute_indices!(buffer, A, arch, transform.grid, transform.dims, transform.topology)
+    apply_transform!(B, buffer, transform.plan, transform.transpose_dims)
+    maybe_twiddle_forward!(A, B, transform.twiddle_factors, arch, transform.grid, transform.dims)
     return nothing
 end
 
 function (transform::DiscreteTransform{P, <:Backward})(A, buffer) where P
-    maybe_twiddle_backward!(A, transform.twiddle_factors)
-    apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
-    maybe_unpermute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
+    arch = architecture(transform)
+    B = maybe_twiddle_backward!(buffer, A, transform.twiddle_factors, arch, transform.grid, transform.dims)
+    apply_transform!(B, buffer, transform.plan, transform.transpose_dims)
+    maybe_unpermute_indices!(A, B, arch, transform.grid, transform.dims, transform.topology)
     return nothing
 end
 
-maybe_permute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
+maybe_permute_indices!(buffer, A, arch, grid, dim, dim_topo) = A
 
-function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
-    permute_indices!(B, A, arch, grid, dim)
-    copyto!(A, B)
-    return nothing
+function maybe_permute_indices!(buffer, A, arch::GPU, grid, dim, ::Bounded)
+    B = transform_buffer(buffer, grid, dim)
+    launch!(arch, grid, :xyz, _permute_indices!, B, A, Val(dim), size(grid, dim))
+    return B
 end
 
 maybe_unpermute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
 
 function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
-    unpermute_indices!(B, A, arch, grid, dim)
-    copyto!(A, B)
-    @. A = real(A)
+    launch!(arch, grid, :xyz, _unpermute_indices!, A, B, Val(dim), size(grid, dim))
     return nothing
 end
 
@@ -174,18 +172,19 @@ function apply_transform!(A, B, plan, transpose_dims)
     return nothing
 end
 
-maybe_twiddle_forward!(A, ::Nothing) = nothing
+maybe_twiddle_forward!(A, B, ::Nothing, arch, grid, dim) = nothing
 
-function maybe_twiddle_forward!(A, twiddle)
-    @. A = 2 * real(twiddle.forward * A)
+function maybe_twiddle_forward!(A, B, twiddle, arch, grid, dim)
+    launch!(arch, grid, :xyz, _twiddle_forward!, A, B, twiddle.forward, Val(dim))
     return nothing
 end
 
-maybe_twiddle_backward!(A, ::Nothing) = nothing
+maybe_twiddle_backward!(buffer, A, ::Nothing, arch, grid, dim) = A
 
-function maybe_twiddle_backward!(A, twiddle)
-    @. A *= twiddle.backward
-    return nothing
+function maybe_twiddle_backward!(buffer, A, twiddle, arch, grid, dim)
+    B = transform_buffer(buffer, grid, dim)
+    launch!(arch, grid, :xyz, _twiddle_backward!, B, A, twiddle.backward, Val(dim))
+    return B
 end
 
 backward_normalization(FT, transforms) = convert(FT, prod(transform.normalization for transform in transforms.backward))

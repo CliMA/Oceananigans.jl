@@ -19,72 +19,41 @@ See equation (20) of [Makhoul80](@citet).
                                           i ÷ 2 + 1,
                                           N - (i - 1) ÷ 2)
 
-"""
-$(TYPEDSIGNATURES)
+#####
+##### The GPU cosine transforms work in the buffer, which holds the transformed dimension
+##### permuted and, for the second dimension, transposed into the first
+#####
 
-Permute `i` in the opposite manner as `permute_index`, such that,
-for example, `i ∈ 1:N` becomes
+@inline transformed_index(i, j, k, ::Val{1}) = i
+@inline transformed_index(i, j, k, ::Val{2}) = j
+@inline transformed_index(i, j, k, ::Val{3}) = k
 
-   [1, 2, 3, 4, 5, 6, 7, 8] -> [1, 3, 5, 7, 8, 6, 4, 2]
+@inline buffer_indices(i, j, k, n, ::Val{1}) = (n, j, k)
+@inline buffer_indices(i, j, k, n, ::Val{2}) = (n, i, k)
+@inline buffer_indices(i, j, k, n, ::Val{3}) = (i, j, n)
 
-   [1, 2, 3, 4, 5, 6, 7, 8, 9] -> [1, 3, 5, 7, 9, 8, 6, 4, 2]
+transform_buffer(buffer, grid, dim) = dim == 2 ? reshape(buffer, size(grid, 2), size(grid, 1), size(grid, 3)) : buffer
 
-for `N=8` and `N=9` respectively.
-
-See equation (20) of [Makhoul80](@citet).
-"""
-@inline unpermute_index(i, N) = ifelse(i <= (N + 1) ÷ 2, 2i-1, 2(N-i+1))
-
-@kernel function permute_x_indices!(dst, src, grid)
+@kernel function _permute_indices!(B, A, dim, N)
     i, j, k = @index(Global, NTuple)
-    i′ = permute_index(i, grid.Nx)
-    @inbounds dst[i′, j, k] = src[i, j, k]
+    n = permute_index(transformed_index(i, j, k, dim), N)
+    @inbounds B[buffer_indices(i, j, k, n, dim)...] = A[i, j, k]
 end
 
-@kernel function permute_y_indices!(dst, src, grid)
+@kernel function _unpermute_indices!(A, B, dim, N)
     i, j, k = @index(Global, NTuple)
-    j′ = permute_index(j, grid.Ny)
-    @inbounds dst[i, j′, k] = src[i, j, k]
+    n = permute_index(transformed_index(i, j, k, dim), N)
+    @inbounds A[i, j, k] = real(B[buffer_indices(i, j, k, n, dim)...])
 end
 
-@kernel function permute_z_indices!(dst, src, grid)
+@kernel function _twiddle_forward!(A, B, ω, dim)
     i, j, k = @index(Global, NTuple)
-    k′ = permute_index(k, grid.Nz)
-    @inbounds dst[i, j, k′] = src[i, j, k]
+    n = transformed_index(i, j, k, dim)
+    @inbounds A[i, j, k] = 2 * real(ω[n] * B[buffer_indices(i, j, k, n, dim)...])
 end
 
-@kernel function unpermute_x_indices!(dst, src, grid)
+@kernel function _twiddle_backward!(B, A, ω, dim)
     i, j, k = @index(Global, NTuple)
-    i′ = unpermute_index(i, grid.Nx)
-    @inbounds dst[i′, j, k] = src[i, j, k]
+    n = transformed_index(i, j, k, dim)
+    @inbounds B[buffer_indices(i, j, k, n, dim)...] = ω[n] * A[i, j, k]
 end
-
-@kernel function unpermute_y_indices!(dst, src, grid)
-    i, j, k = @index(Global, NTuple)
-    j′ = unpermute_index(j, grid.Ny)
-    @inbounds dst[i, j′, k] = src[i, j, k]
-end
-
-@kernel function unpermute_z_indices!(dst, src, grid)
-    i, j, k = @index(Global, NTuple)
-    k′ = unpermute_index(k, grid.Nz)
-    @inbounds dst[i, j, k′] = src[i, j, k]
-end
-
-permute_kernel! = Dict(
-    1 => permute_x_indices!,
-    2 => permute_y_indices!,
-    3 => permute_z_indices!
-)
-
-unpermute_kernel! = Dict(
-    1 => unpermute_x_indices!,
-    2 => unpermute_y_indices!,
-    3 => unpermute_z_indices!
-)
-
-permute_indices!(dst, src, arch, grid, dim) =
-    launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid)
-
-unpermute_indices!(dst, src, arch, grid, dim) =
-    launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid)
