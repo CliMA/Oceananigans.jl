@@ -383,20 +383,6 @@ end
 # 1 + r², fused
 @inline zweno_ratio_term(r) = muladd(r, r, 1)
 
-"""
-$(TYPEDSIGNATURES)
-
-Regularization ϵ★ of the ZWENO ratios τ / (βᵣ + ϵ★). It is the constant `ϵ`, except in formats with 8 exponent
-bits (Float32, BFloat16), where it is `max(ϵ, τ / 2⁶²)`. This bounds τ / (βᵣ + ϵ★) ≤ 2⁶², so that the squared
-ratios and their weighted sum ∑ᵣ αᵣ ≲ 2¹²⁴ cannot overflow beside large jumps. The bound costs one multiply and
-one `max` per reconstruction, and is inactive (ϵ★ = ϵ, so the α weights are bitwise unchanged) unless
-τ > 2⁶² ϵ ≈ 5 × 10¹⁰.
-
-When it is active, it only redistributes weight among the stencils with βᵣ ≲ τ / 2⁶², which become weighted in
-proportion to their optimal weights C★ᵣ rather than to C★ᵣ / (βᵣ + ϵ)². These stencils are smooth to within
-2⁻³¹ ≈ 5 × 10⁻¹⁰ of the jump in √β, so their reconstructions differ by less than the precision of the format
-relative to the jump.
-"""
 @inline zweno_regularization(scheme, τ) = ϵ
 
 for FT in (Float32, BFloat16)
