@@ -18,7 +18,7 @@ $(TYPEDSIGNATURES)
 Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
 This method is called after interior momentum tendencies are computed to:
-1. synchronize halo communication for tracers and velocities,
+1. synchronize halo communication for tracers, their wall values and velocities,
 2. compute diagnostic fields (buoyancy gradients, pressure, closure_fields) in the buffer regions, and
 3. compute momentum tendencies in cells that depend on halo data.
 """
@@ -26,10 +26,11 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize tracers
+    # Synchronize tracers and their wall values
     for tracer in model.tracers
         synchronize_communication!(tracer)
     end
+    synchronize_communication!(wall_value_fields(model.advection))
 
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)
@@ -89,7 +90,7 @@ $(TYPEDSIGNATURES)
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
 This function is called after interior tracer tendencies are computed to:
-1. synchronize halo communication for transport velocities, free surface and the wall values of the tracers,
+1. synchronize halo communication for transport velocities and free surface,
 2. update the vertical transport velocities in buffer regions, and
 3. compute the tracer tendencies in cells that depend on halo data.
 """
@@ -97,11 +98,10 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize velocities, free surface and wall values
+    # Synchronize velocities and free surface
     synchronize_communication!(model.free_surface)
     synchronize_communication!(model.velocities.u)
     synchronize_communication!(model.velocities.v)
-    synchronize_communication!(wall_value_fields(model.advection))
 
     compute_tracer_buffer_contributions!(grid, arch, model)
 

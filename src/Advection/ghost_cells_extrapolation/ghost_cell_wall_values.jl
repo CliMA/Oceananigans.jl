@@ -114,12 +114,7 @@ Architectures.on_architecture(to, w::DomainWallValues{d, s}) where {d, s} =
     DomainWallValues{d, s}(on_architecture(to, w.values), on_architecture(to, w.tendency),
                            on_architecture(to, w.previous_tendency), on_architecture(to, w.cache))
 
-# The reconstruction reads only the wall values
-adapt_wall_values(to, ::Nothing) = nothing
-adapt_wall_values(to, w::Union{ImmersedWallValues, DomainWallValues}) = Adapt.adapt(to, w.values)
-adapt_wall_values(to, walls::NamedTuple) = map(w -> adapt_wall_values(to, w), walls)
-
-Adapt.adapt_structure(to, extrapolation::TransportedWallValue) = TransportedWallValue(adapt_wall_values(to, extrapolation.immersed_walls), adapt_wall_values(to, extrapolation.domain_walls))
+Adapt.adapt_structure(to, extrapolation::TransportedWallValue) = TransportedWallValue(Adapt.adapt(to, extrapolation.immersed_walls), Adapt.adapt(to, extrapolation.domain_walls))
 Architectures.on_architecture(to, extrapolation::TransportedWallValue) = TransportedWallValue(on_architecture(to, extrapolation.immersed_walls), on_architecture(to, extrapolation.domain_walls))
 
 #####
