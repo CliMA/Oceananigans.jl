@@ -24,7 +24,7 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum tendencies (baroclinic)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
+4. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
@@ -48,9 +48,10 @@ The order of operations for explicit free surfaces is:
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
+    @apply_regionally compute_tracer_tendencies!(model)
+    execute_tracer_tendency_callbacks!(model, callbacks)
 
+    @apply_regionally begin
         # The barotropic correction integrates over the column, so it must follow the grid update
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
@@ -70,8 +71,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
 2. Enforce targeted open boundary transports on the predictor velocity
 3. Solve implicit free surface equation
 4. Correct velocities for the updated barotropic pressure gradient
-5. Advance grid scaling (for z-star coordinates)
-6. Advance tracers
+5. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
+6. Advance grid scaling (for z-star coordinates)
+7. Advance tracers
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
@@ -105,7 +107,11 @@ For implicit free surfaces, a predictor-corrector approach is used:
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
+    end
 
+    execute_tracer_tendency_callbacks!(model, callbacks)
+
+    @apply_regionally begin
         # Advance grid (z-star scaling)
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
 

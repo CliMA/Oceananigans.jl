@@ -203,8 +203,30 @@ abstract type AbstractOutputWriter end
 
 # Callsites for Callbacks
 struct TimeStepCallsite end
-struct TendencyCallsite end
 struct UpdateStateCallsite end
+
+"""
+    MomentumTendency()
+
+The tendency kind of `TendencyCallsite()`: its callbacks act on the momentum tendencies.
+"""
+struct MomentumTendency end
+
+"""
+    TracerTendency()
+
+The tendency kind of `TracerTendencyCallsite()`: its callbacks act on the tracer tendencies.
+"""
+struct TracerTendency end
+
+struct TendencyCallsite{T}
+    tendency :: T
+end
+
+TendencyCallsite() = TendencyCallsite(MomentumTendency())
+TendencyCallsite{T}() where T = TendencyCallsite(T())
+
+const TracerTendencyCallsite = TendencyCallsite{TracerTendency}
 
 #####
 ##### Place-holder functions

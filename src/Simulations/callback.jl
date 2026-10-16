@@ -61,6 +61,9 @@ The `callsite` determines where `Callback` is executed. The possible values for
 * `TendencyCallsite()`: after tendencies are calculated, but before taking
   a time-step (useful for modifying tendency calculations).
 
+* `TracerTendencyCallsite()`: after the tracer tendencies are calculated, which
+  `HydrostaticFreeSurfaceModel` does later in each substep than the momentum tendencies.
+
 * `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
   been computed (for multi-stage time-steppers, `update_state!` may be called multiple
   times per time-step).
