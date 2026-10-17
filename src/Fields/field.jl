@@ -143,7 +143,7 @@ julia> ω = Field{Face, Face, Center}(grid)
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
+└── data: 6×9×10 StaticStridesOffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -164,7 +164,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
+└── data: 6×9×1 StaticStridesOffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
     └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
@@ -292,7 +292,7 @@ julia> set!(c, rand(size(c)...))
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
+└── data: 6×9×10 StaticStridesOffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
     └── max=0.972136, min=0.0149088, mean=0.626341
 
 julia> v = view(c, :, 2:3, 1:2)
@@ -301,7 +301,7 @@ julia> v = view(c, :, 2:3, 1:2)
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, 2:3, 1:2)
-└── data: 6×2×2 OffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
+└── data: 6×2×2 StaticStridesOffsetArray(view(::Array{Float64, 3}, :, 5:6, 4:5), -1:4, 2:3, 1:2) with eltype Float64 with indices -1:4×2:3×1:2
     └── max=0.972136, min=0.0149088, mean=0.59198
 
 julia> size(v)
@@ -355,7 +355,7 @@ function Base.view(f::Field, i, j, k)
                  status)
 end
 
-const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedData = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:SubArray}
 const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
 
 # Conveniences
@@ -385,7 +385,7 @@ instantiate(T::NTuple{N, <:Type}) where N = map(instantiate, T)
 interior_view_indices(field_indices, interior_indices)   = Colon()
 interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
-function interior(a::OffsetArray,
+function interior(a::AbstractOffsetArray,
                   Loc::Tuple,
                   Topo::Tuple,
                   sz::NTuple{N, Int},
@@ -413,7 +413,7 @@ $(TYPEDSIGNATURES)
 Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
-interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
+interior(a::AbstractOffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
 ReactantCore.materialize_traced_array(f::Field) =

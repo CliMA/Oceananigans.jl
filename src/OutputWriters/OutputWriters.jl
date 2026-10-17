@@ -9,7 +9,7 @@ export
     FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using OrderedCollections: OrderedDict
 
 using Oceananigans: Oceananigans, AbstractOutputWriter, boundary_conditions, write_output!
@@ -40,7 +40,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    CubedSphereConformalMapping,
                                                    LambertConformalConic
 using Oceananigans.Solvers: iteration
-using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize
 
 const c = Center()

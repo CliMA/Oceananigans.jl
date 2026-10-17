@@ -43,7 +43,7 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         @inbounds axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 """

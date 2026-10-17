@@ -511,7 +511,7 @@ julia> data = rand(total_length(loc[1](), topo[1](), Nx, 0), total_length(loc[2]
  0.997512  0.0440224  0.726334
 
 julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
-6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+6×7 StaticStridesOffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
  0.0  0.0  0.0       0.0        0.0        0.0  0.0
  0.0  0.0  0.771924  0.998196   0.48775    0.0  0.0
  0.0  0.0  0.499878  0.470224   0.669928   0.0  0.0
@@ -535,7 +535,7 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 └ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:650
 ┌ Warning: data has smaller size than expected in second dimension; rest of entries are filled with zeros.
 └ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:655
-6×7 OffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
+6×7 StaticStridesOffsetArray(::Matrix{Float64}, 0:5, -1:5) with eltype Float64 with indices 0:5×-1:5:
  0.0  0.0  0.0       0.0       0.0  0.0  0.0
  0.0  0.0  0.910064  0.491983  0.0  0.0  0.0
  0.0  0.0  0.597547  0.775168  0.0  0.0  0.0

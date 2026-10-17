@@ -82,11 +82,11 @@ julia> ∫dz(c)[1, 1, 1]
 
 julia> ∫dz(c, cumulative=true)
 1×1×9 Field{Center, Center, Face} on RectilinearGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 9)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (1, 1, 15), (0, 0, -3), Array{Float64, 3}}, size: (1, 1, 9)
 ├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── operand: CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
 ├── status: time=0.0
-└── data: 1×1×15 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:12) with eltype Float64 with indices 1:1×1:1×-2:12
+└── data: 1×1×15 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:12) with eltype Float64 with indices 1:1×1:1×-2:12
     └── max=0.5, min=0.0, mean=0.177083
 ```
 """

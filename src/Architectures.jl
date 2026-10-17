@@ -10,7 +10,7 @@ export
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using SparseArrays: SparseArrays, SparseMatrixCSC
 
 """
@@ -70,7 +70,7 @@ architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(a::SubArray) = architecture(parent(a))
-architecture(a::OffsetArray) = architecture(parent(a))
+architecture(a::AbstractOffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
 architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
 architecture(::Type{Array}) = CPU()
@@ -104,8 +104,7 @@ on_architecture(::CPU, a::BitArray) = a
 on_architecture(::CPU, a::StepRangeLen) = a
 on_architecture(::CPU, A::SparseMatrixCSC) = A
 
-on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
-    OffsetArray(on_architecture(arch, a.parent), a.offsets...)
+on_architecture(arch::AbstractSerialArchitecture, a::AbstractOffsetArray) = OffsetArrays.parent_call(p -> on_architecture(arch, p), a)
 
 function on_architecture(arch::AbstractArchitecture, a::SubArray)
     p = on_architecture(arch, parent(a))

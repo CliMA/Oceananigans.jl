@@ -518,8 +518,8 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.Δλᶜᵃᵃ.offsets[1]
-    j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    i′ = i + OffsetArrays.offsets(grid.Δλᶜᵃᵃ)[1]
+    j′ = j + OffsetArrays.offsets(grid.φᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δxᶠᶜ[i′, j′] = Δxᶠᶜᵃ(i′, j′, 1, grid)
@@ -537,7 +537,7 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    j′ = j + OffsetArrays.offsets(grid.φᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δxᶠᶜ[j′] = Δxᶠᶜᵃ(1, j′, 1, grid)
@@ -559,7 +559,7 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.Δφᵃᶜᵃ.offsets[1] + 1
+    j′ = j + OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δyᶜᶠ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
@@ -576,21 +576,21 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     arch = grid.architecture
 
     if grid isa XRegularLLG
-        offsets     = grid.φᵃᶜᵃ.offsets[1]
+        offsets     = OffsetArrays.offsets(grid.φᵃᶜᵃ)[1]
         metric_size = length(grid.φᵃᶜᵃ)
     else
-        offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
+        offsets     = (OffsetArrays.offsets(grid.Δλᶜᵃᵃ)[1], OffsetArrays.offsets(grid.φᵃᶜᵃ)[1])
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
@@ -598,8 +598,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     else
         parentC = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶠᶜ    = StaticStridesOffsetArray(parentC, OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1])
+        Δyᶜᶠ    = StaticStridesOffsetArray(parentF, OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1])
     end
 
     return Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δyᶠᶜ, Δyᶜᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ

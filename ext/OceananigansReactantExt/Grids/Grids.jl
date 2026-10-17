@@ -5,6 +5,7 @@ export constant_with_arch
 using Reactant
 using Reactant: TracedRArray
 using OffsetArrays
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans
 using Oceananigans: Distributed
@@ -101,7 +102,7 @@ function reactant_offset_data(underlying_data::Union{ConcreteRArray, TracedRArra
         axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 end # module

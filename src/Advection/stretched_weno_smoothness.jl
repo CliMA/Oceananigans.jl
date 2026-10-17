@@ -56,7 +56,7 @@ end
 @inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.smooth_zᵃᵃᶜ[r+4][i]
 
 @inline calc_smoothness_coefficients(FT, ::Val{false}, args...; kwargs...) = nothing
-@inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N; order) = nothing
+@inline calc_smoothness_coefficients(FT, ::Val{true}, coord::StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:AbstractRange}, arch, N; order) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N; order) = nothing
 
 function calc_smoothness_coefficients(FT, beta, coord, arch, N; order)
@@ -104,7 +104,7 @@ function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N; order)
         end
     end
 
-    return OffsetArray(on_architecture(arch, stencil), -1)
+    return StaticStridesOffsetArray(on_architecture(arch, stencil), -1)
 end
 
 @inline dagger(ψ)    = (ψ[2], ψ[3], ψ[1])

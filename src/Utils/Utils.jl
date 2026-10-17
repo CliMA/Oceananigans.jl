@@ -53,5 +53,6 @@ include("newton_div.jl")
 include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
+include("static_strides_offset_array.jl")
 
 end # module

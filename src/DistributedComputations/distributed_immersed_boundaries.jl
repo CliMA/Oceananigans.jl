@@ -88,7 +88,7 @@ the total size of `grid`
 resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
 resize_immersed_boundary(ib::GridFittedBoundary, grid) = ib
 
-function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
+function resize_immersed_boundary(ib::GridFittedBoundary{<:AbstractOffsetArray}, grid)
 
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -106,7 +106,7 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
     return ib
 end
 
-function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:AbstractOffsetArray}, grid)
 
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)

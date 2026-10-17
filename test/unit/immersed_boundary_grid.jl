@@ -378,7 +378,7 @@ function test_immersed_boundary_grid_show(FT, arch, boundary_type)
 
     # The array type in the bottom height summary depends on the architecture
     ib_shown = sprint(show, ib)
-    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 OffsetArray("))
+    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 StaticStridesOffsetArray("))
     @test endswith(ib_shown, string("with eltype $FT with indices -2:7×-2:7×1:1", ib_suffix))
 
     return nothing

@@ -45,7 +45,7 @@ end
 
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function, args...) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
+set!(u::Field, a::Union{Array, AbstractOffsetArray}, args...) = set_to_array!(u, a)
 
 """
 $(TYPEDSIGNATURES)
@@ -275,5 +275,5 @@ end
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{<:Base.Broadcast.DefaultArrayStyle}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{0}}) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
-Base.copyto!(f::Field, src::OffsetArray) = copyto!(interior(f), parent(src))
+Base.copyto!(f::Field, src::AbstractOffsetArray) = copyto!(interior(f), parent(src))
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))

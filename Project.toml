@@ -61,6 +61,9 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase",
 OceananigansNCCLExt = ["NCCL", "CUDA"]
 OceananigansZarrExt = "Zarr"
 
+[sources]
+OffsetArrays = {url = "https://github.com/simone-silvestri/OffsetArrays.jl", rev = "d6d6e65b18522ff16a5aca4799f8d21f7582a4de"}
+
 [compat]
 AbstractFFTs = "1.5"
 Adapt = "4.1.1"

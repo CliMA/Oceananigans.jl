@@ -8,7 +8,7 @@ import Oceananigans.Architectures: on_architecture
 DisambiguationTypes = Union{Array,
                             BitArray,
                             SubArray{<:Any, <:Any, <:Array},
-                            OffsetArray,
+                            AbstractOffsetArray,
                             Tuple,
                             NamedTuple}
 

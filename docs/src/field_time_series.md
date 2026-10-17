@@ -21,7 +21,7 @@ fts = FieldTimeSeries{Center, Center, Center}(grid, times)
 ├── indices: (:, :, :)
 ├── time_indexing: Clamp()
 ├── backend: InMemory()
-└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+└── data: 14×14×14×11 StaticStridesOffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -58,7 +58,7 @@ fts = FieldTimeSeries("test.jld2", "u")
 ├── backend: InMemory()
 ├── path: test.jld2
 ├── name: u
-└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+└── data: 14×14×14×11 StaticStridesOffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=0.92388, min=-0.92388, mean=-6.98855e-20
 ```
 
@@ -95,7 +95,7 @@ fts[1]
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.92388, min=-0.92388, mean=0.0
 ```
 
@@ -114,7 +114,7 @@ fts[Time(0.33)]
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: BinaryOperation at (Face, Center, Center)
 ├── status: Oceananigans.Fields.FixedTime{Float64}
-└── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.922644, min=-0.922644, mean=-1.0842e-18
 ```
 
@@ -128,7 +128,7 @@ set!(fts, (x, y, z)->2x, 1) # equivalent to set!(fts[1], (x, y, z)->2x)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=10.9956, min=0.0, mean=5.49779
 ```
 
@@ -147,7 +147,7 @@ fts
 ├── backend: InMemory()
 ├── path: test.jld2
 ├── name: u
-└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+└── data: 14×14×14×11 StaticStridesOffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -220,7 +220,7 @@ ondisk_fts[1]
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(::Array{Float32, 3}, -2:11, -2:11, -2:11) with eltype Float32 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(::Array{Float32, 3}, -2:11, -2:11, -2:11) with eltype Float32 with indices -2:11×-2:11×-2:11
     └── max=0.92388, min=-0.92388, mean=-1.74623e-10
 ```
 
@@ -234,7 +234,7 @@ ondisk_fts[Time(0.3)]
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: BinaryOperation at (Face, Center, Center)
 ├── status: Oceananigans.Fields.FixedTime{Float64}
-└── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.922754, min=-0.922754, mean=2.1684e-19
 ```
 
@@ -268,7 +268,7 @@ new_fts = FieldTimeSeries("new.jld2", "c")
 ├── backend: InMemory()
 ├── path: new.jld2
 ├── name: c
-└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+└── data: 14×14×14×11 StaticStridesOffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=0.0, min=-2043.87, mean=-28.9271
 ```
 
@@ -341,7 +341,7 @@ fds.u
 ├── backend: InMemory()
 ├── path: test.jld2
 ├── name: u
-└── data: 14×14×14×11 OffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
+└── data: 14×14×14×11 StaticStridesOffsetArray(::Array{Float64, 4}, -2:11, -2:11, -2:11, 1:11) with eltype Float64 with indices -2:11×-2:11×-2:11×1:11
     └── max=1.12648, min=-0.0388058, mean=0.357269
 ```
 
@@ -360,14 +360,14 @@ println(new_fds.u[1], "\n\n", new_fds.v[1])
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=-0.0, min=-0.875, mean=-0.4375
 
 8×8×8 Field{Center, Face, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 14×14×14 OffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
+└── data: 14×14×14 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 1), -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.875, min=0.0, mean=0.4375
 ```
 
