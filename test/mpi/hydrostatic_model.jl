@@ -221,3 +221,43 @@ for arch in archs
         end
     end
 end
+
+# A semi-implicit quadratic drag whose implicit coefficient reads the other velocity component
+@inline u_drag_coefficient(i, j, grid, clock, fields, μ) = @inbounds - μ * sqrt(fields.u[i, j, 1]^2 + ℑxyᶠᶜᵃ(i, j, 1, grid, fields.v)^2)
+@inline v_drag_coefficient(i, j, grid, clock, fields, μ) = @inbounds - μ * sqrt(fields.v[i, j, 1]^2 + ℑxyᶜᶠᵃ(i, j, 1, grid, fields.u)^2)
+
+function implicit_drag_test(grid, timestepper)
+    u_bcs = FieldBoundaryConditions(bottom = IMEXFluxBoundaryCondition(0, u_drag_coefficient; discrete_form = true, parameters = 0.1))
+    v_bcs = FieldBoundaryConditions(bottom = IMEXFluxBoundaryCondition(0, v_drag_coefficient; discrete_form = true, parameters = 0.1))
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 4)
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, boundary_conditions = (u = u_bcs, v = v_bcs),
+                                        buoyancy = nothing, tracers = ())
+
+    set!(model, u = (x, y, z) -> sin(2π * y), v = (x, y, z) -> cos(2π * x))
+
+    for _ in 1:5
+        time_step!(model, 1e-2)
+    end
+
+    return model
+end
+
+@testset "Distributed implicit bottom drag" begin
+    for arch in archs, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        (arch.partition.x isa Fractional || arch.partition.y isa Fractional) && continue
+
+        grid = RectilinearGrid(arch, size = (32, 32, 2), x = (0, 1), y = (0, 1), z = (-1, 0),
+                               halo = (3, 3, 2), topology = (Periodic, Periodic, Bounded))
+
+        ms = implicit_drag_test(reconstruct_global_grid(grid), timestepper)
+        mp = implicit_drag_test(grid, timestepper)
+
+        cpu_arch = cpu_architecture(arch)
+
+        for name in (:u, :v)
+            p = interior(on_architecture(cpu_arch, mp.velocities[name]))
+            s = partition(interior(on_architecture(CPU(), ms.velocities[name])), cpu_arch, size(p))
+            @test all(isapprox(p, s; atol = eps(eltype(grid)), rtol = sqrt(eps(eltype(grid)))))
+        end
+    end
+end
