@@ -6,12 +6,9 @@
 # circumpolar channel in the south. This is the "Double Drake" geometry of
 # [FerreiraMarshallCampin2010](@citet), an idealized Atlantic and Pacific with a Drake Passage.
 #
-# A latitude-longitude grid cannot include the poles, where its meridians converge. The
-# Yin-Yang grid of [KageyamaSato2004](@citet) avoids the poles with two identical
-# latitude-longitude panels, Yin and Yang, each confined to 270° of longitude and 90° of
-# latitude around its own equator, where the grid is nearly uniform. Yang is Yin rotated
-# so that its equator passes through the poles. The panels overlap at their edges, and
-# each panel fills its halos by interpolating from the interior of the other.
+# We use the Yin-Yang grid of [KageyamaSato2004](@citet), which covers the poles with two
+# overlapping latitude-longitude panels, as described in the
+# [barotropic jet example](yin_yang_barotropic_jet.md).
 #
 # ## Install dependencies
 #
