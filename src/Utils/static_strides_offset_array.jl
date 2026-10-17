@@ -19,12 +19,9 @@ Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
 
 Base.IndexStyle(::Type{<:StaticStridesOffsetArray{T, N, S, O, A}}) where {T, N, S, O, A} = IndexStyle(A)
 
-Adapt.parent_type(::Type{<:StaticStridesOffsetArray{T, N, S, O, A}}) where {T, N, S, O, A} = A
-
+Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
 OffsetArrays.offsets(::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = O
-
 OffsetArrays.unwrap(a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
-
 @inline linear_index(::StaticStridesOffsetArray{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
 
 @inline function Base.getindex(a::StaticStridesOffsetArray{T, N, S, O, <:DenseArray}, I::Vararg{Int, N}) where {T, N, S, O}
