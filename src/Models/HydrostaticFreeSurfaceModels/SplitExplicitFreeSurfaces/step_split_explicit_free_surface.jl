@@ -25,9 +25,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
 
 @inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
-@inline x_difference_operator(::Val{true})  = δxᶜᶜᶜ
+@inline x_difference_operator(::Val{true})  = δxᶜᶜᵃ
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
-@inline y_difference_operator(::Val{true})  = δyᶜᶜᶜ
+@inline y_difference_operator(::Val{true})  = δyᶜᶜᵃ
 
 @inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
 @inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
