@@ -28,7 +28,7 @@ set!(c, periodic_but_decaying)
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 10×1×10 OffsetArray(::Array{Float64, 3}, -2:7, 1:1, -2:7) with eltype Float64 with indices -2:7×1:1×-2:7
-    └── max=0.428882, min=-0.428882, mean=1.04083e-17
+    └── max=0.428882, min=-0.428882, mean=-6.93889e-18
 ```
 
 An `AbstractOperation` (or _operation_ for short) differs from a `Field` in that it only represents a computation.
@@ -124,7 +124,7 @@ Like `Field`s, `AbstractOperations` are evaluated by indexing,
 nothing
 
 # output
-c[1, 1, 1] = 0.02135277459201165
+c[1, 1, 1] = 0.021352774592011643
 quadratic[1, 1, 1] = 1.0431614901668005
 ```
 
