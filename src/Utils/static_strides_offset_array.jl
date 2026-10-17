@@ -1,30 +1,32 @@
+using Adapt: Adapt
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 """
     StaticStridesOffsetArray(parent, offsets)
 
-Return an array that wraps `parent` with `offsets`. The offsets and the sizes of all dimensions but the last are type
-parameters, so that every index and stride of the array is a compile-time constant.
+Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the strides and
+offsets of the array are compile-time constants.
 """
 struct StaticStridesOffsetArray{T, N, S, O, A <: AbstractArray{T, N}} <: AbstractOffsetArray{T, N}
     parent :: A
 end
 
 function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
-    S = Base.front(size(parent))
-    O = Int.(offsets)
-    return StaticStridesOffsetArray{T, N, S, O, typeof(parent)}(parent)
+    return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
 end
 
-Base.size(a::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = (S..., size(parent(a), N))
+Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
 
 OffsetArrays.offsets(::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = O
+
+function Adapt.adapt_structure(to, a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O}
+    p = Adapt.adapt(to, parent(a))
+    return StaticStridesOffsetArray{T, N, S, O, typeof(p)}(p)
+end
+
 OffsetArrays.unwrap(a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
 
-@inline function linear_index(::StaticStridesOffsetArray{T, N, S, O}, I) where {T, N, S, O}
-    strides = (1, cumprod(S)...)
-    return 1 + sum(map((i, o, s) -> (i - o - 1) * s, I, O, strides))
-end
+@inline linear_index(::StaticStridesOffsetArray{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
 
 @inline function Base.getindex(a::StaticStridesOffsetArray{T, N, S, O, <:DenseArray}, I::Vararg{Int, N}) where {T, N, S, O}
     @boundscheck checkbounds(a, I...)
