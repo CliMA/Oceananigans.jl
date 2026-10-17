@@ -1,4 +1,3 @@
-using Adapt: Adapt
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 """
