@@ -110,7 +110,7 @@ julia> density_field = Field(density_operation)
 │   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
-└── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
+└── data: 1×1×106 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
     └── max=1032.38, min=1027.73, mean=1030.06
 ```
 
