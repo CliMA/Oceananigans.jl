@@ -1,3 +1,4 @@
+using Adapt: Adapt
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 """
@@ -15,6 +16,10 @@ function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{I
 end
 
 Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
+
+Base.IndexStyle(::Type{<:StaticStridesOffsetArray{T, N, S, O, A}}) where {T, N, S, O, A} = IndexStyle(A)
+
+Adapt.parent_type(::Type{<:StaticStridesOffsetArray{T, N, S, O, A}}) where {T, N, S, O, A} = A
 
 OffsetArrays.offsets(::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = O
 

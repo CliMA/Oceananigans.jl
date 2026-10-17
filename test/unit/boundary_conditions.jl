@@ -533,7 +533,7 @@ end
         # field itself is adapted to its bare data like any other non-reduced field (e.g. the free
         # surface displacement of a hydrostatic model is a windowed field, and must adapt like the
         # other model fields, so that the tuple of model fields stays homogeneous)
-        @test Adapt.adapt(Array, ∂z_cᵗ) isa OffsetArray
+        @test Adapt.adapt(Array, ∂z_cᵗ) isa StaticStridesOffsetArray
         adapted_top = Adapt.adapt(Array, bcs.top)
         @test adapted_top.condition isa Field
         @test adapted_top.condition.indices == ∂z_cᵗ.indices
