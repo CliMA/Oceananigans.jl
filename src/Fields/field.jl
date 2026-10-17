@@ -355,7 +355,7 @@ function Base.view(f::Field, i, j, k)
                  status)
 end
 
-const WindowedData = OffsetArray{<:Any, <:Any, <:SubArray}
+const WindowedData = StaticStridesOffsetArray{<:Any, <:Any, <:Any, <:Any, <:SubArray}
 const WindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:WindowedData}
 
 # Conveniences
@@ -385,7 +385,7 @@ instantiate(T::NTuple{N, <:Type}) where N = map(instantiate, T)
 interior_view_indices(field_indices, interior_indices)   = Colon()
 interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
-function interior(a::OffsetArray,
+function interior(a::AbstractOffsetArray,
                   Loc::Tuple,
                   Topo::Tuple,
                   sz::NTuple{N, Int},
@@ -413,7 +413,7 @@ $(TYPEDSIGNATURES)
 Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
-interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
+interior(a::AbstractOffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
 ReactantCore.materialize_traced_array(f::Field) =

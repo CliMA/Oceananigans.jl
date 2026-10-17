@@ -48,7 +48,7 @@ end
 function update_pole_value!(bc::PolarValue, c, grid, loc)
     j = bc.side == :north ? grid.Ny : 1
     Nz = size(c, 3)
-    Oz = c.offsets[3]
+    Oz = OffsetArrays.offsets(c)[3]
     params = KernelParameters(1:1, 1:1, 1+Oz:Nz+Oz)
     launch!(architecture(bc.data), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
     return nothing

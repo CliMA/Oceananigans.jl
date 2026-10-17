@@ -17,7 +17,7 @@ using Oceananigans.Grids: topology, FullyConnected,
     LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
     SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
 using Oceananigans.DistributedComputations: insert_connected_topology
-using Oceananigans.Utils: Utils
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 import Oceananigans.DistributedComputations: inject_halo_communication_boundary_conditions
@@ -202,14 +202,14 @@ end
 function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
 
     metric = getproperty(global_grid, metric_name)
-    offsets = metric.offsets
+    offsets = OffsetArrays.offsets(metric)
     partitioned_metric = metric[irange, jrange]
 
-    if partitioned_metric isa OffsetArray
-        partitioned_metric = partitioned_metric.parent
+    if partitioned_metric isa AbstractOffsetArray
+        partitioned_metric = parent(partitioned_metric)
     end
 
-    return OffsetArray(partitioned_metric, offsets...)
+    return StaticStridesOffsetArray(partitioned_metric, offsets...)
 end
 
 #####

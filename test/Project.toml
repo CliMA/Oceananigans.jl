@@ -42,6 +42,7 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
 Oceananigans = {path = ".."}
+OffsetArrays = {url = "https://github.com/simone-silvestri/OffsetArrays.jl", rev = "d6d6e65b18522ff16a5aca4799f8d21f7582a4de"}
 
 [compat]
 AMDGPU = "1.3.6, 2"

@@ -3,6 +3,8 @@ module OceananigansReactantExt
 using Reactant
 using Oceananigans
 using OffsetArrays
+using OffsetArrays: AbstractOffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
@@ -10,7 +12,7 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: Bounded, Periodic, RightConnected
 
 deconcretize(obj) = obj # fallback
-deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
+deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)
 
 include("Utils.jl")
 using .Utils
@@ -385,7 +387,7 @@ end
     return c
 end
 
-Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
+Base.getindex(array::StaticStridesOffsetArray{T, 1, <:Any, <:Any, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
 
 
 # These are additional modules that may need to be Reactantified in the future:

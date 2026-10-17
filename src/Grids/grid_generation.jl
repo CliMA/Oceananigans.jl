@@ -77,15 +77,15 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
+    Δᶜ = StaticStridesOffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = StaticStridesOffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    OF = OffsetArray(trimmed_F, -H)
-    OC = OffsetArray(        C, -H)
+    OF = StaticStridesOffsetArray(trimmed_F, -H)
+    OC = StaticStridesOffsetArray(        C, -H)
 
     # Convert to appropriate array type for arch
-    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
-    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
+    OF = StaticStridesOffsetArray(on_architecture(arch, parent(OF)), OffsetArrays.offsets(OF)...)
+    OC = StaticStridesOffsetArray(on_architecture(arch, parent(OC)), OffsetArrays.offsets(OC)...)
 
     if coordinate_name == :z
         return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
@@ -145,8 +145,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    F = StaticStridesOffsetArray(F, -H)
+    C = StaticStridesOffsetArray(C, -H)
 
     if coordinate_name == :z
         return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))

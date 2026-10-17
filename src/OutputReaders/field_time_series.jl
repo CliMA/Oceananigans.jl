@@ -6,7 +6,7 @@ using KernelAbstractions: @kernel, @index
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: GPUArraysCore, @allowscalar
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays
 using Statistics: Statistics, mean
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
