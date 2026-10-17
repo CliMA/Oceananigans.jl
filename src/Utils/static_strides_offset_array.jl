@@ -10,9 +10,8 @@ struct StaticStridesOffsetArray{T, N, S, O, A <: AbstractArray{T, N}} <: Abstrac
     parent :: A
 end
 
-function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
-    return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
-end
+StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N} =
+    StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
 
 const SSOA = StaticStridesOffsetArray
 
