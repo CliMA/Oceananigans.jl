@@ -15,21 +15,20 @@ function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{I
     return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
 end
 
-Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
+const SSOA{T, N, S, O, A} = StaticStridesOffsetArray{T, N, S, O, A}
 
-Base.IndexStyle(::Type{<:StaticStridesOffsetArray{T, N, S, O, A}}) where {T, N, S, O, A} = IndexStyle(A)
+Base.size(::SSOA{T, N, S}) where {T, N, S} = S
+Base.IndexStyle(::Type{<:SSOA{T, N, S, O, A}}) where {T, N, S, O, A} = IndexStyle(A)
+OffsetArrays.offsets(::SSOA{T, N, S, O}) where {T, N, S, O} = O
+OffsetArrays.unwrap(a::SSOA{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
+@inline linear_index(::SSOA{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
 
-Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
-OffsetArrays.offsets(::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = O
-OffsetArrays.unwrap(a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
-@inline linear_index(::StaticStridesOffsetArray{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
-
-@inline function Base.getindex(a::StaticStridesOffsetArray{T, N, S, O, <:DenseArray}, I::Vararg{Int, N}) where {T, N, S, O}
+@inline function Base.getindex(a::SSOA{T, N, S, O, <:DenseArray}, I::Vararg{Int, N}) where {T, N, S, O}
     @boundscheck checkbounds(a, I...)
     return @inbounds parent(a)[linear_index(a, I)]
 end
 
-@inline function Base.setindex!(a::StaticStridesOffsetArray{T, N, S, O, <:DenseArray}, v, I::Vararg{Int, N}) where {T, N, S, O}
+@inline function Base.setindex!(a::SSOA{T, N, S, O, <:DenseArray}, v, I::Vararg{Int, N}) where {T, N, S, O}
     @boundscheck checkbounds(a, I...)
     @inbounds parent(a)[linear_index(a, I)] = v
     return a
