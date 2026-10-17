@@ -10,6 +10,7 @@ export
 using Adapt: Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
+using KernelInterface: KernelInterface
 using OffsetArrays: OffsetArrays, OffsetArray
 using SparseArrays: SparseArrays, SparseMatrixCSC
 
@@ -61,8 +62,8 @@ device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
 device!(::CPU, i) = nothing
 device!(::CPU) = nothing
-ndevices(a::CPU) = KA.ndevices(KA.CPU())
-ndevices(a::AbstractArchitecture) = KA.ndevices(a.device)
+ndevices(a::CPU) = KernelInterface.ndevices(KA.CPU())
+ndevices(a::AbstractArchitecture) = KernelInterface.ndevices(a.device)
 synchronize(a::CPU) = KA.synchronize(KA.CPU())
 synchronize(a::AbstractArchitecture) = KA.synchronize(a.device)
 
@@ -125,18 +126,8 @@ unified_array(::GPU, a) = a
 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
-# CPU kernel arguments are adapted to `CPU()`. Like on GPUs this strips fields down to their data, so
-# that kernels do not specialize on field metadata that kernels never use (e.g. boundary conditions:
-# without this every distinct combination of boundary-condition types recompiles every kernel).
-# Unlike on GPUs, objects that are already CPU-ready are passed through as they are:
-#   * grids (see `Grids`): rebuilding them buys nothing on the CPU and only makes the kernel-launching
-#     code larger, which can defeat inlining and cause allocations in tight launch loops;
-#   * user functions: Adapt recurses into the captured variables of closures, which never terminates
-#     for closures that are self-referential through a `Core.Box`.
-@inline Adapt.adapt(::CPU, f::Function) = f
-
-# Convert arguments to device-compatible types
-@inline convert_to_device(arch, args)  = args
-@inline convert_to_device(::CPU, args) = Adapt.adapt(CPU(), args)
+# Convert arguments to device-compatible types. KernelAbstractions converts the arguments of
+# CPU kernels itself when launching them, and keeps the original arrays alive during the launch.
+@inline convert_to_device(arch, args) = args
 
 end # module
