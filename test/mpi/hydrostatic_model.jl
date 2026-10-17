@@ -221,3 +221,40 @@ for arch in archs
         end
     end
 end
+
+# Convection under a surface buoyancy loss that varies along x, with CATKE
+function catke_convection_test(grid)
+    Jᵇ(x, y, t) = 1e-6 * (1 + sin(2π * x / 1e5))
+    b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 4)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, closure = CATKEVerticalDiffusivity(), buoyancy = BuoyancyTracer(),
+                                        tracers = :b, boundary_conditions = (; b = b_bcs))
+
+    set!(model, b = (x, y, z) -> 1e-6 * z)
+
+    for _ in 1:60
+        time_step!(model, 60)
+    end
+
+    return model
+end
+
+@testset "Distributed CATKE convection" begin
+    for arch in archs
+        (arch.partition.x isa Fractional || arch.partition.y isa Fractional) && continue
+
+        grid = RectilinearGrid(arch, size = (32, 32, 16), x = (0, 1e5), y = (0, 1e5), z = (-200, 0),
+                               halo = (3, 3, 3), topology = (Periodic, Periodic, Bounded))
+
+        ms = catke_convection_test(reconstruct_global_grid(grid))
+        mp = catke_convection_test(grid)
+
+        cpu_arch = cpu_architecture(arch)
+
+        for name in (:b, :e)
+            p = interior(on_architecture(cpu_arch, mp.tracers[name]))
+            s = partition(interior(on_architecture(CPU(), ms.tracers[name])), cpu_arch, size(p))
+            @test all(isapprox(p, s; atol = eps(eltype(grid)), rtol = sqrt(eps(eltype(grid)))))
+        end
+    end
+end
