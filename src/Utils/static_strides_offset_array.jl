@@ -4,7 +4,7 @@ using OffsetArrays: OffsetArrays, AbstractOffsetArray
 """
     StaticStridesOffsetArray(parent, offsets)
 
-Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the strides and
+Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the size and
 offsets of the array are compile-time constants.
 """
 struct StaticStridesOffsetArray{T, N, S, O, A <: AbstractArray{T, N}} <: AbstractOffsetArray{T, N}
