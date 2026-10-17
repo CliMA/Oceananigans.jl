@@ -60,7 +60,7 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     # Every z level is identical; retain one while preserving the halo offsets.
     # Copy from the parent so the result is a plain offset matrix like the
     # metric arrays a natively constructed grid carries.
-    offsets = OffsetArrays.offsets(OffsetArrays)(new_field.data)
+    offsets = OffsetArrays.offsets(new_field.data)
     data = StaticStridesOffsetArray(copy(view(parent(new_field.data), :, :, 1)), offsets[1], offsets[2])
     return on_architecture(architecture(grid), data)
 end

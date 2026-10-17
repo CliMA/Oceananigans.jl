@@ -1,4 +1,3 @@
-using Adapt: Adapt
 using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 """
@@ -18,11 +17,6 @@ end
 Base.size(::StaticStridesOffsetArray{T, N, S}) where {T, N, S} = S
 
 OffsetArrays.offsets(::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = O
-
-function Adapt.adapt_structure(to, a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O}
-    p = Adapt.adapt(to, parent(a))
-    return StaticStridesOffsetArray{T, N, S, O, typeof(p)}(p)
-end
 
 OffsetArrays.unwrap(a::StaticStridesOffsetArray{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
 

@@ -236,25 +236,29 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}}),
+        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ}}),
         seen,
         mode::Reactant.TraceMode,
         @nospecialize(track_numbers::Type),
         @nospecialize(sharding),
         @nospecialize(runtime)
-    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}
+    ) where {FT, TX, TY, TZ, CZ, DXF, DXC, XF, XC, DYF, DYC, YF, YC, Arch, SZ}
 
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
     CZ2 = Reactant.traced_type_inner(CZ, seen, mode, track_numbers, sharding, runtime)
-    FX2 = Reactant.traced_type_inner(FX, seen, mode, track_numbers, sharding, runtime)
-    FY2 = Reactant.traced_type_inner(FY, seen, mode, track_numbers, sharding, runtime)
-    VX2 = Reactant.traced_type_inner(VX, seen, mode, track_numbers, sharding, runtime)
-    VY2 = Reactant.traced_type_inner(VY, seen, mode, track_numbers, sharding, runtime)
+    DXF2 = Reactant.traced_type_inner(DXF, seen, mode, track_numbers, sharding, runtime)
+    DXC2 = Reactant.traced_type_inner(DXC, seen, mode, track_numbers, sharding, runtime)
+    XF2 = Reactant.traced_type_inner(XF, seen, mode, track_numbers, sharding, runtime)
+    XC2 = Reactant.traced_type_inner(XC, seen, mode, track_numbers, sharding, runtime)
+    DYF2 = Reactant.traced_type_inner(DYF, seen, mode, track_numbers, sharding, runtime)
+    DYC2 = Reactant.traced_type_inner(DYC, seen, mode, track_numbers, sharding, runtime)
+    YF2 = Reactant.traced_type_inner(YF, seen, mode, track_numbers, sharding, runtime)
+    YC2 = Reactant.traced_type_inner(YC, seen, mode, track_numbers, sharding, runtime)
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
-    for NF in (FX2, FY2, VX2, VY2)
+    for NF in (DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2)
         if NF === Nothing
             continue
         end
@@ -269,7 +273,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         end
     end
 
-    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch, SZ}
+    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, Arch, SZ}
 
     return res
 end

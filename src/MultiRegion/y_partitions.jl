@@ -53,13 +53,13 @@ partition(a::Field, p::EqualYPartition, args...) = partition(a.data, p, args...)
 
 function partition(a::AbstractArray, ::EqualYPartition, local_size, region, arch)
     idxs = default_indices(length(size(a)))
-    offsets = (OffsetArrays.offsets(OffsetArrays)(a)[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    offsets = (OffsetArrays.offsets(a)[1], Tuple(0 for i in 1:length(idxs)-1)...)
     return on_architecture(arch, StaticStridesOffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 function partition(a::AbstractOffsetArray, ::EqualYPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
-    offsets = (0, OffsetArrays.offsets(OffsetArrays)(a)[2], Tuple(0 for i in 1:length(idxs)-2)...)
+    offsets = (0, OffsetArrays.offsets(a)[2], Tuple(0 for i in 1:length(idxs)-2)...)
     return on_architecture(arch, StaticStridesOffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))
 end
 
