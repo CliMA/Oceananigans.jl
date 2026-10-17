@@ -137,6 +137,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Parfenyev, V. and Vergeles, S. (2026). [Wave-driven geostrophic vortices in rotating turbulence](https://doi.org/10.48550/arXiv.2610.15863), _arXiv preprint_, arXiv:2610.15863. DOI: [10.48550/arXiv.2610.15863](https://doi.org/10.48550/arXiv.2610.15863)
+
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. E. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/os-22-3055-2026), _Ocean Science_, **22**, 3055–3078. DOI: [10.5194/os-22-3055-2026](https://doi.org/10.5194/os-22-3055-2026)
 
 1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Flierl, G. R., and Ferrari, R. (2026). [A generative AI framework for inferring consistent ocean statistics at depth using sea surface data](https://doi.org/10.1175/JPO-D-25-0093.1), _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-25-0093.1](https://doi.org/10.1175/JPO-D-25-0093.1)
