@@ -1,3 +1,4 @@
+using Dates: AbstractTime, DateTime
 using Oceananigans.Utils: prettytime, TimeInterval, IterationInterval, WallTimeInterval
 
 #####
@@ -5,6 +6,17 @@ using Oceananigans.Utils: prettytime, TimeInterval, IterationInterval, WallTimeI
 #####
 
 default_output_attributes(model) = Dict{String, Any}()
+
+#####
+##### Units of the time coordinate
+#####
+
+time_attributes(clock_time, ::Nothing) = Dict{String, Any}("units" => "seconds")
+time_attributes(clock_time::AbstractTime, ::Nothing) = Dict{String, Any}("units" => "seconds since 2000-01-01 00:00:00")
+
+time_attributes(clock_time, start_datetime::DateTime) =
+    Dict{String, Any}("units" => "seconds since " * replace(string(start_datetime), "T" => " "),
+                      "calendar" => "proleptic_gregorian")
 
 #####
 ##### Saving schedule metadata as global attributes

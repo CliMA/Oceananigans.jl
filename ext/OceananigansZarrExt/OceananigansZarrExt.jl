@@ -55,6 +55,7 @@ using Oceananigans.OutputWriters:
     add_schedule_metadata!,
     default_output_attributes,
     default_dimension_attributes,
+    time_attributes,
     gather_dimensions,
     gather_grid_metrics,
     gather_immersed_boundary,

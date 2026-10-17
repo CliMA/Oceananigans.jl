@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using TimesDates: TimeDate
-using Dates: DateTime, Nanosecond, Millisecond
+using Dates: DateTime, Nanosecond, Millisecond, Second
 using TimesDates: TimeDate
 
 using CUDA
@@ -113,6 +113,41 @@ function test_timedate_netcdf_output(arch)
 
     close(ds)
     rm(filepath)
+
+    return nothing
+end
+
+function test_start_datetime_netcdf_output(arch)
+    start_datetime = DateTime(2025, 6, 3, 21)
+
+    for (clock_time, stop_time, start, units, times) in
+            ((0.0,                  2.0,                           nothing,        "seconds",                           [0, 1, 2]),
+             (0.0,                  2.0,                           start_datetime, "seconds since 2025-06-03 21:00:00", [0, 1, 2]),
+             (DateTime(2025, 6, 4), DateTime(2025, 6, 4, 0, 0, 2), start_datetime, "seconds since 2025-06-03 21:00:00", [10800, 10801, 10802]))
+
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; clock=Clock(time=clock_time), timestepper=:QuasiAdamsBashforth2, tracers=:c)
+        simulation = Simulation(model; Δt=1second, stop_time, verbose=false)
+
+        Arch = typeof(arch)
+        filepath = "test_start_datetime_$Arch.nc"
+        isfile(filepath) && rm(filepath)
+
+        simulation.output_writers[:netcdf] = NetCDFWriter(model, (; c=model.tracers.c);
+                                                          filename = filepath,
+                                                          schedule = IterationInterval(1),
+                                                          include_grid_metrics = false,
+                                                          start_datetime = start)
+        run!(simulation)
+
+        ds = NCDataset(filepath)
+        @test ds["time"].attrib["units"] == units
+        @test get(ds["time"].attrib, "calendar", nothing) == (isnothing(start) ? nothing : "proleptic_gregorian")
+        @test ds["time"].var[:] == times
+        isnothing(start) || @test ds["time"][:] == start .+ Second.(times)
+        close(ds)
+        rm(filepath)
+    end
 
     return nothing
 end
@@ -3839,6 +3874,7 @@ end
             test_datetime_netcdf_output(arch)
             test_timedate_netcdf_output(arch)
             test_netcdf_dimension_type(arch)
+            test_start_datetime_netcdf_output(arch)
         end
 
         @testset "Grid metrics [$A]" begin
