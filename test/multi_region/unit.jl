@@ -179,10 +179,12 @@ end
     for arch in archs
         grid = RectilinearGrid(arch, size=(12, 12, 4), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Periodic, Bounded))
 
-        top_value(x, y, t, p) = p.a * x + y
-        top = ValueBoundaryCondition(top_value, parameters = (; a = 3))
+        top_value(i, j, grid, clock, fields, p) = p.a * xnode(i, j, 1, grid, Center(), Center(), Center()) +
+                                                  ynode(i, j, 1, grid, Center(), Center(), Center())
+        top = ValueBoundaryCondition(top_value, discrete_form = true, parameters = (; a = 3))
         bottom = GradientBoundaryCondition(2)
         loc = (Center(), Center(), Center())
+        clock = Clock(time = 0.0)
 
         for Partition in (XPartition, YPartition), regions in (2, 3)
             mrg = MultiRegionGrid(grid, partition = Partition(regions))
@@ -197,7 +199,7 @@ end
             for (single_region_field, multi_region_field) in field_pairs
                 for field in (single_region_field, multi_region_field)
                     set!(field, (x, y, z) -> x + 10y + 100z)
-                    fill_halo_regions!(field)
+                    fill_halo_regions!(field, clock, (;))
                 end
 
                 for region in 1:regions
