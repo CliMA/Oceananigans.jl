@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake, ranks
 using Oceananigans.Models: is_local_dimension
-using Oceananigans.Grids: RightConnected, LeftConnected
+using Oceananigans.Grids: Sides, Closed, Connected
 using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 using Oceananigans.Fields: flattened_unique_values
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
@@ -137,8 +137,8 @@ archs = nonhydrostatic_regression_test_architectures()
     @test is_local_dimension(Periodic) === true
     @test is_local_dimension(Bounded)  === true
     @test is_local_dimension(Flat)     === true
-    @test is_local_dimension(RightConnected) === false
-    @test is_local_dimension(LeftConnected)  === false
+    @test is_local_dimension(Sides{Closed, Connected}) === false
+    @test is_local_dimension(Sides{Connected, Closed}) === false
     @test @inferred(is_local_dimension(Periodic)) === true
 end
 

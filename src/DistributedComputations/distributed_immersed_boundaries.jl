@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries:
     has_active_z_columns,
     active_cells_maps
 
-using Oceananigans.Grids: LeftConnectedOnlyTopology
+using Oceananigans.Grids: LeftConnectedOnlyTopology, Sides, Closed, Connected
 
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
@@ -143,11 +143,11 @@ function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
 
-    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty <: LeftConnectedOnlyTopology ? Ny - Hy : Ny - 2Hy)
+    nx = Rx == 1 ? Nx : (Tx == Sides{Closed, Connected} || Tx == Sides{Connected, Closed} ? Nx - Hx : Nx - 2Hx)
+    ny = Ry == 1 ? Ny : (Ty == Sides{Closed, Connected} || Ty <: LeftConnectedOnlyTopology ? Ny - Hy : Ny - 2Hy)
 
-    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    ox = Rx == 1 || Tx == Sides{Closed, Connected} ? 0 : Hx
+    oy = Ry == 1 || Ty == Sides{Closed, Connected} ? 0 : Hy
 
     regions = ((ox+1:ox+nx, oy+1:oy+ny, 1:Nz),
                (1:ox,       1:Ny,       1:Nz),

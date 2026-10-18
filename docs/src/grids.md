@@ -1070,7 +1070,7 @@ Now we're getting somewhere. Let's note a few things:
   of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
-  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  topology `(Connected, Periodic, Bounded)`. That means that each local grid, which represents
   half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
   and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
 

@@ -1,14 +1,7 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
 
-using Oceananigans.Grids: AbstractUnderlyingGrid,
-                          Bounded,
-                          LeftConnected,
-                          Periodic,
-                          RightConnected,
-                          RightCenterFolded,
-                          RightFaceFolded,
-                          MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, Sides, MutableVerticalDiscretization
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
@@ -55,28 +48,20 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶠᶜᵃ(i, j, k, grid, η)
 @inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η)
 
-const AMGXB = MutableGridOfSomeKind{<:Any, Bounded}
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
-const AMGXR = MutableGridOfSomeKind{<:Any, RightConnected}
-const AMGXL = MutableGridOfSomeKind{<:Any, LeftConnected}
+const AMGXB = MutableGridOfSomeKind{<:Any, <:Sides{Closed}}
 
-const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, Bounded}
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightCenterFolded}}
-const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
-const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, RightFaceFolded}
+const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, <:Sides{Closed}}
+const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{Closed, FaceFolded}}
 
 # Enforce Periodic conditions for column depth
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
 @inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, grid.Ny, j - 1), k] + η[i, j, k]) / 2)
 
-# Enforce boundary conditions for Bounded and RightConnected topologies
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::Union{AMGXB, AMGXR}, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::Union{AMGYB, AMGYR}, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, j, j - 1), k] + η[i, j, k]) / 2)
-
-# Enforce boundary conditions for LeftConnected topologies
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXL, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[i - 1, j, k] + η[ifelse(i == grid.Nx + 1, grid.Nx, i), j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, j - 1, k] + η[i, ifelse(j == grid.Ny + 1, grid.Ny, j), k]) / 2)
+# Enforce boundary conditions on a left wall
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, j, j - 1), k] + η[i, j, k]) / 2)
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF, η)
     fold = j == grid.Ny + 1

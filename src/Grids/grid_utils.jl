@@ -40,24 +40,23 @@ end
     end
 end
 
-const FaceExtendedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
-                              LeftConnectedRightFaceFolded,
-                              LeftConnectedRightFaceConnected}
-const SerialFoldedTopology = Union{RightCenterFolded, RightFaceFolded}
-const SlabFoldedTopology = Union{LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded}
-const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+# The right side owns the face at N+1
+const FaceExtendedTopology = Sides{<:Any, <:Union{Closed, FaceFolded, FaceFoldConnected}}
+const SerialFoldedTopology = Sides{Closed, <:Union{CenterFolded, FaceFolded}}
+const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
+const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
-const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
-const LeftConnectedOnlyTopology = Union{LeftConnected, SlabFoldedTopology}
+const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
+const LeftConnectedOnlyTopology = Sides{Connected, <:Union{Closed, CenterFolded, FaceFolded}}
 
 # Nothing locations just default to 1:N
 @inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
 @inline connected_range(::Nothing, topo, N, H) = 1:N
 
 @inline connected_range(topo, N, H)                                =    1:N
-@inline connected_range(::Type{FullyConnected}, N, H)              = -H+2:N+H-1
-@inline connected_range(::Type{RightConnected}, N, H)              =    1:N+H-1
-@inline connected_range(::Type{LeftConnected},  N, H)              = -H+2:N
+@inline connected_range(::Type{Sides{Connected, Connected}}, N, H)  = -H+2:N+H-1
+@inline connected_range(::Type{Sides{Closed, Connected}}, N, H)    =    1:N+H-1
+@inline connected_range(::Type{Sides{Connected, Closed}},  N, H)   = -H+2:N
 @inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
@@ -430,19 +429,13 @@ Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, fal
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
 domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 
-function domain_summary(topo, name, (left, right))
-    interval = (topo isa Bounded) ||
-               (topo isa LeftConnected) ||
-               (topo isa RightFaceFolded) ? "]" : ")"
+Utils.prettysummary(T::Type{<:Union{Periodic, Flat}}) = string(nameof(T))
+Utils.prettysummary(::Type{Bounded}) = "Bounded"
+Utils.prettysummary(::Type{Sides{L, R}}) where {L, R} = L === R ? string(nameof(L)) : string("Sides{", nameof(L), ", ", nameof(R), "}")
 
-    topo_string = topo isa Periodic ? "Periodic " :
-                  topo isa Bounded ? "Bounded  " :
-                  topo isa FullyConnected ? "FullyConnected " :
-                  topo isa LeftConnected ? "LeftConnected  " :
-                  topo isa RightConnected ? "RightConnected  " :
-                  topo isa RightFaceFolded ? "RightFaceFolded  " :
-                  topo isa RightCenterFolded ? "RightCenterFolded  " :
-                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
+function domain_summary(topo, name, (left, right))
+    interval = topo isa FaceExtendedTopology ? "]" : ")"
+    topo_string = string(rpad(prettysummary(typeof(topo)), 8), " ")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",

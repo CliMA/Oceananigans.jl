@@ -2,10 +2,7 @@ module Grids
 
 export Center, Face
 export AbstractTopology, topology
-export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
-export RightFaceFolded, RightCenterFolded
-export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
-export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+export Periodic, Flat, Sides, Bounded, Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
 export slice
@@ -73,13 +70,6 @@ Grid topology for periodic dimensions.
 struct Periodic <: AbstractTopology end
 
 """
-    Bounded
-
-Grid topology for bounded dimensions, e.g., wall-bounded dimensions.
-"""
-struct Bounded <: AbstractTopology end
-
-"""
     Flat
 
 Grid topology for flat dimensions, generally with one grid point, along which the solution
@@ -88,76 +78,62 @@ is uniform and does not vary.
 struct Flat <: AbstractTopology end
 
 """
-    FullyConnected
+    Sides{L, R}
 
-Grid topology for dimensions that are connected to other models or domains.
+Grid topology for dimensions whose left side has topology `L` and right side has topology `R`.
+The topology of a side is `Closed`, `Connected`, `CenterFolded`, `FaceFolded`, `CenterFoldConnected`, or
+`FaceFoldConnected`. A side topology used on its own, for example `Closed`, applies to both sides.
 """
-struct FullyConnected <: AbstractTopology end
-
-"""
-    LeftConnected
-
-Grid topology for dimensions that are connected to other models or domains only on the left (the other direction is bounded)
-"""
-struct LeftConnected <: AbstractTopology end
+struct Sides{L, R} <: AbstractTopology end
 
 """
-    RightConnected
+    Closed
 
-Grid topology for dimensions that are connected to other models or domains only on the right (the other direction is bounded)
+Topology of a side closed by a wall.
 """
-struct RightConnected <: AbstractTopology end
-
-"""
-    RightFaceFolded
-
-Grid topology for tripolar F-point pivot connection
-(folded north boundary along face locations).
-"""
-struct RightFaceFolded <: AbstractTopology end
+struct Closed end
 
 """
-    RightCenterFolded
+    Bounded
 
-Grid topology for tripolar U-point pivot connection.
-(folded north boundary along center locations).
+Grid topology for dimensions closed by walls on both sides.
 """
-struct RightCenterFolded <: AbstractTopology end
-
-"""
-    LeftConnectedRightCenterFolded
-
-Local grid topology for the northernmost y-rank of a 1×N distributed tripolar grid
-with U-point pivot (serial fold). Connected to the south neighbor on the left,
-center-folded on the right (north).
-"""
-struct LeftConnectedRightCenterFolded <: AbstractTopology end
+const Bounded = Sides{Closed, Closed}
 
 """
-    LeftConnectedRightFaceFolded
+    Connected
 
-Local grid y topology for the northernmost y-rank of a 1×N distributed tripolar grid
-with F-point pivot (serial fold). Connected to the south neighbor on the left,
-face-folded on the right (north). Face-extended (Ny+1 Face points in y).
+Topology of a side connected to another rank or region.
 """
-struct LeftConnectedRightFaceFolded <: AbstractTopology end
+struct Connected end
 
 """
-    LeftConnectedRightCenterConnected
+    CenterFolded
 
-Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
-with U-point pivot (distributed zipper).
+Topology of a side folded onto itself along cell centers (tripolar U-point and T-point pivots).
 """
-struct LeftConnectedRightCenterConnected <: AbstractTopology end
+struct CenterFolded end
 
 """
-    LeftConnectedRightFaceConnected
+    FaceFolded
 
-Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
-with F-point pivot (distributed zipper).
-Face-extended (Ny+1 Face points in y).
+Topology of a side folded onto itself along cell faces (tripolar F-point pivot). The fold face belongs to the domain.
 """
-struct LeftConnectedRightFaceConnected <: AbstractTopology end
+struct FaceFolded end
+
+"""
+    CenterFoldConnected
+
+Topology of a `CenterFolded` side whose fold partner lives on another rank.
+"""
+struct CenterFoldConnected end
+
+"""
+    FaceFoldConnected
+
+Topology of a `FaceFolded` side whose fold partner lives on another rank.
+"""
+struct FaceFoldConnected end
 
 #####
 ##### Directions (for tilted domains)
