@@ -375,7 +375,7 @@ v_bcs = FieldBoundaryConditions(top=v_wind, bottom=drag, immersed=ImmersedBounda
 
 # ### Fronts in both hemispheres
 #
-# A warm thermocline fills the top kilometer between two fronts at ``φ₀ = ±57°``, over a
+# A warm thermocline fills the top kilometer between two fronts at ``φ_0 = ±57°``, over a
 # cold deep ocean and cold polar water:
 #
 # ```math
