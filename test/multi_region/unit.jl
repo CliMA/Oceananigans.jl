@@ -189,16 +189,22 @@ end
         for Partition in (XPartition, YPartition), regions in (2, 3)
             mrg = MultiRegionGrid(grid, partition = Partition(regions))
 
-            field_pairs = ((CenterField(grid; boundary_conditions = FieldBoundaryConditions(grid, loc; top, bottom)),
-                            CenterField(mrg; boundary_conditions = FieldBoundaryConditions(mrg, loc; top, bottom))),
-                           (CenterField(grid; indices = (:, :, 2:3)),
-                            CenterField(mrg; indices = (:, :, 2:3))),
-                           (Field{Center, Center, Nothing}(grid),
-                            Field{Center, Center, Nothing}(mrg)))
+            three_dimensional_values(x, y, z) = x + 10y + 100z
+            two_dimensional_values(x, y) = x + 10y
 
-            for (single_region_field, multi_region_field) in field_pairs
+            field_cases = ((CenterField(grid; boundary_conditions = FieldBoundaryConditions(grid, loc; top, bottom)),
+                            CenterField(mrg; boundary_conditions = FieldBoundaryConditions(mrg, loc; top, bottom)),
+                            three_dimensional_values),
+                           (CenterField(grid; indices = (:, :, 2:3)),
+                            CenterField(mrg; indices = (:, :, 2:3)),
+                            three_dimensional_values),
+                           (Field{Center, Center, Nothing}(grid),
+                            Field{Center, Center, Nothing}(mrg),
+                            two_dimensional_values))
+
+            for (single_region_field, multi_region_field, initial_values) in field_cases
                 for field in (single_region_field, multi_region_field)
-                    set!(field, (x, y, z) -> x + 10y + 100z)
+                    set!(field, initial_values)
                     fill_halo_regions!(field, clock, (;))
                 end
 
