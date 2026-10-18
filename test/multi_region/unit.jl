@@ -168,7 +168,7 @@ Oceananigans.Utils._getregion(ordered::OrderedRegions, r) = ordered.objects[r]
 
 @testset "apply_regionally! keeps region identifiers and order" begin
     objects = (10, 20, 30, 40)
-    for region_identifiers in ([2, 1], [2, 4], [1, 2], 1:3, 1:4)
+    for region_identifiers in ([2, 1], [2, 4], [1, 2], 1:3, 1:4, Base.OneTo(3), 2:3, Iterators.filter(isodd, 1:4))
         visited = Int[]
         Oceananigans.Utils.apply_regionally!(x -> push!(visited, x), OrderedRegions(objects, region_identifiers))
         @test visited == [objects[r] for r in region_identifiers]

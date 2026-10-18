@@ -105,15 +105,22 @@ struct RegionSelector{R} end
     return apply_in_regions!(regional_func!, Val(r + 1), Val(N), args, kwargs)
 end
 
-# Regions other than 1:N (e.g. a custom `regions` sequence) keep their own identifiers and order.
-@inline function apply_in_regions!(regional_func!, R, args, kwargs)
-    if R == 1:length(R)
+# Any iterable of regions (e.g. a custom `regions` sequence) keeps its own identifiers and order.
+@inline function apply_in_each_region!(regional_func!, R, args, kwargs)
+    for r in R
+        selector = Base.Fix2(getregion, r)
+        regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
+    end
+    return nothing
+end
+
+@inline apply_in_regions!(regional_func!, R, args, kwargs) = apply_in_each_region!(regional_func!, R, args, kwargs)
+
+@inline function apply_in_regions!(regional_func!, R::AbstractUnitRange{<:Integer}, args, kwargs)
+    if first(R) == 1
         apply_in_regions!(regional_func!, Val(1), Val(length(R)), args, kwargs)
     else
-        for r in R
-            selector = Base.Fix2(getregion, r)
-            regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
-        end
+        apply_in_each_region!(regional_func!, R, args, kwargs)
     end
     return nothing
 end
