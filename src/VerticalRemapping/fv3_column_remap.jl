@@ -91,7 +91,7 @@ struct FV3RemapWorkspace{A, V, B}
 end
 
 FV3RemapWorkspace(FT, Nz) = FV3RemapWorkspace(zeros(FT, 4, Nz), zeros(FT, Nz + 1), zeros(FT, Nz + 1), zeros(FT, Nz),
-                                              falses(Nz), falses(Nz), falses(Nz))
+                                              zeros(Bool, Nz), zeros(Bool, Nz), zeros(Bool, Nz))
 
 # gfortran MIN/MAX semantics: the first argument wins ties (including ±0), unlike Base.min/max.
 @inline fortran_max(a, b) = ifelse((b > a) | isnan(a), b, a)
@@ -192,7 +192,7 @@ end
 ##### Interface values
 #####
 
-function interface_values!(w, qs, Nz, profile)
+@inline function interface_values!(w, qs, Nz, profile)
     a4, q, γ, δp = w.a4, w.q, w.γ, w.δp
     FT = eltype(a4)
     iv = profile.iv
@@ -256,7 +256,7 @@ end
 ##### Reconstruction (scalar_profile / cs_profile)
 #####
 
-function reconstruct!(w, qs, Nz, profile::FV3Profile)
+@inline function reconstruct!(w, qs, Nz, profile::FV3Profile)
     a4, q, γ = w.a4, w.q, w.γ
     extm, ext5, ext6 = w.extm, w.ext5, w.ext6
     FT = eltype(a4)
@@ -425,14 +425,24 @@ of each target layer is divided by `p₂[k+1] - p₂[k]` (FV3 `map_scalar`, `map
 source column; other inputs throw `ArgumentError` before any arithmetic (FV3 returns partial or undefined sums there).
 """
 function remap_column!(q₂, p₂, q₁, p₁, qs, profile::FV3Profile, w::FV3RemapWorkspace; target_thickness = nothing)
+    validate_remap_domain(p₂, p₁, length(q₂), length(q₁), target_thickness)
+    length(w.δp) >= length(q₁) || throw(ArgumentError("workspace holds $(length(w.δp)) layers, need $(length(q₁))"))
+    return unchecked_remap_column!(q₂, p₂, q₁, p₁, qs, profile, w, target_thickness)
+end
+
+"""
+    unchecked_remap_column!(q₂, p₂, q₁, p₁, qs, profile, workspace, target_thickness)
+
+The arithmetic of [`remap_column!`](@ref) without input validation, for use inside kernels. Callers must establish the
+`remap_column!` domain contract on the host first.
+"""
+@inline function unchecked_remap_column!(q₂, p₂, q₁, p₁, qs, profile::FV3Profile, w::FV3RemapWorkspace, target_thickness)
     FT = eltype(q₂)
     r3 = convert(FT, 1//3)
     r23 = convert(FT, 2//3)
     Nz₁ = length(q₁)
     Nz₂ = length(q₂)
     a4, δp = w.a4, w.δp
-    validate_remap_domain(p₂, p₁, Nz₂, Nz₁, target_thickness)
-    length(δp) >= Nz₁ || throw(ArgumentError("workspace holds $(length(δp)) layers, need $Nz₁"))
 
     for k = 1:Nz₁
         δp[k] = p₁[k+1] - p₁[k]
