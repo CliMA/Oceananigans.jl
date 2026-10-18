@@ -74,5 +74,4 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rot
 
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v, w) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
 @inline Operators.extrinsic_vector(i, j, k, ibg::IBG, u, v, w) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
-
 @inline Operators.rotation_angle(i, j, ibg::IBG, ℓx, ℓy) = rotation_angle(i, j, ibg.underlying_grid, ℓx, ℓy)
