@@ -119,8 +119,8 @@ function reduce_region!(reduction!, f, r, a, condition, mask, init, restriction=
     return r
 end
 
-# The other regions are reduced into a partial result and then combined with `r`: GPU reductions with
-# `init=false` use the output as the neutral element of every thread block.
+# The regions that accumulate onto `r` are reduced into a partial result and then combined with `r`:
+# GPU reductions with `init=false` use the output as the neutral element of every thread block.
 function reduce_regions!(reduction!, f, r, a, condition, mask, init)
     dims = reduced_dimensions(r)
 
@@ -129,15 +129,15 @@ function reduce_regions!(reduction!, f, r, a, condition, mask, init)
 
     restriction = spanning_restriction(reduction!, a.grid)
     first_region = first(regions(a.grid))
-    other_regions = regions(a.grid)[2:end]
+    accumulated_regions = init ? regions(a.grid)[2:end] : regions(a.grid)
 
-    reduce_region!(reduction!, f, r, getregion(a, first_region), getregion(condition, first_region), mask, init, restriction)
+    init && reduce_region!(reduction!, f, r, getregion(a, first_region), getregion(condition, first_region), mask, true, restriction)
 
-    isempty(other_regions) && return r
+    isempty(accumulated_regions) && return r
 
     partial = Field(instantiated_location(r), r.grid, eltype(r); indices=indices(r))
 
-    for region in other_regions
+    for region in accumulated_regions
         reduce_region!(reduction!, f, partial, getregion(a, region), getregion(condition, region), mask, true, restriction)
         combine_partial_reductions!(reduction!, interior(r), interior(partial))
     end

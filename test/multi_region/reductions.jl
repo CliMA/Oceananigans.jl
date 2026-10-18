@@ -187,10 +187,9 @@ end
 
             # `init=false` accumulates on top of the existing values
             sum!(single_region_column, c)
-            sum!(single_region_column, c; init=false)
             sum!(column, m)
             sum!(column, m; init=false)
-            @test Array(interior(column)) ≈ Array(interior(single_region_column))
+            @test Array(interior(column)) ≈ 2 .* Array(interior(single_region_column))
 
             # A single-region result requires a reduction that spans the partition
             @test_throws ArgumentError sum!(Field{Center, Center, Nothing}(getregion(mrg, 1)), m)
