@@ -117,7 +117,7 @@ mean_departure = integral(φ -> height_departure(φ) * cos(φ), -π/2, π/2) / 2
 # To destabilize the jet, we add the bump
 #
 # ```math
-# h′ = \hat h \cos φ \, e^{-(λ / α)^2} e^{-[(φ₂ - φ) / β]^2}
+# h′ = \hat h \cos φ \, e^{-(λ / α)^2} e^{-[(φ_2 - φ) / β]^2}
 # ```
 #
 # with ``\hat h = 120`` m, ``φ₂ = π/4``, ``α = 1/3`` and ``β = 1/15``, for ``-π < λ < π``.
