@@ -380,7 +380,7 @@ v_bcs = FieldBoundaryConditions(top=v_wind, bottom=drag, immersed=ImmersedBounda
 #
 # ```math
 # T = T_d + \frac{ΔT}{2} e^{z / h} (1 - \tanh χ) , \qquad
-# χ = \frac{\sin^2 φ - \sin^2 φ₀ - ϵ \, m(φ) P(λ)}{δ} ,
+# χ = \frac{\sin^2 φ - \sin^2 φ_0 - ϵ \, m(φ) P(λ)}{δ} ,
 # ```
 #
 # with ``T_d = 2°``C, ``ΔT = 20°``C, ``h = 1`` km and ``δ = 0.1``. The meanders
