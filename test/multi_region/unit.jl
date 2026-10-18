@@ -83,7 +83,7 @@ end
             end
 
             for Partition in partition_types, region in regions
-                @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
+                @info "Testing multi region $(nameof(typeof(grid))) on $regions $(Partition)s"
                 mrg = MultiRegionGrid(grid, partition = Partition(region))
 
                 @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
@@ -93,7 +93,7 @@ end
                 @test reconstruct_global_grid(mrg) == grid
 
                 for (FieldType, single_region_field) in zip(field_types, single_region_fields)
-                    @info "Testing multi region $(FieldType) on $(getnamewrapper(grid)) on $regions $(Partition)s"
+                    @info "Testing multi region $(FieldType) on $(nameof(typeof(grid))) on $regions $(Partition)s"
 
                     multi_region_field = FieldType(mrg)
                     set!(multi_region_field, (x, y, z) -> x)
@@ -106,7 +106,7 @@ end
                 end
 
                 for immersed_boundary in immersed_boundaries
-                    @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
+                    @info "Testing multi region immersed boundaries on $(nameof(typeof(grid))) on $regions $(Partition)s"
                     ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
                     mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
@@ -135,7 +135,7 @@ end
         lat_lon_grid = LatitudeLongitudeGrid(arch, size=(12, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
 
         for grid in (rectilinear_grids..., lat_lon_grid), Partition in (XPartition, YPartition), regions in (2, 3)
-            @testset "Halo filling on $(getnamewrapper(grid)) with topology $(topology(grid)) on $regions $(Partition)s on $arch" begin
+            @testset "Halo filling on $(nameof(typeof(grid))) with topology $(topology(grid)) on $regions $(Partition)s on $arch" begin
                 mrg = MultiRegionGrid(grid, partition = Partition(regions))
 
                 for FieldType in (CenterField, XFaceField, YFaceField)
