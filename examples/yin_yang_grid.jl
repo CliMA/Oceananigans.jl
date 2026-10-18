@@ -248,6 +248,7 @@ function panel_mesh(grid; land=nothing)
 end
 
 jet_mesh = panel_mesh(jet_grid)
+nothing #hide
 
 # The box of an `Axis3` with `viewmode=:fit` keeps its size as the camera moves. We fit
 # the box inside the sphere, so that the sphere fills the axis.
