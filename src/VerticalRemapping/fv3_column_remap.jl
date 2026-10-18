@@ -67,8 +67,11 @@ function validate_remap_domain(p₂, p₁, Nz₂, Nz₁, target_thickness)
     all(p₂[k+1] > p₂[k] for k in 1:Nz₂) || throw(ArgumentError("target interfaces must be strictly increasing"))
     p₂[1] >= p₁[1] && p₂[Nz₂+1] <= p₁[Nz₁+1] ||
         throw(ArgumentError("target column [$(p₂[1]), $(p₂[Nz₂+1])] is not inside the source column [$(p₁[1]), $(p₁[Nz₁+1])]"))
-    isnothing(target_thickness) || length(target_thickness) == Nz₂ ||
-        throw(ArgumentError("target_thickness must have length $Nz₂"))
+    if !isnothing(target_thickness)
+        length(target_thickness) == Nz₂ || throw(ArgumentError("target_thickness must have length $Nz₂"))
+        all(δ -> isfinite(δ) && δ > 0, target_thickness) ||
+            throw(ArgumentError("target_thickness must be finite and positive"))
+    end
     return nothing
 end
 

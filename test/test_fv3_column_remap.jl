@@ -89,6 +89,10 @@ end
     @test_throws ArgumentError remap_column!(zeros(Nz), p₁, q₁, reverse(p₁), NaN, profile, w)       # inverted source
     @test_throws ArgumentError remap_column!(zeros(Nz), p₁[1:end-1], q₁, p₁, NaN, profile, w)       # wrong length
     @test_throws ArgumentError remap_column!(zeros(Nz), p₁, q₁, p₁, NaN, profile, FV3RemapWorkspace(Float64, 4))
+    for bad in (-1.0, Inf, NaN, 0.0)
+        thickness = diff(p₁); thickness[2] = bad
+        @test_throws ArgumentError remap_column!(zeros(Nz), p₁, q₁, p₁, NaN, profile, w; target_thickness = thickness)
+    end
     pnan = copy(p₁); pnan[3] = NaN
     @test_throws ArgumentError remap_column!(zeros(Nz), pnan, q₁, p₁, NaN, profile, w)
 end
