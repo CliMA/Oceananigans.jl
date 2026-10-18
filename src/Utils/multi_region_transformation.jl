@@ -86,16 +86,30 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
     end
 end
 
+# The region index is a type parameter so that indexing heterogeneous region tuples
+# (e.g. cubed sphere panels whose rotations have different types) is type-stable.
+struct RegionSelector{R} end
+
+@inline (::RegionSelector{R})(a) where R = getregion(a, R)
+
+@inline first_regional(::Tuple{}) = nothing
+@inline first_regional(t::Tuple) = isregional(first(t)) ? first(t) : first_regional(Base.tail(t))
+
+@inline regional_function(regional_func!, selector) = regional_func!
+@inline regional_function(regional_func!::MultiRegionObject, selector) = selector(regional_func!)
+
+@inline function apply_in_regions!(regional_func!, ::Val{r}, ::Val{N}, args, kwargs) where {r, N}
+    r > N && return nothing
+    selector = RegionSelector{r}()
+    regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
+    return apply_in_regions!(regional_func!, Val(r + 1), Val(N), args, kwargs)
+end
+
 @inline function multi_region_apply!(regional_func!, args...; kwargs...)
-    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
-    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-
-    R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
-
-    for r in R
-        regional_func!(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
-    end
-
+    regional_argument = first_regional(args)
+    regional_argument = isnothing(regional_argument) ? first_regional(Tuple(values(kwargs))) : regional_argument
+    number_of_regions = Val(length(regions(regional_argument)))
+    apply_in_regions!(regional_func!, Val(1), number_of_regions, args, values(kwargs))
     return nothing
 end
 
@@ -103,10 +117,8 @@ end
 # we also `getregion` for the function. Since the function itself is multiregional we do not
 # need to check if the call is single region or not.
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
-    R = regions(regional_func!)
-    for r in R
-        getregion(regional_func!, r)(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
-    end
+    number_of_regions = Val(length(regions(regional_func!)))
+    apply_in_regions!(regional_func!, Val(1), number_of_regions, args, values(kwargs))
     return nothing
 end
 
