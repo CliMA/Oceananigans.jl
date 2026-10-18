@@ -85,8 +85,8 @@ const IntrinsicCoordinateGrid = Union{
 
 # Whether the intrinsic velocity components of `grid` may differ from its extrinsic components,
 # so that extrinsic velocities are rotated by `set_from_extrinsic_velocities!`
-has_rotated_intrinsic_coordinates(grid) = false
-has_rotated_intrinsic_coordinates(::IntrinsicCoordinateGrid) = true
+intrinsic_coordinate_grid(grid) = false
+intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 
 """
     set_velocities!(model, u, v; intrinsic_velocities=false)
@@ -104,7 +104,7 @@ function set_velocities!(model, u, v; intrinsic_velocities=false)
     # Leave the velocities untouched when neither is given, as for `set!(model; T)`
     u isa ZeroField && v isa ZeroField && return nothing
 
-    if intrinsic_velocities || !has_rotated_intrinsic_coordinates(model.grid)
+    if intrinsic_velocities || !intrinsic_coordinate_grid(model.grid)
         u isa ZeroField || @apply_regionally set!(model.velocities.u, u, model.clock, fields(model))
         v isa ZeroField || @apply_regionally set!(model.velocities.v, v, model.clock, fields(model))
     else

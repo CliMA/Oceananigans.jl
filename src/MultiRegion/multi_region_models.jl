@@ -195,7 +195,7 @@ end
 ##### Velocities set from geographic components on a YinYangGrid
 #####
 
-HydrostaticFreeSurfaceModels.has_rotated_intrinsic_coordinates(::YinYangGridOfSomeKind) = true
+HydrostaticFreeSurfaceModels.intrinsic_coordinate_grid(::YinYangGridOfSomeKind) = true
 
 # Both geographic components are set at the nodes of u and of v, then rotated into each panel's basis
 function HydrostaticFreeSurfaceModels.set_from_extrinsic_velocities!(velocities, grid::YinYangGridOfSomeKind, u, v)

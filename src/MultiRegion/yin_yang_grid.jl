@@ -185,32 +185,8 @@ yin_yang_connectivity(grid::ImmersedYinYangGrid) = grid.underlying_grid.connecti
 yin_yang_masks(grid::YinYangGridOfSomeKind) = yin_yang_connectivity(grid).masks
 yin_yang_interpolation(grid::YinYangGridOfSomeKind) = yin_yang_connectivity(grid).interpolation
 
-"""
-$(TYPEDSIGNATURES)
-
-Return the fractions `w ∈ [0, 1]` of the area of the cells of the Yin-Yang `grid` that each panel owns,
-as a `Field{Center, Center, Nothing}` whose two regions share one array, with `w = 0` in the halos. The
-owned cells of the two panels tile the sphere: `Σ w Az` over the interior cells of both panels is `4πR²`
-to rounding error.
-
-The weights also give the seam budget of a flux-form scheme. A panel that updates every cell with the
-divergence of its face fluxes `F` changes its owned content `Σ w V c` by `Σ F Δw` over its horizontal
-faces, plus the boundary fluxes and the sources, with `Δw = w[i, j] - w[i-1, j]` across an x-face and
-`Δw = w[i, j] - w[i, j-1]` across a y-face. Only the faces next to the curve that divides the sphere
-between the panels have `Δw ≠ 0`, and the sums of the two panels cancel where the panels agree on the
-flux through that curve.
-
-```jldoctest
-using Oceananigans
-using Oceananigans.MultiRegion: owned_weights
-
-grid = YinYangGrid(size=(48, 16, 1), z=(-1, 0))
-summary(owned_weights(grid))
-
-# output
-"54×22×1 Field{Center, Center, Nothing} reduced over dims = (3,) on YinYangGrid on CPU"
-```
-"""
+# The fractions `w ∈ [0, 1]` of the area of each cell that its panel owns, with `w = 0` in the halos.
+# The owned cells of the two panels tile the sphere: `Σ w Az` over both panels is `4πR²`.
 function owned_weights(grid::YinYangGridOfSomeKind)
     w = yin_yang_masks(grid).cell_weights
     return Field((Center(), Center(), nothing), grid, MultiRegionObject((w, w)), nothing, (:, :, :))
