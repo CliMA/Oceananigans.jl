@@ -73,15 +73,12 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
 end
 
 @testset "Gent-McWilliams with infinite slope" begin
-    @info "Testing Gent-McWilliams formulations with infinite slope..."
-
     formulations = [DiffusiveFormulation(), AdvectiveFormulation()]
     directions = [:x, :y, :xy]
 
     for arch in archs, FT in float_types, formulation in formulations, direction in directions
         formulation_name = nameof(typeof(formulation))
         @testset "GM $formulation_name $direction direction [$arch, $FT]" begin
-            @info "  Testing GM $formulation_name $direction direction [$arch, $FT]..."
             @test gm_tracer_remains_finite(arch, FT;
                                            skew_flux_formulation=formulation,
                                            horizontal_direction=direction)
