@@ -150,7 +150,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+            substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 1, last_stage_Δt = Δτᴮ)
 
             maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args[1:end-1]..., substep_clock, converted_η_halo_args[end]; only_local_halos)
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
