@@ -12,7 +12,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
 
-using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
+    add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields,
+    TKEDissipationClosureFields
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
@@ -137,6 +140,31 @@ Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) =
 
 TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrids) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
+
+# TKE-based closures build the boundary conditions of their tracers from those of each region
+function regional_closure_boundary_conditions(closure, bcs, mrg, tracer_names, buoyancy)
+    regional_bcs = construct_regionally(add_closure_specific_boundary_conditions, closure, bcs, mrg, tracer_names, buoyancy)
+    names = closure_required_tracers(closure)
+    closure_bcs = map(name -> MultiRegionObject(map(b -> b[name], regional_bcs.regional_objects)), names)
+    return merge(bcs, NamedTuple{names}(closure_bcs))
+end
+
+for Closure in (FlavorOfCATKE, FlavorOfTD)
+    @eval begin
+        TurbulenceClosures.add_closure_specific_boundary_conditions(closure::$Closure, bcs, mrg::MultiRegionGrids, tracer_names, buoyancy) =
+            regional_closure_boundary_conditions(closure, bcs, mrg, tracer_names, buoyancy)
+
+        TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::$Closure, model::MultiRegionModel, Δt) =
+            @apply_regionally step_closure_prognostics!(closure_fields, closure, model, Δt)
+    end
+end
+
+for ClosureFields in (CATKEClosureFields, TKEDissipationClosureFields)
+    @eval begin
+        @inline Utils.getregion(f::$ClosureFields, r) = $ClosureFields(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($ClosureFields))...)
+        @inline Utils._getregion(f::$ClosureFields, r) = $ClosureFields(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($ClosureFields))...)
+    end
+end
 
 Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
