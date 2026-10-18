@@ -1,5 +1,6 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition, default_auxiliary_bc, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition, default_auxiliary_bc, regularize_field_boundary_conditions,
+                                       PreconfiguredBoundaryConditions
 using Oceananigans.Diagnostics: Diagnostics, hasnan
 using Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 using Oceananigans.Fields: FunctionField, AbstractField, ZeroField, Scan, compute!, compute_at!, data_summary
@@ -34,7 +35,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 @inline Utils.getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(_getregion(f.grid, r),
                       _getregion(f.data, r),
-                      _getregion(f.boundary_conditions, r),
+                      PreconfiguredBoundaryConditions(_getregion(f.boundary_conditions, r)),
                       _getregion(f.indices, r),
                       _getregion(f.operand, r),
                       _getregion(f.status, r),
@@ -49,7 +50,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 @inline Utils._getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(getregion(f.grid, r),
                       getregion(f.data, r),
-                      getregion(f.boundary_conditions, r),
+                      PreconfiguredBoundaryConditions(getregion(f.boundary_conditions, r)),
                       getregion(f.indices, r),
                       getregion(f.operand, r),
                       getregion(f.status, r),

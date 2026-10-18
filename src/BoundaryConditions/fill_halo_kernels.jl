@@ -24,6 +24,13 @@ end
 construct_boundary_conditions_kernels(::Nothing, data, grid, loc, indices) = nothing
 construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = missing
 
+# Boundary conditions whose kernels were already built for the same data, grid and indices (e.g. one region of a multi-region field)
+struct PreconfiguredBoundaryConditions{B}
+    bcs :: B
+end
+
+construct_boundary_conditions_kernels(preconfigured::PreconfiguredBoundaryConditions, data, grid, loc, indices) = preconfigured.bcs
+
 # Select the valid BC out of a tuple to configure the kernel
 @inline select_bc(bcs::Tuple) = @inbounds bcs[1]
 @inline select_bc(bcs::Tuple{<:Nothing, <:BoundaryCondition}) = @inbounds bcs[2]
