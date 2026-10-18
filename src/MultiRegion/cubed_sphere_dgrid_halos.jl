@@ -102,7 +102,7 @@ function BoundaryConditions.fill_halo_regions!(u::DGridU, v::DGridV, args...; si
                                    (:south, connections.south), (:north, connections.north))
             map = panel_side_map(isodd(region), side, N)
             neighbor = connection.from_rank
-            launch!(grid.architecture, getregion(grid, region), KernelParameters(N + 1, Nz),
+            launch!(grid.architecture, getregion(grid, region), KernelParameters(1:N+1, 1:Nz),
                     _fill_cubed_sphere_dgrid_side_halo!, u_regions[region], v_regions[region],
                     u_regions[neighbor], v_regions[neighbor], map, side, N, halo_width, signed)
         end
@@ -127,7 +127,7 @@ function synchronize_shared_edges!(u::DGridU, v::DGridV; signed = true)
     for region in 1:length(grid.partition)
         connections = getregion(grid.connectivity.connections, region)
         north, east = connections.north.from_rank, connections.east.from_rank
-        launch!(grid.architecture, getregion(grid, region), KernelParameters(N, Nz),
+        launch!(grid.architecture, getregion(grid, region), KernelParameters(1:N, 1:Nz),
                 _synchronize_cubed_sphere_dgrid_edges!, u_regions[region], v_regions[region],
                 u_copies[north], v_copies[north], u_copies[east], v_copies[east],
                 panel_side_map(isodd(region), :north, N), panel_side_map(isodd(region), :east, N), N, signed)
