@@ -140,7 +140,7 @@ steps:
         echo "========================================"
         echo "  Group 7: Nonhydrostatic pressure solver sweep (64³) [GPU 2]"
         echo "========================================"
-        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --case=nonhydrostatic --size=64x64x64 --pressure_solver="FFT, FourierTridiagonal, ConjugateGradient" --group="Nonhydrostatic Pressure Solver Sweep" --output=$OUTPUT_FILE_GPU2
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --case=nonhydrostatic --size=64x64x64 --pressure_solver="ConjugateGradient" --group="Nonhydrostatic Pressure Solver Sweep" --output=$OUTPUT_FILE_GPU2
       ) &
       GPU2_PID=$$!
 
