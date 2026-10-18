@@ -341,6 +341,13 @@ end
 
 @inline launch!(arch, grid, ::Tuple{}, kernel!, kernel_args...; kwargs...) = nothing
 
+@inline function launch!(arch, grid, workspecs::NamedTuple, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N
+    for workspec in values(workspecs)
+        isnothing(workspec) || _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
+    end
+    return nothing
+end
+
 @inline launch!(arch, grid, workspec::Symbol, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, Val(workspec), kernel!, kernel_args...; kw...)
 @inline launch!(arch, grid, workspec::Val, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 

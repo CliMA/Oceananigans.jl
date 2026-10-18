@@ -1,7 +1,6 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Utils: worksize
-using Oceananigans.Models: is_local_dimension
-using Oceananigans.Grids: LeftConnectedOnlyTopology
+using Oceananigans.Models: buffer_tendency_kernel_parameters, buffer_parameters
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.
@@ -22,22 +21,6 @@ function Oceananigans.Models.compute_buffer_tendencies!(model::NonhydrostaticMod
     compute_interior_tendency_contributions!(model, kernel_parameters)
 
     return nothing
-end
-
-# Tendencies need computing in the range 1 : H and W - H + 1 : W where W = worksize.
-# These buffer regions complement the halo-independent interior kernel (H+1:W-H).
-@inline function buffer_tendency_kernel_parameters(grid, arch)
-    Nx, Ny, Nz = size(grid)
-    Wx, Wy, _  = worksize(grid)
-    Hx, Hy, _  = halo_size(grid)
-
-    param_west  = (1:Hx,       1:Wy,       1:Nz)
-    param_east  = (Wx-Hx+1:Wx, 1:Wy,       1:Nz)
-    param_south = (1:Wx,       1:Hy,       1:Nz)
-    param_north = (1:Wx,       Wy-Hy+1:Wy, 1:Nz)
-
-    params = (param_west, param_east, param_south, param_north)
-    return buffer_parameters(params, grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and W + 1 : W + 1 where W = worksize
@@ -71,19 +54,3 @@ end
     return buffer_parameters(params, grid, arch)
 end
 
-# Recompute only on communicating sides.
-@inline function buffer_parameters(parameters, grid, arch)
-    TX, TY, _ = topology(grid)
-
-    include_west  = !is_local_dimension(TX) && !(TX === RightConnected)
-    include_east  = !is_local_dimension(TX) && !(TX === LeftConnected)
-    include_south = !is_local_dimension(TY) && !(TY === RightConnected)
-    include_north = !is_local_dimension(TY) && !(TY <: LeftConnectedOnlyTopology)
-
-    west  = include_west  ? (KernelParameters(parameters[1]...),) : ()
-    east  = include_east  ? (KernelParameters(parameters[2]...),) : ()
-    south = include_south ? (KernelParameters(parameters[3]...),) : ()
-    north = include_north ? (KernelParameters(parameters[4]...),) : ()
-
-    return (west..., east..., south..., north...)
-end

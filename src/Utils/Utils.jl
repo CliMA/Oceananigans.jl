@@ -17,6 +17,7 @@ export f32_safe_cbrt
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+export convert_interior_indices
 
 using DocStringExtensions: TYPEDSIGNATURES
 
@@ -53,5 +54,6 @@ include("newton_div.jl")
 include("f32_safe_cbrt.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
+include("cell_mapping.jl")
 
 end # module
