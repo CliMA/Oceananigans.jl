@@ -182,13 +182,13 @@ end
         top_value(x, y, t, p) = p.a * x + y
         top = ValueBoundaryCondition(top_value, parameters = (; a = 3))
         bottom = GradientBoundaryCondition(2)
-        parameterized_bcs = FieldBoundaryConditions(; top, bottom)
+        loc = (Center(), Center(), Center())
 
         for Partition in (XPartition, YPartition), regions in (2, 3)
             mrg = MultiRegionGrid(grid, partition = Partition(regions))
 
-            field_pairs = ((CenterField(grid; boundary_conditions = parameterized_bcs),
-                            CenterField(mrg; boundary_conditions = parameterized_bcs)),
+            field_pairs = ((CenterField(grid; boundary_conditions = FieldBoundaryConditions(grid, loc; top, bottom)),
+                            CenterField(mrg; boundary_conditions = FieldBoundaryConditions(mrg, loc; top, bottom))),
                            (CenterField(grid; indices = (:, :, 2:3)),
                             CenterField(mrg; indices = (:, :, 2:3))),
                            (Field{Center, Center, Nothing}(grid),
