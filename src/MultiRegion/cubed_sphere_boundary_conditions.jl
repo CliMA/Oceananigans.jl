@@ -4,32 +4,33 @@ using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
 using Oceananigans.Utils: launch!
 
-function BoundaryConditions.fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}, args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}, args...; halo_width = nothing, kwargs...)
     grid = field.grid
+    width = isnothing(halo_width) ? grid.Hx : validate_partial_width_scalar_fill(field, halo_width)
 
     multiregion_field = Reference(field.data.regional_objects)
     regions = Iterate(1:6)
 
     @apply_regionally fill_cubed_sphere_field_horizontal_halo_event!(grid, field, multiregion_field, regions,
         grid.connectivity.connections, WestAndEast(),
-        _fill_cubed_sphere_center_center_field_east_west_halo_regions!)
+        _fill_cubed_sphere_center_center_field_east_west_halo_regions!, width)
     @apply_regionally fill_cubed_sphere_field_horizontal_halo_event!(grid, field, multiregion_field, regions,
         grid.connectivity.connections, SouthAndNorth(),
-        _fill_cubed_sphere_center_center_field_north_south_halo_regions!)
+        _fill_cubed_sphere_center_center_field_north_south_halo_regions!, width)
     @apply_regionally fill_cubed_sphere_field_vertical_halo_event!(grid, field)
 
     return nothing
 end
 
 @inline function fill_cubed_sphere_field_horizontal_halo_event!(grid, field, multiregion_field, region, connections,
-                                                                side, _fill_halo_kernel!)
+                                                                side, _fill_halo_kernel!, width = grid.Hx)
     sz = fill_halo_size(field.data, side, field.indices, FullyConnected, instantiated_location(field), grid)
     of = fill_halo_offset(sz, side, field.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field)
 
     return launch!(grid.architecture, grid, kernel_parameters, _fill_halo_kernel!, field, multiregion_field, region,
-                   connections, grid.Nx, grid.Hx; reduced_dimensions = reduced_dims)
+                   connections, grid.Nx, width; reduced_dimensions = reduced_dims)
 end
 
 @kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
