@@ -158,10 +158,10 @@ end
 
 # n̂ ⋅ x̂ at (Center, Face)
 @inline function northward_projection_xᶜᶠᵃ(i, j, k, grid)
-    ∂φ∂x = ∂xᶜᶠᶜ(i, j, k, grid, φᶠᶠᵃ)
-    ∂φ∂y = ∂yᶜᶠᶜ(i, j, k, grid, φᶜᶜᵃ)
-    ∇φ = sqrt(∂φ∂x^2 + ∂φ∂y^2)
-    return ifelse(∇φ == 0, zero(grid), ∂φ∂x / ∇φ)
+    ∂x_φ = ∂xᶜᶠᶜ(i, j, k, grid, φᶠᶠᵃ)
+    ∂y_φ = ∂yᶜᶠᶜ(i, j, k, grid, φᶜᶜᵃ)
+    norm_∇φ = √(∂x_φ^2 + ∂y_φ^2)
+    return ifelse(norm_∇φ == 0, zero(grid), ∂x_φ / norm_∇φ)
 end
 
 # On a `LatitudeLongitudeGrid` y points north: f̃ʸ = f̃ and f̃ˣ = 0.
