@@ -384,7 +384,7 @@ v_bcs = FieldBoundaryConditions(top=v_wind, bottom=drag, immersed=ImmersedBounda
 # ```
 #
 # with ``T_d = 2°``C, ``ΔT = 20°``C, ``h = 1`` km and ``δ = 0.1``. The meanders
-# ``P(λ) = \cos 6λ + \cos(9λ) / 2 + \sin(13λ) / 4``, with amplitude ``ϵ = 0.035`` and
+# ``P(λ) = \cos(6λ) + \cos(9λ) / 2 + \sin(13λ) / 4``, with amplitude ``ϵ = 0.035`` and
 # ``m = \sin^2 φ \cos^2 φ / (\sin^2 φ_0 \cos^2 φ_0)``, seed the instability.
 #
 # The surface layer is restored to the unperturbed fronts, with ``ϵ = 0``, on a time scale
