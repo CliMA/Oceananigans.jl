@@ -156,6 +156,58 @@ end
     end
 end
 
+struct OrderedRegions{O, R}
+    objects :: O
+    region_identifiers :: R
+end
+
+Oceananigans.Utils.isregional(::OrderedRegions) = true
+Oceananigans.Utils.regions(ordered::OrderedRegions) = ordered.region_identifiers
+Oceananigans.Utils.getregion(ordered::OrderedRegions, r) = ordered.objects[r]
+Oceananigans.Utils._getregion(ordered::OrderedRegions, r) = ordered.objects[r]
+
+@testset "apply_regionally! keeps region identifiers and order" begin
+    objects = (10, 20, 30, 40)
+    for region_identifiers in ([2, 1], [2, 4], [1, 2], 1:3, 1:4)
+        visited = Int[]
+        Oceananigans.Utils.apply_regionally!(x -> push!(visited, x), OrderedRegions(objects, region_identifiers))
+        @test visited == [objects[r] for r in region_identifiers]
+    end
+end
+
+@testset "Multi region halo filling with parameterized, windowed and reduced fields" begin
+    for arch in archs
+        grid = RectilinearGrid(arch, size=(12, 12, 4), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Periodic, Bounded))
+
+        top_value(x, y, t, p) = p.a * x + y
+        top = ValueBoundaryCondition(top_value, parameters = (; a = 3))
+        bottom = GradientBoundaryCondition(2)
+        parameterized_bcs = FieldBoundaryConditions(; top, bottom)
+
+        for Partition in (XPartition, YPartition), regions in (2, 3)
+            mrg = MultiRegionGrid(grid, partition = Partition(regions))
+
+            field_pairs = ((CenterField(grid; boundary_conditions = parameterized_bcs),
+                            CenterField(mrg; boundary_conditions = parameterized_bcs)),
+                           (CenterField(grid; indices = (:, :, 2:3)),
+                            CenterField(mrg; indices = (:, :, 2:3))),
+                           (Field{Center, Center, Nothing}(grid),
+                            Field{Center, Center, Nothing}(mrg)))
+
+            for (single_region_field, multi_region_field) in field_pairs
+                for field in (single_region_field, multi_region_field)
+                    set!(field, (x, y, z) -> x + 10y + 100z)
+                    fill_halo_regions!(field)
+                end
+
+                for region in 1:regions
+                    @test Array(parent(getregion(multi_region_field, region))) ≈ regional_slab(single_region_field, multi_region_field, region)
+                end
+            end
+        end
+    end
+end
+
 @testset "Multi region dot products [$(summary(arch))]" for arch in archs
     grid = RectilinearGrid(arch; size=(8, 8, 4), extent=(1, 1, 1))
     mrg = MultiRegionGrid(grid; partition=XPartition(2))

@@ -105,11 +105,23 @@ struct RegionSelector{R} end
     return apply_in_regions!(regional_func!, Val(r + 1), Val(N), args, kwargs)
 end
 
+# Regions other than 1:N (e.g. a custom `regions` sequence) keep their own identifiers and order.
+@inline function apply_in_regions!(regional_func!, R, args, kwargs)
+    if R == 1:length(R)
+        apply_in_regions!(regional_func!, Val(1), Val(length(R)), args, kwargs)
+    else
+        for r in R
+            selector = Base.Fix2(getregion, r)
+            regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
+        end
+    end
+    return nothing
+end
+
 @inline function multi_region_apply!(regional_func!, args...; kwargs...)
     regional_argument = first_regional(args)
     regional_argument = isnothing(regional_argument) ? first_regional(Tuple(values(kwargs))) : regional_argument
-    number_of_regions = Val(length(regions(regional_argument)))
-    apply_in_regions!(regional_func!, Val(1), number_of_regions, args, values(kwargs))
+    apply_in_regions!(regional_func!, regions(regional_argument), args, values(kwargs))
     return nothing
 end
 
@@ -117,8 +129,7 @@ end
 # we also `getregion` for the function. Since the function itself is multiregional we do not
 # need to check if the call is single region or not.
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
-    number_of_regions = Val(length(regions(regional_func!)))
-    apply_in_regions!(regional_func!, Val(1), number_of_regions, args, values(kwargs))
+    apply_in_regions!(regional_func!, regions(regional_func!), args, values(kwargs))
     return nothing
 end
 
