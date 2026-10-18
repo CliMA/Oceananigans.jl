@@ -335,8 +335,8 @@ drake_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_heigh
 # strongest winds over the Southern Ocean:
 #
 # ```math
-# τ(φ) = τ₀ \cos φ \left [2 e^{-(φ + 50°)^2 / (12°)^2} + e^{-(φ - 45°)^2 / (12°)^2}
-#        - 0.7 e^{-(φ + 18°)^2 / (12°)^2} - 0.6 e^{-(φ - 18°)^2 / (12°)^2} \right ] ,
+# τ(φ) = τ₀ \, \cos φ \left [2 e^{-(φ + 50^\circ)^2 / (12^\circ)^2} + e^{-(φ - 45^\circ)^2 / (12^\circ)^2}
+#        - 0.7 e^{-(φ + 18^\circ)^2 / (12^\circ)^2} - 0.6 e^{-(φ - 18^\circ)^2 / (12^\circ)^2} \right ] ,
 # ```
 #
 # with ``τ₀ = 0.15 \, \mathrm{N \, m^{-2}}``.
