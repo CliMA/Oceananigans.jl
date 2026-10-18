@@ -121,7 +121,7 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
     ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
-    # MultiRegion, cubed sphere and Yin-Yang
+    # MultiRegion, cubed sphere, and Yin-Yang
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
