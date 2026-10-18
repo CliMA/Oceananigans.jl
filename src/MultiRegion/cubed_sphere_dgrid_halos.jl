@@ -81,18 +81,61 @@ end
 const DGridU = CubedSphereField{<:Center, <:Face}
 const DGridV = CubedSphereField{<:Face, <:Center}
 
+covers(axis, range) = first(axis) <= first(range) && last(range) <= last(axis)
+
+# Rejects every layout the parity side maps do not describe, before any write. `halo_width = 0` checks the storage
+# that `synchronize_shared_edges!` touches.
+function validate_dgrid_pair(u, v, halo_width)
+    grid = u.grid
+    grid isa MultiRegionGrid || throw(ArgumentError("D-grid exchange requires a MultiRegionGrid, got $(summary(grid))"))
+    v.grid === grid || throw(ArgumentError("u and v must live on the same grid"))
+    partition = grid.partition
+    (partition isa CubedSpherePartition && partition.Rx == 1 && partition.Ry == 1 && length(partition) == 6) ||
+        throw(ArgumentError("D-grid exchange supports only CubedSpherePartition(R = 1), one region per panel"))
+    canonical = CubedSphereConnectivity(CubedSpherePartition(R = 1)).connections
+    for region in 1:6, side in (:west, :east, :south, :north)
+        connection = getproperty(getregion(grid.connectivity.connections, region), side)
+        expected = getproperty(getregion(canonical, region), side)
+        (connection.from_rank == expected.from_rank && typeof(connection.from_side) == typeof(expected.from_side)) ||
+            throw(ArgumentError("region $region $side connectivity differs from the canonical six-panel cubed sphere"))
+    end
+    N = grid.Nx
+    LZ = location(u, 3)
+    LZ == location(v, 3) || throw(ArgumentError("u and v must share a vertical location"))
+    Nz = LZ === Nothing ? 1 : size(getregion(grid, 1), 3) + (LZ === Face)
+    halo_width >= 0 || throw(ArgumentError("halo_width = $halo_width must be nonnegative"))
+    w = halo_width
+    for region in 1:6
+        size(getregion(grid, region))[1:2] == (N, N) ||
+            throw(ArgumentError("region $region is not $N × $N; D-grid exchange requires square panels of equal size"))
+        size(getregion(u, region)) == size(getregion(v, region)) == (N, N, Nz) ||
+            throw(ArgumentError("D-grid exchange requires full (unwindowed) Fields of size ($N, $N, $Nz) in every region"))
+        u_axes = axes(getregion(u, region).data)
+        v_axes = axes(getregion(v, region).data)
+        (covers(u_axes[1], 1-w:N+w) && covers(u_axes[2], 1-w:N+1+w) &&
+         covers(v_axes[1], 1-w:N+1+w) && covers(v_axes[2], 1-w:N+w) &&
+         covers(u_axes[3], 1:Nz) && covers(v_axes[3], 1:Nz)) ||
+            throw(ArgumentError("region $region storage cannot hold a D-grid halo of width $w beside the shared " *
+                                "north/east edges (u axes $(u_axes[1:2]), v axes $(v_axes[1:2]))"))
+    end
+    return nothing
+end
+
 """
     fill_halo_regions!(u::CubedSphereField{<:Center, <:Face}, v::CubedSphereField{<:Face, <:Center};
-                       signed = true, halo_width = u.grid.Hx)
+                       signed = true, halo_width = u.grid.Hx - 1)
 
 Fill the horizontal halos of a D-grid vector pair (`u` tangential along x-edges, `v` along y-edges) to depth
 `halo_width`, excluding corner halo regions and the shared north/east edges. Vertical halos are not filled.
+Only `CubedSpherePartition(R = 1)` is supported. The shared north (`u`, `j = N+1`) and east (`v`, `i = N+1`) edges
+occupy the first halo slot, so `halo_width` is at most `Hx - 1`.
 """
 function BoundaryConditions.fill_halo_regions!(u::DGridU, v::DGridV, args...; signed = true,
-                                               halo_width = u.grid.Hx, kwargs...)
+                                               halo_width = u.grid.Hx - 1, kwargs...)
+    halo_width >= 1 || throw(ArgumentError("halo_width = $halo_width must be at least 1"))
+    validate_dgrid_pair(u, v, halo_width)
     grid = u.grid
     N = grid.Nx
-    1 <= halo_width <= grid.Hx || throw(ArgumentError("halo_width = $halo_width must be in 1:$(grid.Hx)"))
     u_regions = u.data.regional_objects
     v_regions = v.data.regional_objects
     Nz = size(getregion(u, 1), 3)
@@ -114,9 +157,10 @@ end
     synchronize_shared_edges!(u::CubedSphereField{<:Center, <:Face}, v::CubedSphereField{<:Face, <:Center}; signed = true)
 
 Overwrite each panel's copy of its north (`u` at `j = N+1`) and east (`v` at `i = N+1`) edges with the neighbouring
-panel's own value of the same edge.
+panel's own value of the same edge. Only `CubedSpherePartition(R = 1)` is supported.
 """
 function synchronize_shared_edges!(u::DGridU, v::DGridV; signed = true)
+    validate_dgrid_pair(u, v, 0)
     grid = u.grid
     N = grid.Nx
     u_regions = u.data.regional_objects
