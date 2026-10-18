@@ -184,4 +184,24 @@ end
     regions[3] = ua.data.regional_objects[2]
     alias_field = Field((Center(), Face(), Center()), grid; data = MultiRegionObject(Tuple(regions)))
     @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(ua, alias_field), ua, alias_field)
+
+    # R035-01: horizontal locations are part of the contract, not just sizes.
+    uh, vh = coded_cgrid_pair(grid)
+    @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(vh, uh), uh, vh)
+    centers = (CenterField(grid), CenterField(grid))
+    @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(centers...), centers...)
+    wrong_vc = CenterField(grid)
+    @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(uh, wrong_vc), uh, wrong_vc)
+    wrong_uc = CenterField(grid)
+    @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(wrong_uc, vh), wrong_uc, vh)
+
+    # R035-02: halo-inclusive and full-interior windows keep the logical size of a full field.
+    for indices in ((:, -3:N+4, :), (:, :, 0:Nz+1), (:, :, 1:Nz))
+        uw = Field{Face, Center, Center}(grid; indices)
+        @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(uw, vh), uw, vh)
+    end
+    for indices in ((-3:N+4, :, :), (:, :, 0:Nz+1), (:, :, 1:Nz))
+        vw = Field{Center, Face, Center}(grid; indices)
+        @test rejects_without_writing(() -> fill_cgrid_pair_halo_regions!(uh, vw), uh, vw)
+    end
 end

@@ -119,4 +119,19 @@ end
     regions[3] = OffsetArray(zeros(size(full)), axes(full, 1), axes(full, 2), Nz+1:Nz+size(full, 3))
     short = Field((Center(), Center(), Center()), grid; data = MultiRegionObject(Tuple(regions)))
     @test rejects_without_writing(() -> fill_halo_regions!(short; halo_width = 2), short)
+
+    # R035-02: halo-inclusive and full-interior windows keep the logical size of a full field.
+    for indices in ((-3:N+4, :, :), (:, -3:N+4, :), (:, :, 0:Nz+1), (:, :, 1:Nz))
+        window = CenterField(grid; indices)
+        @test rejects_without_writing(() -> fill_halo_regions!(window; halo_width = 2), window)
+    end
+
+    # R035-03: storage that covers the active levels but not the vertical halo written by the default BCs.
+    for shift in (grid.Hz, -grid.Hz)
+        regions = collect(CenterField(grid).data.regional_objects)
+        full = regions[3]
+        regions[3] = OffsetArray(zeros(size(full)), axes(full, 1), axes(full, 2), axes(full, 3) .+ shift)
+        shifted = Field((Center(), Center(), Center()), grid; data = MultiRegionObject(Tuple(regions)))
+        @test rejects_without_writing(() -> fill_halo_regions!(shifted; halo_width = 2), shifted)
+    end
 end

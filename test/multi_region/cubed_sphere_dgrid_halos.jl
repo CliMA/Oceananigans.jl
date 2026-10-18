@@ -118,4 +118,11 @@ end
     windowed = Field{Face, Center, Center}(grid; indices = (:, :, 1:1))
     @test rejects_without_writing(() -> fill_halo_regions!(u, windowed), u, windowed)
     @test rejects_without_writing(() -> synchronize_shared_edges!(u, windowed), u, windowed)
+
+    # Halo-inclusive and full-interior windows keep the logical size of a full field (R035-02 applies here too).
+    for indices in ((-3:N+4, :, :), (:, :, 0:Nz+1), (:, :, 1:Nz))
+        uw = Field{Center, Face, Center}(grid; indices)
+        @test rejects_without_writing(() -> fill_halo_regions!(uw, v), uw, v)
+        @test rejects_without_writing(() -> synchronize_shared_edges!(uw, v), uw, v)
+    end
 end

@@ -102,6 +102,8 @@ function validate_dgrid_pair(u, v, halo_width)
     N = grid.Nx
     LZ = location(u, 3)
     LZ == location(v, 3) || throw(ArgumentError("u and v must share a vertical location"))
+    validate_full_indices(u, "D-grid exchange")
+    validate_full_indices(v, "D-grid exchange")
     Nz = LZ === Nothing ? 1 : size(getregion(grid, 1), 3) + (LZ === Face)
     halo_width >= 0 || throw(ArgumentError("halo_width = $halo_width must be nonnegative"))
     w = halo_width

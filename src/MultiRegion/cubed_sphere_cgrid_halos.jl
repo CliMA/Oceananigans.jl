@@ -74,6 +74,15 @@ end
 
 full_vertical_size(grid, LZ) = LZ === Nothing ? 1 : size(getregion(grid, 1), 3) + (LZ === Face)
 
+# Size alone cannot detect windows: a halo-inclusive index range keeps the logical size of a full field.
+function validate_full_indices(field, description)
+    for region in 1:length(field.grid.partition)
+        all(index -> index isa Colon, getregion(field.indices, region)) ||
+            throw(ArgumentError("$description requires full fields: region $region has indices $(getregion(field.indices, region))"))
+    end
+    return nothing
+end
+
 # Partial-width scalar fill (F2-STEP1-CONTRACTS §6.1): edge strips of depth `halo_width`, no corners, no padding writes.
 function validate_partial_width_scalar_fill(field, halo_width)
     grid = field.grid
@@ -85,13 +94,16 @@ function validate_partial_width_scalar_fill(field, halo_width)
     N >= w || throw(ArgumentError("panel size $N must be at least halo_width = $w"))
     LZ = location(field, 3)
     LZ === Nothing && throw(ArgumentError("partial-width scalar fill does not support vertically reduced fields"))
+    validate_full_indices(field, "partial-width scalar fill")
     Nz = full_vertical_size(grid, LZ)
+    Hz = grid.Hz
     for region in 1:6
         size(getregion(field, region)) == (N, N, Nz) ||
             throw(ArgumentError("partial-width scalar fill requires full (unwindowed, unreduced) Fields of size ($N, $N, $Nz)"))
         data_axes = axes(getregion(field, region).data)
-        (covers(data_axes[1], 1-w:N+w) && covers(data_axes[2], 1-w:N+w) && covers(data_axes[3], 1:Nz)) ||
-            throw(ArgumentError("region $region storage cannot hold a scalar halo of width $w over vertical range 1:$Nz"))
+        # the vertical boundary-condition fill that follows touches the whole vertical halo
+        (covers(data_axes[1], 1-w:N+w) && covers(data_axes[2], 1-w:N+w) && covers(data_axes[3], 1-Hz:Nz+Hz)) ||
+            throw(ArgumentError("region $region storage cannot hold a scalar halo of width $w and vertical range $(1-Hz):$(Nz+Hz)"))
     end
     reject_overlapping_storage(regional_parents(field), "partial-width scalar fill")
     return w
@@ -99,9 +111,14 @@ end
 
 # Rejects, before any write, every layout the parity side maps do not describe and every storage overlap.
 function validate_cgrid_pair(uc, vc, halo_width)
+    (uc isa Field && vc isa Field) || throw(ArgumentError("C-grid exchange requires Fields, got $(typeof(uc)) and $(typeof(vc))"))
+    (location(uc)[1:2] == (Face, Center) && location(vc)[1:2] == (Center, Face)) ||
+        throw(ArgumentError("C-grid exchange requires uc at (Face, Center) and vc at (Center, Face); got $(location(uc)[1:2]) and $(location(vc)[1:2])"))
     grid = uc.grid
     validate_canonical_six_panels(grid, "C-grid exchange")
     vc.grid === grid || throw(ArgumentError("uc and vc must live on the same grid"))
+    validate_full_indices(uc, "C-grid exchange")
+    validate_full_indices(vc, "C-grid exchange")
     halo_width isa Integer || throw(ArgumentError("halo_width must be an integer, got $(typeof(halo_width))"))
     w = halo_width
     N = grid.Nx
