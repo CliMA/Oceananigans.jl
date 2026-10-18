@@ -2,7 +2,7 @@ module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
-export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField, synchronize_shared_edges!
 
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
@@ -57,6 +57,7 @@ include("multi_region_grid.jl")
 include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")
 include("cubed_sphere_boundary_conditions.jl")
+include("cubed_sphere_dgrid_halos.jl")
 include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")
