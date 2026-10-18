@@ -1,7 +1,12 @@
 using Test
 using Random
 
-isdefined(@__MODULE__, :remap_column!) || include(joinpath(@__DIR__, "..", "src", "VerticalRemapping", "fv3_column_remap.jl"))
+if Base.find_package("Oceananigans") === nothing
+    include(joinpath(@__DIR__, "..", "src", "VerticalRemapping", "fv3_column_remap.jl"))
+else
+    using Oceananigans.VerticalRemapping
+    using Oceananigans.VerticalRemapping: fortran_min, fortran_max
+end
 
 function random_interfaces(rng, Nz; ptop = 100.0, psurface = 1.0e5, thin = false)
     δ = rand(rng, Nz) .+ 0.2
@@ -65,4 +70,25 @@ end
     @test !signbit(fortran_max(0.0, -0.0))
     @test signbit(fortran_min(-0.0, 0.0))
     @test !signbit(fortran_min(0.0, -0.0))
+end
+
+@testset "FV3 column remap: invalid domains and unsupported branches are rejected (R012)" begin
+    Nz = 8
+    w = FV3RemapWorkspace(Float64, Nz)
+    p₁ = collect(range(100.0, 1.0e5, length = Nz + 1))
+    q₁ = collect(1.0:Nz)
+    profile = FV3ScalarProfile(; kord = 8, iv = 1, minimum_value = 0.0)
+    @test_throws ArgumentError FV3ScalarProfile(; kord = 4, iv = 1, minimum_value = 0.0)
+    @test_throws ArgumentError FV3ScalarProfile(; kord = -8, iv = 1, minimum_value = 0.0)
+    @test_throws ArgumentError FV3ScalarProfile(; kord = 16, iv = 1, minimum_value = 0.0)
+    @test_throws ArgumentError FV3ScalarProfile(; kord = 8, iv = -3, minimum_value = 0.0)
+    @test_throws ArgumentError FV3CubicSplineProfile(; kord = 7, iv = 1)
+    @test_throws ArgumentError remap_column!(zeros(Nz), p₁ .+ 10, q₁, p₁, NaN, profile, w)          # bottom edge below source
+    @test_throws ArgumentError remap_column!(zeros(Nz), p₁ .- 10, q₁, p₁, NaN, profile, w)          # top edge above source
+    @test_throws ArgumentError remap_column!(zeros(Nz), reverse(p₁), q₁, p₁, NaN, profile, w)       # inverted target
+    @test_throws ArgumentError remap_column!(zeros(Nz), p₁, q₁, reverse(p₁), NaN, profile, w)       # inverted source
+    @test_throws ArgumentError remap_column!(zeros(Nz), p₁[1:end-1], q₁, p₁, NaN, profile, w)       # wrong length
+    @test_throws ArgumentError remap_column!(zeros(Nz), p₁, q₁, p₁, NaN, profile, FV3RemapWorkspace(Float64, 4))
+    pnan = copy(p₁); pnan[3] = NaN
+    @test_throws ArgumentError remap_column!(zeros(Nz), pnan, q₁, p₁, NaN, profile, w)
 end

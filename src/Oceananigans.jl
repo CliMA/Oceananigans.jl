@@ -244,6 +244,7 @@ include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
+include("VerticalRemapping/VerticalRemapping.jl")
 include("DistributedComputations/DistributedComputations.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 

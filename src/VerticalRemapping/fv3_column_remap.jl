@@ -17,9 +17,22 @@ struct FV3ScalarProfile{FT}
     kord :: Int
     iv :: Int
     minimum_value :: FT
+
+    function FV3ScalarProfile(kord, iv, minimum_value::FT) where FT
+        validate_profile(kord, iv, (-2, -1, 0, 1, 2), "FV3ScalarProfile")
+        return new{FT}(kord, iv, minimum_value)
+    end
 end
 
 FV3ScalarProfile(; kord, iv, minimum_value) = FV3ScalarProfile(kord, iv, minimum_value)
+
+# FV3 calls ppm_profile for kord ≤ 7 (not implemented here) and aborts for kord ∉ 8:15 ∪ {17}.
+function validate_profile(kord, iv, supported_iv, name)
+    abs(kord) ∈ (8, 9, 10, 11, 12, 13, 14, 15, 17) && kord > 7 ||
+        throw(ArgumentError("$name: kord = $kord is not supported (FV3 selects these reconstructions only for kord ∈ 8:15 ∪ {17})"))
+    iv ∈ supported_iv || throw(ArgumentError("$name: iv = $iv is not supported; expected one of $supported_iv"))
+    return nothing
+end
 
 """
     FV3CubicSplineProfile(; kord, iv)
@@ -29,6 +42,11 @@ FV3 `cs_profile` reconstruction (used by `map1_ppm`). `iv = -3` additionally imp
 struct FV3CubicSplineProfile
     kord :: Int
     iv :: Int
+
+    function FV3CubicSplineProfile(kord, iv)
+        validate_profile(kord, iv, (-3, -2, -1, 0, 1, 2), "FV3CubicSplineProfile")
+        return new(kord, iv)
+    end
 end
 
 FV3CubicSplineProfile(; kord, iv) = FV3CubicSplineProfile(kord, iv)
@@ -38,7 +56,21 @@ const FV3Profile = Union{FV3ScalarProfile, FV3CubicSplineProfile}
 minimum_value(p::FV3ScalarProfile) = p.minimum_value
 minimum_value(::FV3CubicSplineProfile) = nothing
 
-supported_kord(p::FV3Profile) = abs(p.kord) ∈ 8:17 && abs(p.kord) != 16
+# The FV3 overlap search assumes increasing interfaces and target edges inside the source column; outside that
+# domain FV3 returns partial or undefined sums, so such inputs are rejected before any arithmetic.
+function validate_remap_domain(p₂, p₁, Nz₂, Nz₁, target_thickness)
+    length(p₁) == Nz₁ + 1 || throw(ArgumentError("source interfaces must have length $(Nz₁ + 1), got $(length(p₁))"))
+    length(p₂) == Nz₂ + 1 || throw(ArgumentError("target interfaces must have length $(Nz₂ + 1), got $(length(p₂))"))
+    Nz₁ >= 3 || throw(ArgumentError("the FV3 reconstructions need at least 3 source layers, got $Nz₁"))
+    all(isfinite, p₁) && all(isfinite, p₂) || throw(ArgumentError("interfaces must be finite"))
+    all(p₁[k+1] > p₁[k] for k in 1:Nz₁) || throw(ArgumentError("source interfaces must be strictly increasing"))
+    all(p₂[k+1] > p₂[k] for k in 1:Nz₂) || throw(ArgumentError("target interfaces must be strictly increasing"))
+    p₂[1] >= p₁[1] && p₂[Nz₂+1] <= p₁[Nz₁+1] ||
+        throw(ArgumentError("target column [$(p₂[1]), $(p₂[Nz₂+1])] is not inside the source column [$(p₁[1]), $(p₁[Nz₁+1])]"))
+    isnothing(target_thickness) || length(target_thickness) == Nz₂ ||
+        throw(ArgumentError("target_thickness must have length $Nz₂"))
+    return nothing
+end
 
 """
     FV3RemapWorkspace(FT, Nz)
@@ -386,7 +418,8 @@ end
 Remap the layer means `q₁` on source interfaces `p₁` (length `Nz₁ + 1`, increasing) to layer means `q₂` on target
 interfaces `p₂`, conserving `∑ q Δp`. `qs` is the lower boundary value (used only by `iv = -2, -3`). The content
 of each target layer is divided by `p₂[k+1] - p₂[k]` (FV3 `map_scalar`, `map1_ppm`) or, if given, by
-`target_thickness[k]` (FV3 `map1_q2`). Every target edge must lie within the source column.
+`target_thickness[k]` (FV3 `map1_q2`). Interfaces must increase strictly and the target column must lie within the
+source column; other inputs throw `ArgumentError` before any arithmetic (FV3 returns partial or undefined sums there).
 """
 function remap_column!(q₂, p₂, q₁, p₁, qs, profile::FV3Profile, w::FV3RemapWorkspace; target_thickness = nothing)
     FT = eltype(q₂)
@@ -395,6 +428,8 @@ function remap_column!(q₂, p₂, q₁, p₁, qs, profile::FV3Profile, w::FV3Re
     Nz₁ = length(q₁)
     Nz₂ = length(q₂)
     a4, δp = w.a4, w.δp
+    validate_remap_domain(p₂, p₁, Nz₂, Nz₁, target_thickness)
+    length(δp) >= Nz₁ || throw(ArgumentError("workspace holds $(length(δp)) layers, need $Nz₁"))
 
     for k = 1:Nz₁
         δp[k] = p₁[k+1] - p₁[k]
