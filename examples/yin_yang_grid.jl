@@ -207,10 +207,11 @@ run!(jet_simulation)
 
 # ### Visualization
 #
-# We plot the vorticity on the sphere, seen from two sides, while the camera circles the
-# globe once. Each cell is drawn as a quad of one color between the corners of its panel,
-# so the plot shows the solution as the panels hold it. Yin draws the cells it owns, and
-# Yang, just beneath, the cells in which it owns any area, so that the overlap appears once.
+# We plot the vorticity on the sphere, seen from opposite sides, while the camera circles the
+# globe once. Both views show Yin and Yang together. Each cell is drawn as a quad of one
+# color between the corners of its panel, so the plot shows the solution as the panels hold
+# it. Yin draws the cells it owns, and Yang, just beneath, the cells in which it owns any
+# area, so that the overlap appears once.
 
 sphere_point(λ, φ, r) = Point3f(r * cosd(φ) * cosd(λ), r * cosd(φ) * sind(λ), r * sind(φ))
 
@@ -272,12 +273,16 @@ colorrange = (-15, 15)
 jet_fig = Figure()
 Label(jet_fig[0, 1:2], title, fontsize=20, tellwidth=false)
 
-for (column, offset) in enumerate((0, π))
-    ax = globe!(jet_fig[1, column], @lift($azimuth + offset), π/4; width=450)
+sides = ((1, "One side", 0),
+         (2, "The opposite side", π))
+
+for (column, name, offset) in sides
+    Label(jet_fig[1, column], name, fontsize=16, tellwidth=false)
+    ax = globe!(jet_fig[2, column], @lift($azimuth + offset), π/4; width=450)
     mesh!(ax, jet_mesh.vertices, jet_mesh.triangles; color=ζₙ, colormap, colorrange, shading=NoShading)
 end
 
-Colorbar(jet_fig[2, 1:2]; colormap, colorrange, label="Vertical vorticity (10⁻⁵ s⁻¹)",
+Colorbar(jet_fig[3, 1:2]; colormap, colorrange, label="Vertical vorticity (10⁻⁵ s⁻¹)",
          vertical=false, width=500)
 
 resize_to_layout!(jet_fig)
