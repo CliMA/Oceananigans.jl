@@ -150,10 +150,10 @@ const OrthogonalSphericalShellGridOfSomeKind = Union{OrthogonalSphericalShellGri
 # The projections of north n̂ = a ∇φ onto the grid's axes, normalized so that they are exact on aligned grids
 # n̂ ⋅ ŷ at (Face, Center)
 @inline function northward_projection_yᶠᶜᵃ(i, j, k, grid)
-    ∂φ∂x = ∂xᶠᶜᶜ(i, j, k, grid, φᶜᶜᵃ)
-    ∂φ∂y = ∂yᶠᶜᶜ(i, j, k, grid, φᶠᶠᵃ)
-    ∇φ = sqrt(∂φ∂x^2 + ∂φ∂y^2)
-    return ifelse(∇φ == 0, zero(grid), ∂φ∂y / ∇φ)
+    ∂x_φ = ∂xᶠᶜᶜ(i, j, k, grid, φᶜᶜᵃ)
+    ∂y_φ = ∂yᶠᶜᶜ(i, j, k, grid, φᶠᶠᵃ)
+    norm_∇φ = √(∂x_φ^2 + ∂y_φ^2)
+    return ifelse(norm_∇φ == 0, zero(grid), ∂y_φ / norm_∇φ)
 end
 
 # n̂ ⋅ x̂ at (Center, Face)
