@@ -92,7 +92,6 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ, SZ}(architecture, Nx, Ny, 
                Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    # on the CPU, since not every device array (e.g. Reactant's) broadcasts over offset axes
     reciprocal_metrics = map(metric -> on_architecture(architecture, 1 ./ on_architecture(CPU(), metric)), metrics)
 
     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, SZ}(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,

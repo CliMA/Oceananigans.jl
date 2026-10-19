@@ -30,7 +30,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFolde
                           Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
                           RightCenterFolded, RightConnected, RightFaceFolded, connected_range, halo_size, node,
                           λnode, φnode, λnodes, φnodes, topology
-using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
 # All possible fill_halo! kernels

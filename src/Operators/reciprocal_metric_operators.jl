@@ -1,5 +1,5 @@
-# Reciprocal metrics operators; equal to the inverse of the metric operators. Like the metrics, they reduce to
-# lower-dimensional reciprocals, which grids store wherever they store the corresponding metric.
+# Reciprocal metric operators, equal to the inverse of the metric operators and reduced to lower-dimensional
+# reciprocals exactly as the metrics are.
 
 #####
 ##### One-dimensional vertical reciprocal spacings (same for all grids)

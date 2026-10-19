@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end

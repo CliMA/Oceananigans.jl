@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_impli
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
-using Oceananigans.Operators: Δz
+using Oceananigans.Operators: Δz⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 import Oceananigans.Solvers: get_coefficient
@@ -58,9 +58,6 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
-
-# local definition of the generic reciprocal function Δz⁻¹
-@inline Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz) = 1 / Δz(i, j, k, grid, ℓx, ℓy, ℓz)
 
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
@@ -146,13 +143,13 @@ end
         return zero(grid)
     end
 
-    Nz  = size(grid, 3)
-    Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-    λᵗ  = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
-    λᵇ  = implicit_flux_coefficient(bottom_bc, i, j, grid, clk, fields)
-    dᵗ  = ifelse(k == Nz,  Δt * λᵗ / Δzᵏ, zero(grid))  # top flux:     tendency −J/Δz
-    dᵇ  = ifelse(k == 1,  -Δt * λᵇ / Δzᵏ, zero(grid))  # bottom flux:  tendency +J/Δz
-    dⁱ  = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc)
+    Nz    = size(grid, 3)
+    Δz⁻¹ᵏ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz)
+    λᵗ    = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
+    λᵇ    = implicit_flux_coefficient(bottom_bc, i, j, grid, clk, fields)
+    dᵗ    = ifelse(k == Nz,  Δt * λᵗ * Δz⁻¹ᵏ, zero(grid))  # top flux:     tendency −J/Δz
+    dᵇ    = ifelse(k == 1,  -Δt * λᵇ * Δz⁻¹ᵏ, zero(grid))  # bottom flux:  tendency +J/Δz
+    dⁱ    = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc)
     return dᵗ + dᵇ + dⁱ
 end
 
@@ -166,7 +163,7 @@ end
 # Immersed fluxes point along the inward-facing normal on every facet, so both immersed faces contribute
 # `+J/Δz` to the tendency, unlike the domain top which contributes `-J/Δz`.
 @inline function immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc::ImmersedBoundaryCondition)
-    Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
+    Δz⁻¹ᵏ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz)
     active = !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
     on_bottom = active & immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ℓz)
@@ -175,8 +172,8 @@ end
     λᵇ = immersed_implicit_flux_coefficient(immersed_bc.bottom, i, j, k, grid, clk, fields)
     λᵗ = immersed_implicit_flux_coefficient(immersed_bc.top,    i, j, k, grid, clk, fields)
 
-    return ifelse(on_bottom, -Δt * λᵇ / Δzᵏ, zero(grid)) +
-           ifelse(on_top,    -Δt * λᵗ / Δzᵏ, zero(grid))
+    return ifelse(on_bottom, -Δt * λᵇ * Δz⁻¹ᵏ, zero(grid)) +
+           ifelse(on_top,    -Δt * λᵗ * Δz⁻¹ᵏ, zero(grid))
 end
 
 #####

@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
@@ -18,33 +18,33 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
 @inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶠᶜᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶠᶠ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 @inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
-    Δz = Δzᶜᶜᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶜ(i, j, k, grid)
     w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
-    α  = abs(w) * Δt / Δz
+    α  = abs(w) * Δt * Δz⁻¹
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 

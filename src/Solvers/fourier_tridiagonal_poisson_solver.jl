@@ -1,4 +1,5 @@
-using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ,
+                              Δx⁻¹ᶠᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δz⁻¹ᵃᵃᶠ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
