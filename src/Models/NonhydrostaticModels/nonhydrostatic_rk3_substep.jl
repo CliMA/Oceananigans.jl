@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt, compute_flux_bc_tendencies!
+using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
@@ -31,8 +31,6 @@ are corrected to satisfy the incompressibility constraint.
 function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     grid = model.grid
     Δτ = stage_Δt(Δt, γⁿ, ζⁿ)
-
-    compute_flux_bc_tendencies!(model)
 
     # Prognostic variables stepping
     @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, u, Δt, γⁿ, ζⁿ, Gⁿ, G⁻; exclude_periphery=true)

@@ -149,6 +149,13 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
         end
     end
 
+    @testset "Flux conditions on the sides of η are rejected" begin
+        grid = RectilinearGrid(size = (4, 4, 2), extent = (1, 1, 1), topology = (Bounded, Periodic, Bounded))
+        η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()); west = FluxBoundaryCondition(1))
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; free_surface, boundary_conditions = (; η = η_bcs))
+    end
+
     @testset "Halo size check in model constructor" begin
         for topo in topos_3d
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))

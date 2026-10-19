@@ -57,26 +57,26 @@ function compute_interior_tendency_contributions!(model, kernel_parameters)
     closure_fields       = model.closure_fields
     forcings             = model.forcing
     clock                = model.clock
-    u_immersed_bc        = velocities.u.boundary_conditions.immersed
-    v_immersed_bc        = velocities.v.boundary_conditions.immersed
-    w_immersed_bc        = velocities.w.boundary_conditions.immersed
+    u_bcs                = NamedTuple(velocities.u.boundary_conditions)
+    v_bcs                = NamedTuple(velocities.v.boundary_conditions)
+    w_bcs                = NamedTuple(velocities.w.boundary_conditions)
 
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!,
             tendencies.u, grid,
-            advection, coriolis, stokes_drift, closure, u_immersed_bc, buoyancy, background_fields,
+            advection, coriolis, stokes_drift, closure, u_bcs, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.u;
             exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gv!,
             tendencies.v, grid,
-            advection, coriolis, stokes_drift, closure, v_immersed_bc, buoyancy, background_fields,
+            advection, coriolis, stokes_drift, closure, v_bcs, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.v;
             exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gw!,
             tendencies.w, grid,
-            advection, coriolis, stokes_drift, closure, w_immersed_bc, buoyancy, background_fields,
+            advection, coriolis, stokes_drift, closure, w_bcs, buoyancy, background_fields,
             velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcings.w;
             exclude_periphery)
 
@@ -94,11 +94,11 @@ end
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds forcing       = model.forcing[tracer_name]
-    @inbounds c_immersed_bc = model.tracers[tracer_name].boundary_conditions.immersed
+    @inbounds c_bcs = NamedTuple(model.tracers[tracer_name].boundary_conditions)
 
     launch!(arch, grid, kernel_parameters, compute_Gc!,
             c_tendency, grid,
-            Val(tracer_index), Val(tracer_name), c_advection, model.closure, c_immersed_bc, model.buoyancy,
+            Val(tracer_index), Val(tracer_name), c_advection, model.closure, c_bcs, model.buoyancy,
             model.biogeochemistry, model.background_fields, model.velocities, model.tracers, model.auxiliary_fields,
             model.closure_fields, model.clock, forcing)
 
@@ -119,31 +119,31 @@ end
 
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function compute_Gu!(Gu, grid,
-                             advection, coriolis, stokes_drift, closure, u_immersed_bc, buoyancy, background_fields,
+                             advection, coriolis, stokes_drift, closure, u_bcs, buoyancy, background_fields,
                              velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid,
-                                                advection, coriolis, stokes_drift, closure, u_immersed_bc, buoyancy, background_fields,
+                                                advection, coriolis, stokes_drift, closure, u_bcs, buoyancy, background_fields,
                                                 velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function compute_Gv!(Gv, grid,
-                             advection, coriolis, stokes_drift, closure, v_immersed_bc, buoyancy, background_fields,
+                             advection, coriolis, stokes_drift, closure, v_bcs, buoyancy, background_fields,
                              velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid,
-                                                advection, coriolis, stokes_drift, closure, v_immersed_bc, buoyancy, background_fields,
+                                                advection, coriolis, stokes_drift, closure, v_bcs, buoyancy, background_fields,
                                                 velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
 @kernel function compute_Gw!(Gw, grid,
-                             advection, coriolis, stokes_drift, closure, w_immersed_bc, buoyancy, background_fields,
+                             advection, coriolis, stokes_drift, closure, w_bcs, buoyancy, background_fields,
                              velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid,
-                                                advection, coriolis, stokes_drift, closure, w_immersed_bc, buoyancy, background_fields,
+                                                advection, coriolis, stokes_drift, closure, w_bcs, buoyancy, background_fields,
                                                 velocities, tracers, auxiliary_fields, closure_fields, hydrostatic_pressure, clock, forcing)
 end
 
@@ -153,43 +153,14 @@ end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_Gc!(Gc, grid,
-                             val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
+                             val_index, val_tracer_name, advection, closure, c_bcs, buoyancy,
                              biogeochemistry, background_fields,
                              velocities, tracers, auxiliary_fields, closure_fields,
                              clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid,
-                                            val_index, val_tracer_name, advection, closure, c_immersed_bc, buoyancy,
+                                            val_index, val_tracer_name, advection, closure, c_bcs, buoyancy,
                                             biogeochemistry, background_fields,
                                             velocities, tracers, auxiliary_fields, closure_fields,
                                             clock, forcing)
-end
-
-#####
-##### Boundary contributions to tendencies due to user-prescribed fluxes
-#####
-
-"""
-$(TYPEDSIGNATURES)
-
-Apply boundary conditions by adding flux divergences to the right-hand-side.
-"""
-function Oceananigans.TimeSteppers.compute_flux_bc_tendencies!(model::NonhydrostaticModel)
-    names = Val(keys(prognostic_fields(model)))
-    compute_flux_bcs!(compute_x_bcs!, model, names)
-    compute_flux_bcs!(compute_y_bcs!, model, names)
-    compute_flux_bcs!(compute_z_bcs!, model, names)
-    return nothing
-end
-
-@inline compute_flux_bcs!(compute_bcs!, model, ::Val{()}) = nothing
-
-# `fields(model)` is rebuilt at every level: passing the merged tuple down the recursion allocates
-@inline function compute_flux_bcs!(compute_bcs!, model, ::Val{names}) where names
-    name = first(names)
-    Gc = model.timestepper.Gⁿ[name]
-    c = prognostic_fields(model)[name]
-    compute_bcs!(Gc, c, model.architecture, model.clock, fields(model))
-    compute_flux_bcs!(compute_bcs!, model, Val(Base.tail(names)))
-    return nothing
 end

@@ -368,7 +368,6 @@ Oceananigans.boundary_conditions(not_field) = nothing
 @inline Oceananigans.boundary_conditions(f::Field) = f.boundary_conditions
 @inline Oceananigans.boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
-immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
 
 instantiate(T::Type) = T()

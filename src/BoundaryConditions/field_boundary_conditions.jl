@@ -84,6 +84,10 @@ window_boundary_conditions(::Colon,      left, right) = left, right
 # The only thing we need
 Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) = (kernels = fbcs.kernels, ordered_bcs = Adapt.adapt(to, fbcs.ordered_bcs))
 
+# The conditions of every side, to pass into kernels
+Base.NamedTuple(bcs::FieldBoundaryConditions) = (west = bcs.west, east = bcs.east, south = bcs.south, north = bcs.north,
+                                                 bottom = bcs.bottom, top = bcs.top, immersed = bcs.immersed)
+
 Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),
                             on_architecture(arch, fbcs.east),

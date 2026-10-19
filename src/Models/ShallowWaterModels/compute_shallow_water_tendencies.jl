@@ -1,5 +1,4 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 using Oceananigans.Utils: launch!
 using Oceananigans: fields, TendencyCallsite, UpdateStateCallsite
@@ -42,8 +41,6 @@ function compute_tendencies!(model::ShallowWaterModel, callbacks)
                                              model.clock,
                                              model.formulation)
 
-    compute_flux_bc_tendencies!(model)
-
     [callback(model) for callback in callbacks if isa(callback.callsite, TendencyCallsite)]
 
     return nothing
@@ -72,9 +69,9 @@ function compute_interior_tendency_contributions!(tendencies,
     h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure,
               solution, tracers, closure_fields, clock, formulation)
 
-    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args..., forcings[1]; exclude_periphery=true)
-    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args..., forcings[2]; exclude_periphery=true)
-    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args..., forcings.h)
+    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args..., NamedTuple(solution[1].boundary_conditions), forcings[1]; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args..., NamedTuple(solution[2].boundary_conditions), forcings[2]; exclude_periphery=true)
+    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args..., NamedTuple(solution.h.boundary_conditions), forcings.h)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds Gc = tendencies[tracer_index+3]
@@ -82,7 +79,8 @@ function compute_interior_tendency_contributions!(tendencies,
         @inbounds c_advection = advection[tracer_name]
 
         launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
-                c_advection, closure, solution, tracers, closure_fields, clock, formulation, forcing)
+                c_advection, closure, solution, tracers, closure_fields, clock, formulation,
+                NamedTuple(tracers[tracer_name].boundary_conditions), forcing)
     end
 
     return nothing
@@ -104,14 +102,16 @@ end
                               solution,
                               tracers,
                               closure_fields,
-                              forcings,
                               clock,
-                              formulation)
+                              formulation,
+                              boundary_conditions,
+                              forcing)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Guh[i, j, k] = uh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure,
-                                                    bathymetry, solution, tracers, closure_fields, forcings, clock, formulation)
+                                                    bathymetry, solution, tracers, closure_fields, clock, formulation,
+                                                    boundary_conditions, forcing)
 end
 
 """ Calculate the right-hand-side of the vh-transport equation. """
@@ -126,14 +126,16 @@ end
                               solution,
                               tracers,
                               closure_fields,
-                              forcings,
                               clock,
-                              formulation)
+                              formulation,
+                              boundary_conditions,
+                              forcing)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gvh[i, j, k] = vh_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, velocities, coriolis, closure,
-                                                    bathymetry, solution, tracers, closure_fields, forcings, clock, formulation)
+                                                    bathymetry, solution, tracers, closure_fields, clock, formulation,
+                                                    boundary_conditions, forcing)
 end
 
 """ Calculate the right-hand-side of the height equation. """
@@ -146,14 +148,15 @@ end
                              solution,
                              tracers,
                              closure_fields,
-                             forcings,
                              clock,
-                             formulation)
+                             formulation,
+                             boundary_conditions,
+                             forcing)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure,
-                                                solution, tracers, closure_fields, forcings, clock, formulation)
+                                                solution, tracers, closure_fields, clock, formulation, boundary_conditions, forcing)
 end
 
 #####
@@ -169,35 +172,13 @@ end
                              solution,
                              tracers,
                              closure_fields,
-                             forcing,
                              clock,
-                             formulation)
+                             formulation,
+                             boundary_conditions,
+                             forcing)
 
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure, solution, tracers,
-                                            closure_fields, forcing, clock, formulation)
-end
-
-#####
-##### Boundary contributions to tendencies due to user-prescribed fluxes
-#####
-
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_flux_bc_tendencies!(model::ShallowWaterModel)
-
-    Gⁿ    = model.timestepper.Gⁿ
-    arch  = model.architecture
-    clock = model.clock
-
-    model_fields = fields(model)
-    prognostic_fields = merge(model.solution, model.tracers)
-
-    # Solution fields and tracer fields
-    for i in 1:length(Gⁿ)
-        compute_x_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
-        compute_y_bcs!(Gⁿ[i], prognostic_fields[i], arch, clock, model_fields)
-    end
-
-    return nothing
+                                            closure_fields, clock, formulation, boundary_conditions, forcing)
 end

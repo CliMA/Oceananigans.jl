@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
 using Oceananigans.BoundaryConditions: getbc
-using Oceananigans.BoundaryConditions: FBC, ZFBC
+using Oceananigans.BoundaryConditions: FBC, ZFBC, PBC, MCBC, DCBC, VBC, GBC, MBC, NFBC, ZBC
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
 using Oceananigans.Advection: conditional_flux
@@ -72,8 +72,6 @@ end
 #####
 
 # Harder in some ways... ValueBoundaryCondition...
-const VBC = BoundaryCondition{<:Value}
-const GBC = BoundaryCondition{<:Gradient}
 const VBCorGBC = Union{VBC, GBC}
 const ASD = AbstractScalarDiffusivity
 
@@ -181,10 +179,9 @@ end
 ##### Immersed flux divergence
 #####
 
-# Compiler hint
-@inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, clock, fields) = zero(ibg)
+@inline immersed_flux_divergence(i, j, k, grid, bc, loc, c, closure, K, id, clock, fields) = zero(grid)
 
-@inline function immersed_flux_divergence(i, j, k, ibg::GFIBG, bc, loc, c, closure, K, id, clock, fields)
+@inline function immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::IBC, loc, c, closure, K, id, clock, fields)
     # Fetch fluxes across immersed boundary
     q̃ᵂ =   west_ib_flux(i, j, k, ibg, bc.west,   loc, c, closure, K, id, clock, fields)
     q̃ᴱ =   east_ib_flux(i, j, k, ibg, bc.east,   loc, c, closure, K, id, clock, fields)
@@ -208,20 +205,62 @@ end
     return div(i, j, k, ibg, loc, qᵂ, qᴱ, qˢ, qᴺ, qᴮ, qᵀ)
 end
 
-# Fallbacks
-@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, args...) = zero(grid)
-@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, args...) = zero(grid)
-@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, args...) = zero(grid)
-@inline immersed_∇_dot_qᶜ(i, j, k, grid, args...) = zero(grid)
+#####
+##### Flux conditions on the domain sides
+#####
 
-@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, clock, fields) =
-    immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, clock, fields)
+# Flux through the face `i`, `j` or `k` on a domain side, positive along the coordinate, zero away from that side
+for (side, boundary_face, plane) in ((:west,   :(i == 1),           (:j, :k)),
+                                     (:east,   :(i == grid.Nx + 1), (:j, :k)),
+                                     (:south,  :(j == 1),           (:i, :k)),
+                                     (:north,  :(j == grid.Ny + 1), (:i, :k)),
+                                     (:bottom, :(k == 1),           (:i, :j)),
+                                     (:top,    :(k == grid.Nz + 1), (:i, :j)))
 
-@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, ibg::GFIBG, U, v_bc::IBC, closure, K, clock, fields) =
-    immersed_flux_divergence(i, j, k, ibg, v_bc, (c, f, c), U.v, closure, K, nothing, clock, fields)
+    domain_flux = Symbol(side, :_domain_flux)
 
-@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, ibg::GFIBG, U, w_bc::IBC, closure, K, clock, fields) =
-    immersed_flux_divergence(i, j, k, ibg, w_bc, (c, c, f), U.w, closure, K, nothing, clock, fields)
+    @eval begin
+        @inline $domain_flux(i, j, k, grid, bc, args...)      = zero(grid)
+        @inline $domain_flux(i, j, k, grid, bc::FBC, args...) = ifelse($boundary_face, getbc(bc, $(plane...), grid, args...), zero(grid))
+    end
+end
 
-@inline immersed_∇_dot_qᶜ(i, j, k, ibg::GFIBG, C, c_bc::IBC, closure, K, id, clock, fields) =
-    immersed_flux_divergence(i, j, k, ibg, c_bc, (c, c, c), C, closure, K, id, clock, fields)
+const NotFluxBC = Union{PBC, MCBC, DCBC, VBC, GBC, MBC, NFBC, ZFBC, ZBC, Nothing}
+const NoDomainFluxes = NamedTuple{(:west, :east, :south, :north, :bottom, :top, :immersed),
+                                  <:Tuple{NotFluxBC, NotFluxBC, NotFluxBC, NotFluxBC, NotFluxBC, NotFluxBC, Any}}
+
+@inline domain_flux_divergence(i, j, k, grid, ::NoDomainFluxes, loc, args...) = zero(grid)
+
+@inline function domain_flux_divergence(i, j, k, grid, bcs, loc, args...)
+    iᵂ, jˢ, kᴮ = map(index_left,  (i, j, k), loc)
+    iᴱ, jᴺ, kᵀ = map(index_right, (i, j, k), loc)
+
+    qᵂ =   west_domain_flux(iᵂ, j, k, grid, bcs.west,   args...)
+    qᴱ =   east_domain_flux(iᴱ, j, k, grid, bcs.east,   args...)
+    qˢ =  south_domain_flux(i, jˢ, k, grid, bcs.south,  args...)
+    qᴺ =  north_domain_flux(i, jᴺ, k, grid, bcs.north,  args...)
+    qᴮ = bottom_domain_flux(i, j, kᴮ, grid, bcs.bottom, args...)
+    qᵀ =    top_domain_flux(i, j, kᵀ, grid, bcs.top,    args...)
+
+    return div(i, j, k, grid, loc, qᵂ, qᴱ, qˢ, qᴺ, qᴮ, qᵀ)
+end
+
+#####
+##### Divergence of the fluxes through the boundary faces of a cell, on the domain sides and on the immersed boundary
+#####
+
+@inline boundary_∂ⱼ_τ₁ⱼ(i, j, k, grid, u, u_bcs, closure, K, clock, fields, buoyancy) =
+    immersed_flux_divergence(i, j, k, grid, u_bcs.immersed, (f, c, c), u, closure, K, nothing, clock, fields) +
+      domain_flux_divergence(i, j, k, grid, u_bcs, (f, c, c), clock, fields, closure, buoyancy)
+
+@inline boundary_∂ⱼ_τ₂ⱼ(i, j, k, grid, v, v_bcs, closure, K, clock, fields, buoyancy) =
+    immersed_flux_divergence(i, j, k, grid, v_bcs.immersed, (c, f, c), v, closure, K, nothing, clock, fields) +
+      domain_flux_divergence(i, j, k, grid, v_bcs, (c, f, c), clock, fields, closure, buoyancy)
+
+@inline boundary_∂ⱼ_τ₃ⱼ(i, j, k, grid, w, w_bcs, closure, K, clock, fields, buoyancy) =
+    immersed_flux_divergence(i, j, k, grid, w_bcs.immersed, (c, c, f), w, closure, K, nothing, clock, fields) +
+      domain_flux_divergence(i, j, k, grid, w_bcs, (c, c, f), clock, fields, closure, buoyancy)
+
+@inline boundary_∇_dot_qᶜ(i, j, k, grid, C, c_bcs, closure, K, id, clock, fields, buoyancy) =
+    immersed_flux_divergence(i, j, k, grid, c_bcs.immersed, (c, c, c), C, closure, K, id, clock, fields) +
+      domain_flux_divergence(i, j, k, grid, c_bcs, (c, c, c), clock, fields, closure, buoyancy)
