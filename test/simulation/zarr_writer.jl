@@ -208,6 +208,38 @@ end
     end
 end
 
+@testset "ZarrWriter [start_datetime]" begin
+    start_datetime = DateTime(2025, 6, 3, 21)
+
+    for arch in archs, (clock_time, stop_time, start, units, times) in
+            ((0.0,                  2.0,                           nothing,        "seconds",                           [0, 1, 2]),
+             (0.0,                  2.0,                           start_datetime, "seconds since 2025-06-03 21:00:00", [0, 1, 2]),
+             (DateTime(2025, 6, 4), DateTime(2025, 6, 4, 0, 0, 2), start_datetime, "seconds since 2025-06-03 21:00:00", [10800, 10801, 10802]))
+
+        grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
+        clock = Clock(time=clock_time)
+        model = NonhydrostaticModel(grid; clock, timestepper=:QuasiAdamsBashforth2, tracers=:c)
+
+        filepath = abspath("test_zarr_start_datetime.zarr")
+        simulation = Simulation(model; Δt=1second, stop_time, verbose=false)
+        simulation.output_writers[:zarr] =
+            ZarrWriter(model, (; c=model.tracers.c);
+                       filename=filepath,
+                       schedule=IterationInterval(1),
+                       overwrite_files=true,
+                       include_grid_metrics=false,
+                       start_datetime=start)
+        run!(simulation)
+
+        attributes = Zarr.zopen(filepath)["time"].attrs
+        @test attributes["units"] == units
+        @test get(attributes, "calendar", nothing) == (isnothing(start) ? nothing : "proleptic_gregorian")
+        @test Zarr.zopen(filepath)["time"][:] == times
+
+        rm(filepath; recursive=true, force=true)
+    end
+end
+
 #####
 ##### Operations, reductions, functions, and WindowedTimeAverage
 #####
