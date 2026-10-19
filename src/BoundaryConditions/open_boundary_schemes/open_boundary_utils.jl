@@ -82,15 +82,22 @@ function regularize_boundary_condition(bc::RBC, grid, loc, dim, args...)
 end
 
 #####
-##### The halo fill leaves the exterior state in place
+##### The halo fill leaves the exterior state in place; a boundary-normal velocity's state is extended to the halo face beyond
 #####
 
-@inline   _fill_west_halo!(j, k, grid, c, ::RBC, loc, args...) = nothing
-@inline   _fill_east_halo!(j, k, grid, c, ::RBC, loc, args...) = nothing
-@inline  _fill_south_halo!(i, k, grid, c, ::RBC, loc, args...) = nothing
-@inline  _fill_north_halo!(i, k, grid, c, ::RBC, loc, args...) = nothing
-@inline _fill_bottom_halo!(i, j, grid, c, ::RBC, loc, args...) = nothing
-@inline    _fill_top_halo!(i, j, grid, c, ::RBC, loc, args...) = nothing
+@inline   _fill_west_halo!(j, k, grid, c, ::RVBC, loc, args...) = nothing
+@inline   _fill_east_halo!(j, k, grid, c, ::RVBC, loc, args...) = nothing
+@inline  _fill_south_halo!(i, k, grid, c, ::RVBC, loc, args...) = nothing
+@inline  _fill_north_halo!(i, k, grid, c, ::RVBC, loc, args...) = nothing
+@inline _fill_bottom_halo!(i, j, grid, c, ::RVBC, loc, args...) = nothing
+@inline    _fill_top_halo!(i, j, grid, c, ::RVBC, loc, args...) = nothing
+
+@inline   _fill_west_halo!(j, k, grid, c, ::RNFBC, loc, args...) = @inbounds c[0, j, k]           = c[1, j, k]
+@inline   _fill_east_halo!(j, k, grid, c, ::RNFBC, loc, args...) = @inbounds c[grid.Nx + 2, j, k] = c[grid.Nx + 1, j, k]
+@inline  _fill_south_halo!(i, k, grid, c, ::RNFBC, loc, args...) = @inbounds c[i, 0, k]           = c[i, 1, k]
+@inline  _fill_north_halo!(i, k, grid, c, ::RNFBC, loc, args...) = @inbounds c[i, grid.Ny + 2, k] = c[i, grid.Ny + 1, k]
+@inline _fill_bottom_halo!(i, j, grid, c, ::RNFBC, loc, args...) = @inbounds c[i, j, 0]           = c[i, j, 1]
+@inline    _fill_top_halo!(i, j, grid, c, ::RNFBC, loc, args...) = @inbounds c[i, j, grid.Nz + 2] = c[i, j, grid.Nz + 1]
 
 #####
 ##### Stepping, caching and initializing the exterior state, on the boundary plane of the halo fill

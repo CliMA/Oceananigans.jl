@@ -30,13 +30,13 @@ materialize_advection(a::EnergyConservingUpwinding{N, FT, TD}, grid) where {N, F
     EnergyConservingUpwinding{N, FT, TD}(materialize_advection(a.scheme, grid))
 
 # VectorInvariant wraps multiple sub-schemes; recurse into each
-function materialize_advection(vi::VectorInvariant{N, FT, TD, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, M}, grid) where {N, FT, TD, M}
-    return VectorInvariant{N, FT, TD, M}(materialize_advection(vi.vorticity_scheme, grid),
-                                         vi.vorticity_stencil,
-                                         materialize_advection(vi.vertical_advection_scheme, grid),
-                                         materialize_advection(vi.kinetic_energy_gradient_scheme, grid),
-                                         materialize_advection(vi.divergence_scheme, grid),
-                                         materialize_advection(vi.upwinding, grid))
+function materialize_advection(vi::VectorInvariant{N, FT, TD}, grid) where {N, FT, TD}
+    return VectorInvariant{N, FT, TD}(materialize_advection(vi.vorticity_scheme, grid),
+                                      vi.vorticity_stencil,
+                                      materialize_advection(vi.vertical_advection_scheme, grid),
+                                      materialize_advection(vi.kinetic_energy_gradient_scheme, grid),
+                                      materialize_advection(vi.divergence_scheme, grid),
+                                      materialize_advection(vi.upwinding, grid))
 end
 
 # Only the outermost scheme launches `div_Uc`, so only it carries a limiter field.

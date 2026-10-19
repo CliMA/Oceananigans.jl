@@ -1,67 +1,62 @@
 #####
-##### This file provides functions that conditionally-evaluate interpolation operators
-##### near boundaries in bounded directions.
-#####
-##### For example, the function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c) either
-#####
-#####     1. Always returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Periodic; or
-#####
-#####     2. Returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Bounded and index i is not
-#####        close to the boundary, or a second-order interpolation if i is close to a boundary.
+##### High-order reconstructions reduce their order where their stencil would read beyond the indices the sides of the
+##### domain let it read or, on immersed grids, an inactive cell.
 #####
 
-using Oceananigans.Grids: AbstractGrid, BoundarySide, BoundaryTopology, Sides, topology, architecture
+using Oceananigans.Grids: AbstractGrid, BoundarySide, Sides, Closed, Open, topology
 
 const AG = AbstractGrid
 
-# topologies bounded at least on one side
+# Topologies with a Closed or an Open side
 const BT = Union{Sides{<:BoundarySide}, Sides{<:Any, <:BoundarySide}}
 
-# Bounded underlying Grids
-const AGX   = AG{<:Any, <:BT}
-const AGY   = AG{<:Any, <:Any, <:BT}
-const AGZ   = AG{<:Any, <:Any, <:Any, <:BT}
-const AGXY  = AG{<:Any, <:BT, <:BT}
-const AGXZ  = AG{<:Any, <:BT, <:Any, <:BT}
-const AGYZ  = AG{<:Any, <:Any, <:BT, <:BT}
-const AGXYZ = AG{<:Any, <:BT, <:BT, <:BT}
+const AGX = AG{<:Any, <:BT}
+const AGY = AG{<:Any, <:Any, <:BT}
+const AGZ = AG{<:Any, <:Any, <:Any, <:BT}
 
-# Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
-# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
+# Indices a stencil of points at `ℓ` may read next to an Open side.
+@inline first_stencil_index(::Closed, ℓ)      = 1
+@inline first_stencil_index(::Open, ::Center) = 0
+@inline first_stencil_index(::Open, ::Face)   = 1
 
-for dir in (:x, :y, :z)
-    outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
-    outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
-    outside_biased_haloᶠ    = Symbol(:outside_biased_halo_, dir, :ᶠ)
-    outside_biased_haloᶜ    = Symbol(:outside_biased_halo_, dir, :ᶜ)
-    required_halo_size      = Symbol(:required_halo_size_, dir)
+@inline last_stencil_index(::Closed, ::Center, N) = N
+@inline last_stencil_index(::Closed, ::Face, N)   = N + 1
+@inline last_stencil_index(::Open, ℓ, N)          = N + 1
 
-    @eval begin
-        # Topologies bounded on both sides
-        @inline $outside_symmetric_haloᶠ(i, ::Type{<:BoundaryTopology}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{<:BoundaryTopology}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
+# Whether a stencil from `first_point` to `last_point` reads only what the sides of a direction let it read; only Closed and Open sides bound it
+@inline within_bounds(first_point, last_point, topology, ℓ, N) = true
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (first_point >= first_stencil_index(L(), ℓ)) & (last_point <= last_stencil_index(R(), ℓ, N))
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L}}, ℓ, N) where L <: BoundarySide         = first_point >= first_stencil_index(L(), ℓ)
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{<:Any, R}}, ℓ, N) where R <: BoundarySide  = last_point  <= last_stencil_index(R(), ℓ, N)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{<:BoundaryTopology}, N, adv, bias) =
-            ifelse(bias == LeftBias, (i >= $required_halo_size(adv) + 1) & (i <= N + 2 - $required_halo_size(adv)),
-                                     (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv)))
+# A reconstruction at a Face reads Center points from i - B to i + B - 1 and one at a Center reads Face points from i - B + 1
+# to i + B, with B the buffer of the scheme; a left-biased stencil drops the last point and a right-biased one the first.
+for (d, ξ) in enumerate((:x, :y, :z))
+    N = (:Nx, :Ny, :Nz)[d]
+    index = (:i, :j, :k)[d]
+    B = Symbol(:required_halo_size_, ξ)
 
-        @inline $outside_biased_haloᶜ(i, ::Type{<:BoundaryTopology}, N, adv, bias) =
-            ifelse(bias == LeftBias, (i >= $required_halo_size(adv))     & (i <= N + 2 - $required_halo_size(adv)),
-                                     (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv)))
+    for (side, points, first_offset, last_offset) in ((:ᶠ, Center(), :(-$B(scheme)),    :($B(scheme) - 1)),
+                                                      (:ᶜ, Face(),   :(1 - $B(scheme)), :($B(scheme))))
 
-        # Topologies bounded on the left (only test the left side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv) = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv) = i >= $required_halo_size(adv)
+        within_bounds_symmetric = Symbol(:within_bounds_symmetric_, ξ, side)
+        within_bounds_biased    = Symbol(:within_bounds_biased_, ξ, side)
+        near_boundary_symmetric = Symbol(:near_, ξ, :_boundary_symmetric, side)
+        near_boundary_biased    = Symbol(:near_, ξ, :_boundary_biased, side)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv),     i >= $required_halo_size(adv) - 1)
+        @eval begin
+            @inline $within_bounds_symmetric(i, grid, scheme) =
+                within_bounds(i + $first_offset, i + $last_offset, topology(grid, $d), $points, grid.$N)
 
-        # Topologies bounded on the right (only test the right side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-
-        @inline $outside_biased_haloᶠ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
+            @inline function $within_bounds_biased(i, grid, scheme, bias) 
+                iᴸ = i + $first_offset + ifelse(bias == LeftBias, 0, 1)
+                iᴿ = i + $last_offset  - ifelse(bias == LeftBias, 1, 0)
+                return within_bounds(iᴸ, iᴿ, topology(grid, $d), $points, grid.$N)
+            end
+            
+            @inline $near_boundary_symmetric(i, j, k, grid, scheme)     = !$within_bounds_symmetric($index, grid, scheme)
+            @inline $near_boundary_biased(i, j, k, grid, scheme, bias) = !$within_bounds_biased($index, grid, scheme, bias)
+        end
     end
 end
 
@@ -75,54 +70,27 @@ for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
 
         code = [:ᵃ, :ᵃ, :ᵃ]
+        bounded_grid = (:AGX, :AGY, :AGZ)[d]
+        b = bias == :biased ? (:bias,) : ()
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt1_interp = Symbol(alt1, interp)
             alt2_interp = Symbol(alt2, interp)
+            near_boundary = Symbol(:near_, ξ, :_boundary_, bias, loc)
 
-            # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval begin
+                # Directions without a Closed or Open side, on grids without an immersed boundary, and low-order schemes
+                @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+                @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
-            outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
-
-            b = bias == :biased ? (:bias,) : ()
-
-            # Conditional high-order interpolation in Bounded directions
-            if ξ == :x
-                @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AGX, scheme::HOADV, $(b...), args...) =
-                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme, $(b...)),
-                                   $interp(i, j, k, grid, scheme, $(b...), args...),
-                                   $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...))
-                end
-            elseif ξ == :y
-                @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AGY, scheme::HOADV, $(b...), args...) =
-                        ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme, $(b...)),
-                               $interp(i, j, k, grid, scheme, $(b...), args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...))
-                end
-            elseif ξ == :z
-                @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AGZ, scheme::HOADV, $(b...), args...) =
-                        ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme, $(b...)),
-                               $interp(i, j, k, grid, scheme, $(b...), args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...))
-                end
+                # The full-order reconstruction comes first: `ifelse` evaluates both, and their order sets the fused multiply-adds
+                @inline $alt1_interp(i, j, k, grid::Union{$bounded_grid, ImmersedBoundaryGrid}, scheme::HOADV, $(b...), args...) =
+                    ifelse(!$near_boundary(i, j, k, grid, scheme, $(b...)),
+                            $interp(i, j, k, grid, scheme, $(b...), args...),
+                            $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...))
             end
         end
     end
 end
-
-@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) =
-                    ifelse(outside_symmetric_halo_xᶜ(i, topology(grid, 1), grid.Nx, scheme),
-                           multi_dimensional_reconstruction_x(i, j, k, grid, scheme, interp, args...),
-                           interp(i, j, k, grid, scheme, args...))
-
-@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) =
-                    ifelse(outside_symmetric_halo_yᶜ(j, topology(grid, 2), grid.Ny, scheme),
-                            multi_dimensional_reconstruction_y(i, j, k, grid, scheme, interp, args...),
-                            interp(i, j, k, grid, scheme, args...))
