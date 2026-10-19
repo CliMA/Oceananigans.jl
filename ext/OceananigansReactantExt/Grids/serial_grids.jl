@@ -17,7 +17,7 @@ const CPUImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} =
     ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:CPU}
 
 function constant_with_arch(cpu_grid::AbstractUnderlyingGrid, arch)
-    GridType = typeof(cpu_grid).name.wrapper
+    GridType = unparameterized_type(typeof(cpu_grid))
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)

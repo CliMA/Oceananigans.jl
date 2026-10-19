@@ -48,7 +48,7 @@ function compute_pressure_solution(grid)
 end
 
 function test_conjugate_gradient_basic_functionality(grid, preconditioner)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Unit testing ConjugateGradientPoissonSolver with $preconditioner_name..."
 
     # Test the preconditioner constructor
@@ -64,7 +64,7 @@ function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preco
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-underlying_grid.Lz / 2))
     arch = architecture(grid)
     preconditioner = make_preconditioner(underlying_grid, grid)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
 
     reltol = abstol = eps(eltype(grid))
@@ -118,7 +118,7 @@ function test_conjugate_gradient_default_constructor(arch)
 end
 
 function test_conjugate_gradient_with_nonhydrostatic_model(grid, preconditioner)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CG solver integration with NonhydrostaticModel using $preconditioner_name..."
     seed!(198)  # For reproducible results
 
@@ -176,7 +176,7 @@ end
 
 function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(underlying_grid, preconditioner)
     # See https://github.com/CliMA/Oceananigans.jl/issues/4603
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CGSolver with ImmersedBoundaryGrid with a flux boundary condition using $preconditioner_name..."
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))
@@ -192,8 +192,8 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
 end
 
 function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, preconditioner, immersed_bottom)
-    preconditioner_name = typeof(preconditioner).name.wrapper
-    immersed_bottom_name = typeof(immersed_bottom).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
+    immersed_bottom_name = nameof(typeof(immersed_bottom))
     underlying_grid_name = underlying_grid isa XYZRegularRG ? "regular grid" : "stretched grid"
     @info "  Testing ConjugateGradientPoissonSolver + $preconditioner_name, on $underlying_grid_name with $immersed_bottom_name"
     seed!(198)  # For reproducible results
@@ -351,9 +351,13 @@ end
             end
         end
 
+        open_underlying_grids = Dict("regular grid"   => RectilinearGrid(arch, topology = (Open, Periodic, Bounded), size=(8, 4, 8), halo=(4, 4, 4), extent = (1, 1, 1)),
+                                     "stretched grid" => RectilinearGrid(arch, topology = (Open, Bounded, Bounded), size=(8, 4, 8), halo=(4, 4, 4),
+                                                                         x = (0, 1), y = (0, 1), z = -1:0.125:0))
+
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = GridFittedBottom(-0.6)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @info "  Testing $underlying_grid_name with different bottom types and open boundary conditions [$(typeof(arch))]..."
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
@@ -362,7 +366,7 @@ end
 
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a PartialCellBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = PartialCellBottom(-0.5)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
@@ -371,7 +375,7 @@ end
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a sinusoidal GridFittedBottom and open boundary conditions [$(typeof(arch))]" begin
             sinusoidal_bottom(x, y) = -0.8 + 0.1 * sin(2π * x) * cos(2π * y)
             bottom = GridFittedBottom(sinusoidal_bottom)
-            for (underlying_grid_name, underlying_grid) in underlying_grids
+            for (underlying_grid_name, underlying_grid) in open_underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end

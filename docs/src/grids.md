@@ -71,6 +71,21 @@ xnodes(grid, Face())
 0.0:4.0:60.0
 ```
 
+`Bounded` closes a direction with walls on both sides. Each side of a direction can also be given separately as a pair of
+side topologies: `Closed` for a wall and `Open` for a side where the domain continues into an exterior, whose state is
+set by an open boundary condition (see [Boundary conditions](@ref model_step_bcs)).
+For example, a channel closed on the west and open on the east is
+
+```jldoctest grids
+channel = RectilinearGrid(topology = ((Closed, Open), Periodic, Bounded), size = (16, 8, 4), extent = (64, 32, 8))
+
+# output
+16×8×4 RectilinearGrid{Float64, Sides{Closed, Open}, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Sides{Closed, Open} x ∈ [0.0, 64.0] regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)            regularly spaced with Δy=4.0
+└── Bounded  z ∈ [-8.0, 0.0]            regularly spaced with Δz=2.0
+```
+
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
@@ -1070,7 +1085,7 @@ Now we're getting somewhere. Let's note a few things:
   of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
-  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  topology `(Connected, Periodic, Bounded)`. That means that each local grid, which represents
   half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
   and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
 

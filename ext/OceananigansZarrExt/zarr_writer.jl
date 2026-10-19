@@ -671,8 +671,8 @@ function Base.show(io::IO, ow::ZarrWriter)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
-    store_str = isnothing(ow.store) ? "DirectoryStore (deferred)" : string(typeof(ow.store).name.name)
-    compressor_str = isnothing(ow.compressor) ? "none" : string(typeof(ow.compressor).name.name)
+    store_str = isnothing(ow.store) ? "DirectoryStore (deferred)" : string(nameof(typeof(ow.store)))
+    compressor_str = isnothing(ow.compressor) ? "none" : string(nameof(typeof(ow.compressor)))
     chunks_str = isnothing(ow.chunks) ? "auto" : string(ow.chunks)
 
     print(io, "ZarrWriter scheduled on $(summary(ow.schedule)):", "\n",

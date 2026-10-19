@@ -1,7 +1,7 @@
 # [Boundary conditions](@id model_step_bcs)
 
 Boundary conditions are intimately related to the grid topology, and only
-need to be considered in directions with `Bounded` topology or across immersed boundaries.
+need to be considered in directions with `Closed` or `Open` sides (such as `Bounded`) or across immersed boundaries.
 In `Bounded` directions, tracer and momentum fluxes are conservative or "zero flux"
 by default. Non-default boundary conditions are therefore required to specify non-zero fluxes
 of tracers and momentum across `Bounded` directions, and across immersed boundaries
@@ -402,11 +402,14 @@ PerturbationAdvection{Float64}
 └── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
-exit the domain in each specific problem.
+exit the domain in each specific problem. Open boundary conditions are set on `Open` sides, for example on a grid with
+`topology = (Open, Periodic, Bounded)`, or `((Closed, Open), Periodic, Bounded)` for a domain open only on the east.
+On an `Open` side the boundary-normal velocity needs an open boundary condition, while other fields default to a
+zero-gradient exterior state.
 
 ### 11. Open boundary condition with a target transport
 
@@ -427,7 +430,7 @@ PerturbationAdvection{Float64}
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64, Nothing}}: 1
 ```
 
 The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):

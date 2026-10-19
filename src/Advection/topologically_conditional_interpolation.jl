@@ -10,23 +10,12 @@
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractGrid,
-                          Bounded,
-                          RightConnected,
-                          LeftConnected,
-                          topology,
-                          architecture,
-                          LeftConnectedRightCenterConnected,
-                          LeftConnectedRightCenterFolded,
-                          LeftConnectedRightFaceConnected,
-                          LeftConnectedRightFaceFolded
+using Oceananigans.Grids: AbstractGrid, BoundarySide, BoundaryTopology, Sides, topology, architecture
 
 const AG = AbstractGrid
 
 # topologies bounded at least on one side
-const BT = Union{Bounded, RightConnected, LeftConnected,
-                  LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                  LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+const BT = Union{Sides{<:BoundarySide}, Sides{<:Any, <:BoundarySide}}
 
 # Bounded underlying Grids
 const AGX   = AG{<:Any, <:BT}
@@ -48,31 +37,31 @@ for dir in (:x, :y, :z)
     required_halo_size      = Symbol(:required_halo_size_, dir)
 
     @eval begin
-        # Bounded topologies
-        @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
+        # Topologies bounded on both sides
+        @inline $outside_symmetric_haloᶠ(i, ::Type{<:BoundaryTopology}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{<:BoundaryTopology}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv, bias) =
+        @inline $outside_biased_haloᶠ(i, ::Type{<:BoundaryTopology}, N, adv, bias) =
             ifelse(bias == LeftBias, (i >= $required_halo_size(adv) + 1) & (i <= N + 2 - $required_halo_size(adv)),
                                      (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv)))
 
-        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv, bias) =
+        @inline $outside_biased_haloᶜ(i, ::Type{<:BoundaryTopology}, N, adv, bias) =
             ifelse(bias == LeftBias, (i >= $required_halo_size(adv))     & (i <= N + 2 - $required_halo_size(adv)),
                                      (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv)))
 
-        # Right connected topologies (only test the left side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv)
+        # Topologies bounded on the left (only test the left side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv) = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv) = i >= $required_halo_size(adv)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv),     i >= $required_halo_size(adv) - 1)
+        @inline $outside_biased_haloᶠ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
+        @inline $outside_biased_haloᶜ(i, ::Type{<:Sides{<:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i >= $required_halo_size(adv),     i >= $required_halo_size(adv) - 1)
 
-        # Left bounded topologies (only test the right side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        # Topologies bounded on the right (only test the right side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_biased_haloᶠ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_biased_haloᶜ(i, ::Type{<:Sides{<:Any, <:BoundarySide}}, N, adv, bias) = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
     end
 end
 

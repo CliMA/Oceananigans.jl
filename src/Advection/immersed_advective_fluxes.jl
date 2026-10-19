@@ -1,5 +1,6 @@
 using Oceananigans.ImmersedBoundaries: IBG, immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: Open
 
 const c = Center()
 const f = Face()
@@ -193,6 +194,37 @@ for side in (:ᶜ, :ᶠ)
                 (|)($(inside_immersed_boundary(shared, buffer, :z, side; zside = side)...),
                     ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :z, side; zside = side))),
                                              $(only(inside_immersed_boundary(eastmost, buffer, :z, side; zside = side)))))
+        end
+    end
+
+    # The halos beyond an Open side are active, so order reduction there comes from the topology
+    for (ξ, d) in ((:x, 1), (:y, 2), (:z, 3))
+        open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
+        open_grid = d == 1 ? :(IBG{<:Any, <:$open_topology}) :
+                    d == 2 ? :(IBG{<:Any, <:Any, <:$open_topology}) :
+                             :(IBG{<:Any, <:Any, <:Any, <:$open_topology})
+
+        N = (:Nx, :Ny, :Nz)[d]
+        index = (:i, :j, :k)[d]
+        location = NamedTuple{(Symbol(ξ, :side),)}((side,))
+
+        near_symmetric = Symbol(:near_, ξ, :_immersed_boundary_symmetric, side)
+        near_biased    = Symbol(:near_, ξ, :_immersed_boundary_biased, side)
+        outside_symmetric_halo = Symbol(:outside_symmetric_halo_, ξ, side)
+        outside_biased_halo    = Symbol(:outside_biased_halo_, ξ, side)
+
+        for buffer in advection_buffers
+            cells(range) = inside_immersed_boundary(range, buffer, ξ, side; location...)
+            westmost, eastmost = only(cells(1:1)), only(cells(2buffer:2buffer))
+
+            @eval begin
+                @inline $near_symmetric(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) =
+                    (|)($(cells(1:2buffer)...)) | !$outside_symmetric_halo($index, topology(ibg, $d), ibg.$N, scheme)
+
+                @inline $near_biased(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}, bias) =
+                    (|)($(cells(2:2buffer-1)...), ifelse(bias == LeftBias, $westmost, $eastmost)) |
+                    !$outside_biased_halo($index, topology(ibg, $d), ibg.$N, scheme, bias)
+            end
         end
     end
 end
