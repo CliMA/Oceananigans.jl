@@ -26,32 +26,32 @@ const AFA = Tuple{Any, Face, Any}
 @inline normal_index(::Union{West, South, Bottom}, ::Face,   N, n) = n + 1
 @inline normal_index(::Union{East, North, Top},    ℓ,        N, n) = N + 1 - n
 
-@inline boundary_point(side::Union{West, East},   loc, grid, n, l, m) = (normal_index(side, loc[1], grid.Nx, n), l, m)
-@inline boundary_point(side::Union{South, North}, loc, grid, n, l, m) = (l, normal_index(side, loc[2], grid.Ny, n), m)
-@inline boundary_point(side::Union{Bottom, Top},  loc, grid, n, l, m) = (l, m, normal_index(side, loc[3], grid.Nz, n))
+@inline boundary_point(side::Union{West, East},   loc, grid, n, j, k) = (normal_index(side, loc[1], grid.Nx, n), j, k)
+@inline boundary_point(side::Union{South, North}, loc, grid, n, i, k) = (i, normal_index(side, loc[2], grid.Ny, n), k)
+@inline boundary_point(side::Union{Bottom, Top},  loc, grid, n, i, j) = (i, j, normal_index(side, loc[3], grid.Nz, n))
 
 # Boundary-normal velocity on the face `n` faces from the boundary into the interior
-@inline normal_velocity(side::Union{West, East},   model_fields, grid, n, l, m) = @inbounds model_fields.u[normal_index(side, Face(), grid.Nx, n), l, m]
-@inline normal_velocity(side::Union{South, North}, model_fields, grid, n, l, m) = @inbounds model_fields.v[l, normal_index(side, Face(), grid.Ny, n), m]
-@inline normal_velocity(side::Union{Bottom, Top},  model_fields, grid, n, l, m) = @inbounds model_fields.w[l, m, normal_index(side, Face(), grid.Nz, n)]
+@inline normal_velocity(side::Union{West, East},   model_fields, grid, n, j, k) = @inbounds model_fields.u[normal_index(side, Face(), grid.Nx, n), j, k]
+@inline normal_velocity(side::Union{South, North}, model_fields, grid, n, i, k) = @inbounds model_fields.v[i, normal_index(side, Face(), grid.Ny, n), k]
+@inline normal_velocity(side::Union{Bottom, Top},  model_fields, grid, n, i, j) = @inbounds model_fields.w[i, j, normal_index(side, Face(), grid.Nz, n)]
 
 # Spacing between the exterior state and the first interior value
-@inline boundary_spacing(side::Union{West, East},   grid, l, m) = Δxᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), l, m, grid)
-@inline boundary_spacing(side::Union{South, North}, grid, l, m) = Δyᶜᶠᶜ(l, normal_index(side, Face(), grid.Ny, 0), m, grid)
-@inline boundary_spacing(side::Union{Bottom, Top},  grid, l, m) = Δzᶜᶜᶠ(l, m, normal_index(side, Face(), grid.Nz, 0), grid)
+@inline boundary_spacing(side::Union{West, East},   grid, j, k) = Δxᶠᶜᶜ(normal_index(side, Face(), grid.Nx, 0), j, k, grid)
+@inline boundary_spacing(side::Union{South, North}, grid, i, k) = Δyᶜᶠᶜ(i, normal_index(side, Face(), grid.Ny, 0), k, grid)
+@inline boundary_spacing(side::Union{Bottom, Top},  grid, i, j) = Δzᶜᶜᶠ(i, j, normal_index(side, Face(), grid.Nz, 0), grid)
 
 # Component of a boundary-normal velocity pointing out of the domain
 @inline outward(::Union{West, South, Bottom}, U) = -U
 @inline outward(::Union{East, North, Top},    U) =  U
 
 # Whether the first interior cell is immersed
-@inline immersed_boundary_point(side::Union{West, East},   loc, grid, l, m) = immersed_peripheral_node(normal_index(side, Center(), grid.Nx, 1), l, m, grid, Center(), loc[2], loc[3])
-@inline immersed_boundary_point(side::Union{South, North}, loc, grid, l, m) = immersed_peripheral_node(l, normal_index(side, Center(), grid.Ny, 1), m, grid, loc[1], Center(), loc[3])
-@inline immersed_boundary_point(side::Union{Bottom, Top},  loc, grid, l, m) = immersed_peripheral_node(l, m, normal_index(side, Center(), grid.Nz, 1), grid, loc[1], loc[2], Center())
+@inline immersed_boundary_point(side::Union{West, East},   loc, grid, j, k) = immersed_peripheral_node(normal_index(side, Center(), grid.Nx, 1), j, k, grid, Center(), loc[2], loc[3])
+@inline immersed_boundary_point(side::Union{South, North}, loc, grid, i, k) = immersed_peripheral_node(i, normal_index(side, Center(), grid.Ny, 1), k, grid, loc[1], Center(), loc[3])
+@inline immersed_boundary_point(side::Union{Bottom, Top},  loc, grid, i, j) = immersed_peripheral_node(i, j, normal_index(side, Center(), grid.Nz, 1), grid, loc[1], loc[2], Center())
 
 # A boundary-normal velocity is advected by its own value `ψ`, a tracer or a tangential velocity by the normal flow
-@inline advecting_velocity(::NFBC, side, model_fields, grid, n, l, m, ψ) = ψ
-@inline advecting_velocity(bc, side, model_fields, grid, n, l, m, ψ) = normal_velocity(side, model_fields, grid, n, l, m)
+@inline advecting_velocity(::NFBC, side, model_fields, grid, n, i, j, ψ) = ψ
+@inline advecting_velocity(bc, side, model_fields, grid, n, i, j, ψ) = normal_velocity(side, model_fields, grid, n, i, j)
 
 #####
 ##### Storage of the state at the base of the stage, allocated during regularization
@@ -103,9 +103,10 @@ end
 ##### Stepping, caching and initializing the exterior state, on the boundary plane of the halo fill
 #####
 
+# `i, j` index the boundary plane, as in `getbc`
 @kernel function _update_exterior_state!(update!, c, side, bc, loc, grid, args)
-    l, m = @index(Global, NTuple)
-    update!(side, l, m, grid, c, bc, loc, args...)
+    i, j = @index(Global, NTuple)
+    update!(side, i, j, grid, c, bc, loc, args...)
 end
 
 function update_exterior_state!(update!, bc, side, field, args...)
@@ -122,18 +123,18 @@ step_boundary_condition!(bc::RBC, side, field, clock, model_fields, Δt) = updat
 cache_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(cache_exterior_state!, bc, side, field)
 initialize_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(initialize_exterior_state!, bc, side, field, clock, model_fields)
 
-@inline function cache_exterior_state!(side, l, m, grid, c, bc, loc)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    @inbounds bc.classification.scheme.φᵇ[l, m] = c[iᵇ, jᵇ, kᵇ]
+@inline function cache_exterior_state!(side, i, j, grid, c, bc, loc)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    @inbounds bc.classification.scheme.φᵇ[i, j] = c[iᵇ, jᵇ, kᵇ]
     return nothing
 end
 
 # The initial condition sets a boundary-normal velocity on the boundary face; other fields start with a zero gradient
-@inline initialize_exterior_state!(side, l, m, grid, c, ::RNFBC, loc, clock, model_fields) = nothing
+@inline initialize_exterior_state!(side, i, j, grid, c, ::RNFBC, loc, clock, model_fields) = nothing
 
-@inline function initialize_exterior_state!(side, l, m, grid, c, bc, loc, clock, model_fields)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+@inline function initialize_exterior_state!(side, i, j, grid, c, bc, loc, clock, model_fields)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     @inbounds c[iᵇ, jᵇ, kᵇ] = c[i₁, j₁, k₁]
     return nothing
 end

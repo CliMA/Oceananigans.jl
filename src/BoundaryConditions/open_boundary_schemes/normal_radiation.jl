@@ -133,41 +133,41 @@ radiation_storage(radiation::NormalRadiation, buffer) =
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-@inline radiation_update(radiation, side, l, m, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
+@inline radiation_update(radiation, side, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
     normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
 const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRadiation}}},
                    BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}}
 
 # The Orlanski phase speed is diagnosed from the change of the first interior value over the stage
-@inline function cache_exterior_state!(side, l, m, grid, c, bc::ORBC, loc)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+@inline function cache_exterior_state!(side, i, j, grid, c, bc::ORBC, loc)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     radiation = bc.classification.scheme
-    @inbounds radiation.φᵇ[l, m] = c[iᵇ, jᵇ, kᵇ]
-    @inbounds radiation.φ₁[l, m] = c[i₁, j₁, k₁]
+    @inbounds radiation.φᵇ[i, j] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds radiation.φ₁[i, j] = c[i₁, j₁, k₁]
     return nothing
 end
 
 # A convex combination of the boundary value at the base of the stage, the interior and the exterior value, so it is bounded
-@inline function step_exterior_state!(side, l, m, grid, c, bc::ORBC, loc, clock, model_fields, Δt)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
-    i₂, j₂, k₂ = boundary_point(side, loc, grid, 2, l, m)
+@inline function step_exterior_state!(side, i, j, grid, c, bc::ORBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
+    i₂, j₂, k₂ = boundary_point(side, loc, grid, 2, i, j)
     radiation = bc.classification.scheme
 
     @inbounds begin
-        φᵉˣᵗ  = getbc(bc, l, m, grid, clock, model_fields)
+        φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i₁, j₁, k₁]
         φ₂ⁿ⁺¹ = c[i₂, j₂, k₂]
 
         n  = ifelse(radiation.use_boundary_velocity, 0, 1)
-        Uᵃ = advecting_velocity(bc, side, model_fields, grid, n, l, m, φ₁ⁿ⁺¹)
-        Cᵃ = abs(Uᵃ) * Δt / boundary_spacing(side, grid, l, m)
+        Uᵃ = advecting_velocity(bc, side, model_fields, grid, n, i, j, φ₁ⁿ⁺¹)
+        Cᵃ = abs(Uᵃ) * Δt / boundary_spacing(side, grid, i, j)
         outflow = outward(side, Uᵃ) >= 0
 
-        φᵇⁿ⁺¹ = radiation_update(radiation, side, l, m, radiation.φᵇ[l, m], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[l, m], φᵉˣᵗ, Δt, outflow, Cᵃ)
-        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, l, m), zero(grid), φᵇⁿ⁺¹)
+        φᵇⁿ⁺¹ = radiation_update(radiation, side, i, j, radiation.φᵇ[i, j], φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, radiation.φ₁[i, j], φᵉˣᵗ, Δt, outflow, Cᵃ)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), φᵇⁿ⁺¹)
     end
 
     return nothing

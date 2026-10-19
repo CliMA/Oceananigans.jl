@@ -83,25 +83,25 @@ radiation_storage(reservoir::TracerReservoir, buffer) = TracerReservoir(reservoi
 end
 
 # The flow advects `d = |uₙ| Δt` across the boundary face, with the normal velocity taken at the face
-@inline function step_exterior_state!(side, l, m, grid, c, bc::TRVBC, loc, clock, model_fields, Δt)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+@inline function step_exterior_state!(side, i, j, grid, c, bc::TRVBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     reservoir = bc.classification.scheme
 
     @inbounds begin
-        cᵉˣᵗ = getbc(bc, l, m, grid, clock, model_fields)
-        uₙ = normal_velocity(side, model_fields, grid, 0, l, m)
+        cᵉˣᵗ = getbc(bc, i, j, grid, clock, model_fields)
+        uₙ = normal_velocity(side, model_fields, grid, 0, i, j)
         d = abs(uₙ) * Δt
-        cʳ = reservoir_update(reservoir.φᵇ[l, m], c[i₁, j₁, k₁], cᵉˣᵗ, d, outward(side, uₙ) >= 0, reservoir)
-        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, l, m), zero(grid), cʳ)
+        cʳ = reservoir_update(reservoir.φᵇ[i, j], c[i₁, j₁, k₁], cᵉˣᵗ, d, outward(side, uₙ) >= 0, reservoir)
+        c[iᵇ, jᵇ, kᵇ] = ifelse(immersed_boundary_point(side, loc, grid, i, j), zero(grid), cʳ)
     end
 
     return nothing
 end
 
 # The reservoir starts at the exterior value
-@inline function initialize_exterior_state!(side, l, m, grid, c, bc::TRVBC, loc, clock, model_fields)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    @inbounds c[iᵇ, jᵇ, kᵇ] = getbc(bc, l, m, grid, clock, model_fields)
+@inline function initialize_exterior_state!(side, i, j, grid, c, bc::TRVBC, loc, clock, model_fields)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    @inbounds c[iᵇ, jᵇ, kᵇ] = getbc(bc, i, j, grid, clock, model_fields)
     return nothing
 end

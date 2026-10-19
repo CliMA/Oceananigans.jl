@@ -303,16 +303,16 @@ end
 ##### SurfaceWaveRadiation — implicit gravity-wave radiation of the free surface
 #####
 
-@inline function step_exterior_state!(side::Union{West, East, South, North}, l, m, grid, η, bc::IGWVBC, loc, clock, model_fields, Δt)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+@inline function step_exterior_state!(side::Union{West, East, South, North}, i, j, grid, η, bc::IGWVBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
     g = bc.classification.scheme.gravitational_acceleration
 
     @inbounds begin
         η₁ = η[i₁, j₁, k₁]
         H  = column_depthᶜᶜᵃ(i₁, j₁, k₁, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / boundary_spacing(side, grid, l, m)
-        η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φᵇ[l, m] + C * η₁) / (1 + C)
+        C  = sqrt(g * max(H, zero(H))) * Δt / boundary_spacing(side, grid, i, j)
+        η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φᵇ[i, j] + C * η₁) / (1 + C)
     end
 
     return nothing
