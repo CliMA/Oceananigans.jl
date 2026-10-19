@@ -81,9 +81,9 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
 has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-radiation_storage(radiation::ObliqueRadiation, φᵇ, φ₁) =
+radiation_storage(radiation::ObliqueRadiation, buffer) =
     ObliqueRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                     φᵇ, φ₁, radiation.target_transport)
+                     buffer(), buffer(), radiation.target_transport)
 
 # Backward and forward differences along the boundary face, zero beyond its ends.
 @inline function tangential_differences(φ, t, k)

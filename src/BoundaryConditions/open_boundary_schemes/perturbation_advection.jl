@@ -1,13 +1,12 @@
 using Oceananigans.Utils: prettysummary
 
-struct PerturbationAdvection{FT, D, TF, B} <: AbstractRadiationScheme{FT}
+struct PerturbationAdvection{FT, D, TF, S} <: AbstractRadiationScheme{FT}
     inflow_timescale :: FT
     outflow_timescale :: FT
     gravity_wave_speed :: FT
     density :: D
     target_transport :: TF
-    φᵇ :: B
-    φ₁ :: B
+    φᵇ :: S
 end
 
 """
@@ -113,12 +112,12 @@ function PerturbationAdvection(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
     target_transport = convert_target_transport(FT, target_transport)
-    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, target_transport, nothing, nothing)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, target_transport, nothing)
 end
 
 # Support 2-positional-arg constructor
 PerturbationAdvection(inflow_timescale, outflow_timescale) =
-    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing, nothing, nothing)
+    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
@@ -126,11 +125,10 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density),
                           adapt(to, pe.target_transport),
-                          adapt(to, pe.φᵇ),
-                          adapt(to, pe.φ₁))
+                          adapt(to, pe.φᵇ))
 
-radiation_storage(pe::PerturbationAdvection, φᵇ, φ₁) =
-    PerturbationAdvection(pe.inflow_timescale, pe.outflow_timescale, pe.gravity_wave_speed, pe.density, pe.target_transport, φᵇ, φ₁)
+radiation_storage(pe::PerturbationAdvection, buffer) =
+    PerturbationAdvection(pe.inflow_timescale, pe.outflow_timescale, pe.gravity_wave_speed, pe.density, pe.target_transport, buffer())
 
 Base.summary(::PerturbationAdvection{FT}) where FT = "PerturbationAdvection{$FT}"
 
