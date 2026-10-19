@@ -46,6 +46,7 @@ const SerialFoldedTopology = Sides{Closed, <:Union{CenterFolded, FaceFolded}}
 const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
 const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
+const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
 
 # Sides whose halo comes from another rank
 const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnected}
