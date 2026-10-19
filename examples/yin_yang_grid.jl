@@ -342,7 +342,7 @@ drake_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_heigh
 # ```math
 # \begin{aligned}
 # τ(φ) = τ₀ \, \cos φ \times \Big [ & 2 e^{-(φ + 50^\circ)^2 / (12^\circ)^2} + e^{-(φ - 45^\circ)^2 / (12^\circ)^2} \\
-#                                     & - 0.7 e^{-(φ + 18^\circ)^2 / (12^\circ)^2} - 0.6 e^{-(φ - 18^\circ)^2 / (12^\circ)^2} \Big ] ,
+#                                   & - 0.7 e^{-(φ + 18^\circ)^2 / (12^\circ)^2} - 0.6 e^{-(φ - 18^\circ)^2 / (12^\circ)^2} \Big ] ,
 # \end{aligned}
 # ```
 #
