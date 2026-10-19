@@ -1,7 +1,6 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Utils: worksize
-using Oceananigans.Models: is_local_dimension
-using Oceananigans.Grids: Closed, Connected, LeftConnectedOnlyTopology, Sides
+using Oceananigans.Grids: CommunicatingSide, Sides
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.
@@ -75,10 +74,10 @@ end
 @inline function buffer_parameters(parameters, grid, arch)
     TX, TY, _ = topology(grid)
 
-    include_west  = !is_local_dimension(TX) && !(TX === Sides{Closed, Connected})
-    include_east  = !is_local_dimension(TX) && !(TX === Sides{Connected, Closed})
-    include_south = !is_local_dimension(TY) && !(TY === Sides{Closed, Connected})
-    include_north = !is_local_dimension(TY) && !(TY <: LeftConnectedOnlyTopology)
+    include_west  = TX <: Sides{<:CommunicatingSide}
+    include_east  = TX <: Sides{<:Any, <:CommunicatingSide}
+    include_south = TY <: Sides{<:CommunicatingSide}
+    include_north = TY <: Sides{<:Any, <:CommunicatingSide}
 
     west  = include_west  ? (KernelParameters(parameters[1]...),) : ()
     east  = include_east  ? (KernelParameters(parameters[2]...),) : ()

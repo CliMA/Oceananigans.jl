@@ -1,13 +1,10 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize, get_active_cells_map
-using Oceananigans.Grids: halo_size, topology, architecture, Closed, CenterFolded, Connected, FaceFolded, LeftConnectedOnlyTopology, Sides
+using Oceananigans.Grids: halo_size, topology, architecture, CommunicatingSide, Sides
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
-
-# True for topologies whose buffer region is owned locally (no MPI-communicating side in that direction).
-@inline is_local_dimension(T) = T <: Union{Periodic, Flat, Sides{Closed, <:Union{Closed, CenterFolded, FaceFolded}}}
 
 function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
 
@@ -39,8 +36,8 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     # the part of the domain that does not depend on the halo cells if the direction is partitioned.
     local_x = Rx == 1
     local_y = Ry == 1
-    one_sided_x = Tx == Sides{Closed, Connected} || Tx == Sides{Connected, Closed}
-    one_sided_y = Ty == Sides{Closed, Connected} || Ty <: LeftConnectedOnlyTopology
+    one_sided_x = (Tx <: Sides{<:CommunicatingSide}) != (Tx <: Sides{<:Any, <:CommunicatingSide})
+    one_sided_y = (Ty <: Sides{<:CommunicatingSide}) != (Ty <: Sides{<:Any, <:CommunicatingSide})
 
     # Sizes
     Sx = if local_x
@@ -60,8 +57,8 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     end
 
     # Offsets
-    Ox = Rx == 1 || Tx == Sides{Closed, Connected} ? 0 : Hx
-    Oy = Ry == 1 || Ty == Sides{Closed, Connected} ? 0 : Hy
+    Ox = Rx == 1 || !(Tx <: Sides{<:CommunicatingSide}) ? 0 : Hx
+    Oy = Ry == 1 || !(Ty <: Sides{<:CommunicatingSide}) ? 0 : Hy
 
     sizes = (Sx, Sy, Wz)
     offsets = (Ox, Oy, 0)

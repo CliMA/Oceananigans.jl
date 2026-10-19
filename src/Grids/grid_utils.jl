@@ -47,7 +47,9 @@ const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
 const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
 const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
-const LeftConnectedOnlyTopology = Sides{Connected, <:Union{Closed, CenterFolded, FaceFolded}}
+
+# Sides whose halo comes from another rank
+const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnected}
 
 # Nothing locations just default to 1:N
 @inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
@@ -151,20 +153,6 @@ regular_dimensions(grid) = ()
 ##### << Indexing >>
 #####
 
-@inline left_halo_indices(loc, ::AT, N, H) = 1-H:0
-@inline left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
-@inline right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
-@inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
-@inline underlying_left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
-@inline underlying_right_halo_indices(::Face,    ::FaceExtendedTopology, N, H) = N+2+H:N+1+2H
-@inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
 @inline interior_indices(loc,       ::AT,              N) = 1:N
 @inline interior_indices(::Face,    ::FaceExtendedTopology, N) = 1:N+1
 @inline interior_indices(::Nothing, ::AT,              N) = 1:1
@@ -198,22 +186,6 @@ regular_dimensions(grid) = ()
 @inline all_indices(::Face,    ::Flat, N, H) = 1:N
 @inline all_indices(::Center,  ::Flat, N, H) = 1:N
 
-@inline all_x_indices(grid, loc) = all_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
-@inline all_y_indices(grid, loc) = all_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
-@inline all_z_indices(grid, loc) = all_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
-
-@inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
-@inline all_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
-
-@inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
-@inline all_parent_indices(::Face,    ::Flat, N, H) = 1:N
-@inline all_parent_indices(::Center,  ::Flat, N, H) = 1:N
-
-@inline all_parent_x_indices(grid, loc) = all_parent_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
-@inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
-@inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
-
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
@@ -242,13 +214,6 @@ index_range_contains(::Colon, ::AbstractUnitRange)     = true
 index_range_contains(::Colon, ::Colon)                 = true
 index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
-# Return the index range of "full" parent arrays that span an entire dimension
-parent_windowed_indices(::Colon, loc, topo, halo)             = Colon()
-parent_windowed_indices(indices::AbstractUnitRange, loc, topo, halo) = UnitRange(1, length(indices))
-
-index_range_offset(index::AbstractUnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
-index_range_offset(::Colon, loc, topo, halo)           = - interior_parent_offset(loc, topo, halo)
-
 const c = Center()
 const f = Face()
 
@@ -259,11 +224,6 @@ const f = Face()
 #####
 ##### Convenience functions
 #####
-
-unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
-
-flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
-flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 
 """
 $(TYPEDSIGNATURES)

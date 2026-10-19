@@ -5,8 +5,8 @@ const AGXS  = AbstractUnderlyingGrid{FT, Sides{L, R}} where {FT, L, R}
 
 const AGYP  = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
 const AGYS  = AbstractUnderlyingGrid{FT, <:Any, Sides{L, R}} where {FT, L, R}
-const AGYCF = AbstractUnderlyingGrid{FT, <:Any, Sides{Closed, CenterFolded}} where FT
-const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{Closed, FaceFolded}} where FT
+const AGYCF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, CenterFolded}} where {FT, L}
+const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, FaceFolded}} where {FT, L}
 
 # Topology-aware Operators with the following convention:
 #
@@ -56,43 +56,43 @@ const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{Closed, FaceFolded}} where
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYS{<:Any, L, R}, v::AbstractArray) where {L, R} = @inbounds impenetrable_difference(v[i, j + 1, k], v[i, j, k],
                                                                                                                    (L === Closed) & (j == 1), (R === Closed) & (j == grid.Ny))
 
-# Enforce the north fold of a serial tripolar grid: `north_fold_index(i, grid)` mirrors the Center-x column `i` about the fold pivot.
+# Enforce a north fold local to the rank: `north_fold_index(i, grid)` mirrors the Center-x column `i` about the fold pivot.
 function north_fold_index end
 
-@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYCF, f, args...)
+@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYCF{<:Any, L}, f, args...) where L
     fold = j == grid.Ny
     v⁺   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k, grid, args...)
-    return impenetrable_difference(ifelse(fold, -v⁺, v⁺), f(i, j, k, grid, args...), j == 1, false)
+    return impenetrable_difference(ifelse(fold, -v⁺, v⁺), f(i, j, k, grid, args...), (L === Closed) & (j == 1), false)
 end
 
-@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYCF, v::AbstractArray)
+@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYCF{<:Any, L}, v::AbstractArray) where L
     fold = j == grid.Ny
     v⁺   = @inbounds v[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k]
-    return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], j == 1, false)
+    return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], (L === Closed) & (j == 1), false)
 end
 
-@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT}, f, args...) where FT
+@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, f, args...) where {FT, L}
     fold = j == grid.Ny + 1
     δf   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k, grid, args...) - f(i, j - 1, k, grid, args...)
-    return ifelse(j == 1, zero(FT), δf)
+    return ifelse((L === Closed) & (j == 1), zero(FT), δf)
 end
 
-@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT}, c::AbstractArray) where FT
+@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, c::AbstractArray) where {FT, L}
     fold = j == grid.Ny + 1
     δc   = @inbounds c[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k] - c[i, j - 1, k]
-    return ifelse(j == 1, zero(FT), δc)
+    return ifelse((L === Closed) & (j == 1), zero(FT), δc)
 end
 
-@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYFF, f, args...)
+@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYFF{<:Any, L}, f, args...) where L
     fold = j == grid.Ny + 1
     v⁺   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k, grid, args...)
-    return impenetrable_difference(ifelse(fold, -v⁺, v⁺), f(i, j, k, grid, args...), j == 1, false)
+    return impenetrable_difference(ifelse(fold, -v⁺, v⁺), f(i, j, k, grid, args...), (L === Closed) & (j == 1), false)
 end
 
-@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYFF, v::AbstractArray)
+@inline function δyTᵃᶜᵃ(i, j, k, grid::AGYFF{<:Any, L}, v::AbstractArray) where L
     fold = j == grid.Ny + 1
     v⁺   = @inbounds v[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j + 1), k]
-    return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], j == 1, false)
+    return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], (L === Closed) & (j == 1), false)
 end
 
 # Derivative operators

@@ -52,8 +52,8 @@ const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
 const AMGXB = MutableGridOfSomeKind{<:Any, <:Sides{Closed}}
 
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, <:Sides{Closed}}
-const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{Closed, FaceFolded}}
+const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, R}} where {L, R}
+const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
@@ -61,12 +61,12 @@ const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{Closed, FaceFolded}}
 
 # Enforce boundary conditions on a left wall
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, j, j - 1), k] + η[i, j, k]) / 2)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η[i, j, k]) / 2)
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF, η)
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF{L}, η) where L
     fold = j == grid.Ny + 1
     η⁺ = @inbounds η[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k]
-    return mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, j, j - 1), k] + η⁺) / 2)
+    return mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η⁺) / 2)
 end
 
 # Fallbacks
