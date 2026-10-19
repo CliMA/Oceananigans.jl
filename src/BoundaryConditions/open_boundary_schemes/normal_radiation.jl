@@ -105,9 +105,9 @@ has_target_transport(::NormalRadiation) = true
 get_target_transport(scheme::AbstractRadiationScheme, grid) = _eval_tt(scheme.target_transport, grid)
 get_target_transport(scheme::AbstractRadiationScheme) = scheme.target_transport
 
-radiation_storage(radiation::NormalRadiation, φᵇ, φ₁) =
+radiation_storage(radiation::NormalRadiation, buffer) =
     NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
-                    φᵇ, φ₁, radiation.target_transport)
+                    buffer(), buffer(), radiation.target_transport)
 
 #####
 ##### NormalRadiation — Orlanski (1976) with Marchesiello et al. (2001) nudging
@@ -136,8 +136,21 @@ end
 @inline radiation_update(radiation, side, l, m, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ) =
     normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
+const ORBC = Union{BoundaryCondition{<:Value{<:Union{NormalRadiation, ObliqueRadiation}}},
+                   BoundaryCondition{<:NormalFlow{<:Union{NormalRadiation, ObliqueRadiation}}}}
+
+# The Orlanski phase speed is diagnosed from the change of the first interior value over the stage
+@inline function cache_exterior_state!(side, l, m, grid, c, bc::ORBC, loc)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+    radiation = bc.classification.scheme
+    @inbounds radiation.φᵇ[l, m] = c[iᵇ, jᵇ, kᵇ]
+    @inbounds radiation.φ₁[l, m] = c[i₁, j₁, k₁]
+    return nothing
+end
+
 # A convex combination of the boundary value at the base of the stage, the interior and the exterior value, so it is bounded
-@inline function step_exterior_state!(side, l, m, grid, c, bc::RBC, loc, clock, model_fields, Δt)
+@inline function step_exterior_state!(side, l, m, grid, c, bc::ORBC, loc, clock, model_fields, Δt)
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
     i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
     i₂, j₂, k₂ = boundary_point(side, loc, grid, 2, l, m)

@@ -38,7 +38,6 @@ struct TracerReservoir{FT, S} <: AbstractRadiationScheme{FT}
     inflow_length_scale  :: FT
     outflow_length_scale :: FT
     φᵇ :: S  # reservoir value at the base of the stage (2D array or nothing)
-    φ₁ :: S  # interior value at the base of the stage (2D array or nothing)
 end
 
 function TracerReservoir(FT = defaults.FloatType;
@@ -51,14 +50,13 @@ function TracerReservoir(FT = defaults.FloatType;
     inflow_length_scale  >= 0 || throw(ArgumentError("inflow_length_scale must be non-negative"))
     outflow_length_scale >= 0 || throw(ArgumentError("outflow_length_scale must be non-negative"))
 
-    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing, nothing)
+    return TracerReservoir(inflow_length_scale, outflow_length_scale, nothing)
 end
 
 Adapt.adapt_structure(to, r::TracerReservoir) =
     TracerReservoir(adapt(to, r.inflow_length_scale),
                     adapt(to, r.outflow_length_scale),
-                    adapt(to, r.φᵇ),
-                    adapt(to, r.φ₁))
+                    adapt(to, r.φᵇ))
 
 Base.summary(::TracerReservoir{FT}) where FT = "TracerReservoir{$FT}"
 
@@ -70,8 +68,7 @@ end
 
 const TRVBC = BoundaryCondition{<:Value{<:TracerReservoir}}
 
-radiation_storage(reservoir::TracerReservoir, φᵇ, φ₁) =
-    TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, φᵇ, φ₁)
+radiation_storage(reservoir::TracerReservoir, buffer) = TracerReservoir(reservoir.inflow_length_scale, reservoir.outflow_length_scale, buffer())
 
 #####
 ##### The reservoir update

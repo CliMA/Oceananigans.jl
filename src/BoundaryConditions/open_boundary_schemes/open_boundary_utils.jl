@@ -4,7 +4,7 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 
 #####
 ##### Open boundary schemes whose exterior state is prognostic: the time stepper caches, steps and initializes it, and the
-##### halo fill leaves it in place. `φᵇ` and `φ₁` hold the state and the first interior value at the base of a stage.
+##### halo fill leaves it in place. `φᵇ` holds the state at the base of a stage.
 #####
 
 abstract type AbstractRadiationScheme{FT} end
@@ -57,7 +57,7 @@ const AFA = Tuple{Any, Face, Any}
 ##### Storage of the state at the base of the stage, allocated during regularization
 #####
 
-# `radiation_storage` rebuilds a scheme with its buffers
+# Each scheme is rebuilt with the buffers it needs, each allocated by `buffer()`
 function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
@@ -69,7 +69,7 @@ function materialize_radiation_storage(scheme::AbstractRadiationScheme, grid, lo
                                    (1:Sx, 1:Sy)
 
     buffer() = OffsetArray(zeros(arch, FT, map(length, tangential_ranges)...), map(r -> first(r) - 1, tangential_ranges)...)
-    return radiation_storage(scheme, buffer(), buffer())
+    return radiation_storage(scheme, buffer)
 end
 
 rebuild_classification(::Value, scheme)      = Value(scheme)
@@ -116,11 +116,8 @@ cache_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_ex
 initialize_boundary_condition!(bc::RBC, side, field, clock, model_fields) = update_exterior_state!(initialize_exterior_state!, bc, side, field, clock, model_fields)
 
 @inline function cache_exterior_state!(side, l, m, grid, c, bc, loc)
-    scheme = bc.classification.scheme
     iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
-    @inbounds scheme.φᵇ[l, m] = c[iᵇ, jᵇ, kᵇ]
-    @inbounds scheme.φ₁[l, m] = c[i₁, j₁, k₁]
+    @inbounds bc.classification.scheme.φᵇ[l, m] = c[iᵇ, jᵇ, kᵇ]
     return nothing
 end
 

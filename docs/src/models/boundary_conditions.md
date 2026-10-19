@@ -402,7 +402,7 @@ PerturbationAdvection{Float64}
 └── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
@@ -430,7 +430,7 @@ PerturbationAdvection{Float64}
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64, Nothing}}: 1
 ```
 
 The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):
