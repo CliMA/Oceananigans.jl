@@ -176,20 +176,20 @@ _eval_tt(f, grid) = f(grid)
 @inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
 
 # Backward-Euler step from the base of the stage; the phase speed is the outward velocity plus `gravity_wave_speed`
-@inline function step_exterior_state!(side, l, m, grid, ψ, bc::PABC, loc, clock, model_fields, Δt)
-    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
-    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
+@inline function step_exterior_state!(side, i, j, grid, ψ, bc::PABC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, i, j)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, i, j)
 
     pa = bc.classification.scheme
     ρ = pa.density
 
-    ψᵇ = to_intensive(ρ, @inbounds(pa.φᵇ[l, m]), kᵇ)
+    ψᵇ = to_intensive(ρ, @inbounds(pa.φᵇ[i, j]), kᵇ)
     ψ₁ = to_intensive(ρ, @inbounds(ψ[i₁, j₁, k₁]), kᵇ)
-    ψ̄  = getbc(bc, l, m, grid, clock, model_fields)
+    ψ̄  = getbc(bc, i, j, grid, clock, model_fields)
 
-    U = outward(side, advecting_velocity(bc, side, model_fields, grid, 0, l, m, ψ̄))
+    U = outward(side, advecting_velocity(bc, side, model_fields, grid, 0, i, j, ψ̄))
     c = U + pa.gravity_wave_speed
-    Ũ = clamp(Δt / boundary_spacing(side, grid, l, m) * c, zero(c), one(c))
+    Ũ = clamp(Δt / boundary_spacing(side, grid, i, j) * c, zero(c), one(c))
 
     τ = ifelse(U >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
