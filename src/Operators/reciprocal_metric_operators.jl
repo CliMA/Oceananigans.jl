@@ -13,7 +13,7 @@
 export Δr⁻¹ᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ
 
 #####
-##### Reciprocals with an unspecified horizontal location
+##### Reciprocal spacings with an unspecified horizontal location
 #####
 
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ, :ᵃ)
@@ -29,45 +29,23 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ, :ᵃ)
 
         export $rcp_x, $rcp_y
     end
-
-    for func in (:Δz⁻¹, :Δr⁻¹)
-        rcp_xz = Symbol(func, L2, :ᵃ, L1)
-        rcp_yz = Symbol(func, :ᵃ, L2, L1)
-        rcp_1D = Symbol(func, :ᵃ, :ᵃ, L1)
-
-        L2 == :ᵃ && continue
-
-        @eval begin
-            @inline $rcp_xz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
-            @inline $rcp_yz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
-
-            export $rcp_xz, $rcp_yz
-        end
-    end
 end
 
-for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ, :ᵃ), L3 in (:ᶜ, :ᶠ, :ᵃ)
-    (L2 == :ᵃ) | (L3 == :ᵃ) || continue
-
-    rcp_x = Symbol(:Ax⁻¹, L1, L2, L3)
-    rcp_y = Symbol(:Ay⁻¹, L2, L1, L3)
-    rcp_z = Symbol(:Az⁻¹, L2, L3, L1)
-
-    metric_x = Symbol(:Ax, L1, L2, L3)
-    metric_y = Symbol(:Ay, L2, L1, L3)
-    metric_z = Symbol(:Az, L2, L3, L1)
+for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ), func in (:Δz⁻¹, :Δr⁻¹)
+    rcp_xz = Symbol(func, L2, :ᵃ, L1)
+    rcp_yz = Symbol(func, :ᵃ, L2, L1)
+    rcp_1D = Symbol(func, :ᵃ, :ᵃ, L1)
 
     @eval begin
-        @inline $rcp_x(i, j, k, grid) = 1 / $metric_x(i, j, k, grid)
-        @inline $rcp_y(i, j, k, grid) = 1 / $metric_y(i, j, k, grid)
-        @inline $rcp_z(i, j, k, grid) = 1 / $metric_z(i, j, k, grid)
+        @inline $rcp_xz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
+        @inline $rcp_yz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
 
-        export $rcp_x, $rcp_y, $rcp_z
+        export $rcp_xz, $rcp_yz
     end
 end
 
 #####
-##### Horizontal reciprocals and their three-dimensional extensions
+##### Horizontal reciprocals, and their three-dimensional extensions
 #####
 
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -116,7 +94,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 end
 
 #####
-##### Reciprocals at specified locations
+##### Reciprocals at a location given by its instances, e.g. V⁻¹(i, j, k, grid, Center(), Center(), Face()) = V⁻¹ᶜᶜᶠ(i, j, k, grid)
 #####
 
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)

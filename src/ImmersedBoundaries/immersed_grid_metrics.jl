@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
+using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
 using Oceananigans.Operators: Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ
@@ -25,6 +25,11 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 @inline Operators.Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶠ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+
+@inline Operators.Δr⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δr⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δz⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δz⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 # 1D Horizontal spacings
 
@@ -68,10 +73,10 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 @inline Operators.Azᶠᶠᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 @inline Operators.Azᶜᶜᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶜᶜᵃ(i, j, k, ibg.underlying_grid)
 
-# Reciprocal horizontal metrics stored in the underlying grid
+# Reciprocal spacings and areas
 
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ), metric in (:Δx⁻¹, :Δy⁻¹, :Az⁻¹)
-    reciprocal = Symbol(metric, LX, LY, LZ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), metric in (:Δx⁻¹, :Δy⁻¹, :Az⁻¹)
+    reciprocal = Symbol(metric, LX, LY, :ᵃ)
     @eval @inline Operators.$reciprocal(i, j, k, ibg::OSIBG) = Operators.$reciprocal(i, j, k, ibg.underlying_grid)
 end
 
