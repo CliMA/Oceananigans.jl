@@ -463,6 +463,7 @@ end
 
 @inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, e, ψ, args...) where N
     Ψ = ntuple(Val(2N)) do n
+        @inline
         i′, j′, k′ = (i, j, k) .+ (n - N - 1) .* e
         stencil_value(i′, j′, k′, grid, ψ, args...)
     end
