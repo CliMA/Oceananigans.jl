@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
                                        fill_halo_regions!, getbc
 
 using Oceananigans: prognostic_fields
-using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation
+using Oceananigans.BoundaryConditions: has_target_transport, get_target_transport, ObliqueRadiation, MixedBoundaryCondition
 using Oceananigans.Models: possible_field_time_series, boundary_total_area
 using Oceananigans.OutputReaders: extract_field_time_series
 using Oceananigans.Fields: flattened_unique_values
@@ -65,6 +65,31 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     #
     # Note \approx, because velocity budgets are off by machine precision (due to pressure solve?)
     return mean_ϕ ≈ flux * model.clock.time / L
+end
+
+function immersed_coast_flux_budget(arch, FT)
+    underlying_grid = LatitudeLongitudeGrid(arch, FT, size=(4, 8, 2), longitude=(0, 40), latitude=(0, 60), z=(-100, 0))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((λ, φ) -> φ > 30 ? 0 : -100))
+    q = FT(π)
+    tracer_boundary_conditions = FieldBoundaryConditions(immersed=ImmersedBoundaryCondition(north=FluxBoundaryCondition(q)))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper=:QuasiAdamsBashforth2, tracers=:c, buoyancy=nothing, boundary_conditions=(; c=tracer_boundary_conditions))
+    time_step!(model, 1)
+
+    # The coast at 30°N spans 40° of longitude and the 100 m depth
+    coast_area = underlying_grid.radius * cosd(30) * deg2rad(40) * 100
+    return Array(interior(Field(Integral(model.tracers.c))))[1, 1, 1] ≈ q * coast_area
+end
+
+function immersed_value_flux_on_stretched_grid(arch, FT)
+    underlying_grid = RectilinearGrid(arch, FT, size=(4, 2), x=[0, 1, 3, 6, 10], z=(-1, 0), topology=(Bounded, Flat, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(x -> x > 3 ? 0 : -1))
+    tracer_boundary_conditions = FieldBoundaryConditions(immersed=ImmersedBoundaryCondition(east=ValueBoundaryCondition(1)))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper=:QuasiAdamsBashforth2, tracers=:c, buoyancy=nothing,
+                                        closure=HorizontalScalarDiffusivity(κ=1), boundary_conditions=(; c=tracer_boundary_conditions))
+    time_step!(model, 1)
+
+    # The wall at x = 3 bounds a cell of width 2: the flux κ (1 - 0) / (2 / 2) crosses a face of unit area
+    return Array(interior(Field(Integral(model.tracers.c))))[1, 1, 1] ≈ 1
 end
 
 function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
@@ -690,6 +715,10 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition; free_surface)
             end
 
+            mixed = MixedBoundaryCondition(FT(1), FT(1))
+            @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, mixed)
+            @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, mixed; free_surface)
+
             for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :u, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
@@ -736,6 +765,11 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_nonhydrostatic_flux_budget(grid, name, side, L)
             end
         end
+    end
+
+    @testset "Immersed boundary fluxes [$(summary(arch))]" for arch in archs
+        @test immersed_coast_flux_budget(arch, Float64)
+        @test immersed_value_flux_on_stretched_grid(arch, Float64)
     end
 
     @testset "Custom diffusivity boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
