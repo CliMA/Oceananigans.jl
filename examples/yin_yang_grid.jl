@@ -456,7 +456,28 @@ drake_model = HydrostaticFreeSurfaceModel(drake_grid; buoyancy,
 # where ``z_1`` is the center of the deepest cell. We integrate ``I`` with the same
 # trapezoidal rule between cell centers as the model's hydrostatic pressure. The zonal
 # velocity is in gradient-wind balance with ``p``, and the meridional velocity, which
-# only the meanders induce, is geostrophic.
+# only the meanders induce, is geostrophic:
+#
+# ```math
+# f u + \frac{u^2 \tan φ}{R} = - \frac{1}{R} \frac{∂p}{∂φ} , \qquad
+# f v = \frac{1}{R \cos φ} \frac{∂p}{∂λ} ,
+# ```
+#
+# where ``f = 2 Ω \sin φ`` and ``R`` is the radius of the sphere. With ``A = g α ΔT / 2``,
+# the meridional pressure gradient is ``∂p/∂φ = - 2 Ω R \sin φ \cos φ \, U``, where
+#
+# ```math
+# a = \frac{A \, I(z) \operatorname{sech}^2 χ}{Ω R δ} , \qquad
+# U = a \left ( 1 - ϵ P \frac{\mathrm{d} m}{\mathrm{d} \sin^2 φ} \right ) .
+# ```
+#
+# The root of the quadratic for ``u`` that reduces to geostrophic balance for weak flow,
+# and the geostrophic ``v``, are
+#
+# ```math
+# u = \frac{2 U \cos φ}{1 + \sqrt{1 + 2 U / (Ω R)}} , \qquad
+# v = \frac{ϵ a \sin φ \cos φ}{2 \sin^2 φ_0 \cos^2 φ_0} \frac{∂P}{∂λ} .
+# ```
 
 A = g * α * front.ΔT / 2
 
