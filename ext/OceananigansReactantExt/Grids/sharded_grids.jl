@@ -64,7 +64,10 @@ function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Shardin
     Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
     Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
 
-    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    Δ⁻¹ᵃᵃᶠ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶠ; sharding)
+    Δ⁻¹ᵃᵃᶜ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶜ; sharding)
+
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
 function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,

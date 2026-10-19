@@ -106,7 +106,8 @@ _to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))
 
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
     return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ),
+        _to_reactant(s.Δ⁻¹ᵃᵃᶠ), _to_reactant(s.Δ⁻¹ᵃᵃᶜ))
 end
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),

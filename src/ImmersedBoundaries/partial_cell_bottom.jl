@@ -207,6 +207,18 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
 
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    rspacing = Symbol(:Δr, LX, LY, LZ)
+    zspacing = Symbol(:Δz, LX, LY, LZ)
+    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
+    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+
+    @eval begin
+        @inline Operators.$rcp_rspacing(i, j, k, ibg::PCBIBG)   = 1 / $rspacing(i, j, k, ibg)
+        @inline Operators.$rcp_zspacing(i, j, k, ibg::VSPCBIBG) = 1 / $zspacing(i, j, k, ibg)
+    end
+end
+
 function Grids.constructor_arguments(grid::PCBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
     partial_cell_bottom_args = Dict(:bottom_height => grid.immersed_boundary.bottom_height,
