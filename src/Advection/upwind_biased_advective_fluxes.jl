@@ -18,9 +18,9 @@ const ETD = ExplicitTimeDiscretization
 
 @enum Bias LeftBias RightBias
 
-@inline fluid_Ax_qᶠᶜᶜ(i, j, k, grid, U) = ifelse(peripheral_node(i, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i, j, k, grid, U))
-@inline fluid_Ay_qᶜᶠᶜ(i, j, k, grid, V) = ifelse(peripheral_node(i, j, k, grid, Center(), Face(), Center()), zero(grid), Ay_qᶜᶠᶜ(i, j, k, grid, V))
-@inline fluid_Az_qᶜᶜᶠ(i, j, k, grid, W) = ifelse(peripheral_node(i, j, k, grid, Center(), Center(), Face()), zero(grid), Az_qᶜᶜᶠ(i, j, k, grid, W))
+@inline fluid_Ax_qᶠᶜᶜ(i, j, k, grid, U) = ifelse(inactive_node(i, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i, j, k, grid, U))
+@inline fluid_Ay_qᶜᶠᶜ(i, j, k, grid, V) = ifelse(inactive_node(i, j, k, grid, Center(), Face(), Center()), zero(grid), Ay_qᶜᶠᶜ(i, j, k, grid, V))
+@inline fluid_Az_qᶜᶜᶠ(i, j, k, grid, W) = ifelse(inactive_node(i, j, k, grid, Center(), Center(), Face()), zero(grid), Az_qᶜᶜᶠ(i, j, k, grid, W))
 
 for dir in (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
     transport_interp = Symbol(:transport_interpolate_, dir)

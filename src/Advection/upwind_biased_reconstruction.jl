@@ -27,7 +27,7 @@ function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
         # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
         # Some tests are needed to verify why this is the case (and if it is expected)
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        advecting_velocity_scheme = Centered(FT; order = order - 1)
+        advecting_velocity_scheme = Centered(FT; order = min(order - 1, 4))
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order
                 # At minimum order, switch to Centered scheme
