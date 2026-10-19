@@ -2,7 +2,7 @@
 # reciprocals exactly as the metrics are.
 
 #####
-##### One-dimensional vertical reciprocal spacings (same for all grids)
+##### One-dimensional reciprocal spacings
 #####
 
 @inline Δr⁻¹ᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δ⁻¹ᵃᵃᶜ)
@@ -12,35 +12,62 @@
 
 export Δr⁻¹ᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ
 
-#####
-##### Reciprocal spacings with an unspecified horizontal location
-#####
-
-for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ, :ᵃ)
-    rcp_x = Symbol(:Δx⁻¹, L1, :ᵃ, L2)
-    rcp_y = Symbol(:Δy⁻¹, :ᵃ, L1, L2)
-
-    metric_x = Symbol(:Δx, L1, :ᵃ, L2)
-    metric_y = Symbol(:Δy, :ᵃ, L1, L2)
+for L in (:ᶜ, :ᶠ)
+    Δx⁻¹ˡᵃᵃ = Symbol(:Δx⁻¹, L, :ᵃ, :ᵃ)
+    Δy⁻¹ᵃˡᵃ = Symbol(:Δy⁻¹, :ᵃ, L, :ᵃ)
+    Δxˡᵃᵃ   = Symbol(:Δx, L, :ᵃ, :ᵃ)
+    Δyᵃˡᵃ   = Symbol(:Δy, :ᵃ, L, :ᵃ)
 
     @eval begin
-        @inline $rcp_x(i, j, k, grid) = 1 / $metric_x(i, j, k, grid)
-        @inline $rcp_y(i, j, k, grid) = 1 / $metric_y(i, j, k, grid)
+        @inline $Δx⁻¹ˡᵃᵃ(i, j, k, grid) = 1 / $Δxˡᵃᵃ(i, j, k, grid)
+        @inline $Δy⁻¹ᵃˡᵃ(i, j, k, grid) = 1 / $Δyᵃˡᵃ(i, j, k, grid)
 
-        export $rcp_x, $rcp_y
+        @inline $Δx⁻¹ˡᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.$Δx⁻¹ˡᵃᵃ[i]
+        @inline $Δy⁻¹ᵃˡᵃ(i, j, k, grid::RG)  = @inbounds grid.$Δy⁻¹ᵃˡᵃ[j]
+        @inline $Δx⁻¹ˡᵃᵃ(i, j, k, grid::RGX) = grid.$Δx⁻¹ˡᵃᵃ
+        @inline $Δy⁻¹ᵃˡᵃ(i, j, k, grid::RGY) = grid.$Δy⁻¹ᵃˡᵃ
+
+        export $Δx⁻¹ˡᵃᵃ, $Δy⁻¹ᵃˡᵃ
     end
 end
 
-for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ), func in (:Δz⁻¹, :Δr⁻¹)
-    rcp_xz = Symbol(func, L2, :ᵃ, L1)
-    rcp_yz = Symbol(func, :ᵃ, L2, L1)
-    rcp_1D = Symbol(func, :ᵃ, :ᵃ, L1)
+@inline Δy⁻¹ᵃᶜᵃ(i, j, k, grid::LLG)   = @inbounds grid.Δy⁻¹ᶠᶜᵃ[j]
+@inline Δy⁻¹ᵃᶠᵃ(i, j, k, grid::LLG)   = @inbounds grid.Δy⁻¹ᶜᶠᵃ[j]
+@inline Δy⁻¹ᵃᶜᵃ(i, j, k, grid::LLGY)  = grid.Δy⁻¹ᶠᶜᵃ
+@inline Δy⁻¹ᵃᶠᵃ(i, j, k, grid::LLGY)  = grid.Δy⁻¹ᶜᶠᵃ
+@inline Δy⁻¹ᵃᶜᵃ(i, j, k, grid::LLGF)  = 1 / Δyᵃᶜᵃ(i, j, k, grid)
+@inline Δy⁻¹ᵃᶠᵃ(i, j, k, grid::LLGF)  = 1 / Δyᵃᶠᵃ(i, j, k, grid)
+@inline Δy⁻¹ᵃᶜᵃ(i, j, k, grid::LLGFY) = 1 / Δyᵃᶜᵃ(i, j, k, grid)
+@inline Δy⁻¹ᵃᶠᵃ(i, j, k, grid::LLGFY) = 1 / Δyᵃᶠᵃ(i, j, k, grid)
+
+#####
+##### Two-dimensional reciprocal spacings with an unspecified horizontal location
+#####
+
+for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
+    Δx⁻¹ˡᵃˡ = Symbol(:Δx⁻¹, L1, :ᵃ, L2)
+    Δy⁻¹ᵃˡˡ = Symbol(:Δy⁻¹, :ᵃ, L1, L2)
+    Δx⁻¹ˡᵃᵃ = Symbol(:Δx⁻¹, L1, :ᵃ, :ᵃ)
+    Δy⁻¹ᵃˡᵃ = Symbol(:Δy⁻¹, :ᵃ, L1, :ᵃ)
 
     @eval begin
-        @inline $rcp_xz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
-        @inline $rcp_yz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
+        @inline $Δx⁻¹ˡᵃˡ(i, j, k, grid) = $Δx⁻¹ˡᵃᵃ(i, j, k, grid)
+        @inline $Δy⁻¹ᵃˡˡ(i, j, k, grid) = $Δy⁻¹ᵃˡᵃ(i, j, k, grid)
 
-        export $rcp_xz, $rcp_yz
+        export $Δx⁻¹ˡᵃˡ, $Δy⁻¹ᵃˡˡ
+    end
+
+    for func in (:Δz⁻¹, :Δr⁻¹)
+        rcp_xz = Symbol(func, L2, :ᵃ, L1)
+        rcp_yz = Symbol(func, :ᵃ, L2, L1)
+        rcp_1D = Symbol(func, :ᵃ, :ᵃ, L1)
+
+        @eval begin
+            @inline $rcp_xz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
+            @inline $rcp_yz(i, j, k, grid) = $rcp_1D(i, j, k, grid)
+
+            export $rcp_xz, $rcp_yz
+        end
     end
 end
 
@@ -49,16 +76,34 @@ end
 #####
 
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
-    for func in (:Δx, :Δy, :Az)
-        rcp_2D    = Symbol(func, :⁻¹, LX, LY, :ᵃ)
-        metric_2D = Symbol(func, LX, LY, :ᵃ)
+    Δx⁻¹ˡᵃᵃ = Symbol(:Δx⁻¹, LX, :ᵃ, :ᵃ)
+    Δy⁻¹ᵃˡᵃ = Symbol(:Δy⁻¹, :ᵃ, LY, :ᵃ)
+    Δx⁻¹ˡˡᵃ = Symbol(:Δx⁻¹, LX, LY, :ᵃ)
+    Δy⁻¹ˡˡᵃ = Symbol(:Δy⁻¹, LX, LY, :ᵃ)
+    Az⁻¹ˡˡᵃ = Symbol(:Az⁻¹, LX, LY, :ᵃ)
+    Δxˡˡᵃ   = Symbol(:Δx, LX, LY, :ᵃ)
+    Azˡˡᵃ   = Symbol(:Az, LX, LY, :ᵃ)
 
-        @eval begin
-            @inline $rcp_2D(i, j, k, grid) = 1 / $metric_2D(i, j, k, grid)
-            @inline $rcp_2D(i, j, k, grid::OSSG) = @inbounds grid.$rcp_2D[i, j]
+    @eval begin
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid) = $Δx⁻¹ˡᵃᵃ(i, j, k, grid)
+        @inline $Δy⁻¹ˡˡᵃ(i, j, k, grid) = $Δy⁻¹ᵃˡᵃ(i, j, k, grid)
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid) = $Δx⁻¹ˡˡᵃ(i, j, k, grid) * $Δy⁻¹ˡˡᵃ(i, j, k, grid)
 
-            export $rcp_2D
-        end
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid::OSSG) = @inbounds grid.$Δx⁻¹ˡˡᵃ[i, j]
+        @inline $Δy⁻¹ˡˡᵃ(i, j, k, grid::OSSG) = @inbounds grid.$Δy⁻¹ˡˡᵃ[i, j]
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid::OSSG) = @inbounds grid.$Az⁻¹ˡˡᵃ[i, j]
+
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid::LLG)   = @inbounds grid.$Δx⁻¹ˡˡᵃ[i, j]
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid::LLGX)  = @inbounds grid.$Δx⁻¹ˡˡᵃ[j]
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid::LLGF)  = 1 / $Δxˡˡᵃ(i, j, k, grid)
+        @inline $Δx⁻¹ˡˡᵃ(i, j, k, grid::LLGFX) = 1 / $Δxˡˡᵃ(i, j, k, grid)
+
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid::LLG)   = @inbounds grid.$Az⁻¹ˡˡᵃ[i, j]
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid::LLGX)  = @inbounds grid.$Az⁻¹ˡˡᵃ[j]
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid::LLGF)  = 1 / $Azˡˡᵃ(i, j, k, grid)
+        @inline $Az⁻¹ˡˡᵃ(i, j, k, grid::LLGFX) = 1 / $Azˡˡᵃ(i, j, k, grid)
+
+        export $Δx⁻¹ˡˡᵃ, $Δy⁻¹ˡˡᵃ, $Az⁻¹ˡˡᵃ
     end
 
     for LZ in (:ᶜ, :ᶠ)
@@ -71,11 +116,8 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
         Az⁻¹ˡˡˡ = Symbol(:Az⁻¹, LX, LY, LZ)
         V⁻¹ˡˡˡ  = Symbol(:V⁻¹,  LX, LY, LZ)
 
-        Δx⁻¹ˡˡᵃ = Symbol(:Δx⁻¹, LX, LY, :ᵃ)
-        Δy⁻¹ˡˡᵃ = Symbol(:Δy⁻¹, LX, LY, :ᵃ)
         Δz⁻¹ˡᵃˡ = Symbol(:Δz⁻¹, LX, :ᵃ, LZ)
         Δr⁻¹ˡᵃˡ = Symbol(:Δr⁻¹, LX, :ᵃ, LZ)
-        Az⁻¹ˡˡᵃ = Symbol(:Az⁻¹, LX, LY, :ᵃ)
 
         @eval begin
             @inline $Δx⁻¹ˡˡˡ(i, j, k, grid) = $Δx⁻¹ˡˡᵃ(i, j, k, grid)
