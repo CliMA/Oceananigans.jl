@@ -83,9 +83,7 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
-    fill_halo_regions!(bottom_cell_index)
-    fill_halo_regions!(Δrᶜᶜᶜ)
-    fill_halo_regions!(Δrᶜᶜᶠ)
+    @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
     return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height, bottom_cell_index.data, Δrᶜᶜᶜ.data, Δrᶜᶜᶠ.data)
 end
@@ -117,6 +115,12 @@ end
         adjusted_zb = ifelse(bottom_cell, capped_zb, adjusted_zb)
     end
     @inbounds bottom_field[i, j, 1] = adjusted_zb
+end
+
+@kernel function _compute_bottom_cell!(grid, ib::PartialCellBottom)
+    i, j = @index(Global, NTuple)
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    ϵ  = ib.minimum_fractional_cell_height
 
     # A column without active cells has kᵇ = Nz + 1 and full spacings
     kᵇ  = grid.Nz + 1
@@ -127,8 +131,8 @@ end
         r⁺ = rnode(i, j, k+1, grid, c, c, f)
         rᶜ = rnode(i, j, k+1, grid, c, c, c)
         Δr = Δrᶜᶜᶜ(i, j, k, grid)
-        immersed_cell = r⁺ - Δr * ϵ < adjusted_zb
-        partial_Δr    = r⁺ - adjusted_zb
+        immersed_cell = r⁺ - Δr * ϵ < rᵇ
+        partial_Δr    = r⁺ - rᵇ
 
         kᵇ  = ifelse(immersed_cell, kᵇ, k)
         Δrᶜ = ifelse(immersed_cell, Δrᶜ, partial_Δr)

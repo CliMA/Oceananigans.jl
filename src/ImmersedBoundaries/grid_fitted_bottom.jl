@@ -125,7 +125,7 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
-    fill_halo_regions!(bottom_cell_index)
+    @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
     return GridFittedBottom(bottom_field.data, ib.immersed_condition, bottom_cell_index.data)
 end
@@ -137,18 +137,37 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
-    @inbounds ib.bottom_cell_index[i, j, 1] = 1
     condition = ib.immersed_condition
     for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
         immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
         @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
-        @inbounds ib.bottom_cell_index[i, j, 1] = ifelse(immersed_cell, k+1, ib.bottom_cell_index[i, j, 1])
     end
 end
 
+# The bottom cell is computed from the bottom height in the halos as well
+function compute_bottom_cell!(grid, ib)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
+    return launch!(architecture(grid), grid, parameters, _compute_bottom_cell!, grid, ib)
+end
+
 # `bottom_cell_index` is the first active cell of each column, and `Nz + 1` in columns without active cells
+@kernel function _compute_bottom_cell!(grid, ib::GridFittedBottom)
+    i, j = @index(Global, NTuple)
+    rᵇ = @inbounds ib.bottom_height[i, j, 1]
+    kᵇ = grid.Nz + 1
+
+    for k in grid.Nz:-1:1
+        r = rnode(i, j, k, grid, c, c, c)
+        kᵇ = ifelse(r ≤ rᵇ, kᵇ, k)
+    end
+
+    @inbounds ib.bottom_cell_index[i, j, 1] = kᵇ
+end
+
 @inline _immersed_cell(i, j, k, underlying_grid, ib::AbstractGridFittedBottom) = @inbounds k < ib.bottom_cell_index[i, j, 1]
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
