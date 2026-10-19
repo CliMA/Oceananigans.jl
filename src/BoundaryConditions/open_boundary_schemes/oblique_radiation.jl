@@ -86,11 +86,11 @@ radiation_storage(radiation::ObliqueRadiation, buffer) =
                      buffer(), buffer(), radiation.target_transport)
 
 # Backward and forward differences along the boundary face, zero beyond its ends.
-@inline function tangential_differences(φ, t, k)
+@inline function tangential_differences(φ, i, j)
     @inbounds begin
-        φ₀ = φ[t, k]
-        φ₋ = φ[max(t - 1, firstindex(φ, 1)), k]
-        φ₊ = φ[min(t + 1, lastindex(φ, 1)),  k]
+        φ₀ = φ[i, j]
+        φ₋ = φ[max(i - 1, firstindex(φ, 1)), j]
+        φ₊ = φ[min(i + 1, lastindex(φ, 1)),  j]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
@@ -115,8 +115,8 @@ end
 end
 
 # The tangential derivatives are those of the boundary and interior values at the base of the stage
-@inline function radiation_update(radiation::ObliqueRadiation, ::Union{West, East, South, North}, l, m, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.φᵇ, l, m)
-    δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, l, m)
+@inline function radiation_update(radiation::ObliqueRadiation, ::Union{West, East, South, North}, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
+    δᵇ₋, δᵇ₊ = tangential_differences(radiation.φᵇ, i, j)
+    δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j)
     return oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 end
