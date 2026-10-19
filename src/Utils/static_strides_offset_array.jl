@@ -10,14 +10,20 @@ $(TYPEDSIGNATURES)
 Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the size and
 offsets of the array are compile-time constants.
 """
-StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N} =
-    StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
+function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
+    # OffsetArrays does not validate the offsets stored by AbstractOffsetArray subtypes
+    map(OffsetArrays.overflow_check, axes(parent), offsets)
+    return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
+end
 
 const SSOA = StaticStridesOffsetArray
 
-Base.size(::SSOA{T, N, S}) where {T, N, S} = S
-Base.IndexStyle(::Type{<:SSOA{T, N, S, O, A}}) where {T, N, S, O, A} = IndexStyle(A)
+# the AbstractOffsetArray interface: parent, offsets and parenttype (IndexStyle and elsize derive from the latter)
+Base.parent(a::SSOA) = a.parent
 OffsetArrays.offsets(::SSOA{T, N, S, O}) where {T, N, S, O} = O
+OffsetArrays.parenttype(::Type{<:SSOA{T, N, S, O, A}}) where {T, N, S, O, A} = A
+
+Base.size(::SSOA{T, N, S}) where {T, N, S} = S
 OffsetArrays.unwrap(a::SSOA{T, N, S, O}) where {T, N, S, O} = parent(a), p -> StaticStridesOffsetArray{eltype(p), N, S, O, typeof(p)}(p)
 @inline linear_index(::SSOA{T, N, S, O}, I) where {T, N, S, O} = @inbounds LinearIndices(S)[(I .- O)...]
 Base.dropdims(a::SSOA; dims) = StaticStridesOffsetArray(dropdims(parent(a); dims), OffsetArrays.offsets(a)[setdiff(1:ndims(a), dims)]...)
