@@ -7,6 +7,7 @@ using Oceananigans.BoundaryConditions: GravityWaveRadiationBoundaryCondition, Di
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling
 
 #####
 ##### Boundary / halo handling of the SplitExplicitFreeSurface barotropic corrector.
@@ -171,7 +172,7 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         grid = on_architecture(CPU(), underlying)
         f, c = Face(), Center()
 
-        @test typeof(model.free_surface).parameters[1].name.name == :LocalHaloFilling
+        @test model.free_surface isa SplitExplicitFreeSurface{<:LocalHaloFilling}
         @test !any(immersed_peripheral_node(1, j, 1, grid, f, c, c) |
                    immersed_inactive_node(1, j, 1, grid, f, c, c) for j in 1:grid.Ny)
     end

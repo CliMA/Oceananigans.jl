@@ -35,7 +35,7 @@ using BFloat16s: BFloat16
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, CPU,
                                   architecture, on_architecture
-using Oceananigans.Utils: Utils, KernelParameters, worksize
+using Oceananigans.Utils: Utils, KernelParameters, worksize, unparameterized_type
 
 #####
 ##### Abstract types
