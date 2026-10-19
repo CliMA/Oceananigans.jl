@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, fill_halo_event!, get_boundary_kernels
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, fill_bottom_and_top_halo!
 using Oceananigans.Utils: launch!, KernelParameters, Reference, Iterate, getregion, @apply_regionally
 using Oceananigans.Grids: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, GridFittedBoundary
@@ -58,12 +58,8 @@ function BoundaryConditions.fill_halo_regions!(field::HorizontallyReducedYinYang
     return nothing
 end
 
-function fill_yin_yang_vertical_halo!(grid, field, args::Vararg{Any, N}) where N
-    loc = instantiated_location(field)
-    kernels!, bcs = get_boundary_kernels(field.boundary_conditions, field.data, grid, loc, field.indices)
-    fill_halo_event!(field.data, kernels!.bottom_and_top, bcs.bottom_and_top, loc, grid, args...)
-    return nothing
-end
+fill_yin_yang_vertical_halo!(grid, field, args::Vararg{Any, N}) where N =
+    fill_bottom_and_top_halo!(field.data, field.boundary_conditions, field.indices, instantiated_location(field), grid, args...)
 
 function fill_yin_yang_scalar_halo!(grid, field, multiregion_field, region, table)
     donor = multiregion_field[3 - region]

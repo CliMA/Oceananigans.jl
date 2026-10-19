@@ -1,5 +1,5 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
-                              BoundsPreservation, BoundsPreservingWENO, _compute_bounds_preserving_limiter!
+                              BoundsPreservation
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
@@ -198,16 +198,6 @@ Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(
 
 @inline Utils._getregion(bounds::BoundsPreservation, r) =
     BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, getregion(bounds.limiter, r))
-
-function Advection.update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid::MultiRegionGrids, c)
-    isnothing(c) && return nothing
-    @apply_regionally launch_bounds_preserving_limiter!(scheme, grid, c)
-    fill_halo_regions!(scheme.bounds.limiter)
-    return nothing
-end
-
-launch_bounds_preserving_limiter!(scheme, grid, c) =
-    launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, scheme.bounds.limiter, grid, scheme, c)
 
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)

@@ -1,6 +1,6 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: CenterField
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.BoundaryConditions: fill_bottom_and_top_halo!
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @index, @kernel
 
@@ -105,12 +105,15 @@ update_bounds_preserving_limiter!(scheme, grid, c) = nothing
 $(TYPEDSIGNATURES)
 
 Fill the rescaling factor ``θ`` carried by a bounds-preserving `scheme` from the tracer `c`.
+``θ`` is computed in the first horizontal halo layer too, from the halos of `c`, so that
+only its bottom and top halos are filled afterwards and no halo is communicated.
 """
 function update_bounds_preserving_limiter!(scheme::BoundsPreservingWENO, grid, c)
     isnothing(c) && return nothing # the `momentum` entry has no tracer to limit
     θ = scheme.bounds.limiter
-    launch!(architecture(grid), grid, :xyz, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
-    fill_halo_regions!(θ)
+    parameters = horizontally_extended_interior_kernel_parameters(grid)
+    launch!(architecture(grid), grid, parameters, _compute_bounds_preserving_limiter!, θ, grid, scheme, c)
+    fill_bottom_and_top_halo!(θ.data, θ.boundary_conditions, θ.indices, (Center(), Center(), Center()), grid)
     return nothing
 end
 
