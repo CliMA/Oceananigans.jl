@@ -171,6 +171,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
+    cache_boundary_conditions!(model)
     grid = model.grid
 
     # Every stage restarts from the state cached at tⁿ, so the state after stage m approximates
@@ -253,6 +254,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTi
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing

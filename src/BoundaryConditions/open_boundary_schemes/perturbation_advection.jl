@@ -1,13 +1,13 @@
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
-using Oceananigans: defaults
 using Oceananigans.Utils: prettysummary
 
-struct PerturbationAdvection{FT, D, TF}
+struct PerturbationAdvection{FT, D, TF, B} <: AbstractRadiationScheme{FT}
     inflow_timescale :: FT
     outflow_timescale :: FT
     gravity_wave_speed :: FT
     density :: D
     target_transport :: TF
+    φᵇ :: B
+    φ₁ :: B
 end
 
 """
@@ -113,19 +113,24 @@ function PerturbationAdvection(FT = defaults.FloatType;
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
     target_transport = convert_target_transport(FT, target_transport)
-    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, target_transport)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, target_transport, nothing, nothing)
 end
 
 # Support 2-positional-arg constructor
 PerturbationAdvection(inflow_timescale, outflow_timescale) =
-    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing)
+    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale),
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density),
-                          adapt(to, pe.target_transport))
+                          adapt(to, pe.target_transport),
+                          adapt(to, pe.φᵇ),
+                          adapt(to, pe.φ₁))
+
+radiation_storage(pe::PerturbationAdvection, φᵇ, φ₁) =
+    PerturbationAdvection(pe.inflow_timescale, pe.outflow_timescale, pe.gravity_wave_speed, pe.density, pe.target_transport, φᵇ, φ₁)
 
 Base.summary(::PerturbationAdvection{FT}) where FT = "PerturbationAdvection{$FT}"
 
@@ -161,8 +166,6 @@ For a `Number`, returns the stored value unchanged.
 For a callable, calls it with `grid` to recompute the target at the current grid state.
 """
 get_target_transport(scheme, grid) = get_target_transport(scheme)  # 1-arg fallback for external schemes
-get_target_transport(scheme::PerturbationAdvection, grid) = _eval_tt(scheme.target_transport, grid)
-get_target_transport(scheme::PerturbationAdvection) = scheme.target_transport
 
 _eval_tt(x::Number, grid) = x
 _eval_tt(f, grid) = f(grid)
@@ -174,223 +177,27 @@ _eval_tt(f, grid) = f(grid)
 @inline to_extensive(::Nothing, ψ, k) = ψ
 @inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
 
-# Advecting velocity for the radiation phase speed: a boundary-normal velocity
-# component advects itself (falls back to ψ̄), a tracer is advected by the flow.
-@inline advecting_velocity(::Nothing, ψ̄) = ψ̄
-@inline advecting_velocity(U, ψ̄) = U
-
-@inline function step_right_open_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
-                                           grid, ψ, U, clock, model_fields, ΔX, k)
-    iᴮ, jᴮ, kᴮ = boundary_indices
-    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
-    Δt = clock.last_stage_Δt
-    Δt = ifelse(isinf(Δt), zero(Δt), Δt)
+# Backward-Euler step from the base of the stage; the phase speed is the outward velocity plus `gravity_wave_speed`
+@inline function step_exterior_state!(side, l, m, grid, ψ, bc::PABC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
 
     pa = bc.classification.scheme
     ρ = pa.density
-    c★ = pa.gravity_wave_speed
 
-    # Convert to intensive space (no-op when density is nothing)
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
+    ψᵇ = to_intensive(ρ, @inbounds(pa.φᵇ[l, m]), kᵇ)
+    ψ₁ = to_intensive(ρ, @inbounds(ψ[i₁, j₁, k₁]), kᵇ)
+    ψ̄  = getbc(bc, l, m, grid, clock, model_fields)
 
-    # Prescribed exterior value (in intensive units when density is provided)
-    ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
+    U = outward(side, advecting_velocity(bc, side, model_fields, grid, 0, l, m, ψ̄))
+    c = U + pa.gravity_wave_speed
+    Ũ = clamp(Δt / boundary_spacing(side, grid, l, m) * c, zero(c), one(c))
 
-    # Advecting velocity: the field itself for momentum, the normal flow for tracers
-    Uᵃ = advecting_velocity(U, ψ̄)
-
-    # Phase speed: advecting velocity + gravity wave speed
-    c = Uᵃ + c★
-    Ũ = max(0, min(1, Δt / ΔX * c))
-
-    # Inflow vs outflow relaxation
-    τ = ifelse(Uᵃ >= 0, pa.outflow_timescale, pa.inflow_timescale)
+    τ = ifelse(U >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    ψ_new = (ψᴮ + Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
-    ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
+    ψⁿ⁺¹ = (ψᵇ + Ũ * ψ₁ + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
+    @inbounds ψ[iᵇ, jᵇ, kᵇ] = to_extensive(ρ, ifelse(τ == 0, ψ̄, ψⁿ⁺¹), kᵇ)
 
-    # Convert back to extensive space (no-op when density is nothing)
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
-
-    return nothing
-end
-
-@inline function step_left_open_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
-                                          grid, ψ, U, clock, model_fields, ΔX, k)
-    iᴮ, jᴮ, kᴮ = boundary_indices
-    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
-    Δt = clock.last_stage_Δt
-    Δt = ifelse(isinf(Δt), zero(Δt), Δt)
-
-    pa = bc.classification.scheme
-    ρ = pa.density
-    c★ = pa.gravity_wave_speed
-
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
-
-    ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
-
-    # Advecting velocity: the field itself for momentum, the normal flow for tracers
-    Uᵃ = advecting_velocity(U, ψ̄)
-
-    # Phase speed: advecting velocity - gravity wave speed (outflow is -x at west / -y at south)
-    c = Uᵃ - c★
-    Ũ = min(0, max(-1, Δt / ΔX * c))
-
-    τ = ifelse(Uᵃ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-    τ̃ = Δt / τ
-
-    ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
-    ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
-
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
-
-    return nothing
-end
-
-# Backward compatibility: old step_right/left_boundary! signatures without k argument
-@inline function step_right_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
-    step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                              grid, ψ, nothing, clock, model_fields, ΔX, k)
-end
-
-@inline function step_left_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
-                                     grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
-    step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                             grid, ψ, nothing, clock, model_fields, ΔX, k)
-end
-
-#####
-##### Halo-filling methods for Face-located fields (velocity/momentum): NormalFlow + PerturbationAdvection
-#####
-
-@inline function _fill_east_halo!(j, k, grid, u, bc::PANFBC, ::Tuple{Face, Any, Any}, clock, model_fields)
-    i = grid.Nx + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i-1, j, k)
-    Δx = Δxᶠᶜᶜ(i, j, k, grid)
-    step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, nothing, clock, model_fields, Δx, k)
-    return nothing
-end
-
-@inline function _fill_west_halo!(j, k, grid, u, bc::PANFBC, ::Tuple{Face, Any, Any}, clock, model_fields)
-    boundary_indices = (1, j, k)
-    boundary_adjacent_indices = (2, j, k)
-    Δx = Δxᶠᶜᶜ(1, j, k, grid)
-    step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, nothing, clock, model_fields, Δx, k)
-    return nothing
-end
-
-@inline function _fill_north_halo!(i, k, grid, u, bc::PANFBC, ::Tuple{Any, Face, Any}, clock, model_fields)
-    j = grid.Ny + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i, j-1, k)
-    Δy = Δyᶜᶠᶜ(i, j, k, grid)
-    step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, nothing, clock, model_fields, Δy, k)
-    return nothing
-end
-
-@inline function _fill_south_halo!(i, k, grid, u, bc::PANFBC, ::Tuple{Any, Face, Any}, clock, model_fields)
-    boundary_indices = (i, 1, k)
-    boundary_adjacent_indices = (i, 2, k)
-    Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-    step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, nothing, clock, model_fields, Δy, k)
-    return nothing
-end
-
-@inline function _fill_top_halo!(i, j, grid, u, bc::PANFBC, ::Tuple{Any, Any, Face}, clock, model_fields)
-    k = grid.Nz + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i, j, k-1)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                              grid, u, nothing, clock, model_fields, Δz, k)
-    return nothing
-end
-
-@inline function _fill_bottom_halo!(i, j, grid, u, bc::PANFBC, ::Tuple{Any, Any, Face}, clock, model_fields)
-    boundary_indices = (i, j, 1)
-    boundary_adjacent_indices = (i, j, 2)
-    Δz = Δzᶜᶜᶠ(i, j, 1, grid)
-    step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, u, nothing, clock, model_fields, Δz, 1)
-    return nothing
-end
-
-#####
-##### Halo-filling methods for Center-located fields (scalars like ρθ, ρq, tracers): Value + PerturbationAdvection
-#####
-
-@inline function _fill_east_halo!(j, k, grid, c, bc::PAVBC, ::Tuple{Center, Any, Any}, clock, model_fields)
-    i = grid.Nx + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i-1, j, k)
-    Δx = Δxᶠᶜᶜ(i, j, k, grid)
-    U = @inbounds model_fields.u[i, j, k]
-    step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, U, clock, model_fields, Δx, k)
-    return nothing
-end
-
-@inline function _fill_west_halo!(j, k, grid, c, bc::PAVBC, ::Tuple{Center, Any, Any}, clock, model_fields)
-    boundary_indices = (0, j, k)
-    boundary_adjacent_indices = (1, j, k)
-    Δx = Δxᶠᶜᶜ(1, j, k, grid)
-    U = @inbounds model_fields.u[1, j, k]
-    step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, U, clock, model_fields, Δx, k)
-    return nothing
-end
-
-@inline function _fill_north_halo!(i, k, grid, c, bc::PAVBC, ::Tuple{Any, Center, Any}, clock, model_fields)
-    j = grid.Ny + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i, j-1, k)
-    Δy = Δyᶜᶠᶜ(i, j, k, grid)
-    U = @inbounds model_fields.v[i, j, k]
-    step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, U, clock, model_fields, Δy, k)
-    return nothing
-end
-
-@inline function _fill_south_halo!(i, k, grid, c, bc::PAVBC, ::Tuple{Any, Center, Any}, clock, model_fields)
-    boundary_indices = (i, 0, k)
-    boundary_adjacent_indices = (i, 1, k)
-    Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-    U = @inbounds model_fields.v[i, 1, k]
-    step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, U, clock, model_fields, Δy, k)
-    return nothing
-end
-
-@inline function _fill_top_halo!(i, j, grid, c, bc::PAVBC, ::Tuple{Any, Any, Center}, clock, model_fields)
-    k = grid.Nz + 1
-    boundary_indices = (i, j, k)
-    boundary_adjacent_indices = (i, j, k-1)
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    U = @inbounds model_fields.w[i, j, k]
-    step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                              grid, c, U, clock, model_fields, Δz, k)
-    return nothing
-end
-
-@inline function _fill_bottom_halo!(i, j, grid, c, bc::PAVBC, ::Tuple{Any, Any, Center}, clock, model_fields)
-    boundary_indices = (i, j, 0)
-    boundary_adjacent_indices = (i, j, 1)
-    Δz = Δzᶜᶜᶠ(i, j, 1, grid)
-    U = @inbounds model_fields.w[i, j, 1]
-    # density weighting keys off the boundary cell (k = 0), matching _fill_top_halo!
-    step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, c, U, clock, model_fields, Δz, 0)
     return nothing
 end

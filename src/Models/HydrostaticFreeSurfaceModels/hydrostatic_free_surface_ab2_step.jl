@@ -164,6 +164,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -221,6 +222,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 
