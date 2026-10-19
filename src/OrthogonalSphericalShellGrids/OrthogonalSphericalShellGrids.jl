@@ -96,6 +96,6 @@ conformal_mapping_info(cm::LatitudeLongitudeRotation) = Dict{Symbol, Any}(
 # — `conformal_mapping` is bookkeeping that names *how* the grid was originally generated,
 # not data the grid uses at runtime. The only consequence is that the type-alias identity
 # (e.g. `ConformalCubedSpherePanelGrid`) is not restored on this code path.
-conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(typeof(cm).name.wrapper))
+conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(nameof(typeof(cm))))
 
 end # module
