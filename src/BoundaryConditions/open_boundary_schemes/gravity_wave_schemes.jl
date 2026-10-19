@@ -121,16 +121,18 @@ SurfaceWaveRadiation{Float64}
 └── gravitational_acceleration: 9.80665
 ```
 """
-struct SurfaceWaveRadiation{FT}
+struct SurfaceWaveRadiation{FT, S} <: AbstractRadiationScheme{FT}
     gravitational_acceleration :: FT
+    φᵇ :: S
+    φ₁ :: S
 end
 
 function SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
-    return SurfaceWaveRadiation(gravitational_acceleration)
+    return SurfaceWaveRadiation(gravitational_acceleration, nothing, nothing)
 end
 
-Adapt.adapt_structure(to, c::SurfaceWaveRadiation) =
-    SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration))
+Adapt.adapt_structure(to, c::SurfaceWaveRadiation) = SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration), adapt(to, c.φᵇ), adapt(to, c.φ₁))
+radiation_storage(c::SurfaceWaveRadiation, φᵇ, φ₁) = SurfaceWaveRadiation(c.gravitational_acceleration, φᵇ, φ₁)
 
 const IGWVBC = BoundaryCondition{<:Value{<:SurfaceWaveRadiation}}
 
@@ -299,82 +301,19 @@ end
 end
 
 #####
-##### SurfaceWaveRadiation halo filling — implicit gravity-wave radiation of the free surface
+##### SurfaceWaveRadiation — implicit gravity-wave radiation of the free surface
 #####
 
-@inline function _fill_west_halo!(j, k, grid, η, bc::IGWVBC, ::CAA, clock, model_fields)
-    anchored_fill(clock) || return nothing
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
+@inline function step_exterior_state!(side::Union{West, East, South, North}, l, m, grid, η, bc::IGWVBC, loc, clock, model_fields, Δt)
+    iᵇ, jᵇ, kᵇ = boundary_point(side, loc, grid, 0, l, m)
+    i₁, j₁, k₁ = boundary_point(side, loc, grid, 1, l, m)
     g = bc.classification.scheme.gravitational_acceleration
-    kᴺ⁺¹ = grid.Nz + 1
 
     @inbounds begin
-        η₁ = η[1, j, k]
-        H  = column_depthᶜᶜᵃ(1, j, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, η[0, j, k]) # zero-gradient initialization
-        η[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
-    end
-
-    return nothing
-end
-
-@inline function _fill_east_halo!(j, k, grid, η, bc::IGWVBC, ::CAA, clock, model_fields)
-    anchored_fill(clock) || return nothing
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    g = bc.classification.scheme.gravitational_acceleration
-    i = grid.Nx + 1
-    kᴺ⁺¹ = grid.Nz + 1
-
-    @inbounds begin
-        η₁ = η[i-1, j, k]
-        H  = column_depthᶜᶜᵃ(i-1, j, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
-        η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
-    end
-
-    return nothing
-end
-
-@inline function _fill_south_halo!(i, k, grid, η, bc::IGWVBC, ::ACA, clock, model_fields)
-    anchored_fill(clock) || return nothing
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    g = bc.classification.scheme.gravitational_acceleration
-    kᴺ⁺¹ = grid.Nz + 1
-
-    @inbounds begin
-        η₁ = η[i, 1, k]
-        H  = column_depthᶜᶜᵃ(i, 1, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
-        ηᵇ = ifelse(first_call, η₁, η[i, 0, k]) # zero-gradient initialization
-        η[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
-    end
-
-    return nothing
-end
-
-@inline function _fill_north_halo!(i, k, grid, η, bc::IGWVBC, ::ACA, clock, model_fields)
-    anchored_fill(clock) || return nothing
-    Δτ = stage_Δt(clock)
-    first_call = isinf(Δτ)
-    Δt = ifelse(first_call, zero(Δτ), Δτ)
-    g = bc.classification.scheme.gravitational_acceleration
-    j = grid.Ny + 1
-    kᴺ⁺¹ = grid.Nz + 1
-
-    @inbounds begin
-        η₁ = η[i, j-1, k]
-        H  = column_depthᶜᶜᵃ(i, j-1, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
-        η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
+        η₁ = η[i₁, j₁, k₁]
+        H  = column_depthᶜᶜᵃ(i₁, j₁, k₁, grid, η)
+        C  = sqrt(g * max(H, zero(H))) * Δt / boundary_spacing(side, grid, l, m)
+        η[iᵇ, jᵇ, kᵇ] = (bc.classification.scheme.φᵇ[l, m] + C * η₁) / (1 + C)
     end
 
     return nothing

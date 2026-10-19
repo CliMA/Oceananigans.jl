@@ -153,6 +153,7 @@ function rk_substep_velocities!(velocities, model, Δt)
     implicit_substep_velocity!(model, Δt, Val(:u))
     implicit_substep_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -208,6 +209,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 
