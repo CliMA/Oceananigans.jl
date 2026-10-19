@@ -340,8 +340,10 @@ drake_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_heigh
 # strongest winds over the Southern Ocean:
 #
 # ```math
-# τ(φ) = τ₀ \, \cos φ \left [2 e^{-(φ + 50^\circ)^2 / (12^\circ)^2} + e^{-(φ - 45^\circ)^2 / (12^\circ)^2}
-#        - 0.7 e^{-(φ + 18^\circ)^2 / (12^\circ)^2} - 0.6 e^{-(φ - 18^\circ)^2 / (12^\circ)^2} \right ] ,
+# \begin{aligned}
+# τ(φ) = τ₀ \, \cos φ \times \Big [ & 2 e^{-(φ + 50^\circ)^2 / (12^\circ)^2} + e^{-(φ - 45^\circ)^2 / (12^\circ)^2} \\
+#                                     & - 0.7 e^{-(φ + 18^\circ)^2 / (12^\circ)^2} - 0.6 e^{-(φ - 18^\circ)^2 / (12^\circ)^2} \Big ] ,
+# \end{aligned}
 # ```
 #
 # with ``τ₀ = 0.15 \, \mathrm{N \, m^{-2}}``.
@@ -473,10 +475,12 @@ function initial_state(λ, φ, z; ϵ=0.035, φ₀=front.φ₀, δ=front.δ)
     λ = deg2rad(λ)
     P = cos(6λ) + cos(9λ) / 2 + sin(13λ) / 4
     ∂λP = - 6sin(6λ) - 9sin(9λ) / 2 + 13cos(13λ) / 4
-    χ = (s^2 - sind(φ₀)^2 - ϵ * s^2 * c^2 * P / D) / δ
+    m = s^2 * c^2 / D
+    dm = (c^2 - s^2) / D  ## dm/d(sin²φ)
+    χ = (s^2 - sind(φ₀)^2 - ϵ * m * P) / δ
 
     a = A * I(z) * sech(χ)^2 / (Ω * radius * δ)
-    U = a * (1 - ϵ * (c^2 - s^2) * P / D)
+    U = a * (1 - ϵ * dm * P)
     u = 2c * U / (1 + sqrt(1 + 2U / (Ω * radius)))
     v = a * ϵ * s * c * ∂λP / (2D)
     T = front.Td + front.ΔT / 2 * exp(z / front.h) * (1 - tanh(χ))
