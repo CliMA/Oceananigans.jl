@@ -1,8 +1,5 @@
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
+using Oceananigans.ImmersedBoundaries: IBG, immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
-using Oceananigans.Grids: Open
-
-const IBG = ImmersedBoundaryGrid
 
 const c = Center()
 const f = Face()
@@ -100,50 +97,46 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side;
+    inside_immersed_boundary(rng, buffer, dir, side;
                              xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
 
-Check if the stencil required for reconstruction contains immersed nodes
+`inactive_node` expressions for the cells `rng` of the reconstruction stencil along `dir`, where `rng` runs from
+`1` to `2buffer`. A symmetric reconstruction spans all of them; a left-biased one spans `1:2buffer-1` and a
+right-biased one `2:2buffer`. Cells come back ordered outwards from the center of the stencil, which makes a
+narrower buffer's span a prefix of a wider one's.
 
 Example
 =======
 
 ```
-julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
+julia> inside_immersed_boundary(1:4, 2, :z, :ᶜ; zside = :ᶜ)
 4-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 0,  ibg, c, c, f))
  :(inactive_node(i, j, k + 1,  ibg, c, c, f))
+ :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 2,  ibg, c, c, f))
 
-julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
+julia> inside_immersed_boundary(1:5, 3, :x, :ᶠ; xside = :ᶠ)
 5-element Vector{Any}:
- :(inactive_node(i + -3, j, k, ibg, c, c, c))
- :(inactive_node(i + -2, j, k, ibg, c, c, c))
- :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 0,  j, k, ibg, c, c, c))
+ :(inactive_node(i + -1, j, k, ibg, c, c, c))
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
+ :(inactive_node(i + -2, j, k, ibg, c, c, c))
+ :(inactive_node(i + -3, j, k, ibg, c, c, c))
 ```
 """
-@inline function inside_immersed_boundary(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
-
-    N = buffer * 2
-    if shift != :none
-        N -=1
-    end
-
-    if shift == :interior
-        rng = 1:N+1
-    elseif shift == :right
-        rng = 2:N+1
-    else
-        rng = 1:N
-    end
+@inline function inside_immersed_boundary(rng, buffer, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
 
     inactive_cells  = Vector(undef, length(rng))
 
-    for (idx, n) in enumerate(rng)
-        c = side == :ᶠ ? n - buffer - 1 : n - buffer
+    center_offset(n) = side == :ᶠ ? n - buffer - 1 : n - buffer
+    distance_from_center(n) = abs(center_offset(n))
+    deepest_side_first(n) = side == :ᶠ ? center_offset(n) : -center_offset(n)
+
+    ordered_cells = sort(collect(rng), by = n -> (distance_from_center(n), deepest_side_first(n)))
+
+    for (idx, n) in enumerate(ordered_cells)
+        c = center_offset(n)
         xflipside = xside == :ᶠ ? :c : :f
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f
@@ -157,85 +150,28 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
     return inactive_cells
 end
 
-for side in (:ᶜ, :ᶠ)
-    near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
-    near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
-    near_z_boundary_symm = Symbol(:near_z_immersed_boundary_symmetric, side)
+# On immersed grids the stencil must also avoid inactive cells. The left-biased span is 1:2buffer-1 and the right-biased one
+# 2:2buffer, so both share 2:2buffer-1 and the bias picks only which end cell joins it.
+for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
+    index = (:i, :j, :k)[d]
+    location = NamedTuple{(Symbol(ξ, :side),)}((side,))
 
-    near_x_boundary_bias = Symbol(:near_x_immersed_boundary_biased, side)
-    near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
-    near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
-
-    @eval begin
-        @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-
-        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-    end
+    near_boundary_symmetric = Symbol(:near_, ξ, :_boundary_symmetric, side)
+    near_boundary_biased    = Symbol(:near_, ξ, :_boundary_biased, side)
+    within_bounds_symmetric = Symbol(:within_bounds_symmetric_, ξ, side)
+    within_bounds_biased    = Symbol(:within_bounds_biased_, ξ, side)
 
     for buffer in advection_buffers
+        cells(range) = inside_immersed_boundary(range, buffer, ξ, side; location...)
+        westmost, eastmost = only(cells(1:1)), only(cells(2buffer:2buffer))
+
         @eval begin
-            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side; xside = side)...))
-            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side; yside = side)...))
-            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side; zside = side)...))
+            @inline $near_boundary_symmetric(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}) =
+                !$within_bounds_symmetric($index, ibg, scheme) | (|)($(cells(1:2buffer)...))
 
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
-        end
-    end
-
-    # The halos beyond an Open side are active, so order reduction there comes from the topology
-    for (ξ, d) in ((:x, 1), (:y, 2), (:z, 3))
-        open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
-        open_grid = d == 1 ? :(IBG{<:Any, <:$open_topology}) :
-                    d == 2 ? :(IBG{<:Any, <:Any, <:$open_topology}) :
-                             :(IBG{<:Any, <:Any, <:Any, <:$open_topology})
-
-        N = (:Nx, :Ny, :Nz)[d]
-        index = (:i, :j, :k)[d]
-
-        for bias in (:symmetric, :biased)
-            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, side)
-            outside_halo  = Symbol(:outside_, bias, :_halo_, ξ, side)
-            shift = bias == :symmetric ? :none : :interior
-
-            for buffer in advection_buffers
-                inactive_cells = d == 1 ? inside_immersed_boundary(buffer, shift, :x, side; xside = side) :
-                                 d == 2 ? inside_immersed_boundary(buffer, shift, :y, side; yside = side) :
-                                          inside_immersed_boundary(buffer, shift, :z, side; zside = side)
-                @eval @inline $near_boundary(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) =
-                    (|)($(inactive_cells...)) | !$outside_halo($index, topology(ibg, $d), ibg.$N, scheme)
-            end
-        end
-    end
-end
-
-for bias in (:symmetric, :biased)
-    for (d, ξ) in enumerate((:x, :y, :z))
-        code = [:ᵃ, :ᵃ, :ᵃ]
-
-        for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt1_interp = Symbol(alt1, interp)
-            alt2_interp = Symbol(alt2, interp)
-
-            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
-
-            @eval begin
-                # Fallback for low order interpolation
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
-
-                # Conditional high-order interpolation in Bounded directions
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
-                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
-            end
+            @inline $near_boundary_biased(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}, bias) =
+                !$within_bounds_biased($index, ibg, scheme, bias) |
+                (|)($(cells(2:2buffer-1)...), ifelse(bias == LeftBias, $westmost, $eastmost))
         end
     end
 end
