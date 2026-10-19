@@ -14,9 +14,10 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
+struct GridFittedBottom{H, I, K} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     immersed_condition :: I
+    bottom_cell_index :: K
 end
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
@@ -45,7 +46,7 @@ Arguments
                         minimum fractional cell height for partial cells is set
                         to 0.
 """
-GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
+GridFittedBottom(bottom_height, immersed_condition=CenterImmersedCondition()) = GridFittedBottom(bottom_height, immersed_condition, nothing)
 
 # 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
@@ -102,9 +103,9 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
-Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
+Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition, on_architecture(arch, ib.bottom_cell_index))
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition), adapt(to, ib.bottom_cell_index))
 
 """
 $(TYPEDSIGNATURES)
@@ -119,12 +120,14 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
 
-    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+    bottom_cell_index = Field{Center, Center, Nothing}(grid, Int)
+    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition, bottom_cell_index)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
+    fill_halo_regions!(bottom_cell_index)
 
-    return GridFittedBottom(bottom_field.data, ib.immersed_condition)
+    return GridFittedBottom(bottom_field.data, ib.immersed_condition, bottom_cell_index.data)
 end
 
 compute_numerical_bottom_height!(bottom_field, grid, ib) =
@@ -134,22 +137,19 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
+    @inbounds ib.bottom_cell_index[i, j, 1] = 1
     condition = ib.immersed_condition
     for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
         immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
         @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
+        @inbounds ib.bottom_cell_index[i, j, 1] = ifelse(immersed_cell, k+1, ib.bottom_cell_index[i, j, 1])
     end
 end
 
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    # We use `rnode` for the `immersed_cell` because we do not want to have
-    # wetting or drying that could happen for a moving grid if we use znode
-    z  = rnode(i, j, k, underlying_grid, c, c, c)
-    zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
-end
+# `bottom_cell_index` is the first active cell of each column, and `Nz + 1` in columns without active cells
+@inline _immersed_cell(i, j, k, underlying_grid, ib::AbstractGridFittedBottom) = @inbounds k < ib.bottom_cell_index[i, j, 1]
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
