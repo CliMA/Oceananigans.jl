@@ -109,11 +109,10 @@ Example
 
 ```
 julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
-4-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, f))
- :(inactive_node(i, j, k + 0,  ibg, c, c, f))
- :(inactive_node(i, j, k + 1,  ibg, c, c, f))
- :(inactive_node(i, j, k + 2,  ibg, c, c, f))
+3-element Vector{Any}:
+ :(inactive_node(i, j, k + -1, ibg, c, c, c))
+ :(inactive_node(i, j, k + 0,  ibg, c, c, c))
+ :(inactive_node(i, j, k + 1,  ibg, c, c, c))
 
 julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
@@ -139,13 +138,15 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
         rng = 1:N
     end
 
-    inactive_cells  = Vector(undef, length(rng))
+    # A stencil of faces is checked through the cells between its faces
+    cells = side == :ᶜ ? rng[1:end-1] : rng
+    inactive_cells  = Vector(undef, length(cells))
 
-    for (idx, n) in enumerate(rng)
+    for (idx, n) in enumerate(cells)
         c = side == :ᶠ ? n - buffer - 1 : n - buffer
-        xflipside = xside == :ᶠ ? :c : :f
-        yflipside = yside == :ᶠ ? :c : :f
-        zflipside = zside == :ᶠ ? :c : :f
+        xflipside = xside == :ᶠ || dir == :x ? :c : :f
+        yflipside = yside == :ᶠ || dir == :y ? :c : :f
+        zflipside = zside == :ᶠ || dir == :z ? :c : :f
         inactive_cells[idx] =  dir == :x ?
                                :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
