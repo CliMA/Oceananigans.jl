@@ -13,9 +13,9 @@ using Oceananigans: Oceananigans
 using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast,
     fill_halo_regions!
-using Oceananigans.DistributedComputations: DistributedComputations
+using Oceananigans.DistributedComputations: DistributedComputations, insert_connected_topology
 using Oceananigans.Fields: Field, location
-using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Closed, Connected, Face, Flat,
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Connected, Face, Flat,
     OrthogonalSphericalShellGrid, Periodic, Sides, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, Utils,

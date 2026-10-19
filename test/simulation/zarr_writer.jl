@@ -89,6 +89,7 @@ end
 
     materialize = Oceananigans.OutputWriters.materialize_serialized_output
     @test materialize("Oceananigans.Grids.Periodic") === Periodic
+    @test materialize("Oceananigans.Grids.Sides{Oceananigans.Grids.Closed, Oceananigans.Grids.Open}") === Oceananigans.Grids.Sides{Closed, Open}
     @test materialize("(Colon(), 1:4, 3)") == (:, 1:4, 3)
     @test materialize("-Inf") === -Inf
     @test materialize("+Inf") === Inf

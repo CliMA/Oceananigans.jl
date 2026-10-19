@@ -23,6 +23,7 @@ const serialized_output_values = Dict{Symbol, Any}(
     :Sides => Sides,
     :Bounded => Bounded,
     :Closed => Closed,
+    :Open => Open,
     :Connected => Connected,
     :CenterFolded => CenterFolded,
     :FaceFolded => FaceFolded,
