@@ -28,3 +28,9 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ), L3 in (:ᶜ, :ᶠ)
         export $rcp_volume
     end
 end
+
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ), metric in (:Δx⁻¹, :Δy⁻¹, :Az⁻¹)
+    reciprocal = Symbol(metric, LX, LY, LZ)
+    stored_reciprocal = Symbol(metric, LX, LY, :ᵃ)
+    @eval @inline $reciprocal(i, j, k, grid::OSSG) = @inbounds grid.$stored_reciprocal[i, j]
+end

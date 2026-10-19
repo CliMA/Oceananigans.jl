@@ -68,6 +68,13 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 @inline Operators.Azᶠᶠᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 @inline Operators.Azᶜᶜᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶜᶜᵃ(i, j, k, ibg.underlying_grid)
 
+# Reciprocal horizontal metrics stored in the underlying grid
+
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ), metric in (:Δx⁻¹, :Δy⁻¹, :Az⁻¹)
+    reciprocal = Symbol(metric, LX, LY, LZ)
+    @eval @inline Operators.$reciprocal(i, j, k, ibg::OSIBG) = Operators.$reciprocal(i, j, k, ibg.underlying_grid)
+end
+
 # Extend both 2D and 3D methods
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v)
 @inline Operators.extrinsic_vector(i, j, k, ibg::IBG, u, v) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v)

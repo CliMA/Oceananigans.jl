@@ -173,11 +173,11 @@ const ZFormulation = Union{HomogeneousZFormulation, InhomogeneousZFormulation}
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[1, j, k]  = -1 / Δxᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
-        D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
+        D[1, j, k]  = -Δx⁻¹ᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
+        D[Nx, j, k] = -Δx⁻¹ᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 
         for i in 2:Nx-1
-            D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+            D[i, j, k] = - (Δx⁻¹ᶠᵃᵃ(i+1, j, k, grid) + Δx⁻¹ᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
         end
     end
 end
@@ -188,11 +188,11 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[i, 1, k]  = -1 / Δyᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
-        D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
+        D[i, 1, k]  = -Δy⁻¹ᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
+        D[i, Ny, k] = -Δy⁻¹ᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 
         for j in 2:Ny-1
-            D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+            D[i, j, k] = - (Δy⁻¹ᵃᶠᵃ(i, j+1, k, grid) + Δy⁻¹ᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
         end
     end
 end
@@ -203,11 +203,11 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[i, j, 1]  = -1 / Δzᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
-        D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+        D[i, j, 1]  = -Δz⁻¹ᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
+        D[i, j, Nz] = -Δz⁻¹ᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 
         for k in 2:Nz-1
-            D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+            D[i, j, k] = - (Δz⁻¹ᵃᵃᶠ(i, j, k+1, grid) + Δz⁻¹ᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
         end
     end
 end
