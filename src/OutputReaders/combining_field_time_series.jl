@@ -409,7 +409,7 @@ function assemble_global_2d_array(all_ranks, field_accessor)
 end
 
 function build_global_grid_from_files(grid0, arch, FT, topo, N, H, xG, yG, zG)
-    grid_type = typeof(grid0).name.wrapper
+    grid_type = nameof(typeof(grid0))
     error("Automatic combining of distributed output is not yet supported for $grid_type. " *
           "Consider using OceanEnsembles.jl or pass a pre-constructed global `grid` to FieldTimeSeries.")
 end
