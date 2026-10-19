@@ -96,7 +96,7 @@ end
 ##### Stepping, caching and initializing the exterior state, on the boundary plane of the halo fill
 #####
 
-@kernel function _update_exterior_state!(update!, c, side, bc, loc, grid, args...)
+@kernel function _update_exterior_state!(update!, c, side, bc, loc, grid, args)
     l, m = @index(Global, NTuple)
     update!(side, l, m, grid, c, bc, loc, args...)
 end
@@ -107,7 +107,7 @@ function update_exterior_state!(update!, bc, side, field, args...)
     size = fill_halo_size(field.data, side, field.indices, bc, loc, grid)
     offset = fill_halo_offset(size, side, field.indices)
     size, offset = connected_fill_extent(side, bc, size, offset, field.indices, loc, grid)
-    launch!(architecture(grid), grid, kernel_parameters(size, offset), _update_exterior_state!, update!, field.data, side, bc, loc, grid, args...)
+    launch!(architecture(grid), grid, kernel_parameters(size, offset), _update_exterior_state!, update!, field.data, side, bc, loc, grid, args)
     return nothing
 end
 
