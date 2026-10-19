@@ -365,8 +365,8 @@ $(TYPEDSIGNATURES)
 Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
 
-If all ranks are connected on both sides, the global topology is `Periodic`;
-otherwise it is bounded on both sides.
+If all ranks are connected on both sides, the global topology is `Periodic`; otherwise each global side is
+`Open` if the outer side of the first or last rank is `Open`, and `Closed` otherwise.
 
 This version uses MPI communication to gather topology information from all ranks.
 """
@@ -376,16 +376,20 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     end
 
     topologies = zeros(Int, R)
-    if T == Sides{Connected, Connected} && r1 == 1 && r2 == 1
-        topologies[r] = 1
+    open_sides = zeros(Int, 2)
+    if r1 == 1 && r2 == 1
+        topologies[r] = T == Sides{Connected, Connected}
+        open_sides[1] = (r == 1) & (T <: Sides{Open})
+        open_sides[2] = (r == R) & (T <: Sides{<:Any, Open})
     end
 
     topologies = all_reduce(+, topologies, arch)
+    open_sides = all_reduce(+, open_sides, arch)
 
     if sum(topologies) == R
         return Periodic
     else
-        return Bounded
+        return Sides{open_sides[1] == 1 ? Open : Closed, open_sides[2] == 1 ? Open : Closed}
     end
 end
 
@@ -395,14 +399,18 @@ $(TYPEDSIGNATURES)
 Reconstruct global topology from a collection of local topologies without MPI.
 
 If `R == 1`, returns the single topology. Otherwise, if all local topologies
-are connected on both sides, returns `Periodic`; otherwise returns a topology bounded on both sides.
+are connected on both sides, returns `Periodic`; otherwise each global side is `Open` if the outer side
+of the first or last local topology is `Open`, and `Closed` otherwise.
 
 This is an offline version that works with pre-collected topology information
 (e.g., from JLD2 files), in contrast to the MPI-based version above.
 """
 function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
     R == 1 && return first(local_topologies)
-    return all(==(Sides{Connected, Connected}), local_topologies) ? Periodic : Bounded
+    all(==(Sides{Connected, Connected}), local_topologies) && return Periodic
+    left  = first(local_topologies) <: Sides{Open} ? Open : Closed
+    right = last(local_topologies) <: Sides{<:Any, Open} ? Open : Closed
+    return Sides{left, right}
 end
 
 function with_number_type(FT, local_grid::DistributedRectilinearGrid)

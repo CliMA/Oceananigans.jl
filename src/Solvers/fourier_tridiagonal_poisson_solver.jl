@@ -97,9 +97,9 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
 
     tridiagonal_dim = dimension(tridiagonal_dir)
 
-    if topology(grid, tridiagonal_dim) != Bounded
+    if !(topology(grid, tridiagonal_dim) <: BoundaryTopology)
         msg = "`FourierTridiagonalPoissonSolver` can only be used \
-                when the stretched direction's topology is `Bounded`."
+                when the stretched direction is bounded by `Closed` or `Open` sides."
         throw(ArgumentError(msg))
     end
 
@@ -136,7 +136,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
                                         tridiagonal_direction = tridiagonal_dir)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in (T1, T2)
+    buffer_needed = arch isa GPU && any(T -> T <: BoundaryTopology, (T1, T2))
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation

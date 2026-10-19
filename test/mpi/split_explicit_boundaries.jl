@@ -117,7 +117,7 @@ end
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
-                               halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
+                               halo=(4, 4, 2), topology=(Open, Periodic, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
         mp = build_open(grid; extend_halos)         # partitioned

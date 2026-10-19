@@ -40,7 +40,7 @@ grid = RectilinearGrid(size = (Nx, 1, 1),
                         x = (0, Lx),
                         y = (0, 100.0),
                         z = (-H, 0),
-                        topology = (Bounded, Periodic, Bounded))
+                        topology = (Open, Periodic, Bounded))
 
 ## Boundary conditions
 #
