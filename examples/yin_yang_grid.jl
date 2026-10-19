@@ -390,7 +390,7 @@ v_bcs = FieldBoundaryConditions(top=v_wind, bottom=drag, immersed=ImmersedBounda
 #
 # with ``T_d = 2°``C, ``ΔT = 20°``C, ``h = 1`` km and ``δ = 0.1``. The meanders
 # ``P(λ) = \cos(6λ) + \cos(9λ) / 2 + \sin(13λ) / 4``, with amplitude ``ϵ = 0.035`` and
-# ``m = \sin^2 φ \cos^2 φ / (\sin^2 φ_0 \cos^2 φ_0)``, seed the instability.
+# ``m = \sin^2 φ \, \cos^2 φ / (\sin^2 φ_0 \, \cos^2 φ_0)``, seed the instability.
 #
 # The surface layer is restored to the unperturbed fronts, with ``ϵ = 0``, on a time scale
 # of 30 days.
@@ -458,7 +458,7 @@ drake_model = HydrostaticFreeSurfaceModel(drake_grid; buoyancy,
 
 A = g * α * front.ΔT / 2
 
-zᶜ = (z_faces[1:end-1] .+ z_faces[2:end]) ./ 2
+zᶜ = on_architecture(CPU(), znodes(drake_grid, Center()))
 eᶜ = exp.(zᶜ ./ front.h)
 I(z) = sum((eᶜ[k] + eᶜ[k+1]) / 2 * clamp(z - zᶜ[k], 0, zᶜ[k+1] - zᶜ[k]) for k in 1:Nz-1)
 
