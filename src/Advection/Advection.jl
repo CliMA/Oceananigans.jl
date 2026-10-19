@@ -29,7 +29,7 @@ using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
-                          XFlatGrid, YFlatGrid, ZFlatGrid
+                          XFlatGrid, YFlatGrid, ZFlatGrid, peripheral_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,

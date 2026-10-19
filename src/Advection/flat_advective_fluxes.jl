@@ -28,6 +28,11 @@ end
 
 FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
 
+for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
+    transport_interp = Symbol(:transport_interpolate_, dir)
+    @eval @inline $transport_interp(i, j, k, grid::$GridType, scheme, T, U) = T(i, j, k, grid, U)
+end
+
 # Flat interpolations...
 for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
     alt_symm_interp   = Symbol(:_symmetric_interpolate_, dir)
