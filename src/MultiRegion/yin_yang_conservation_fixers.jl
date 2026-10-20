@@ -133,7 +133,7 @@ end
 
 @inline seam_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
     _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) +
-    diffusive_seam_flux_x(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
+    _diffusive_seam_flux_x(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
 
 @inline seam_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
     _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
