@@ -102,43 +102,13 @@ end
 ##### Exact owned area of a cell
 #####
 
-# Nodes and weights of the n-point Gauss-Legendre rule on [-1, 1] by Newton iteration on Pₙ.
-function gauss_legendre_rule(n)
-    nodes = zeros(n)
-    weights = zeros(n)
-    for i in 1:(n + 1) ÷ 2
-        z = cos(π * (i - 1/4) / (n + 1/2))
-        derivative = zero(z)
-        for _ in 1:100
-            p₁, p₂ = one(z), zero(z)
-            for j in 1:n
-                p₁, p₂ = ((2j - 1) * z * p₁ - (j - 1) * p₂) / j, p₁
-            end
-            derivative = n * (z * p₁ - p₂) / (z^2 - 1)
-            δz = p₁ / derivative
-            z -= δz
-            abs(δz) < 1e-16 && break
-        end
-        nodes[i] = -z
-        nodes[n + 1 - i] = z
-        weights[i] = 2 / ((1 - z^2) * derivative^2)
-        weights[n + 1 - i] = weights[i]
-    end
-    return nodes, weights
-end
-
 # ∫ₐᵇ sin φ★(λ) dλ for [a, b] within a single piece of the dividing curve.
-function integrate_dividing_curve_sine(a, b, rule)
+function integrate_dividing_curve_sine(a, b)
     λ = (a + b) / 2
     if λ ≤ dividing_curve_corner_longitude
-        # P₁: sin φ★ = √(cos λ / (1 + cos λ)) is an elliptic integrand; Gauss-Legendre
-        nodes, weights = rule
-        h = (b - a) / 2
-        integral = zero(λ)
-        for (x, w) in zip(nodes, weights)
-            integral += w * sin(dividing_curve_latitude(λ + h * x))
-        end
-        return h * integral
+        # P₁: sin φ★ = √(cos λ / (1 + cos λ)), and with tan(λ/2) = sin θ, sin φ★ dλ = √2 cos²θ dθ / (1 + sin²θ)
+        F(λ) = (t = tan(λ / 2); 2 * atan(√2 * t / √(1 - t^2)) - √2 * asin(t))
+        return F(b) - F(a)
     elseif λ ≤ π - dividing_curve_corner_longitude
         # P₂: sin φ★ = sin λ / √(1 + sin²λ) = d/dλ [-asin(cos λ / √2)]
         return asin(cos(a) / √2) - asin(cos(b) / √2)
@@ -152,7 +122,7 @@ end
 # Owned area (radius 1) of the rectangle [λ₁, λ₂] × [φ₁, φ₂] in the first quadrant,
 # 0 ≤ λ₁ ≤ λ₂ ≤ 3π/4 and 0 ≤ φ₁ ≤ φ₂ ≤ π/4, as ∫ [sin(clip(φ★(λ), φ₁, φ₂)) - sin φ₁] dλ.
 # The integrand is split at the kinks of the clipped curve, where each piece is analytic.
-function first_quadrant_owned_area(λ₁, λ₂, φ₁, φ₂, rule)
+function first_quadrant_owned_area(λ₁, λ₂, φ₁, φ₂)
     breakpoints = [λ₁, λ₂]
     for λ in dividing_curve_critical_longitudes
         λ₁ < λ < λ₂ && push!(breakpoints, λ)
@@ -170,7 +140,7 @@ function first_quadrant_owned_area(λ₁, λ₂, φ₁, φ₂, rule)
         if φ★ ≥ φ₂
             area += (b - a) * (sin(φ₂) - sin(φ₁))
         elseif φ★ > φ₁
-            area += integrate_dividing_curve_sine(a, b, rule) - (b - a) * sin(φ₁)
+            area += integrate_dividing_curve_sine(a, b) - (b - a) * sin(φ₁)
         end
     end
     return area
@@ -179,7 +149,7 @@ end
 # Fraction of the rectangle [λ₁, λ₂] × [φ₁, φ₂] (radians, any signs) that is owned.
 # Exactly 1 for cells entirely under the dividing curve and exactly 0 for cells entirely
 # above it; cut cells are split at λ = 0 and φ = 0 and reflected into the first quadrant.
-function owned_cell_fraction(λ₁, λ₂, φ₁, φ₂, rule)
+function owned_cell_fraction(λ₁, λ₂, φ₁, φ₂)
     λlow = λ₁ ≤ 0 ≤ λ₂ ? zero(λ₁) : min(abs(λ₁), abs(λ₂))
     λhigh = max(abs(λ₁), abs(λ₂))
     φlow = φ₁ ≤ 0 ≤ φ₂ ? zero(φ₁) : min(abs(φ₁), abs(φ₂))
@@ -196,7 +166,7 @@ function owned_cell_fraction(λ₁, λ₂, φ₁, φ₂, rule)
         for (c, d) in ((max(φ₁, 0), max(φ₂, 0)), (max(-φ₂, 0), max(-φ₁, 0)))
             c, d = min(c, core_half_height), min(d, core_half_height)
             if b > a && d > c
-                area += first_quadrant_owned_area(a, b, c, d, rule)
+                area += first_quadrant_owned_area(a, b, c, d)
             end
         end
     end
@@ -207,10 +177,9 @@ end
 # The owned area fractions of the cells of a panel with cell faces at `(λᶠ, φᶠ)` (degrees), which serve both panels.
 # Their areas sum to 2π on the unit sphere to rounding error.
 function yin_yang_cell_weights(λᶠ, φᶠ)
-    rule = gauss_legendre_rule(32)
     λʳ = deg2rad.(Float64.(λᶠ))
     φʳ = deg2rad.(Float64.(φᶠ))
-    return [owned_cell_fraction(λʳ[i], λʳ[i+1], φʳ[j], φʳ[j+1], rule) for i in 1:length(λᶠ)-1, j in 1:length(φᶠ)-1]
+    return [owned_cell_fraction(λʳ[i], λʳ[i+1], φʳ[j], φʳ[j+1]) for i in 1:length(λᶠ)-1, j in 1:length(φᶠ)-1]
 end
 
 #####

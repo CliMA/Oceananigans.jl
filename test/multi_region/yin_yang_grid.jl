@@ -5,7 +5,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.MultiRegion: YinYangConnectivity, YinYangPartition, YinYangField, default_yin_yang_overlap, yin_yang_panel_extents,
                                 yin_yang_panel_face_coordinates, yin_yang_transform, yin_yang_rotation_angle, yin_yang_masks,
                                 yin_yang_owned, yin_yang_cell_weights, owned_weights,
-                                dividing_curve_latitude, dividing_curve_owned_longitudes, gauss_legendre_rule
+                                dividing_curve_latitude, dividing_curve_owned_longitudes
 using Oceananigans.Operators: rotation_angle
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, rotate_coordinates
 
@@ -383,10 +383,6 @@ end
         disagreements += yin_yang_owned(λ, φ) != (λ < b₁ || a₂ < λ < b₂)
     end
     @test disagreements == 0
-
-    nodes, weights = gauss_legendre_rule(32)
-    @test sum(weights) ≈ 2
-    @test sum(weights .* exp.(nodes)) ≈ exp(1) - exp(-1)
 
     for (Nφ, overlap) in ((90, 0), (45, 2), (9, 0))
         λᶠ, φᶠ = yin_yang_panel_face_coordinates((3Nφ, Nφ), overlap)
