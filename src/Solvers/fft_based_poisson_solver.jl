@@ -10,7 +10,7 @@ end
 
 Architectures.architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
 
-transform_str(transform) = string(typeof(transform).name.wrapper, ", ")
+transform_str(transform) = string(nameof(typeof(transform)), ", ")
 
 function transform_list_str(transform_list)
     transform_strs = (transform_str(t) for t in transform_list)
@@ -65,7 +65,7 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(grid, storage, planner_flag)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in topo
+    buffer_needed = arch isa GPU && any(T -> T <: BoundaryTopology, topo)
     buffer = buffer_needed ? similar(storage) : nothing
 
     return FFTBasedPoissonSolver(grid, eigenvalues, storage, buffer, transforms)

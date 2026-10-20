@@ -150,81 +150,32 @@ julia> inside_immersed_boundary(1:5, 3, :x, :ᶠ; xside = :ᶠ)
     return inactive_cells
 end
 
-for side in (:ᶜ, :ᶠ)
-    near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
-    near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
-    near_z_boundary_symm = Symbol(:near_z_immersed_boundary_symmetric, side)
+# On immersed grids the stencil must also avoid inactive cells. The left-biased span is 1:2buffer-1 and the right-biased one
+# 2:2buffer, so both share 2:2buffer-1 and the bias picks only which end cell joins it. The halos beyond a Closed side are
+# inactive and the halos beyond an Open side are active, so only directions with an Open side also test the bounds of the sides.
+for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
+    index = (:i, :j, :k)[d]
+    location = NamedTuple{(Symbol(ξ, :side),)}((side,))
+    open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
+    open_grid = (:(IBG{<:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:Any, <:$open_topology}))[d]
 
-    near_x_boundary_bias = Symbol(:near_x_immersed_boundary_biased, side)
-    near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
-    near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
+    near_boundary_symmetric = Symbol(:near_, ξ, :_boundary_symmetric, side)
+    near_boundary_biased    = Symbol(:near_, ξ, :_boundary_biased, side)
+    within_bounds_symmetric = Symbol(:within_bounds_symmetric_, ξ, side)
+    within_bounds_biased    = Symbol(:within_bounds_biased_, ξ, side)
 
-    @eval begin
-        @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-
-        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
-        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
-        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, bias) = false
-    end
-
-    # The left-biased span is 1:2buffer-1 and the right-biased one 2:2buffer, so both share 2:2buffer-1 and the
-    # bias picks only which end cell joins it.
     for buffer in advection_buffers
-        full    = 1:2buffer
-        shared  = 2:2buffer-1
-        westmost, eastmost = 1:1, 2buffer:2buffer
+        cells(range) = inside_immersed_boundary(range, buffer, ξ, side; location...)
+        westmost, eastmost = only(cells(1:1)), only(cells(2buffer:2buffer))
+        symmetric_cells = :((|)($(cells(1:2buffer)...)))
+        biased_cells    = :((|)($(cells(2:2buffer-1)...), ifelse(bias == LeftBias, $westmost, $eastmost)))
 
         @eval begin
-            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :x, side; xside = side)...))
-            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :y, side; yside = side)...))
-            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(full, buffer, :z, side; zside = side)...))
+            @inline $near_boundary_symmetric(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}) = $symmetric_cells
+            @inline $near_boundary_biased(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}, bias) = $biased_cells
 
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
-                (|)($(inside_immersed_boundary(shared, buffer, :x, side; xside = side)...),
-                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :x, side; xside = side))),
-                                             $(only(inside_immersed_boundary(eastmost, buffer, :x, side; xside = side)))))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
-                (|)($(inside_immersed_boundary(shared, buffer, :y, side; yside = side)...),
-                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :y, side; yside = side))),
-                                             $(only(inside_immersed_boundary(eastmost, buffer, :y, side; yside = side)))))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias) =
-                (|)($(inside_immersed_boundary(shared, buffer, :z, side; zside = side)...),
-                    ifelse(bias == LeftBias, $(only(inside_immersed_boundary(westmost, buffer, :z, side; zside = side))),
-                                             $(only(inside_immersed_boundary(eastmost, buffer, :z, side; zside = side)))))
-        end
-    end
-end
-
-for bias in (:symmetric, :biased)
-    for (d, ξ) in enumerate((:x, :y, :z))
-        code = [:ᵃ, :ᵃ, :ᵃ]
-
-        for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt1_interp = Symbol(alt1, interp)
-            alt2_interp = Symbol(alt2, interp)
-
-            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
-
-            b = bias == :biased ? (:bias,) : ()
-
-            @eval begin
-                # Fallback for low order interpolation
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
-
-                # Conditional high-order interpolation in Bounded directions
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, $(b...), args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme, $(b...)),
-                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, $(b...), args...),
-                           $interp(i, j, k, ibg, scheme, $(b...), args...))
-            end
-
-            if bias == :biased
-                @eval @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::GhostCellWENO, bias, ψ, args...) = $interp(i, j, k, ibg, scheme.buffer_scheme, bias, ψ, args...)
-            end
+            @inline $near_boundary_symmetric(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) = !$within_bounds_symmetric($index, ibg, scheme) | $symmetric_cells
+            @inline $near_boundary_biased(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}, bias) = !$within_bounds_biased($index, ibg, scheme, bias) | $biased_cells
         end
     end
 end

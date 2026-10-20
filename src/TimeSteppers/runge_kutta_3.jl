@@ -130,6 +130,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
+    cache_boundary_conditions!(model)
     rk3_substep!(model, kernel_Δt, γ¹, nothing, callbacks)
     step_lagrangian_particles!(model, kernel_first_stage_Δt)
     cache_previous_tendencies!(model)
@@ -144,6 +145,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
+    cache_boundary_conditions!(model)
     rk3_substep!(model, kernel_Δt, γ², ζ², callbacks)
     step_lagrangian_particles!(model, kernel_second_stage_Δt)
     cache_previous_tendencies!(model)
@@ -158,6 +160,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Third stage
     #
 
+    cache_boundary_conditions!(model)
     rk3_substep!(model, kernel_Δt, γ³, ζ³, callbacks)
     step_lagrangian_particles!(model, kernel_third_stage_Δt)
     cache_previous_tendencies!(model)
@@ -186,6 +189,7 @@ function maybe_prepare_first_time_step!(model::AbstractModel{<:RungeKutta3TimeSt
         model.clock.last_Δt = Δt
         model.clock.last_stage_Δt = stage_Δt(Δt, γ¹, nothing)
         reconcile_state!(model)
+        initialize_boundary_conditions!(model)
         update_state!(model, callbacks)
     end
     return nothing

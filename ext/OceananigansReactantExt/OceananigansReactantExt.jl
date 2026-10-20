@@ -7,7 +7,7 @@ using OffsetArrays
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic, RightConnected
+using Oceananigans.Grids: Bounded, Periodic
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
@@ -49,7 +49,7 @@ using .Solvers
 import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}}) where {N, FT, TD, Z, ZS, V, K, D, U, M} = VectorInvariant{N, FT, TD, M}
+constructorof(::Type{<:VectorInvariant{N, FT, TD}}) where {N, FT, TD} = VectorInvariant{N, FT, TD}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(

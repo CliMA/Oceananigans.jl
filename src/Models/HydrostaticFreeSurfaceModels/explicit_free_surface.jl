@@ -1,7 +1,7 @@
 using Adapt: Adapt
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -54,10 +54,10 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 #####
 ##### Time stepping
@@ -174,13 +174,6 @@ function compute_explicit_free_surface_tendency!(grid, model)
     launch!(arch, grid, :xy,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
             grid, model.vertical_coordinate, args)
-
-    args = (model.clock,
-            fields(model),
-            model.closure,
-            model.buoyancy)
-
-    compute_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
 
     return nothing
 end

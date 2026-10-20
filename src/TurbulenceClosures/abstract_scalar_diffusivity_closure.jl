@@ -261,6 +261,27 @@ const AIDorAVD = Union{AID, AVD}
 @inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
+# A vertical formulation has no horizontal fluxes, so its divergences are vertical only
+@inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure::AVD, K, clock, fields, buoyancy)
+    disc = TimeSteppers.time_discretization(closure)
+    return δzᵃᵃᶜ(i, j, k, grid, Az_qᶠᶜᶠ, _viscous_flux_uz, disc, closure, K, clock, fields, buoyancy) * V⁻¹ᶠᶜᶜ(i, j, k, grid)
+end
+
+@inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure::AVD, K, clock, fields, buoyancy)
+    disc = TimeSteppers.time_discretization(closure)
+    return δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶠᶠ, _viscous_flux_vz, disc, closure, K, clock, fields, buoyancy) * V⁻¹ᶜᶠᶜ(i, j, k, grid)
+end
+
+@inline function ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure::AVD, K, clock, fields, buoyancy)
+    disc = TimeSteppers.time_discretization(closure)
+    return δzᵃᵃᶠ(i, j, k, grid, Az_qᶜᶜᶜ, _viscous_flux_wz, disc, closure, K, clock, fields, buoyancy) * V⁻¹ᶜᶜᶠ(i, j, k, grid)
+end
+
+@inline function ∇_dot_qᶜ(i, j, k, grid, closure::AVD, K, id, c, clock, fields, buoyancy)
+    disc = TimeSteppers.time_discretization(closure)
+    return δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, K, id, c, clock, fields, buoyancy) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
 #####
 ##### Support for VerticallyImplicit
 #####
@@ -373,8 +394,8 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 @inline νᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, ν)
 @inline νᶠᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, ν::AbstractArray, clk, fields) = ℑxyzᶠᶠᶜ(i, j, k, grid, ν)
 
-@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxzᶠᵃᶜ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyzᵃᶠᶜ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = @inbounds κ[i, j, k]
 @inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, clk, fields) = ℑyᵃᶠᵃ(i, j, k, grid, κ)

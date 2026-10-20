@@ -100,8 +100,8 @@ Base.eltype(::Type{<:AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
+    # Check that the grids are of the same type, ignoring type parameters
+    grid2 isa unparameterized_type(typeof(grid1)) || return false
 
     topology(grid1) !== topology(grid2) && return false
 

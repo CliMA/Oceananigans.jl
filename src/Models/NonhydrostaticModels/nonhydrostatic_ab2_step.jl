@@ -1,4 +1,5 @@
 using Oceananigans.Advection: ab2_step_wall_values!
+using Oceananigans.BoundaryConditions: step_boundary_conditions!
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -27,9 +28,6 @@ This predictor-corrector scheme:
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 
-    # Compute flux bc tendencies
-    compute_flux_bc_tendencies!(model)
-
     # Prognostic variables stepping
     χ = model.timestepper.χ
     @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
@@ -57,6 +55,7 @@ function step_prognostic_fields!(model, substep_velocity!::SV, substep_tracer!::
     implicit_advecting_velocities(model)
     step_velocities!(model, substep_velocity!, implicit_Δt)
     step_tracers!(model, substep_tracer!, implicit_Δt)
+    step_boundary_conditions!(prognostic_fields(model), model.clock, fields(model), implicit_Δt)
     return nothing
 end
 

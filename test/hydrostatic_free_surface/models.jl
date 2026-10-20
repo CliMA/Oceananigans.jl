@@ -149,6 +149,13 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
         end
     end
 
+    @testset "Flux conditions on the sides of η are rejected" begin
+        grid = RectilinearGrid(size = (4, 4, 2), extent = (1, 1, 1), topology = (Bounded, Periodic, Bounded))
+        η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face()); west = FluxBoundaryCondition(1))
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; free_surface, boundary_conditions = (; η = η_bcs))
+    end
+
     @testset "Halo size check in model constructor" begin
         for topo in topos_3d
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
@@ -237,8 +244,8 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
         for grid in grids
             for free_surface in free_surfaces
                 topo = topology(grid)
-                grid_type = typeof(grid).name.wrapper
-                free_surface_type = typeof(free_surface).name.wrapper
+                grid_type = nameof(typeof(grid))
+                free_surface_type = nameof(typeof(free_surface))
                 test_label = "[$arch, $grid_type, $topo, $free_surface_type]"
                 @testset "Time-stepping HydrostaticFreeSurfaceModels with various grids $test_label" begin
                     @test time_step_hydrostatic_model_works(grid; free_surface)
@@ -293,7 +300,6 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
             VectorInvariant(vorticity_scheme = EnergyConservingUpwinding(WENO())),
             WENOVectorInvariant(),
             WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
-            WENOVectorInvariant(; multi_dimensional_stencil = true),
         )
 
         for momentum_advection in momentum_advections
@@ -321,7 +327,7 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
                         CATKEVerticalDiffusivity(),
                         CATKEVerticalDiffusivity(ExplicitTimeDiscretization()))
 
-            @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
+            @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(nameof(typeof(closure)))]" begin
                 @test_skip time_step_hydrostatic_model_works(arch, vertically_stretched_grid, closure=closure)
                 @test time_step_hydrostatic_model_works(lat_lon_sector_grid; closure)
                 @test time_step_hydrostatic_model_works(lat_lon_strip_grid; closure)
@@ -329,7 +335,7 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
         end
 
         closure = ScalarDiffusivity()
-        @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
+        @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(nameof(typeof(closure)))]" begin
             @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
         end
 

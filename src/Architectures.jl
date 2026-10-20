@@ -72,7 +72,9 @@ architecture(::Array) = CPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
-architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
+# Strip the type parameters, e.g. `Array{Float64, 3}` -> `Array`, so that the methods on
+# `Type{Array}`, `Type{CuArray}`, etc., defined here and in the extensions, can match
+architecture(::Type{T}) where {T<:AbstractArray} = architecture(getglobal(parentmodule(T), nameof(T)))
 architecture(::Type{Array}) = CPU()
 
 # Utils for sparse matrix manipulation

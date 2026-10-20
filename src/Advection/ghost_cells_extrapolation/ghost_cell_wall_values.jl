@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: synchronize_field_tags!
 using Oceananigans.BoundaryConditions: BoundaryCondition, Gradient, Mixed, Value, fill_halo_regions!
 using Oceananigans.Fields: Field, CenterField
-using Oceananigans.Grids: Bounded, LeftConnected, RightConnected, inactive_node, topology
+using Oceananigans.Grids: Closed, Sides, inactive_node, topology
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind, labeled_indices
 using Oceananigans.Operators: Vᶜᶜᶜ, σⁿ, ∂t_σ
 using Oceananigans.Utils: launch!
@@ -72,13 +72,12 @@ function DomainWallValues(grid, ::Val{d}, s) where d
     return DomainWallValues{d, s}(values, wall_array(), wall_array())
 end
 
-domain_wall(grid, d, s, bc) = DomainWallValues(grid, d, s)
-domain_wall(grid, d, s, bc::BoundaryCondition{<:Union{Value, Gradient, Mixed}}) = bc
+domain_wall(grid, d, s, side, bc) = nothing
+domain_wall(grid, d, s, ::Type{Closed}, bc) = DomainWallValues(grid, d, s)
+domain_wall(grid, d, s, ::Type{Closed}, bc::BoundaryCondition{<:Union{Value, Gradient, Mixed}}) = bc
 
-domain_walls(grid, d, topology,               bcᴸ, bcᴿ) = (left = nothing,                       right = nothing)
-domain_walls(grid, d, ::Type{Bounded},        bcᴸ, bcᴿ) = (left = domain_wall(grid, d, -1, bcᴸ), right = domain_wall(grid, d, +1, bcᴿ))
-domain_walls(grid, d, ::Type{RightConnected}, bcᴸ, bcᴿ) = (left = domain_wall(grid, d, -1, bcᴸ), right = nothing)
-domain_walls(grid, d, ::Type{LeftConnected},  bcᴸ, bcᴿ) = (left = nothing,                       right = domain_wall(grid, d, +1, bcᴿ))
+domain_walls(grid, d, topology, bcᴸ, bcᴿ) = (left = nothing, right = nothing)
+domain_walls(grid, d, ::Type{Sides{L, R}}, bcᴸ, bcᴿ) where {L, R} = (left = domain_wall(grid, d, -1, L, bcᴸ), right = domain_wall(grid, d, +1, R, bcᴿ))
 
 """
     materialize_wall_values(advection, grid, boundary_conditions)

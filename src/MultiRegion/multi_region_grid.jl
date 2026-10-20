@@ -246,10 +246,10 @@ function Grids.on_architecture(arch, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) w
 end
 
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "MultiRegionGrid{$FT, $(nameof(TX)), $(nameof(TY)), $(nameof(TZ))} with $(summary(mrg.partition)) on $(nameof(typeof(mrg.region_grids[1])))"
+    "MultiRegionGrid{$FT, $(prettysummary(TX)), $(prettysummary(TY)), $(prettysummary(TZ))} with $(summary(mrg.partition)) on $(nameof(typeof(mrg.region_grids[1])))"
 
 function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
-    nTX, nTY, nTZ = map(nameof, topology(mrg))
+    nTX, nTY, nTZ = map(prettysummary, topology(mrg))
     return print(io, "$(grid_name(mrg)){$FT, $nTX, $nTY, $nTZ} partitioned on $(summary(architecture(mrg))): \n",
                      "├── region_grids: $(summary(mrg.region_grids[1])) \n",
                      "├── partition: $(summary(mrg.partition)) \n",

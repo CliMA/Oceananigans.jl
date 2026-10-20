@@ -12,42 +12,23 @@ end
 
 DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 
-default_prognostic_bc(::Grids.Periodic,         loc, default) = PeriodicBoundaryCondition()
-default_prognostic_bc(::FullyConnected,         loc, default) = MultiRegionCommunicationBoundaryCondition()
-default_prognostic_bc(::Flat,                   loc, default) = nothing
-default_prognostic_bc(::Bounded,           ::Center, default) = default.boundary_condition
-default_prognostic_bc(::LeftConnected,     ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightConnected,    ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightFaceFolded,   ::Center, default) = default.boundary_condition
-default_prognostic_bc(::RightCenterFolded, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::Grids.Periodic, loc, default) = PeriodicBoundaryCondition()
+default_prognostic_bc(::Flat,           loc, default) = nothing
 
-default_prognostic_bc(::DistributedFoldedTopology, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::Sides,                       ::Center, default) = default.boundary_condition
+default_prognostic_bc(::Sides{Connected, Connected}, ::Center, default) = MultiRegionCommunicationBoundaryCondition()
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Bounded,                   ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,             ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected,            ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightFaceFolded,           ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightCenterFolded,         ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::DistributedFoldedTopology, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Sides,                       ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Sides{Connected, Connected}, ::Face, default) = MultiRegionCommunicationBoundaryCondition()
 
-default_prognostic_bc(::Bounded,                   ::Nothing, default) = nothing
-default_prognostic_bc(::Flat,                      ::Nothing, default) = nothing
-default_prognostic_bc(::Grids.Periodic,            ::Nothing, default) = nothing
-default_prognostic_bc(::FullyConnected,            ::Nothing, default) = nothing
-default_prognostic_bc(::LeftConnected,             ::Nothing, default) = nothing
-default_prognostic_bc(::RightConnected,            ::Nothing, default) = nothing
-default_prognostic_bc(::RightFaceFolded,           ::Nothing, default) = nothing
-default_prognostic_bc(::RightCenterFolded,         ::Nothing, default) = nothing
-default_prognostic_bc(::DistributedFoldedTopology, ::Nothing, default) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
+default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
+default_prognostic_bc(::Sides,          ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
-_default_auxiliary_bc(::Bounded,                   ::Face) = nothing
-_default_auxiliary_bc(::RightConnected,            ::Face) = nothing
-_default_auxiliary_bc(::LeftConnected,             ::Face) = nothing
-_default_auxiliary_bc(::RightFaceFolded,           ::Face) = nothing
-_default_auxiliary_bc(::RightCenterFolded,         ::Face) = nothing
-_default_auxiliary_bc(::DistributedFoldedTopology, ::Face) = nothing
+_default_auxiliary_bc(::Sides,                       ::Face) = nothing
+_default_auxiliary_bc(::Sides{Connected, Connected}, ::Face) = MultiRegionCommunicationBoundaryCondition()
 
 default_auxiliary_bc(grid, ::Val{:east},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west},   loc) = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -102,6 +83,10 @@ window_boundary_conditions(::Colon,      left, right) = left, right
 
 # The only thing we need
 Adapt.adapt_structure(to, fbcs::FieldBoundaryConditions) = (kernels = fbcs.kernels, ordered_bcs = Adapt.adapt(to, fbcs.ordered_bcs))
+
+# The conditions of every side, to pass into kernels
+Base.NamedTuple(bcs::FieldBoundaryConditions) = (west = bcs.west, east = bcs.east, south = bcs.south, north = bcs.north,
+                                                 bottom = bcs.bottom, top = bcs.top, immersed = bcs.immersed)
 
 Architectures.on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),

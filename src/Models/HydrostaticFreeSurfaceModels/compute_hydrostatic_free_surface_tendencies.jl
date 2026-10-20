@@ -4,7 +4,6 @@ import Oceananigans.Models: interior_tendency_kernel_parameters
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Advection: compute_wall_value_tendencies!
 using Oceananigans.Grids: halo_size
-using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
@@ -68,7 +67,6 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     compute_biogeochemical_transitions!(model, :xyz)
 
-    compute_tracer_flux_bcs!(model)
     compute_wall_value_tendencies!(model.advection, model.transport_velocities, model.tracers)
 
     scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
@@ -114,7 +112,7 @@ end
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
     @inbounds c_advection   = model.advection[tracer_name]
     @inbounds c_forcing     = model.forcing[tracer_name]
-    @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+    @inbounds c_bcs         = NamedTuple(model.tracers[tracer_name].boundary_conditions)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gc!,
@@ -124,7 +122,7 @@ end
             Val(tracer_name),
             c_advection,
             model.closure,
-            c_immersed_bc,
+            c_bcs,
             model.buoyancy,
             model.biogeochemistry,
             model.transport_velocities,
@@ -148,8 +146,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-    u_immersed_bc = immersed_boundary_condition(velocities.u)
-    v_immersed_bc = immersed_boundary_condition(velocities.v)
+    u_bcs = NamedTuple(velocities.u.boundary_conditions)
+    v_bcs = NamedTuple(velocities.v.boundary_conditions)
 
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
@@ -159,7 +157,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.advection.momentum,
             model.coriolis,
             model.closure,
-            u_immersed_bc,
+            u_bcs,
             velocities,
             model.free_surface,
             model.tracers,
@@ -176,7 +174,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.advection.momentum,
             model.coriolis,
             model.closure,
-            v_immersed_bc,
+            v_bcs,
             velocities,
             model.free_surface,
             model.tracers,
@@ -206,13 +204,13 @@ end
 
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid,
-                                                      advection, coriolis, closure, u_immersed_bc,
+                                                      advection, coriolis, closure, u_bcs,
                                                       velocities, free_surface, tracers, buoyancy,
                                                       closure_fields, hydrostatic_pressure, auxiliary_fields,
                                                       vertical_coordinate, clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
-                                                                         advection, coriolis, closure, u_immersed_bc,
+                                                                         advection, coriolis, closure, u_bcs,
                                                                          velocities, free_surface, tracers, buoyancy,
                                                                          closure_fields, hydrostatic_pressure, auxiliary_fields,
                                                                          vertical_coordinate, clock, forcing)
@@ -220,13 +218,13 @@ end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid,
-                                                      advection, coriolis, closure, v_immersed_bc,
+                                                      advection, coriolis, closure, v_bcs,
                                                       velocities, free_surface, tracers, buoyancy,
                                                       closure_fields, hydrostatic_pressure, auxiliary_fields,
                                                       vertical_coordinate, clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
-                                                                         advection, coriolis, closure, v_immersed_bc,
+                                                                         advection, coriolis, closure, v_bcs,
                                                                          velocities, free_surface, tracers, buoyancy,
                                                                          closure_fields, hydrostatic_pressure, auxiliary_fields,
                                                                          vertical_coordinate, clock, forcing)
@@ -239,13 +237,13 @@ end
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid,
                                                       val_tracer_index, val_tracer_name, advection, closure,
-                                                      c_immersed_bc, buoyancy, biogeochemistry,
+                                                      c_bcs, buoyancy, biogeochemistry,
                                                       velocities, free_surface, tracers, closure_fields, auxiliary_fields,
                                                       clock, forcing)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
                                                                      val_tracer_index, val_tracer_name, advection, closure,
-                                                                     c_immersed_bc, buoyancy, biogeochemistry, velocities,
+                                                                     c_bcs, buoyancy, biogeochemistry, velocities,
                                                                      free_surface, tracers, closure_fields, auxiliary_fields,
                                                                      clock, forcing)
 end

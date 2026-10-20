@@ -76,7 +76,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)
@@ -368,7 +368,6 @@ Oceananigans.boundary_conditions(not_field) = nothing
 @inline Oceananigans.boundary_conditions(f::Field) = f.boundary_conditions
 @inline Oceananigans.boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
-immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
 
 instantiate(T::Type) = T()

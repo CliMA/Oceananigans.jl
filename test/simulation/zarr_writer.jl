@@ -3,6 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Zarr
 using Dates: value
 using Oceananigans.Grids: MutableVerticalDiscretization, rnodes
+using Oceananigans.Utils: unparameterized_type
 
 struct ExtraPayloadTestVerticalCoordinate{C, P} <: Oceananigans.Grids.AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
@@ -88,6 +89,7 @@ end
 
     materialize = Oceananigans.OutputWriters.materialize_serialized_output
     @test materialize("Oceananigans.Grids.Periodic") === Periodic
+    @test materialize("Oceananigans.Grids.Sides{Oceananigans.Grids.Closed, Oceananigans.Grids.Open}") === Oceananigans.Grids.Sides{Closed, Open}
     @test materialize("(Colon(), 1:4, 3)") == (:, 1:4, 3)
     @test materialize("-Inf") === -Inf
     @test materialize("+Inf") === Inf
@@ -670,12 +672,12 @@ matching_grid_structure(original, reconstructed) =
 function matching_grid_structure(original::OrthogonalSphericalShellGrid,
                                  reconstructed::OrthogonalSphericalShellGrid)
     return matching_grid_structure_base(original, reconstructed) &&
-           typeof(original.conformal_mapping).name.wrapper ===
-           typeof(reconstructed.conformal_mapping).name.wrapper
+           unparameterized_type(typeof(original.conformal_mapping)) ===
+           unparameterized_type(typeof(reconstructed.conformal_mapping))
 end
 
 matching_grid_structure_base(original, reconstructed) =
-    typeof(original).name.wrapper === typeof(reconstructed).name.wrapper &&
+    unparameterized_type(typeof(original)) === unparameterized_type(typeof(reconstructed)) &&
     typeof(architecture(original)) === typeof(architecture(reconstructed)) &&
     size(original) == size(reconstructed) &&
     halo_size(original) == halo_size(reconstructed) &&
@@ -685,8 +687,8 @@ matching_grid_structure_base(original, reconstructed) =
 function matching_grid_structure(original::ImmersedBoundaryGrid,
                                  reconstructed::ImmersedBoundaryGrid)
     return matching_grid_structure(original.underlying_grid, reconstructed.underlying_grid) &&
-           typeof(original.immersed_boundary).name.wrapper ===
-           typeof(reconstructed.immersed_boundary).name.wrapper
+           unparameterized_type(typeof(original.immersed_boundary)) ===
+           unparameterized_type(typeof(reconstructed.immersed_boundary))
 end
 
 function zarr_round_trip(grid; tag::String, with_halos = false)

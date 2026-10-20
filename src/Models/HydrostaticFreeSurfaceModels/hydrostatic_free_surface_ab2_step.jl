@@ -42,7 +42,6 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
 
-        compute_momentum_flux_bcs!(model)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
@@ -91,9 +90,6 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
-
-        # Computing tendencies...
-        compute_momentum_flux_bcs!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
@@ -165,6 +161,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
     add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
+    step_boundary_conditions!(velocities, model.clock, fields(model), Δt)
 
     return nothing
 end
@@ -223,6 +220,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
     ab2_step_wall_values!(model.advection, Δt, χ)
+    step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
 

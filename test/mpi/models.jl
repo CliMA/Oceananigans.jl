@@ -27,12 +27,7 @@ using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_archite
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Solvers: ZeroMeanGaugeCondition
-using Oceananigans.Grids:
-    architecture,
-    halo_size,
-    interior_indices,
-    left_halo_indices, right_halo_indices,
-    underlying_left_halo_indices, underlying_right_halo_indices
+using Oceananigans.Grids: architecture, halo_size, interior_indices, FaceExtendedTopology
 
 #####
 ##### Viewing halos
@@ -40,6 +35,13 @@ using Oceananigans.Grids:
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+left_halo_indices(loc, topo, N, H) = 1-H:0
+left_halo_indices(::Nothing, topo, N, H) = 1:0
+
+right_halo_indices(loc, topo, N, H) = N+1:N+H
+right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
+right_halo_indices(::Nothing, topo, N, H) = 1:0
 
 west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
     include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
