@@ -544,7 +544,7 @@ end
 function test_oblique_tangential_uses_normal_phase_speed()
     clock = (; stage = 1, last_stage_Δt = 10.0, iteration = 1)
     materialize(weight) = radiation_storage(ObliqueRadiation(inflow_timescale = Inf, phase_speed_weight = weight),
-                                            radiation_buffers(ObliqueRadiation(), CPU(), Float64, (3, 1)))
+                                            radiation_buffers(ObliqueRadiation(), CPU(), Float64, (1:3, 1:1)))
     φᵇ, φ₁, φ₂, φᵉˣᵗ = 0.2, 0.9, 0.5, -0.3
     # normal velocity next to the boundary: previous interior value 0 (fresh buffers), now -1, second interior -2,
     # so its phase speed points out of the domain
