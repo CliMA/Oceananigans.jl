@@ -43,7 +43,8 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location
+    diffusivity_location,
+    with_penetrative_radiation
 
 const c = Center()
 const f = Face()

@@ -219,6 +219,7 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── negative_tke_time_scale: 60.0
 ├── minimum_convective_buoyancy_flux: 1.0e-11
 ├── tke_time_step: nothing
+├── radiation_adjustment: false
 ├── mixing_length: TKEBasedVerticalDiffusivities.CATKEMixingLength
 │   ├── Cˢ:   1.131
 │   ├── Cᵇ:   0.967

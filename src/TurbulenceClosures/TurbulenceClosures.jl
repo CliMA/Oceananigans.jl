@@ -174,6 +174,29 @@ Return the integral of `transmitted_fraction` from the surface to the depth `h` 
 """
 function transmitted_thickness end
 
+"""
+    penetrative_radiation(forcing)
+
+Return the radiation absorbed below the surface that `forcing` applies, or `nothing`.
+"""
+penetrative_radiation(forcing) = nothing
+
+function penetrative_radiation(forcings::Union{Tuple, NamedTuple})
+    for forcing in forcings
+        radiation = penetrative_radiation(forcing)
+        isnothing(radiation) || return radiation
+    end
+    return nothing
+end
+
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with `radiation` handed to every closure in it that adjusts for radiation absorbed below the surface.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
+
 #####
 ##### Fallback: flux = 0
 #####
