@@ -213,9 +213,9 @@ end
     end
 end
 
-Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
+Δξ⁻¹ᶠ(i, grid, ::XDirection) = Δx⁻¹ᶠᵃᵃ(i, 1, 1, grid)
+Δξ⁻¹ᶠ(j, grid, ::YDirection) = Δy⁻¹ᵃᶠᵃ(1, j, 1, grid)
+Δξ⁻¹ᶠ(k, grid, ::ZDirection) = Δz⁻¹ᵃᵃᶠ(1, 1, k, grid)
 
 function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
     N = length(lower_diagonal)
@@ -227,7 +227,7 @@ end
 @kernel function _compute_lower_diagonal!(lower_diagonal, formulation, grid)
     q = @index(Global)
     dir = tridiagonal_direction(formulation)
-    @inbounds lower_diagonal[q] = 1 / Δξᶠ(q+1, grid, dir)
+    @inbounds lower_diagonal[q] = Δξ⁻¹ᶠ(q+1, grid, dir)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
