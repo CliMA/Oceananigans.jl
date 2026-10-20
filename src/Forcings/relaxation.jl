@@ -202,7 +202,8 @@ materialize_mask(mask::FunctionField, field) = mask
 # avoid per-cell work — so a mismatch is an error rather than a wrapped target.
 function materialize_mask(mask::AbstractField, field)
     mask_loc = instantiated_location(mask)
-    mask.grid === field.grid ||
+    # `===` first: `==` compares the bottom heights of immersed grids, which on a GPU makes the host wait
+    mask.grid === field.grid || mask.grid == field.grid ||
         throw(ArgumentError("a `Field` mask must share the forced field's grid"))
     (mask_loc == instantiated_location(field) || any(isnothing, mask_loc)) ||
         throw(ArgumentError("a `Field` mask must share the forced field's location, or be reduced; " *
