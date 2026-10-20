@@ -139,9 +139,12 @@ end
         Δrᶠ = ifelse(immersed_cell, Δrᶠ, rᶜ - r⁺ + partial_Δr / 2)
     end
 
+    # Columns in the halos of `Bounded` directions keep full spacings
+    inactive_column = inactive_cell(i, j, 1, grid)
+
     @inbounds ib.bottom_cell_index[i, j, 1] = kᵇ
-    @inbounds ib.Δrᶜᶜᶜ[i, j, 1] = Δrᶜ
-    @inbounds ib.Δrᶜᶜᶠ[i, j, 1] = Δrᶠ
+    @inbounds ib.Δrᶜᶜᶜ[i, j, 1] = ifelse(inactive_column, Δrᶜᶜᶜ(i, j, kᵇ, grid),   Δrᶜ)
+    @inbounds ib.Δrᶜᶜᶠ[i, j, 1] = ifelse(inactive_column, Δrᶜᶜᶠ(i, j, kᵇ+1, grid), Δrᶠ)
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
