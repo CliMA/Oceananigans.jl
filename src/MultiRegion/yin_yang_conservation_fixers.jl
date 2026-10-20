@@ -139,8 +139,8 @@ end
     _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
     diffusive_seam_flux_y(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
 
-@inline diffusive_seam_flux_x(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
-@inline diffusive_seam_flux_y(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
+@inline _diffusive_seam_flux_x(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
+@inline _diffusive_seam_flux_y(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
 
 @inline diffusive_seam_flux_x(i, j, k, grid, closure, K, args...) =
     Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, time_discretization(closure), closure, K, args...)
