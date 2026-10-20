@@ -177,8 +177,8 @@ end
 end
 
 @inline function wet_reference_volume(i, j, k, grid)
-    wet = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
-    return ifelse(wet, Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
+    active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+    return ifelse(active, Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
 end
 
 @inline store_column_contents!(budget, row, d, i, j, grid, w, ::Tuple{}) = nothing
