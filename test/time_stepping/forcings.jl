@@ -763,6 +763,16 @@ end
                     @test isapprox(c_f[i, 1, 1], c_ref * (1 - exp(-Δt * (x_c[i]/100) / τ)), atol=1e-6 * c_ref)
                 end
 
+                # A separately constructed but equal grid is accepted: a grid that holds arrays is
+                # not egal to its own twin, so a mask field's grid need not be the model's object.
+                z_faces = [0, 250, 500, 750, 1000]
+                stretched = RectilinearGrid(arch, size=(2, 2, 4), x=(0, 100), y=(0, 100), z=z_faces)
+                twin = RectilinearGrid(arch, size=(2, 2, 4), x=(0, 100), y=(0, 100), z=z_faces)
+                @test twin !== stretched && twin == stretched
+                model_t = NonhydrostaticModel(stretched; tracers=:c,
+                    forcing=(; c=Relaxation(rate=1/τ, mask=CenterField(twin), target=c_ref)))
+                @test model_t.forcing.c.mask isa Field
+
                 # A mask on the wrong grid or at the wrong location is rejected rather than read
                 # at the wrong index.
                 other = RectilinearGrid(arch, size=(4, 4, 8), extent=(100, 100, 1000))
