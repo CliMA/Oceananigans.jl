@@ -272,9 +272,8 @@ end
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.
 
-!!! warn "Immersed `ContinuousBoundaryFunction` is unsupported"
-    `ContinuousBoundaryFunction` is not supported on immersed boundaries.
-    We therefore do not regularize the immersed boundary condition.
+Immersed normal-flow functions on auxiliary face fields are regularized when
+the model supplies its field names.
 """
 @inline function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                       grid::AbstractGrid,

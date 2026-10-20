@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux,
+                                       VBC, GBC, FBC, NFBC, Flux, ContinuousBoundaryFunction,
                                        needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
@@ -87,14 +87,58 @@ $(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    west   = isa(loc[1], Center) ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
-    east   = isa(loc[1], Center) ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
-    south  = isa(loc[2], Center) ? regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names) : nothing
-    north  = isa(loc[2], Center) ? regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names) : nothing
-    bottom = isa(loc[3], Center) ? regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names) : nothing
-    top    = isa(loc[3], Center) ? regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names) : nothing
+    west   = regularize_immersed_side(closed_velocity_normal_flow(bc.west, loc[1], field_name), grid, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = regularize_immersed_side(closed_velocity_normal_flow(bc.east, loc[1], field_name), grid, loc, 1, RightBoundary, prognostic_field_names)
+    south  = regularize_immersed_side(closed_velocity_normal_flow(bc.south, loc[2], field_name), grid, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = regularize_immersed_side(closed_velocity_normal_flow(bc.north, loc[2], field_name), grid, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = regularize_immersed_side(closed_velocity_normal_flow(bc.bottom, loc[3], field_name), grid, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = regularize_immersed_side(closed_velocity_normal_flow(bc.top, loc[3], field_name), grid, loc, 3, RightBoundary, prognostic_field_names)
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
+end
+
+closed_velocity_normal_flow(bc, loc, field_name) = bc
+
+function closed_velocity_normal_flow(bc::NFBC, loc::Face, field_name)
+    if field_name in (:u, :v, :w, :uh, :vh) && !nontrivial_normal_flow(bc)
+        return nothing
+    end
+    return bc
+end
+
+regularize_immersed_side(::Nothing, grid, loc, dim, Side, names) = nothing
+
+function regularize_immersed_side(bc, grid, loc, dim, Side, names)
+    if loc[dim] isa Center
+        return regularize_boundary_condition(bc, grid, loc, dim, Side, names)
+    end
+
+    bc isa NFBC || return nothing
+
+    if !isnothing(bc.classification.scheme)
+        throw(ArgumentError("Face-located immersed conditions must prescribe NormalFlow without a matching scheme."))
+    end
+
+    if isnothing(names) && bc.condition isa ContinuousBoundaryFunction && !isempty(bc.condition.field_dependencies)
+        return bc
+    end
+
+    return regularize_boundary_condition(bc, grid, loc, dim, Side, names)
+end
+
+nontrivial_normal_flow(::Nothing) = false
+nontrivial_normal_flow(bc) = false
+nontrivial_normal_flow(bc::NFBC) = !isnothing(bc.classification.scheme) || !(isnothing(bc.condition) || (bc.condition isa Number && iszero(bc.condition)))
+nontrivial_normal_flow(bc::DefaultBoundaryCondition) = nontrivial_normal_flow(bc.boundary_condition)
+nontrivial_normal_flow(bc::IBC) = any(nontrivial_normal_flow, (bc.west, bc.east, bc.south, bc.north, bc.bottom, bc.top))
+
+function reject_immersed_normal_flow_velocity_boundary_conditions(boundary_conditions, velocity_names=(:u, :v, :w))
+    for name in velocity_names
+        if haskey(boundary_conditions, name) && nontrivial_normal_flow(boundary_conditions[name].immersed)
+            throw(ArgumentError("Prescribed immersed NormalFlow on prognostic velocity $name is not supported."))
+        end
+    end
+    return nothing
 end
 
 Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),

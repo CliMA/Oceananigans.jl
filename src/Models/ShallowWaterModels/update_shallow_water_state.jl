@@ -32,6 +32,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
     fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model))
 
     compute_velocities!(model.velocities, formulation(model))
+    compute_forcing!(model.forcing, model.clock, fields(model))
 
     foreach(callbacks) do callback
         if isa(callback.callsite, UpdateStateCallsite)

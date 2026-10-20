@@ -13,3 +13,18 @@ compute_forcing!(mf::MultipleForcings) = compute_forcing!(mf.forcings)
 
 compute_forcing!(r::Relaxation) =
     isnothing(r.transform) ? nothing : compute!(r.relaxed)
+
+compute_forcing!(forcing, clock, model_fields) = nothing
+compute_forcing!(t::Tuple, clock, model_fields) = foreach(f -> compute_forcing!(f, clock, model_fields), t)
+compute_forcing!(nt::NamedTuple, clock, model_fields) = compute_forcing!(values(nt), clock, model_fields)
+compute_forcing!(mf::MultipleForcings, clock, model_fields) = compute_forcing!(mf.forcings, clock, model_fields)
+
+has_field_advective_forcing(forcing) = false
+has_field_advective_forcing(t::Tuple) = any(has_field_advective_forcing, t)
+has_field_advective_forcing(nt::NamedTuple) = has_field_advective_forcing(values(nt))
+has_field_advective_forcing(mf::MultipleForcings) = has_field_advective_forcing(mf.forcings)
+
+function synchronize_advective_forcing_dependencies!(forcing, halo_fields)
+    has_field_advective_forcing(forcing) && synchronize_communication!(halo_fields)
+    return nothing
+end

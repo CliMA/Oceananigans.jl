@@ -1,4 +1,7 @@
 using Oceananigans.Fields: ZeroField, ConstantField
+using Oceananigans.Fields: Field, compute!, fill_halo_regions!, instantiated_location
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, mask_immersed_normal_flow!
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Utils: sum_of_velocities
 
 maybe_constant_field(u) = u
@@ -71,6 +74,37 @@ Architectures.on_architecture(to, af::AdvectiveForcing) =
     AdvectiveForcing(on_architecture(to, af.u), on_architecture(to, af.v), on_architecture(to, af.w))
 
 @inline velocities(forcing::AdvectiveForcing) = (u=forcing.u, v=forcing.v, w=forcing.w)
+
+has_field_advective_forcing(forcing::AdvectiveForcing) = any(velocity -> velocity isa Field, velocities(forcing))
+
+function materialize_forcing(forcing::AdvectiveForcing, field, field_name, model_field_names)
+    components = map(velocity -> materialize_advective_velocity(velocity, model_field_names), velocities(forcing))
+    return AdvectiveForcing(components.u, components.v, components.w)
+end
+
+materialize_advective_velocity(velocity, model_field_names) = velocity
+
+function materialize_advective_velocity(velocity::Field, model_field_names)
+    grid = velocity.grid
+    grid isa ImmersedBoundaryGrid || return velocity
+    loc = instantiated_location(velocity)
+    bcs = regularize_field_boundary_conditions(velocity.boundary_conditions, grid, loc, model_field_names)
+    return Field(loc, grid, velocity.data, bcs, velocity.indices, velocity.operand, velocity.status)
+end
+
+function compute_forcing!(forcing::AdvectiveForcing, clock, model_fields)
+    foreach(velocity -> refresh_advective_velocity!(velocity, clock, model_fields), velocities(forcing))
+    return nothing
+end
+
+refresh_advective_velocity!(velocity, clock, model_fields) = nothing
+
+function refresh_advective_velocity!(velocity::Field, clock, model_fields)
+    isnothing(velocity.operand) || compute!(velocity)
+    mask_immersed_normal_flow!(velocity, clock, model_fields)
+    fill_halo_regions!(velocity, clock, model_fields)
+    return nothing
+end
 
 # fallback
 @inline with_advective_forcing(forcing, total_velocities) = total_velocities
