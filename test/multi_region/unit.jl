@@ -179,10 +179,8 @@ end
 end
 
 @testset "NaN in one region of a multi-region field [$(summary(arch))]" for arch in archs
-    grid = RectilinearGrid(arch; size=(8, 8, 1), extent=(1, 1, 1))
-    c = CenterField(MultiRegionGrid(grid; partition=XPartition(2)))
+    c = CenterField(MultiRegionGrid(RectilinearGrid(arch; size=(8, 8, 1), extent=(1, 1, 1)); partition=XPartition(2)))
     @test !hasnan(c)
-
     set!(getregion(c, 2), NaN)
     @test hasnan(c)
 end
