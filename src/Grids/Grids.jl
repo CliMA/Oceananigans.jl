@@ -3,6 +3,7 @@ module Grids
 export Center, Face
 export AbstractTopology, topology
 export Periodic, Flat, Sides, Bounded, Closed, Open, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
+export RightCenterFolded, RightFaceFolded
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
 export slice
@@ -141,6 +142,20 @@ struct CenterFoldConnected end
 Topology of a `FaceFolded` side whose fold partner lives on another rank.
 """
 struct FaceFoldConnected end
+
+"""
+    RightCenterFolded
+
+Grid topology for dimensions closed by a wall on the left side and `CenterFolded` on the right side.
+"""
+const RightCenterFolded = Sides{Closed, CenterFolded}
+
+"""
+    RightFaceFolded
+
+Grid topology for dimensions closed by a wall on the left side and `FaceFolded` on the right side.
+"""
+const RightFaceFolded = Sides{Closed, FaceFolded}
 
 #####
 ##### Directions (for tilted domains)
