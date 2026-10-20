@@ -128,7 +128,8 @@ end
         immersed_cell = r⁺ - Δr * ϵ < rᵇ
 
         kᵇ = ifelse(immersed_cell, kᵇ, k)
-        φ  = ifelse(immersed_cell, φ, (r⁺ - rᵇ) / Δr)
+        # `min`: when Δr and r⁺ - r⁻ differ by an ulp, a bottom on a face gives φ > 1 and ⌊sᵇ⌋ = kᵇ - 1
+        φ  = ifelse(immersed_cell, φ, min((r⁺ - rᵇ) / Δr, one(rᵇ)))
     end
 
     # Columns in the halos of `Bounded` directions keep full spacings
