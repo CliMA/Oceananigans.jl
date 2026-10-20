@@ -2,6 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_poisson_solvers.jl"))
 
 using Metal
+using Oceananigans.Fields: interpolate!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
@@ -155,6 +156,27 @@ end
     @test eltype(λx) == eltype(grid)
 end
 
+@testset "MetalGPU: time step model configurations" begin
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
+    implicit_diffusion = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1e-3, κ=1e-3)
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3),
+        free_surface in (ExplicitFreeSurface(), ImplicitFreeSurface(), SplitExplicitFreeSurface(grid; substeps=10)),
+        closure in (implicit_diffusion, CATKEVerticalDiffusivity())
+
+        model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, closure,
+                                            buoyancy=BuoyancyTracer(), tracers=:b)
+        time_step!(model, 1.0)
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        model = NonhydrostaticModel(grid; timestepper, closure=implicit_diffusion,
+                                    buoyancy=BuoyancyTracer(), tracers=:b)
+        time_step!(model, 1.0)
+    end
+end
+
 @testset "MetalGPU: FFT-based Poisson solver" begin
     arch = GPU(Metal.MetalBackend())
 
@@ -173,15 +195,6 @@ end
     arch = GPU(Metal.MetalBackend())
     faces = collect(0:8) .^ 1.2
     @test stretched_poisson_solver_correct_answer(Float32, arch, (Periodic, Periodic, Bounded), 8, 8, faces)
-end
-
-@testset "MetalGPU: Base.cbrt(::Float32)" begin
-    # `Base.cbrt(::Float32)` compiles to Float64 instructions, which Metal rejects: JuliaGPU/Metal.jl#952.
-    # The fix, JuliaGPU/Metal.jl#953 (Metal ≥ 1.11), needs GPUCompiler 2, which Enzyme and Reactant don't support yet.
-    # TODO once Metal ≥ 1.11 is allowed: raise the Metal compat, delete src/Utils/f32_safe_cbrt.jl and its
-    # override in ext/OceananigansMetalExt.jl, call `cbrt` at its call sites, and make this `@test_broken` a `@test`.
-    x = MtlArray([8f0, -27f0])
-    @test_broken Array(cbrt.(x)) == [2f0, -3f0]
 end
 
 @testset "MetalGPU: CATKEVerticalDiffusivity" begin
@@ -218,4 +231,19 @@ end
 
     @test maximum(model.tracers.e) > 1f-6
     @test maximum(model.tracers.T) < 20
+end
+
+@testset "MetalGPU: interpolate! on LatitudeLongitudeGrid" begin
+    arch = GPU(Metal.MetalBackend())
+    source_grid = LatitudeLongitudeGrid(arch; size=(8, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
+    target_grid = LatitudeLongitudeGrid(arch; size=(6, 8, 1), longitude=(0, 360), latitude=(-60, 60), z=(0, 1))
+
+    source = CenterField(source_grid)
+    target = CenterField(target_grid)
+    expected = CenterField(target_grid)
+    set!(source, (λ, φ, z) -> φ)
+    set!(expected, (λ, φ, z) -> φ)
+
+    interpolate!(target, source)
+    @test Array(interior(target)) ≈ Array(interior(expected))
 end

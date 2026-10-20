@@ -57,7 +57,7 @@ ObliqueRadiation{Float64}
 ├── inflow_timescale: 0.0
 ├── outflow_timescale: Inf
 ├── phase_speed_weight: 0.3
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct ObliqueRadiation{FT, S, B, TF} <: AbstractRadiationScheme{FT}
@@ -121,10 +121,10 @@ end
 has_target_transport(::ObliqueRadiation{<:Any, <:Any, <:Any, <:Nothing}) = false
 has_target_transport(::ObliqueRadiation) = true
 
-radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_size) =
-    (ntuple(_ -> zeros(arch, FT, tangential_size...), 3)...,
-     ntuple(_ -> zeros(arch, FT, tangential_size..., 2), 5)...,
-     zeros(arch, FT, tangential_size..., 4))
+radiation_buffers(radiation::ObliqueRadiation, arch, FT, tangential_ranges) =
+    (ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 3)...,
+     ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges..., 1:2), 5)...,
+     radiation_buffer(arch, FT, tangential_ranges..., 1:4))
 
 radiation_buffers(radiation::ObliqueRadiation) =
     (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ, radiation.previous_boundary, radiation.previous_interior,
@@ -140,11 +140,10 @@ radiation_storage(radiation::ObliqueRadiation, (φᵇ, φ₁, φ₁ˡ, previous_
 
 # Backward and forward differences along the boundary face, zero beyond its ends.
 @inline function tangential_differences(φ, t, k, b)
-    T = size(φ, 1)
     @inbounds begin
         φ₀ = φ[t, k, b]
-        φ₋ = φ[max(t - 1, 1), k, b]
-        φ₊ = φ[min(t + 1, T), k, b]
+        φ₋ = φ[max(t - 1, firstindex(φ, 1)), k, b]
+        φ₊ = φ[min(t + 1, lastindex(φ, 1)),  k, b]
     end
     return φ₀ - φ₋, φ₊ - φ₀
 end
