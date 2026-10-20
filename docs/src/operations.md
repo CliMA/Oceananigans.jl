@@ -9,7 +9,7 @@ and saved to disk while a simulation runs, and also for post-processing.
 
 We start by constructing a `CenterField` on a simple grid,
 
-```jldoctest operations
+```jldoctest operations; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 using Oceananigans
 
 grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
