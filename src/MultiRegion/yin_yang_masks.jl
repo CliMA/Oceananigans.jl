@@ -1,6 +1,6 @@
 # Ownership of the points of a Yin-Yang panel, and the owned area fractions of its cells: a panel owns a point
 # when the point lies deeper inside its 270° × 90° core than inside the other panel's. In the first quadrant the
-# dividing curve between the owned regions has three closed-form pieces, which meet at the corners
+# dividing curve φ★(λ) between the owned regions has three closed-form pieces P₁, P₂, P₃, which meet at the corners
 # (acos g, asin g) and (π - acos g, asin g) with g = (√5 - 1) / 2.
 
 const golden_ratio_conjugate = (√5 - 1) / 2
@@ -28,119 +28,64 @@ function yin_yang_owned(λ, φ)
 end
 
 #####
-##### The dividing curve as a graph φ★(|λ|) and its inverse
-#####
-
-# Latitude φ★(λ) ≥ 0 of the dividing curve above longitude λ (radians): the owned points of
-# the column |λ| are exactly |φ| < φ★. Zero for |λ| ≥ 3π/4.
-function dividing_curve_latitude(λ)
-    λ = abs(λ)
-    if λ ≤ dividing_curve_corner_longitude
-        return atan(sqrt(cos(λ)))
-    elseif λ ≤ π - dividing_curve_corner_longitude
-        return atan(sin(λ))
-    elseif λ < core_half_width
-        return acos(clamp(-cos(λ) / sin(λ), -1, 1))
-    else
-        return zero(λ)
-    end
-end
-
-# φ★ is piecewise monotone, with a local minimum and a kink at the corners and a maximum at λ = π/2.
-const dividing_curve_critical_longitudes = (dividing_curve_corner_longitude, π/2, π - dividing_curve_corner_longitude)
-
-# The owned longitudes of the row |φ| (radians), restricted to λ ≥ 0, as two intervals
-# [0, b₁] ∪ [a₂, b₂] (the second is empty, a₂ = b₂, for |φ| below the corner latitude).
-function dividing_curve_owned_longitudes(φ)
-    φ = abs(φ)
-    if φ ≥ core_half_height
-        return (zero(φ), zero(φ), zero(φ), zero(φ))
-    elseif φ < dividing_curve_corner_latitude
-        b₁ = π/2 + atan(cos(φ))
-        return (zero(φ), b₁, b₁, b₁)
-    else
-        t = tan(φ)
-        b₁ = acos(clamp(t^2, -1, 1))
-        a₂ = asin(clamp(t, -1, 1))
-        return (zero(φ), b₁, a₂, π - a₂)
-    end
-end
-
-#####
 ##### Exact owned area of a cell
 #####
 
-# ∫ₐᵇ sin φ★(λ) dλ for [a, b] within a single piece of the dividing curve.
-function integrate_dividing_curve_sine(a, b)
-    λ = (a + b) / 2
+# The latitude φ★(λ) ≥ 0 of the dividing curve above the longitude 0 ≤ λ ≤ 3π/4 (radians): the owned points of
+# the column λ are exactly |φ| < φ★.
+function dividing_curve_latitude(λ)
     if λ ≤ dividing_curve_corner_longitude
-        # P₁: sin φ★ = √(cos λ / (1 + cos λ)), and with tan(λ/2) = sin θ, sin φ★ dλ = √2 cos²θ dθ / (1 + sin²θ)
-        F(λ) = (t = tan(λ / 2); 2 * atan(√2 * t / √(1 - t^2)) - √2 * asin(t))
-        return F(b) - F(a)
+        return atan(sqrt(cos(λ)))                     # P₁: tan²φ★ = cos λ
     elseif λ ≤ π - dividing_curve_corner_longitude
-        # P₂: sin φ★ = sin λ / √(1 + sin²λ) = d/dλ [-asin(cos λ / √2)]
-        return asin(cos(a) / √2) - asin(cos(b) / √2)
+        return atan(sin(λ))                           # P₂: tan φ★ = sin λ
     else
-        # P₃ parametrized by φ: λ★(φ) = π/2 + atan(cos φ), ∫ sin φ (-λ★′) dφ = ∫ sin²φ / (1 + cos²φ) dφ
-        G(φ) = √2 * atan(tan(φ) / √2) - φ
-        return G(dividing_curve_latitude(a)) - G(dividing_curve_latitude(b))
+        return acos(clamp(-cos(λ) / sin(λ), -1, 1))   # P₃: cos φ★ = -cot λ
     end
 end
 
-# Owned area (radius 1) of the rectangle [λ₁, λ₂] × [φ₁, φ₂] in the first quadrant,
-# 0 ≤ λ₁ ≤ λ₂ ≤ 3π/4 and 0 ≤ φ₁ ≤ φ₂ ≤ π/4, as ∫ [sin(clip(φ★(λ), φ₁, φ₂)) - sin φ₁] dλ,
-# split where the clipped curve has kinks: at the critical longitudes and where φ★ crosses φ₁ or φ₂.
-function first_quadrant_owned_area(λ₁, λ₂, φ₁, φ₂)
-    crossings = (dividing_curve_owned_longitudes(φ₁)..., dividing_curve_owned_longitudes(φ₂)...)
-    kinks = filter(λ -> λ₁ < λ < λ₂, (dividing_curve_critical_longitudes..., crossings...))
-    breakpoints = sort!([λ₁, λ₂, kinks...])
+# S(λ) = ∫₀^λ sin φ★ dλ′ for 0 ≤ λ ≤ 3π/4: on P₁ with t = tan(λ/2), on P₂ directly, and on P₃ parametrized
+# by φ★ with λ★(φ) = π/2 + atan(cos φ), where sin φ★ dλ = -sin²φ / (1 + cos²φ) dφ.
+function integrated_dividing_curve_sine(λ)
+    λ₁, λ₂ = dividing_curve_corner_longitude, π - dividing_curve_corner_longitude
+    S₁(λ) = (t = tan(λ / 2); 2 * atan(√2 * t / √(1 - t^2)) - √2 * asin(t))
+    S₂(λ) = asin(cos(λ₁) / √2) - asin(cos(λ) / √2)
+    G(φ) = √2 * atan(tan(φ) / √2) - φ
+    S₃(λ) = G(dividing_curve_corner_latitude) - G(dividing_curve_latitude(λ))
 
-    area = zero(λ₁)
-    for (a, b) in zip(breakpoints[1:end-1], breakpoints[2:end])
-        φ★ = dividing_curve_latitude((a + b) / 2)
-        if φ★ ≥ φ₂
-            area += (b - a) * (sin(φ₂) - sin(φ₁))
-        elseif φ★ > φ₁
-            area += integrate_dividing_curve_sine(a, b) - (b - a) * sin(φ₁)
-        end
-    end
-    return area
+    λ ≤ λ₁ && return S₁(λ)
+    λ ≤ λ₂ && return S₁(λ₁) + S₂(λ)
+    return S₁(λ₁) + S₂(λ₂) + S₃(λ)
 end
 
-# Fraction of the rectangle [λ₁, λ₂] × [φ₁, φ₂] (radians, any signs) that is owned.
-# Exactly 1 for cells entirely under the dividing curve and exactly 0 for cells entirely
-# above it; cut cells are split at λ = 0 and φ = 0 and reflected into the first quadrant.
+# The owned area (radius 1) of the rectangle [0, λ] × [0, φ] in the first quadrant, ∫₀^λ sin(min(φ★, φ)) dλ′:
+# the integrand is sin φ on the owned longitudes [0, b₁] ∪ [a₂, b₂] of the row φ and sin φ★ elsewhere.
+function first_quadrant_owned_area(λ, φ)
+    λ = min(λ, core_half_width)
+    φ = min(φ, core_half_height)
+    if φ < dividing_curve_corner_latitude
+        b₁ = π/2 + atan(cos(φ))      # the row crosses P₃ only
+        a₂ = b₂ = b₁
+    else
+        b₁ = acos(min(tan(φ)^2, 1)) # the row crosses P₁, then P₂ twice
+        a₂ = asin(min(tan(φ), 1))
+        b₂ = π - a₂
+    end
+
+    S = integrated_dividing_curve_sine
+    function owned(a, b)
+        a, b = min(a, λ), min(b, λ)
+        return sin(φ) * (b - a) - (S(b) - S(a))
+    end
+    return S(λ) + owned(0, b₁) + owned(a₂, b₂)
+end
+
+# The owned fraction of the cell [λ₁, λ₂] × [φ₁, φ₂] (radians, any signs). The owned region is symmetric about
+# λ = 0 and φ = 0, so the signed area `A` of [0, λ] × [0, φ] is a cumulative function of the owned area measure.
 function owned_cell_fraction(λ₁, λ₂, φ₁, φ₂)
-    λlow = λ₁ ≤ 0 ≤ λ₂ ? zero(λ₁) : min(abs(λ₁), abs(λ₂))
-    λhigh = max(abs(λ₁), abs(λ₂))
-    φlow = φ₁ ≤ 0 ≤ φ₂ ? zero(φ₁) : min(abs(φ₁), abs(φ₂))
-    φhigh = max(abs(φ₁), abs(φ₂))
-
-    (λlow ≥ core_half_width || φlow ≥ core_half_height) && return zero(λ₁)
-
-    # φ★ is piecewise monotone, so its extrema over the cell lie at its edges or at the critical longitudes inside
-    λs = (λlow, min(λhigh, core_half_width), filter(λ -> λlow < λ < λhigh, dividing_curve_critical_longitudes)...)
-    φ★ = dividing_curve_latitude.(λs)
-    (λhigh ≤ core_half_width && minimum(φ★) ≥ φhigh) && return one(λ₁)
-    maximum(φ★) ≤ φlow && return zero(λ₁)
-
-    area = zero(λ₁)
-    for (a, b) in ((max(λ₁, 0), max(λ₂, 0)), (max(-λ₂, 0), max(-λ₁, 0))),
-        (c, d) in ((max(φ₁, 0), max(φ₂, 0)), (max(-φ₂, 0), max(-φ₁, 0)))
-
-        area += first_quadrant_owned_area(min(a, core_half_width), min(b, core_half_width),
-                                          min(c, core_half_height), min(d, core_half_height))
-    end
-
-    return area / ((λ₂ - λ₁) * (sin(φ₂) - sin(φ₁)))
-end
-
-# The owned area fractions of the cells of a panel with cell faces at `(λᶠ, φᶠ)` (degrees), which serve both panels.
-# Their areas sum to 2π on the unit sphere to rounding error.
-function yin_yang_cell_weights(λᶠ, φᶠ)
-    λʳ = deg2rad.(Float64.(λᶠ))
-    φʳ = deg2rad.(Float64.(φᶠ))
-    return [owned_cell_fraction(λʳ[i], λʳ[i+1], φʳ[j], φʳ[j+1]) for i in 1:length(λᶠ)-1, j in 1:length(φᶠ)-1]
+    A(λ, φ) = sign(λ) * sign(φ) * first_quadrant_owned_area(abs(λ), abs(φ))
+    column_area(λ) = A(λ, φ₂) - A(λ, φ₁)
+    area = column_area(λ₂) - column_area(λ₁)
+    return clamp(area / ((λ₂ - λ₁) * (sin(φ₂) - sin(φ₁))), 0, 1)
 end
 
 #####
@@ -181,14 +126,10 @@ stencil_start(x★, s) = floor(Int, x★) - s ÷ 2 + 1
 # has the stencils on both sides as candidates.
 stencil_starts(x★, s; tolerance = 1e-6) = unique((stencil_start(x★ - tolerance, s), stencil_start(x★ + tolerance, s)))
 
+# The start of the first candidate stencil that lies within the `Nx × Ny` interior, or `nothing`
 function interior_stencil_start(i★, j★, s, (Nx, Ny))
     for j₀ in stencil_starts(j★, s), i₀ in stencil_starts(i★, s)
-        west_edge_inside = i₀ ≥ 1
-        east_edge_inside = i₀ + s - 1 ≤ Nx
-        south_edge_inside = j₀ ≥ 1
-        north_edge_inside = j₀ + s - 1 ≤ Ny
-        stencil_inside = west_edge_inside & east_edge_inside & south_edge_inside & north_edge_inside
-        stencil_inside && return (i₀, j₀)
+        (1 ≤ i₀ && i₀ + s - 1 ≤ Nx && 1 ≤ j₀ && j₀ + s - 1 ≤ Ny) && return (i₀, j₀)
     end
     return nothing
 end
@@ -206,11 +147,15 @@ end
 
 Grids.on_architecture(arch, masks::YinYangMasks) = YinYangMasks(on_architecture(arch, masks.cell_weights))
 
-# The owned weights of a panel with cell faces at `(λᶠ, φᶠ)` and horizontal halo `(Hx, Hy)`, in the
-# halo-inclusive layout of a `Field{Center, Center, Nothing}` and shared by both panels.
+# The owned weights of a panel with cell faces at `(λᶠ, φᶠ)` (degrees) and horizontal halo `(Hx, Hy)`, in the
+# halo-inclusive layout of a `Field{Center, Center, Nothing}` and shared by both panels. The owned cells of the
+# two panels tile the sphere: the weighted areas of each panel sum to 2π on the unit sphere, to rounding error.
 function YinYangMasks(arch, FT, (λᶠ, φᶠ), (Hx, Hy))
+    λʳ, φʳ = deg2rad.(Float64.(λᶠ)), deg2rad.(Float64.(φᶠ))
     Nx, Ny = length(λᶠ) - 1, length(φᶠ) - 1
     cell_weights = OffsetArray(zeros(FT, Nx + 2Hx, Ny + 2Hy, 1), -Hx, -Hy, 0)
-    view(cell_weights, 1:Nx, 1:Ny, 1) .= yin_yang_cell_weights(λᶠ, φᶠ)
+    for j in 1:Ny, i in 1:Nx
+        cell_weights[i, j, 1] = owned_cell_fraction(λʳ[i], λʳ[i+1], φʳ[j], φʳ[j+1])
+    end
     return YinYangMasks(on_architecture(arch, cell_weights))
 end

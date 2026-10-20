@@ -17,11 +17,7 @@ convergence_rates(errors) = log2.(errors[1:end-1] ./ errors[2:end])
 regional_parents(field) = Tuple(Array(parent(getregion(field, r))) for r in 1:2)
 interior_nodes(grid) = [(i, j) for j in 1:size(grid, 2) for i in 1:size(grid, 1)]
 
-function halo_nodes(grid)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    return [(i, j) for j in 1-Hy:Ny+Hy for i in 1-Hx:Nx+Hx if !(1 ≤ i ≤ Nx && 1 ≤ j ≤ Ny)]
-end
+halo_nodes(grid) = Oceananigans.MultiRegion.halo_nodes(size(grid)[1:2], halo_size(grid)[1:2])
 
 # The fractional indices at (ℓx, ℓy) on panel `r` of the geographic point (λ, φ)
 function geographic_fractional_indices(λ, φ, grid, r, ℓx, ℓy)
