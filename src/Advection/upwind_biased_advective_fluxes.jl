@@ -2,7 +2,7 @@
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
 ##### See topologically_conditional_interpolation.jl for an explanation of the underscore-prepended
-##### functions _symmetric_interpolate_*, _left_biased_interpolate_*, and _right_biased_interpolate_*.
+##### functions _biased_interpolate_*.
 #####
 
 const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
@@ -18,9 +18,20 @@ const ETD = ExplicitTimeDiscretization
 
 @enum Bias LeftBias RightBias
 
-@inline fluid_Ax_qᶠᶜᶜ(i, j, k, grid, U) = ifelse(inactive_node(i, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i, j, k, grid, U))
-@inline fluid_Ay_qᶜᶠᶜ(i, j, k, grid, V) = ifelse(inactive_node(i, j, k, grid, Center(), Face(), Center()), zero(grid), Ay_qᶜᶠᶜ(i, j, k, grid, V))
-@inline fluid_Az_qᶜᶜᶠ(i, j, k, grid, W) = ifelse(inactive_node(i, j, k, grid, Center(), Center(), Face()), zero(grid), Az_qᶜᶜᶠ(i, j, k, grid, W))
+@inline function fluid_Ax_qᶠᶜᶜ(i, j, k, grid, U)
+    i′ = nearest_domain_face(i, topology(grid, 1), grid.Nx)
+    return ifelse(inactive_node(i′, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i′, j, k, grid, U))
+end
+
+@inline function fluid_Ay_qᶜᶠᶜ(i, j, k, grid, V)
+    j′ = nearest_domain_face(j, topology(grid, 2), grid.Ny)
+    return ifelse(inactive_node(i, j′, k, grid, Center(), Face(), Center()), zero(grid), Ay_qᶜᶠᶜ(i, j′, k, grid, V))
+end
+
+@inline function fluid_Az_qᶜᶜᶠ(i, j, k, grid, W)
+    k′ = nearest_domain_face(k, topology(grid, 3), grid.Nz)
+    return ifelse(inactive_node(i, j, k′, grid, Center(), Center(), Face()), zero(grid), Az_qᶜᶜᶠ(i, j, k′, grid, W))
+end
 
 for dir in (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
     transport_interp = Symbol(:transport_interpolate_, dir)

@@ -77,6 +77,11 @@ for dir in (:x, :y, :z)
     end
 end
 
+@inline nearest_domain_face(i, ::Type{Bounded}, N)        = clamp(i, 1, N + 1)
+@inline nearest_domain_face(i, ::Type{RightConnected}, N) = max(i, 1)
+@inline nearest_domain_face(i, ::Type{LeftConnected}, N)  = min(i, N + 1)
+@inline nearest_domain_face(i, topo, N) = i
+
 # Separate High order advection from low order advection
 const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
