@@ -101,6 +101,28 @@ end
         end
     end
 
+    @testset "Other orthogonal spherical shell grids" begin
+        # Grids without a location-aware rotation angle use the cell-centre one. The two poles of the tripolar
+        # grid lie on u-points of its top row, where the metrics vanish and no Coriolis stencil is finite.
+        grid = TripolarGrid(arch; size = (16, 10, 2), z = (0, 1))
+        U = (XFaceField(grid), YFaceField(grid), ZFaceField(grid))
+        for (q, component) in zip(U, ((λ, φ, z) -> cosd(φ), (λ, φ, z) -> sind(λ) * cosd(φ), (λ, φ, z) -> cosd(λ)))
+            set!(q, component)
+            fill_halo_regions!(q)
+        end
+
+        nonhydrostatic = coriolis_accelerations(grid, SphericalCoriolis(), U)
+        hydrostatic = coriolis_accelerations(grid, HydrostaticSphericalCoriolis(), U)
+        for (a, aʰ) in zip(nonhydrostatic, hydrostatic)
+            @test isfinite.(interior(a)) == isfinite.(interior(aʰ))
+        end
+
+        ax, ay, az = nonhydrostatic
+        @test count(!isfinite, interior(ax)) == 2 * size(grid, 3)
+        @test all(isfinite, interior(ay))
+        @test all(isfinite, interior(az))
+    end
+
     @testset "The nontraditional terms do no net work" begin
         # With the cell volumes V, Σ u V (f̃ʸ w)ᵤ − Σ w V (f̃ʸ u)_w = 0 and likewise for the v–w pair, provided the
         # normal velocities vanish on the boundaries. The nontraditional terms are the difference between the
