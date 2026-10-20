@@ -91,10 +91,11 @@ e_n = exp(-4 / (φ₁ - φ₀)^2)
 
 jet(φ) = φ₀ < φ < φ₁ ? u_max / e_n * exp(1 / ((φ - φ₀) * (φ - φ₁))) : 0.0
 
-# The height ``h`` of the fluid is in gradient-wind balance with the jet,
+# The height ``h`` of the fluid is in gradient-wind balance with the jet. Since the jet is zonally
+# symmetric, ``h`` depends only on latitude:
 #
 # ```math
-# g \frac{\mathrm{d} h}{\mathrm{d} φ} = - R u \left ( f + \frac{u \tan φ}{R} \right ) ,
+# f u + \frac{u^2 \tan φ}{R} = - \frac{g}{R} \frac{\mathrm{d} h}{\mathrm{d} φ} ,
 # ```
 #
 # where ``R`` is the radius of the Earth and ``f = 2 Ω \sin φ``. We integrate this balance
@@ -463,12 +464,13 @@ drake_model = HydrostaticFreeSurfaceModel(drake_grid; buoyancy,
 # f v = \frac{1}{R \cos φ} \frac{∂p}{∂λ} ,
 # ```
 #
-# where ``f = 2 Ω \sin φ`` and ``R`` is the radius of the sphere. With ``A = g α ΔT / 2``,
-# the meridional pressure gradient is ``∂p/∂φ = - 2 Ω R \sin φ \cos φ \, U``, where
+# where, again, ``f = 2 Ω \sin φ`` and ``R`` is the radius of the sphere.
+# With ``A = g α ΔT / 2``, the meridional pressure gradient is
+# ``∂p/∂φ = - 2 Ω R \sin φ \cos φ \, U``, where
 #
 # ```math
-# a = \frac{A \, I(z) \operatorname{sech}^2 χ}{Ω R δ} , \qquad
-# U = a \left ( 1 - ϵ P \frac{\mathrm{d} m}{\mathrm{d} \sin^2 φ} \right ) .
+# U = a \left ( 1 - ϵ P \frac{\mathrm{d} m}{\mathrm{d} \sin^2 φ} \right ) , \qquad
+# a = \frac{A \, I(z) \operatorname{sech}^2 χ}{Ω R δ} .
 # ```
 #
 # The root of the quadratic for ``u`` that reduces to geostrophic balance for weak flow,
