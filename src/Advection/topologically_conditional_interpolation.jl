@@ -48,12 +48,12 @@ for (d, ξ) in enumerate((:x, :y, :z))
             @inline $within_bounds_symmetric(i, grid, scheme) =
                 within_bounds(i + $first_offset, i + $last_offset, topology(grid, $d), $points, grid.$N)
 
-            @inline function $within_bounds_biased(i, grid, scheme, bias) 
+            @inline function $within_bounds_biased(i, grid, scheme, bias)
                 iᴸ = i + $first_offset + ifelse(bias == LeftBias, 0, 1)
                 iᴿ = i + $last_offset  - ifelse(bias == LeftBias, 1, 0)
                 return within_bounds(iᴸ, iᴿ, topology(grid, $d), $points, grid.$N)
             end
-            
+
             @inline $near_boundary_symmetric(i, j, k, grid, scheme)     = !$within_bounds_symmetric($index, grid, scheme)
             @inline $near_boundary_biased(i, j, k, grid, scheme, bias) = !$within_bounds_biased($index, grid, scheme, bias)
         end
