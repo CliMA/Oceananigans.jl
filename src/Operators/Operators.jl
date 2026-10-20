@@ -59,7 +59,7 @@ export σⁿ, σ⁻, ∂t_σ
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
     YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
-    Center, Face
+    Center, Face, flip_location
 using DocStringExtensions: TYPEDSIGNATURES
 
 #####
