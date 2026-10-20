@@ -4,20 +4,21 @@ using Oceananigans: TendencyCallsite, TracerTendencyCallsite, MomentumTendency, 
 
 add_to_tendency!(model, name) = interior(model.timestepper.Gⁿ[name]) .+= 1
 
-function tendency_callsite_simulation(model; Δt)
+# Add 1 to the c and u tendencies at their callsites for one time step, after which c = u = Δt
+function test_tendency_callsites(model; Δt = 0.1)
     simulation = Simulation(model; Δt, stop_iteration = 1, verbose = false)
-
     add_callback!(simulation, model -> add_to_tendency!(model, :c), callsite = TracerTendencyCallsite())
     add_callback!(simulation, model -> add_to_tendency!(model, :u), callsite = TendencyCallsite())
+    run!(simulation)
 
-    return simulation
+    for field in (model.tracers.c, model.velocities.u)
+        @test on_architecture(CPU(), interior(field)) ≈ fill(Δt, size(field))
+    end
 end
 
 @testset "Tendency callsites" begin
     @test TendencyCallsite() isa TendencyCallsite{MomentumTendency}
     @test TracerTendencyCallsite() === TendencyCallsite(TracerTendency())
-
-    Δt = 0.1
 
     for arch in archs
         grid = RectilinearGrid(arch; size = (2, 2, 2), extent = (1, 1, 1), topology = (Periodic, Periodic, Bounded))
@@ -26,21 +27,12 @@ end
                 timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3),
                 free_surface in (ExplicitFreeSurface(), ImplicitFreeSurface())
 
-            model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, tracers = :c, buoyancy = nothing)
-            run!(tendency_callsite_simulation(model; Δt))
-
-            @test on_architecture(CPU(), interior(model.tracers.c)) ≈ fill(Δt, size(model.tracers.c))
-            @test on_architecture(CPU(), interior(model.velocities.u)) ≈ fill(Δt, size(model.velocities.u))
+            test_tendency_callsites(HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, tracers = :c, buoyancy = nothing))
         end
 
+        # Both callsites follow all the tendencies
         @testset "NonhydrostaticModel [$(typeof(arch))]" begin
-            model = NonhydrostaticModel(grid; tracers = :c)
-            run!(tendency_callsite_simulation(model; Δt))
-
-            # Both callsites follow all the tendencies
-            for field in (model.tracers.c, model.velocities.u)
-                @test on_architecture(CPU(), interior(field)) ≈ fill(Δt, size(field))
-            end
+            test_tendency_callsites(NonhydrostaticModel(grid; tracers = :c))
         end
     end
 end
