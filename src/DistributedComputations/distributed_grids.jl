@@ -6,9 +6,8 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
                           validate_rectilinear_grid_args, validate_lat_lon_grid_args,
                           generate_coordinate, with_precomputed_metrics,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                          metrics_precomputed, constructor_arguments
-using Oceananigans.Grids: AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
-using Oceananigans.Utils: getnamewrapper
+                          metrics_precomputed, constructor_arguments,
+                          AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
 
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,

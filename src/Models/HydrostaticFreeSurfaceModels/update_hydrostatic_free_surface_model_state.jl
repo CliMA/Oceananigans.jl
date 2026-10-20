@@ -6,12 +6,12 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
+using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
-using Oceananigans.Utils: KernelParameters, worksize
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -63,7 +63,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally begin
         surface_params = surface_kernel_parameters(grid)
         volume_params = volume_kernel_parameters(grid)
-        κ_params = diffusivity_kernel_parameters(grid)
+        κ_params = horizontally_extended_interior_kernel_parameters(grid)
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
         update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
@@ -97,27 +97,6 @@ function mask_immersed_horizontal_velocities!(velocities)
     mask_immersed_field!(velocities.u)
     mask_immersed_field!(velocities.v)
     return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Return kernel parameters for computing turbulent closure_fields including one extra cell
-in horizontal directions.
-
-The extra cells (indices `0:Nx+1` and `0:Ny+1`) are needed because closure_fields at
-cell faces require data from neighboring cells. This ensures that viscous fluxes
-can be computed correctly at domain boundaries without requiring (possibly costly) halo exchanges.
-"""
-@inline function diffusivity_kernel_parameters(grid)
-    Wx, Wy, Wz = worksize(grid)
-    Tx, Ty, Tz = topology(grid)
-
-    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
-    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
-    kk = 1:Wz
-
-    return KernelParameters(ii, jj, kk)
 end
 
 function step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt::Number)

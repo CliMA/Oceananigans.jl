@@ -14,7 +14,7 @@ include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
         hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
         rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
-        name = string(typeof(momentum_advection).name.wrapper)
+        name = string(nameof(typeof(momentum_advection)))
 
         @info "  Testing hydrostatic LatitudeLongitudeGrid + ExplicitFreeSurface Reactant correctness with momentum_advection: $name"
         @info "    Not immersed:"
