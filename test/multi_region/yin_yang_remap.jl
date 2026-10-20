@@ -2,8 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "yin_yang_test_utils.jl"))
 
 using Oceananigans.Grids: λnodes, φnodes
-using Oceananigans.MultiRegion: YinYangRemapping, YinYangInterpolationTable, latitude_longitude_grid,
-                                remap!, remapped_field, yin_yang_owned
+using Oceananigans.MultiRegion: yin_yang_remapping, latitude_longitude_grid, remap!, remapped_field, yin_yang_owned
 
 # The largest error of the interior of `field` with respect to `exact(λ, φ)`
 function remap_error(field, exact)
@@ -12,49 +11,39 @@ function remap_error(field, exact)
     return maximum(abs, Array(interior(field)) .- exact.(λnodes(grid, ℓx), φnodes(grid, ℓy)'))
 end
 
-function scalar_remap_error(grid, source_location)
-    c = location_field(source_location..., grid)
+function scalar_remap_error(grid, ℓ)
+    c = location_field(ℓ..., grid)
     set!(c, (λ, φ, z) -> spherical_harmonics(λ, φ))
-    cˡ = CenterField(latitude_longitude_grid(grid))
-    remap!(cˡ, c)
-    return remap_error(cˡ, spherical_harmonics)
+    return remap_error(remapped_field(c), spherical_harmonics)
 end
 
 zonal_average(source) = Field(Average(source, dims=1))
-solid_body_component(n) = (λ, φ) -> solid_body_velocity(λ, φ)[n]
 
 @testset "Yin-Yang remapping [$(typeof(arch))]" for arch in archs
     grid = YinYangGrid(arch; size=(48, 16, 2), z=(-1, 0))
     destination_grid = latitude_longitude_grid(grid)
     cpu_destination_grid = on_architecture(CPU(), destination_grid)
+    @test size(destination_grid) == (64, 32, 2)
 
-    @testset "Remapping tables [$FT]" for FT in float_types
-        typed_grid = YinYangGrid(arch, FT; size=(48, 16, 2), z=(-1, 0))
-        typed_destination_grid = latitude_longitude_grid(typed_grid)
-        @test size(typed_destination_grid) == (64, 32, 2)
-        @test eltype(typed_destination_grid) == FT
-
+    @testset "Remapping tables" begin
+        c = CenterField(grid)
         for ℓ in yin_yang_locations
-            remapping = YinYangRemapping(typed_grid; destination_grid = typed_destination_grid, destination_location = ℓ)
-            yin, yang = map(tables -> on_architecture(CPU(), first(tables)), remapping.tables)
-            @test yin isa YinYangInterpolationTable{4}
-            @test eltype(yin.weights.x) == FT
+            remapping = yin_yang_remapping(location_field(ℓ..., destination_grid), c)
+            yin, yang = map(table -> on_architecture(CPU(), table), remapping)
 
             # Every destination node is filled once, by the panel that owns it, and Yin's basis is geographic
-            Nx, Ny, _ = size(typed_destination_grid, (ℓ..., Center()))
+            Nx, Ny, _ = size(destination_grid, (ℓ..., Center()))
             yin_nodes = collect(zip(yin.receivers.i, yin.receivers.j))
             yang_nodes = collect(zip(yang.receivers.i, yang.receivers.j))
             @test sort(vcat(yin_nodes, yang_nodes)) == sort(vec([(i, j) for i in 1:Nx, j in 1:Ny]))
             λ, φ = λnodes(cpu_destination_grid, ℓ[1]), φnodes(cpu_destination_grid, ℓ[2])
             owned(i, j) = yin_yang_owned(Float64(λ[i]), Float64(φ[j]))
-            @test all(owned(i, j) for (i, j) in yin_nodes)
-            @test !any(owned(i, j) for (i, j) in yang_nodes)
-            @test all(==(1), yin.rotation.cosψ)
-            @test all(==(0), yin.rotation.sinψ)
+            @test all(owned(i, j) for (i, j) in yin_nodes) && !any(owned(i, j) for (i, j) in yang_nodes)
+            @test all(==(1), yin.rotation.cosψ) && all(==(0), yin.rotation.sinψ)
         end
 
-        remapping = YinYangRemapping(typed_grid; destination_grid = typed_destination_grid)
-        @test startswith(summary(remapping), "YinYangRemapping from (Center, Center) to (Center, Center) on 64×32×2")
+        typed_grid = YinYangGrid(arch, Float32; size=(48, 16, 2), z=(-1, 0))
+        @test eltype(remapped_field(CenterField(typed_grid))) == Float32
     end
 
     @testset "Remapped values" begin
@@ -83,21 +72,19 @@ solid_body_component(n) = (λ, φ) -> solid_body_velocity(λ, φ)[n]
         for ℓ in ((Center(), Center()), (Center(), Face()), (Face(), Face()))
             uᵍ, vᵍ = location_field(ℓ..., destination_grid), location_field(ℓ..., destination_grid)
             remap!((uᵍ, vᵍ), (u, v))
-            @test remap_error(uᵍ, solid_body_component(1)) < 1e-5
-            @test remap_error(vᵍ, solid_body_component(2)) < 1e-5
+            @test remap_error(uᵍ, (λ, φ) -> solid_body_velocity(λ, φ)[1]) < 1e-5
+            @test remap_error(vᵍ, (λ, φ) -> solid_body_velocity(λ, φ)[2]) < 1e-5
         end
 
-        # A smooth function, x (z + x) in Cartesian coordinates, with zonal mean cos²φ / 2
+        # Remapped fields are recomputed from their source: a smooth function, x (z + x) in Cartesian
+        # coordinates, has the zonal mean cos²φ / 2
         f(λ, φ) = cosd(φ) * cosd(λ) * (sind(φ) + cosd(φ) * cosd(λ))
         c = CenterField(grid)
         set!(c, (λ, φ, z) -> f(λ, φ))
-        remapping = YinYangRemapping(grid; destination_grid)
-        cˡ = remapped_field(c, remapping)
+        cˡ = remapped_field(c, destination_grid)
         @test cˡ.grid === destination_grid
         @test location(cˡ) == (Center, Center, Center)
         @test remap_error(cˡ, f) < 1e-4
-
-        # Averages of remapped fields are recomputed from the source
         c̄ = zonal_average(cˡ)
         φ = φnodes(cpu_destination_grid, Center())
         @test Array(interior(c̄, 1, :, 1)) ≈ cosd.(φ).^2 ./ 2 rtol=1e-4
@@ -106,27 +93,22 @@ solid_body_component(n) = (λ, φ) -> solid_body_velocity(λ, φ)[n]
         @test Array(interior(c̄, 1, :, 2)) ≈ sind.(φ) rtol=1e-4
 
         # Scalars are remapped to their own location, and vectors to cell centers
-        v = YFaceField(grid)
         set!(v, (λ, φ, z) -> sind(φ))
-        vˡ = remapped_field(v, destination_grid)
+        vˡ = remapped_field(v)
         @test location(vˡ) == (Center, Face, Center)
         @test remap_error(vˡ, (λ, φ) -> sind(φ)) < 2e-5
 
-        u = XFaceField(grid)
         set_panel_components!(u, v, solid_body_velocity)
         ū, v̄ = map(zonal_average, remapped_field((u, v)))
         @test location(v̄) == (Nothing, Center, Center)
         @test Array(interior(ū, 1, :, 1)) ≈ cosd.(φ) .* cos(π/4) rtol=1e-5
         @test maximum(abs, interior(v̄)) < 1e-10
 
-        # Remapping checks its inputs
-        @test_throws ArgumentError remap!(XFaceField(destination_grid), c, remapping)
-        @test_throws ArgumentError remap!(CenterField(destination_grid), XFaceField(grid), remapping)
-        @test_throws ArgumentError remapped_field(XFaceField(grid), remapping)
-        @test_throws ArgumentError YinYangRemapping((CenterField(destination_grid), XFaceField(destination_grid)), (u, v))
-        @test_throws ArgumentError YinYangRemapping(grid; destination_grid = grid)
-        deeper_grid = LatitudeLongitudeGrid(arch; size=(8, 4, 2), longitude=(-180, 180), latitude=(-90, 90), z=(-10, 0))
-        @test_throws ArgumentError remap!(CenterField(deeper_grid), c)
+        # `set!` remaps, and the vertical sizes must agree
+        set!(cˡ, c)
+        @test interior(cˡ) == interior(remap!(CenterField(destination_grid), c))
+        shallow_grid = LatitudeLongitudeGrid(arch; size=(8, 4, 1), longitude=(-180, 180), latitude=(-90, 90), z=(-1, 0))
+        @test_throws ArgumentError remap!(CenterField(shallow_grid), c)
     end
 
     @testset "Remapped coastal scalars [$(nameof(Bottom))]" for Bottom in (GridFittedBottom, PartialCellBottom)

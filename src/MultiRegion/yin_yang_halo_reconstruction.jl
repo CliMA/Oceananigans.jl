@@ -1,6 +1,6 @@
 using Oceananigans: instantiated_location
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!, fill_bottom_and_top_halo!
-using Oceananigans.Utils: launch!, KernelParameters, Reference, Iterate, getregion, @apply_regionally
+using Oceananigans.Utils: launch!
 using Oceananigans.Grids: immersed_peripheral_node, immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, ImmersedBoundaryGrid, GridFittedBoundary
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -19,13 +19,14 @@ without_boundary_conditions(bcs) = isnothing(bcs)
 without_boundary_conditions(bcs::MultiRegionObject) = all(isnothing, bcs.regional_objects)
 
 # Fields windowed or reduced in x or y have no seam halos
-const HorizontallyReducedYinYangField = Union{YinYangField{<:Nothing}, YinYangField{<:Any, <:Nothing}}
-seam_halos(field) = getregion(field.indices, 1) isa Tuple{Colon, Colon, Any} && !(field isa HorizontallyReducedYinYangField)
+seam_halos(field) = getregion(field.indices, 1) isa Tuple{Colon, Colon, Any} &&
+                    !(field isa Union{YinYangField{<:Nothing}, YinYangField{<:Any, <:Nothing}})
 
 horizontal_location(field) = instantiated_location(field)[1:2]
 
-fill_yin_yang_vertical_halo!(grid, field, args::Vararg{Any, N}) where N =
-    fill_bottom_and_top_halo!(field.data, field.boundary_conditions, field.indices, instantiated_location(field), grid, args...)
+fill_yin_yang_vertical_halos!(field, args::Vararg{Any, N}) where N =
+    apply_regionally!(fill_bottom_and_top_halo!, field.data, field.boundary_conditions, field.indices,
+                      instantiated_location(field), field.grid, args...)
 
 """
     fill_halo_regions!(field::YinYangField, args...; kwargs...)
@@ -37,27 +38,26 @@ Stencils that cross immersed cells use normalized positive weights from the wet 
 """
 function BoundaryConditions.fill_halo_regions!(field::YinYangField, args::Vararg{Any, N}; kwargs...) where N
     without_boundary_conditions(field.boundary_conditions) && return nothing
-    grid = field.grid
-    @apply_regionally fill_yin_yang_vertical_halo!(grid, field, args...)
+    fill_yin_yang_vertical_halos!(field, args...)
     seam_halos(field) || return nothing
 
-    ℓx, ℓy, _ = instantiated_location(field)
-    table = Reference(interpolation_table(yin_yang_interpolation(grid), ℓx, ℓy))
-    data = Reference(field.data.regional_objects)
-    grids = Reference((getregion(grid, 1), getregion(grid, 2)))
-    @apply_regionally fill_yin_yang_scalar_halo!(grid, field, data, grids, Iterate(1:2), table)
+    grid = field.grid
+    loc = instantiated_location(field)
+    table = interpolation_table(yin_yang_interpolation(grid), loc[1], loc[2])
+    for r in 1:2
+        donor = 3 - r
+        data = getregion(field.data, r)
+        launch_yin_yang_interpolation!(getregion(grid, r), axes(data, 3), table, _interpolate_yin_yang_scalar!,
+                                       data, getregion(field.data, donor), getregion(grid, donor), loc, table)
+    end
     return nothing
 end
 
-fill_yin_yang_scalar_halo!(grid, field, data, grids, region, table) =
-    launch_yin_yang_interpolation!(field, axes(field.data, 3), table, _interpolate_yin_yang_scalar!,
-                                   field, data[3 - region], grids[3 - region], instantiated_location(field), table)
-
-# Interpolate the receivers of `table` at the vertical indices `ks` of `field`
-function launch_yin_yang_interpolation!(field, ks, table, kernel!, args::Vararg{Any, N}) where N
+# Interpolate the receivers of `table` at the vertical indices `ks` with `kernel!` on `grid`
+function launch_yin_yang_interpolation!(grid, ks, table, kernel!, args::Vararg{Any, N}) where N
     length(table) == 0 && return nothing
     kernel_parameters = KernelParameters((length(table), length(ks)), (0, first(ks) - 1))
-    launch!(architecture(field), field.grid, kernel_parameters, kernel!, args...)
+    launch!(architecture(grid), grid, kernel_parameters, kernel!, args...)
     return nothing
 end
 
@@ -112,6 +112,7 @@ end
     return ifelse(all_wet, value, coastal_value)
 end
 
+# The vertical halos take the masks of the bottom and top cells
 @inline scalar_mask_index(k, ::Center, grid) = clamp(k, 1, grid.Nz)
 @inline scalar_mask_index(k, ::Face, grid) = clamp(k, 1, grid.Nz + 1)
 
@@ -135,59 +136,36 @@ end
 
 const YinYangXComponent = YinYangField{<:Face, <:Center}
 const YinYangYComponent = YinYangField{<:Center, <:Face}
-const YinYangCornerComponent = YinYangField{<:Face, <:Face}
-
-BoundaryConditions.fill_halo_regions!(fields::Tuple{YinYangField, Vararg{YinYangField}}, args::Vararg{Any, N}; kwargs...) where N =
-    foreach(field -> fill_halo_regions!(field, args...; kwargs...), fields)
-
-BoundaryConditions.fill_halo_regions!((u, v)::Tuple{YinYangXComponent, YinYangYComponent}, args::Vararg{Any, N}; kwargs...) where N =
-    fill_halo_regions!(u, v, args...; kwargs...)
 
 """
-    fill_halo_regions!(u::YinYangField{Face, Center}, v::YinYangField{Center, Face}, args...; signed = true, kwargs...)
-    fill_halo_regions!(u::YinYangField{Face, Face}, v::YinYangField{Face, Face}, args...; signed = true, kwargs...)
+    fill_halo_regions!((u, v)::Tuple{YinYangField{Face, Center}, YinYangField{Center, Face}}, args...; kwargs...)
 
 Fill the halos of the horizontal vector `(u, v)`: both components of the other panel are interpolated to each
 halo node and rotated into this panel's basis. Interpolated components on immersed boundaries are zeroed;
 vertically integrated components are zeroed where the entire column is immersed.
-With `signed = false`, `u` and `v` are filled as scalars.
 """
-BoundaryConditions.fill_halo_regions!(u::YinYangXComponent, v::YinYangYComponent, args::Vararg{Any, N}; kwargs...) where N =
-    fill_yin_yang_vector_halos!(u, v, args...; kwargs...)
-
-BoundaryConditions.fill_halo_regions!(u::YinYangCornerComponent, v::YinYangCornerComponent, args::Vararg{Any, N}; kwargs...) where N =
-    fill_yin_yang_vector_halos!(u, v, args...; kwargs...)
-
-function fill_yin_yang_vector_halos!(u, v, args::Vararg{Any, N}; signed = true, kwargs...) where N
-    if !signed
-        fill_halo_regions!(u, args...; kwargs...)
-        fill_halo_regions!(v, args...; kwargs...)
-        return nothing
-    end
-
-    without_boundary_conditions(u.boundary_conditions) && without_boundary_conditions(v.boundary_conditions) && return nothing
-
-    grid = u.grid
-    @apply_regionally fill_yin_yang_vertical_halo!(grid, u, args...)
-    @apply_regionally fill_yin_yang_vertical_halo!(grid, v, args...)
+function BoundaryConditions.fill_halo_regions!((u, v)::Tuple{YinYangXComponent, YinYangYComponent}, args::Vararg{Any, N};
+                                               kwargs...) where N
+    without_boundary_conditions(u.boundary_conditions) && return nothing
+    fill_yin_yang_vertical_halos!(u, args...)
+    fill_yin_yang_vertical_halos!(v, args...)
     seam_halos(u) || return nothing
 
     # Each component is interpolated from both donor components, at its own location and at the other's
+    grid = u.grid
     ℓu, ℓv = horizontal_location(u), horizontal_location(v)
     table(ℓ, ℓ′) = interpolation_table(yin_yang_interpolation(grid), ℓ..., ℓ′...)
-    tables = Reference((table(ℓu, ℓu), table(ℓu, ℓv), table(ℓv, ℓu), table(ℓv, ℓv)))
-    data = Reference((u.data.regional_objects, v.data.regional_objects))
-    @apply_regionally fill_yin_yang_vector_halo!(grid, u, v, data, Iterate(1:2), tables)
-    return nothing
-end
+    uu, uv, vu, vv = table(ℓu, ℓu), table(ℓu, ℓv), table(ℓv, ℓu), table(ℓv, ℓv)
 
-function fill_yin_yang_vector_halo!(grid, u, v, data, region, (uu, uv, vu, vv))
-    uᵈ = data[1][3 - region]
-    vᵈ = data[2][3 - region]
-    launch_yin_yang_interpolation!(u, axes(u.data, 3), uu, _interpolate_yin_yang_vector_component!,
-                                   u, uᵈ, vᵈ, grid, instantiated_location(u), uu, uv, Val(1))
-    launch_yin_yang_interpolation!(v, axes(v.data, 3), vv, _interpolate_yin_yang_vector_component!,
-                                   v, uᵈ, vᵈ, grid, instantiated_location(v), vu, vv, Val(2))
+    for r in 1:2
+        uʳ, vʳ = getregion(u.data, r), getregion(v.data, r)
+        uᵈ, vᵈ = getregion(u.data, 3 - r), getregion(v.data, 3 - r)
+        panel = getregion(grid, r)
+        launch_yin_yang_interpolation!(panel, axes(uʳ, 3), uu, _interpolate_yin_yang_vector_component!,
+                                       uʳ, uᵈ, vᵈ, panel, instantiated_location(u), (uu, uv), Val(1))
+        launch_yin_yang_interpolation!(panel, axes(vʳ, 3), vv, _interpolate_yin_yang_vector_component!,
+                                       vʳ, uᵈ, vᵈ, panel, instantiated_location(v), (vu, vv), Val(2))
+    end
     return nothing
 end
 
@@ -195,38 +173,34 @@ end
 @inline rotated_component(::Val{2}, u, v, cosψ, sinψ) = u * sinψ + v * cosψ
 
 # Component 1 or 2 of the donor vector `(uᵈ, vᵈ)` interpolated with `u_table` and `v_table`, which list the same
-# receivers in the same order, and rotated into the receivers' basis
-@inline function interpolate_donor_vector(component, uᵈ, vᵈ, u_table, v_table, n, k)
-    ũ = interpolate_donor(uᵈ, u_table, n, k)
-    ṽ = interpolate_donor(vᵈ, v_table, n, k)
-    return @inbounds rotated_component(component, ũ, ṽ, u_table.rotation.cosψ[n], u_table.rotation.sinψ[n])
-end
-
-# Receivers on immersed boundaries of `grid` are zeroed; `nothing` leaves every receiver unmasked
-@kernel function _interpolate_yin_yang_vector_component!(c, uᵈ, vᵈ, grid, loc, u_table, v_table, component)
+# receivers in the same order, and rotated into the receivers' basis. Receivers on immersed boundaries of `grid`
+# are zeroed; `grid = nothing` leaves every receiver unmasked.
+@kernel function _interpolate_yin_yang_vector_component!(c, uᵈ, vᵈ, grid, loc, tables, component)
     n, k = @index(Global, NTuple)
     @inbounds begin
+        u_table, v_table = tables
         i = u_table.receivers.i[n]
         j = u_table.receivers.j[n]
-        value = interpolate_donor_vector(component, uᵈ, vᵈ, u_table, v_table, n, k)
+        ũ = interpolate_donor(uᵈ, u_table, n, k)
+        ṽ = interpolate_donor(vᵈ, v_table, n, k)
+        value = rotated_component(component, ũ, ṽ, u_table.rotation.cosψ[n], u_table.rotation.sinψ[n])
         c[i, j, k] = ifelse(immersed_vector_receiver(i, j, k, grid, loc), zero(value), value)
     end
 end
-
-@inline maskable_receiver_index(i, ::Face, H) = max(i, 2 - H)
-@inline maskable_receiver_index(i, loc, H) = i
 
 @inline immersed_vector_receiver(i, j, k, ::Nothing, loc) = false
 @inline immersed_vector_receiver(i, j, k, grid, loc) = immersed_vector_receiver(i, j, k, grid, loc...)
 
 @inline function immersed_vector_receiver(i, j, k, grid, ℓx, ℓy, ℓz)
-    # The outermost lower halo face has no stored cell mask on its lower side.
+    # The outermost lower halo face has no stored cell mask on its lower side
     i′ = maskable_receiver_index(i, ℓx, grid.Hx)
     j′ = maskable_receiver_index(j, ℓy, grid.Hy)
-    k′ = maskable_receiver_index(k, ℓz, grid.Hz)
-    available = (i == i′) & (j == j′) & (k == k′)
-    return available & immersed_peripheral_node(i′, j′, k′, grid, ℓx, ℓy, ℓz)
+    available = (i == i′) & (j == j′)
+    return available & immersed_peripheral_node(i′, j′, k, grid, ℓx, ℓy, ℓz)
 end
+
+@inline maskable_receiver_index(i, ::Face, H) = max(i, 2 - H)
+@inline maskable_receiver_index(i, loc, H) = i
 
 @inline immersed_vector_receiver(i, j, k, grid, ℓx, ℓy, ::Nothing) =
     column_immersed(immersed_vector_receiver, i, j, grid, ℓx, ℓy)
