@@ -388,12 +388,7 @@ $(TYPEDEF)
 
 Materialized target carrying the simulation-side location at which a `Relaxation` with an
 [`InflowOutflowRate`](@ref) is evaluated, together with the integer index of the forced
-field in `model_fields`. Mirrors [`FieldTimeSeriesTarget`](@ref)'s use of a type parameter
-`I::Int` for the index, so `model_fields[I]` is a compile-time access on GPU. `I` is listed
-first among the type parameters (an informal convention) so that adding new properties to
-this struct only appends type parameters, rather than requiring every method below to be
-updated. Wraps the user-supplied `target` (a `Number` or callable) unchanged; constructed
-by `materialize_forcing` and not intended for direct user construction.
+field in `model_fields`. Mirrors [`FieldTimeSeriesTarget`](@ref).
 
 $(TYPEDFIELDS)
 """
