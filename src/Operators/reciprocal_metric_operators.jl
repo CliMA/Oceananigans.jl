@@ -144,9 +144,15 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
     L2 = location_from_superscript(ℓ2)
     L3 = location_from_superscript(ℓ3)
 
+    rcp_spacing_x = Symbol(:Δx⁻¹, ℓ1, ℓ2, ℓ3)
+    rcp_spacing_y = Symbol(:Δy⁻¹, ℓ2, ℓ1, ℓ3)
     rcp_spacing_z = Symbol(:Δz⁻¹, ℓ2, ℓ3, ℓ1)
 
-    @eval @inline Δz⁻¹(i, j, k, grid, ::$L2, ::$L3, ::$L1) = $rcp_spacing_z(i, j, k, grid)
+    @eval begin
+        @inline Δx⁻¹(i, j, k, grid, ::$L1, ::$L2, ::$L3) = $rcp_spacing_x(i, j, k, grid)
+        @inline Δy⁻¹(i, j, k, grid, ::$L2, ::$L1, ::$L3) = $rcp_spacing_y(i, j, k, grid)
+        @inline Δz⁻¹(i, j, k, grid, ::$L2, ::$L3, ::$L1) = $rcp_spacing_z(i, j, k, grid)
+    end
 end
 
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)

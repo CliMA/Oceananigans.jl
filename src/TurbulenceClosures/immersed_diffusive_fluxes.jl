@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: Value, Gradient, BoundaryCondition
 using Oceananigans.BoundaryConditions: getbc
 using Oceananigans.BoundaryConditions: FBC, ZFBC
-using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
+using Oceananigans.Operators: index_left, index_right, Δx⁻¹, Δy⁻¹, Δz⁻¹, div
 
 using Oceananigans.Advection: conditional_flux
 
@@ -78,19 +78,19 @@ const VBCorGBC = Union{VBC, GBC}
 const ASD = AbstractScalarDiffusivity
 
 # "Gradient" utility for Value or Gradient boundary conditions
-@inline right_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
-@inline left_gradient(i, j, k, ibg, κ, Δ, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
+@inline right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::GBC, c, clock, fields) = getbc(bc, i, j, k, ibg, clock, fields)
+@inline left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::GBC, c, clock, fields)  = getbc(bc, i, j, k, ibg, clock, fields)
 
-@inline function right_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+@inline function right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return 2 * (cᵇ - cⁱʲᵏ) / Δ
+    return 2 * (cᵇ - cⁱʲᵏ) * Δ⁻¹
 end
 
-@inline function left_gradient(i, j, k, ibg, κ, Δ, bc::VBC, c, clock, fields)
+@inline function left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc::VBC, c, clock, fields)
     cᵇ = getbc(bc, i, j, k, ibg, clock, fields)
     cⁱʲᵏ = @inbounds c[i, j, k]
-    return 2 * (cⁱʲᵏ - cᵇ) / Δ
+    return 2 * (cⁱʲᵏ - cᵇ) * Δ⁻¹
 end
 
 # Metric and index gymnastics for the 6 facets of the cube
@@ -102,44 +102,44 @@ end
 @inline flip(::Center) = Face()
 
 @inline function _west_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δx⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(index_left(i, LX), j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _east_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δx(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δx⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(index_right(i, LX), j, k, ibg, flip(LX), LY, LZ, closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _south_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δy⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, index_left(j, LY), k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _north_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δy(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δy⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = h_diffusivity(i, index_right(j, LY), k, ibg, LX, flip(LY), LZ, closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _bottom_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δz⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, index_left(k, LZ), ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
-    ∇c = left_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = left_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
 @inline function _top_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
-    Δ = Δz(i, j, k, ibg, LX, LY, LZ)
+    Δ⁻¹ = Δz⁻¹(i, j, k, ibg, LX, LY, LZ)
     κ = z_diffusivity(i, j, index_right(k, LZ), ibg, LX, LY, flip(LZ), closure, K, id, clock, fields)
-    ∇c = right_gradient(i, j, k, ibg, κ, Δ, bc, c, clock, fields)
+    ∇c = right_gradient(i, j, k, ibg, κ, Δ⁻¹, bc, c, clock, fields)
     return - κ * ∇c
 end
 
