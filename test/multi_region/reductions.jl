@@ -75,7 +75,7 @@ end
         set!(c, reduction_test_function)
         set!(m, reduction_test_function)
 
-        @testset "Reductions on $(getnamewrapper(grid)) with $(summary(partition))" begin
+        @testset "Reductions on $(nameof(typeof(grid))) with $(summary(partition))" begin
             # dims = 3 is reduced region by region, the others combine regional results
             for reduction in (sum, mean, maximum), dims in (:, 3, partitioned_dimension, (1, 2))
                 @test test_reduction_matches(reduction, c, m; dims)
@@ -98,7 +98,7 @@ end
             @test global_interior(Field(Integral(mᶠ; dims=partitioned_dimension))) ≈ Array(interior(Field(Integral(cᶠ; dims=partitioned_dimension))))
         end
 
-        @testset "Conditional reductions on $(getnamewrapper(grid)) with $(summary(partition))" begin
+        @testset "Conditional reductions on $(nameof(typeof(grid))) with $(summary(partition))" begin
             # Conditions can exclude whole columns or levels, whose means are NaN
             threshold = mean(c)
             global_condition = interior(c) .> threshold
@@ -120,7 +120,7 @@ end
             @test sum(m; condition=eastern_upper, mask=1) ≈ sum(c; condition=eastern_upper, mask=1)
         end
 
-        @testset "Scans on $(getnamewrapper(grid)) with $(summary(partition))" begin
+        @testset "Scans on $(nameof(typeof(grid))) with $(summary(partition))" begin
             for (Reduction, dims) in ((Integral, (1, 2, 3)), (Integral, partitioned_dimension), (Integral, 3), (Average, (1, 2)))
                 single_region_result = Field(Reduction(c; dims))
                 multi_region_result = Field(Reduction(m; dims))
@@ -152,7 +152,7 @@ end
             @test_throws ArgumentError Field(Accumulation(cumsum!, m, dims=partitioned_dimension))
         end
 
-        @testset "In-place reductions on $(getnamewrapper(grid)) with $(summary(partition))" begin
+        @testset "In-place reductions on $(nameof(typeof(grid))) with $(summary(partition))" begin
             for reduction! in (sum!, maximum!)
                 single_region_column = Field{Nothing, Nothing, Center}(grid)
                 reduction!(single_region_column, c)
