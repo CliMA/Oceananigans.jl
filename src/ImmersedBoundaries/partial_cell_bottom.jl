@@ -1,18 +1,26 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, bottommost_active_node, AbstractStaticGrid, constructor_arguments
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
-                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
+                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ,
+                               Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ, Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ,
+                               Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶠᶠ, Δz⁻¹ᶠᶜᶜ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶠᶠᶜ, Δz⁻¹ᶠᶠᶠ
 
 #####
 ##### PartialCellBottom
 #####
 
-struct PartialCellBottom{H, E} <: AbstractGridFittedBottom{H}
+struct PartialCellBottom{H, E, R} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     minimum_fractional_cell_height :: E
+    # reciprocal vertical spacings of the bottom cell and of its top face, one per column
+    Δr⁻¹ᶜᶜᶜ :: R
+    Δr⁻¹ᶜᶜᶠ :: R
 end
+
+PartialCellBottom(bottom_height, minimum_fractional_cell_height) =
+    PartialCellBottom(bottom_height, minimum_fractional_cell_height, nothing, nothing)
 
 const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
 
@@ -74,7 +82,36 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
 
-    return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height)
+    Δr⁻¹ᶜᶜᶜ = Field{Center, Center, Nothing}(grid)
+    Δr⁻¹ᶜᶜᶠ = Field{Center, Center, Nothing}(grid)
+
+    @apply_regionally compute_bottom_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, grid, bottom_field, minimum_fractional_cell_height)
+
+    return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height, Δr⁻¹ᶜᶜᶜ.data, Δr⁻¹ᶜᶜᶠ.data)
+end
+
+function compute_bottom_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, grid, bottom_field, minimum_fractional_cell_height)
+    TX, TY, TZ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    ib  = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
+    ibg = ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing, nothing)
+
+    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
+    launch!(architecture(grid), grid, parameters, _compute_bottom_reciprocal_spacings!, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, ibg)
+
+    return nothing
+end
+
+@kernel function _compute_bottom_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, ibg)
+    i, j = @index(Global, NTuple)
+
+    for k in 1:size(ibg, 3)
+        at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
+        @inbounds Δr⁻¹ᶜᶜᶜ[i, j, 1] = ifelse(at_the_bottom, 1 / Δrᶜᶜᶜ(i, j, k,   ibg), Δr⁻¹ᶜᶜᶜ[i, j, 1])
+        @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = ifelse(at_the_bottom, 1 / Δrᶜᶜᶠ(i, j, k+1, ibg), Δr⁻¹ᶜᶜᶠ[i, j, 1])
+    end
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
@@ -107,10 +144,14 @@ end
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     ib.minimum_fractional_cell_height)
+                                                                     ib.minimum_fractional_cell_height,
+                                                                     adapt(to, ib.Δr⁻¹ᶜᶜᶜ),
+                                                                     adapt(to, ib.Δr⁻¹ᶜᶜᶠ))
 
 Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                                             on_architecture(to, ib.minimum_fractional_cell_height))
+                                                                             on_architecture(to, ib.minimum_fractional_cell_height),
+                                                                             on_architecture(to, ib.Δr⁻¹ᶜᶜᶜ),
+                                                                             on_architecture(to, ib.Δr⁻¹ᶜᶜᶠ))
 
 """
     immersed     underlying
@@ -207,18 +248,46 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
 
-# Partial-cell spacings are computed rather than stored, so their reciprocals are computed too
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-    rspacing = Symbol(:Δr, LX, LY, LZ)
-    zspacing = Symbol(:Δz, LX, LY, LZ)
-    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
-    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
-
-    @eval begin
-        @inline Operators.$rcp_rspacing(i, j, k, ibg::PCBIBG)   = 1 / $rspacing(i, j, k, ibg)
-        @inline Operators.$rcp_zspacing(i, j, k, ibg::VSPCBIBG) = 1 / $zspacing(i, j, k, ibg)
-    end
+@inline function Δr⁻¹ᶜᶜᶜ(i, j, k, ibg::PCBIBG)
+    at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
+    partial_Δr⁻¹  = @inbounds ibg.immersed_boundary.Δr⁻¹ᶜᶜᶜ[i, j, 1]
+    full_Δr⁻¹     = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    return ifelse(at_the_bottom, partial_Δr⁻¹, full_Δr⁻¹)
 end
+
+@inline function Δr⁻¹ᶜᶜᶠ(i, j, k, ibg::PCBIBG)
+    just_above_bottom = bottommost_active_node(i, j, k-1, ibg, c, c, c)
+    partial_Δr⁻¹      = @inbounds ibg.immersed_boundary.Δr⁻¹ᶜᶜᶠ[i, j, 1]
+    full_Δr⁻¹         = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg.underlying_grid)
+    return ifelse(just_above_bottom, partial_Δr⁻¹, full_Δr⁻¹)
+end
+
+# The reciprocal of the smallest spacing is the largest reciprocal
+@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶜ(i, j, k, ibg))
+
+@inline Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))
+@inline Δr⁻¹ᶜᶠᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))
+@inline Δr⁻¹ᶠᶠᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶠ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶠ(i, j, k, ibg))
+
+@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+
+@inline Δr⁻¹ᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶠᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶠᶜᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+
+@inline Δz⁻¹ᶜᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶜᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶠᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶠᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶠᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶜᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶠᶠ(i, j, k, ibg)
 
 function Grids.constructor_arguments(grid::PCBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
