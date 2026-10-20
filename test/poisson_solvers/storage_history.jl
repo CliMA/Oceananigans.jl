@@ -9,24 +9,24 @@ using Oceananigans.Grids: XDirection, YDirection, ZDirection
             topo = ntuple(i -> i == axis ? Bounded : Periodic, 3)
             grid = RectilinearGrid(arch, FT; size=(16, 16, 16), extent=(1, 1, 1), topology=topo)
             formulation = HomogeneousNeumannFormulation(direction)
-            expected_solver = FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation=formulation)
             solver = FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation=formulation)
-            source = CenterField(grid)
-            expected = CenterField(grid)
+            first_source = CenterField(grid)
+            second_source = CenterField(grid)
+            first_solution = CenterField(grid)
             solution = CenterField(grid)
 
-            set!(source, (x, y, z) -> sin(2π * x) * cos(2π * y) * (z - 0.5))
-            source .= source .- mean(source)
-            solve!(expected, expected_solver, source)
+            set!(first_source, (x, y, z) -> sin(2π * x) * cos(2π * y) * (z - 0.5))
+            first_source .= first_source .- mean(first_source)
+            set!(second_source, (x, y, z) -> cos(4π * x) * sin(2π * y) * (z - 0.25))
+            second_source .= second_source .- mean(second_source)
 
-            set!(source, (x, y, z) -> cos(4π * x) * sin(2π * y) * (z - 0.25))
-            source .= source .- mean(source)
-            solve!(solution, solver, source)
+            solve!(first_solution, solver, first_source)
+            solve!(solution, solver, first_source)
+            @test solution == first_solution
 
-            set!(source, (x, y, z) -> sin(2π * x) * cos(2π * y) * (z - 0.5))
-            source .= source .- mean(source)
-            solve!(solution, solver, source)
-            @test solution == expected
+            solve!(solution, solver, second_source)
+            solve!(solution, solver, first_source)
+            @test solution == first_solution
         end
     end
 end
