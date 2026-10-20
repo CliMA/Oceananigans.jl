@@ -1,6 +1,6 @@
 using Oceananigans: instantiated_location
 using Oceananigans.Grids: _node, node, xnodes, ynodes
-using Oceananigans.Fields: AbstractField, Field, compute!, show_location
+using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Utils: prettysummary
@@ -44,13 +44,21 @@ at the specified `rate`, in the region `mask(X...)`.
 The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
 Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
 
+`mask` may be a function `mask(x, y, z)`, or an `AbstractField`/`AbstractArray` that shares
+the forced field's grid and location; a field or array is read at `i, j, k` rather than
+called. A field-valued mask is useful when the mask is expensive to evaluate but
+constant in time, so it can be computed once instead of at every kernel call.
+
+A `FunctionField` mask is called rather than read, so it is evaluated at the forced field's
+node and its own location is not used.
+
 `target` may be a `Number`, a function `target(x, y, z, t)`, an `AbstractField` sharing
 the forced field's grid and location, or a `FieldTimeSeries` (interpolated in space and
 time at each grid point).
 
 `transform`, if provided, is applied to the forced field at materialize time to build
 the `relaxed` quantity: the tendency becomes
-`rate * mask(X) * (target(X, t) - transform(field)[i, j, k])`. The user-supplied `target`
+`rate * mask * (target(X, t) - transform(field)[i, j, k])`, with `mask` evaluated as above. The user-supplied `target`
 is still used as the RHS of the relaxation. This is useful for nudging a reduction
 of the forced field — e.g. its horizontal average — toward a target profile.
 `transform` may be a callable returning a `Field`
@@ -184,10 +192,29 @@ function materialize_target(target::AbstractField, field)
     end
 end
 
+materialize_mask(mask, field) = mask
+
+# A `FunctionField` mask is called, not read, so its own grid and location do not constrain it.
+materialize_mask(mask::FunctionField, field) = mask
+
+# AbstractField mask: it is read at `i, j, k`, so it must share the forced field's grid and either
+# its location or a reduced one. A mask is not interpolated — the point of a field-valued mask is to
+# avoid per-cell work — so a mismatch is an error rather than a wrapped target.
+function materialize_mask(mask::AbstractField, field)
+    mask_loc = instantiated_location(mask)
+    mask.grid === field.grid ||
+        throw(ArgumentError("a `Field` mask must share the forced field's grid"))
+    (mask_loc == instantiated_location(field) || any(isnothing, mask_loc)) ||
+        throw(ArgumentError("a `Field` mask must share the forced field's location, or be reduced; " *
+                            "got $(show_location(mask)) for a $(show_location(field)) field"))
+    return mask
+end
+
 function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     target = materialize_target(forcing.target, field)
+    mask = materialize_mask(forcing.mask, field)
     relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
-    return Relaxation(forcing.rate, relaxed, forcing.mask, target,
+    return Relaxation(forcing.rate, relaxed, mask, target,
                       instantiated_location(field), forcing.transform)
 end
 
@@ -197,7 +224,8 @@ function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOf
         throw(ArgumentError("`transform` is not supported with a `FieldTimeSeries` target"))
     validate_fts_target_extent(forcing.target, field)
     target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
-    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), nothing)
+    mask = materialize_mask(forcing.mask, field)
+    return Relaxation(forcing.rate, field, mask, target, instantiated_location(field), nothing)
 end
 
 function validate_fts_target_extent(fts, field)
@@ -470,3 +498,11 @@ const DirectionalMask = Union{GaussianMask, PiecewiseLinearMask, CosineRampMask}
 
 @inline evaluate_mask(i, j, k, grid, mask, ℓ)                  = mask(node(i, j, k, grid, ℓ...)...)
 @inline evaluate_mask(i, j, k, grid, mask::DirectionalMask, ℓ) = mask(_node(i, j, k, grid, ℓ...)...)
+
+# A field or array mask is read at `i, j, k` rather than called, so a mask that is expensive to
+# evaluate but constant in time can be computed once.
+@inline evaluate_mask(i, j, k, grid, mask::AbstractArray, ℓ) = @inbounds mask[i, j, k]
+
+# A `FunctionField` is both callable and `<:AbstractArray`; call it, so it is evaluated at the forced
+# field's node rather than at its own location.
+@inline evaluate_mask(i, j, k, grid, mask::FunctionField, ℓ) = mask(node(i, j, k, grid, ℓ...)...)
