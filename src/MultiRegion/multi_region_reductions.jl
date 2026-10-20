@@ -9,12 +9,8 @@ using Oceananigans.Utils: tupleit
 using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra, dot
 
-#####
-##### Reductions of fields on MultiRegionGrids
-#####
-##### A reduction whose `dims` include every partitioned dimension "spans the partition": the regional results
-##### are combined into a field on the first region. Other reductions are computed region by region.
-#####
+# A reduction whose `dims` include every partitioned dimension "spans the partition": the regional results
+# are combined into a field on the first region. Other reductions are computed region by region.
 
 const MultiRegionAbstractField = AbstractField{<:Any, <:Any, <:Any, <:MultiRegionGrids}
 
@@ -22,34 +18,24 @@ partitioned_dimensions(::XPartition) = tuple(1)
 partitioned_dimensions(::YPartition) = tuple(2)
 partitioned_dimensions(::AbstractPartition) = (1, 2)
 
-normalize_dims(::Colon) = (1, 2, 3)
-normalize_dims(dims) = tupleit(dims)
-
 function spans_partition(grid::MultiRegionGrids, dims)
-    reduced_dims = normalize_dims(dims)
+    reduced_dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     partitioned = partitioned_dimensions(grid.partition)
     spanned = map(d -> d ∈ reduced_dims, partitioned)
-
-    all(spanned) && return true
-
-    if any(spanned)
+    all(spanned) || !any(spanned) ||
         throw(ArgumentError("Reductions over dims=$reduced_dims are not supported on a MultiRegionGrid partitioned along dimensions $partitioned."))
-    end
-
-    return false
+    return all(spanned)
 end
 
 reduction_grid(grid::MultiRegionGrids, dims) = spans_partition(grid, dims) ? getregion(grid, 1) : grid
 
-function accumulation_grid(grid::MultiRegionGrids, dims)
+Fields.scan_grid(::AbstractReducing, grid::MultiRegionGrids, dims) = reduction_grid(grid, dims)
+
+function Fields.scan_grid(::AbstractAccumulating, grid::MultiRegionGrids, dims)
     spans_partition(grid, dims) &&
         throw(ArgumentError("Accumulations over dims=$dims are not supported on a MultiRegionGrid partitioned along dimensions $(partitioned_dimensions(grid.partition))."))
-
     return grid
 end
-
-Fields.scan_grid(::AbstractReducing, grid::MultiRegionGrids, dims) = reduction_grid(grid, dims)
-Fields.scan_grid(::AbstractAccumulating, grid::MultiRegionGrids, dims) = accumulation_grid(grid, dims)
 
 Fields.scan_indices(type::AbstractReducing, indices::MultiRegionObject, dims) = scan_indices(type, getregion(indices, 1), dims)
 Fields.scan_indices(type::AbstractAccumulating, indices::MultiRegionObject, dims) = scan_indices(type, getregion(indices, 1), dims)
@@ -65,7 +51,6 @@ regional_condition(condition::AbstractArray, operand) = partition_condition(cond
 
 partition_condition(condition, operand, ::XPartition) = split_condition(condition, operand, 1)
 partition_condition(condition, operand, ::YPartition) = split_condition(condition, operand, 2)
-
 partition_condition(condition, operand, partition) =
     throw(ArgumentError("A global array cannot be a condition on a MultiRegionGrid with $(summary(partition)): use a MultiRegionObject of regional arrays."))
 
@@ -77,15 +62,11 @@ function split_condition(condition, operand, dim)
     last(last_indices) == size(condition, dim) ||
         throw(ArgumentError("The condition has size $(size(condition)), but the regions add up to $(last(last_indices)) points along dimension $dim."))
 
-    regional_conditions = map((i, j) -> copy(selectdim(condition, dim, i:j)), first_indices, last_indices)
-
-    return MultiRegionObject(regional_conditions)
+    return MultiRegionObject(map((i, j) -> copy(selectdim(condition, dim, i:j)), first_indices, last_indices))
 end
 
 function validate_regional_condition(condition, operand)
-    for r in regions(operand.grid)
-        validate_condition(getregion(condition, r), getregion(operand, r))
-    end
+    foreach(r -> validate_condition(getregion(condition, r), getregion(operand, r)), regions(operand.grid))
     return condition
 end
 
@@ -112,40 +93,34 @@ restrict_operand(operand, ::Nothing, mask) = operand
 
 # Reduce one region of `a` into the single-region field `r`
 function reduce_region!(reduction!, f, r, a, condition, mask, init, restriction=nothing)
-    operand = condition_operand(f, a, condition, mask)
-    operand = restrict_operand(operand, restriction, mask)
+    operand = restrict_operand(condition_operand(f, a, condition, mask), restriction, mask)
     init && initialize_reduced_field!(reduction!, identity, r, operand)
     reduction!(identity, interior(r), reduction_operand(operand); init=false)
     return r
 end
 
-# The regions that accumulate onto `r` are reduced into a partial result and then combined with `r`:
+# A reduction spanning the partition reduces each region into a partial result that is combined with `r`:
 # GPU reductions with `init=false` use the output as the neutral element of every thread block.
 function reduce_regions!(reduction!, f, r, a, condition, mask, init)
     dims = reduced_dimensions(r)
-
     spans_partition(a.grid, dims) ||
         throw(ArgumentError("The result of a reduction over dims=$dims must be a reduced field on the MultiRegionGrid."))
 
     restriction = spanning_restriction(reduction!, a.grid)
-    first_region = first(regions(a.grid))
-    accumulated_regions = init ? regions(a.grid)[2:end] : regions(a.grid)
-
-    init && reduce_region!(reduction!, f, r, getregion(a, first_region), getregion(condition, first_region), mask, true, restriction)
-
-    isempty(accumulated_regions) && return r
-
     partial = Field(instantiated_location(r), r.grid, eltype(r); indices=indices(r))
+    combine = reduction_operator(reduction!)
 
-    for region in accumulated_regions
+    for region in regions(a.grid)
         reduce_region!(reduction!, f, partial, getregion(a, region), getregion(condition, region), mask, true, restriction)
-        combine_partial_reductions!(reduction!, interior(r), interior(partial))
+        if init && region == first(regions(a.grid))
+            interior(r) .= interior(partial)
+        else
+            interior(r) .= combine.(interior(r), interior(partial))
+        end
     end
 
     return r
 end
-
-combine_partial_reductions!(reduction!, R, P) = R .= reduction_operator(reduction!).(R, P)
 
 reduction_operator(::SumReduction)     = +
 reduction_operator(::ProdReduction)    = *
@@ -158,69 +133,39 @@ reduction_operator(::AnyReduction)     = |
 function reduce_regions!(reduction!, f, r::MultiRegionAbstractField, a, condition, mask, init)
     if spans_partition(a.grid, reduced_dimensions(r))
         reduce_regions!(reduction!, f, getregion(r, 1), a, condition, mask, init)
-        copy_first_region!(r)
+        for region in regions(r.grid)[2:end]
+            interior(getregion(r, region)) .= interior(getregion(r, 1))
+        end
     else
         for region in regions(a.grid)
             reduce_region!(reduction!, f, getregion(r, region), getregion(a, region), getregion(condition, region), mask, init)
         end
     end
-
     return r
-end
-
-function copy_first_region!(r)
-    first_interior = interior(getregion(r, 1))
-
-    for region in regions(r.grid)[2:end]
-        interior(getregion(r, region)) .= first_interior
-    end
-
-    return r
-end
-
-function reduce_multi_region!(reduction!, f, r, a, condition, mask, init)
-    typed_mask = convert(filltype(reduction!, a), mask)
-    regional_conditions = regional_condition(condition, a)
-    return reduce_regions!(reduction!, f, r, a, regional_conditions, typed_mask, init)
 end
 
 function reduced_multi_region_field(T, c, dims)
     loc = reduced_location(instantiated_location(c); dims)
-    grid = reduction_grid(c.grid, dims)
-    regional_indices = getregion(indices(c), 1)
-    return Field(loc, grid, T; indices=regional_indices)
+    return Field(loc, reduction_grid(c.grid, dims), T; indices=getregion(indices(c), 1))
 end
 
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
-
     reduction! = Symbol(reduction, '!')
 
     @eval begin
-        # In-place
-        function Base.$(reduction!)(f::Function,
-                                    r::ReducedAbstractField,
-                                    a::MultiRegionAbstractField;
-                                    condition = nothing,
-                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                    init = true)
-
-            return reduce_multi_region!(Base.$(reduction!), f, r, a, condition, mask, init)
+        function Base.$(reduction!)(f::Function, r::ReducedAbstractField, a::MultiRegionAbstractField;
+                                    condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), init = true)
+            mask = convert(filltype(Base.$(reduction!), a), mask)
+            return reduce_regions!(Base.$(reduction!), f, r, a, regional_condition(condition, a), mask, init)
         end
 
         Base.$(reduction!)(r::ReducedAbstractField, a::MultiRegionAbstractField; kwargs...) =
             Base.$(reduction!)(identity, r, a; kwargs...)
 
-        # Allocating
-        function Base.$(reduction)(f::Function,
-                                   c::MultiRegionAbstractField;
-                                   condition = nothing,
-                                   mask = get_neutral_mask(Base.$(reduction!)),
-                                   dims = :)
-
-            T = filltype(Base.$(reduction!), c)
-            r = reduced_multi_region_field(T, c, dims)
-            reduce_multi_region!(Base.$(reduction!), f, r, c, condition, mask, true)
-
+        function Base.$(reduction)(f::Function, c::MultiRegionAbstractField;
+                                   condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), dims = :)
+            r = reduced_multi_region_field(filltype(Base.$(reduction!), c), c, dims)
+            Base.$(reduction!)(f, r, c; condition, mask)
             return reduction_result(r, dims)
         end
     end
@@ -251,33 +196,33 @@ Fields.conditional_length(c::MultiRegionGridConditionalOperation) = sum(conditio
 Fields.conditional_length(c::MultiRegionGridConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
 Fields.conditional_length(c::MultiRegionGridConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
-divide_by_length!(r, L::Number) = interior(r) ./= L
-divide_by_length!(r, L::AbstractField) = interior(r) ./= interior(L)
+divide_by_length!(total::Number, L) = total / L
 
-function Statistics._mean(f, c::MultiRegionAbstractField, ::Colon; condition = nothing, mask = 0)
-    typed_mask = convert(eltype(c), mask)
-    regional_conditions = regional_condition(condition, c)
-    total = sum(f, c; condition = regional_conditions, mask = typed_mask)
-    L = conditional_length(condition_operand(f, c, regional_conditions, typed_mask))
-    return total / L
-end
-
-function Statistics._mean(f, c::MultiRegionAbstractField, dims; condition = nothing, mask = 0)
-    typed_mask = convert(eltype(c), mask)
-    regional_conditions = regional_condition(condition, c)
-    r = sum(f, c; condition = regional_conditions, mask = typed_mask, dims)
-    L = conditional_length(condition_operand(f, c, regional_conditions, typed_mask), dims)
-    @apply_regionally divide_by_length!(r, L)
+function divide_by_length!(r, L)
+    @apply_regionally regional_divide!(r, L)
     return r
 end
+
+regional_divide!(r, L::Number) = interior(r) ./= L
+regional_divide!(r, L::AbstractField) = interior(r) ./= interior(L)
+
+function multi_region_mean(f, c, dims; condition = nothing, mask = 0)
+    mask = convert(eltype(c), mask)
+    condition = regional_condition(condition, c)
+    total = sum(f, c; condition, mask, dims)
+    L = conditional_length(condition_operand(f, c, condition, mask), dims)
+    return divide_by_length!(total, L)
+end
+
+Statistics._mean(f, c::MultiRegionAbstractField, dims::Colon; kwargs...) = multi_region_mean(f, c, dims; kwargs...)
+Statistics._mean(f, c::MultiRegionAbstractField, dims; kwargs...) = multi_region_mean(f, c, dims; kwargs...)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::MultiRegionAbstractField; condition = nothing, mask = 0)
-    typed_mask = convert(eltype(a), mask)
-    regional_conditions = regional_condition(condition, a)
-    sum!(f, r, a; condition = regional_conditions, mask = typed_mask)
-    L = conditional_length(condition_operand(f, a, regional_conditions, typed_mask), reduced_dimensions(r))
-    @apply_regionally divide_by_length!(r, L)
-    return r
+    mask = convert(eltype(a), mask)
+    condition = regional_condition(condition, a)
+    sum!(f, r, a; condition, mask)
+    L = conditional_length(condition_operand(f, a, condition, mask), reduced_dimensions(r))
+    return divide_by_length!(r, L)
 end
 
 #####
