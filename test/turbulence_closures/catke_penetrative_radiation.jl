@@ -57,8 +57,7 @@ end
 
 column_grid(arch) = RectilinearGrid(arch, size = 32, z = (-128, 0), topology = (Flat, Flat, Bounded))
 
-function sunny_column(grid, radiation; Jᵇᴮᶜ, steps = 144,
-                      closure = CATKEVerticalDiffusivity(radiation_adjustment = !isnothing(radiation)))
+function sunny_column(grid, radiation; Jᵇᴮᶜ, steps = 144, closure = CATKEVerticalDiffusivity())
 
     forcing = isnothing(radiation) ? NamedTuple() : (; b = radiation)
     boundary_conditions = (b = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇᴮᶜ)),
@@ -113,7 +112,7 @@ end
 
     @testset "CATKE takes the radiation from the model forcing" begin
         radiation = SingleBandRadiation(Jʳ, 1 / 10)
-        closure = (CATKEVerticalDiffusivity(radiation_adjustment = true), ScalarDiffusivity(ν = 1e-4))
+        closure = (CATKEVerticalDiffusivity(), ScalarDiffusivity(ν = 1e-4))
         forcing = (; b = (radiation, Forcing((z, t) -> 0)))
         model = HydrostaticFreeSurfaceModel(grid; closure, forcing, buoyancy = BuoyancyTracer(), tracers = :b)
         @test first(model.closure).penetrative_radiation === radiation
@@ -124,7 +123,7 @@ end
 
         # The members differ in the dissipation length, which sets the averaging time of the surface buoyancy flux
         dissipation(x) = TKEClosures.CATKEEquation(CʰⁱD = 0.579x, CˡᵒD = 1.604x, CᵘⁿD = 0.923x, CᶜD = 3.254x)
-        closures = [CATKEVerticalDiffusivity(radiation_adjustment = true, turbulent_kinetic_energy_equation = dissipation(x))
+        closures = [CATKEVerticalDiffusivity(turbulent_kinetic_energy_equation = dissipation(x))
                     for x in (1.0, 0.5, 2.0), _ in 1:1]
 
         ensemble_grid = RectilinearGrid(size = ColumnEnsembleSize(Nz = 32, ensemble = size(closures)), z = (-128, 0),
