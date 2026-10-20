@@ -37,7 +37,6 @@ The order of operations for explicit free surfaces is:
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
-    Δt = convert(FT, Δt)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
@@ -88,7 +87,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
-    Δt = convert(FT, Δt)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
@@ -161,10 +159,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
 
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    ηⁿ = displacement(model.free_surface)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
@@ -236,8 +235,7 @@ end
     tracer_field = model.tracers[tracer_name]
     grid = model.grid
 
-    FT = eltype(grid)
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
+    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
     # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]

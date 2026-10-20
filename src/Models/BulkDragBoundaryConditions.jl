@@ -197,6 +197,10 @@ end
 @inline boundary_index(::LeftBoundary,  N) = 1
 @inline boundary_index(::RightBoundary, N) = N
 
+# Domain boundary fluxes are positive along +x, +y, +z, so drag flux changes sign at right boundaries
+@inline boundary_sign(::LeftBoundary)  =  1
+@inline boundary_sign(::RightBoundary) = -1
+
 #####
 ##### Domain boundary getbc methods (2-index signatures)
 #####
@@ -212,14 +216,14 @@ const ZNormalBulkDragFunction{D} = BulkDragFunction{D, <:Any, Val{3}} where D  #
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
-    return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 @inline function BoundaryConditions.getbc(df::ZNormalBulkDragFunction{<:YDirection}, i::Integer, j::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     k = boundary_index(df.side, grid.Nz)
-    return _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 # x-normal boundaries (west/east): getbc(df, j, k, grid, ...)
@@ -228,14 +232,14 @@ end
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     i = boundary_index(df.side, grid.Nx)
-    return _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _y_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 @inline function BoundaryConditions.getbc(df::XNormalBulkDragFunction{<:ZDirection}, j::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     i = boundary_index(df.side, grid.Nx)
-    return _z_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _z_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 # y-normal boundaries (south/north): getbc(df, i, k, grid, ...)
@@ -244,14 +248,14 @@ end
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     j = boundary_index(df.side, grid.Ny)
-    return _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _x_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 @inline function BoundaryConditions.getbc(df::YNormalBulkDragFunction{<:ZDirection}, i::Integer, k::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
     U∞, V∞, W∞ = df.background_velocities
     j = boundary_index(df.side, grid.Ny)
-    return _z_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
+    return boundary_sign(df.side) * _z_bulk_drag(i, j, k, grid, df.formulation, fields, df.coefficient, U∞, V∞, W∞)
 end
 
 #####
@@ -401,7 +405,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: PeriodicBoundaryCondition
 ├── north: PeriodicBoundaryCondition
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
@@ -458,12 +462,12 @@ model.velocities.u.boundary_conditions
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: NormalFlowBoundaryCondition{Nothing}: Nothing
-├── east: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── west: NormalFlowBoundaryCondition{Nothing}: nothing
+├── east: NormalFlowBoundaryCondition{Nothing}: nothing
 ├── south: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── north: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Flux, north=Flux, bottom=Flux, top=Flux
 ```
 
