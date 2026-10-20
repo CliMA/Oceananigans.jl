@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.BoundaryConditions: Flux, Value, Gradient
-using Oceananigans.Fields: Field
+using Oceananigans.Fields: Field, FunctionField
 using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_normal_flow!, immersed_peripheral_node, peripheral_node
 using Oceananigans.Models.ShallowWaterModels: ConservativeFormulation, VectorInvariantFormulation
@@ -164,6 +164,22 @@ function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
     time_step!(model, 1)
 
     return true
+end
+
+function relaxed_time_stepping_in_column(arch, mask_type; mask_kwargs...)
+    mask = mask_type{:z}(; mask_kwargs...)
+    target = LinearTarget{:z}(intercept=π, gradient=ℯ)
+    forcing = Relaxation(; rate=1, mask, target)
+
+    grid = RectilinearGrid(arch, size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, forcing=(; c=forcing))
+    Δt = 0.1
+    time_step!(model, Δt)
+
+    expected = CenterField(grid)
+    set!(expected, z -> Δt * mask(0, 0, z) * target(0, 0, z, 0))
+
+    return model.tracers.c ≈ expected
 end
 
 # The FFT-based pressure solver is only approximate on immersed rectilinear grids, and warns about it
@@ -803,6 +819,10 @@ end
                 @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
+
+                @test relaxed_time_stepping_in_column(arch, GaussianMask;        center=0.5, width=0.1)
+                @test relaxed_time_stepping_in_column(arch, PiecewiseLinearMask; center=0.5, width=0.1)
+                @test relaxed_time_stepping_in_column(arch, CosineRampMask;      start=0.4, stop=0.6)
             end
 
             @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
@@ -898,6 +918,65 @@ end
                 time_step!(model_grid, Δt)
                 c_grid_after = Array(interior(model_grid.tracers.c))
                 @test all(isapprox.(c_grid_after, expected; atol=1e-6 * c_ref))
+            end
+
+            @testset "Relaxation with a field-valued mask [$(summary(arch))]" begin
+                grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ, c_ref, Δt = 60, 5, 1
+
+                # A uniform mask of 1/2 halves the relaxation rate, so one step from c = 0 lands
+                # halfway between the unmasked result and no relaxation at all.
+                half = CenterField(grid)
+                set!(half, 1/2)
+                r = Relaxation(rate=1/τ, mask=half, target=c_ref)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+                @test model.forcing.c.mask === half
+                set!(model, c=0)
+                time_step!(model, Δt)
+                @test all(isapprox.(Array(interior(model.tracers.c)), c_ref * (1 - exp(-Δt/2τ)), atol=1e-6 * c_ref))
+
+                # A z-dependent mask relaxes only where it is nonzero, so the `k` index must line up.
+                upper = CenterField(grid)
+                set!(upper, (x, y, z) -> z > -500 ? 1 : 0)
+                r_z = Relaxation(rate=1/τ, mask=upper, target=c_ref)
+                model_z = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_z))
+                set!(model_z, c=0)
+                time_step!(model_z, Δt)
+                c_z = Array(interior(model_z.tracers.c))
+                @test all(isapprox.(c_z[:, :, 3:4], c_ref * (1 - exp(-Δt/τ)), atol=1e-6 * c_ref))
+                @test all(c_z[:, :, 1:2] .== 0)
+
+                # A reduced mask broadcasts over the dimensions it drops.
+                column = Field{Nothing, Nothing, Center}(grid)
+                set!(column, z -> z > -500 ? 1 : 0)
+                r_r = Relaxation(rate=1/τ, mask=column, target=c_ref)
+                model_r = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_r))
+                set!(model_r, c=0)
+                time_step!(model_r, Δt)
+                @test all(isapprox.(Array(interior(model_r.tracers.c))[:, :, 3:4], c_ref * (1 - exp(-Δt/τ)), atol=1e-6 * c_ref))
+
+                # A `FunctionField` is callable and `<:AbstractArray`; it must be called, so that it is
+                # evaluated at the forced field's node rather than at its own location. Build it at a
+                # different location to tell the two apart: on this grid x centers are 25 and 75,
+                # while the x faces an indexed read would use are 0 and 50.
+                ff = FunctionField{Face, Center, Center}((x, y, z) -> x / 100, grid)
+                r_f = Relaxation(rate=1/τ, mask=ff, target=c_ref)
+                model_f = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_f))
+                set!(model_f, c=0)
+                time_step!(model_f, Δt)
+                c_f = Array(interior(model_f.tracers.c))
+                x_c = Array(xnodes(grid, Center()))
+                for i in 1:2
+                    @test isapprox(c_f[i, 1, 1], c_ref * (1 - exp(-Δt * (x_c[i]/100) / τ)), atol=1e-6 * c_ref)
+                end
+
+                # A mask on the wrong grid or at the wrong location is rejected rather than read
+                # at the wrong index.
+                other = RectilinearGrid(arch, size=(4, 4, 8), extent=(100, 100, 1000))
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c,
+                    forcing=(; c=Relaxation(rate=1/τ, mask=CenterField(other), target=c_ref)))
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c,
+                    forcing=(; c=Relaxation(rate=1/τ, mask=XFaceField(grid), target=c_ref)))
             end
 
             @testset "Relaxation with transform=:horizontal_average [$(summary(arch))]" begin

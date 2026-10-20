@@ -138,8 +138,8 @@ radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_range
 radiation_buffers(radiation::AbstractRadiationScheme) = (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ)
 
 radiation_storage(radiation::AbstractRadiationScheme, (φᵇ, φ₁, φ₁ˡ)) =
-    getnamewrapper(radiation)(radiation.outflow_timescale, radiation.inflow_timescale,
-                              radiation.use_boundary_velocity, φᵇ, φ₁, φ₁ˡ)
+    unparameterized_type(typeof(radiation))(radiation.outflow_timescale, radiation.inflow_timescale,
+                                            radiation.use_boundary_velocity, φᵇ, φ₁, φ₁ˡ)
 
 radiation_storage(radiation::NormalRadiation, (φᵇ, φ₁, φ₁ˡ)) =
     NormalRadiation(radiation.outflow_timescale, radiation.inflow_timescale, radiation.use_boundary_velocity,
