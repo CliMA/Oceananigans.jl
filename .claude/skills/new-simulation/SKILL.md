@@ -1,7 +1,6 @@
 ---
 name: new-simulation
 description: Set up and validate a new Oceananigans simulation, with or without a reference paper
-user_invocable: true
 ---
 
 # New Simulation
@@ -127,7 +126,7 @@ surface!(ax, field; colormap=:viridis)
 
 - **Don't use `interior(f)` to get data for plotting** — plot the `Field` directly
 - **Don't call `nodes(grid, ...)` to build coordinate arrays** — the extension does this
-- **Don't forget `compute!`** on `KernelComputedField` / computed fields before plotting
+- **Don't forget `compute!`** on computed `Field`s before plotting
   (the extension calls `compute!` automatically, but be aware of it for debugging)
 - **3D fields error** — always slice to 2D or 1D first
 

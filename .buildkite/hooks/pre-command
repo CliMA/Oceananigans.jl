@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+# Refresh the diff base used by `if_changed` in `buildkite-agent pipeline upload`:
+# the persistent agent checkout otherwise keeps a stale origin/main.
+export BUILDKITE_FETCH_DIFF_BASE=true
+
+# Release, manual, scheduled and API builds run every step, regardless of which files changed.
+if [[ -n "${BUILDKITE_TAG:-}" || "${BUILDKITE_SOURCE:-}" != "webhook" ]]; then
+    export BUILDKITE_AGENT_APPLY_IF_CHANGED=false
+fi

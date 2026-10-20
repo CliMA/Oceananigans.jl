@@ -141,6 +141,11 @@ end
 #####
 
 @inline function boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
+    # Constant-folds away unless a boundary condition is implicit-explicit
+    if !(needs_implicit_solver(top_bc) | needs_implicit_solver(bottom_bc) | needs_implicit_solver(immersed_bc))
+        return zero(grid)
+    end
+
     Nz  = size(grid, 3)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     λᵗ  = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
@@ -290,6 +295,11 @@ function implicit_step!(field::Field,
                         advection=nothing, velocities=nothing, density=nothing)
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
+
+    if vi_closure === ()
+        vi_closure = nothing
+        vi_closure_fields = nothing
+    end
 
     bcs = field.boundary_conditions
     isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing

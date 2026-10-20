@@ -310,12 +310,10 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
-    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
-            active_cells_map)
+            closure_fields, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     return nothing
 end
@@ -353,7 +351,7 @@ end
     Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
     Jʳᵢⱼ = @inbounds Jʳ[i, j, 1]
     Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ - Jʳᵢⱼ, Jᵇ★ - Jʳ★) # selects fastest (dominant) time-scale
-    t★ = cbrt(ℓᴰ^2 / Jᵇ⁺)
+    t★ = f32_safe_cbrt(ℓᴰ^2 / Jᵇ⁺)
     ϵ = Δt / t★
 
     @inbounds begin

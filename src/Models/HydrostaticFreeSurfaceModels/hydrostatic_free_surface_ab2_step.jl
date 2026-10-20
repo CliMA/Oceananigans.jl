@@ -37,7 +37,6 @@ The order of operations for explicit free surfaces is:
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
-    Δt = convert(FT, Δt)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
@@ -88,7 +87,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
-    Δt = convert(FT, Δt)
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, model.free_surface)
@@ -161,10 +159,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
     ab2_step_velocity!(model, Δt, χ, Val(:u))
     ab2_step_velocity!(model, Δt, χ, Val(:v))
 
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, Δt)
+    ηⁿ = displacement(model.free_surface)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, Δt)
     implicit_ab2_step_velocity!(model, Δt, Val(:u))
     implicit_ab2_step_velocity!(model, Δt, Val(:v))
-    add_deferred_barotropic_acceleration!(velocities, model.grid, model.free_surface, -Δt)
+    add_barotropic_acceleration!(velocities, model.grid, model.free_surface, ηⁿ, -Δt)
 
     return nothing
 end
@@ -219,15 +218,9 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 as they are handled separately. Implicit vertical diffusion is applied if configured.
 """
 function ab2_step_tracers!(tracers, model, Δt, χ)
-    ab2_step_tracers!(model, Δt, χ, Val(1), Val(propertynames(tracers)))
-    return nothing
-end
-
-@inline ab2_step_tracers!(model, Δt, χ, ::Val, ::Val{()}) = nothing
-
-@inline function ab2_step_tracers!(model, Δt, χ, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    ab2_step_tracer!(model, Δt, χ, Val(tracer_index), Val(first(names)))
-    ab2_step_tracers!(model, Δt, χ, Val(tracer_index + 1), Val(Base.tail(names)))
+    foreach_name(tracers) do val_tracer_index, val_tracer_name
+        ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
+    end
     return nothing
 end
 
@@ -242,10 +235,13 @@ end
     tracer_field = model.tracers[tracer_name]
     grid = model.grid
 
-    FT = eltype(grid)
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
+    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
+    # The adaptive implicit advection must see the same total velocity as the explicit flux, drift included
     @inbounds c_advection = model.advection[tracer_name]
+    c_velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, closure,
+                                               model.closure_fields, model.forcing[tracer_name], Val(tracer_name))
+
     implicit_step!(tracer_field,
                    model.timestepper.implicit_solver,
                    closure,
@@ -255,7 +251,7 @@ end
                    fields(model),
                    Δt,
                    c_advection,
-                   model.transport_velocities)
+                   c_velocities)
     return nothing
 end
 

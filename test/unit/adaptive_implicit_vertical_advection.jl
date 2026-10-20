@@ -280,6 +280,70 @@ end
     end
 end
 
+@testset "AIVA solve with explicit and implicit closure tuples" begin
+    Nz = 16
+    grid = RectilinearGrid(CPU(), size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           halo=(1, 1, 4), topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    td.Δt[] = Δt
+    scheme = WENO(; time_discretization=td)
+    solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    clock = Clock(grid)
+
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 5 * exp(-(z - 500)^2 / (2 * 100^2)))
+    fill_halo_regions!(W)
+
+    q₀(x, y, z) = exp(-((z - 400) / 150)^2)
+    initial = CenterField(grid)
+    set!(initial, q₀)
+    fill_halo_regions!(initial)
+    initial = Array(interior(initial))
+
+    function step_with_closure(closure, closure_fields; boundary_conditions=nothing, advection=scheme)
+        q = isnothing(boundary_conditions) ? CenterField(grid) : CenterField(grid; boundary_conditions)
+        set!(q, q₀)
+        fill_halo_regions!(q)
+
+        implicit_step!(q, solver, closure, closure_fields, Val(1), clock, (;), Δt, advection, (; w=W))
+        return Array(interior(q))
+    end
+
+    no_closure = step_with_closure(nothing, nothing)
+    explicit_closure = step_with_closure(SmagorinskyLilly(), nothing)
+    explicit_singleton = step_with_closure((SmagorinskyLilly(),), (nothing,))
+    explicit_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)), (nothing, nothing))
+    reported_tuple = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=1.5e-5, κ=2.1e-5)), (nothing, nothing))
+
+    @test maximum(abs, no_closure .- initial) > 0
+    @test explicit_closure ≈ no_closure
+    @test explicit_singleton ≈ explicit_closure
+    @test explicit_tuple ≈ no_closure
+    @test reported_tuple ≈ no_closure
+
+    implicit_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=2.1e-5)
+    implicit_singleton = step_with_closure(implicit_closure, nothing)
+    mixed_tuple = step_with_closure((SmagorinskyLilly(), implicit_closure), (nothing, nothing))
+
+    @test maximum(abs, implicit_singleton .- no_closure) > 0
+    @test mixed_tuple ≈ implicit_singleton
+
+    boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Center());
+                                                  top=IMEXFluxBoundaryCondition(0.0, 0.05))
+    no_closure_with_flux = step_with_closure(nothing, nothing; boundary_conditions)
+    tuple_with_flux = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                        (nothing, nothing); boundary_conditions)
+    flux_only = step_with_closure((SmagorinskyLilly(), ScalarDiffusivity(ν=0, κ=0)),
+                                  (nothing, nothing); boundary_conditions, advection=nothing)
+
+    @test no_closure_with_flux[1, 1, end] < no_closure[1, 1, end]
+    @test tuple_with_flux ≈ no_closure_with_flux
+    @test flux_only[1, 1, end] ≈ initial[1, 1, end] / (1 + Δt * 0.05 / (1000 / Nz))
+    @test flux_only[1, 1, 1:end-1] ≈ initial[1, 1, 1:end-1]
+end
+
 @testset "AIVA and bounds preservation both refresh" begin
     grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1), halo=(6, 6, 6))
     advection = WENO(order=5, bounds=(0, 1), time_discretization=AdaptiveVerticallyImplicitDiscretization())
@@ -434,6 +498,51 @@ end
             explicit_tracer = final_tracer(ExplicitTimeDiscretization(), Δt)
             adaptive_tracer = final_tracer(AdaptiveVerticallyImplicitDiscretization(FT; cfl), Δt)
             @test maximum(abs, adaptive_tracer .- explicit_tracer) > 1e-4
+        end
+    end
+end
+
+struct SinkingParticles{W} <: Oceananigans.Biogeochemistry.AbstractBiogeochemistry
+    sinking_velocity :: W
+end
+
+Adapt.adapt_structure(to, bgc::SinkingParticles) = SinkingParticles(Adapt.adapt(to, bgc.sinking_velocity))
+Oceananigans.Biogeochemistry.required_biogeochemical_tracers(::SinkingParticles) = (:D,)
+Oceananigans.Biogeochemistry.biogeochemical_drift_velocity(bgc::SinkingParticles, ::Val{:D}) = bgc.sinking_velocity
+
+@testset "AIVA carries the biogeochemical drift velocity through the implicit solve" begin
+    speed = 100 / day
+    Δt = 0.4day # sinking Courant number 4, so most of the flux goes through the implicit part
+    nsteps = 3
+
+    for arch in archs, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        grid = RectilinearGrid(arch; size=40, z=(-400, 0), topology=(Flat, Flat, Bounded))
+
+        # w = 0 on the top and bottom faces keeps the sinking tracer inside the domain
+        w = ZFaceField(grid)
+        set!(w, z -> ifelse((z == 0) | (z == -400), 0, -speed))
+        biogeochemistry = SinkingParticles((u=Oceananigans.Fields.ZeroField(), v=Oceananigans.Fields.ZeroField(), w))
+
+        tracer_advection = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+        model = HydrostaticFreeSurfaceModel(grid; biogeochemistry, timestepper, tracer_advection,
+                                            momentum_advection=nothing, free_surface=nothing)
+
+        set!(model, D = z -> exp(-(z + 100)^2 / 800))
+
+        z = znodes(grid, Center())
+        center_of_mass(D) = sum(z .* D) / sum(D)
+        D₀ = Array(interior(model.tracers.D, 1, 1, :))
+
+        for _ in 1:nsteps
+            time_step!(model, Δt)
+        end
+
+        D = Array(interior(model.tracers.D, 1, 1, :))
+        descent = center_of_mass(D₀) - center_of_mass(D)
+
+        @testset "Sinking tracer [$(typeof(arch)), $timestepper]" begin
+            @test sum(D) ≈ sum(D₀) rtol=1e-12
+            @test descent ≈ speed * Δt * nsteps rtol=0.05
         end
     end
 end
