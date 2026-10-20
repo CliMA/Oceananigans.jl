@@ -82,17 +82,18 @@ jet_model = HydrostaticFreeSurfaceModel(jet_grid; buoyancy=nothing, tracers=(),
 # ```
 #
 # and zero elsewhere, with ``u_{\max} = 80 \, \mathrm{m \, s^{-1}}``, ``φ₀ = π/7``,
-# ``φ₁ = π/2 - φ₀`` and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]``, so that the jet peaks at 45°N.
+# ``φ₁ = π/2 - φ₀``, and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]``, so that the jet peaks at 45°N.
 
-u_max = 80
+uₘₐₓ = 80
 φ₀ = π / 7
 φ₁ = π / 2 - φ₀
-e_n = exp(-4 / (φ₁ - φ₀)^2)
+eₙ = exp(-4 / (φ₁ - φ₀)^2)
 
-jet(φ) = φ₀ < φ < φ₁ ? u_max / e_n * exp(1 / ((φ - φ₀) * (φ - φ₁))) : 0.0
+jet(φ) = φ₀ < φ < φ₁ ? uₘₐₓ / eₙ * exp(1 / ((φ - φ₀) * (φ - φ₁))) : 0.0
 
 # The height ``h`` of the fluid is in gradient-wind balance with the jet. Since the jet is zonally
-# symmetric, ``h`` depends only on latitude:
+# symmetric, ``h`` depends only on latitude and from geostrophic balance of the ``v``-momentum equation
+# we have:
 #
 # ```math
 # f u + \frac{u^2 \tan φ}{R} = - \frac{g}{R} \frac{\mathrm{d} h}{\mathrm{d} φ} ,
