@@ -174,11 +174,8 @@ for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
             @inline $near_boundary_symmetric(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}) = $symmetric_cells
             @inline $near_boundary_biased(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}, bias) = $biased_cells
 
-            @inline $near_boundary_symmetric(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) =
-                !$within_bounds_symmetric($index, ibg, scheme) | $symmetric_cells
-
-            @inline $near_boundary_biased(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}, bias) =
-                !$within_bounds_biased($index, ibg, scheme, bias) | $biased_cells
+            @inline $near_boundary_symmetric(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) = !$within_bounds_symmetric($index, ibg, scheme) | $symmetric_cells
+            @inline $near_boundary_biased(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}, bias) = !$within_bounds_biased($index, ibg, scheme, bias) | $biased_cells
         end
     end
 end
