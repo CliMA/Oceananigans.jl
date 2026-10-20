@@ -236,11 +236,14 @@ end
 
 stencil_start(x★, s) = floor(Int, x★) - s ÷ 2 + 1
 
-# The start `(i₀, j₀)` of an `s × s` stencil of the interior nodes `1:Nx × 1:Ny` of a panel around
-# `(i★, j★)`, or `nothing` if there is none.
 function interior_stencil_start(i★, j★, s, (Nx, Ny))
     for j₀ in stencil_starts(j★, s), i₀ in stencil_starts(i★, s)
-        1 ≤ i₀ && i₀ + s - 1 ≤ Nx && 1 ≤ j₀ && j₀ + s - 1 ≤ Ny && return (i₀, j₀)
+        west_edge_inside = i₀ ≥ 1
+        east_edge_inside = i₀ + s - 1 ≤ Nx
+        south_edge_inside = j₀ ≥ 1
+        north_edge_inside = j₀ + s - 1 ≤ Ny
+        stencil_inside = west_edge_inside & east_edge_inside & south_edge_inside & north_edge_inside
+        stencil_inside && return (i₀, j₀)
     end
     return nothing
 end
