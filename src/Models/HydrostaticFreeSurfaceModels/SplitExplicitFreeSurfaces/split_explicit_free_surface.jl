@@ -160,8 +160,10 @@ Keyword Arguments
                       `averaging_kernel > 0`. By default, the averaging kernel described by
                       [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
-- `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
+- `timestepper`: Time stepping scheme used for the barotropic advancement:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
+  * `CoriolisForwardBackwardScheme()`: as above, and also advances the barotropic Coriolis force inside
+    the substeps (see [`CoriolisForwardBackwardScheme`](@ref)).
 
 References
 ==========
@@ -275,7 +277,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
     else
-        maybe_extend_halos(TX, TY, grid, substepping)
+        maybe_extend_halos(TX, TY, grid, substepping, free_surface.timestepper)
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
@@ -417,18 +419,23 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 #####
 
 # Extending halos is not allowed with variable time-stepping
-maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize, timestepper) = grid
 
-function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
+# Stale halo data spreads one cell per substep, or two when the substeps also carry Coriolis
+@inline substep_halo_reach(timestepper) = 1
+@inline substep_halo_reach(::CoriolisForwardBackwardScheme) = 2
+
+function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber, timestepper)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
+    reach = substep_halo_reach(timestepper)
 
     # Every rank shares the same halo, so it is capped at the smallest local size
     Nx = all_reduce(min, size(grid, 1), architecture(grid))
     Ny = all_reduce(min, size(grid, 2), architecture(grid))
 
-    Hx = TX() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[1]), Nx) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[2]), Ny) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? min(max(reach * Nsubsteps + 2, old_halos[1]), Nx) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? min(max(reach * Nsubsteps + 2, old_halos[2]), Ny) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -477,6 +484,7 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
                                            Adapt.adapt(to, free_surface.boundary_transport))
 
 for Type in (SplitExplicitFreeSurface,
+             CoriolisForwardBackwardScheme,
              FixedTimeStepSize,
              FixedSubstepNumber)
 

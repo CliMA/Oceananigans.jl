@@ -1,6 +1,6 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, CoriolisForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
 using DocStringExtensions: TYPEDSIGNATURES
@@ -15,6 +15,8 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditio
 using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Open, TwoSided
 using Oceananigans.DistributedComputations: DistributedGrid, all_reduce, @root
+using Oceananigans.Coriolis: fᶠᶠᵃ
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, Δxᶜᶠᶠ, Δyᶠᶜᶠ, Δx⁻¹ᶠᶜᶠ, Δy⁻¹ᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
@@ -41,6 +43,7 @@ include("initialize_split_explicit_substepping.jl")
 include("compute_slow_tendencies.jl")
 include("barotropic_targeted_transport.jl")
 include("step_split_explicit_free_surface.jl")
+include("substep_coriolis.jl")
 include("barotropic_split_explicit_corrector.jl")
 
 # extend
