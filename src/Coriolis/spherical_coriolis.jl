@@ -1,6 +1,5 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, φnode, hack_sind, hack_cosd, peripheral_node
-using Oceananigans.Operators: Δz_qᶠᶜᶜ, Δz_qᶜᶠᶜ, Az_qᶜᶜᶠ, Δz⁻¹ᶜᶜᶠ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶜᶠᶜ,
-                              ∂xᶠᶜᶜ, ∂yᶠᶜᶜ, ∂xᶜᶠᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, φnode, hack_sind, hack_cosd
+using Oceananigans.Operators: Δz_qᶠᶜᶜ, Δz_qᶜᶠᶜ, Az_qᶜᶜᶠ, Δz⁻¹ᶜᶜᶠ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶜᶠᶜ, rotation_angle
 
 """
     HydrostaticFormulation
@@ -33,9 +32,6 @@ struct SphericalCoriolis{S, FT, F} <: AbstractRotation{S}
     formulation :: F
 end
 
-const NonhydrostaticSchemes = Union{EnstrophyConserving, EnergyConserving, TriadScheme,
-                                    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving}
-
 """
     SphericalCoriolis([FT = Float64;]
                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
@@ -55,8 +51,7 @@ Keyword arguments
 - `rotation_rate`: Sphere's rotation rate; default: Earth's rotation rate.
 - `scheme`: Discretization scheme. Options include `EnstrophyConserving()` (default),
   `EnergyConserving()`, `ActiveWeightedEnstrophyConserving()`,
-  `ActiveWeightedEnergyConserving()`, and `TriadScheme()`. With the `NonhydrostaticFormulation`
-  these are the only options; `DualGridScheme` is supported by the `HydrostaticFormulation` only.
+  `ActiveWeightedEnergyConserving()`, and `TriadScheme()`.
 - `formulation`: Either `NonhydrostaticFormulation()` (default) or `HydrostaticFormulation()`.
 
 Example
@@ -77,14 +72,9 @@ function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                            scheme = EnstrophyConserving(),
                            formulation = NonhydrostaticFormulation())
     rotation_rate = convert(FT, rotation_rate)
-    validate_coriolis_scheme(formulation, scheme)
+
     return SphericalCoriolis(rotation_rate, scheme, formulation)
 end
-
-validate_coriolis_scheme(formulation, scheme) = nothing
-validate_coriolis_scheme(::NonhydrostaticFormulation, ::NonhydrostaticSchemes) = nothing
-validate_coriolis_scheme(::NonhydrostaticFormulation, scheme) =
-    throw(ArgumentError("SphericalCoriolis with NonhydrostaticFormulation() does not support $(summary(scheme))."))
 
 const HydrostaticSphericalCoriolis{S, FT}      = SphericalCoriolis{S, FT, <:HydrostaticFormulation} where {S, FT}
 const NonhydrostaticSphericalCoriolis{S, FT}   = SphericalCoriolis{S, FT, <:NonhydrostaticFormulation} where {S, FT}
@@ -138,65 +128,51 @@ end
 @inline f̃ᶠᶜᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶜᵃ(i, j, k, grid))
 @inline f̃ᶜᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶜᶠᵃ(i, j, k, grid))
 
-const OrthogonalSphericalShellGridOfSomeKind = Union{OrthogonalSphericalShellGrid,
-                                                     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}}
+const OrthogonalSphericalShellGridOfSomeKind =
+    Union{OrthogonalSphericalShellGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}}
 
 # The nontraditional terms (f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u) of the horizontal rotation vector f̃ n̂ = 2Ω cos φ n̂, where
-# n̂ = ∇φ / |∇φ| points north, are projected onto the grid's axes. On a `LatitudeLongitudeGrid` y points north.
-@inline function normalized_component(a, b) # a / |(a, b)|, exact on aligned grids
-    norm = √(a^2 + b^2)
-    return ifelse(norm == 0, zero(a), a / norm)
-end
+# n̂ points north, use its components (f̃ˣ, f̃ʸ) = f̃ (-sin θ, cos θ) along the grid's axes, with θ the angle
+# from the grid's ŷ to north (`Operators.rotation_angle`), which vanishes on a `LatitudeLongitudeGrid`.
+@inline north_angle(i, j, grid, ℓx, ℓy) = zero(grid)
+@inline north_angle(i, j, grid::OrthogonalSphericalShellGridOfSomeKind, ℓx, ℓy) = rotation_angle(i, j, grid, ℓx, ℓy)
 
-@inline northward_projection_yᶠᶜᵃ(i, j, k, grid) = normalized_component(∂yᶠᶜᶜ(i, j, k, grid, φᶠᶠᵃ), ∂xᶠᶜᶜ(i, j, k, grid, φᶜᶜᵃ))
-@inline northward_projection_xᶜᶠᵃ(i, j, k, grid) = normalized_component(∂xᶜᶠᶜ(i, j, k, grid, φᶠᶠᵃ), ∂yᶜᶠᶜ(i, j, k, grid, φᶜᶜᵃ))
-
-@inline f̃ʸᶠᶜᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = f̃ᶠᶜᵃ(i, j, k, grid, coriolis)
-
-@inline f̃ʸᶠᶜᵃ(i, j, k, grid::OrthogonalSphericalShellGridOfSomeKind, coriolis::SphericalCoriolis) =
-    f̃ᶠᶜᵃ(i, j, k, grid, coriolis) * northward_projection_yᶠᶜᵃ(i, j, k, grid)
-
-@inline f̃ˣᶜᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGridOfSomeKind, coriolis::SphericalCoriolis) =
-    f̃ᶜᶠᵃ(i, j, k, grid, coriolis) * northward_projection_xᶜᶠᵃ(i, j, k, grid)
+@inline f̃ʸᶠᶜᵃ(i, j, k, grid, coriolis) = + f̃ᶠᶜᵃ(i, j, k, grid, coriolis) * cos(north_angle(i, j, grid, face, center))
+@inline f̃ˣᶜᶠᵃ(i, j, k, grid, coriolis) = - f̃ᶜᶠᵃ(i, j, k, grid, coriolis) * sin(north_angle(i, j, grid, center, face))
 
 @inline f̃ʸ_ℑz_uᶠᶜᶠ(i, j, k, grid, coriolis, u) = f̃ʸᶠᶜᵃ(i, j, k, grid, coriolis) * ℑzᵃᵃᶠ(i, j, k, grid, Δz_qᶠᶜᶜ, u)
 @inline f̃ʸ_ℑx_wᶠᶜᶠ(i, j, k, grid, coriolis, w) = f̃ʸᶠᶜᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w)
 @inline f̃ˣ_ℑz_vᶜᶠᶠ(i, j, k, grid, coriolis, v) = f̃ˣᶜᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᵃᶠ(i, j, k, grid, Δz_qᶜᶠᶜ, v)
 @inline f̃ˣ_ℑy_wᶜᶠᶠ(i, j, k, grid, coriolis, w) = f̃ˣᶜᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w)
 
-# The f̃ˣ terms vanish where x̂ points east
 @inline x_f̃_cross_U(i, j, k, grid, coriolis, U) =
     @inbounds + ℑzᵃᵃᶜ(i, j, k, grid, f̃ʸ_ℑx_wᶠᶜᶠ, coriolis, U[3]) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
 
-@inline y_f̃_cross_U(i, j, k, grid, coriolis, U) = zero(grid)
-@inline y_f̃_cross_U(i, j, k, grid::OrthogonalSphericalShellGridOfSomeKind, coriolis, U) =
+@inline y_f̃_cross_U(i, j, k, grid, coriolis, U) =
     @inbounds - ℑzᵃᵃᶜ(i, j, k, grid, f̃ˣ_ℑy_wᶜᶠᶠ, coriolis, U[3]) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 @inline z_f̃_cross_U(i, j, k, grid, coriolis, U) =
-    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃ʸ_ℑz_uᶠᶜᶠ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+    @inbounds (ℑyᵃᶜᵃ(i, j, k, grid, f̃ˣ_ℑz_vᶜᶠᶠ, coriolis, U[2]) -
+               ℑxᶜᵃᵃ(i, j, k, grid, f̃ʸ_ℑz_uᶠᶜᶠ, coriolis, U[1])) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
-@inline z_f̃_cross_U(i, j, k, grid::OrthogonalSphericalShellGridOfSomeKind, coriolis, U) =
-    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f̃ʸ_ℑz_uᶠᶜᶠ, coriolis, U[1]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid) +
-                ℑyᵃᶜᵃ(i, j, k, grid, f̃ˣ_ℑz_vᶜᶠᶠ, coriolis, U[2]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
-
-# Computes the traditional part with the scheme's stencil
-@inline with_hydrostatic_formulation(coriolis::SphericalCoriolis) =
+# The traditional part is the scheme's stencil, with one method per scheme to avoid ambiguities with the
+# `AbstractRotation{<:Scheme}` methods
+@inline hydrostatic(coriolis::SphericalCoriolis) =
     SphericalCoriolis(coriolis.rotation_rate, coriolis.scheme, HydrostaticFormulation())
 
-# One method per scheme avoids ambiguities with the `AbstractRotation{<:Scheme}` methods
 for Scheme in (:EnstrophyConserving, :EnergyConserving, :TriadScheme,
-               :ActiveWeightedEnstrophyConserving, :ActiveWeightedEnergyConserving)
+               :ActiveWeightedEnstrophyConserving, :ActiveWeightedEnergyConserving, :DualGridScheme)
     @eval begin
         @inline x_f_cross_U(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis{<:$Scheme}, U) =
-            x_f_cross_U(i, j, k, grid, with_hydrostatic_formulation(coriolis), U) + x_f̃_cross_U(i, j, k, grid, coriolis, U)
+            x_f_cross_U(i, j, k, grid, hydrostatic(coriolis), U) + x_f̃_cross_U(i, j, k, grid, coriolis, U)
 
         @inline y_f_cross_U(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis{<:$Scheme}, U) =
-            y_f_cross_U(i, j, k, grid, with_hydrostatic_formulation(coriolis), U) + y_f̃_cross_U(i, j, k, grid, coriolis, U)
-
-        @inline z_f_cross_U(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis{<:$Scheme}, U) =
-            z_f̃_cross_U(i, j, k, grid, coriolis, U)
+            y_f_cross_U(i, j, k, grid, hydrostatic(coriolis), U) + y_f̃_cross_U(i, j, k, grid, coriolis, U)
     end
 end
+
+@inline z_f_cross_U(i, j, k, grid, coriolis::NonhydrostaticSphericalCoriolis, U) =
+    z_f̃_cross_U(i, j, k, grid, coriolis, U)
 
 Adapt.adapt_structure(to, coriolis::SphericalCoriolis) =
     SphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),

@@ -132,8 +132,7 @@ of rotation). `SphericalCoriolis` additionally includes the horizontal component
 stencil of its `scheme`, as `HydrostaticSphericalCoriolis` does, and adds the non-traditional terms
 ``(\tilde{f}^y w, -\tilde{f}^x w, \tilde{f}^x v - \tilde{f}^y u)``, where ``(\tilde{f}^x, \tilde{f}^y)``
 are the components of ``\tilde{f} = 2\Omega\cos\varphi`` along the grid's axes, rotated or not. They do
-no net work on the discrete kinetic energy. The `NonhydrostaticFormulation` supports only the five
-schemes below.
+no net work on the discrete kinetic energy.
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis()
