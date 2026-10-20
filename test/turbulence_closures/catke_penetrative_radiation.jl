@@ -4,7 +4,7 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 const TKEClosures = Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities
 
-using .TKEClosures: convective_buoyancy_production, convective_layer_depth, effective_buoyancy_flux
+using .TKEClosures: convective_buoyancy_production, convective_layer_depth, effective_buoyancy_flux, with_penetrative_radiation
 
 # Beer's law in two bands: a surface radiative buoyancy flux (≤ 0, positive upward), a fraction ϵ of which is absorbed over
 # 1 / κ₁ and the rest over 1 / κ₂
@@ -98,6 +98,18 @@ end
                 @test convective_layer_depth(1, 1, grid, R, w★³, net, sun, Jᵇᵋ) ≈ h rtol = 2e-3
             end
         end
+    end
+
+    @testset "Handing the radiation to CATKE" begin
+        radiation = SingleBandRadiation(Jʳ, 1 / 10)
+        catke = CATKEVerticalDiffusivity(minimum_tke = 1e-8)
+        viscosity = ScalarDiffusivity(ν = 1e-4)
+        with_radiation = with_penetrative_radiation((catke, viscosity), radiation)
+
+        @test with_radiation[1].penetrative_radiation === radiation
+        @test with_radiation[1].minimum_tke == catke.minimum_tke
+        @test with_radiation[2] === viscosity
+        @test with_penetrative_radiation(viscosity, radiation) === viscosity
     end
 
     for arch in archs

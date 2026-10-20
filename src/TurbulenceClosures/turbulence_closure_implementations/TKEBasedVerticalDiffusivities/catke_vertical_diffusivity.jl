@@ -37,7 +37,16 @@ function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                                                             penetrative_radiation)
 end
 
-function Adapt.adapt_structure(to, closure::CATKEVerticalDiffusivity{TD}) where TD
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with every `CATKEVerticalDiffusivity` in it, alone or in a tuple, taking `radiation` as its
+`penetrative_radiation`. Other closures are returned unchanged.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
+
+function with_penetrative_radiation(closure::CATKEVerticalDiffusivity{TD}, radiation) where TD
     return CATKEVerticalDiffusivity{TD}(closure.mixing_length,
                                         closure.turbulent_kinetic_energy_equation,
                                         closure.maximum_tracer_diffusivity,
@@ -47,8 +56,10 @@ function Adapt.adapt_structure(to, closure::CATKEVerticalDiffusivity{TD}) where 
                                         closure.minimum_convective_buoyancy_flux,
                                         closure.negative_tke_damping_time_scale,
                                         closure.tke_time_step,
-                                        adapt(to, closure.penetrative_radiation))
+                                        radiation)
 end
+
+Adapt.adapt_structure(to, closure::CATKEVerticalDiffusivity) = with_penetrative_radiation(closure, adapt(to, closure.penetrative_radiation))
 
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
     CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
