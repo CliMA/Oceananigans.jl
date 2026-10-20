@@ -546,7 +546,7 @@ function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Union{Bounded, Sides{Closed, Connected}}, N::Int) = ifelse(N > 1, 1, 0)
 
 #####
 ##### Kernel parameters that extend into the halos
