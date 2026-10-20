@@ -205,18 +205,8 @@ abstract type AbstractOutputWriter end
 struct TimeStepCallsite end
 struct UpdateStateCallsite end
 
-"""
-    MomentumTendency()
-
-The tendency kind of `TendencyCallsite()`: its callbacks act on the momentum tendencies.
-"""
+# The tendencies that the callbacks of a `TendencyCallsite` act on
 struct MomentumTendency end
-
-"""
-    TracerTendency()
-
-The tendency kind of `TracerTendencyCallsite()`: its callbacks act on the tracer tendencies.
-"""
 struct TracerTendency end
 
 struct TendencyCallsite{T}

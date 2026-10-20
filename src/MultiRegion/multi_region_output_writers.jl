@@ -42,9 +42,9 @@ end
 
 const PanelField{LX, LY, LZ} = Union{CubedSphereField{LX, LY, LZ}, YinYangField{LX, LY, LZ}}
 
-function OutputWriters.fetch_output(field::PanelField, model)
-    compute_at!(field, model.clock.time)
-    return parent(field)
+function OutputWriters.fetch_output(csf::PanelField, model)
+    compute_at!(csf, model.clock.time)
+    return parent(csf)
 end
 
 function OutputWriters.convert_output(mo::MultiRegionObject, writer)
@@ -59,24 +59,22 @@ function OutputWriters.construct_output(mrf::MultiRegionField{LX, LY, LZ}, user_
     return Field(mrf; indices, NamedTuple()...)
 end
 
-function OutputWriters.serializeproperty!(file, location, field::PanelField{LX, LY, LZ}) where {LX, LY, LZ}
-    cpu_field = on_architecture(CPU(), field)
+function OutputWriters.serializeproperty!(file, location, csf::PanelField{LX, LY, LZ}) where {LX, LY, LZ}
+    csf_CPU = on_architecture(CPU(), csf)
 
     serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
-    serializeproperty!(file, location * "/data", parent(cpu_field))
-    serializeproperty!(file, location * "/boundary_conditions", cpu_field.boundary_conditions)
+    serializeproperty!(file, location * "/data", parent(csf_CPU))
+    serializeproperty!(file, location * "/boundary_conditions", csf_CPU.boundary_conditions)
 
     return nothing
 end
 
-function OutputWriters.serializeproperty!(file, location, grid::Union{ConformalCubedSphereGridOfSomeKind, YinYangGridOfSomeKind})
-    file[location] = on_architecture(CPU(), grid)
+function OutputWriters.serializeproperty!(file, location, csg::Union{ConformalCubedSphereGridOfSomeKind, YinYangGridOfSomeKind})
+    file[location] = on_architecture(CPU(), csg)
 end
 
-function Oceananigans.prognostic_state(coordinate::ZStarCoordinate, grid::MultiRegionGrids)
-    states = Tuple(on_architecture(CPU(), Oceananigans.prognostic_state(coordinate, getregion(grid, r))) for r in regions(grid))
-    return (; regions=states)
-end
+Oceananigans.prognostic_state(coordinate::ZStarCoordinate, grid::MultiRegionGrids) =
+    (; regions = Tuple(on_architecture(CPU(), Oceananigans.prognostic_state(coordinate, getregion(grid, r))) for r in regions(grid)))
 
 function Oceananigans.restore_prognostic_state!(coordinate::ZStarCoordinate, grid::MultiRegionGrids, from::NamedTuple{(:regions,)})
     for r in regions(grid)

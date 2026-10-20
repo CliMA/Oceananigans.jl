@@ -17,9 +17,7 @@ content that the mismatch of the two panels' fluxes across their seam adds. Add 
 Under a `ZStarCoordinate` the fixer conserves the volume and the tracer contents to rounding error, apart from
 their true sources, and keeps uniform tracers uniform. Under a static vertical coordinate it conserves the
 volume, while the tracer contents change as on a single grid. Closure tracers are not corrected. With
-`QuasiAdamsBashforth2`, a step whose Δt differs from the previous one corrects the free surface with the
-previous Δt: this happens after a change of Δt, which includes the steps that `Simulation` shortens to align
-with `TimeInterval` schedules or `stop_time`, and the steps right after them.
+`QuasiAdamsBashforth2`, a step whose Δt differs from the previous one corrects the free surface with the previous Δt.
 
 ```jldoctest
 julia> using Oceananigans
@@ -46,7 +44,7 @@ struct HydrostaticYinYangConservationFixer{N, F, W, B, P, S}
     sums :: S    # (1, quantity, density, 1), the sums of `budget` over its rows and panels
 end
 
-tracer_names(fixer::HydrostaticYinYangConservationFixer) = map(name_and_index -> tracer_name(name_and_index...), fixer.tracers)
+tracer_names(fixer::HydrostaticYinYangConservationFixer) = map(t -> tracer_name(t...), fixer.tracers)
 tracer_name(::Val{name}, index) where name = name
 
 Base.summary(fixer::HydrostaticYinYangConservationFixer) = string("YinYangConservationFixer of the volume and the tracers ", tracer_names(fixer))
@@ -55,13 +53,11 @@ Base.show(io::IO, fixer::HydrostaticYinYangConservationFixer) = print(io, summar
 # The fixer keeps no state between substeps
 Oceananigans.prognostic_state(::HydrostaticYinYangConservationFixer) = nothing
 
-# The correction needs the tracer tendencies and the free surface of each substep, which the
-# `TracerTendencyCallsite` of `HydrostaticFreeSurfaceModel` provides. Every substep runs the callback whatever
-# its schedule. A fixed name makes a second call replace the first fixer, so that the budget is removed once.
+# Every substep runs the callback at the `TracerTendencyCallsite`, whatever its schedule. The fixed name makes
+# a second call replace the first fixer, so that the budget is removed once.
 function Simulations.add_conservation_fixer!(simulation, ::YinYangGridOfSomeKind)
     fixer = materialize_conservation_fixer(YinYangConservationFixer(), simulation.model)
-    callback = Callback(fixer; callsite=TracerTendencyCallsite())
-    return add_callback!(simulation, callback; name=:conservation_fixer)
+    return add_callback!(simulation, Callback(fixer; callsite=TracerTendencyCallsite()); name=:conservation_fixer)
 end
 
 materialize_conservation_fixer(::YinYangConservationFixer, model) =
@@ -74,8 +70,7 @@ materialize_conservation_fixer(::YinYangConservationFixer, grid, tracer_names, c
     throw(ArgumentError("YinYangConservationFixer requires a YinYangGrid."))
 
 function materialize_conservation_fixer(::YinYangConservationFixer, grid::YinYangGridOfSomeKind, tracer_names, closure)
-    # The tracers that a closure evolves itself are left alone
-    closure_tracers = closure_required_tracers(closure)
+    closure_tracers = closure_required_tracers(closure) # evolved by the closure itself, so left alone
     tracers = Tuple((Val(name), Val(n)) for (n, name) in enumerate(tracer_names) if name ∉ closure_tracers)
 
     arch = architecture(grid)
@@ -85,10 +80,9 @@ function materialize_conservation_fixer(::YinYangConservationFixer, grid::YinYan
 
     Nx, Ny, _ = size(getregion(grid, 1))
     Nrows = max(Nx * Ny, length(faces.x.i) + length(faces.y.i))
-    Nd = 1 + length(tracers)
-    budget = zeros(arch, FT, Nrows, 3, Nd, 2)
+    budget = zeros(arch, FT, Nrows, 3, 1 + length(tracers), 2)
     panels = MultiRegionObject(Tuple(view(budget, :, :, :, r) for r in 1:2))
-    sums = zeros(arch, FT, 1, 3, Nd, 1)
+    sums = zeros(arch, FT, 1, 3, 1 + length(tracers), 1)
 
     return HydrostaticYinYangConservationFixer(tracers, faces, weights, budget, panels, sums)
 end
@@ -96,16 +90,13 @@ end
 #####
 ##### The algorithm
 #####
-##### Each panel steps all of its cells with its own fluxes and interpolates its halos from the other panel, so
-##### the panels disagree on the flux through the curve that divides the sphere between them. The owned content
-##### of a quantity therefore changes by the seam budget E = Σ F Δw of `owned_weights`, besides its true sources.
-##### Every substep of length Δt, right after the tracer tendencies, the fixer removes Δt E:
-#####
-##### * the free surface of every column of reference depth h drops by Δt ν h, with ν = E / Σ w V₀ for the volume
-#####   and the reference cell volumes V₀, so that a `ZStarCoordinate` shrinks every cell by the same factor;
-##### * under a `ZStarCoordinate`, the tracers leave with the removed volume, which subtracts ν c from the
-#####   tendency of every tracer c and keeps uniform tracers uniform;
-##### * the rest of each tracer's seam budget, E - ν Σ w V₀ c, is removed in proportion to |c|.
+##### Each panel steps all of its cells with its own fluxes, so the panels disagree on the flux through the curve
+##### that divides the sphere between them, and the owned content of a quantity changes by the seam budget
+##### E = Σ F Δw of `owned_weights` besides its true sources. Every substep of length Δt, right after the tracer
+##### tendencies, the fixer removes Δt E: the free surface of every column of reference depth h drops by Δt ν h,
+##### with ν = E / Σ w V₀ for the volume and the reference cell volumes V₀, so that a `ZStarCoordinate` shrinks
+##### every cell by the same factor and the tracers leave with the removed volume (which subtracts ν c from the
+##### tendency of every tracer c); the rest of each tracer's budget, E - ν Σ w V₀ c, is removed in proportion to |c|.
 #####
 
 # The x-faces (i, j) and y-faces (i, j) across which the owned weight `w` of the interior cells jumps,
@@ -119,13 +110,9 @@ function seam_faces(arch, FT, w)
     return (; x = table(x), y = table(y))
 end
 
-#####
-##### The budget of each panel
-#####
-##### Quantity 1 holds F Δw summed over the column of each seam face, for the volume flux and the tracer fluxes
-##### of the tendencies. Quantities 2 and 3 hold Σₖ w V₀ c and Σₖ w V₀ |c| over each column (i + (j - 1) Nx),
-##### with c = 1 for the volume. The rows past those a quantity uses stay zero.
-#####
+# The budget of each panel: quantity 1 holds F Δw summed over the column of each seam face, for the volume flux
+# and the tracer fluxes of the tendencies; quantities 2 and 3 hold Σₖ w V₀ c and Σₖ w V₀ |c| over each column
+# (row i + (j - 1) Nx), with c = 1 for the volume. The rows past those a quantity uses stay zero.
 
 # The advective and diffusive fluxes of c through x- and y-faces, as in the tracer tendencies
 @inline tracer_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
@@ -198,16 +185,13 @@ volume_flux_arguments(model) = (Centered(eltype(model.grid); order=2), model.tra
 function compute_budget!(budget, faces, weights, model, tracers)
     grid = model.grid
     arch = architecture(grid)
-
     densities = (volume_flux_arguments(model), map(t -> tracer_flux_arguments(model, t...), tracers)...)
-    Nx = length(faces.x.i)
-    Ny = length(faces.y.i)
+    Nx, Ny = length(faces.x.i), length(faces.y.i)
     launch!(arch, grid, (Nx,), _seam_fluxes!, budget, 0, grid, faces.x, tracer_flux_x, densities)
     launch!(arch, grid, (Ny,), _seam_fluxes!, budget, Nx, grid, faces.y, tracer_flux_y, densities)
 
     contents = (OneField(), map(t -> tracer_field(model.tracers, t...), tracers)...)
     launch!(arch, grid, :xy, _column_contents!, budget, grid, weights, contents)
-
     return nothing
 end
 
@@ -265,8 +249,7 @@ end
 # 3/2 + χ now and with -(1/2 + χ) at the next step, through its tendency, as the tracers do
 @kernel function _correct_explicit_free_surface!(η, Gη, grid, sums, αΔt)
     i, j = @index(Global, NTuple)
-    ν = volume_removal_rate(sums)
-    νh = ν * static_column_depthᶜᶜᵃ(i, j, grid)
+    νh = volume_removal_rate(sums) * static_column_depthᶜᶜᵃ(i, j, grid)
     @inbounds η[i, j, grid.Nz+1] -= αΔt * νh
     @inbounds Gη[i, j, grid.Nz+1] -= νh
 end
@@ -295,12 +278,10 @@ substep_time_step(::SplitRungeKuttaTimeStepper, clock) = clock.last_stage_Δt
 substep_time_step(::QuasiAdamsBashforth2TimeStepper, clock) = clock.last_Δt
 
 # Executed at the `TracerTendencyCallsite` of every substep
-(fixer::HydrostaticYinYangConservationFixer)(model) = remove_seam_imbalance!(fixer, model, substep_time_step(model.timestepper, model.clock))
-
-function remove_seam_imbalance!(fixer::HydrostaticYinYangConservationFixer, model, Δt)
+function (fixer::HydrostaticYinYangConservationFixer)(model)
     @apply_regionally compute_budget!(fixer.panels, fixer.faces, fixer.weights, model, fixer.tracers)
     sum!(fixer.sums, fixer.budget)
     @apply_regionally correct_tracer_tendencies!(model, fixer.sums, fixer.tracers)
-    correct_free_surface!(model.free_surface, model, fixer.sums, Δt)
+    correct_free_surface!(model.free_surface, model, fixer.sums, substep_time_step(model.timestepper, model.clock))
     return nothing
 end

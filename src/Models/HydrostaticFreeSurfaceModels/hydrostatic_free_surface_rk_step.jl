@@ -108,7 +108,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
     end
-
     execute_tracer_tendency_callbacks!(model, callbacks)
 
     @apply_regionally begin

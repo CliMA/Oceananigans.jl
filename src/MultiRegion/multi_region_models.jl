@@ -58,7 +58,10 @@ Types = (HydrostaticFreeSurfaceModel,
          OnlySelfUpwinding,
          GridFittedBoundary,
          GridFittedBottom,
-         PartialCellBottom)
+         PartialCellBottom,
+         BoundsPreservation,
+         CATKEClosureFields,
+         TKEDissipationClosureFields)
 
 for T in Types
     @eval begin
@@ -122,9 +125,7 @@ function TimeSteppers.reconcile_state!(model::MultiRegionModel)
     end
 
     Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
-
     @apply_regionally Models.HydrostaticFreeSurfaceModels.reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
-
     return nothing
 end
 
@@ -141,27 +142,17 @@ TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImpl
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
 
 # TKE-based closures build the boundary conditions of their tracers from those of each region
-function regional_closure_boundary_conditions(closure, bcs, mrg, tracer_names, buoyancy)
-    regional_bcs = construct_regionally(add_closure_specific_boundary_conditions, closure, bcs, mrg, tracer_names, buoyancy)
-    names = closure_required_tracers(closure)
-    closure_bcs = map(name -> MultiRegionObject(map(b -> b[name], regional_bcs.regional_objects)), names)
-    return merge(bcs, NamedTuple{names}(closure_bcs))
-end
-
 for Closure in (FlavorOfCATKE, FlavorOfTD)
     @eval begin
-        TurbulenceClosures.add_closure_specific_boundary_conditions(closure::$Closure, bcs, mrg::MultiRegionGrids, tracer_names, buoyancy) =
-            regional_closure_boundary_conditions(closure, bcs, mrg, tracer_names, buoyancy)
+        function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::$Closure, bcs, mrg::MultiRegionGrids, tracer_names, buoyancy)
+            regional_bcs = construct_regionally(add_closure_specific_boundary_conditions, closure, bcs, mrg, tracer_names, buoyancy)
+            names = closure_required_tracers(closure)
+            closure_bcs = map(name -> MultiRegionObject(map(b -> b[name], regional_bcs.regional_objects)), names)
+            return merge(bcs, NamedTuple{names}(closure_bcs))
+        end
 
         TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::$Closure, model::MultiRegionModel, Δt) =
             @apply_regionally step_closure_prognostics!(closure_fields, closure, model, Δt)
-    end
-end
-
-for ClosureFields in (CATKEClosureFields, TKEDissipationClosureFields)
-    @eval begin
-        @inline Utils.getregion(f::$ClosureFields, r) = $ClosureFields(Tuple(_getregion(getproperty(f, n), r) for n in fieldnames($ClosureFields))...)
-        @inline Utils._getregion(f::$ClosureFields, r) = $ClosureFields(Tuple(getregion(getproperty(f, n), r) for n in fieldnames($ClosureFields))...)
     end
 end
 
@@ -192,12 +183,6 @@ Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(
     WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.buffer_scheme, r),
                      getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
-@inline Utils.getregion(bounds::BoundsPreservation, r) =
-    BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, _getregion(bounds.limiter, r))
-
-@inline Utils._getregion(bounds::BoundsPreservation, r) =
-    BoundsPreservation(bounds.minimum_value, bounds.maximum_value, bounds.maximum_courant_number, getregion(bounds.limiter, r))
-
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
     return minimum(Δt.regional_objects)
@@ -216,37 +201,23 @@ HydrostaticFreeSurfaceModels.intrinsic_coordinate_grid(::YinYangGridOfSomeKind) 
 
 # Both geographic components are set at the nodes of u and of v, then rotated into each panel's basis
 function HydrostaticFreeSurfaceModels.set_from_extrinsic_velocities!(velocities, grid::YinYangGridOfSomeKind, u, v)
-    uᶠᶜ = velocities.u
-    vᶜᶠ = velocities.v
     vₑᶠᶜ = XFaceField(grid)
     uₑᶜᶠ = YFaceField(grid)
-
-    set!(uᶠᶜ, u)
+    set!(velocities.u, u)
     set!(vₑᶠᶜ, v)
     set!(uₑᶜᶠ, u)
-    set!(vᶜᶠ, v)
-
-    @apply_regionally launch!(architecture(grid), grid, :xyz, _rotate_extrinsic_velocities!, uᶠᶜ, vᶜᶠ, vₑᶠᶜ, uₑᶜᶠ, grid)
-
+    set!(velocities.v, v)
+    @apply_regionally launch!(architecture(grid), grid, :xyz, _rotate_extrinsic_velocities!, velocities.u, velocities.v, vₑᶠᶜ, uₑᶜᶠ, grid)
     return nothing
 end
 
-# On entry `u` holds uₑ at (Face, Center) and `v` holds vₑ at (Center, Face).
+# On entry `u` holds uₑ at (Face, Center) and `v` holds vₑ at (Center, Face)
 @kernel function _rotate_extrinsic_velocities!(u, v, vₑᶠᶜ, uₑᶜᶠ, grid)
     i, j, k = @index(Global, NTuple)
-
     θᶠᶜ = rotation_angle(i, j, grid, Face(), Center())
     θᶜᶠ = rotation_angle(i, j, grid, Center(), Face())
-
-    @inbounds begin
-        uₑ = u[i, j, k]
-        vₑ = vₑᶠᶜ[i, j, k]
-        u[i, j, k] = uₑ * cos(θᶠᶜ) - vₑ * sin(θᶠᶜ)
-
-        uₑ = uₑᶜᶠ[i, j, k]
-        vₑ = v[i, j, k]
-        v[i, j, k] = uₑ * sin(θᶜᶠ) + vₑ * cos(θᶜᶠ)
-    end
+    @inbounds u[i, j, k] = u[i, j, k] * cos(θᶠᶜ) - vₑᶠᶜ[i, j, k] * sin(θᶠᶜ)
+    @inbounds v[i, j, k] = uₑᶜᶠ[i, j, k] * sin(θᶜᶠ) + v[i, j, k] * cos(θᶜᶠ)
 end
 
 #####

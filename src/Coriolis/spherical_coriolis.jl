@@ -44,11 +44,10 @@ const NonhydrostaticSchemes = Union{EnstrophyConserving, EnergyConserving, Triad
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 
-With the `NonhydrostaticFormulation` the Coriolis acceleration is the full `2Ω × U`: the traditional
-part `f ẑ × U` with `f = 2Ω sin φ`, discretized with the horizontal stencil of `scheme`, plus the
-nontraditional terms `(f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u)` of the horizontal rotation vector `2Ω cos φ n̂`,
-which are the same for every scheme and are projected onto the grid's axes on rotated grids.
-With the `HydrostaticFormulation` only the traditional part is included.
+With the `NonhydrostaticFormulation` the Coriolis acceleration is the full `2Ω × U`: the traditional part
+`f ẑ × U` with `f = 2Ω sin φ`, discretized with the horizontal stencil of `scheme`, plus the nontraditional
+terms of the horizontal rotation vector `2Ω cos φ n̂`. With the `HydrostaticFormulation` only the traditional
+part is included.
 
 Keyword arguments
 =================
@@ -139,32 +138,19 @@ end
 @inline f̃ᶠᶜᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶠᶜᵃ(i, j, k, grid))
 @inline f̃ᶜᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶜᶠᵃ(i, j, k, grid))
 
-#####
-##### The nonhydrostatic formulation adds the nontraditional terms (f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u) of the horizontal
-##### rotation vector f̃ n̂ = 2Ω cos φ n̂ to the traditional part, which every scheme discretizes with its own stencil.
-#####
-
 const OrthogonalSphericalShellGridOfSomeKind = Union{OrthogonalSphericalShellGrid,
                                                      ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}}
 
-# The projections of north n̂ = a ∇φ onto the grid's axes, normalized so that they are exact on aligned grids
-# n̂ ⋅ ŷ at (Face, Center)
-@inline function northward_projection_yᶠᶜᵃ(i, j, k, grid)
-    ∂x_φ = ∂xᶠᶜᶜ(i, j, k, grid, φᶜᶜᵃ)
-    ∂y_φ = ∂yᶠᶜᶜ(i, j, k, grid, φᶠᶠᵃ)
-    norm_∇φ = √(∂x_φ^2 + ∂y_φ^2)
-    return ifelse(norm_∇φ == 0, zero(grid), ∂y_φ / norm_∇φ)
+# The nontraditional terms (f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u) of the horizontal rotation vector f̃ n̂ = 2Ω cos φ n̂, where
+# n̂ = ∇φ / |∇φ| points north, are projected onto the grid's axes. On a `LatitudeLongitudeGrid` y points north.
+@inline function normalized_component(a, b) # a / |(a, b)|, exact on aligned grids
+    norm = √(a^2 + b^2)
+    return ifelse(norm == 0, zero(a), a / norm)
 end
 
-# n̂ ⋅ x̂ at (Center, Face)
-@inline function northward_projection_xᶜᶠᵃ(i, j, k, grid)
-    ∂x_φ = ∂xᶜᶠᶜ(i, j, k, grid, φᶠᶠᵃ)
-    ∂y_φ = ∂yᶜᶠᶜ(i, j, k, grid, φᶜᶜᵃ)
-    norm_∇φ = √(∂x_φ^2 + ∂y_φ^2)
-    return ifelse(norm_∇φ == 0, zero(grid), ∂x_φ / norm_∇φ)
-end
+@inline northward_projection_yᶠᶜᵃ(i, j, k, grid) = normalized_component(∂yᶠᶜᶜ(i, j, k, grid, φᶠᶠᵃ), ∂xᶠᶜᶜ(i, j, k, grid, φᶜᶜᵃ))
+@inline northward_projection_xᶜᶠᵃ(i, j, k, grid) = normalized_component(∂xᶜᶠᶜ(i, j, k, grid, φᶠᶠᵃ), ∂yᶜᶠᶜ(i, j, k, grid, φᶜᶜᵃ))
 
-# On a `LatitudeLongitudeGrid` y points north: f̃ʸ = f̃ and f̃ˣ = 0.
 @inline f̃ʸᶠᶜᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = f̃ᶠᶜᵃ(i, j, k, grid, coriolis)
 
 @inline f̃ʸᶠᶜᵃ(i, j, k, grid::OrthogonalSphericalShellGridOfSomeKind, coriolis::SphericalCoriolis) =
@@ -178,7 +164,7 @@ end
 @inline f̃ˣ_ℑz_vᶜᶠᶠ(i, j, k, grid, coriolis, v) = f̃ˣᶜᶠᵃ(i, j, k, grid, coriolis) * ℑzᵃᵃᶠ(i, j, k, grid, Δz_qᶜᶠᶜ, v)
 @inline f̃ˣ_ℑy_wᶜᶠᶠ(i, j, k, grid, coriolis, w) = f̃ˣᶜᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w)
 
-# The nontraditional terms (f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u). The f̃ˣ terms vanish where x̂ points east.
+# The f̃ˣ terms vanish where x̂ points east
 @inline x_f̃_cross_U(i, j, k, grid, coriolis, U) =
     @inbounds + ℑzᵃᵃᶜ(i, j, k, grid, f̃ʸ_ℑx_wᶠᶜᶠ, coriolis, U[3]) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
 

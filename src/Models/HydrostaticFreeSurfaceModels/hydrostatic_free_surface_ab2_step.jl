@@ -120,7 +120,6 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Î
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
     end
-
     execute_tracer_tendency_callbacks!(model, callbacks)
 
     @apply_regionally begin

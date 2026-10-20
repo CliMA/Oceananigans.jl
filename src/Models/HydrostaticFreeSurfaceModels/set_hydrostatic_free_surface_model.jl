@@ -83,8 +83,7 @@ const IntrinsicCoordinateGrid = Union{
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, OrthogonalSphericalShellGrid},
 }
 
-# Whether the intrinsic velocity components of `grid` may differ from its extrinsic components,
-# so that extrinsic velocities are rotated by `set_from_extrinsic_velocities!`
+# Whether extrinsic velocities are rotated into the grid's basis by `set_from_extrinsic_velocities!`
 intrinsic_coordinate_grid(grid) = false
 intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 

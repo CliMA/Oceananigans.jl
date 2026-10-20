@@ -169,37 +169,21 @@ geographic pole, then maps the rotated point back to geographic coordinates.
 """
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     FT = typeof(float(λ′))
-    λ′ʳ = deg2rad(convert(FT, λ′))
-    φ′ʳ = deg2rad(convert(FT, φ′))
-
-    dλ = deg2rad(convert(FT, λ₀))
-    dφ = convert(FT, π) / 2 - deg2rad(convert(FT, φ₀))
-
-    # Convert to Cartesian
-    X′ = SVector(spherical_to_cartesian(φ′ʳ, λ′ʳ; check_latitude_bounds = false)...)
-
-    # Rotate Cartesian coordinates
-    Ry = y_rotation_matrix(dφ)
-    Rz = z_rotation_matrix(dλ)
-    X = Rz * Ry * X′
-
-    # Convert back to Spherical
+    λ′, φ′, dλ, φ₀ = map(x -> deg2rad(convert(FT, x)), (λ′, φ′, λ₀, φ₀))
+    dφ = convert(FT, π) / 2 - φ₀
+    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+    X = z_rotation_matrix(dλ) * y_rotation_matrix(dφ) * X′
     φ, λ = cartesian_to_spherical(X)
-
     return rad2deg(λ), rad2deg(φ)
 end
 
 # The angle θ (radians) from the geographic basis at the geographic point `(λ, φ)` to the basis of a frame whose north
 # pole is at `(λ₀, φ₀)` (degrees), with the convention of `Operators.rotation_angle`: the bearing of the frame's pole.
 @inline function rotated_basis_angle(λ, φ, λ₀, φ₀)
-    λʳ = deg2rad(λ)
-    φʳ = deg2rad(φ)
-    λ₀ʳ = deg2rad(convert(typeof(λʳ), λ₀))
-    φ₀ʳ = deg2rad(convert(typeof(λʳ), φ₀))
-
-    sinθ = cos(φ₀ʳ) * sin(λ₀ʳ - λʳ)
-    cosθ = cos(φʳ) * sin(φ₀ʳ) - sin(φʳ) * cos(φ₀ʳ) * cos(λʳ - λ₀ʳ)
-
+    FT = typeof(deg2rad(λ))
+    λ, φ, λ₀, φ₀ = map(x -> deg2rad(convert(FT, x)), (λ, φ, λ₀, φ₀))
+    sinθ = cos(φ₀) * sin(λ₀ - λ)
+    cosθ = cos(φ) * sin(φ₀) - sin(φ) * cos(φ₀) * cos(λ - λ₀)
     return atan(sinθ, cosθ)
 end
 
