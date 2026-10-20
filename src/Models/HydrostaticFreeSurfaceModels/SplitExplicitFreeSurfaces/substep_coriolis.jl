@@ -1,4 +1,6 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Coriolis: ESC, ENC, AESC, AENC, TS, 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 
 #####
 ##### Barotropic Coriolis inside the substeps (`CoriolisForwardBackwardScheme`)
@@ -38,7 +40,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper::Sp
 end
 
 #####
-##### Barotropic Coriolis operators (enstrophy-conserving form, as `EnstrophyConserving` in 3D)
+##### Barotropic Coriolis operators: the stencils of `x_f_cross_U` and `y_f_cross_U` applied to the transport deviation
 #####
 
 @inline horizontal_peripheral_node(i, j, grid, ℓx, ℓy) = peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
@@ -47,18 +49,66 @@ end
 @inline Δx_δVᶜᶠᶠ(i, j, k, grid, V, Vʳ) = @inbounds Δxᶜᶠᶠ(i, j, k, grid) * (V[i, j, 1] - Vʳ[i, j, 1])
 @inline Δy_δUᶠᶜᶠ(i, j, k, grid, U, Uʳ) = @inbounds Δyᶠᶜᶠ(i, j, k, grid) * (U[i, j, 1] - Uʳ[i, j, 1])
 
+# Wet columns, counted by the active-weighted schemes in place of active cells
+@inline wet_columnᶜᶠ(i, j, k, grid) = !peripheral_node(i, j, grid.Nz, grid, Center(), Face(), Center())
+@inline wet_columnᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, grid.Nz, grid, Face(), Center(), Center())
+
+@inline x_f_cross_δU(i, j, k, grid, ::Nothing, V, Vʳ) = zero(grid)
+@inline y_f_cross_δU(i, j, k, grid, ::Nothing, U, Uʳ) = zero(grid)
+
+@inline x_f_cross_δU(i, j, k, grid, coriolis::ESC, V, Vʳ) = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+@inline y_f_cross_δU(i, j, k, grid, coriolis::ESC, U, Uʳ) = + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+
+@inline f_ℑx_Δx_δVᶠᶠᶠ(i, j, k, grid, coriolis, V, Vʳ) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ)
+@inline f_ℑy_Δy_δUᶠᶠᶠ(i, j, k, grid, coriolis, U, Uʳ) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ)
+
+@inline x_f_cross_δU(i, j, k, grid, coriolis::ENC, V, Vʳ) = - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Δx_δVᶠᶠᶠ, coriolis, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+@inline y_f_cross_δU(i, j, k, grid, coriolis::ENC, U, Uʳ) = + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Δy_δUᶠᶠᶠ, coriolis, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+
+@inline function x_f_cross_δU(i, j, k, grid, coriolis::AESC, V, Vʳ)
+    active_columns = ℑxyᶠᶜᵃ(i, j, k, grid, wet_columnᶜᶠ)
+    result = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ)
+    return ifelse(active_columns == 0, zero(grid), result / active_columns) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+end
+
+@inline function y_f_cross_δU(i, j, k, grid, coriolis::AESC, U, Uʳ)
+    active_columns = ℑxyᶜᶠᵃ(i, j, k, grid, wet_columnᶠᶜ)
+    result = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ)
+    return ifelse(active_columns == 0, zero(grid), result / active_columns) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+end
+
+@inline function x_f_cross_δU(i, j, k, grid, coriolis::AENC, V, Vʳ)
+    active_columns = ℑxyᶠᶜᵃ(i, j, k, grid, wet_columnᶜᶠ)
+    result = - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Δx_δVᶠᶠᶠ, coriolis, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+    return ifelse(active_columns == 0, zero(grid), result / active_columns)
+end
+
+@inline function y_f_cross_δU(i, j, k, grid, coriolis::AENC, U, Uʳ)
+    active_columns = ℑxyᶜᶠᵃ(i, j, k, grid, wet_columnᶠᶜ)
+    result = ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Δy_δUᶠᶠᶠ, coriolis, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+    return ifelse(active_columns == 0, zero(grid), result / active_columns)
+end
+
+@inline x_f_cross_δU(i, j, k, grid, coriolis::TS, V, Vʳ) =
+    - Δx⁻¹ᶠᶜᶠ(i, j, k, grid) / 12 * (𝒯⁺⁺(i-1, j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i-1, j+1, k, grid, V, Vʳ) +
+                                      𝒯⁻⁻(i,   j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i,   j,   k, grid, V, Vʳ) +
+                                      𝒯⁺⁻(i-1, j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i-1, j,   k, grid, V, Vʳ) +
+                                      𝒯⁻⁺(i,   j, k, grid, coriolis) * Δx_δVᶜᶠᶠ(i,   j+1, k, grid, V, Vʳ))
+
+@inline y_f_cross_δU(i, j, k, grid, coriolis::TS, U, Uʳ) =
+    + Δy⁻¹ᶜᶠᶠ(i, j, k, grid) / 12 * (𝒯⁻⁻(i, j,   k, grid, coriolis) * Δy_δUᶠᶜᶠ(i,   j,   k, grid, U, Uʳ) +
+                                      𝒯⁺⁺(i, j-1, k, grid, coriolis) * Δy_δUᶠᶜᶠ(i+1, j-1, k, grid, U, Uʳ) +
+                                      𝒯⁻⁺(i, j-1, k, grid, coriolis) * Δy_δUᶠᶜᶠ(i,   j-1, k, grid, U, Uʳ) +
+                                      𝒯⁺⁻(i, j,   k, grid, coriolis) * Δy_δUᶠᶜᶠ(i+1, j,   k, grid, U, Uʳ))
+
 @inline function barotropic_x_coriolis(i, j, k, grid, coriolis, V, Vʳ, H)
-    f̄  = ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis)
-    fV = f̄ * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_δVᶜᶠᶠ, V, Vʳ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
     active = !horizontal_peripheral_node(i, j, grid, Face(), Center()) & (H > 0)
-    return ifelse(active, fV, zero(grid))
+    return ifelse(active, x_f_cross_δU(i, j, k, grid, coriolis, V, Vʳ), zero(grid))
 end
 
 @inline function barotropic_y_coriolis(i, j, k, grid, coriolis, U, Uʳ, H)
-    f̄  = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis)
-    fU = f̄ * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_δUᶠᶜᶠ, U, Uʳ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
     active = !horizontal_peripheral_node(i, j, grid, Center(), Face()) & (H > 0)
-    return ifelse(active, fU, zero(grid))
+    return ifelse(active, y_f_cross_δU(i, j, k, grid, coriolis, U, Uʳ), zero(grid))
 end
 
 #####
@@ -71,10 +121,10 @@ end
 
     Hᶠᶜ = x_column_depth(i, j, k_top, grid, filled_halos, η)
     ∂xᵣ = x_derivative_operator(filled_halos)
-    fV  = barotropic_x_coriolis(i, j, k_top, grid, coriolis, V, Vʳ, Hᶠᶜ)
+    Cᵁ = barotropic_x_coriolis(i, j, k_top, grid, coriolis, V, Vʳ, Hᶠᶜ)
 
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1] + fV)
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1] - Cᵁ)
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
     end
 end
@@ -85,10 +135,10 @@ end
 
     Hᶜᶠ = y_column_depth(i, j, k_top, grid, filled_halos, η)
     ∂yᵣ = y_derivative_operator(filled_halos)
-    fU  = barotropic_y_coriolis(i, j, k_top, grid, coriolis, U, Uʳ, Hᶜᶠ)
+    Cⱽ = barotropic_y_coriolis(i, j, k_top, grid, coriolis, U, Uʳ, Hᶜᶠ)
 
     @inbounds begin
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1] - fU)
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1] - Cⱽ)
         Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end

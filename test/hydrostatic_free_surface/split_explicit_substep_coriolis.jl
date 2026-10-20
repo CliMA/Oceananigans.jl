@@ -2,6 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: CoriolisForwardBackwardScheme,
                                                                                   ForwardBackwardScheme
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+using Oceananigans.Coriolis: ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, TriadScheme
 
 function substep_coriolis_test_model(arch, timestepper, coriolis, scheme; H = 700, TX = Bounded, Δt = 3600)
     Lx = 50 * 0.3 * 111.13e3 * cosd(75)
@@ -60,6 +62,19 @@ end
                 λ_lagged = velocity_growth(substep_coriolis_test_model(arch, timestepper, coriolis, ForwardBackwardScheme(); TX))
                 λ_substep = velocity_growth(substep_coriolis_test_model(arch, timestepper, coriolis, CoriolisForwardBackwardScheme(); TX))
                 @info "    $timestepper, $TX: λ = $λ_lagged (lagged), $λ_substep (substep)"
+                @test λ_substep < 1
+                @test λ_substep < λ_lagged + 1e-4
+            end
+        end
+
+        @testset "Substep Coriolis follows the Coriolis scheme [$(typeof(arch))]" begin
+            @info "  Testing CoriolisForwardBackwardScheme with every Coriolis scheme [$(typeof(arch))]..."
+            for scheme in (EnstrophyConserving(), EnergyConserving(), ActiveWeightedEnstrophyConserving(),
+                           ActiveWeightedEnergyConserving(), TriadScheme())
+                coriolis = FPlane(f = -1.409e-4; scheme)
+                λ_lagged = velocity_growth(substep_coriolis_test_model(arch, :QuasiAdamsBashforth2, coriolis, ForwardBackwardScheme()))
+                λ_substep = velocity_growth(substep_coriolis_test_model(arch, :QuasiAdamsBashforth2, coriolis, CoriolisForwardBackwardScheme()))
+                @info "    $(summary(scheme)): λ = $λ_lagged (lagged), $λ_substep (substep)"
                 @test λ_substep < 1
                 @test λ_substep < λ_lagged + 1e-4
             end
