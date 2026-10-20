@@ -66,7 +66,6 @@ jet_model = HydrostaticFreeSurfaceModel(jet_grid; buoyancy=nothing, tracers=(),
                                         coriolis = HydrostaticSphericalCoriolis(),
                                         closure = HorizontalScalarDiffusivity(ν=1e5),
                                         free_surface = ExplicitFreeSurface(),
-                                        momentum_advection = VectorInvariant(),
                                         timestepper = :SplitRungeKutta3)
 
 # Following [Galewsky2004](@citet), a horizontal viscosity of ``10^5 \, \mathrm{m^2 \, s^{-1}}``
@@ -160,14 +159,14 @@ function wall_time()
     return prettytime(elapsed)
 end
 
-function jet_progress(sim)
+function progress(sim)
     u, v, w = sim.model.velocities
-    @info @sprintf("iteration: %d, time: %s, max|u|: %.1f m/s, wall time: %s",
-                   iteration(sim), prettytime(sim), maximum(abs, u), wall_time())
+    @info @sprintf("iteration: %d, time: %s, max|u|: %.2f m/s, max|w|: %.1e m/s, wall time: %s",
+                   iteration(sim), prettytime(sim), maximum(abs, u), maximum(abs, w), wall_time())
     return nothing
 end
 
-add_callback!(jet_simulation, jet_progress, IterationInterval(1000))
+add_callback!(jet_simulation, progress, IterationInterval(1000))
 
 # Every three hours, we save the vertical vorticity of each panel.
 
@@ -404,13 +403,13 @@ front = (; Td=2, ΔT=20, h=1000, φ₀=57, δ=0.1)
 @inline function temperature_flux(i, j, grid, clock, fields, p)
     φ = φnode(i, j, grid.Nz, grid, Center(), Center(), Center())
     z = znode(i, j, grid.Nz, grid, Center(), Center(), Center())
-    χ = (sin(deg2rad(φ))^2 - p.sin²φ₀) / p.δ
+    χ = (sin(deg2rad(φ))^2 - sin(deg2rad(p.φ₀))^2) / p.δ
     T★ = p.Td + p.ΔT / 2 * exp(z / p.h) * (1 - tanh(χ))
     return @inbounds p.rate * (fields.T[i, j, grid.Nz] - T★)
 end
 
 restoring_rate = 100 / 30days # surface layer thickness over the restoring time [m s⁻¹]
-restoring_parameters = (; front.Td, front.ΔT, front.h, front.δ, sin²φ₀=sind(front.φ₀)^2, rate=restoring_rate)
+restoring_parameters = merge(front, (; rate=restoring_rate))
 T_restoring = FluxBoundaryCondition(temperature_flux; discrete_form=true, parameters=restoring_parameters)
 T_bcs = FieldBoundaryConditions(top=T_restoring)
 
@@ -530,16 +529,7 @@ drake_simulation = Simulation(drake_model; Δt=150, stop_time=20days)
 
 add_conservation_fixer!(drake_simulation)
 
-# The progress message also reports the vertical velocity.
-
-function drake_progress(sim)
-    u, v, w = sim.model.velocities
-    @info @sprintf("iteration: %d, time: %s, max|u|: %.2f m/s, max|w|: %.1e m/s, wall time: %s",
-                   iteration(sim), prettytime(sim), maximum(abs, u), maximum(abs, w), wall_time())
-    return nothing
-end
-
-add_callback!(drake_simulation, drake_progress, IterationInterval(1000))
+add_callback!(drake_simulation, progress, IterationInterval(1000))
 
 # For plotting, we save the surface vorticity and temperature of each panel every three hours.
 
