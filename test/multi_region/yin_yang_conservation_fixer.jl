@@ -31,13 +31,13 @@ using Oceananigans.MultiRegion: HydrostaticYinYangConservationFixer, tracer_name
         @test count(callback -> callback.func isa HydrostaticYinYangConservationFixer, values(simulation.callbacks)) == 1
         @test summary(simulation.callbacks[:conservation_fixer].func) == "YinYangConservationFixer of the volume and the tracers (:one, :s)"
 
-        V₀, S₀ = wet_volume(model), wet_content(model.tracers.s)
+        V₀, S₀ = active_volume(model), active_content(model.tracers.s)
         run!(simulation)
 
         A = owned_sum(top_area, grid)
-        @test wet_volume(model) ≈ V₀ rtol = 1e-14
+        @test active_volume(model) ≈ V₀ rtol = 1e-14
         @test maximum(abs, model.tracers.one - 1) < 1e-13
-        @test wet_content(model.tracers.s) ≈ S₀ + Nt * Δt * (source * V₀ - flux * A) rtol = 1e-14
+        @test active_content(model.tracers.s) ≈ S₀ + Nt * Δt * (source * V₀ - flux * A) rtol = 1e-14
     end
 
     @test_throws "add_conservation_fixer!" YinYangConservationFixer()(nothing)

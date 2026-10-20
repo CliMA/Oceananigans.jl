@@ -137,27 +137,27 @@ end
 
 @inline seam_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
     _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
-    diffusive_seam_flux_y(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
+    _diffusive_seam_flux_y(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
 
 @inline _diffusive_seam_flux_x(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
 @inline _diffusive_seam_flux_y(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
 
-@inline diffusive_seam_flux_x(i, j, k, grid, closure, K, args...) =
+@inline _diffusive_seam_flux_x(i, j, k, grid, closure, K, args...) =
     Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, time_discretization(closure), closure, K, args...)
 
-@inline diffusive_seam_flux_y(i, j, k, grid, closure, K, args...) =
+@inline _diffusive_seam_flux_y(i, j, k, grid, closure, K, args...) =
     Ay_qᶜᶠᶜ(i, j, k, grid, _diffusive_flux_y, time_discretization(closure), closure, K, args...)
 
-@inline diffusive_seam_flux_x(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
-@inline diffusive_seam_flux_y(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
+@inline _diffusive_seam_flux_x(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
+@inline _diffusive_seam_flux_y(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
 
-@inline diffusive_seam_flux_x(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
-    diffusive_seam_flux_x(i, j, k, grid, first(closures), first(Ks), args...) +
-    diffusive_seam_flux_x(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
+@inline _diffusive_seam_flux_x(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
+    _diffusive_seam_flux_x(i, j, k, grid, first(closures), first(Ks), args...) +
+    _diffusive_seam_flux_x(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
 
-@inline diffusive_seam_flux_y(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
-    diffusive_seam_flux_y(i, j, k, grid, first(closures), first(Ks), args...) +
-    diffusive_seam_flux_y(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
+@inline _diffusive_seam_flux_y(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
+    _diffusive_seam_flux_y(i, j, k, grid, first(closures), first(Ks), args...) +
+    _diffusive_seam_flux_y(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
 
 @inline store_seam_fluxes!(budget, row, d, i, j, Δw, grid, flux, ::Tuple{}) = nothing
 
@@ -188,7 +188,7 @@ end
     C = zero(grid)
     A = zero(grid)
     for k in 1:size(grid, 3)
-        V₀ = wet_reference_volume(i, j, k, grid)
+        V₀ = active_reference_volume(i, j, k, grid)
         @inbounds cᵏ = c[i, j, k]
         C += V₀ * cᵏ
         A += V₀ * abs(cᵏ)
@@ -247,21 +247,21 @@ end
 stretching(::ZStarCoordinate) = 1
 stretching(vertical_coordinate) = 0
 
-@inline correct_tendencies!(::Tuple{}, ::Tuple{}, i, j, k, d, wet, sums, νσ, ν) = nothing
+@inline correct_tendencies!(::Tuple{}, ::Tuple{}, i, j, k, d, active, sums, νσ, ν) = nothing
 
-@inline function correct_tendencies!(Gs, cs, i, j, k, d, wet, sums, νσ, ν)
+@inline function correct_tendencies!(Gs, cs, i, j, k, d, active, sums, νσ, ν)
     r = residual_removal_rate(sums, d, ν)
     @inbounds c = first(cs)[i, j, k]
-    @inbounds first(Gs)[i, j, k] -= ifelse(wet, νσ * c + r * abs(c), zero(c))
-    return correct_tendencies!(Base.tail(Gs), Base.tail(cs), i, j, k, d + 1, wet, sums, νσ, ν)
+    @inbounds first(Gs)[i, j, k] -= ifelse(active, νσ * c + r * abs(c), zero(c))
+    return correct_tendencies!(Base.tail(Gs), Base.tail(cs), i, j, k, d + 1, active, sums, νσ, ν)
 end
 
 # The tendencies evolve σc, so that the correction changes the content Σ w V₀ σc by Δt Σ w V₀ δG
 @kernel function _correct_tracer_tendencies!(Gs, cs, grid, sums, s)
     i, j, k = @index(Global, NTuple)
     ν = volume_removal_rate(sums)
-    wet = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
-    correct_tendencies!(Gs, cs, i, j, k, 2, wet, sums, s * ν, ν)
+    active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+    correct_tendencies!(Gs, cs, i, j, k, 2, active, sums, s * ν, ν)
 end
 
 correct_tracer_tendencies!(model, sums, ::Tuple{}) = nothing
