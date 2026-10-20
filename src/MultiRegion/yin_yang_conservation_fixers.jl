@@ -1,11 +1,10 @@
 using Oceananigans: fields, TracerTendencyCallsite
-using Oceananigans.Advection: _advective_tracer_flux_x, _advective_tracer_flux_y
+using Oceananigans.Advection: Centered, _advective_tracer_flux_x, _advective_tracer_flux_y
 using Oceananigans.Fields: OneField, tracernames
 using Oceananigans.Grids: immersed_inactive_node, static_column_depthᶜᶜᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate, tracer_advecting_velocities
 using Oceananigans.Operators: Azᶜᶜᶜ, Δrᶜᶜᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 using Oceananigans.Simulations: Simulations, Callback, add_callback!
-using Oceananigans.TimeSteppers: time_discretization
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x, _diffusive_flux_y, closure_required_tracers
 
 """
@@ -128,36 +127,14 @@ end
 ##### with c = 1 for the volume. The rows past those a quantity uses stay zero.
 #####
 
-@inline seam_flux_x(i, j, k, grid, U) = Ax_qᶠᶜᶜ(i, j, k, grid, U.u)
-@inline seam_flux_y(i, j, k, grid, U) = Ay_qᶜᶠᶜ(i, j, k, grid, U.v)
-
-@inline seam_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
+# The advective and diffusive fluxes of c through x- and y-faces, as in the tracer tendencies
+@inline tracer_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
     _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) +
-    _diffusive_seam_flux_x(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
+    Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, closure, K, id, c, clock, model_fields, buoyancy)
 
-@inline seam_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
+@inline tracer_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
     _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
-    _diffusive_seam_flux_y(i, j, k, grid, closure, K, id, c, clock, model_fields, buoyancy)
-
-@inline _diffusive_seam_flux_x(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
-@inline _diffusive_seam_flux_y(i, j, k, grid, ::Nothing, K, args...) = zero(grid)
-
-@inline _diffusive_seam_flux_x(i, j, k, grid, closure, K, args...) =
-    Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, time_discretization(closure), closure, K, args...)
-
-@inline _diffusive_seam_flux_y(i, j, k, grid, closure, K, args...) =
-    Ay_qᶜᶠᶜ(i, j, k, grid, _diffusive_flux_y, time_discretization(closure), closure, K, args...)
-
-@inline _diffusive_seam_flux_x(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
-@inline _diffusive_seam_flux_y(i, j, k, grid, ::Tuple{}, ::Tuple{}, args...) = zero(grid)
-
-@inline _diffusive_seam_flux_x(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
-    _diffusive_seam_flux_x(i, j, k, grid, first(closures), first(Ks), args...) +
-    _diffusive_seam_flux_x(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
-
-@inline _diffusive_seam_flux_y(i, j, k, grid, closures::Tuple, Ks::Tuple, args...) =
-    _diffusive_seam_flux_y(i, j, k, grid, first(closures), first(Ks), args...) +
-    _diffusive_seam_flux_y(i, j, k, grid, Base.tail(closures), Base.tail(Ks), args...)
+    Ay_qᶜᶠᶜ(i, j, k, grid, _diffusive_flux_y, closure, K, id, c, clock, model_fields, buoyancy)
 
 @inline store_seam_fluxes!(budget, row, d, i, j, Δw, grid, flux, ::Tuple{}) = nothing
 
@@ -206,23 +183,27 @@ end
 
 @inline tracer_field(fields, ::Val{name}, index) where name = fields[name]
 
-@inline function seam_flux_arguments(model, ::Val{name}, index) where name
+@inline function tracer_flux_arguments(model, ::Val{name}, index) where name
     velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, model.closure,
                                              model.closure_fields, model.forcing[name], Val(name))
     return (model.advection[name], velocities, model.tracers[name], model.closure, model.closure_fields,
             index, model.clock, fields(model), model.buoyancy)
 end
 
+# Second-order centered fluxes of c = 1 are the volume fluxes, with no diffusion
+volume_flux_arguments(model) = (Centered(eltype(model.grid); order=2), model.transport_velocities, OneField(),
+                                nothing, nothing, Val(0), model.clock, fields(model), model.buoyancy)
+
 # The fluxes of the tendencies just computed, from the same state, in one panel
 function compute_budget!(budget, faces, weights, model, tracers)
     grid = model.grid
     arch = architecture(grid)
 
-    densities = ((model.transport_velocities,), map(t -> seam_flux_arguments(model, t...), tracers)...)
+    densities = (volume_flux_arguments(model), map(t -> tracer_flux_arguments(model, t...), tracers)...)
     Nx = length(faces.x.i)
     Ny = length(faces.y.i)
-    launch!(arch, grid, (Nx,), _seam_fluxes!, budget, 0, grid, faces.x, seam_flux_x, densities)
-    launch!(arch, grid, (Ny,), _seam_fluxes!, budget, Nx, grid, faces.y, seam_flux_y, densities)
+    launch!(arch, grid, (Nx,), _seam_fluxes!, budget, 0, grid, faces.x, tracer_flux_x, densities)
+    launch!(arch, grid, (Ny,), _seam_fluxes!, budget, Nx, grid, faces.y, tracer_flux_y, densities)
 
     contents = (OneField(), map(t -> tracer_field(model.tracers, t...), tracers)...)
     launch!(arch, grid, :xy, _column_contents!, budget, grid, weights, contents)
