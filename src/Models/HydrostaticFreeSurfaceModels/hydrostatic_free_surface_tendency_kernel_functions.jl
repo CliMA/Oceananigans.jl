@@ -1,4 +1,6 @@
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v,
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, VectorInvariant,
+                              horizontal_advection_U, horizontal_advection_V, bernoulli_head_U, bernoulli_head_V,
+                              vertical_advection_U, vertical_advection_V,
                               U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric
 using Oceananigans.Biogeochemistry: biogeochemical_transition,
                                     biogeochemical_drift_velocity,
@@ -9,6 +11,26 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot
                                        immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
                                        closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
+
+@inline momentum_advection_and_coriolis_u(i, j, k, grid, advection, coriolis, U) = U_dot_∇u(i, j, k, grid, advection, U) + x_f_cross_U(i, j, k, grid, coriolis, U)
+@inline momentum_advection_and_coriolis_v(i, j, k, grid, advection, coriolis, U) = U_dot_∇v(i, j, k, grid, advection, U) + y_f_cross_U(i, j, k, grid, coriolis, U)
+
+# Coriolis right after the vorticity term reuses its velocity interpolations before the kinetic energy and vertical terms
+@inline function momentum_advection_and_coriolis_u(i, j, k, grid, advection::VectorInvariant, coriolis, U)
+    𝒜ʰ = horizontal_advection_U(i, j, k, grid, advection, U.u, U.v)
+    ℱ  = x_f_cross_U(i, j, k, grid, coriolis, U)
+    ℬ  = bernoulli_head_U(i, j, k, grid, advection, U.u, U.v)
+    𝒜ᶻ = vertical_advection_U(i, j, k, grid, advection, U)
+    return 𝒜ʰ + 𝒜ᶻ + ℬ + ℱ
+end
+
+@inline function momentum_advection_and_coriolis_v(i, j, k, grid, advection::VectorInvariant, coriolis, U)
+    𝒜ʰ = horizontal_advection_V(i, j, k, grid, advection, U.u, U.v)
+    ℱ  = y_f_cross_U(i, j, k, grid, coriolis, U)
+    ℬ  = bernoulli_head_V(i, j, k, grid, advection, U.u, U.v)
+    𝒜ᶻ = vertical_advection_V(i, j, k, grid, advection, U)
+    return 𝒜ʰ + 𝒜ᶻ + ℬ + ℱ
+end
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
@@ -43,10 +65,9 @@ implicitly during time-stepping.
 
     # Note: For mutable grids (z-star), the chain-rule correction for grid slope
     # is automatically included in ∂xᶠᶜᶜ, so no explicit grid_slope_contribution is needed.
-    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
+    return ( - momentum_advection_and_coriolis_u(i, j, k, grid, advection, coriolis, velocities)
              - U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, velocities, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
-             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, closure_fields, clock, model_fields)
@@ -86,10 +107,9 @@ implicitly during time-stepping.
 
     # Note: For mutable grids (z-star), the chain-rule correction for grid slope
     # is automatically included in ∂yᶜᶠᶜ, so no explicit grid_slope_contribution is needed.
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+    return ( - momentum_advection_and_coriolis_v(i, j, k, grid, advection, coriolis, velocities)
              - U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, velocities, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
-             - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, closure_fields, clock, model_fields)
