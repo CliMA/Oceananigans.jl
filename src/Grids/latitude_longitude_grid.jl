@@ -475,8 +475,8 @@ end
 ##### On-the-fly computation of LatitudeLongitudeGrid metrics
 #####
 
-@inline hack_cosd(φ) = cospi(φ / 180)
-@inline hack_sind(φ) = sinpi(φ / 180)
+@inline hack_cosd(φ) = cos(π * φ / 180)
+@inline hack_sind(φ) = sin(π * φ / 180)
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
