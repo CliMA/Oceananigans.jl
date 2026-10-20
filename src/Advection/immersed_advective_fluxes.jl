@@ -151,10 +151,13 @@ julia> inside_immersed_boundary(1:5, 3, :x, :ᶠ; xside = :ᶠ)
 end
 
 # On immersed grids the stencil must also avoid inactive cells. The left-biased span is 1:2buffer-1 and the right-biased one
-# 2:2buffer, so both share 2:2buffer-1 and the bias picks only which end cell joins it.
+# 2:2buffer, so both share 2:2buffer-1 and the bias picks only which end cell joins it. The halos beyond a Closed side are
+# inactive and the halos beyond an Open side are active, so only directions with an Open side also test the bounds of the sides.
 for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
     index = (:i, :j, :k)[d]
     location = NamedTuple{(Symbol(ξ, :side),)}((side,))
+    open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
+    open_grid = (:(IBG{<:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:$open_topology}), :(IBG{<:Any, <:Any, <:Any, <:$open_topology}))[d]
 
     near_boundary_symmetric = Symbol(:near_, ξ, :_boundary_symmetric, side)
     near_boundary_biased    = Symbol(:near_, ξ, :_boundary_biased, side)
@@ -164,14 +167,15 @@ for side in (:ᶜ, :ᶠ), (d, ξ) in enumerate((:x, :y, :z))
     for buffer in advection_buffers
         cells(range) = inside_immersed_boundary(range, buffer, ξ, side; location...)
         westmost, eastmost = only(cells(1:1)), only(cells(2buffer:2buffer))
+        symmetric_cells = :((|)($(cells(1:2buffer)...)))
+        biased_cells    = :((|)($(cells(2:2buffer-1)...), ifelse(bias == LeftBias, $westmost, $eastmost)))
 
         @eval begin
-            @inline $near_boundary_symmetric(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}) =
-                !$within_bounds_symmetric($index, ibg, scheme) | (|)($(cells(1:2buffer)...))
+            @inline $near_boundary_symmetric(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}) = $symmetric_cells
+            @inline $near_boundary_biased(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}, bias) = $biased_cells
 
-            @inline $near_boundary_biased(i, j, k, ibg::IBG, scheme::AbstractAdvectionScheme{$buffer}, bias) =
-                !$within_bounds_biased($index, ibg, scheme, bias) |
-                (|)($(cells(2:2buffer-1)...), ifelse(bias == LeftBias, $westmost, $eastmost))
+            @inline $near_boundary_symmetric(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) = !$within_bounds_symmetric($index, ibg, scheme) | $symmetric_cells
+            @inline $near_boundary_biased(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}, bias) = !$within_bounds_biased($index, ibg, scheme, bias) | $biased_cells
         end
     end
 end

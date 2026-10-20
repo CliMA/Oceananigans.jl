@@ -85,11 +85,11 @@ for bias in (:symmetric, :biased)
                 @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
                 @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
-                # The full-order reconstruction comes first: `ifelse` evaluates both, and their order sets the fused multiply-adds
+                # `ifelse` evaluates both reconstructions, the buffer one first: their order sets the register pressure
                 @inline $alt1_interp(i, j, k, grid::Union{$bounded_grid, ImmersedBoundaryGrid}, scheme::HOADV, $(b...), args...) =
-                    ifelse(!$near_boundary(i, j, k, grid, scheme, $(b...)),
-                            $interp(i, j, k, grid, scheme, $(b...), args...),
-                            $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...))
+                    ifelse($near_boundary(i, j, k, grid, scheme, $(b...)),
+                           $alt2_interp(i, j, k, grid, scheme.buffer_scheme, $(b...), args...),
+                           $interp(i, j, k, grid, scheme, $(b...), args...))
             end
         end
     end
