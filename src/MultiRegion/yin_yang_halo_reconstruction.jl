@@ -77,7 +77,7 @@ function fill_yin_yang_scalar_halo!(grid::ImmersedBoundaryGrid, field, source, r
 end
 
 function launch_yin_yang_interpolation!(grid, field, table, kernel!, args::Vararg{Any, N}) where N
-    horizontally_windowed(field.indices) && return nothing
+    field.indices isa Tuple{Colon, Colon, Any} || return nothing # horizontal windows have no seam halos
 
     ks = axes(field.data, 3)
     kernel_parameters = KernelParameters((length(table), length(ks)), (0, first(ks) - 1))
@@ -85,9 +85,6 @@ function launch_yin_yang_interpolation!(grid, field, table, kernel!, args::Varar
 
     return nothing
 end
-
-horizontally_windowed(::Tuple{Colon, Colon, Any}) = false
-horizontally_windowed(indices) = true
 
 @kernel function _interpolate_yin_yang_scalar_halo!(c, donor, table)
     n, k = @index(Global, NTuple)
