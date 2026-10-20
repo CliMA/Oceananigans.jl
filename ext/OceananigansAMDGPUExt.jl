@@ -77,8 +77,6 @@ end
     return dst
 end
 
-@inline AC.unsafe_free!(a::ROCArray) = AMDGPU.unsafe_free!(a)
-
 @inline convert_to_device(::ROCGPU, args) = AMDGPU.rocconvert(args)
 @inline convert_to_device(::ROCGPU, args::Tuple) = map(AMDGPU.rocconvert, args)
 

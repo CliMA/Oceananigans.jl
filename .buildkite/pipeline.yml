@@ -1,6 +1,6 @@
 env:
   JULIA_VERSION: "1.13.0"
-  JULIA_VERSION_ENZYME: "1.11.9"
+  JULIA_VERSION_ENZYME: "1.13.0"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -12,6 +12,16 @@ agents:
 with:
   coverage: false
 
+# Path groups for `if_changed`
+paths:
+  buildkite:     &buildkite_paths      ".buildkite/{pipeline.yml,hooks/**}"
+  code:          &code_paths           "{ext,src}/**"
+  project:       &project_paths        "Project.toml"
+  tests:         &test_paths           "test/**"
+  no_tests:      &no_test_paths        "test/{ProjectDistributed.toml,amdgpu/**,distributed/**,convergence/**,makie/**,manual/**,metal/**,mpi/**,oneapi/**,sharding/**}"
+  docs:          &docs_paths           "{docs,examples}/**"
+  agents:        &agents_paths         "AGENTS.md"
+
 steps:
   - label: "🏕️ initialize general environment"
     concurrency_group: gate
@@ -21,6 +31,10 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       TEST_GROUP: "init"
+    timeout_in_minutes: 60
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths, *docs_paths, *agents_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION
 
@@ -50,6 +64,10 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       TEST_GROUP: "init"
+    timeout_in_minutes: 60
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: *no_test_paths
     command: |
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
@@ -67,7 +85,36 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "{{ matrix.architecture }} - all tests"
+  - label: "🦉 documentation"
+    concurrency_group: gate
+    concurrency: 6
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    env:
+      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
+    timeout_in_minutes: 120
+    if_changed: [*buildkite_paths, *code_paths, *project_paths, *docs_paths, *agents_paths]
+    command: |
+      cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
+
+      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
+      # across builds. Resolve the docs environment from `docs/Project.toml`.
+      rm -f docs/Manifest.toml
+
+      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
+        'using Pkg; Pkg.instantiate()'
+      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+      tar czf docs/docs-build.tar.gz docs/build
+    artifact_paths:
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
+
+  - label: "🧪 {{ matrix.architecture }} - all tests"
     concurrency_group: gate
     concurrency: 6
     key: "tests"
@@ -76,6 +123,10 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       JULIA_CPU_THREADS: "6"
+    timeout_in_minutes: 150
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: [*no_test_paths, "test/{enzyme,reactant}/**"]
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -95,10 +146,11 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e \
+      julia +$JULIA_VERSION -O0 --color=yes --project -e \
         'using Pkg;
          Pkg.test("Oceananigans";
-           coverage="user",
+           coverage=true,
+           julia_args=["--check-bounds=yes"],
            test_args=`--verbose --quickfail unit abstract_operations coriolis tripolar_grid poisson_solvers general_solvers turbulence_closures time_stepping regression hydrostatic_free_surface vertical_coordinate shallow_water simulation lagrangian_particles multi_region conservative_regridding scripts memory_allocation`)
         '
       test_status=$$?
@@ -126,37 +178,10 @@ steps:
     matrix:
       setup:
         architecture:
-          - "CPU"
           - "GPU"
+          - "CPU"
 
-  - label: "🦉 documentation"
-    concurrency_group: gate
-    concurrency: 6
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    env:
-      CUDA_VISIBLE_DEVICES: "0" # GPU for docs
-    command: |
-      cd "$OCEANANIGANS_DIR"
-
-      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
-      # use v13.
-      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
-
-      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
-      # across builds. Resolve the docs environment from `docs/Project.toml`.
-      rm -f docs/Manifest.toml
-
-      julia +$JULIA_VERSION --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.instantiate()'
-      julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
-
-      tar czf docs/docs-build.tar.gz docs/build
-    artifact_paths:
-      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
-
-  - label: "{{ matrix.architecture }} - Enzyme/Reactant tests"
+  - label: "☣ {{ matrix.architecture }} - Enzyme/Reactant tests"
     concurrency_group: gate
     concurrency: 6
     key: "tests_enzyme_reactant"
@@ -165,6 +190,10 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       JULIA_CPU_THREADS: "4"
+    timeout_in_minutes: 45
+    if_changed:
+      include: [*buildkite_paths, *code_paths, *project_paths, *test_paths]
+      exclude: *no_test_paths
     command: |
       # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
@@ -184,12 +213,11 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      # Disable code coverage until <https://github.com/EnzymeAD/Enzyme.jl/issues/3318#issue-4862069516> is resolved.
       # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e \
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e \
         'using Pkg;
          Pkg.test("Oceananigans";
-           coverage=false,
+           coverage=true,
            julia_args=["--check-bounds=auto"],
            test_args=`--verbose --quickfail enzyme reactant`)
         '
@@ -234,6 +262,7 @@ steps:
   - label: "📊 Upload coverage to Codecov"
     agents:
       queue: "Oceananigans-nautilus"
+    timeout_in_minutes: 20
     command: |
       set -e
 
@@ -282,3 +311,4 @@ steps:
     commands:
       - "test -d $OCEANANIGANS_DIR && du -hs $OCEANANIGANS_DIR || true"
       - "test -d $OCEANANIGANS_DIR && rm -rf $OCEANANIGANS_DIR || true"
+      - julia +$JULIA_VERSION --color=yes -e 'using Pkg; try Pkg.gc(); catch err @error "Pkg.gc failed" err; end'

@@ -18,7 +18,7 @@ using Oceananigans.Solvers
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
                             InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils
-using Oceananigans.Utils: sum_of_velocities
+using Oceananigans.Utils: foreach_name, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
 

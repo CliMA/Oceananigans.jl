@@ -10,14 +10,14 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
 const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 
 # Kernels are typically launched
-# - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `diffusivity_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
+# - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `horizontally_extended_interior_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
 # - symbols (:xyz, :xy, ...)
 # - `active_cells_map`s
 
 # kernels launched with
 # - `surface_kernel_parameters`,
 # - `volume_kernel_parameters`,
-# - `diffusivity_kernel_parameters`
+# - `horizontally_extended_interior_kernel_parameters`
 # do not need any change because they cover `-H+2:N+H-1` where H is 1-larger in the y-direction for RFTRG
 
 # TODO: fix also the "buffer" kernel parameters functions to allow asynchronous distributed RFTRG
@@ -25,7 +25,7 @@ const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 
 #####
 ##### Covers the symbols kernel parameters as well as
-##### `interior_tendency_kernel_parameters(grid)` and `diffusivity_kernel_parameters(grid)`
+##### `interior_tendency_kernel_parameters(grid)` and `horizontally_extended_interior_kernel_parameters(grid)`
 ##### and the active cells maps which use `worksize` to find all the active indices
 #####
 

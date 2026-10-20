@@ -2,7 +2,7 @@ using Dates: unix2datetime
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, initialize!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
-using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.DistributedComputations: all_reduce, check_field_tags
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
@@ -338,6 +338,7 @@ function Oceananigans.initialize!(sim::Simulation)
     end
 
     model = sim.model
+    check_field_tags(architecture(model))
 
     # Only initialize for fresh simulations, not after restoring from a checkpoint.
     if model.clock.iteration == 0
