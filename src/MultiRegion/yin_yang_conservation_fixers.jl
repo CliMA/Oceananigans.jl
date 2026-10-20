@@ -176,7 +176,7 @@ end
     store_seam_fluxes!(budget, n₀ + n, 1, i, j, Δw, grid, flux, densities)
 end
 
-@inline function wet_reference_volume(i, j, k, grid)
+@inline function active_reference_volume(i, j, k, grid)
     active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
     return ifelse(active, Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
 end
