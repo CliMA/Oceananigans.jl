@@ -18,97 +18,76 @@ const ETD = ExplicitTimeDiscretization
 
 @enum Bias LeftBias RightBias
 
-@inline function fluid_Ax_qᶠᶜᶜ(i, j, k, grid, U)
-    i′ = nearest_domain_face(i, topology(grid, 1), grid.Nx)
-    return ifelse(inactive_node(i′, j, k, grid, Face(), Center(), Center()), zero(grid), Ax_qᶠᶜᶜ(i′, j, k, grid, U))
-end
-
-@inline function fluid_Ay_qᶜᶠᶜ(i, j, k, grid, V)
-    j′ = nearest_domain_face(j, topology(grid, 2), grid.Ny)
-    return ifelse(inactive_node(i, j′, k, grid, Center(), Face(), Center()), zero(grid), Ay_qᶜᶠᶜ(i, j′, k, grid, V))
-end
-
-@inline function fluid_Az_qᶜᶜᶠ(i, j, k, grid, W)
-    k′ = nearest_domain_face(k, topology(grid, 3), grid.Nz)
-    return ifelse(inactive_node(i, j, k′, grid, Center(), Center(), Face()), zero(grid), Az_qᶜᶜᶠ(i, j, k′, grid, W))
-end
-
-for dir in (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-    transport_interp = Symbol(:transport_interpolate_, dir)
-    symmetric_interp = Symbol(:symmetric_interpolate_, dir)
-    @eval @inline $transport_interp(i, j, k, grid, scheme, T, U) = $symmetric_interp(i, j, k, grid, scheme, T, U)
-end
-
 @inline bias(u::Number) = ifelse(u > 0, LeftBias, RightBias)
 
 @inline function advective_momentum_flux_Uu(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, u)
 
-    ũ  = transport_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, fluid_Ax_qᶠᶜᶜ, U)
-    uᴿ =    _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias(ũ), u)
+    ũ  = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    uᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias(ũ), u)
 
     return ũ * uᴿ
 end
 
 @inline function advective_momentum_flux_Vu(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, u)
 
-    ṽ  = transport_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, fluid_Ay_qᶜᶠᶜ, V)
-    uᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), u)
+    ṽ  = ℑxᶠᵃᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    uᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), u)
 
     return ṽ * uᴿ
 end
 
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, u)
 
-    w̃  = transport_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, fluid_Az_qᶜᶜᶠ, W)
-    uᴿ =    _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias(w̃), u)
+    w̃  = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    uᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias(w̃), u)
 
     return w̃ * uᴿ
 end
 
 @inline function advective_momentum_flux_Uv(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, v)
 
-    ũ  = transport_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, fluid_Ax_qᶠᶜᶜ, U)
-    vᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), v)
+    ũ  = ℑyᵃᶠᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    vᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), v)
 
     return ũ * vᴿ
 end
 
 @inline function advective_momentum_flux_Vv(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, v)
 
-    ṽ  = transport_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, fluid_Ay_qᶜᶠᶜ, V)
-    vᴿ =    _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias(ṽ), v)
+    ṽ  = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    vᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias(ṽ), v)
 
     return ṽ * vᴿ
 end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, v)
 
-    w̃  = transport_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, fluid_Az_qᶜᶜᶠ, W)
-    vᴿ =    _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias(w̃), v)
+    w̃  = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    vᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias(w̃), v)
 
     return w̃ * vᴿ
 end
 
 @inline function advective_momentum_flux_Uw(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, w)
 
-    ũ  = transport_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, fluid_Ax_qᶠᶜᶜ, U)
-    wᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), w)
+    ũ  = ℑzᵃᵃᶠ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    wᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), w)
 
     return ũ * wᴿ
 end
 
 @inline function advective_momentum_flux_Vw(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, w)
 
-    ṽ  = transport_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, fluid_Ay_qᶜᶠᶜ, V)
-    wᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), w)
+    ṽ  = ℑzᵃᵃᶠ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    wᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), w)
 
     return ṽ * wᴿ
 end
 
 @inline function advective_momentum_flux_Ww(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, w)
 
-    w̃  = transport_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, fluid_Az_qᶜᶜᶠ, W)
-    wᴿ =    _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias(w̃), w)
+    w̃  = ℑzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    wᴿ = _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias(w̃), w)
 
     return w̃ * wᴿ
 end
