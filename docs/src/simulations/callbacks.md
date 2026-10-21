@@ -48,6 +48,13 @@ These callsites must be implemented by models: for `NonhydrostaticModel` and `Hy
 `UpdateStateCallsite` callbacks are executed within `update_state!`, after auxiliary variables have been computed
 (for multi-stage time-steppers, `update_state!` may be called multiple times per timestep).
 
+`TendencyCallsite()` callbacks act on the momentum tendencies. `HydrostaticFreeSurfaceModel` computes its
+tracer tendencies later in each substep, after the velocities and the free surface are stepped, so a callback
+that modifies them needs `callsite = TracerTendencyCallsite()` (imported with `using Oceananigans: TracerTendencyCallsite`).
+`NonhydrostaticModel` and `ShallowWaterModel` compute all their tendencies together and execute both kinds of
+callbacks after them. On multi-region grids, `HydrostaticFreeSurfaceModel` executes `TendencyCallsite` callbacks
+once per region, with that region's model, and `TracerTendencyCallsite` callbacks once, with the whole model.
+
 As an example of a callback with `callsite = TendencyCallsite()` , we show below how we can
 manually add to the tendency field of one of the velocity components. Here we've chosen
 the `:u` field using parameters:
