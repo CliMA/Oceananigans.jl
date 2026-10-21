@@ -65,7 +65,7 @@ end
     cᵇ = offset_entry(S, a, n,     s, Val(N))
     cʷ = offset_entry(S, a, n + 1, s, Val(N))
     Δʷ = 2s * (cʷ - cᵇ)
-    K  = 3//2 * (Δʷ - Δ₁)
+    K  = 3 * (Δʷ - Δ₁) / 2
     G  = consecutive_agreement(WCT, K, Δ₁ - Δ₂, Δ₂ - Δ₃)
     return G * Δ₁ + (1 - G) * minmod(Δʷ, 2Δ₁), G * K
 end
