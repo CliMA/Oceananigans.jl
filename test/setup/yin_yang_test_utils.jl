@@ -1,7 +1,7 @@
 using Oceananigans: instantiated_location, TracerTendencyCallsite
 using Oceananigans.Grids: λnode, φnode, halo_size, immersed_inactive_node
 using Oceananigans.MultiRegion: yin_yang_panel_face_coordinates, yin_yang_transform, panel_frame, panel_fractional_indices,
-                                active_reference_volume, materialize_conservation_fixer
+                                active_reference_volume
 using Oceananigans.Operators: Azᶜᶜᶜ, Vᶜᶜᶜ
 using Oceananigans.OrthogonalSphericalShellGrids: rotated_basis_angle
 using Oceananigans.Utils: getregion
@@ -82,4 +82,4 @@ active_volume(model) = owned_sum(active_reference_volume, model.grid) +
 
 # The callbacks with which `time_step!(model, Δt; callbacks)` remove the content that the panels add
 conservation_fixer_callbacks(model) =
-    (Callback(materialize_conservation_fixer(YinYangConservationFixer(), model), callsite = TracerTendencyCallsite()),)
+    (Callback(YinYangConservationFixer(model), callsite = TracerTendencyCallsite()),)

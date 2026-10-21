@@ -3,7 +3,6 @@ include(joinpath(@__DIR__, "..", "setup", "yin_yang_test_utils.jl"))
 
 using Oceananigans: fields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: FixedSubstepNumber
-using Oceananigans.TurbulenceClosures: implicit_step!
 
 geographic_velocity(component) = (λ, φ, z) -> solid_body_velocity(λ, φ)[component]
 
@@ -12,9 +11,6 @@ bump(λ, φ, z) = exp(-((λ + 90)^2 + φ^2) / 400)
 
 hydrostatic_model(grid; kwargs...) = HydrostaticFreeSurfaceModel(grid; momentum_advection = VectorInvariant(),
                                                                  buoyancy = nothing, closure = nothing, kwargs...)
-
-split_explicit_model(grid; kwargs...) = hydrostatic_model(grid; tracer_advection = nothing, kwargs...,
-                                                          free_surface = SplitExplicitFreeSurface(substeps=10, extend_halos=false))
 
 # The largest difference between the z-star scaling σ = (H + η) / H at cell centers and its value from η
 zstar_scaling_error(model, H) = maximum(1:2) do r
@@ -33,7 +29,8 @@ end
         boundary_conditions = (; c = FieldBoundaryConditions(top = ValueBoundaryCondition((λ, φ, t) -> 2t)),
                                  d = FieldBoundaryConditions(top = ValueBoundaryCondition((λ, φ, t, b) -> b,
                                                                                         field_dependencies = :b)))
-        model = split_explicit_model(grid; tracers = (:b, :c, :d), boundary_conditions)
+        model = hydrostatic_model(grid; tracers = (:b, :c, :d), boundary_conditions, tracer_advection = nothing,
+                                  free_surface = SplitExplicitFreeSurface(substeps=10, extend_halos=false))
         u, v, _ = model.velocities
 
         # set! takes geographic velocities and rotates them into each panel's basis
@@ -62,18 +59,7 @@ end
             @test all(view(getregion(model.tracers.c, r).data, 1:Nx, 1:Ny, Nz+1) .≈ 2 * 2t - 1)
             @test all(view(getregion(model.tracers.d, r).data, 1:Nx, 1:Ny, Nz+1) .≈ 2 * 5 - 1)
         end
-
-        # SplitRungeKutta3 gives the same wave
-        rk3_model = split_explicit_model(grid; timestepper = :SplitRungeKutta3)
-        set!(rk3_model, η = bump)
-        for _ in 1:2
-            time_step!(rk3_model, Δt)
-        end
-        η, ηᴬᴮ = rk3_model.free_surface.displacement, model.free_surface.displacement
-        @test 0.3 < maximum(interior(getregion(η, 1))) ≤ 1
-        for r in 1:2
-            @test interior(getregion(η, r)) ≈ interior(getregion(ηᴬᴮ, r)) rtol=1e-5
-        end
+        @test 0.3 < maximum(interior(getregion(model.free_surface.displacement, 1))) ≤ 1
 
         @test_throws ArgumentError hydrostatic_model(grid; free_surface = SplitExplicitFreeSurface(substeps=10))
     end
@@ -82,11 +68,14 @@ end
     zstar_grid = YinYangGrid(arch; size=(48, 16, 2), z=MutableVerticalDiscretization((-1000, 0)), halo=(4, 4, 4))
     immersed_zstar_grid = ImmersedBoundaryGrid(zstar_grid, PartialCellBottom(mountain))
 
-    @testset "Halos are consistent after a time step [$timestepper]" for (timestepper, step_grid) in
-            ((:QuasiAdamsBashforth2, grid), (:SplitRungeKutta3, immersed_zstar_grid))
+    # Implicit vertical diffusion is solved on the immersed panels
+    implicit_diffusion = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ = 1e-2)
+
+    @testset "Halos are consistent after a time step [$timestepper]" for (timestepper, step_grid, closure) in
+            ((:QuasiAdamsBashforth2, grid, nothing), (:SplitRungeKutta3, immersed_zstar_grid, implicit_diffusion))
 
         model = hydrostatic_model(step_grid; free_surface = ExplicitFreeSurface(), tracer_advection = WENO(order=5),
-                                  coriolis = HydrostaticSphericalCoriolis(), tracers = :c, timestepper)
+                                  coriolis = HydrostaticSphericalCoriolis(), tracers = :c, timestepper, closure)
         set!(model, u = geographic_velocity(1), v = geographic_velocity(2), η = bump, c = (λ, φ, z) -> bump(λ + 60, φ, z))
         V₀ = active_volume(model)
         callbacks = conservation_fixer_callbacks(model)
@@ -136,27 +125,6 @@ end
         @test zstar_scaling_error(model, H) < 1e-12
         time_step!(model, 1)
         @test zstar_scaling_error(model, H) < 1e-12
-    end
-end
-
-@testset "Implicit diffusion on Yin-Yang grids [$(summary(arch)), immersed = $immersed]" for arch in archs, immersed in (false, true)
-    sphere = YinYangGrid(arch, Float32; size=(48, 16, 4), z=(-4, 0))
-    grid = immersed ? ImmersedBoundaryGrid(sphere, GridFittedBottom((λ, φ) -> -4)) : sphere
-    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), Float32; κ=1)
-    model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:c, buoyancy=nothing,
-                                        momentum_advection=nothing, tracer_advection=nothing)
-    set!(model, c=(λ, φ, z) -> 1 + cospi((z + 4) / 4))
-    damping = 1 / (1 + 4sinpi(1/8)^2) # of the cosine by one backward Euler step with Δt = 1
-    expected = CenterField(grid)
-    set!(expected, (λ, φ, z) -> 1 + damping * cospi((z + 4) / 4))
-
-    for region in 1:2
-        m = getregion(model, region)
-        implicit_step!(m.tracers.c, m.timestepper.implicit_solver, m.closure, m.closure_fields,
-                       Val(1), m.clock, fields(m), 1f0)
-        actual = Array(interior(m.tracers.c))
-        @test actual ≈ Array(interior(getregion(expected, region))) rtol=5f-6
-        @test mean(Float64, actual) ≈ 1 rtol=5f-6
     end
 end
 

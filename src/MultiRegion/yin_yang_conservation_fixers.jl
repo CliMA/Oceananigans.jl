@@ -1,6 +1,6 @@
 using Oceananigans: fields, TracerTendencyCallsite
 using Oceananigans.Advection: Centered, _advective_tracer_flux_x, _advective_tracer_flux_y
-using Oceananigans.Fields: OneField, tracernames
+using Oceananigans.Fields: OneField
 using Oceananigans.Grids: immersed_inactive_node, static_column_depthᶜᶜᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate, tracer_advecting_velocities
 using Oceananigans.Operators: Azᶜᶜᶜ, Δrᶜᶜᶜ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
@@ -8,83 +8,57 @@ using Oceananigans.Simulations: Simulations, Callback, add_callback!
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x, _diffusive_flux_y, closure_required_tracers
 
 """
-    YinYangConservationFixer()
+    YinYangConservationFixer(model::HydrostaticFreeSurfaceModel)
 
-Remove, in every substep of a `HydrostaticFreeSurfaceModel` on a `YinYangGrid`, the volume and the tracer
-content that the mismatch of the two panels' fluxes across their seam adds. Add it with
-[`add_conservation_fixer!`](@ref).
+The callback that removes, in every substep of `model` on a `YinYangGrid`, the volume and the tracer content
+that the mismatch of the two panels' fluxes across their seam adds. It acts at the `TracerTendencyCallsite`,
+where [`add_conservation_fixer!`](@ref) adds it.
 
 Under a `ZStarCoordinate` the fixer conserves the volume and the tracer contents to rounding error, apart from
 their true sources, and keeps uniform tracers uniform. Under a static vertical coordinate it conserves the
 volume, while the tracer contents change as on a single grid. Closure tracers are not corrected. With
 `QuasiAdamsBashforth2`, a step whose Δt differs from the previous one corrects the free surface with the previous Δt.
-
-```jldoctest
-julia> using Oceananigans
-
-julia> YinYangConservationFixer()
-YinYangConservationFixer
-```
 """
-struct YinYangConservationFixer end
-
-Base.summary(::YinYangConservationFixer) = "YinYangConservationFixer"
-Base.show(io::IO, fixer::YinYangConservationFixer) = print(io, summary(fixer))
-
-# The skeleton is materialized by `add_conservation_fixer!`, and cannot act as a callback itself
-(::YinYangConservationFixer)(args...) =
-    throw(ArgumentError("YinYangConservationFixer() is not a callback; add it with add_conservation_fixer!(simulation)."))
-
-struct HydrostaticYinYangConservationFixer{N, F, W, B, P, S}
-    tracers :: N # (Val(name), Val(index)) of every corrected tracer
-    faces :: F   # (; x, y), each (; i, j, Δw): the faces where the owned weight jumps by Δw, shared by both panels
+struct YinYangConservationFixer{N, W, F, B, P, S}
+    tracers :: N # name => index in `model.tracers` of every corrected tracer
     weights :: W # owned_weights(grid)
+    faces :: F   # (; x, y), each (; i, j, Δw): the faces where the owned weight jumps by Δw, shared by both panels
     budget :: B  # (row, quantity, density, panel), for the volume followed by the tracers; see `compute_budget!`
     panels :: P  # the panels of `budget`
     sums :: S    # (1, quantity, density, 1), the sums of `budget` over its rows and panels
 end
 
-tracer_names(fixer::HydrostaticYinYangConservationFixer) = map(t -> tracer_name(t...), fixer.tracers)
-tracer_name(::Val{name}, index) where name = name
+Base.summary(fixer::YinYangConservationFixer) =
+    string("YinYangConservationFixer of the volume and the tracers ", keys(fixer.tracers))
 
-Base.summary(fixer::HydrostaticYinYangConservationFixer) = string("YinYangConservationFixer of the volume and the tracers ", tracer_names(fixer))
-Base.show(io::IO, fixer::HydrostaticYinYangConservationFixer) = print(io, summary(fixer))
+Base.show(io::IO, fixer::YinYangConservationFixer) = print(io, summary(fixer))
 
 # The fixer keeps no state between substeps
-Oceananigans.prognostic_state(::HydrostaticYinYangConservationFixer) = nothing
+Oceananigans.prognostic_state(::YinYangConservationFixer) = nothing
 
 # Every substep runs the callback at the `TracerTendencyCallsite`, whatever its schedule. The fixed name makes
 # a second call replace the first fixer, so that the budget is removed once.
-function Simulations.add_conservation_fixer!(simulation, ::YinYangGridOfSomeKind)
-    fixer = materialize_conservation_fixer(YinYangConservationFixer(), simulation.model)
-    return add_callback!(simulation, Callback(fixer; callsite=TracerTendencyCallsite()); name=:conservation_fixer)
-end
+Simulations.add_conservation_fixer!(simulation, ::YinYangGridOfSomeKind) =
+    add_callback!(simulation, Callback(YinYangConservationFixer(simulation.model); callsite=TracerTendencyCallsite());
+                  name=:conservation_fixer)
 
-materialize_conservation_fixer(::YinYangConservationFixer, model) =
-    throw(ArgumentError("YinYangConservationFixer requires a HydrostaticFreeSurfaceModel."))
-
-materialize_conservation_fixer(fixer::YinYangConservationFixer, model::HydrostaticFreeSurfaceModel) =
-    materialize_conservation_fixer(fixer, model.grid, tracernames(model.tracers), model.closure)
-
-materialize_conservation_fixer(::YinYangConservationFixer, grid, tracer_names, closure) =
-    throw(ArgumentError("YinYangConservationFixer requires a YinYangGrid."))
-
-function materialize_conservation_fixer(::YinYangConservationFixer, grid::YinYangGridOfSomeKind, tracer_names, closure)
-    closure_tracers = closure_required_tracers(closure) # evolved by the closure itself, so left alone
-    tracers = Tuple((Val(name), Val(n)) for (n, name) in enumerate(tracer_names) if name ∉ closure_tracers)
+function YinYangConservationFixer(model::HydrostaticFreeSurfaceModel)
+    grid = model.grid
+    closure_tracers = closure_required_tracers(model.closure) # evolved by the closure itself, so left alone
+    tracers = NamedTuple(name => n for (n, name) in enumerate(keys(model.tracers)) if name ∉ closure_tracers)
 
     arch = architecture(grid)
     FT = eltype(grid)
     weights = owned_weights(grid)
     faces = seam_faces(arch, FT, on_architecture(CPU(), interior(getregion(weights, 1), :, :, 1)))
 
-    Nx, Ny, _ = size(getregion(grid, 1))
+    Nx, Ny, _ = size(grid)
     Nrows = max(Nx * Ny, length(faces.x.i) + length(faces.y.i))
     budget = zeros(arch, FT, Nrows, 3, 1 + length(tracers), 2)
     panels = MultiRegionObject(Tuple(view(budget, :, :, :, r) for r in 1:2))
     sums = zeros(arch, FT, 1, 3, 1 + length(tracers), 1)
 
-    return HydrostaticYinYangConservationFixer(tracers, faces, weights, budget, panels, sums)
+    return YinYangConservationFixer(tracers, weights, faces, budget, panels, sums)
 end
 
 #####
@@ -99,6 +73,20 @@ end
 ##### tendency of every tracer c); the rest of each tracer's budget, E - ν Σ w V₀ c, is removed in proportion to |c|.
 #####
 
+# The advective and diffusive fluxes of c through x- and y-faces, as in the tracer tendencies
+@inline tracer_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
+    _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) +
+    Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, closure, K, id, c, clock, model_fields, buoyancy)
+
+@inline tracer_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
+    _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
+    Ay_qᶜᶠᶜ(i, j, k, grid, _diffusive_flux_y, closure, K, id, c, clock, model_fields, buoyancy)
+
+@inline function active_reference_volume(i, j, k, grid)
+    active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+    return ifelse(active, Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
+end
+
 # The x-faces (i, j) and y-faces (i, j) across which the owned weight `w` of the interior cells jumps,
 # with the jump Δw = w[i, j] - w[i-1, j] or w[i, j] - w[i, j-1], taking w = 0 outside the interior
 function seam_faces(arch, FT, w)
@@ -110,45 +98,21 @@ function seam_faces(arch, FT, w)
     return (; x = table(x), y = table(y))
 end
 
-# The budget of each panel: quantity 1 holds F Δw summed over the column of each seam face, for the volume flux
-# and the tracer fluxes of the tendencies; quantities 2 and 3 hold Σₖ w V₀ c and Σₖ w V₀ |c| over each column
-# (row i + (j - 1) Nx), with c = 1 for the volume. The rows past those a quantity uses stay zero.
-
-# The advective and diffusive fluxes of c through x- and y-faces, as in the tracer tendencies
-@inline tracer_flux_x(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
-    _advective_tracer_flux_x(i, j, k, grid, advection, U.u, c) +
-    Ax_qᶠᶜᶜ(i, j, k, grid, _diffusive_flux_x, closure, K, id, c, clock, model_fields, buoyancy)
-
-@inline tracer_flux_y(i, j, k, grid, advection, U, c, closure, K, id, clock, model_fields, buoyancy) =
-    _advective_tracer_flux_y(i, j, k, grid, advection, U.v, c) +
-    Ay_qᶜᶠᶜ(i, j, k, grid, _diffusive_flux_y, closure, K, id, c, clock, model_fields, buoyancy)
-
-@inline store_seam_fluxes!(budget, row, d, i, j, Δw, grid, flux, ::Tuple{}) = nothing
-
-@inline function store_seam_fluxes!(budget, row, d, i, j, Δw, grid, flux, densities)
-    F = zero(grid)
-    for k in 1:size(grid, 3)
-        F += flux(i, j, k, grid, first(densities)...)
-    end
-    @inbounds budget[row, 1, d] = F * Δw
-    return store_seam_fluxes!(budget, row, d + 1, i, j, Δw, grid, flux, Base.tail(densities))
-end
-
-@kernel function _seam_fluxes!(budget, n₀, grid, faces, flux, densities)
+# Quantity 1 of density d holds F Δw summed over the column of each seam face, the x-faces first
+@kernel function _seam_fluxes!(budget, d, n₀, grid, faces, flux, flux_arguments)
     n = @index(Global, Linear)
     @inbounds i, j, Δw = faces.i[n], faces.j[n], faces.Δw[n]
-    store_seam_fluxes!(budget, n₀ + n, 1, i, j, Δw, grid, flux, densities)
+    F = zero(grid)
+    for k in 1:size(grid, 3)
+        F += flux(i, j, k, grid, flux_arguments...)
+    end
+    @inbounds budget[n₀ + n, 1, d] = F * Δw
 end
 
-@inline function active_reference_volume(i, j, k, grid)
-    active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
-    return ifelse(active, Azᶜᶜᶜ(i, j, k, grid) * Δrᶜᶜᶜ(i, j, k, grid), zero(grid))
-end
-
-@inline store_column_contents!(budget, row, d, i, j, grid, w, ::Tuple{}) = nothing
-
-@inline function store_column_contents!(budget, row, d, i, j, grid, w, contents)
-    c = first(contents)
+# Quantities 2 and 3 hold Σₖ w V₀ c and Σₖ w V₀ |c| over each column (row i + (j - 1) Nx), with c = 1 for the volume
+@kernel function _column_contents!(budget, d, grid, weights, c)
+    i, j = @index(Global, NTuple)
+    @inbounds w = weights[i, j, 1]
     C = zero(grid)
     A = zero(grid)
     for k in 1:size(grid, 3)
@@ -157,41 +121,39 @@ end
         C += V₀ * cᵏ
         A += V₀ * abs(cᵏ)
     end
+    row = i + (j - 1) * size(grid, 1)
     @inbounds budget[row, 2, d] = w * C
     @inbounds budget[row, 3, d] = w * A
-    return store_column_contents!(budget, row, d + 1, i, j, grid, w, Base.tail(contents))
 end
 
-@kernel function _column_contents!(budget, grid, weights, contents)
-    i, j = @index(Global, NTuple)
-    @inbounds w = weights[i, j, 1]
-    store_column_contents!(budget, i + (j - 1) * size(grid, 1), 1, i, j, grid, w, contents)
+function launch_budget!(budget, d, grid, faces, weights, c, flux_arguments)
+    arch = architecture(grid)
+    Nx = length(faces.x.i)
+    launch!(arch, grid, (Nx,), _seam_fluxes!, budget, d, 0, grid, faces.x, tracer_flux_x, flux_arguments)
+    launch!(arch, grid, (length(faces.y.i),), _seam_fluxes!, budget, d, Nx, grid, faces.y, tracer_flux_y, flux_arguments)
+    launch!(arch, grid, :xy, _column_contents!, budget, d, grid, weights, c)
+    return nothing
 end
 
-@inline tracer_field(fields, ::Val{name}, index) where name = fields[name]
-
-@inline function tracer_flux_arguments(model, ::Val{name}, index) where name
-    velocities = tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, model.closure,
-                                             model.closure_fields, model.forcing[name], Val(name))
-    return (model.advection[name], velocities, model.tracers[name], model.closure, model.closure_fields,
-            index, model.clock, fields(model), model.buoyancy)
-end
-
-# Second-order centered fluxes of c = 1 are the volume fluxes, with no diffusion
-volume_flux_arguments(model) = (Centered(eltype(model.grid); order=2), model.transport_velocities, OneField(),
-                                nothing, nothing, Val(0), model.clock, fields(model), model.buoyancy)
-
-# The fluxes of the tendencies just computed, from the same state, in one panel
+# The fluxes of the tendencies just computed, from the same state, in one panel. Second-order centered
+# fluxes of c = 1 are the volume fluxes, with no diffusion.
 function compute_budget!(budget, faces, weights, model, tracers)
     grid = model.grid
-    arch = architecture(grid)
-    densities = (volume_flux_arguments(model), map(t -> tracer_flux_arguments(model, t...), tracers)...)
-    Nx, Ny = length(faces.x.i), length(faces.y.i)
-    launch!(arch, grid, (Nx,), _seam_fluxes!, budget, 0, grid, faces.x, tracer_flux_x, densities)
-    launch!(arch, grid, (Ny,), _seam_fluxes!, budget, Nx, grid, faces.y, tracer_flux_y, densities)
+    U = model.transport_velocities
+    model_fields = fields(model)
+    volume_flux_arguments = (Centered(eltype(grid); order=2), U, OneField(), nothing, nothing, Val(0),
+                             model.clock, model_fields, model.buoyancy)
+    launch_budget!(budget, 1, grid, faces, weights, OneField(), volume_flux_arguments)
 
-    contents = (OneField(), map(t -> tracer_field(model.tracers, t...), tracers)...)
-    launch!(arch, grid, :xy, _column_contents!, budget, grid, weights, contents)
+    for (d, (name, index)) in enumerate(pairs(tracers))
+        c = model.tracers[name]
+        velocities = tracer_advecting_velocities(U, model.biogeochemistry, model.closure, model.closure_fields,
+                                                 model.forcing[name], Val(name))
+        flux_arguments = (model.advection[name], velocities, c, model.closure, model.closure_fields, Val(index),
+                          model.clock, model_fields, model.buoyancy)
+        launch_budget!(budget, d + 1, grid, faces, weights, c, flux_arguments)
+    end
+
     return nothing
 end
 
@@ -199,12 +161,14 @@ end
 ##### The correction
 #####
 
+@inline budget_sum(sums, quantity, d) = @inbounds sums[1, quantity, d, 1]
+
 # The rate ν = E / Σ w V₀ at which the volume is removed
-@inline volume_removal_rate(sums) = @inbounds sums[1, 1, 1, 1] / sums[1, 2, 1, 1]
+@inline volume_removal_rate(sums) = budget_sum(sums, 1, 1) / budget_sum(sums, 2, 1)
 
 # The rate r that removes the rest of the seam budget of density d in proportion to |c|
 @inline function residual_removal_rate(sums, d, ν)
-    @inbounds E, C, A = sums[1, 1, d, 1], sums[1, 2, d, 1], sums[1, 3, d, 1]
+    E, C, A = budget_sum(sums, 1, d), budget_sum(sums, 2, d), budget_sum(sums, 3, d)
     return ifelse(A > 0, (E - ν * C) / ifelse(A > 0, A, one(A)), zero(A))
 end
 
@@ -212,62 +176,51 @@ end
 stretching(::ZStarCoordinate) = 1
 stretching(vertical_coordinate) = 0
 
-@inline correct_tendencies!(::Tuple{}, ::Tuple{}, i, j, k, d, active, sums, νσ, ν) = nothing
-
-@inline function correct_tendencies!(Gs, cs, i, j, k, d, active, sums, νσ, ν)
-    r = residual_removal_rate(sums, d, ν)
-    @inbounds c = first(cs)[i, j, k]
-    @inbounds first(Gs)[i, j, k] -= ifelse(active, νσ * c + r * abs(c), zero(c))
-    return correct_tendencies!(Base.tail(Gs), Base.tail(cs), i, j, k, d + 1, active, sums, νσ, ν)
-end
-
 # The tendencies evolve σc, so that the correction changes the content Σ w V₀ σc by Δt Σ w V₀ δG
-@kernel function _correct_tracer_tendencies!(Gs, cs, grid, sums, s)
+@kernel function _correct_tracer_tendency!(G, c, grid, sums, d, s)
     i, j, k = @index(Global, NTuple)
     ν = volume_removal_rate(sums)
+    r = residual_removal_rate(sums, d, ν)
     active = !immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
-    correct_tendencies!(Gs, cs, i, j, k, 2, active, sums, s * ν, ν)
+    @inbounds cᵢ = c[i, j, k]
+    @inbounds G[i, j, k] -= ifelse(active, s * ν * cᵢ + r * abs(cᵢ), zero(cᵢ))
 end
-
-correct_tracer_tendencies!(model, sums, ::Tuple{}) = nothing
 
 function correct_tracer_tendencies!(model, sums, tracers)
     grid = model.grid
-    Gs = map(t -> tracer_field(model.timestepper.Gⁿ, t...), tracers)
-    cs = map(t -> tracer_field(model.tracers, t...), tracers)
-    launch!(architecture(grid), grid, :xyz, _correct_tracer_tendencies!, Gs, cs, grid, sums, stretching(model.vertical_coordinate))
+    s = stretching(model.vertical_coordinate)
+    for (d, name) in enumerate(keys(tracers))
+        G = model.timestepper.Gⁿ[name]
+        c = model.tracers[name]
+        launch!(architecture(grid), grid, :xyz, _correct_tracer_tendency!, G, c, grid, sums, d + 1, s)
+    end
     return nothing
 end
 
-@kernel function _correct_free_surface!(η, grid, sums, Δt)
+@kernel function _correct_free_surface!(η, grid, sums, factor)
     i, j = @index(Global, NTuple)
     ν = volume_removal_rate(sums)
-    @inbounds η[i, j, grid.Nz+1] -= Δt * ν * static_column_depthᶜᶜᵃ(i, j, grid)
+    @inbounds η[i, j, grid.Nz+1] -= factor * ν * static_column_depthᶜᶜᵃ(i, j, grid)
 end
 
-# The explicit free surface of `QuasiAdamsBashforth2TimeStepper` takes the current correction with the weight
-# 3/2 + χ now and with -(1/2 + χ) at the next step, through its tendency, as the tracers do
-@kernel function _correct_explicit_free_surface!(η, Gη, grid, sums, αΔt)
-    i, j = @index(Global, NTuple)
-    νh = volume_removal_rate(sums) * static_column_depthᶜᶜᵃ(i, j, grid)
-    @inbounds η[i, j, grid.Nz+1] -= αΔt * νh
-    @inbounds Gη[i, j, grid.Nz+1] -= νh
-end
+# The displacement drops by Δt ν h. The explicit free surface of `QuasiAdamsBashforth2TimeStepper` takes the
+# current correction with the weight 3/2 + χ now and with -(1/2 + χ) at the next step, through its tendency,
+# as the tracers do.
+free_surface_corrections(free_surface, timestepper, Δt) = ((free_surface.displacement, Δt),)
 
-correct_displacement!(free_surface, timestepper, grid, sums, Δt) =
-    launch!(architecture(grid), grid, :xy, _correct_free_surface!, free_surface.displacement, grid, sums, convert(eltype(grid), Δt))
-
-function correct_displacement!(free_surface::ExplicitFreeSurface, timestepper::QuasiAdamsBashforth2TimeStepper, grid, sums, Δt)
+function free_surface_corrections(free_surface::ExplicitFreeSurface, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
     χ = timestepper.χ
-    αΔt = convert(eltype(grid), (3 * one(χ) / 2 + χ) * Δt)
-    launch!(architecture(grid), grid, :xy, _correct_explicit_free_surface!, free_surface.displacement, timestepper.Gⁿ.η, grid, sums, αΔt)
-    return nothing
+    return ((free_surface.displacement, (3 * one(χ) / 2 + χ) * Δt), (timestepper.Gⁿ.η, 1))
 end
 
 correct_free_surface!(::Nothing, model, sums, Δt) = nothing
 
 function correct_free_surface!(free_surface, model, sums, Δt)
-    @apply_regionally correct_displacement!(free_surface, model.timestepper, model.grid, sums, Δt)
+    grid = model.grid
+    for (η, factor) in free_surface_corrections(free_surface, model.timestepper, Δt)
+        factor = convert(eltype(grid), factor)
+        @apply_regionally launch!(architecture(grid), grid, :xy, _correct_free_surface!, η, grid, sums, factor)
+    end
     fill_halo_regions!(free_surface.displacement, model.clock, fields(model))
     return nothing
 end
@@ -278,7 +231,7 @@ substep_time_step(::SplitRungeKuttaTimeStepper, clock) = clock.last_stage_Δt
 substep_time_step(::QuasiAdamsBashforth2TimeStepper, clock) = clock.last_Δt
 
 # Executed at the `TracerTendencyCallsite` of every substep
-function (fixer::HydrostaticYinYangConservationFixer)(model)
+function (fixer::YinYangConservationFixer)(model)
     @apply_regionally compute_budget!(fixer.panels, fixer.faces, fixer.weights, model, fixer.tracers)
     sum!(fixer.sums, fixer.budget)
     @apply_regionally correct_tracer_tendencies!(model, fixer.sums, fixer.tracers)

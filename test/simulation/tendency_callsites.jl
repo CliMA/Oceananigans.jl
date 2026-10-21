@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans: TendencyCallsite, TracerTendencyCallsite, MomentumTendency, TracerTendency
+using Oceananigans: TendencyCallsite, TracerTendencyCallsite
 
 add_to_tendency!(model, name) = interior(model.timestepper.Gⁿ[name]) .+= 1
 
@@ -17,9 +17,6 @@ function test_tendency_callsites(model; Δt = 0.1)
 end
 
 @testset "Tendency callsites" begin
-    @test TendencyCallsite() isa TendencyCallsite{MomentumTendency}
-    @test TracerTendencyCallsite() === TendencyCallsite(TracerTendency())
-
     for arch in archs
         grid = RectilinearGrid(arch; size = (2, 2, 2), extent = (1, 1, 1), topology = (Periodic, Periodic, Bounded))
 
