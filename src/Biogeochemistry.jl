@@ -163,7 +163,7 @@ contains biogeochemical auxiliary fields.
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
 
     all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
-        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
+        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(nameof(typeof(bgc)))")
 
     # Return tracers and aux fields so that users may overload and
     # define their own special auxiliary fields

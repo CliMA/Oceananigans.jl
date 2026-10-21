@@ -48,8 +48,17 @@ const SlabFoldedTopology = Union{LeftConnectedRightCenterFolded, LeftConnectedRi
 const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
 const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
-
 const LeftConnectedOnlyTopology = Union{LeftConnected, SlabFoldedTopology}
+
+# Nothing locations just default to 1:N
+@inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
+@inline connected_range(::Nothing, topo, N, H) = 1:N
+
+@inline connected_range(topo, N, H)                                =    1:N
+@inline connected_range(::Type{FullyConnected}, N, H)              = -H+2:N+H-1
+@inline connected_range(::Type{RightConnected}, N, H)              =    1:N+H-1
+@inline connected_range(::Type{LeftConnected},  N, H)              = -H+2:N
+@inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
 
@@ -584,7 +593,7 @@ function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Union{Bounded, RightConnected}, N::Int) = ifelse(N > 1, 1, 0)
 
 #####
 ##### Kernel parameters that extend into the halos

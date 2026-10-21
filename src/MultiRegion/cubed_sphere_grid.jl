@@ -479,7 +479,7 @@ function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCub
     end
 end
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber, strategy)
-    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping, strategy)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber, strategy)
+    @apply_regionally kernel_parameters = materialize_kernel_parameters(TX, TY, grid, substepping, strategy)
     return kernel_parameters
 end
