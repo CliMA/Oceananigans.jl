@@ -191,6 +191,21 @@ end
 
 reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegionGrids) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
+# The immersed boundary of a connected region is materialized on the whole multi-region grid, so it moves to
+# another architecture as it is, without being materialized again on the region alone.
+const RegionalConnectedTopology = Union{FullyConnected, LeftConnected, RightConnected}
+const RegionalGrid = Union{RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
+
+const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid},
+                                   ImmersedBoundaryGrid{<:Any, <:Any, <:RegionalConnectedTopology, <:Any, <:RegionalGrid}}
+
+function Oceananigans.Architectures.on_architecture(arch, ibg::ImmersedRegionalGrid)
+    underlying_grid = on_architecture(arch, ibg.underlying_grid)
+    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
+    TX, TY, TZ = topology(ibg)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, immersed_boundary, nothing, nothing)
+end
+
 # On a multi-region grid the stored bottom height is a `MultiRegionObject` of per-region halo-inclusive
 # `OffsetArray`s; strip each region's halos before copying (the bare-`OffsetArray` method does this per region).
 Oceananigans.ImmersedBoundaries.set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
@@ -242,7 +257,8 @@ end
 
 function Grids.on_architecture(arch, mrg::MultiRegionGrid{FT, TX, TY, TZ, CZ}) where {FT, TX, TY, TZ, CZ}
     new_grids = on_architecture(arch, mrg.region_grids)
-    return MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch, mrg.partition, mrg.connectivity, new_grids)
+    new_connectivity = on_architecture(arch, mrg.connectivity)
+    return MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch, mrg.partition, new_connectivity, new_grids)
 end
 
 Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =

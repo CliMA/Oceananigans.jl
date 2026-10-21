@@ -1,9 +1,11 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: _node, node, xnodes, ynodes
+using Oceananigans.Grids: _node, node, xnodes, ynodes, Face, Center
 using Oceananigans.Fields: AbstractField, Field, FunctionField, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 using Oceananigans.Utils: prettysummary
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -202,7 +204,8 @@ materialize_mask(mask::FunctionField, field) = mask
 # avoid per-cell work — so a mismatch is an error rather than a wrapped target.
 function materialize_mask(mask::AbstractField, field)
     mask_loc = instantiated_location(mask)
-    mask.grid === field.grid ||
+    # `===` first: `==` compares the bottom heights of immersed grids, which on a GPU makes the host wait
+    mask.grid === field.grid || mask.grid == field.grid ||
         throw(ArgumentError("a `Field` mask must share the forced field's grid"))
     (mask_loc == instantiated_location(field) || any(isnothing, mask_loc)) ||
         throw(ArgumentError("a `Field` mask must share the forced field's location, or be reduced; " *
@@ -290,6 +293,144 @@ function Base.summary(relaxation::Relaxation)
     isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
     return "Relaxation(" * join(parts, ", ") * ")"
 end
+
+#####
+##### Flow-dependent rate
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
+normal velocity indicates inflow through the domain boundary in direction `D` (one of
+`:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
+following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
+for the role of `mask` in shaping the nudging spatially.
+
+Example
+=======
+
+```jldoctest inflowoutflowrate
+using Oceananigans
+using Oceananigans.Units
+
+rate = InflowOutflowRate{:west}(inflow_rate=1/15minutes, outflow_rate=1/12hours)
+
+# output
+InflowOutflowRate{:west, Float64}(0.0011111111111111111, 2.3148148148148147e-5)
+```
+"""
+struct InflowOutflowRate{D, FT}
+    inflow_rate  :: FT
+    outflow_rate :: FT
+
+    function InflowOutflowRate{D}(; inflow_rate, outflow_rate) where D
+        FT = promote_type(typeof(inflow_rate), typeof(outflow_rate))
+        return new{D, FT}(convert(FT, inflow_rate), convert(FT, outflow_rate))
+    end
+end
+
+Base.summary(r::InflowOutflowRate{D}) where D =
+    "InflowOutflowRate{:$D}(inflow_rate=$(r.inflow_rate), outflow_rate=$(r.outflow_rate))"
+
+# dispatch on `loc` so u-points, v-points, and centers each get the right interpolation stencil
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Face, Center, Center})
+    u = @inbounds model_fields.u[i, j, k]
+    v = active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, model_fields.v)
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Face, Center})
+    u = active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, model_fields.u)
+    v = @inbounds model_fields.v[i, j, k]
+    return u, v
+end
+
+@inline function normal_velocities(i, j, k, grid, model_fields, ::Tuple{Center, Center, Center})
+    u = ℑxᶜᵃᵃ(i, j, k, grid, model_fields.u)
+    v = ℑyᵃᶜᵃ(i, j, k, grid, model_fields.v)
+    return u, v
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:west}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ > 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:east}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(uₙ < 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:south}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ > 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline function evaluate_rate(i, j, k, grid, r::InflowOutflowRate{:north}, model_fields, loc)
+    uₙ, vₙ = normal_velocities(i, j, k, grid, model_fields, loc)
+    return ifelse(vₙ < 0, r.inflow_rate, r.outflow_rate)
+end
+
+@inline evaluate_target(target::Number, X, t) = target
+@inline evaluate_target(target,         X, t) = target(X..., t)
+
+"""
+$(TYPEDEF)
+
+Materialized target carrying the simulation-side location at which a `Relaxation` with an
+[`InflowOutflowRate`](@ref) is evaluated, together with the integer index of the forced
+field in `model_fields`. Mirrors [`FieldTimeSeriesTarget`](@ref).
+
+$(TYPEDFIELDS)
+"""
+struct MaterializedRelaxationTarget{I, L, T}
+    location :: L
+    target   :: T
+end
+
+MaterializedRelaxationTarget{I}(location, target) where I =
+    MaterializedRelaxationTarget{I, typeof(location), typeof(target)}(location, target)
+
+@inline field_index(::MaterializedRelaxationTarget{I}) where I = I
+
+Adapt.adapt_structure(to, t::MaterializedRelaxationTarget{I}) where I =
+    MaterializedRelaxationTarget{I}(Adapt.adapt(to, t.location), Adapt.adapt(to, t.target))
+
+Base.summary(t::MaterializedRelaxationTarget) =
+    "MaterializedRelaxationTarget(location=$(t.location), index=$(field_index(t)))"
+
+const InflowOutflowRelaxation{F, M, T<:MaterializedRelaxationTarget, L, Tr} = Relaxation{<:InflowOutflowRate, F, M, T, L, Tr}
+
+@inline function (f::InflowOutflowRelaxation)(i, j, k, grid, clock, model_fields)
+    mt = f.target
+    X = node(i, j, k, grid, mt.location...)
+    @inbounds ϕ = model_fields[field_index(mt)][i, j, k]
+    ϕᵣ = evaluate_target(mt.target, X, clock.time)
+    rate = evaluate_rate(i, j, k, grid, f.rate, model_fields, mt.location)
+    return rate * f.mask(X...) * (ϕᵣ - ϕ)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Wrap a `Relaxation` with an [`InflowOutflowRate`](@ref) into a materialized form carrying
+simulation-side location and an integer field index, so the kernel can evaluate the
+inflow/outflow-dependent rate and read `ϕ` from `model_fields` directly (bypassing
+`ContinuousForcing`, which has no hook for a rate that needs `model_fields`).
+"""
+function materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
+    index = findfirst(==(field_name), model_field_names)
+    target = MaterializedRelaxationTarget{index}(instantiated_location(field), forcing.target)
+    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), forcing.transform)
+end
+
+materialize_forcing(forcing::Relaxation{<:InflowOutflowRate}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
+
+# disambiguates against the FlavorOfFTS-target method above when the target is also an FTS
+materialize_forcing(forcing::Relaxation{<:InflowOutflowRate, <:Any, <:Any, <:FlavorOfFTS}, field, field_name, model_field_names) =
+    materialize_flow_dependent_forcing(forcing, field, field_name, model_field_names)
 
 #####
 ##### Sponge layer functions

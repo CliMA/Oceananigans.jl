@@ -3,7 +3,9 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+export YinYangGrid, YinYangConservationFixer, owned_weights
 
+using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
@@ -53,15 +55,22 @@ include("x_partitions.jl")
 include("y_partitions.jl")
 include("cubed_sphere_partitions.jl")
 include("cubed_sphere_connectivity.jl")
+include("yin_yang_masks.jl")
+include("yin_yang_interpolation.jl")
 include("multi_region_grid.jl")
 include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")
 include("cubed_sphere_boundary_conditions.jl")
+include("yin_yang_grid.jl")
+include("yin_yang_halo_reconstruction.jl")
+include("yin_yang_remapping.jl")
 include("multi_region_field.jl")
 include("multi_region_abstract_operations.jl")
 include("multi_region_boundary_conditions.jl")
 include("multi_region_reductions.jl")
+include("yin_yang_reductions.jl")
 include("multi_region_models.jl")
+include("yin_yang_conservation_fixers.jl")
 include("multi_region_output_writers.jl")
 
 end #module
