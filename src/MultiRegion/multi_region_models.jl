@@ -1,15 +1,20 @@
-using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection
+using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection,
+                              BoundsPreservation
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
+using Oceananigans.Fields: XFaceField, YFaceField
+using Oceananigans.Operators: rotation_angle
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
                                                                                   FillHaloSplitExplicit,
                                                                                   apply_barotropic_kernel!,
                                                                                   _split_explicit_barotropic_velocity!,
                                                                                   _split_explicit_free_surface!
 
-using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver,
+    add_closure_specific_boundary_conditions, closure_required_tracers, step_closure_prognostics!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD, CATKEClosureFields, TKEDissipationClosureFields
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: ConjugateGradientSolver
@@ -18,6 +23,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
 const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:ConformalCubedSphereGridOfSomeKind}
+
+# Grids whose panels fill their halos with the horizontal velocity components as pairs
+const CubedSphereOrYinYangGrid = Union{ConformalCubedSphereGridOfSomeKind, YinYangGridOfSomeKind}
 
 function Advection.adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
@@ -43,13 +51,17 @@ Types = (HydrostaticFreeSurfaceModel,
          ImplicitFreeSurface,
          ExplicitFreeSurface,
          QuasiAdamsBashforth2TimeStepper,
+         SplitRungeKuttaTimeStepper,
          PrescribedVelocityFields,
          ConjugateGradientSolver,
          CrossAndSelfUpwinding,
          OnlySelfUpwinding,
          GridFittedBoundary,
          GridFittedBottom,
-         PartialCellBottom)
+         PartialCellBottom,
+         BoundsPreservation,
+         CATKEClosureFields,
+         TKEDissipationClosureFields)
 
 for T in Types
     @eval begin
@@ -80,6 +92,9 @@ end
                                 _getregion(fs.timestepper, r),
                                 _getregion(fs.boundary_transport, r))
 
+@inline Utils.isregional(fs::SplitExplicitFreeSurface) = isregional(fs.displacement)
+@inline Utils.regions(fs::SplitExplicitFreeSurface)    = regions(fs.displacement)
+
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyFormulations.BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
                                             gravity_unit_vector=NegativeZDirection(),
@@ -97,6 +112,7 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 # reconcile_state! for a multi-region model.
 # A cubed-sphere grid needs to fill u and v velocity halos together.
 function TimeSteppers.reconcile_state!(model::MultiRegionModel)
+    @apply_regionally HydrostaticFreeSurfaceModels.mask_immersed_horizontal_velocities!(model.velocities)
 
     u = model.velocities.u
     v = model.velocities.v
@@ -109,7 +125,7 @@ function TimeSteppers.reconcile_state!(model::MultiRegionModel)
     end
 
     Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
-    Models.HydrostaticFreeSurfaceModels.reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    @apply_regionally Models.HydrostaticFreeSurfaceModels.reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     return nothing
 end
 
@@ -122,8 +138,23 @@ Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) =
 Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) =
     @apply_regionally Oceananigans.TimeSteppers.cache_current_fields!(model)
 
-TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
+TurbulenceClosures.implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrids) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)
+
+# TKE-based closures build the boundary conditions of their tracers from those of each region
+for Closure in (FlavorOfCATKE, FlavorOfTD)
+    @eval begin
+        function TurbulenceClosures.add_closure_specific_boundary_conditions(closure::$Closure, bcs, mrg::MultiRegionGrids, tracer_names, buoyancy)
+            regional_bcs = construct_regionally(add_closure_specific_boundary_conditions, closure, bcs, mrg, tracer_names, buoyancy)
+            names = closure_required_tracers(closure)
+            closure_bcs = map(name -> MultiRegionObject(map(b -> b[name], regional_bcs.regional_objects)), names)
+            return merge(bcs, NamedTuple{names}(closure_bcs))
+        end
+
+        TurbulenceClosures.step_closure_prognostics!(closure_fields, closure::$Closure, model::MultiRegionModel, Δt) =
+            @apply_regionally step_closure_prognostics!(closure_fields, closure, model, Δt)
+    end
+end
 
 Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(WENO, mrg, args...; kwargs...)
 
@@ -143,6 +174,15 @@ Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(
                                   getregion(t.divergence_scheme, r),
                                   getregion(t.upwinding, r))
 
+# The bounds-preserving limiter of a WENO scheme on a multi-region grid is a multi-region field
+@inline Utils.getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
+    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.buffer_scheme, r),
+                     _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+
+@inline Utils._getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
+    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.buffer_scheme, r),
+                     getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)
     return minimum(Δt.regional_objects)
@@ -153,8 +193,45 @@ function SplitExplicitFreeSurfaces.has_normal_flow(bcs::MultiRegionObject)
     return any(open_boundaries.regional_objects)
 end
 
+#####
+##### Velocities set from geographic components on a YinYangGrid
+#####
+
+HydrostaticFreeSurfaceModels.intrinsic_coordinate_grid(::YinYangGridOfSomeKind) = true
+
+# Both geographic components are set at the nodes of u and of v, then rotated into each panel's basis
+function HydrostaticFreeSurfaceModels.set_from_extrinsic_velocities!(velocities, grid::YinYangGridOfSomeKind, u, v)
+    vₑᶠᶜ = XFaceField(grid)
+    uₑᶜᶠ = YFaceField(grid)
+    set!(velocities.u, u)
+    set!(vₑᶠᶜ, v)
+    set!(uₑᶜᶠ, u)
+    set!(velocities.v, v)
+    @apply_regionally launch!(architecture(grid), grid, :xyz, _rotate_extrinsic_velocities!, velocities.u, velocities.v, vₑᶠᶜ, uₑᶜᶠ, grid)
+    return nothing
+end
+
+# On entry `u` holds uₑ at (Face, Center) and `v` holds vₑ at (Center, Face)
+@kernel function _rotate_extrinsic_velocities!(u, v, vₑᶠᶜ, uₑᶜᶠ, grid)
+    i, j, k = @index(Global, NTuple)
+    θᶠᶜ = rotation_angle(i, j, grid, Face(), Center())
+    θᶜᶠ = rotation_angle(i, j, grid, Center(), Face())
+    @inbounds u[i, j, k] = u[i, j, k] * cos(θᶠᶜ) - vₑᶠᶜ[i, j, k] * sin(θᶠᶜ)
+    @inbounds v[i, j, k] = uₑᶜᶠ[i, j, k] * sin(θᶜᶠ) + v[i, j, k] * cos(θᶜᶠ)
+end
+
+#####
+##### Split-explicit free surface on panelled grids
+#####
+
+HydrostaticFreeSurfaceModels.default_free_surface(grid::YinYangGridOfSomeKind; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
+    SplitExplicitFreeSurface(; substeps=50, extend_halos=false, gravitational_acceleration)
+
+SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind, ::FixedSubstepNumber) =
+    throw(ArgumentError("The SplitExplicitFreeSurface on a YinYangGrid needs extend_halos = false."))
+
 ## Split explicit extension for complete halo filling
-function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::ConformalCubedSphereGridOfSomeKind, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::CubedSphereOrYinYangGrid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.displacement
