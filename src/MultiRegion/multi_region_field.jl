@@ -145,7 +145,7 @@ function Fields.interior(mrf::MultiRegionField, I...)
     return interior_mrf
 end
 
-@inline Diagnostics.hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
+@inline Diagnostics.hasnan(field::MultiRegionField) = any(construct_regionally(hasnan, field).regional_objects)
 
 Fields.validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
@@ -155,6 +155,9 @@ Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) =
 
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
+
+# Yin-Yang halos are interpolated from the other panel's data without buffers
+Fields.communication_buffers(grid::YinYangGrid, data, ::MultiRegionObject) = nothing
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  mrg::MultiRegionGrids,

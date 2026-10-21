@@ -70,6 +70,7 @@ end
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
+    fill_halo_regions!(bottom_field)
 
     fractional_bottom_index = Field{Center, Center, Nothing}(grid)
 

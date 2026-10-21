@@ -1,6 +1,7 @@
 using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
+using Oceananigans.Utils: KernelParameters
 using OffsetArrays: OffsetArray
 
 #####
@@ -120,6 +121,7 @@ booleans that indicates whether a cell is immersed or not.
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(bottom_field, ib.bottom_height)
+    fill_halo_regions!(bottom_field)
 
     bottom_cell_index = Field{Center, Center, Nothing}(grid, index_type(grid))
     compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition, bottom_cell_index)
@@ -131,8 +133,11 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     return GridFittedBottom(bottom_field.data, ib.immersed_condition, bottom_cell_index.data)
 end
 
-compute_numerical_bottom_height!(bottom_field, grid, ib) =
-    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
+# Over the halos too, so that the bottoms that the halos interpolate are fitted to the vertical grid as well
+function compute_numerical_bottom_height!(bottom_field, grid, ib)
+    parameters = KernelParameters(axes(bottom_field.data, 1), axes(bottom_field.data, 2))
+    return launch!(architecture(grid), grid, parameters, _compute_numerical_bottom_height!, bottom_field, grid, ib)
+end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
