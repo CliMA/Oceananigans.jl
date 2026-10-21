@@ -1,5 +1,5 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
-using Oceananigans.Grids: Grids, bottommost_active_node, AbstractStaticGrid, constructor_arguments
+using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
 using Oceananigans.Utils: prettysummary
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
@@ -9,10 +9,13 @@ import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
 ##### PartialCellBottom
 #####
 
-struct PartialCellBottom{H, E} <: AbstractGridFittedBottom{H}
+struct PartialCellBottom{H, E, S} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     minimum_fractional_cell_height :: E
+    fractional_bottom_index :: S
 end
+
+PartialCellBottom(bottom_height, minimum_fractional_cell_height) = PartialCellBottom(bottom_height, minimum_fractional_cell_height, nothing)
 
 const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
 
@@ -69,12 +72,16 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     set_bottom_height!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
 
+    fractional_bottom_index = Field{Center, Center, Nothing}(grid)
+
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
-    compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
+    compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height, fractional_bottom_index)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
+    fill_halo_regions!(bottom_field)
+    @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
-    return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height)
+    return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height, fractional_bottom_index.data)
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
@@ -106,69 +113,69 @@ end
     @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
-Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     ib.minimum_fractional_cell_height)
+# `fractional_bottom_index` is the position of the bottom in index space, sᵇ = kᵇ + 1 - φ, where kᵇ is the first active cell
+# of the column and φ ∈ [ϵ, 1] the open fraction of its height; sᵇ = Nz + 1 in columns without active cells
+@kernel function _compute_bottom_cell!(grid, ib::PartialCellBottom, bottom_field)
+    i, j = @index(Global, NTuple)
+    rᵇ = @inbounds bottom_field[i, j, 1]
+    ϵ  = ib.minimum_fractional_cell_height
+
+    kᵇ = grid.Nz + 1
+    φ  = one(rᵇ)
+
+    for k in grid.Nz:-1:1
+        r⁺ = rnode(i, j, k+1, grid, c, c, f)
+        Δr = Δrᶜᶜᶜ(i, j, k, grid)
+        immersed_cell = r⁺ - Δr * ϵ < rᵇ
+
+        kᵇ = ifelse(immersed_cell, kᵇ, k)
+        # `min`: when Δr and r⁺ - r⁻ differ by an ulp, a bottom on a face gives φ > 1 and ⌊sᵇ⌋ = kᵇ - 1
+        φ  = ifelse(immersed_cell, φ, min((r⁺ - rᵇ) / Δr, one(rᵇ)))
+    end
+
+    # Columns in the halos of `Bounded` directions keep full spacings
+    φ = ifelse(inactive_cell(i, j, 1, grid), one(φ), φ)
+
+    @inbounds ib.fractional_bottom_index[i, j, 1] = kᵇ + 1 - φ
+end
+
+# Kernels read the bottom through `fractional_bottom_index` only, see `bottom_height(i, j, ibg)`
+Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(nothing,
+                                                                     ib.minimum_fractional_cell_height,
+                                                                     adapt(to, ib.fractional_bottom_index))
 
 Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                                             on_architecture(to, ib.minimum_fractional_cell_height))
+                                                                             on_architecture(to, ib.minimum_fractional_cell_height),
+                                                                             on_architecture(to, ib.fractional_bottom_index))
 
-"""
-    immersed     underlying
+# kᵇ = ⌊sᵇ⌋: `unsafe_trunc` is a single conversion, while mixed `Int`-`Float` comparisons of `sᵇ` are exact but several times longer
+@inline bottom_cell(i, j, ib::PartialCellBottom) = @inbounds unsafe_trunc(Int, ib.fractional_bottom_index[i, j, 1])
 
-      --x--        --x--
-
-
-        ∘   ↑        ∘   k+1
-            |
-            |
-  k+1 --x-- |  k+1 --x--    ↑      <- node z
-        ∘   ↓               |
-   zb ⋅⋅x⋅⋅                 |
-                            |
-                     ∘   k  | Δz
-                            |
-                            |
-                 k --x--    ↓
-
-Criterion is zb ≥ z - ϵ Δz
-
-"""
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
-    ϵ  = ib.minimum_fractional_cell_height
-    Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
-    r★ = r⁺ - Δr * ϵ
-    rᵇ = @inbounds ib.bottom_height[i, j, 1]
-    return r★ < rᵇ
+# Measured from the face below kᵇ, so that full bottom cells and columns without active cells are exact
+@inline function bottom_height(i, j, ibg::PCBIBG)
+    sᵇ = @inbounds ibg.immersed_boundary.fractional_bottom_index[i, j, 1]
+    kᵇ = unsafe_trunc(Int, sᵇ)
+    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f) + (sᵇ - kᵇ) * Δrᶜᶜᶜ(i, j, kᵇ, ibg.underlying_grid)
 end
 
 @inline function Δrᶜᶜᶜ(i, j, k, ibg::PCBIBG)
-    underlying_grid = ibg.underlying_grid
-    ib = ibg.immersed_boundary
-
-    # Get node at face above and defining nodes on c,c,f
-    r⁺ = rnode(i, j, k + 1, underlying_grid, c, c, f)
-
-    # Get bottom r-coordinate and fractional Δr parameter
-    rᵇ = @inbounds ib.bottom_height[i, j, 1]
-
-    # Are we in a bottom cell?
-    at_the_bottom = bottommost_active_node(i, j, k, ibg, c, c, c)
+    sᵇ = @inbounds ibg.immersed_boundary.fractional_bottom_index[i, j, 1]
+    at_the_bottom = k == unsafe_trunc(Int, sᵇ)
 
     full_Δr    = Δrᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δr = r⁺ - rᵇ
+    partial_Δr = (k + 1 - sᵇ) * full_Δr
 
     return ifelse(at_the_bottom, partial_Δr, full_Δr)
 end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
-    # The face at k is just above the bottom when the cell below it (k-1) is the partial cell
-    just_above_bottom = bottommost_active_node(i, j, k-1, ibg, c, c, c)
+    sᵇ = @inbounds ibg.immersed_boundary.fractional_bottom_index[i, j, 1]
+    just_above_bottom = k - 1 == unsafe_trunc(Int, sᵇ)
+
     rᶜ = rnode(i, j, k, ibg.underlying_grid, c, c, c)
     rᶠ = rnode(i, j, k, ibg.underlying_grid, c, c, f)
-
     full_Δr    = Δrᶜᶜᶠ(i, j, k, ibg.underlying_grid)
-    partial_Δr = rᶜ - rᶠ + Δrᶜᶜᶜ(i, j, k-1, ibg) / 2
+    partial_Δr = rᶜ - rᶠ + (k - sᵇ) * Δrᶜᶜᶜ(i, j, k-1, ibg.underlying_grid) / 2
 
     return ifelse(just_above_bottom, partial_Δr, full_Δr)
 end

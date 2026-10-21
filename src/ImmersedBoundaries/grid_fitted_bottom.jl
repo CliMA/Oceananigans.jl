@@ -15,9 +15,10 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
+struct GridFittedBottom{H, I, K} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     immersed_condition :: I
+    bottom_cell_index :: K
 end
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
@@ -46,7 +47,7 @@ Arguments
                         minimum fractional cell height for partial cells is set
                         to 0.
 """
-GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
+GridFittedBottom(bottom_height, immersed_condition=CenterImmersedCondition()) = GridFittedBottom(bottom_height, immersed_condition, nothing)
 
 # 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
@@ -103,9 +104,10 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
-Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
+Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition, on_architecture(arch, ib.bottom_cell_index))
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
+# Kernels read the bottom through `bottom_cell_index` only, see `bottom_height(i, j, ibg)`
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(nothing, adapt(to, ib.immersed_condition), adapt(to, ib.bottom_cell_index))
 
 """
 $(TYPEDSIGNATURES)
@@ -121,11 +123,14 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     set_bottom_height!(bottom_field, ib.bottom_height)
     fill_halo_regions!(bottom_field)
 
-    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+    bottom_cell_index = Field{Center, Center, Nothing}(grid, index_type(grid))
+    compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition, bottom_cell_index)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
+    fill_halo_regions!(bottom_field)
+    @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
-    return GridFittedBottom(bottom_field.data, ib.immersed_condition)
+    return GridFittedBottom(bottom_field.data, ib.immersed_condition, bottom_cell_index.data)
 end
 
 # Over the halos too, so that the bottoms that the halos interpolate are fitted to the vertical grid as well
@@ -147,13 +152,37 @@ end
     end
 end
 
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    # We use `rnode` for the `immersed_cell` because we do not want to have
-    # wetting or drying that could happen for a moving grid if we use znode
-    z  = rnode(i, j, k, underlying_grid, c, c, c)
-    zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
+# The bottom cell is computed from the bottom height in the halos as well
+function compute_bottom_cell!(grid, ib)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
+    return launch!(architecture(grid), grid, parameters, _compute_bottom_cell!, grid, ib, ib.bottom_height)
 end
+
+# `bottom_cell_index` is the first active cell of each column, and `Nz + 1` in columns without active cells
+@kernel function _compute_bottom_cell!(grid, ib::GridFittedBottom, bottom_field)
+    i, j = @index(Global, NTuple)
+    rᵇ = @inbounds bottom_field[i, j, 1]
+    kᵇ = grid.Nz + 1
+
+    for k in grid.Nz:-1:1
+        r = rnode(i, j, k, grid, c, c, c)
+        kᵇ = ifelse(r ≤ rᵇ, kᵇ, k)
+    end
+
+    @inbounds ib.bottom_cell_index[i, j, 1] = kᵇ
+end
+
+@inline bottom_cell(i, j, ib::GridFittedBottom) = @inbounds ib.bottom_cell_index[i, j, 1]
+
+@inline function bottom_height(i, j, ibg::GFBIBG)
+    kᵇ = bottom_cell(i, j, ibg.immersed_boundary)
+    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
+end
+
+@inline _immersed_cell(i, j, k, underlying_grid, ib::AbstractGridFittedBottom) = k < bottom_cell(i, j, ib)
+
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
@@ -171,7 +200,7 @@ end
 # AbstractGridFittedBottomImmersedBoundaryGrid
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = rnode(i, j, ibg.Nz+1, ibg, c, c, f) - bottom_height(i, j, ibg)
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
