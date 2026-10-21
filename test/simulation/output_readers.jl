@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
-                                  extract_field_time_series, has_field_time_series
+                                  extract_field_time_series, has_field_time_series,
+                                  update_field_time_series!, time_indices
 
 using Random
 using NCDatasets
@@ -857,6 +858,37 @@ end
 netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
                             "Using default FieldBoundaryConditions for `grid` and `location`.")
 
+function test_in_memory_window_covers_time_span(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+    times = collect(0:1.0:6)
+    filename = "fts_window_span_test.jld2"
+    f_tmp = Field{Center, Center, Center}(grid)
+    f = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filename, name="f")
+
+    for n in eachindex(times)
+        set!(f_tmp, n)
+        set!(f, f_tmp, n)
+    end
+
+    fts = FieldTimeSeries(filename, "f"; architecture=arch, backend=InMemory(3))
+
+    # A window loaded for t = 1.9 holds times 1, 2, 3 and so cannot serve t = 2.1
+    update_field_time_series!(fts, Time(0.0))
+    update_field_time_series!(fts, Time(1.9))
+    @test time_indices(fts) == (1, 2, 3)
+
+    update_field_time_series!(fts, Time(1.9), Time(2.1))
+    @test time_indices(fts) == (2, 3, 4)
+    @test all(on_architecture(CPU(), interior(fts[2])) .== 2)
+    @test all(on_architecture(CPU(), interior(fts[4])) .== 4)
+
+    @test_throws ArgumentError update_field_time_series!(fts, Time(1.9), Time(4.1))
+
+    rm(filename, force=true)
+
+    return nothing
+end
+
 @testset "OutputReaders" begin
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
@@ -1070,6 +1102,12 @@ netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is no
 
         @test length(extract_field_time_series(computed_field)) == 1
         @test first(extract_field_time_series(computed_field)) === fts
+    end
+
+    for arch in archs
+        @testset "Partly-in-memory window covers a time span [$(typeof(arch))]" begin
+            test_in_memory_window_covers_time_span(arch)
+        end
     end
 
 end
