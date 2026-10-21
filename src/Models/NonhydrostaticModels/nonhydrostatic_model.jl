@@ -377,7 +377,11 @@ function materialize_model_advection(advection, grid)
     return map(scheme -> materialize_advection(scheme, grid), adapted)
 end
 
-reconcile_state!(model::NonhydrostaticModel) = initialize_wall_values!(model.advection, model.tracers)
+function reconcile_state!(model::NonhydrostaticModel)
+    mask_immersed_field!(model.tracers)
+    initialize_wall_values!(model.advection, model.tracers)
+    return nothing
+end
 
 Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = halo_size(grid)

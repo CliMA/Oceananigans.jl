@@ -36,10 +36,11 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     data = field.data
 
+    # Periodic halos copy the other side; the no-flux sides of the Bounded direction leave their halos untouched
     return @allowscalar (all(data[1-Hx:0,   1:Ny,       1:Nz] .== data[Nx-Hx+1:Nx, 1:Ny,       1:Nz]) &&
                          all(data[1:Nx,   1-Hy:0,       1:Nz] .== data[1:Nx,      Ny-Hy+1:Ny,  1:Nz]) &&
-                         all(data[1:Nx,     1:Ny,       0:0 ] .== data[1:Nx,        1:Ny,      1:1 ]) &&
-                         all(data[1:Nx,     1:Ny,  Nz+1:Nz+1] .== data[1:Nx,        1:Ny,     Nz:Nz]))
+                         all(data[1:Nx,     1:Ny,       0:0 ] .== 0) &&
+                         all(data[1:Nx,     1:Ny,  Nz+1:Nz+1] .== 0))
 end
 
 @testset "Halo regions" begin

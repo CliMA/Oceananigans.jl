@@ -11,7 +11,8 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, GhostCells, BoundsPreservation,
+    Centered, UpwindBiased, WENO, BoundsPreservation,
+    TransportedWallValue, HierarchicalExtrapolation,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
@@ -20,21 +21,21 @@ export
     EnstrophyConserving
 
 using Adapt: Adapt
-using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
 using MuladdMacro: @muladd
 using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo,
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
+using Oceananigans.Operators: getvalue, flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
-                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+                              δxᶜᵃᵃ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶠ, δyᶠᶜᶜ, δzᶜᶜᶜ, δzᶜᶜᶠ, δzᶜᶠᶜ, δzᶠᶜᶜ,
+                              ℑxᶜᶜᶜ, ℑxᶜᶠᶜ, ℑxᶠᶜᶜ, ℑxᶠᶜᶠ, ℑxᶠᶠᶜ, ℑyᶜᶜᶜ, ℑyᶜᶠᶜ, ℑyᶜᶠᶠ, ℑyᶠᶜᶜ, ℑyᶠᶠᶜ, ℑzᶜᶜᶜ, ℑzᶜᶠᶜ, ℑzᶜᶠᶠ, ℑzᶠᶜᶜ, ℑzᶠᶜᶠ
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
@@ -57,6 +58,7 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
 include("time_discretization.jl")
+include("ghost_cells_extrapolation/extrapolations.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 
@@ -76,13 +78,11 @@ include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 
 include("ghost_cells_extrapolation/ghost_cell_reconstruction.jl")
-include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("curvature_metric_terms.jl")
 include("tracer_advection_operators.jl")
-include("ghost_cells_extrapolation/ghost_cell_advection_operators.jl")
 include("ghost_cells_extrapolation/ghost_cell_wall_values.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")

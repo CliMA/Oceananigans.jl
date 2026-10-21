@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
@@ -27,7 +27,7 @@ end
 @inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
@@ -35,7 +35,7 @@ end
 @inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
@@ -43,7 +43,7 @@ end
 @inline function explicit_velocity_scaleᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
-    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
@@ -119,7 +119,6 @@ end
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
     update_bounds_preserving_limiter!(scheme, model.grid, tracer)
-    fill_wall_value_halos!(scheme)
     return nothing
 end
 

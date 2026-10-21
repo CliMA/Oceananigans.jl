@@ -34,7 +34,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     @inline substep_tracer!(c, Gⁿ, G⁻)   = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, c, Δt, χ, Gⁿ, G⁻)
 
     step_prognostic_fields!(model, substep_velocity!, substep_tracer!, Δt)
-    ab2_step_wall_values!(model.advection, Δt, χ)
+    ab2_step_wall_values!(model.advection, model.tracers, Δt, χ)
 
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)

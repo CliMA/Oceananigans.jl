@@ -6,10 +6,10 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: AbstractGrid, Center
 using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, ℑxyzᶜᶜᶠ,
-                              ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
-                              ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ,
-                              ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ,
-                              ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+                              ℑxᶜᶜᶜ, ℑxᶜᶜᶠ, ℑxᶠᶜᶜ, ℑyᶜᶜᶜ, ℑyᶜᶜᶠ, ℑyᶜᶠᶜ, ℑzᶜᶜᶜ, ℑzᶜᶜᶠ,
+                              ℑxyᶜᶜᶜ, ℑxyᶜᶠᶠ, ℑxyᶠᶜᶠ, ℑxyᶠᶠᶜ,
+                              ℑxzᶜᶜᶜ, ℑxzᶜᶠᶠ, ℑxzᶠᶜᶠ, ℑxzᶠᶠᶜ,
+                              ℑyzᶜᶜᶜ, ℑyzᶜᶠᶠ, ℑyzᶠᶜᶠ, ℑyzᶠᶠᶜ
 using Oceananigans.Utils: f32_safe_cbrt
 
 

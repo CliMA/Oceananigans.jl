@@ -1,5 +1,4 @@
 using Oceananigans.Fields: ZeroField
-using Oceananigans.Operators: δzᵃᵃᶠ
 
 #####
 ##### Momentum advection operators
@@ -45,9 +44,9 @@ Calculate the advection of momentum in the ``x``-direction using the conservativ
 which ends up at the location `fcc`.
 """
 @inline function div_𝐯u(i, j, k, grid, advection, U, u)
-    return (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
-            δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
-            δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u)) * V⁻¹ᶠᶜᶜ(i, j, k, grid)
+    return (δxᶠᶜᶜ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
+            δyᶠᶜᶜ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u) +
+            δzᶠᶜᶜ(i, j, k, grid, _advective_momentum_flux_Wu, advection, U[3], u)) * V⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
 """
@@ -62,9 +61,9 @@ Calculate the advection of momentum in the ``y``-direction using the conservativ
 which ends up at the location `cfc`.
 """
 @inline function div_𝐯v(i, j, k, grid, advection, U, v)
-    return (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
-            δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v)    +
-            δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v)) * V⁻¹ᶜᶠᶜ(i, j, k, grid)
+    return (δxᶜᶠᶜ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
+            δyᶜᶠᶜ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v)  +
+            δzᶜᶠᶜ(i, j, k, grid, _advective_momentum_flux_Wv, advection, U[3], v)) * V⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
 """
@@ -78,9 +77,9 @@ Calculate the advection of momentum in the ``z``-direction using the conservativ
 which ends up at the location `ccf`.
 """
 @inline function div_𝐯w(i, j, k, grid, advection, U, w)
-    return (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
-            δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
-            δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w)) * V⁻¹ᶜᶜᶠ(i, j, k, grid)
+    return (δxᶜᶜᶠ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
+            δyᶜᶜᶠ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
+            δzᶜᶜᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w)) * V⁻¹ᶜᶜᶠ(i, j, k, grid)
 end
 
 #####

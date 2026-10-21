@@ -1,6 +1,7 @@
 using Oceananigans: fields, prognostic_fields, TendencyCallsite
 using Oceananigans.Advection: compute_wall_value_tendencies!
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!
+using Oceananigans.Grids: immersed_inactive_node
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
 """
@@ -160,9 +161,11 @@ end
                              velocities, tracers, auxiliary_fields, closure_fields,
                              clock, forcing)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid,
-                                            val_index, val_tracer_name, advection, closure, c_bcs, buoyancy,
-                                            biogeochemistry, background_fields,
-                                            velocities, tracers, auxiliary_fields, closure_fields,
-                                            clock, forcing)
+    G = tracer_tendency(i, j, k, grid,
+                        val_index, val_tracer_name, advection, closure, c_bcs, buoyancy,
+                        biogeochemistry, background_fields,
+                        velocities, tracers, auxiliary_fields, closure_fields,
+                        clock, forcing)
+    # inactive nodes keep their value: the wall values stored there have their own stepping
+    @inbounds Gc[i, j, k] = ifelse(immersed_inactive_node(i, j, k, grid, Center(), Center(), Center()), zero(G), G)
 end

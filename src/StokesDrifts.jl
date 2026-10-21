@@ -13,7 +13,7 @@ export
 using Adapt: Adapt, adapt
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
-using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ, ℑzᵃᵃᶜ
+using Oceananigans.Operators: ℑxyᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶜᶜᶠ, ℑxzᶠᶜᶜ, ℑyzᶜᶜᶠ, ℑyzᶜᶠᶜ, ℑzᵃᵃᶜ
 using Oceananigans.Utils: prettysummary
 
 #####
@@ -164,14 +164,14 @@ const f = Face()
 @inline ∂t_wˢ(i, j, k, grid, sd::USD, time) = zero(grid)
 
 @inline x_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
-    ℑxzᶠᵃᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_uˢ, time)
+    ℑxzᶠᶜᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_uˢ, time)
 
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) =
-    ℑyzᵃᶠᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_vˢ, time)
+    ℑyzᶜᶠᶜ(i, j, k, grid, U.w) * ∂z_Uᵃᵃᶜ(i, j, k, grid, sd, sd.∂z_vˢ, time)
 
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sd::USD, U, time) = (
-    - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
-    - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
+    - ℑxzᶜᶜᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
+    - ℑyzᶜᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
 struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂x_vˢ :: VX
@@ -337,8 +337,8 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
-    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
+    wᶠᶜᶜ = ℑxzᶠᶜᶜ(i, j, k, grid, U.w)
+    vᶠᶜᶜ = ℑxyᶠᶜᶜ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, f, c, c)
@@ -352,8 +352,8 @@ end
 
 
 @inline function y_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    wᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, U.w)
-    uᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+    wᶜᶠᶜ = ℑyzᶜᶠᶜ(i, j, k, grid, U.w)
+    uᶜᶠᶜ = ℑxyᶜᶠᶜ(i, j, k, grid, U.u)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, c, f, c)
@@ -366,8 +366,8 @@ end
 end
 
 @inline function z_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
-    vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
+    uᶜᶜᶠ = ℑxzᶜᶜᶠ(i, j, k, grid, U.u)
+    vᶜᶜᶠ = ℑyzᶜᶜᶠ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, c, c, f)

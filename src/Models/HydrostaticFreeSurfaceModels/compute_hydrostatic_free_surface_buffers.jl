@@ -1,4 +1,3 @@
-using Oceananigans.Advection: wall_value_fields
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
@@ -26,11 +25,10 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize tracers and their wall values
+    # Synchronize tracers, which hold their wall values
     for tracer in model.tracers
         synchronize_communication!(tracer)
     end
-    synchronize_communication!(wall_value_fields(model.advection))
 
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)

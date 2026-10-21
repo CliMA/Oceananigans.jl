@@ -6,6 +6,7 @@ using Oceananigans.Grids: φnode
 @inline getvalue(::Nothing,        i, j, k, grid, args...) = nothing
 @inline getvalue(a::Number,        i, j, k, grid, args...) = a
 @inline getvalue(a::AbstractArray, i, j, k, grid, args...) = @inbounds a[i, j, k]
+@inline getvalue(f::Function,      i, j, k, grid, args...) = f(i, j, k, grid, args...)
 
 """
 $(TYPEDSIGNATURES)

@@ -100,7 +100,7 @@ are cached directly without modification.
 """
 function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
     cache_current_fields!(model, Val(keys(prognostic_fields(model))))
-    cache_wall_values!(model.advection)
+    cache_wall_values!(model.advection, model.tracers)
     return nothing
 end
 

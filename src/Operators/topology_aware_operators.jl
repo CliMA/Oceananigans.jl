@@ -10,8 +10,8 @@ const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, FaceFolded}} where {FT,
 
 # Topology-aware Operators with the following convention:
 #
-#   `δxTᶠᵃᵃ` : Hardcodes `Noflux` or `Periodic` boundary conditions for a (Center, Center, Center) function `f` in the x-direction.
-#   `δyTᵃᶠᵃ` : Hardcodes `Noflux` or `Periodic` boundary conditions for a (Center, Center, Center) function `f` in the y-direction
+#   `δxTᶠᵃᵃ` : Hardcodes `Periodic` connectivity for a (Center, Center, Center) function `f` in the x-direction.
+#   `δyTᵃᶠᵃ` : Hardcodes `Periodic` or folded connectivity for a (Center, Center, Center) function `f` in the y-direction
 #
 #   `δxTᶜᵃᵃ` : Hardcodes `NoPenetration` or `Periodic` boundary conditions for a (Face, Center, Center) function `U` in x direction
 #   `δyTᵃᶜᵃ` : Hardcodes `NoPenetration` or `Periodic` boundary conditions for a (Center, Face, Center) function `V` in y direction
@@ -36,10 +36,6 @@ const AGYFF = AbstractUnderlyingGrid{FT, <:Any, Sides{L, FaceFolded}} where {FT,
 
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, u::AbstractArray) = @inbounds u[ifelse(i == grid.Nx, 1, i + 1), j, k] - u[i, j, k]
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds v[i, ifelse(j == grid.Ny, 1, j + 1), k] - v[i, j, k]
-
-# Enforce NoFlux conditions on a left wall
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (i == 1), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶠᵃ(i, j, k, grid::AGYS{FT, L}, f, args...) where {FT, L} = ifelse((L === Closed) & (j == 1), zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
 # Enforce Impenetrability conditions: `u⁻` vanishes on a left wall and `u⁺` on a right wall
 @inline impenetrable_difference(u⁺, u⁻, left_wall, right_wall) = ifelse(right_wall, -u⁻, ifelse(left_wall, u⁺, u⁺ - u⁻))
@@ -71,16 +67,14 @@ end
     return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], (L === Closed) & (j == 1), false)
 end
 
-@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, f, args...) where {FT, L}
+@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF, f, args...)
     fold = j == grid.Ny + 1
-    δf   = f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k, grid, args...) - f(i, j - 1, k, grid, args...)
-    return ifelse((L === Closed) & (j == 1), zero(FT), δf)
+    return f(ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k, grid, args...) - f(i, j - 1, k, grid, args...)
 end
 
-@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF{FT, L}, c::AbstractArray) where {FT, L}
+@inline function δyTᵃᶠᵃ(i, j, k, grid::AGYFF, c::AbstractArray)
     fold = j == grid.Ny + 1
-    δc   = @inbounds c[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k] - c[i, j - 1, k]
-    return ifelse((L === Closed) & (j == 1), zero(FT), δc)
+    return @inbounds c[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k] - c[i, j - 1, k]
 end
 
 @inline function δyTᵃᶜᵃ(i, j, k, grid::AGYFF{<:Any, L}, f, args...) where L
@@ -95,9 +89,4 @@ end
     return @inbounds impenetrable_difference(ifelse(fold, -v⁺, v⁺), v[i, j, k], (L === Closed) & (j == 1), false)
 end
 
-# Derivative operators
-@inline ∂xTᶠᶜᶠ(i, j, k, grid, f, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-@inline ∂yTᶜᶠᶠ(i, j, k, grid, f, args...) = δyTᵃᶠᵃ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 
-@inline ∂xTᶠᶜᶠ(i, j, k, grid, w::AbstractArray) = δxTᶠᵃᵃ(i, j, k, grid, w) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-@inline ∂yTᶜᶠᶠ(i, j, k, grid, w::AbstractArray) = δyTᵃᶠᵃ(i, j, k, grid, w) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)

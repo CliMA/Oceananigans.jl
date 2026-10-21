@@ -764,7 +764,7 @@ end
 ##### Support for simulations on conformal cubed sphere panel grids
 #####
 
-import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
+import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ, interior_ℑ
 
 @inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               (c[1, j, k] + c[j, 1, k])/2,
@@ -796,6 +796,10 @@ import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyT
               ifelse((i > grid.Nx) & (j == grid.Ny+1), (f(grid.Nx, i, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
               ifelse((i < 1) & (j == grid.Ny+1),       (f(1, grid.Ny-i+1, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
                                                        (f(i, j, k, grid, args...) + f(i, j-1, k, grid, args...))/2))))
+
+# Operands with data on both sides take the panel interpolation, which folds the corner halos of the rows of centers
+@inline interior_ℑ(::Val{1}, ::Face, ::Center, ℓz, i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ψ⁻, ψ⁺, ψ, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ψ, args...)
+@inline interior_ℑ(::Val{2}, ::Center, ::Face, ℓz, i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ψ⁻, ψ⁺, ψ, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ψ, args...)
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),

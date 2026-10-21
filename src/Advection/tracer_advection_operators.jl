@@ -29,9 +29,9 @@ a velocity field, ``𝛁⋅(𝐯 c)``,
 which ends up at the location `ccc`.
 """
 @inline function div_Uc(i, j, k, grid, advection, U, c)
-    return (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
-            δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
-            δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c)) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    return (δxᶜᶜᶜ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
+            δyᶜᶜᶜ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
+            δzᶜᶜᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c)) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 # Fallbacks for zero velocities, zero tracer and `nothing` advection

@@ -1,4 +1,5 @@
 using Oceananigans.Advection: ab2_step_wall_values!
+using Oceananigans.Grids: immersed_inactive_node
 using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
@@ -219,7 +220,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         ab2_step_tracer!(model, Δt, χ, val_tracer_index, val_tracer_name)
     end
-    ab2_step_wall_values!(model.advection, Δt, χ)
+    ab2_step_wall_values!(model.advection, model.tracers, Δt, χ)
     step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
@@ -270,8 +271,11 @@ end
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
+    # inactive nodes keep their value: the wall values stored there have their own stepping
+    immersed = immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+
     @inbounds begin
         ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+        θ[i, j, k] = ifelse(immersed, θ[i, j, k], (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ)
     end
 end

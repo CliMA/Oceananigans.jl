@@ -1,7 +1,6 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: ∂z_b
-using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     convective_κz :: CK

@@ -5,7 +5,8 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
 using Oceananigans.Operators: Δx, Δy, Δz
-using Oceananigans.Utils: interpolator, _interpolate
+using Oceananigans.Grids: within_bounds
+using Oceananigans.Utils: Utils, interpolator, _interpolate
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -389,10 +390,20 @@ interpolation. `func = identity` reproduces `interpolate(at_node, from_field, �
     return interpolate(func, fidx, from_field, from_loc, from_grid)
 end
 
+# An operand beyond the sides of its direction has no data and is replaced by the other one, as in the conditional ℑ
+@inline function Utils.interpolator(fractional_idx, T, ℓ, N)
+    i⁻, i⁺, ξ = interpolator(fractional_idx)
+    d⁻ = within_bounds(i⁻, i⁻, T, ℓ, N)
+    d⁺ = within_bounds(i⁺, i⁺, T, ℓ, N)
+    return ifelse(d⁻, i⁻, i⁺), ifelse(d⁺, i⁺, i⁻), ξ
+end
+
+@inline Utils.interpolator(::Nothing, T, ℓ, N) = interpolator(nothing)
+
 @inline function interpolate(func::Base.Callable, fidx::FractionalIndices, from_field, from_loc, from_grid)
-    ix = interpolator(fidx.i)
-    iy = interpolator(fidx.j)
-    iz = interpolator(fidx.k)
+    ix = interpolator(fidx.i, topology(from_grid, 1), from_loc[1], size(from_grid, 1))
+    iy = interpolator(fidx.j, topology(from_grid, 2), from_loc[2], size(from_grid, 2))
+    iz = interpolator(fidx.k, topology(from_grid, 3), from_loc[3], size(from_grid, 3))
     return _interpolate(mapped_data(func, from_field), ix, iy, iz)
 end
 

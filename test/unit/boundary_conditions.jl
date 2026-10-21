@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper, ImpenetrableBoundaryCondition
-using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
+using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition, left_gradient, right_gradient
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.TurbulenceClosures: boundary_∇_dot_qᶜ
 using Oceananigans.Fields: Face, Center
@@ -346,20 +346,16 @@ end
         @test ϕ_bcs.top.condition.coefficient isa eltype(grid)
         @test ϕ_bcs.top.condition.inhomogeneity isa eltype(grid)
 
-        ϕ = CenterField(grid, boundary_conditions=ϕ_bcs)
-        set!(ϕ, 1)
-
+        # The wall gradient g and the wall value cᵇ, half a cell from the node c¹ = 1, satisfy g + a cᵇ = b
         dummy_clock = (; time=0)
-        fields = tuple()
-        fill_halo_regions!(ϕ, dummy_clock, fields)
+        Δ = 1/2
+        gᵂ = left_gradient(ϕ_bcs.west, 1, Δ, 1, 1, grid, dummy_clock, tuple())
+        gᴮ = left_gradient(ϕ_bcs.bottom, 1, Δ, 1, 1, grid, dummy_clock, tuple())
+        gᵀ = right_gradient(ϕ_bcs.top, 1, Δ, 1, 1, grid, dummy_clock, tuple())
 
-        west_bc_field = Field(∂x(ϕ) + ϕ)
-        bottom_bc_field = Field(∂z(ϕ) + 2 * ϕ)
-        top_bc_field = Field(∂z(ϕ) + 3 * ϕ)
-
-        @test all(interior(west_bc_field, 1, :, :) .≈ 0)
-        @test all(interior(bottom_bc_field, :, :, 1) .≈ π)
-        @test all(interior(top_bc_field, :, :, 3) .≈ 2π)
+        @test gᵂ + 1 * (1 - gᵂ * Δ / 2) ≈ 0
+        @test gᴮ + 2 * (1 - gᴮ * Δ / 2) ≈ π
+        @test gᵀ + 3 * (1 + gᵀ * Δ / 2) ≈ 2π
 
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)
@@ -368,10 +364,13 @@ end
         @test f.boundary_conditions.south isa ZFBC
 
         set!(f, (x, y, z) -> x)
+        f.data[1:10, 0,  1:10] .= -1
+        f.data[1:10, 11, 1:10] .= -1
         fill_halo_regions!(f)
 
-        @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
-        @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+        # a flux side leaves the halo beyond the wall untouched
+        @test all(f.data[1:10, 0,  1:10] .== -1)
+        @test all(f.data[1:10, 11, 1:10] .== -1)
 
         # ContinuousBoundaryFunction on Flat topologies (dispatch disambiguation)
         @info "  Testing ContinuousBoundaryFunction on Flat topologies..."
@@ -431,8 +430,8 @@ end
         set!(c, (x, y, z) -> x)
         fill_halo_regions!(c)
 
-        @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
-        @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
+        @test all(c.data[1:10, 0,  1:10] .≈ mean(c.data[1:10, 1,  1:10]))
+        @test all(c.data[1:10, 11, 1:10] .≈ mean(c.data[1:10, 10, 1:10]))
 
         # A polar boundary paired with an impenetrable one on the other side
         one_pole_grid = LatitudeLongitudeGrid(size=(10, 10, 4), latitude=(-80, 90), longitude=(0, 360), z=(0, 1))
@@ -495,18 +494,18 @@ end
             @test all(getbc(bcs.top,    i, j, grid) == -2 * ρ[i, j, Nz] for i in 1:Nx, j in 1:Ny)
         end
 
-        # ... also when filling halos
+        # ... also when filling halos, which hold the wall value
         c = CenterField(grid; boundary_conditions=bcs)
         set!(c, (x, y, z) -> x * y * z)
         fill_halo_regions!(c)
 
         @allowscalar begin
-            @test all(c[0,    j, k] ≈ 2 * ρ[1,  j, k] - c[1,  j, k] for j in 1:Ny, k in 1:Nz)
-            @test all(c[Nx+1, j, k] ≈ 2 * ρ[Nx, j, k] - c[Nx, j, k] for j in 1:Ny, k in 1:Nz)
-            @test all(c[i, 0,    k] ≈ 2 * ρ[i, 1,  k] - c[i, 1,  k] for i in 1:Nx, k in 1:Nz)
-            @test all(c[i, Ny+1, k] ≈ 2 * ρ[i, Ny, k] - c[i, Ny, k] for i in 1:Nx, k in 1:Nz)
-            @test all(c[i, j, 0]    ≈ c[i, j, 1]  + 2 * ρ[i, j, 1]  * Δz for i in 1:Nx, j in 1:Ny)
-            @test all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2 * ρ[i, j, Nz] * Δz for i in 1:Nx, j in 1:Ny)
+            @test all(c[0,    j, k] ≈ ρ[1,  j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[Nx+1, j, k] ≈ ρ[Nx, j, k] for j in 1:Ny, k in 1:Nz)
+            @test all(c[i, 0,    k] ≈ ρ[i, 1,  k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, Ny+1, k] ≈ ρ[i, Ny, k] for i in 1:Nx, k in 1:Nz)
+            @test all(c[i, j, 0]    ≈ c[i, j, 1]  + ρ[i, j, 1]  * Δz for i in 1:Nx, j in 1:Ny)
+            @test all(c[i, j, Nz+1] ≈ c[i, j, Nz] - ρ[i, j, Nz] * Δz for i in 1:Nx, j in 1:Ny)
         end
 
         # A field neither reduced nor windowed along the boundary-normal direction is windowed, when
@@ -542,13 +541,13 @@ end
         c_full = CenterField(grid; boundary_conditions=full_bcs)
         set!(w, 7)
         fill_halo_regions!(c_full)
-        @test @allowscalar all(c_full[i, j, Nz+1] ≈ 14 - c_full[i, j, Nz] for i in 1:Nx, j in 1:Ny)
+        @test @allowscalar all(c_full[i, j, Nz+1] ≈ 7 for i in 1:Nx, j in 1:Ny)
 
         # Updating the windowed computed field updates the boundary condition in place
         set!(ρ, 1)
         compute!(∂z_cᵗ)
         fill_halo_regions!(c)
-        @test @allowscalar all(c[i, j, Nz+1] ≈ c[i, j, Nz] - 2Δz for i in 1:Nx, j in 1:Ny)
+        @test @allowscalar all(c[i, j, Nz+1] ≈ c[i, j, Nz] - Δz for i in 1:Nx, j in 1:Ny)
 
         # The window is preserved when the boundary condition is adapted for kernels, but the
         # field itself is adapted to its bare data like any other non-reduced field (e.g. the free

@@ -19,7 +19,7 @@ using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, Seawater
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
-                              ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+                              ℑxᶜᶜᶜ, ℑxᶜᶜᶠ, ℑxᶠᶜᶠ, ℑyᶜᶜᶜ, ℑyᶜᶜᶠ, ℑyᶜᶠᶠ, ℑzᶜᶜᶜ, ℑzᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,
                                        VerticallyImplicitTimeDiscretization
@@ -51,15 +51,15 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function shearᶜᶜᶠ(i, j, k, grid, u, v)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
+    ∂z_u² = ℑxᶜᶜᶠ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, u)
+    ∂z_v² = ℑyᶜᶜᶠ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, v)
     S² = ∂z_u² + ∂z_v²
     return S²
 end
 
 @inline function shearᶜᶜᶜ(i, j, k, grid, u, v)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶠᶜᶠ, u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶜᶠᶠ, v)
+    ∂z_u² = ℑxᶜᶜᶜ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶠᶜᶠ, u)
+    ∂z_v² = ℑyᶜᶜᶜ(i, j, k, grid, ℑbzᵃᵃᶜ, ϕ², ∂zᶜᶠᶠ, v)
     S² = ∂z_u² + ∂z_v²
     return S²
 end
@@ -107,10 +107,10 @@ end
     ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, closure_fields)
 
 # Note special attention paid to averaging the vertical grid spacing correctly
-@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *
+@inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᶜᶠ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *
                                                   Δzᶠᶜᶠ(i, j, k, grid)     * ∂zᶠᶜᶠ(i, j, k, grid, b)
 
-@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᵃᶠᵃ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) *
+@inline Δz_νₑ_az_bzᶜᶠᶠ(i, j, k, grid, νₑ, a, b) = ℑyᶜᶠᶠ(i, j, k, grid, νₑ) * ∂zᶜᶠᶠ(i, j, k, grid, a) *
                                                   Δzᶜᶠᶠ(i, j, k, grid)     * ∂zᶜᶠᶠ(i, j, k, grid, b)
 
 @inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
@@ -132,8 +132,8 @@ end
     # the temporal discretization. Note that also respecting the temporal discretization, would
     # require storing the velocity field at n and n+1):
 
-    return ℑxᶜᵃᵃ(i, j, k, grid, shear_production_xᶠᶜᶜ, νₑ, uⁿ, u⁺) +
-           ℑyᵃᶜᵃ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, vⁿ, v⁺)
+    return ℑxᶜᶜᶜ(i, j, k, grid, shear_production_xᶠᶜᶜ, νₑ, uⁿ, u⁺) +
+           ℑyᶜᶜᶜ(i, j, k, grid, shear_production_yᶜᶠᶜ, νₑ, vⁿ, v⁺)
 end
 
 @inline function turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)

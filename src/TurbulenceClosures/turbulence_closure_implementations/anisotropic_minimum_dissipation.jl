@@ -261,35 +261,35 @@ end
 
     uᵢ₁_uⱼ₁_Σ₁ⱼ = (
          norm_Σ₁₁(ijkuvw...) * norm_∂x_u(ijk..., u)^2
-      +  norm_Σ₂₂(ijkuvw...) * ℑxyᶜᶜᵃ(ijk..., norm_∂x_v², uvw...)
-      +  norm_Σ₃₃(ijkuvw...) * ℑxzᶜᵃᶜ(ijk..., norm_∂x_w², uvw...)
+      +  norm_Σ₂₂(ijkuvw...) * ℑxyᶜᶜᶜ(ijk..., norm_∂x_v², uvw...)
+      +  norm_Σ₃₃(ijkuvw...) * ℑxzᶜᶜᶜ(ijk..., norm_∂x_w², uvw...)
 
-      +  2 * norm_∂x_u(ijkuvw...) * ℑxyᶜᶜᵃ(ijk..., norm_∂x_v_Σ₁₂, uvw...)
-      +  2 * norm_∂x_u(ijkuvw...) * ℑxzᶜᵃᶜ(ijk..., norm_∂x_w_Σ₁₃, uvw...)
-      +  2 * ℑxyᶜᶜᵃ(ijk..., norm_∂x_v, uvw...) * ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, uvw...)
-           * ℑyzᵃᶜᶜ(ijk..., norm_Σ₂₃, uvw...)
+      +  2 * norm_∂x_u(ijkuvw...) * ℑxyᶜᶜᶜ(ijk..., norm_∂x_v_Σ₁₂, uvw...)
+      +  2 * norm_∂x_u(ijkuvw...) * ℑxzᶜᶜᶜ(ijk..., norm_∂x_w_Σ₁₃, uvw...)
+      +  2 * ℑxyᶜᶜᶜ(ijk..., norm_∂x_v, uvw...) * ℑxzᶜᶜᶜ(ijk..., norm_∂x_w, uvw...)
+           * ℑyzᶜᶜᶜ(ijk..., norm_Σ₂₃, uvw...)
     )
 
     uᵢ₂_uⱼ₂_Σ₂ⱼ = (
-      + norm_Σ₁₁(ijkuvw...) * ℑxyᶜᶜᵃ(ijk..., norm_∂y_u², uvw...)
+      + norm_Σ₁₁(ijkuvw...) * ℑxyᶜᶜᶜ(ijk..., norm_∂y_u², uvw...)
       + norm_Σ₂₂(ijkuvw...) * norm_∂y_v(ijk..., v)^2
-      + norm_Σ₃₃(ijkuvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂y_w², uvw...)
+      + norm_Σ₃₃(ijkuvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂y_w², uvw...)
 
-      +  2 * norm_∂y_v(ijkuvw...) * ℑxyᶜᶜᵃ(ijk..., norm_∂y_u_Σ₁₂, uvw...)
-      +  2 * ℑxyᶜᶜᵃ(ijk..., norm_∂y_u, uvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, uvw...)
-           * ℑxzᶜᵃᶜ(ijk..., norm_Σ₁₃, uvw...)
-      +  2 * norm_∂y_v(ijkuvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂y_w_Σ₂₃, uvw...)
+      +  2 * norm_∂y_v(ijkuvw...) * ℑxyᶜᶜᶜ(ijk..., norm_∂y_u_Σ₁₂, uvw...)
+      +  2 * ℑxyᶜᶜᶜ(ijk..., norm_∂y_u, uvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂y_w, uvw...)
+           * ℑxzᶜᶜᶜ(ijk..., norm_Σ₁₃, uvw...)
+      +  2 * norm_∂y_v(ijkuvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂y_w_Σ₂₃, uvw...)
     )
 
     uᵢ₃_uⱼ₃_Σ₃ⱼ = (
-      + norm_Σ₁₁(ijkuvw...) * ℑxzᶜᵃᶜ(ijk..., norm_∂z_u², uvw...)
-      + norm_Σ₂₂(ijkuvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂z_v², uvw...)
+      + norm_Σ₁₁(ijkuvw...) * ℑxzᶜᶜᶜ(ijk..., norm_∂z_u², uvw...)
+      + norm_Σ₂₂(ijkuvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂z_v², uvw...)
       + norm_Σ₃₃(ijkuvw...) * norm_∂z_w(ijk..., w)^2
 
-      +  2 * ℑxzᶜᵃᶜ(ijk..., norm_∂z_u, uvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂z_v, uvw...)
-           * ℑxyᶜᶜᵃ(ijk..., norm_Σ₁₂, uvw...)
-      +  2 * norm_∂z_w(ijkuvw...) * ℑxzᶜᵃᶜ(ijk..., norm_∂z_u_Σ₁₃, uvw...)
-      +  2 * norm_∂z_w(ijkuvw...) * ℑyzᵃᶜᶜ(ijk..., norm_∂z_v_Σ₂₃, uvw...)
+      +  2 * ℑxzᶜᶜᶜ(ijk..., norm_∂z_u, uvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂z_v, uvw...)
+           * ℑxyᶜᶜᶜ(ijk..., norm_Σ₁₂, uvw...)
+      +  2 * norm_∂z_w(ijkuvw...) * ℑxzᶜᶜᶜ(ijk..., norm_∂z_u_Σ₁₃, uvw...)
+      +  2 * norm_∂z_w(ijkuvw...) * ℑyzᶜᶜᶜ(ijk..., norm_∂z_v_Σ₂₃, uvw...)
     )
 
     return uᵢ₁_uⱼ₁_Σ₁ⱼ + uᵢ₂_uⱼ₂_Σ₂ⱼ + uᵢ₃_uⱼ₃_Σ₃ⱼ
@@ -309,16 +309,16 @@ end
       + norm_∂z_w²(ijk..., uvw...)
 
         # ffc
-      + ℑxyᶜᶜᵃ(ijk..., norm_∂x_v², uvw...)
-      + ℑxyᶜᶜᵃ(ijk..., norm_∂y_u², uvw...)
+      + ℑxyᶜᶜᶜ(ijk..., norm_∂x_v², uvw...)
+      + ℑxyᶜᶜᶜ(ijk..., norm_∂y_u², uvw...)
 
         # fcf
-      + ℑxzᶜᵃᶜ(ijk..., norm_∂x_w², uvw...)
-      + ℑxzᶜᵃᶜ(ijk..., norm_∂z_u², uvw...)
+      + ℑxzᶜᶜᶜ(ijk..., norm_∂x_w², uvw...)
+      + ℑxzᶜᶜᶜ(ijk..., norm_∂z_u², uvw...)
 
         # cff
-      + ℑyzᵃᶜᶜ(ijk..., norm_∂y_w², uvw...)
-      + ℑyzᵃᶜᶜ(ijk..., norm_∂z_v², uvw...)
+      + ℑyzᶜᶜᶜ(ijk..., norm_∂y_w², uvw...)
+      + ℑyzᶜᶜᶜ(ijk..., norm_∂z_v², uvw...)
     )
 end
 
@@ -327,14 +327,14 @@ end
 @inline function Cb_norm_wᵢ_bᵢᶜᶜᶜ(i, j, k, grid, Cb, closure, buoyancy, w, tracers)
     ijk = (i, j, k, grid)
 
-    wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᵣᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+    wx_bx = (ℑxzᶜᶜᶜ(ijk..., norm_∂x_w, w)
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᶜᶜ(ijk..., ∂xᵣᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
-    wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵣᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+    wy_by = (ℑyzᶜᶜᶜ(ijk..., norm_∂y_w, w)
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᶜᶜᶜ(ijk..., ∂yᵣᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᶜᶜᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end
@@ -343,29 +343,29 @@ end
     ijk = (i, j, k, grid)
 
     cx_ux = (
-                  norm_∂x_u(ijk..., u) * ℑxᶜᵃᵃ(ijk..., norm_∂x_c², c)
-        + ℑxyᶜᶜᵃ(ijk..., norm_∂x_v, v) * ℑxᶜᵃᵃ(ijk..., norm_∂x_c, c) * ℑyᵃᶜᵃ(ijk..., norm_∂y_c, c)
-        + ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w) * ℑxᶜᵃᵃ(ijk..., norm_∂x_c, c) * ℑzᵃᵃᶜ(ijk..., norm_∂z_c, c)
+                  norm_∂x_u(ijk..., u) * ℑxᶜᶜᶜ(ijk..., norm_∂x_c², c)
+        + ℑxyᶜᶜᶜ(ijk..., norm_∂x_v, v) * ℑxᶜᶜᶜ(ijk..., norm_∂x_c, c) * ℑyᶜᶜᶜ(ijk..., norm_∂y_c, c)
+        + ℑxzᶜᶜᶜ(ijk..., norm_∂x_w, w) * ℑxᶜᶜᶜ(ijk..., norm_∂x_c, c) * ℑzᶜᶜᶜ(ijk..., norm_∂z_c, c)
     )
 
     cy_uy = (
-          ℑxyᶜᶜᵃ(ijk..., norm_∂y_u, u) * ℑyᵃᶜᵃ(ijk..., norm_∂y_c, c) * ℑxᶜᵃᵃ(ijk..., norm_∂x_c, c)
-        +         norm_∂y_v(ijk..., v) * ℑyᵃᶜᵃ(ijk..., norm_∂y_c², c)
-        + ℑxzᶜᵃᶜ(ijk..., norm_∂y_w, w) * ℑyᵃᶜᵃ(ijk..., norm_∂y_c, c) * ℑzᵃᵃᶜ(ijk..., norm_∂z_c, c)
+          ℑxyᶜᶜᶜ(ijk..., norm_∂y_u, u) * ℑyᶜᶜᶜ(ijk..., norm_∂y_c, c) * ℑxᶜᶜᶜ(ijk..., norm_∂x_c, c)
+        +         norm_∂y_v(ijk..., v) * ℑyᶜᶜᶜ(ijk..., norm_∂y_c², c)
+        + ℑyzᶜᶜᶜ(ijk..., norm_∂y_w, w) * ℑyᶜᶜᶜ(ijk..., norm_∂y_c, c) * ℑzᶜᶜᶜ(ijk..., norm_∂z_c, c)
     )
 
     cz_uz = (
-          ℑxzᶜᵃᶜ(ijk..., norm_∂z_u, u) * ℑzᵃᵃᶜ(ijk..., norm_∂z_c, c) * ℑxᶜᵃᵃ(ijk..., norm_∂x_c, c)
-        + ℑyzᵃᶜᶜ(ijk..., norm_∂z_v, v) * ℑzᵃᵃᶜ(ijk..., norm_∂z_c, c) * ℑyᵃᶜᵃ(ijk..., norm_∂y_c, c)
-        +         norm_∂z_w(ijk..., w) * ℑzᵃᵃᶜ(ijk..., norm_∂z_c², c)
+          ℑxzᶜᶜᶜ(ijk..., norm_∂z_u, u) * ℑzᶜᶜᶜ(ijk..., norm_∂z_c, c) * ℑxᶜᶜᶜ(ijk..., norm_∂x_c, c)
+        + ℑyzᶜᶜᶜ(ijk..., norm_∂z_v, v) * ℑzᶜᶜᶜ(ijk..., norm_∂z_c, c) * ℑyᶜᶜᶜ(ijk..., norm_∂y_c, c)
+        +         norm_∂z_w(ijk..., w) * ℑzᶜᶜᶜ(ijk..., norm_∂z_c², c)
     )
 
     return cx_ux + cy_uy + cz_uz
 end
 
-@inline norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c) = ℑxᶜᵃᵃ(i, j, k, grid, norm_∂x_c², c) +
-                                        ℑyᵃᶜᵃ(i, j, k, grid, norm_∂y_c², c) +
-                                        ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
+@inline norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c) = ℑxᶜᶜᶜ(i, j, k, grid, norm_∂x_c², c) +
+                                        ℑyᶜᶜᶜ(i, j, k, grid, norm_∂y_c², c) +
+                                        ℑzᶜᶜᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
 ##### build_closure_fields

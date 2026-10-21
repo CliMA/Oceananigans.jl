@@ -68,7 +68,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     fill_halo_regions!(c)
 
     @allowscalar begin
-        @test c[1, 1, 0] == c[1, 1, 1]
+        @test c[0, 1, 1] == c[4, 1, 1]
     end
 
     d = CenterField(grid)

@@ -1,5 +1,6 @@
 using Oceananigans.Advection: rk_substep_wall_values!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.Grids: immersed_inactive_node
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
@@ -206,7 +207,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     foreach_name(tracers) do val_tracer_index, val_tracer_name
         rk_substep_tracer!(model, Δt, val_tracer_index, val_tracer_name)
     end
-    rk_substep_wall_values!(model.advection, Δt)
+    rk_substep_wall_values!(model.advection, model.tracers, Δt)
     step_boundary_conditions!(tracers, model.clock, fields(model), Δt)
     return nothing
 end
@@ -257,5 +258,7 @@ end
 @kernel function _rk_substep_tracer_field!(c, grid, Δt, Gⁿ, σc⁻)
     i, j, k = @index(Global, NTuple)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    @inbounds c[i, j, k] = (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ
+    # inactive nodes keep their value: the wall values stored there have their own stepping
+    immersed = immersed_inactive_node(i, j, k, grid, Center(), Center(), Center())
+    @inbounds c[i, j, k] = ifelse(immersed, c[i, j, k], (σc⁻[i, j, k] + Δt * Gⁿ[i, j, k]) / σᶜᶜⁿ)
 end

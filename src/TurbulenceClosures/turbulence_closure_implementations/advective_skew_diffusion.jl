@@ -42,8 +42,8 @@ end
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C)
-    bx   = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
-    bz   = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+    bx   = ℑzᶠᶜᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+    bz   = ℑxᶠᶜᶠ(i, j, k, grid, ∂z_b, b, C)
     ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
     Sx   = ifelse(bz == 0, ∂x_z, - bx / bz + ∂x_z)
 
@@ -54,8 +54,8 @@ end
 
 # Slope in y-direction at C, F, F locations, zeroed out on peripheries
 @inline function Syᶜᶠᶠ(i, j, k, grid, b, C)
-    by   = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
-    bz   = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+    by   = ℑzᶜᶠᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+    bz   = ℑyᶜᶠᶠ(i, j, k, grid, ∂z_b, b, C)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
     Sy   = ifelse(bz == 0, ∂y_z, - by / bz + ∂y_z)
 
@@ -73,14 +73,14 @@ end
 end
 
 # Buoyancy gradients at (F, C, F), the location of the x-component of the eddy streamfunction
-@inline bxᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
-@inline byᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxyᶠᶜᵃ, ∂yᵣ_b, b, C)
-@inline bzᶠᶜᶠ(i, j, k, grid, b, C) = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+@inline bxᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᶠᶜᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+@inline byᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᶠᶜᶠ(i, j, k, grid, ℑxyᶠᶜᶜ, ∂yᵣ_b, b, C)
+@inline bzᶠᶜᶠ(i, j, k, grid, b, C) = ℑxᶠᶜᶠ(i, j, k, grid, ∂z_b, b, C)
 
 # Buoyancy gradients at (C, F, F), the location of the y-component of the eddy streamfunction
-@inline bxᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxyᶜᶠᵃ, ∂xᵣ_b, b, C)
-@inline byᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
-@inline bzᶜᶠᶠ(i, j, k, grid, b, C) = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+@inline bxᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᶜᶠᶠ(i, j, k, grid, ℑxyᶜᶠᶜ, ∂xᵣ_b, b, C)
+@inline byᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᶜᶠᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+@inline bzᶜᶠᶠ(i, j, k, grid, b, C) = ℑyᶜᶠᶠ(i, j, k, grid, ∂z_b, b, C)
 
 # Tapered slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function ϵSxᶠᶜᶠ(i, j, k, grid, closure, b, C)
@@ -128,11 +128,11 @@ end
     κ = closure.κ_skew
 
     @inbounds begin
-        uₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
-        vₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
+        uₑ[i, j, k] = - δzᶠᶜᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
+        vₑ[i, j, k] = - δzᶜᶠᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 
-        wˣ = δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
-        wʸ = δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
+        wˣ = δxᶜᶜᶠ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
+        wʸ = δyᶜᶜᶠ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
 
         wₑ[i, j, k] =  (wˣ + wʸ) * Az⁻¹ᶜᶜᶠ(i, j, k, grid)
     end

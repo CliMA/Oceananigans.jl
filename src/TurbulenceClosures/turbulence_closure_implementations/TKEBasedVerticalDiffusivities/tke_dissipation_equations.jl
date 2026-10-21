@@ -144,15 +144,17 @@ end
     Cᵇϵ⁺ = closure_ij.tke_dissipation_equations.Cᵇϵ⁺
     Cᵇϵ⁻ = closure_ij.tke_dissipation_equations.Cᵇϵ⁻
 
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    N² = ℑzᶜᶜᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻)
 
     Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
     Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))
 
+    active = !inactive_cell(i, j, k, grid)
+
     # ∂t e = Lⁱ e + ⋯,
-    @inbounds Le[i, j, k] = wb⁻_e - ωe
-    @inbounds Lϵ[i, j, k] = Cᵇϵ_wb⁻ / e★ - Cᵋϵ * ωϵ
+    @inbounds Le[i, j, k] = (wb⁻_e - ωe) * active
+    @inbounds Lϵ[i, j, k] = (Cᵇϵ_wb⁻ / e★ - Cᵋϵ * ωϵ) * active
 
     # Compute fast TKE and dissipation RHSs
     u⁺ = next_velocities.u
@@ -183,11 +185,11 @@ end
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         total_Gⁿϵ = slow_Gⁿϵ[i, j, k] + fast_Gⁿϵ
 
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
-        ϵ[i, j, k] += Δτ * (α * total_Gⁿϵ - β * G⁻ϵ[i, j, k])
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
+        ϵ[i, j, k] += Δτ * (α * total_Gⁿϵ - β * G⁻ϵ[i, j, k]) * active
 
-        G⁻e[i, j, k] = total_Gⁿe
-        G⁻ϵ[i, j, k] = total_Gⁿϵ
+        G⁻e[i, j, k] = total_Gⁿe * active
+        G⁻ϵ[i, j, k] = total_Gⁿϵ * active
     end
 end
 

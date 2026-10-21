@@ -493,9 +493,12 @@ for arch in archs
                 @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
                 @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
 
-                # Bounded z
-                @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
-                @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
+                # Bounded z: a flux side leaves the halo beyond the wall untouched
+                view(parent(ST), :, :, Hz)      .= 7
+                view(parent(ST), :, :, Nz+1+Hz) .= 7
+                compute!(ST)
+                @test all(view(parent(ST), ii, jj, Hz)      .== 7)
+                @test all(view(parent(ST), ii, jj, Nz+1+Hz) .== 7)
 
                 @compute ST_face = Field(@at (Center, Center, Face) S * T)
 

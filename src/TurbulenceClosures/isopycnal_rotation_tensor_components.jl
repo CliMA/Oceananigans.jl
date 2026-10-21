@@ -68,7 +68,7 @@ SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlope
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
     bx   = ∂xᵣ_b(i, j, k, grid, buoyancy, tracers)
-    bz   = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz   = ℑxzᶠᶜᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     Sx   = - bx / bz
@@ -79,7 +79,7 @@ end
 @inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
 
-    bx   = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    bx   = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
     bz   = ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂x_z = ∂x_zᶜᶜᶠ(i, j, k, grid)
@@ -92,7 +92,7 @@ end
                                                   slope_model::SmallSlopeIsopycnalTensor)
 
     by   = ∂yᵣ_b(i, j, k, grid, buoyancy, tracers)
-    bz   = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz   = ℑyzᶜᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     Sy   = - by / bz
@@ -103,7 +103,7 @@ end
 @inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
 
-    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    by   = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
     bz   =   ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
@@ -115,8 +115,8 @@ end
 @inline function isopycnal_rotation_tensor_zz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
 
-    bx   = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
-    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bx   = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    by   = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
     bz   = ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂x_z = ∂x_zᶜᶜᶠ(i, j, k, grid)

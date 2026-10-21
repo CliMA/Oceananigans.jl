@@ -1,4 +1,3 @@
-using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 using Oceananigans.Utils: newton_div
 using BFloat16s: BFloat16
 
@@ -26,12 +25,12 @@ calculation in the `VectorInvariant` advection formulation.
 
 Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, bias, reconstruced_function::F, smoothness_stencil, args...) where F<:Function
 ```
 
 For scalar reconstructions
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, bias, reconstruced_field::F) where F<:AbstractField
 ```
 the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
@@ -55,6 +54,8 @@ smoothness_stencil = FunctionStencil(smoothness_function)
 ```
 """
 abstract type AbstractSmoothnessStencil end
+
+const AS = AbstractSmoothnessStencil
 
 """`DefaultStencil <: AbstractSmoothnessStencil`, see `AbstractSmoothnessStencil`"""
 struct DefaultStencil <:AbstractSmoothnessStencil end
@@ -438,7 +439,7 @@ where
 
 The ``α`` values are normalized before returning
 """
-@inline function biased_weno_weights(δ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
+@inline function biased_weno_weights(δ, scheme::WENO{N}) where N
     β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
@@ -447,7 +448,7 @@ The ``α`` values are normalized before returning
 end
 
 # For stencils like `VelocityStencil` that passes two different smoothness fields, we average both δˢ
-@inline function biased_weno_weights((δᵤ, δᵥ)::Tuple{Tuple, Tuple}, grid, scheme::WENO{N, FT}, args...) where {N, FT}
+@inline function biased_weno_weights((δᵤ, δᵥ)::Tuple{Tuple, Tuple}, scheme::WENO{N}) where N
     β = beta_sum(scheme, beta_loop(scheme, δᵤ), beta_loop(scheme, δᵥ))
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
@@ -455,26 +456,22 @@ end
     return α .* Σα⁻¹
 end
 
-@inline      weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
-@inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
-@inline stencil_value(i, j, k, grid, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-
-@inline function upwind_stencil(i, j, k, grid, ::WENO{N}, bias, e, ψ, args...) where N
+@inline function upwind_stencil(i, j, k, grid, ::AbstractAdvectionScheme{N}, bias, e, ψ, args...) where N
     Ψ = ntuple(Val(2N)) do n
         @inline
         i′, j′, k′ = (i, j, k) .+ (n - N - 1) .* e
-        stencil_value(i′, j′, k′, grid, ψ, args...)
+        getvalue(ψ, i′, j′, k′, grid, args...)
     end
     return ifelse(bias == LeftBias, Ψ, reverse(Ψ))
 end
 
-# Different smoothness treatment
+# The differences whose smoothness sets the WENO weights: those of the reconstructed stencil, unless a smoothness stencil is given
 @inline smoothness_differences(i, j, k, grid, scheme, bias, e, ::AbstractSmoothnessStencil, args...) =  nothing
-@inline smoothness_differences(i, j, k, grid, scheme, bias, e,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, stencil.func, args...))
-@inline smoothness_differences(i, j, k, grid, scheme, bias, e,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑyᵃᶠᵃ, u)),
-                                                                                                        weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑxᶠᵃᵃ, v)))
+@inline smoothness_differences(i, j, k, grid, scheme::WENO, bias, e,    stencil::FunctionStencil, args...) =  weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, stencil.func, args...))
+@inline smoothness_differences(i, j, k, grid, scheme::WENO, bias, e,     ::VelocityStencil, u, v, args...) = (weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑyᶠᶠᶜ, u)),
+                                                                                                        weno_differences(scheme, upwind_stencil(i, j, k, grid, scheme, bias, e, ℑxᶠᶠᶜ, v)))
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -510,25 +507,3 @@ for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
-@inline function weno_interpolate(i, j, k, grid, scheme::WENO, bias, e, stencil, ψ, args...)
-    S  = upwind_stencil(i, j, k, grid, scheme, bias, e, ψ, args...)
-    δ  = weno_differences(scheme, S)
-    δˢ = smoothness_differences(i, j, k, grid, scheme, bias, e, stencil, args...)
-    ω  = biased_weno_weights(something(δˢ, δ), grid, scheme)
-    return weno_reconstruction(scheme, weno_anchor(scheme, S), δ, ω)
-end
-
-@inline unit_vector(::Val{1}) = (1, 0, 0)
-@inline unit_vector(::Val{2}) = (0, 1, 0)
-@inline unit_vector(::Val{3}) = (0, 0, 1)
-
-# Interpolation functions
-for (dir, ξ) in enumerate((:x, :y, :z))
-    e = unit_vector(Val(dir))
-    interpolate = Symbol(:biased_interpolate_, ξ, ntuple(d -> d == dir ? :ᶠ : :ᵃ, 3)...)
-
-    @eval begin
-        @inline $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, DefaultStencil(), ψ, args...)
-        @inline $interpolate(i, j, k, grid, scheme::WENO, bias, ψ, stencil::AbstractSmoothnessStencil, args...) = weno_interpolate(i, j, k, grid, scheme, bias, $e, stencil, ψ, args...)
-    end
-end

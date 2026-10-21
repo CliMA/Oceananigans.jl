@@ -11,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, mask_immersed_field!
 using Oceananigans.Solvers: ConjugateGradientSolver
 using Oceananigans.Utils: configure_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -92,6 +92,8 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 # reconcile_state! for a multi-region model.
 # A cubed-sphere grid needs to fill u and v velocity halos together.
 function TimeSteppers.reconcile_state!(model::MultiRegionModel)
+
+    @apply_regionally mask_immersed_field!(model.tracers)
 
     u = model.velocities.u
     v = model.velocities.v

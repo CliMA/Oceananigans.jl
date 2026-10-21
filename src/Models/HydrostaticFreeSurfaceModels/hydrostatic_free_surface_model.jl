@@ -434,6 +434,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
+    mask_immersed_field!(model.tracers)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     initialize_wall_values!(model.advection, model.tracers)
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)

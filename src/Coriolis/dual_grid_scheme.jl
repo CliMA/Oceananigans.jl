@@ -51,8 +51,8 @@ const DGS = AbstractRotation{<:DualGridScheme}
 Oceananigans.prognostic_state(coriolis::DGS) = Oceananigans.prognostic_state((; coriolis.scheme.velocity_deviations, coriolis.scheme.timestepper_cache))
 Oceananigans.restore_prognostic_state!(coriolis::DGS, from::NamedTuple) = Oceananigans.restore_prognostic_state!((; coriolis.scheme.velocity_deviations, coriolis.scheme.timestepper_cache), from)
 
-@inline uᴰᶜᶠᶜ(i, j, k, grid, u, δu) = @inbounds (ℑxyᶜᶠᵃ(i, j, k, grid, u) + δu[i, j, k]) * !peripheral_node(i, j, k, grid, center, face, center)
-@inline vᴰᶠᶜᶜ(i, j, k, grid, v, δv) = @inbounds (ℑxyᶠᶜᵃ(i, j, k, grid, v) + δv[i, j, k]) * !peripheral_node(i, j, k, grid, face, center, center)
+@inline uᴰᶜᶠᶜ(i, j, k, grid, u, δu) = @inbounds (ℑxyᶜᶠᶜ(i, j, k, grid, u) + δu[i, j, k]) * !peripheral_node(i, j, k, grid, center, face, center)
+@inline vᴰᶠᶜᶜ(i, j, k, grid, v, δv) = @inbounds (ℑxyᶠᶜᶜ(i, j, k, grid, v) + δv[i, j, k]) * !peripheral_node(i, j, k, grid, face, center, center)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::DGS, U) = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * vᴰᶠᶜᶜ(i, j, k, grid, U.v, coriolis.scheme.velocity_deviations.v)
 @inline y_f_cross_U(i, j, k, grid, coriolis::DGS, U) = + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * uᴰᶜᶠᶜ(i, j, k, grid, U.u, coriolis.scheme.velocity_deviations.u)
@@ -70,8 +70,8 @@ step_coriolis_prognostics!(coriolis, model, Δt) = nothing
     r = coriolis.scheme.relaxation_rate
     u, v = velocities.u, velocities.v
     @inbounds begin
-        Gδu[i, j, k] = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * v[i, j, k] + ℑxyᶜᶠᵃ(i, j, k, grid, x_f_cross_U, coriolis, velocities) - r * δu[i, j, k]
-        Gδv[i, j, k] = ℑxyᶠᶜᵃ(i, j, k, grid, y_f_cross_U, coriolis, velocities) - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * u[i, j, k] - r * δv[i, j, k]
+        Gδu[i, j, k] = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * v[i, j, k] + ℑxyᶜᶠᶜ(i, j, k, grid, x_f_cross_U, coriolis, velocities) - r * δu[i, j, k]
+        Gδv[i, j, k] = ℑxyᶠᶜᶜ(i, j, k, grid, y_f_cross_U, coriolis, velocities) - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * u[i, j, k] - r * δv[i, j, k]
     end
 end
 

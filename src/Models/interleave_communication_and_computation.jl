@@ -1,5 +1,4 @@
 using Oceananigans: prognostic_fields
-using Oceananigans.Advection: wall_value_fields
 using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize, get_active_cells_map
 using Oceananigans.Grids: halo_size, topology, architecture, CommunicatingSide, Sides
@@ -13,8 +12,6 @@ function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::
     for field in prognostic_fields(model)
         synchronize_communication!(field)
     end
-    
-    synchronize_communication!(wall_value_fields(model.advection))
 
     # Recompute tendencies near the buffer halos
     compute_buffer_tendencies!(model)

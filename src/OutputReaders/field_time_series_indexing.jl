@@ -319,20 +319,20 @@ end
         fi = FractionalIndices(to_node, from_grid, from_loc...)
     end
 
-    return interpolate(fi, time_indices, data, backend, time_indexing)
+    return interpolate(fi, time_indices, data, from_loc, from_grid, backend, time_indexing)
 end
 
 @inline function Fields.interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
-                                    data::AbstractArray, backend, time_indexing)
+                                    data::AbstractArray, from_loc, from_grid, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
     n₁ = convert(Int, time_indices.first_index)
     n₂ = convert(Int, time_indices.second_index)
     Nt = convert(Int, time_indices.length)
 
-    ix = interpolator(fi.i)
-    iy = interpolator(fi.j)
-    iz = interpolator(fi.k)
+    ix = interpolator(fi.i, topology(from_grid, 1), from_loc[1], size(from_grid, 1))
+    iy = interpolator(fi.j, topology(from_grid, 2), from_loc[2], size(from_grid, 2))
+    iz = interpolator(fi.k, topology(from_grid, 3), from_loc[3], size(from_grid, 3))
 
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)

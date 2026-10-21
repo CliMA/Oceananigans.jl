@@ -32,7 +32,7 @@ using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
                                        LeftBoundary, RightBoundary
 using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
-using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
+using Oceananigans.Operators: ℑxyᶠᶜᶜ, ℑxyᶜᶠᶜ, ℑxzᶠᶜᶜ, ℑyzᶜᶠᶜ, ℑxzᶜᶜᶠ, ℑyzᶜᶜᶠ
 
 #####
 ##### Drag formulations
@@ -71,23 +71,23 @@ Base.summary(::QuadraticFormulation) = "QuadraticFormulation()"
 # Uses all three velocity components; boundary-normal component is zero due to masking
 @inline function speed²ᶠᶜᶜ(i, j, k, grid, fields, U∞, V∞, W∞)
     u = @inbounds fields.u[i, j, k]
-    v² = ℑxyᶠᶜᵃ(i, j, k, grid, ϕplusψ², fields.v, V∞)
-    w² = ℑxzᶠᵃᶜ(i, j, k, grid, ϕplusψ², fields.w, W∞)
+    v² = ℑxyᶠᶜᶜ(i, j, k, grid, ϕplusψ², fields.v, V∞)
+    w² = ℑxzᶠᶜᶜ(i, j, k, grid, ϕplusψ², fields.w, W∞)
     return (u + U∞)^2 + v² + w²
 end
 
 # Speed² at (Center, Face, Center) - for y-velocity (v) drag
 @inline function speed²ᶜᶠᶜ(i, j, k, grid, fields, U∞, V∞, W∞)
-    u² = ℑxyᶜᶠᵃ(i, j, k, grid, ϕplusψ², fields.u, U∞)
+    u² = ℑxyᶜᶠᶜ(i, j, k, grid, ϕplusψ², fields.u, U∞)
     v = @inbounds fields.v[i, j, k]
-    w² = ℑyzᵃᶠᶜ(i, j, k, grid, ϕplusψ², fields.w, W∞)
+    w² = ℑyzᶜᶠᶜ(i, j, k, grid, ϕplusψ², fields.w, W∞)
     return u² + (v + V∞)^2 + w²
 end
 
 # Speed² at (Center, Center, Face) - for z-velocity (w) drag
 @inline function speed²ᶜᶜᶠ(i, j, k, grid, fields, U∞, V∞, W∞)
-    u² = ℑxzᶜᵃᶠ(i, j, k, grid, ϕplusψ², fields.u, U∞)
-    v² = ℑyzᵃᶜᶠ(i, j, k, grid, ϕplusψ², fields.v, V∞)
+    u² = ℑxzᶜᶜᶠ(i, j, k, grid, ϕplusψ², fields.u, U∞)
+    v² = ℑyzᶜᶜᶠ(i, j, k, grid, ϕplusψ², fields.v, V∞)
     w = @inbounds fields.w[i, j, k]
     return u² + v² + (w + W∞)^2
 end
