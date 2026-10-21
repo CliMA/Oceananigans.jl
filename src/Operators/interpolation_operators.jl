@@ -102,21 +102,21 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 ##### vanish where neither has data: beyond the sides of the interpolated direction, or inside an immersed boundary
 #####
 
-@inline function conditional_ℑ(::Val{d}, ℓx, ℓy, ℓz, i, j, k, grid, ψ, args...) where d
-    n⁻, n⁺, ℓᵒ = operands(Val(d), ℓx, ℓy, ℓz, i, j, k)
+@inline function conditional_ℑ(i, j, k, grid, ::Val{d}, ℓx, ℓy, ℓz, ψ, args...) where d
+    n⁻, n⁺, ℓᵒ = operands(i, j, k, Val(d), ℓx, ℓy, ℓz)
     d⁻ = node_has_data(n⁻..., grid, Val(d), ℓᵒ...)
     d⁺ = node_has_data(n⁺..., grid, Val(d), ℓᵒ...)
     ψ⁻ = getvalue(ψ, n⁻..., grid, args...)
     ψ⁺ = getvalue(ψ, n⁺..., grid, args...)
-    return ifelse(d⁻ & d⁺, interior_ℑ(Val(d), ℓx, ℓy, ℓz, i, j, k, grid, ψ⁻, ψ⁺, ψ, args...), ifelse(d⁻, ψ⁻, ifelse(d⁺, ψ⁺, zero(ψ⁺))))
+    return ifelse(d⁻ & d⁺, interior_ℑ(i, j, k, grid, Val(d), ℓx, ℓy, ℓz, ψ⁻, ψ⁺, ψ, args...), ifelse(d⁻, ψ⁻, ifelse(d⁺, ψ⁺, zero(ψ⁺))))
 end
 
 # The interpolation between two operands with data
-@inline interior_ℑ(d, ℓx, ℓy, ℓz, i, j, k, grid, ψ⁻, ψ⁺, ψ, args...) = (ψ⁻ + ψ⁺) / 2
+@inline interior_ℑ(i, j, k, grid, d, ℓx, ℓy, ℓz, ψ⁻, ψ⁺, ψ, args...) = (ψ⁻ + ψ⁺) / 2
 
-@inline conditional_ℑ(::Val{1}, ℓx, ℓy, ℓz, i, j, k, grid::XFlatGrid, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
-@inline conditional_ℑ(::Val{2}, ℓx, ℓy, ℓz, i, j, k, grid::YFlatGrid, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
-@inline conditional_ℑ(::Val{3}, ℓx, ℓy, ℓz, i, j, k, grid::ZFlatGrid, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+@inline conditional_ℑ(i, j, k, grid::XFlatGrid, ::Val{1}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+@inline conditional_ℑ(i, j, k, grid::YFlatGrid, ::Val{2}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+@inline conditional_ℑ(i, j, k, grid::ZFlatGrid, ::Val{3}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
 
 # One-direction interpolations, named by the location they interpolate to
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)
@@ -129,9 +129,9 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)
     ℓb = ℓ3 == :ᶜ ? :(Center()) : :(Face())
 
     @eval begin
-        @inline $ℑx(i, j, k, grid, ψ, args...) = conditional_ℑ(Val(1), $ℓ, $ℓa, $ℓb, i, j, k, grid, ψ, args...)
-        @inline $ℑy(i, j, k, grid, ψ, args...) = conditional_ℑ(Val(2), $ℓa, $ℓ, $ℓb, i, j, k, grid, ψ, args...)
-        @inline $ℑz(i, j, k, grid, ψ, args...) = conditional_ℑ(Val(3), $ℓa, $ℓb, $ℓ, i, j, k, grid, ψ, args...)
+        @inline $ℑx(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, ψ, args...)
+        @inline $ℑy(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, ψ, args...)
+        @inline $ℑz(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, ψ, args...)
 
         @inline $ℑx(i, j, k, grid, ψ::Number, args...) = ψ
         @inline $ℑy(i, j, k, grid, ψ::Number, args...) = ψ

@@ -4,20 +4,20 @@ const f = Face()
 
 using ReactantCore: ReactantCore
 
-# Indices a stencil of points at `ℓ` may read next to an Open side.
-@inline first_stencil_index(::Closed, ℓ)      = 1
-@inline first_stencil_index(::Open, ::Center) = 0
-@inline first_stencil_index(::Open, ::Face)   = 1
+# The first and last indices with data next to a side: up to the boundary face, and beyond it the exterior Center node of an Open side
+@inline first_index_with_data(::Closed, ℓ)      = 1
+@inline first_index_with_data(::Open, ::Center) = 0
+@inline first_index_with_data(::Open, ::Face)   = 1
 
-@inline last_stencil_index(::Closed, ::Center, N) = N
-@inline last_stencil_index(::Closed, ::Face, N)   = N + 1
-@inline last_stencil_index(::Open, ℓ, N)          = N + 1
+@inline last_index_with_data(::Closed, ::Center, N) = N
+@inline last_index_with_data(::Closed, ::Face, N)   = N + 1
+@inline last_index_with_data(::Open, ℓ, N)          = N + 1
 
 # Whether a stencil from `first_point` to `last_point` reads only what the sides of a direction let it read; only Closed and Open sides bound it
 @inline within_bounds(first_point, last_point, topology, ℓ, N) = true
-@inline within_bounds(first_point, last_point, ::Type{<:Sides{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (first_point >= first_stencil_index(L(), ℓ)) & (last_point <= last_stencil_index(R(), ℓ, N))
-@inline within_bounds(first_point, last_point, ::Type{<:Sides{L}}, ℓ, N) where L <: BoundarySide         = first_point >= first_stencil_index(L(), ℓ)
-@inline within_bounds(first_point, last_point, ::Type{<:Sides{<:Any, R}}, ℓ, N) where R <: BoundarySide  = last_point  <= last_stencil_index(R(), ℓ, N)
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (first_point >= first_index_with_data(L(), ℓ)) & (last_point <= last_index_with_data(R(), ℓ, N))
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L}}, ℓ, N) where L <: BoundarySide         = first_point >= first_index_with_data(L(), ℓ)
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{<:Any, R}}, ℓ, N) where R <: BoundarySide  = last_point  <= last_index_with_data(R(), ℓ, N)
 
 #####
 ##### Exterior node and peripheral node

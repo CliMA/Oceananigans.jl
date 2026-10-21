@@ -487,6 +487,6 @@ end
 
     @test advection isa FluxFormAdvection
     @test !isnothing(walls)
-    @test advection.x.extrapolation.walls === walls
-    @test advection.y.extrapolation.walls === walls
+    @test advection.x.extrapolation.wall_values === walls
+    @test advection.y.extrapolation.wall_values === walls
 end

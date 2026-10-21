@@ -90,7 +90,7 @@ for (side, Δ, diffusivity, index, gradient, d) in ((:west,   Δx, :h_diffusivit
                                                     (:north,  Δy, :h_diffusivity, index_right, right_gradient, 2),
                                                     (:bottom, Δz, :z_diffusivity, index_left,  left_gradient,  3),
                                                     (:top,    Δz, :z_diffusivity, index_right, right_gradient, 3))
-    flux      = Symbol(:_, side, :_ib_flux)
+    flux      = Symbol(side, :_wall_flux)
     indices   = Any[:i, :j, :k]
     locations = Any[:LX, :LY, :LZ]
     indices[d]   = :($index($(indices[d]), $(locations[d])))
@@ -108,33 +108,33 @@ end
 sides = [:west, :east, :south, :north, :bottom, :top]
 
 for side in sides
-    flux = Symbol(side, "_ib_flux")
-    _flux = Symbol("_", flux)
+    flux = Symbol(side, :_ib_flux)
+    wall_flux = Symbol(side, :_wall_flux)
 
     @eval begin
-        @inline $flux(i, j, k, ibg, bc::VGMBC, args...) = $_flux(i, j, k, ibg, bc::VGMBC, args...)
-        @inline $_flux(i, j, k, ibg, bc::VGMBC, args...) = zero(ibg) # fallback for non-ASD closures
+        @inline $flux(i, j, k, ibg, bc::VGMBC, args...) = $wall_flux(i, j, k, ibg, bc::VGMBC, args...)
+        @inline $wall_flux(i, j, k, ibg, bc::VGMBC, args...) = zero(ibg) # fallback for non-ASD closures
 
         @inline $flux(i, j, k, ibg, bc::VGMBC, loc, c, closures::Tuple{<:Any}, Ks, id, clock, fields, I) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I)
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I)
 
         @inline $flux(i, j, k, ibg, bc::VGMBC, loc, c, closures::Tuple{<:Any, <:Any}, Ks, id, clock, fields, I) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I)
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I)
 
         @inline $flux(i, j, k, ibg, bc::VGMBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any}, Ks, id, clock, fields, I) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields, I)
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields, I)
 
         @inline $flux(i, j, k, ibg, bc::VGMBC, loc, c, closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, id, clock, fields, I) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields, I) +
-            $_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields, I)
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[2], Ks[2], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[3], Ks[3], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[4], Ks[4], id, clock, fields, I)
 
         @inline $flux(i, j, k, ibg, bc::VGMBC, loc, c, closures::Tuple, Ks, id, clock, fields, I) =
-            $_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
+            $wall_flux(i, j, k, ibg, bc, loc, c, closures[1], Ks[1], id, clock, fields, I) +
              $flux(i, j, k, ibg, bc, loc, c, closures[2:end], Ks[2:end], id, clock, fields, I)
     end
 end
@@ -183,7 +183,7 @@ for (side, boundary_face, plane, cell) in ((:west,   :(i == 1),           (:j, :
                                            (:top,    :(k == grid.Nz + 1), (:i, :j), (:i, :j, :(k - 1))))
 
     domain_flux = Symbol(side, :_domain_flux)
-    wall_flux   = Symbol(side, :_ib_flux)
+    ib_flux     = Symbol(side, :_ib_flux)
 
     @eval begin
         @inline $domain_flux(i, j, k, grid, bc, args...) = zero(grid)
@@ -193,7 +193,7 @@ for (side, boundary_face, plane, cell) in ((:west,   :(i == 1),           (:j, :
                                                                                                                zero(grid))
 
         @inline $domain_flux(i, j, k, grid, bc::VGMBC, loc, c, closure, K, id, clock, fields, buoyancy) = ifelse($boundary_face,
-                                                                                                                 $wall_flux($(cell...), grid, bc, loc, c, closure, K, id, clock, fields, ($(plane...),)),
+                                                                                                                 $ib_flux($(cell...), grid, bc, loc, c, closure, K, id, clock, fields, ($(plane...),)),
                                                                                                                  zero(grid))
     end
 end

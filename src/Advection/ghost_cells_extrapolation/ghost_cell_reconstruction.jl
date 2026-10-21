@@ -8,7 +8,7 @@ using Oceananigans.Utils: BackendOptimizedDivision
 #####
 
 # The number of nodes with data beyond the node next to the face
-@inline function boundary_distance(i, j, k, grid, ℓx, ℓy, ℓz, d, s, ::Val{N}) where N
+@inline function boundary_distance(i, j, k, grid, d, ℓx, ℓy, ℓz, s, ::Val{N}) where N
     di, dj, dk = unit_vector(d)
     n = 0
     reached = false
@@ -70,9 +70,9 @@ end
     return G * Δ₁ + (1 - G) * minmod(Δʷ, 2Δ₁), G * K
 end
 
-@inline ghost_division(::WENO{N, FT, WCT}) where {N, FT, WCT} = WCT
-@inline ghost_division(::WENO{N, FT, Nothing}) where {N, FT} = BackendOptimizedDivision
-@inline ghost_division(scheme) = BackendOptimizedDivision
+@inline weight_computation(::WENO{N, FT, WCT}) where {N, FT, WCT} = WCT
+@inline weight_computation(::WENO{N, FT, Nothing}) where {N, FT} = BackendOptimizedDivision
+@inline weight_computation(scheme) = BackendOptimizedDivision
 
 # Sᵘ, the stencil reversed for a RightBias, has its node N upwind of the face; the `D` differences downwind of the face are
 # N - 2 for an upwind-biased stencil and N - 1 for a centered one. Returns the upwind node, the ghosted differences of the
@@ -84,7 +84,7 @@ end
     nᵘ  = ifelse(left, nᴸ, nᴿ)
     nᵈ  = ifelse(left, nᴿ, nᴸ)
 
-    WCT = ghost_division(scheme)
+    WCT = weight_computation(scheme)
     σᵘ, κᵘ = ghost_extrapolation(WCT, Sᵘ, ΔSᵘ, nᵘ, nᵈ, -1, upwind_extrapolation, Val(N))
     σᵈ, κᵈ = ghost_extrapolation(WCT, Sᵘ, ΔSᵘ, nᵈ, nᵘ, +1, downwind_extrapolation, Val(N))
 
@@ -106,7 +106,7 @@ end
 # Only the upwind side reads the stored wall values; downwind ghosts extrapolate the interior
 @inline function ghost_cell_reconstruction(weno::WENO{N}, S, ΔS, nᴸ, nᴿ, bias, δˢ, extrapolation) where N
     ψ₀, δ, ghosted = ghosted_differences(weno, S, ΔS, nᴸ, nᴿ, bias, extrapolation, HierarchicalExtrapolation(), Val(N - 2))
-    ω = biased_weno_weights(smoothness(ghosted, δ, δˢ), weno)
+    ω = biased_weno_weights(weight_differences(ghosted, δ, δˢ), weno)
     return weno_reconstruction(weno, ψ₀, δ, ω)
 end
 
@@ -125,9 +125,9 @@ end
 @inline ghost_cell_reconstruction(::Centered{1}, ψᴸ, ψᴿ, bias) = (ψᴸ + ψᴿ) / 2
 @inline ghost_cell_reconstruction(::UpwindBiased{1}, ψᴸ, ψᴿ, bias) = ifelse(bias === LeftBias, ψᴸ, ψᴿ)
 
-@inline smoothness(ghosted, δ,  ::Nothing) = δ
-@inline smoothness(ghosted, δ, δˢ::NTuple) = ifelse(ghosted, δ, δˢ)
-@inline smoothness(ghosted, δ, δˢ::Tuple{Tuple, Tuple}) = ifelse(ghosted, (δ, δ), δˢ)
+@inline weight_differences(ghosted, δ,  ::Nothing) = δ
+@inline weight_differences(ghosted, δ, δˢ::NTuple) = ifelse(ghosted, δ, δˢ)
+@inline weight_differences(ghosted, δ, δˢ::Tuple{Tuple, Tuple}) = ifelse(ghosted, (δ, δ), δˢ)
 
 # A wall face takes the operand with data, as the conditional ℑ, and zero where neither has
 @inline function wall_face_value(i, j, k, grid, d, ℓx, ℓy, ℓz, ψᴸ, ψᴿ, ψ̂)
@@ -143,10 +143,10 @@ end
     e = unit_vector(d)
     di, dj, dk = e
 
-    S  = upwind_stencil(i, j, k, grid, scheme, LeftBias, e, ψ, args...)
+    S  = index_stencil(i, j, k, grid, scheme, e, ψ, args...)
     ΔS = node_differences(S)
-    nᴸ = boundary_distance(i - di, j - dj, k - dk, grid, ℓx, ℓy, ℓz, d, -1, Val(N))
-    nᴿ = boundary_distance(i,      j,      k,      grid, ℓx, ℓy, ℓz, d, +1, Val(N))
+    nᴸ = boundary_distance(i - di, j - dj, k - dk, grid, d, ℓx, ℓy, ℓz, -1, Val(N))
+    nᴿ = boundary_distance(i,      j,      k,      grid, d, ℓx, ℓy, ℓz, +1, Val(N))
     δˢ = smoothness_differences(i, j, k, grid, scheme, bias, e, stencil, args...)
     extrapolation = extrapolation_along(scheme.extrapolation, grid, d)
     ψ̂  = ghost_cell_reconstruction(scheme, S, ΔS, nᴸ, nᴿ, bias, δˢ, extrapolation)

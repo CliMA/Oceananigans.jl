@@ -458,12 +458,17 @@ end
 
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
 
-@inline function upwind_stencil(i, j, k, grid, ::AbstractAdvectionScheme{N}, bias, e, ψ, args...) where N
-    Ψ = ntuple(Val(2N)) do n
+# The 2N nodes around the face between (i, j, k) - e and (i, j, k), in index order
+@inline function index_stencil(i, j, k, grid, ::AbstractAdvectionScheme{N}, e, ψ, args...) where N
+    return ntuple(Val(2N)) do n
         @inline
         i′, j′, k′ = (i, j, k) .+ (n - N - 1) .* e
         getvalue(ψ, i′, j′, k′, grid, args...)
     end
+end
+
+@inline function upwind_stencil(i, j, k, grid, scheme, bias, e, ψ, args...)
+    Ψ = index_stencil(i, j, k, grid, scheme, e, ψ, args...)
     return ifelse(bias == LeftBias, Ψ, reverse(Ψ))
 end
 

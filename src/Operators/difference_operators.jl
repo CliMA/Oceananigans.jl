@@ -64,7 +64,7 @@ export δzᵃᵃᶠ, δzᵃᵃᶜ
 
 # The operands, along d, of a difference or an interpolation to (ℓx, ℓy, ℓz): the nodes n - 1 and n of a Face, n and n + 1
 # of a Center, at the location flipped along d
-@inline function operands(::Val{d}, ℓx, ℓy, ℓz, i, j, k) where d
+@inline function operands(i, j, k, ::Val{d}, ℓx, ℓy, ℓz) where d
     di, dj, dk = unit_vector(Val(d))
     s = ifelse((ℓx, ℓy, ℓz)[d] isa Face, -1, 0)
     n⁻ = (i + s * di, j + s * dj, k + s * dk)
@@ -73,8 +73,8 @@ export δzᵃᵃᶠ, δzᵃᵃᶜ
     return n⁻, n⁺, ℓᵒ
 end
 
-@inline function conditional_δ(::Val{d}, ℓx, ℓy, ℓz, i, j, k, grid, δ, args...) where d
-    n⁻, n⁺, ℓᵒ = operands(Val(d), ℓx, ℓy, ℓz, i, j, k)
+@inline function conditional_δ(i, j, k, grid, ::Val{d}, ℓx, ℓy, ℓz, δ, args...) where d
+    n⁻, n⁺, ℓᵒ = operands(i, j, k, Val(d), ℓx, ℓy, ℓz)
     other = (ℓx, ℓy, ℓz)[d] isa Face ? n⁻ : n⁺
     no_data = !within_bounds(n⁻[d], n⁺[d], topology(grid, d), ℓᵒ[d], size(grid, d)) |
               immersed_inactive_node(i, j, k, grid, ℓᵒ...) |
@@ -109,13 +109,13 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
             ℓb = ℓ3 == :ᶜ ? :(Center()) : :(Face())
 
             @eval begin
-                @inline $δx(i, j, k, grid, f::Function, args...) = conditional_δ(Val(1), $ℓ, $ℓa, $ℓb, i, j, k, grid, $δxᵃ, f, args...)
-                @inline $δy(i, j, k, grid, f::Function, args...) = conditional_δ(Val(2), $ℓa, $ℓ, $ℓb, i, j, k, grid, $δyᵃ, f, args...)
-                @inline $δz(i, j, k, grid, f::Function, args...) = conditional_δ(Val(3), $ℓa, $ℓb, $ℓ, i, j, k, grid, $δzᵃ, f, args...)
+                @inline $δx(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, $δxᵃ, f, args...)
+                @inline $δy(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, $δyᵃ, f, args...)
+                @inline $δz(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, $δzᵃ, f, args...)
 
-                @inline $δx(i, j, k, grid, c) = conditional_δ(Val(1), $ℓ, $ℓa, $ℓb, i, j, k, grid, $δxᵃ, c)
-                @inline $δy(i, j, k, grid, c) = conditional_δ(Val(2), $ℓa, $ℓ, $ℓb, i, j, k, grid, $δyᵃ, c)
-                @inline $δz(i, j, k, grid, c) = conditional_δ(Val(3), $ℓa, $ℓb, $ℓ, i, j, k, grid, $δzᵃ, c)
+                @inline $δx(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, $δxᵃ, c)
+                @inline $δy(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, $δyᵃ, c)
+                @inline $δz(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, $δzᵃ, c)
             end
         end
 

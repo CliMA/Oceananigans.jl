@@ -15,7 +15,7 @@ Ghosts that continue the nodes before the boundary with a polynomial of degree u
     G₂  & = [φ(κ₁, κ₂) ⋅ φ(κ₂, κ₃)]² \\\\
     σ   & = [G₂ + (1 - G₂) G₁] Δ₁ \\\\
     κ   & = G₂ κ₁ \\\\
-    c₀  & = c₁ - σ - κ \\\\
+    c₀  & = c₁ -  σ -  κ \\\\
     c₋₁ & = c₁ - 2σ - 3κ \\\\
     c₋₂ & = c₁ - 3σ - 6κ
     \\end{align}
@@ -53,7 +53,8 @@ only the fluid entering from the interior relaxes `cʷ` towards `ĉ = c₁ - σ�
 `HierarchicalExtrapolation` slope `σʰ` of the line `c₁, c₂, …`, and `u⁻`, `u⁺` the velocities at its faces along the
 wall, which carry `ĉ⁻`, `ĉ⁺`: the upwind wall value plus half its van Albada slope along the wall. On other walls the
 velocities normal to and along the wall take the places of `w` and `u`, and a wall with two directions along it sums the
-last term over both.
+last term over both. A solid node beyond several walls, such as the corner of a step, stores a single `cʷ`: it starts from
+the average of their `ĉ` and steps with the average of their tendencies.
 
 Upwind of a face, with `Δⱼ = cⱼ₊₁ - cⱼ`, `κⱼ = Δⱼ - Δⱼ₊₁` and `φ` as in `HierarchicalExtrapolation`, the ghosts beyond
 the wall are
@@ -65,7 +66,7 @@ the wall are
     G   & = [φ(K, κ₁) ⋅ φ(κ₁, κ₂)]² \\\\
     σ   & = G Δ₁ + (1 - G) \\, \\mathrm{minmod}(Δʷ, 2Δ₁) \\\\
     κ   & = G K \\\\
-    c₀  & = c₁ - σ - κ \\\\
+    c₀  & = c₁ -  σ -  κ \\\\
     c₋₁ & = c₁ - 2σ - 3κ \\\\
     c₋₂ & = c₁ - 3σ - 6κ
     \\end{align}
@@ -84,7 +85,7 @@ that the condition fills into the halo node beyond the wall. Along a direction w
     Wall values are stored only for tracers, at `(Center, Center, Center)`; velocities extrapolate as `HierarchicalExtrapolation`.
 """
 struct TransportedWallValue{W}
-    walls :: W
+    wall_values :: W
 end
 
 TransportedWallValue() = TransportedWallValue(nothing)

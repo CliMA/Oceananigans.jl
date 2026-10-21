@@ -798,8 +798,8 @@ import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyT
                                                        (f(i, j, k, grid, args...) + f(i, j-1, k, grid, args...))/2))))
 
 # Operands with data on both sides take the panel interpolation, which folds the corner halos of the rows of centers
-@inline interior_ℑ(::Val{1}, ::Face, ::Center, ℓz, i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ψ⁻, ψ⁺, ψ, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ψ, args...)
-@inline interior_ℑ(::Val{2}, ::Center, ::Face, ℓz, i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ψ⁻, ψ⁺, ψ, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ψ, args...)
+@inline interior_ℑ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ::Val{1}, ::Face, ::Center, ℓz, ψ⁻, ψ⁺, ψ, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ψ, args...)
+@inline interior_ℑ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, ::Val{2}, ::Center, ::Face, ℓz, ψ⁻, ψ⁺, ψ, args...) = ℑyᵃᶠᵃ(i, j, k, grid, ψ, args...)
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),

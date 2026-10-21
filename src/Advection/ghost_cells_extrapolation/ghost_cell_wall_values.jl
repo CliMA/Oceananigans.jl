@@ -23,7 +23,7 @@ end
 # The storage of the wall values of a tracer's advection, which its directions share, or nothing
 wall_values(advection) = nothing
 wall_values(scheme::Union{WENO, UpwindBiased, Centered}) = wall_values(scheme.extrapolation)
-wall_values(extrapolation::TransportedWallValue) = extrapolation.walls
+wall_values(extrapolation::TransportedWallValue) = extrapolation.wall_values
 wall_values(advection::FluxFormAdvection) = something(wall_values(advection.x), wall_values(advection.y), wall_values(advection.z), Some(nothing))
 
 @inline function stores_wall_value(i, j, k, grid, d, s)
@@ -109,8 +109,8 @@ end
 Adapt.adapt_structure(to, w::WallValues) = WallValues(Adapt.adapt(to, w.nodes), Adapt.adapt(to, w.tendency), Adapt.adapt(to, w.cache))
 Architectures.on_architecture(to, w::WallValues) = WallValues(on_architecture(to, w.nodes), on_architecture(to, w.tendency), on_architecture(to, w.cache))
 
-Adapt.adapt_structure(to, extrapolation::TransportedWallValue) = TransportedWallValue(Adapt.adapt(to, extrapolation.walls))
-Architectures.on_architecture(to, extrapolation::TransportedWallValue) = TransportedWallValue(on_architecture(to, extrapolation.walls))
+Adapt.adapt_structure(to, extrapolation::TransportedWallValue) = TransportedWallValue(Adapt.adapt(to, extrapolation.wall_values))
+Architectures.on_architecture(to, extrapolation::TransportedWallValue) = TransportedWallValue(on_architecture(to, extrapolation.wall_values))
 
 #####
 ##### The wall values a reconstruction along a direction reads from its stencil, at the node beyond the last node with data
@@ -139,16 +139,16 @@ Architectures.on_architecture(to, extrapolation::TransportedWallValue) = Transpo
     return ifelse(wall, i - s * di, 1), ifelse(wall, j - s * dj, 1), ifelse(wall, k - s * dk, 1), wall
 end
 
-@inline function normal_face_value(i, j, k, grid, scheme::AbstractAdvectionScheme{N}, c, d, s) where N
+@inline function extrapolated_wall_value(i, j, k, grid, scheme::AbstractAdvectionScheme{N}, c, d, s) where N
     e = unit_vector(d)
     di, dj, dk = e
     f = (1 - s) ÷ 2
     iᶠ, jᶠ, kᶠ = i + f * di, j + f * dj, k + f * dk
-    WCT = ghost_division(scheme)
-    S  = upwind_stencil(iᶠ, jᶠ, kᶠ, grid, scheme, LeftBias, e, c)
+    WCT = weight_computation(scheme)
+    S  = index_stencil(iᶠ, jᶠ, kᶠ, grid, scheme, e, c)
     ΔS = node_differences(S)
-    nᴸ = boundary_distance(iᶠ - di, jᶠ - dj, kᶠ - dk, grid, Center(), Center(), Center(), d, -1, Val(N))
-    nᴿ = boundary_distance(iᶠ,      jᶠ,      kᶠ,      grid, Center(), Center(), Center(), d, +1, Val(N))
+    nᴸ = boundary_distance(iᶠ - di, jᶠ - dj, kᶠ - dk, grid, d, Center(), Center(), Center(), -1, Val(N))
+    nᴿ = boundary_distance(iᶠ,      jᶠ,      kᶠ,      grid, d, Center(), Center(), Center(), +1, Val(N))
     n  = ifelse(s == 1, nᴿ, nᴸ)
     nᵒ = ifelse(s == 1, nᴸ, nᴿ)
     σ, _ = ghost_extrapolation(WCT, S, ΔS, n, nᵒ, s, HierarchicalExtrapolation(), Val(N))
@@ -166,11 +166,11 @@ end
 # holds both the fluid and the wall values
 @inline function tangential_face_value(i, j, k, grid, WCT, c, d, s, t, q)
     ti, tj, tk = unit_vector(t)
-    σ = ifelse(q > 0, 1, -1)
-    u = (1 + σ) ÷ 2
-    iᵁ, jᵁ, kᵁ = i - u * ti, j - u * tj, k - u * tk
-    iᴰ, jᴰ, kᴰ = iᵁ + σ * ti, jᵁ + σ * tj, kᵁ + σ * tk
-    iᵁᵁ, jᵁᵁ, kᵁᵁ = iᵁ - σ * ti, jᵁ - σ * tj, kᵁ - σ * tk
+    sᵗ = ifelse(q > 0, 1, -1)
+    oᵘ = (1 + sᵗ) ÷ 2
+    iᵁ, jᵁ, kᵁ = i - oᵘ * ti, j - oᵘ * tj, k - oᵘ * tk
+    iᴰ, jᴰ, kᴰ = iᵁ + sᵗ * ti, jᵁ + sᵗ * tj, kᵁ + sᵗ * tk
+    iᵁᵁ, jᵁᵁ, kᵁᵁ = iᵁ - sᵗ * ti, jᵁ - sᵗ * tj, kᵁ - sᵗ * tk
 
     cᵁ  = @inbounds c[iᵁ, jᵁ, kᵁ]
     cᴰ  = @inbounds c[iᴰ, jᴰ, kᴰ]
@@ -212,12 +212,12 @@ end
 @inline function single_wall_value_tendency(i, j, k, grid, advection, U, c, d, s)
     iᴿ, jᴿ, kᴿ, wall = adjacent_fluid_cell(i, j, k, grid, d, s)
     scheme = advection_along(advection, d)
-    WCT = ghost_division(scheme)
+    WCT = weight_computation(scheme)
 
     di, dj, dk = unit_vector(d)
     f  = (1 - s) ÷ 2
     qⁿ = max(s * face_transport(iᴿ + f * di, jᴿ + f * dj, kᴿ + f * dk, grid, U, d), 0)
-    Gʷ = @inbounds qⁿ * (normal_face_value(iᴿ, jᴿ, kᴿ, grid, scheme, c, d, s) - c[i, j, k])
+    Gʷ = @inbounds qⁿ * (extrapolated_wall_value(iᴿ, jᴿ, kᴿ, grid, scheme, c, d, s) - c[i, j, k])
 
     t₁, t₂ = tangential_directions(d)
     Gʷ += tangential_tendency(i, j, k, iᴿ, jᴿ, kᴿ, grid, topology(grid, t₁), WCT, U, c, d, s, t₁)
@@ -246,13 +246,13 @@ end
 
 @inline function initial_wall_value(i, j, k, grid, T, scheme, c, d)
     total = zero(grid)
-    walls = zero(grid)
+    wall_count = zero(grid)
     for s in (-1, +1)
         iᴿ, jᴿ, kᴿ, wall = adjacent_fluid_cell(i, j, k, grid, d, s)
-        total += ifelse(wall, normal_face_value(iᴿ, jᴿ, kᴿ, grid, advection_along(scheme, d), c, d, s), zero(grid))
-        walls += wall
+        total += ifelse(wall, extrapolated_wall_value(iᴿ, jᴿ, kᴿ, grid, advection_along(scheme, d), c, d, s), zero(grid))
+        wall_count += wall
     end
-    return total, walls
+    return total, wall_count
 end
 
 @inline function initial_wall_value(i, j, k, grid, scheme, c)

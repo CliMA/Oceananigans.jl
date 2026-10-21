@@ -114,9 +114,6 @@ function on_architecture(arch::AbstractArchitecture, a::SubArray)
     return SubArray(p, parentindices(a))
 end
 
-# Ranks of a distributed architecture that built different fields continue from the same field tag
-synchronize_field_tags!(arch) = nothing
-
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
 cpu_architecture(::ReactantState) = CPU()
