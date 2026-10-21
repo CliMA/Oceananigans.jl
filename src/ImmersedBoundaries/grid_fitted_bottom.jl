@@ -171,7 +171,7 @@ end
 
 @inline bottom_cell(i, j, ib::GridFittedBottom) = @inbounds ib.bottom_cell_index[i, j, 1]
 
-@inline function bottom_height(i, j, ibg::GFBIBG) 
+@inline function bottom_height(i, j, ibg::GFBIBG)
     kᵇ = bottom_cell(i, j, ibg.immersed_boundary)
     return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
 end
