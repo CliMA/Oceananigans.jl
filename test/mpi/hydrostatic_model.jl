@@ -148,9 +148,7 @@ for arch in archs
                 for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
                                                (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
-                    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-                        @root @info "Testing solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) and a $(typeof(grid.z).name.wrapper) on $(timestepper)"
-
+                    @testset "Solid body rotation with $(ranks(arch)) ranks on $(nameof(typeof(grid))) and a $(nameof(typeof(grid.z))) on $(timestepper)" for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
                         # We deepcopy the grid to ensure it is not modified in the case of a MutableVerticalDiscretization
                         test_global_grid = deepcopy(global_grid)
                         test_grid = deepcopy(grid)

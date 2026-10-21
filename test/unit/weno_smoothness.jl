@@ -1,13 +1,15 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans: fully_supported_float_types
-using Oceananigans.Advection: beta_loop, biased_weno_weights, global_smoothness_indicator, C★, ϵ
+using Oceananigans.Advection: beta_loop, biased_weno_weights, global_smoothness_indicator, weno_reconstruction,
+                              zweno_regularization, C★, ϵ
 using Oceananigans.Utils: NormalDivision, BackendOptimizedDivision
 
 # ZWENO weights evaluated in BigFloat from the smoothness indicators of `scheme`, so that only the α computation
-# is compared and not the precision of β, which carries 8 significant bits in BFloat16
-function reference_weno_weights(scheme, β, τ)
-    α = ntuple(r -> big(C★(scheme, Val(r - 1))) * (1 + (big(τ) / (big(β[r]) + big(ϵ)))^2), length(β))
+# is compared and not the precision of β, which carries 8 significant bits in BFloat16. The regularization ϵ★
+# defaults to that of `scheme`, which in formats with 8 exponent bits grows with τ beside large jumps.
+function reference_weno_weights(scheme, β, τ, ϵ★ = zweno_regularization(scheme, τ))
+    α = ntuple(r -> big(C★(scheme, Val(r - 1))) * (1 + (big(τ) / (big(β[r]) + big(ϵ★)))^2), length(β))
     return α ./ sum(α)
 end
 
@@ -42,10 +44,20 @@ smooth_stencil(FT, buffer) = ntuple(i -> FT(300 + 0.1 * sinpi((i - 1) / buffer))
             # subnormal weights are imprecise, and cannot influence the reconstruction
             @test all(isapprox.(ω, reference; rtol=20eps(eltype(ω)), atol=floatmin(eltype(ω))))
 
-            # the whole chain against its BigFloat counterpart: the FT-rounded smoothness coefficients
-            # move the weights by O(eps(FT)), about 10 ulps in practice
-            reference = biased_weno_weights(big.(δ), nothing, WENO(BigFloat; order, weight_computation))
+            # the whole chain against its BigFloat counterpart with the same regularization: the FT-rounded
+            # smoothness coefficients move the weights by O(eps(FT)), about 10 ulps in practice
+            big_scheme = WENO(BigFloat; order, weight_computation)
+            βᵇ = beta_loop(big_scheme, big.(δ))
+            τᵇ = global_smoothness_indicator(Val(buffer), βᵇ)
+            reference = reference_weno_weights(big_scheme, βᵇ, τᵇ, zweno_regularization(scheme, FT(τᵇ)))
             @test all(isapprox.(ω, reference; rtol=30eps(FT), atol=floatmin(eltype(ω))))
+
+            # The regularization only redistributes weight among stencils that are smooth to within 2⁻⁶² of τ,
+            # so the reconstruction agrees with the unregularized BigFloat one to the precision of FT,
+            # relative to the magnitude of the stencil values
+            ψ̂ = weno_reconstruction(scheme, S[buffer], δ, ω)
+            ψ̂ᵇ = weno_reconstruction(big_scheme, big(S[buffer]), big.(δ), biased_weno_weights(big.(δ), nothing, big_scheme))
+            @test abs(ψ̂ - ψ̂ᵇ) ≤ 10eps(FT) * maximum(abs, big.(S))
         end
     end
 end

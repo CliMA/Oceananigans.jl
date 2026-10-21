@@ -416,7 +416,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         model = NonhydrostaticModel(grid; timestepper, closure, tracers = :c)
 
-                        td = typeof(time_discretization).name.wrapper
+                        td = nameof(typeof(time_discretization))
 
                         @testset "$fieldname budget in a $topology domain [$timestepper, $td, $closurename]" for fieldname in fieldnames
                             test_ScalarDiffusivity_budget(fieldname, model)
@@ -628,7 +628,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for arch in archs, grid in internal_wave_test_grids(arch)
                 for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
-                    grid_name = typeof(grid).name.wrapper
+                    grid_name = nameof(typeof(grid))
                     topo = topology(grid)
 
                     # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
