@@ -2,6 +2,7 @@ using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜ�
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
+using Oceananigans.Utils: foreach_name
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
 
@@ -103,24 +104,11 @@ field the scheme advects, or `nothing` for the `momentum` entry.
 """
 update_advection!(advection, model) = nothing
 
-"""
-$(TYPEDSIGNATURES)
-
-Refresh the adaptive vertical advection timestep carried by the `momentum` and tracer schemes in `advection`.
-Part of [`update_advection!`](@ref), exposed separately so that a model can refresh the bounds-preserving limiters
-later, once the tracer halos are filled.
-"""
+# Split in two so that a model can refresh the bounds-preserving limiters, which read the tracer halos,
+# once the halo communication has completed. `advection` is `(momentum, tracer_names...)`.
 update_adaptive_timesteps!(advection, model) = nothing
-
-"""
-$(TYPEDSIGNATURES)
-
-Refresh the bounds-preserving limiters carried by the tracer schemes in `advection`, which read the tracer halos.
-Part of [`update_advection!`](@ref).
-"""
 update_bounds_preserving_limiters!(advection, model) = nothing
 
-# `advection` is `(momentum, tracer_names...)`, with the tracer entries in `model.tracers` order.
 @inline function update_advection!(advection::NamedTuple, model)
     update_adaptive_timesteps!(advection, model)
     return update_bounds_preserving_limiters!(advection, model)
@@ -128,25 +116,27 @@ end
 
 @inline function update_adaptive_timesteps!(advection::NamedTuple, model)
     update_adaptive_timestep!(advection.momentum, model)
-    return update_tracer_adaptive_timesteps!(Base.tail(values(advection)), model)
+
+    foreach_name(model.tracers) do _, val_name
+        update_tracer_adaptive_timestep!(advection, model, val_name)
+    end
+
+    return nothing
 end
 
-@inline update_tracer_adaptive_timesteps!(::Tuple{}, model) = nothing
+@inline update_tracer_adaptive_timestep!(advection, model, ::Val{name}) where name =
+    update_adaptive_timestep!(advection[name], model)
 
-@inline function update_tracer_adaptive_timesteps!(schemes::Tuple, model)
-    update_adaptive_timestep!(first(schemes), model)
-    return update_tracer_adaptive_timesteps!(Base.tail(schemes), model)
+@inline function update_bounds_preserving_limiters!(advection::NamedTuple, model)
+    foreach_name(model.tracers) do _, val_name
+        update_tracer_bounds_preserving_limiter!(advection, model, val_name)
+    end
+
+    return nothing
 end
 
-@inline update_bounds_preserving_limiters!(advection::NamedTuple, model) =
-    update_tracer_bounds_preserving_limiters!(Base.tail(values(advection)), values(model.tracers), model)
-
-@inline update_tracer_bounds_preserving_limiters!(::Tuple{}, ::Tuple{}, model) = nothing
-
-@inline function update_tracer_bounds_preserving_limiters!(schemes::Tuple, tracers::Tuple, model)
-    update_bounds_preserving_limiter!(first(schemes), model.grid, first(tracers))
-    return update_tracer_bounds_preserving_limiters!(Base.tail(schemes), Base.tail(tracers), model)
-end
+@inline update_tracer_bounds_preserving_limiter!(advection, model, ::Val{name}) where name =
+    update_bounds_preserving_limiter!(advection[name], model.grid, model.tracers[name])
 
 @inline function update_advection!(scheme, model, tracer)
     update_adaptive_timestep!(scheme, model)
