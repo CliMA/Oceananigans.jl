@@ -27,7 +27,7 @@ using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, with_halo,
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -67,7 +67,7 @@ include("centered_reconstruction.jl")
 include("upwind_biased_reconstruction.jl")
 include("weno_reconstruction.jl")
 include("weno_interpolants.jl")
-include("stretched_weno_smoothness.jl")
+include("stretched_weno.jl")
 include("multi_dimensional_reconstruction.jl")
 include("vector_invariant_upwinding.jl")
 include("vector_invariant_advection.jl")
