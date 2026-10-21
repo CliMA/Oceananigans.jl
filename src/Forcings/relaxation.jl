@@ -304,16 +304,8 @@ $(TYPEDSIGNATURES)
 Rate for `Relaxation` that nudges toward `target` at `inflow_rate` where the local horizontal
 normal velocity indicates inflow through the domain boundary in direction `D` (one of
 `:west`, `:east`, `:south`, `:north`), and at `outflow_rate` where it indicates outflow,
-following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. Despite the name, the
-rate itself does not depend continuously on the flow state — it switches between the two
-fixed values `inflow_rate`/`outflow_rate` based only on the sign of the boundary-normal
-velocity.
-
-Spatial shaping (how the nudging strength varies with distance from the boundary) is the
-job of `mask`, exactly as for a constant-rate `Relaxation` — an `InflowOutflowRate` only
-ever chooses between `inflow_rate` and `outflow_rate`. To sponge multiple edges, sum one
-`Relaxation` per edge, each with an `InflowOutflowRate{D}` and a matching directional
-`mask` (e.g. `GaussianMask{D}` or `PiecewiseLinearMask{D}`).
+following the ROMS/Marchesiello-et-al.-2001 nudging-layer convention. See [`Relaxation`](@ref)
+for the role of `mask` in shaping the nudging spatially.
 
 Example
 =======
