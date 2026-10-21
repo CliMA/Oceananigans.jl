@@ -1,10 +1,9 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection!
+using Oceananigans.Advection: update_adaptive_timesteps!, update_bounds_preserving_limiters!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Coriolis: compute_coriolis_prognostic_tendencies!, step_coriolis_prognostics!
-using Oceananigans.DistributedComputations: synchronize_communication!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters, horizontally_extended_interior_kernel_parameters
@@ -80,13 +79,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    # The bounds-preserving limiters read the tracers' halos
-    synchronize_communication!(tracers)
-
     @apply_regionally begin
-        update_advection!(model.advection, model)
+        update_adaptive_timesteps!(model.advection, model)
         compute_momentum_tendencies!(model, callbacks)
         compute_coriolis_prognostic_tendencies!(model.coriolis, model)
+
+        # The bounds-preserving limiters read the tracer halos, which are synchronized
+        # when the momentum tendencies are completed.
+        update_bounds_preserving_limiters!(model.advection, model)
     end
 
     return nothing

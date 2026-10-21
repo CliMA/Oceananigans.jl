@@ -103,17 +103,49 @@ field the scheme advects, or `nothing` for the `momentum` entry.
 """
 update_advection!(advection, model) = nothing
 
+"""
+$(TYPEDSIGNATURES)
+
+Refresh the adaptive vertical advection timestep carried by the `momentum` and tracer schemes in `advection`.
+Part of [`update_advection!`](@ref), exposed separately so that a model can refresh the bounds-preserving limiters
+later, once the tracer halos are filled.
+"""
+update_adaptive_timesteps!(advection, model) = nothing
+
+"""
+$(TYPEDSIGNATURES)
+
+Refresh the bounds-preserving limiters carried by the tracer schemes in `advection`, which read the tracer halos.
+Part of [`update_advection!`](@ref).
+"""
+update_bounds_preserving_limiters!(advection, model) = nothing
+
 # `advection` is `(momentum, tracer_names...)`, with the tracer entries in `model.tracers` order.
 @inline function update_advection!(advection::NamedTuple, model)
-    update_advection!(advection.momentum, model, nothing)
-    return update_tracer_advection!(Base.tail(values(advection)), values(model.tracers), model)
+    update_adaptive_timesteps!(advection, model)
+    return update_bounds_preserving_limiters!(advection, model)
 end
 
-@inline update_tracer_advection!(::Tuple{}, ::Tuple{}, model) = nothing
+@inline function update_adaptive_timesteps!(advection::NamedTuple, model)
+    update_adaptive_timestep!(advection.momentum, model)
+    return update_tracer_adaptive_timesteps!(Base.tail(values(advection)), model)
+end
 
-@inline function update_tracer_advection!(schemes::Tuple, tracers::Tuple, model)
-    update_advection!(first(schemes), model, first(tracers))
-    return update_tracer_advection!(Base.tail(schemes), Base.tail(tracers), model)
+@inline update_tracer_adaptive_timesteps!(::Tuple{}, model) = nothing
+
+@inline function update_tracer_adaptive_timesteps!(schemes::Tuple, model)
+    update_adaptive_timestep!(first(schemes), model)
+    return update_tracer_adaptive_timesteps!(Base.tail(schemes), model)
+end
+
+@inline update_bounds_preserving_limiters!(advection::NamedTuple, model) =
+    update_tracer_bounds_preserving_limiters!(Base.tail(values(advection)), values(model.tracers), model)
+
+@inline update_tracer_bounds_preserving_limiters!(::Tuple{}, ::Tuple{}, model) = nothing
+
+@inline function update_tracer_bounds_preserving_limiters!(schemes::Tuple, tracers::Tuple, model)
+    update_bounds_preserving_limiter!(first(schemes), model.grid, first(tracers))
+    return update_tracer_bounds_preserving_limiters!(Base.tail(schemes), Base.tail(tracers), model)
 end
 
 @inline function update_advection!(scheme, model, tracer)
@@ -122,9 +154,9 @@ end
     return nothing
 end
 
-update_advection!(scheme::FluxFormAdvection, model, tracer) = update_advection!(scheme.z, model, tracer)
-
 update_adaptive_timestep!(scheme, model) = nothing
+
+update_adaptive_timestep!(scheme::FluxFormAdvection, model) = update_adaptive_timestep!(scheme.z, model)
 
 @inline function update_adaptive_timestep!(scheme::AdaptiveImplicitVerticalAdvection, model)
     td = TimeSteppers.time_discretization(scheme)

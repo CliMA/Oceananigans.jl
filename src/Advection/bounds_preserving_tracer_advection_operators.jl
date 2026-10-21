@@ -101,6 +101,8 @@ end
 
 update_bounds_preserving_limiter!(scheme, grid, c) = nothing
 
+update_bounds_preserving_limiter!(scheme::FluxFormAdvection, grid, c) = update_bounds_preserving_limiter!(scheme.z, grid, c)
+
 """
 $(TYPEDSIGNATURES)
 

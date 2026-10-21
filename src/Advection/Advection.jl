@@ -16,6 +16,8 @@ export
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
     update_advection!,
+    update_adaptive_timesteps!,
+    update_bounds_preserving_limiters!,
     EnergyConserving,
     EnstrophyConserving
 
