@@ -23,6 +23,13 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
+"Fill only the bottom and top halo regions of a field's data."
+function fill_bottom_and_top_halo!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
+    fill_halo_event!(c, kernels!.bottom_and_top, bcs.bottom_and_top, loc, grid, args...; kwargs...)
+    return nothing
+end
+
 @inline fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
 
 @inline function fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
