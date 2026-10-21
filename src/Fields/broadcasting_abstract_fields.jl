@@ -23,7 +23,7 @@ const BroadcastedArrayOrGPUArray = Union{Broadcasted{<:DefaultArrayStyle},
                                         Broadcasted{<:AbstractGPUArrayStyle}}
 
 @inline function Base.Broadcast.materialize!(dest::Field, bc::BroadcastedArrayOrGPUArray)
-    if any(a isa OffsetArray for a in bc.args)
+    if any(a isa AbstractOffsetArray for a in bc.args)
         return Base.Broadcast.materialize!(dest.data, bc)
     else
         return Base.Broadcast.materialize!(interior(dest), bc)

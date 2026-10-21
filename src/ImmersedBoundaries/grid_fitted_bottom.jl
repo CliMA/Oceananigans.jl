@@ -1,7 +1,7 @@
 using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
-using OffsetArrays: OffsetArray
+using OffsetArrays: AbstractOffsetArray
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
@@ -61,7 +61,7 @@ end
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
 
-function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
+function set_bottom_height!(bottom_field, bottom_height::AbstractOffsetArray)
     source = on_architecture(architecture(bottom_field), bottom_height_interior(bottom_height))
     copyto!(interior(bottom_field), source)
     return bottom_field

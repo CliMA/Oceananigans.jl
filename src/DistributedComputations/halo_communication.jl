@@ -63,11 +63,11 @@ function maybe_distributed_fill_halo_regions!(arch::Distributed, c, boundary_con
 end
 
 # Otherwise we recover the architecture from the (still distributed) grid.
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
+function fill_halo_regions!(c::AbstractOffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, buffers, args::Vararg{Any, N}; kwargs...) where N
     return distributed_fill_halo_regions!(architecture(grid), c, boundary_conditions, indices, loc, grid, buffers, args; kwargs...)
 end
 
-fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
+fill_halo_regions!(c::AbstractOffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
     # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused

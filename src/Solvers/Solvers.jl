@@ -48,16 +48,16 @@ const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegul
 const SingleArchitecture = Union{CPU, GPU}
 
 # Constrain to non-distributed grids by requiring the architecture parameter to be CPU or GPU
-fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Any, <:Any, <:Any, <:Number, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
     FFTBasedPoissonSolver(grid)
 
-fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
     FourierTridiagonalPoissonSolver(grid)
 
-fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Any, <:Any, <:Any, <:Number, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
     FourierTridiagonalPoissonSolver(grid)
 
-fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any, <:Any, <:SingleArchitecture}) =
+fft_poisson_solver(grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Any, <:Any, <:Any, <:Number, <:Any, <:Any, <:Any, <:SingleArchitecture}) =
     FourierTridiagonalPoissonSolver(grid)
 
 const FFTW_NUM_THREADS = Ref{Int}(1)

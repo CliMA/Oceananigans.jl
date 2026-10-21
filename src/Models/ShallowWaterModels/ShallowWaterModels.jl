@@ -7,6 +7,7 @@ using Adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
+using Oceananigans: Oceananigans
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields

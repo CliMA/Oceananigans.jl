@@ -61,10 +61,10 @@ function partition(a::AbstractArray, ::EqualXPartition, local_size, region, arch
     return on_architecture(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
-function partition(a::OffsetArray, ::EqualXPartition, local_size, region, arch)
+function partition(a::AbstractOffsetArray, ::EqualXPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
-    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
-    return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
+    offsets = (OffsetArrays.offsets(a)[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return on_architecture(arch, StaticStridesOffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 #####

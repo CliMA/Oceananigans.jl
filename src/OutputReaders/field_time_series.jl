@@ -6,7 +6,7 @@ using KernelAbstractions: @kernel, @index
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: GPUArraysCore, @allowscalar
-using OffsetArrays: OffsetArrays, OffsetArray
+using OffsetArrays: OffsetArrays
 using Statistics: Statistics, mean
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, on_architecture
@@ -471,7 +471,7 @@ fts[4]
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×10×10 OffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -488,7 +488,7 @@ fts[Time(0.3)]
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: BinaryOperation at (Center, Center, Center)
 ├── status: Oceananigans.Fields.FixedTime{Float64}
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -558,7 +558,7 @@ fts[5]
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 10×10×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
     └── max=5.0, min=5.0, mean=5.0
 ```
 """

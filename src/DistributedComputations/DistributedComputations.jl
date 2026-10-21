@@ -15,6 +15,7 @@ using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
+using OffsetArrays: AbstractOffsetArray
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 

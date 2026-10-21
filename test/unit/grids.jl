@@ -430,10 +430,10 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     grid = RectilinearGrid(arch, FT, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
     ArrayType = array_type(arch)
-    @test grid.z.cᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.cᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.Δᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.z.Δᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᵃᵃᶠ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.cᵃᵃᶜ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.Δᵃᵃᶠ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
+    @test grid.z.Δᵃᵃᶜ isa StaticStridesOffsetArray{FT, 1, <:Any, <:Any, <:ArrayType}
 
     return nothing
 end
@@ -788,14 +788,14 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
-    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶠᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶜᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.λᶠᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶜᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶠᶜᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶜᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
+    @test grid.φᶠᶠᵃ isa StaticStridesOffsetArray{FT, 2, <:Any, <:Any, <:Array}
 
     @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
     @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
