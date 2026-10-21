@@ -1,4 +1,6 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.Architectures: CPU, GPU, architecture, convert_to_device
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoKernelFBC, regularize_field_boundary_conditions,
+    fill_batched_halo_regions!, needs_halo_fill_args
 using LinearAlgebra: LinearAlgebra
 
 const FieldTuple = Tuple{Field, Vararg{Field}}
@@ -59,20 +61,21 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 """
 $(TYPEDSIGNATURES)
 
-Fill halo regions for all `fields`. The algorithm:
+Fill the halo regions of all `fields`, passing `args` and `kwargs` on as when filling the halos
+of a single field.
 
-  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-     duplicate entries to avoid "repeated" halo filling.
+Fields whose halos can be filled together are gathered into groups, and each side of every group
+is filled with a single kernel launch, which fills the halos of all the fields in the group.
+A group holds the fields that share a grid on a `CPU` or `GPU` architecture and a location, span
+the whole grid, have halo-filling kernels of the same type (so the same sequence of sides,
+filled in the same order as for a single field), and whose boundary conditions do not read `args`,
+such as periodic, flux, and `Number`-valued value and gradient conditions
+(see `needs_halo_fill_args`).
 
-  2. Filters fields into three categories:
-     i. ReducedFields with non-trivial boundary conditions;
-     ii. Fields with non-trivial indices and boundary conditions;
-     iii. Fields spanning the whole grid with non-trivial boundary conditions.
-
-  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-
-  4. In every direction, the halo regions in each of the remaining `Field` tuple
-     are filled simultaneously.
+The halos of the remaining entries of `fields` are filled one by one, after the groups. These
+include fields on distributed, multi-region and Reactant architectures, reduced and windowed
+fields, fields with boundary conditions that read `args`, nested tuples, and objects that are not
+`Field`s. The halos are filled bitwise as if every field were filled on its own.
 """
 @inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(values(fields), args...; kwargs...)
@@ -80,10 +83,98 @@ Fill halo regions for all `fields`. The algorithm:
 @inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
 @inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
-    fill_halo_regions!(first(fields), args...; kwargs...)
-    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
+    groups = halo_fill_groups(select_fields(batchable, fields))
+    individual_fields = select_fields(!batchable, fields)
+    fill_halo_groups!(groups, args...; kwargs...)
+    fill_individual_halo_regions!(individual_fields, args...; kwargs...)
     return nothing
 end
+
+@inline fill_individual_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
+
+@inline function fill_individual_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
+    fill_halo_regions!(first(fields), args...; kwargs...)
+    fill_individual_halo_regions!(Base.tail(fields), args...; kwargs...)
+    return nothing
+end
+
+#####
+##### Batched halo filling for tuples of `Field`
+#####
+
+const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Union{CPU, GPU}}
+const BatchableLocation = Union{Center, Face}
+
+const BatchableField = Field{<:BatchableLocation, <:BatchableLocation, <:BatchableLocation, <:Any, <:SerialGrid,
+                             <:Tuple{Colon, Colon, Colon}, <:OffsetArray, <:Any, <:FieldBoundaryConditions}
+
+# Whether the halos of `field` may be filled together with those of other fields
+@inline batchable(field) = false
+@inline batchable(field::BatchableField) = batchable_boundary_conditions(field.boundary_conditions)
+
+@inline batchable_boundary_conditions(bcs::FieldBoundaryConditions) = !needs_halo_fill_args(bcs)
+@inline batchable_boundary_conditions(::NoKernelFBC) = false
+
+# Whether two batchable fields launch the same halo-filling kernels
+@inline batches_with(a, b) = false
+
+@inline batches_with(a::Field{LX, LY, LZ, <:Any, G}, b::Field{LX, LY, LZ, <:Any, G}) where {LX, LY, LZ, G} =
+    typeof(a.boundary_conditions.kernels) === typeof(b.boundary_conditions.kernels)
+
+# Type-stable `filter` for tuples, whose `predicate` depends only on the types of the elements
+@inline select_fields(predicate, ::Tuple{}) = ()
+
+@inline function select_fields(predicate::P, fields::Tuple) where P
+    head = first(fields)
+    selected = select_fields(predicate, Base.tail(fields))
+    return predicate(head) ? (head, selected...) : selected
+end
+
+@inline halo_fill_groups(::Tuple{}) = ()
+
+@inline function halo_fill_groups(fields::Tuple)
+    head = first(fields)
+    group = select_fields(field -> batches_with(head, field), fields)
+    others = select_fields(field -> !batches_with(head, field), fields)
+    return (group, halo_fill_groups(others)...)
+end
+
+@inline fill_halo_groups!(::Tuple{}, args...; kwargs...) = nothing
+
+@inline function fill_halo_groups!(groups::Tuple, args::Vararg{Any, N}; kwargs...) where N
+    fill_halo_group!(first(groups), args...; kwargs...)
+    fill_halo_groups!(Base.tail(groups), args...; kwargs...)
+    return nothing
+end
+
+@inline fill_halo_group!(group::Tuple{Any}, args::Vararg{Any, N}; kwargs...) where N =
+    fill_halo_regions!(first(group), args...; kwargs...)
+
+function fill_halo_group!(group::Tuple, args::Vararg{Any, N}; kwargs...) where N
+    field = first(group)
+    grid = field.grid
+
+    if !all_on_grid(grid, group)
+        fill_individual_halo_regions!(group, args...; kwargs...)
+        return nothing
+    end
+
+    arch = architecture(grid)
+    kernels! = field.boundary_conditions.kernels
+    loc = instantiated_location(field)
+    data = map(f -> f.data, group)
+    bcs = map(f -> f.boundary_conditions.ordered_bcs, group)
+
+    GC.@preserve group begin
+        device_data, device_bcs, device_grid = convert_to_device(arch, (data, bcs, grid))
+        fill_batched_halo_regions!(device_data, kernels!, device_bcs, loc, device_grid; kwargs...)
+    end
+
+    return nothing
+end
+
+@inline all_on_grid(grid, ::Tuple{}) = true
+@inline all_on_grid(grid, fields::Tuple) = (first(fields).grid === grid) & all_on_grid(grid, Base.tail(fields))
 
 #####
 ##### Tracer names

@@ -61,6 +61,7 @@ include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
+include("batched_fill_halo_regions.jl")
 
 include("compute_flux_bcs.jl")
 
