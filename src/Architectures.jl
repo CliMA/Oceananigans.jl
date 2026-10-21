@@ -72,7 +72,9 @@ architecture(::Array) = CPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 architecture(::SparseMatrixCSC) = CPU()
-architecture(::Type{T}) where {T<:AbstractArray} = architecture(Base.typename(T).wrapper)
+# Strip the type parameters, e.g. `Array{Float64, 3}` -> `Array`, so that the methods on
+# `Type{Array}`, `Type{CuArray}`, etc., defined here and in the extensions, can match
+architecture(::Type{T}) where {T<:AbstractArray} = architecture(getglobal(parentmodule(T), nameof(T)))
 architecture(::Type{Array}) = CPU()
 
 # Utils for sparse matrix manipulation
@@ -124,8 +126,6 @@ unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
 
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
-
-@inline unsafe_free!(a) = nothing
 
 # CPU kernel arguments are adapted to `CPU()`. Like on GPUs this strips fields down to their data, so
 # that kernels do not specialize on field metadata that kernels never use (e.g. boundary conditions:

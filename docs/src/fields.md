@@ -461,8 +461,8 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: PeriodicBoundaryCondition
 ├── south: PeriodicBoundaryCondition
 ├── north: PeriodicBoundaryCondition
-├── bottom: FluxBoundaryCondition: Nothing
-├── top: FluxBoundaryCondition: Nothing
+├── bottom: FluxBoundaryCondition: nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
