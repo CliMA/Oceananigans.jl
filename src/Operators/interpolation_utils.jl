@@ -18,15 +18,6 @@ interpolation_code(::Nothing, to) = :ᵃ
 interpolation_code(from, ::Nothing) = :ᵃ
 interpolation_code(::Nothing, ::Nothing) = :ᵃ
 
-for ξ in ("x", "y", "z")
-    ▶sym = Symbol(:ℑ, ξ, :sym)
-    @eval begin
-        $▶sym(s::Symbol) = $▶sym(Val(s))
-        $▶sym(::Union{Val{:ᶠ}, Val{:ᶜ}}) = $ξ
-        $▶sym(::Val{:ᵃ}) = ""
-    end
-end
-
 # It's not Oceananigans for nothing
 # (So that AbstractOperations are more likely to compile)
 const number_of_identities = 6 # hopefully enough for Oceananigans (most need just one)
@@ -53,18 +44,24 @@ where the `XA`s and `XB`s are `Face()` or `Center()` instances.
 """
 function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
-    x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
+    codes = Tuple(interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
-    if all(ξ === :ᵃ for ξ in (x, y, z))
+    if all(ξ === :ᵃ for ξ in codes)
 
         # This is crazy, but here's my number...
         global identity_counter += 1
         identity = identify_an_identity(identity_counter)
 
         return getglobal(@__MODULE__, identity)
-    else
-        return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
+
+    directions = join(ξ for (ξ, code) in zip(("x", "y", "z"), codes) if code !== :ᵃ)
+
+    # Locations with a reduced direction keep the location-agnostic interpolation
+    located = map(interpolation_code, to)
+    codes = all(ξ ∈ (:ᶜ, :ᶠ) for ξ in located) ? located : codes
+
+    return getglobal(@__MODULE__, Symbol(:ℑ, directions, codes...))
 end
 
 """

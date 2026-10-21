@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Grids, constructor_arguments, rnode
+using Oceananigans.Grids: Grids, constructor_arguments, rnode, topology, within_bounds
 using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
 using OffsetArrays: OffsetArray
@@ -168,9 +168,16 @@ end
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
+# A face takes the shallower of its two columns, or the column with data next to a side of the domain
+@inline function shallower_column_with_data(D⁻, D⁺, n, T, N)
+    d⁻ = within_bounds(n-1, n-1, T, c, N)
+    d⁺ = within_bounds(n,   n,   T, c, N)
+    return ifelse(d⁻ & d⁺, min(D⁻, D⁺), ifelse(d⁻, D⁻, D⁺))
+end
+
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = shallower_column_with_data(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg), j, topology(ibg, 2), ibg.Ny)
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = shallower_column_with_data(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg), i, topology(ibg, 1), ibg.Nx)
+@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = shallower_column_with_data(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg), j, topology(ibg, 2), ibg.Ny)
 
 # Make sure column_height works for horizontally-Flat topologies.
 const XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}

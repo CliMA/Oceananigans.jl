@@ -68,7 +68,7 @@ end
 
 @kernel function _update_grid_free_surface!(grid, η)
     i, j = @index(Global, NTuple)
-    @inbounds grid.z.ηⁿ[i, j, 1] = η[i, j, grid.Nz+1]
+    @inbounds grid.z.ηⁿ[i, j, grid.Nz+1] = η[i, j, grid.Nz+1]
 end
 
 @kernel function _update_grid_scaling!(grid)
@@ -82,10 +82,10 @@ end
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
-    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, 1, grid, z_coordinate.ηⁿ)
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, grid.Nz+1, grid, z_coordinate.ηⁿ)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid.Nz+1, grid, z_coordinate.ηⁿ)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid.Nz+1, grid, z_coordinate.ηⁿ)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, grid.Nz+1, grid, z_coordinate.ηⁿ)
 
     σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)

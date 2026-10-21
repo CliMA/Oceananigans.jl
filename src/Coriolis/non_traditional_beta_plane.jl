@@ -80,17 +80,17 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
-    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑzᶜᶜᶜ(i, j, k, grid, U.w)
+     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑyᶜᶜᶜ(i, j, k, grid, U.v))
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
+    ℑxᶠᶜᶜ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-      two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, face, center), znode(i, j, k, grid, center, face, center)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+      two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, face, center), znode(i, j, k, grid, center, face, center)) * ℑxyᶜᶠᶜ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    - two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, face), znode(i, j, k, grid, center, center, face)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+    - two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, face), znode(i, j, k, grid, center, center, face)) * ℑxzᶜᶜᶠ(i, j, k, grid, U.u)
 
 Adapt.adapt_structure(to, coriolis::NonTraditionalBetaPlane) =
     NonTraditionalBetaPlane{typeof(coriolis.fz)}(Adapt.adapt(to, coriolis.fz),

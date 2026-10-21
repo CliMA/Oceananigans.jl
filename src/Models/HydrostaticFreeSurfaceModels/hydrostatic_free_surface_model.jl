@@ -1,4 +1,5 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order,
+                              initialize_wall_values!, materialize_wall_values
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
@@ -13,7 +14,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
                                        closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, construct_regionally
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -245,8 +246,8 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
 
     # Fill any settings in advection scheme that might have been deferred until
-    # the grid and backend is known
-    advection = map(scheme -> materialize_advection(scheme, grid), advection)
+    # the grid and backend is known; each region materializes its own scheme
+    advection = map(scheme -> construct_regionally(materialize_advection, scheme, grid), advection)
 
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
@@ -280,6 +281,9 @@ function materialize_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, t
                                                                    grid,
                                                                    tracer_names,
                                                                    buoyancy)
+
+    # the tracers that closures step themselves extrapolate as HierarchicalExtrapolation
+    advection = materialize_wall_values(advection, grid, boundary_conditions, filter(∉(closure_required_tracers(closure)), tracer_names))
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracer_names, closure)
@@ -430,7 +434,9 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
+    mask_immersed_field!(model.tracers)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    initialize_wall_values!(model.advection, model.tracers)
     reconcile_free_surface!(model.free_surface, model.grid, model.clock, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     return nothing
@@ -462,7 +468,8 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             free_surface = prognostic_state(model.free_surface),
             coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            advection = prognostic_state(model.advection))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
@@ -476,6 +483,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    haskey(from, :advection) && restore_prognostic_state!(restored.advection, from.advection)
     return restored
 end
 

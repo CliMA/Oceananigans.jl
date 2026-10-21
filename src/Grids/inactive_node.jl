@@ -4,27 +4,20 @@ const f = Face()
 
 using ReactantCore: ReactantCore
 
-function build_condition(Topo, side, dim, array::Bool)
-    if Topo == :Bounded
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
-        else
-            return :(($side < 1) | ($side > grid.$dim))
-        end
-    elseif Topo == :(Sides{Connected, Closed})
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
-        else
-            return :(($side > grid.$dim))
-        end
-    else # Sides{Closed, Connected}
-        if array
-            return :((ReactantCore.materialize_traced_array($side) .< 1))
-        else
-            return :(($side < 1))
-        end
-    end
-end
+# The first and last indices with data next to a side: up to the boundary face, and beyond it the exterior Center node of an Open side
+@inline first_index_with_data(::Closed, ℓ)      = 1
+@inline first_index_with_data(::Open, ::Center) = 0
+@inline first_index_with_data(::Open, ::Face)   = 1
+
+@inline last_index_with_data(::Closed, ::Center, N) = N
+@inline last_index_with_data(::Closed, ::Face, N)   = N + 1
+@inline last_index_with_data(::Open, ℓ, N)          = N + 1
+
+# Whether a stencil from `first_point` to `last_point` reads only what the sides of a direction let it read; only Closed and Open sides bound it
+@inline within_bounds(first_point, last_point, topology, ℓ, N) = true
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L, R}}, ℓ, N) where {L <: BoundarySide, R <: BoundarySide} = (first_point >= first_index_with_data(L(), ℓ)) & (last_point <= last_index_with_data(R(), ℓ, N))
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{L}}, ℓ, N) where L <: BoundarySide         = first_point >= first_index_with_data(L(), ℓ)
+@inline within_bounds(first_point, last_point, ::Type{<:Sides{<:Any, R}}, ℓ, N) where R <: BoundarySide  = last_point  <= last_index_with_data(R(), ℓ, N)
 
 #####
 ##### Exterior node and peripheral node
@@ -35,75 +28,24 @@ $(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
-`inactive_cell`s include the halo cells beyond the `Closed` sides of `Bounded`, `Sides{Closed, Connected}` and `Sides{Connected, Closed}`
-directions, and cells within an immersed boundary.
+`inactive_cell`s include the halo cells beyond a `Closed` side, the halo cells beyond the exterior cell of an `Open` side,
+and cells within an immersed boundary.
 Cells that are staggered with respect to tracer cells and which lie _on_ the boundary are considered active.
 """
-@inline inactive_cell(i, j, k, grid) = false
-@inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
+@inline inactive_cell(i, j, k, grid) = !(within_bounds(i, i, topology(grid, 1), c, grid.Nx) &
+                                         within_bounds(j, j, topology(grid, 2), c, grid.Ny) &
+                                         within_bounds(k, k, topology(grid, 3), c, grid.Nz))
 
-# Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
-Topos = (:Bounded, :(Sides{Connected, Closed}), :(Sides{Closed, Connected}))
-
-for PrimaryTopo in Topos
-
-    xcondition = build_condition(PrimaryTopo, :i, :Nx, false)
-    ycondition = build_condition(PrimaryTopo, :j, :Ny, false)
-    zcondition = build_condition(PrimaryTopo, :k, :Nz, false)
-
-    xcondition_ar = build_condition(PrimaryTopo, :i, :Nx, true)
-    ycondition_ar = build_condition(PrimaryTopo, :j, :Ny, true)
-    zcondition_ar = build_condition(PrimaryTopo, :k, :Nz, true)
-
-    @eval begin
-        XBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo}
-        YBoundedGrid = AbstractGrid{<:Any, <:Any, <:$PrimaryTopo}
-        ZBoundedGrid = AbstractGrid{<:Any, <:Any, <:Any, <:$PrimaryTopo}
-
-        @inline inactive_cell(i, j, k, grid::XBoundedGrid) = $xcondition
-        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XBoundedGrid) = $xcondition_ar
-        @inline inactive_cell(i, j, k, grid::YBoundedGrid) = $ycondition
-        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::YBoundedGrid) = $ycondition_ar
-        @inline inactive_cell(i, j, k, grid::ZBoundedGrid) = $zcondition
-        @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ZBoundedGrid) = $zcondition_ar
-    end
-
-    for SecondaryTopo in Topos
-
-        xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny, false)))
-        xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
-        yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
-
-        xycondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :j, :Ny, true)))
-        xzcondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
-        yzcondition_ar = :( $ycondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
-
-        @eval begin
-            XYBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo}
-            XZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:Any, <:$SecondaryTopo}
-            YZBoundedGrid = AbstractGrid{<:Any, <:Any, <:$PrimaryTopo, <:$SecondaryTopo}
-
-            @inline inactive_cell(i, j, k, grid::XYBoundedGrid) = $xycondition
-            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XYBoundedGrid) = $xycondition_ar
-            @inline inactive_cell(i, j, k, grid::XZBoundedGrid) = $xzcondition
-            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XZBoundedGrid) = $xzcondition_ar
-            @inline inactive_cell(i, j, k, grid::YZBoundedGrid) = $yzcondition
-            @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::YZBoundedGrid) = $yzcondition_ar
-        end
-
-        for TertiaryTopo in Topos
-            xyzcondition = :( $xycondition | $(build_condition(TertiaryTopo, :k, :Nz, false)))
-            xyzcondition_ar = :( $xyzcondition .| $(build_condition(TertiaryTopo, :k, :Nz, true)))
-
-            @eval begin
-                XYZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo, <:$TertiaryTopo}
-
-                @inline inactive_cell(i, j, k, grid::XYZBoundedGrid) = $xyzcondition
-                @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::XYZBoundedGrid) = $xyzcondition_ar
-            end
-        end
-    end
+@inline function inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid)
+    iᵐ = ReactantCore.materialize_traced_array(i)
+    jᵐ = ReactantCore.materialize_traced_array(j)
+    kᵐ = ReactantCore.materialize_traced_array(k)
+    return .!(within_bounds.(iᵐ, iᵐ, topology(grid, 1), Ref(c), grid.Nx) .&
+              within_bounds.(jᵐ, jᵐ, topology(grid, 2), Ref(c), grid.Ny) .&
+              within_bounds.(kᵐ, kᵐ, topology(grid, 3), Ref(c), grid.Nz))
 end
+
+@inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
 """
 $(TYPEDSIGNATURES)
@@ -132,6 +74,16 @@ region of the grid.
 
 # Fallback for non-immersed grids, ImmersedBoundaries extends this for `ImmersedBoundaryGrid`.
 @inline immersed_inactive_node(i, j, k, grid, LX, LY, LZ) = false
+
+@inline unit_vector(::Val{1}) = (1, 0, 0)
+@inline unit_vector(::Val{2}) = (0, 1, 0)
+@inline unit_vector(::Val{3}) = (0, 0, 1)
+
+# A node has data within the sides of the direction d and outside the immersed boundary
+@inline function node_has_data(i, j, k, grid, ::Val{d}, ℓx, ℓy, ℓz) where d
+    n = (i, j, k)[d]
+    return within_bounds(n, n, topology(grid, d), (ℓx, ℓy, ℓz)[d], size(grid, d)) & !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
+end
 
 """
 $(TYPEDSIGNATURES)

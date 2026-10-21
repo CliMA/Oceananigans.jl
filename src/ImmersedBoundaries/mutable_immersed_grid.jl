@@ -17,9 +17,9 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline mutable_column_depth(h, η) = ifelse(h == 0, zero(h), h + η)
 
 @inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶜᵃ(i, j, grid), @inbounds η[i, j, k])
-@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid),  ℑxᶠᵃᵃ(i, j, k, grid, η))
-@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid),  ℑyᵃᶠᵃ(i, j, k, grid, η))
-@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶠᵃ(i, j, grid), ℑxyᶠᶠᵃ(i, j, k, grid, η))
+@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid),  ℑxᶠᶜᶠ(i, j, k, grid, η))
+@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid),  ℑyᶜᶠᶠ(i, j, k, grid, η))
+@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = mutable_column_depth(static_column_depthᶠᶠᵃ(i, j, grid), ℑxyᶠᶠᶠ(i, j, k, grid, η))
 
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -27,10 +27,10 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthᶠᶜᵃ(i, j, grid) = static_column_depthᶠᶜᵃ(i, j, grid)
 @inline column_depthᶠᶠᵃ(i, j, grid) = static_column_depthᶠᶠᵃ(i, j, grid)
 
-@inline column_depthᶜᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶜᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶜᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶠᵃ(i, j, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
 
 # Three dimensional column_depth methods for use in `KernelOperations`
 @inline column_depthᶜᶜᵃ(i, j, k, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -38,10 +38,10 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthᶠᶜᵃ(i, j, k, grid) = static_column_depthᶠᶜᵃ(i, j, grid)
 @inline column_depthᶠᶠᵃ(i, j, k, grid) = static_column_depthᶠᶠᵃ(i, j, grid)
 
-@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶜᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶜᶠᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶜᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind) = column_depthᶠᶠᵃ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
 
 # Topology - aware column height (used for the SplitExplicitFreeSurface)
 
@@ -112,7 +112,7 @@ import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ
 using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
 using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
-using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+using Oceananigans.Operators: ℑxᶠᶜᶠ, ℑyᶜᶠᶠ, ℑxyᶠᶠᶠ, ℑxzᶜᶜᶜ, ℑxzᶜᶠᶜ, ℑxzᶠᶜᶜ, ℑxzᶠᶜᶠ, ℑxzᶠᶠᶜ, ℑyzᶜᶜᶜ, ℑyzᶜᶠᶜ, ℑyzᶜᶠᶠ, ℑyzᶠᶜᶜ, ℑyzᶠᶠᶜ
 using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
 #####
@@ -188,14 +188,14 @@ const F = Face
 # ∂xᶠᶜᶜ: tracer/buoyancy/pressure x-derivatives (most common)
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -203,14 +203,14 @@ end
 # ∂xᶜᶜᶜ: filtered velocity derivatives (Smagorinsky)
 @inline function ∂xᶜᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶜᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
+    ∂z_ϕ = ℑxzᶜᶜᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
     ∂x_z = ∂x_zᶜᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶜᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶜᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
+    ∂z_ϕ = ℑxzᶜᶜᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
     ∂x_z = ∂x_zᶜᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -218,14 +218,14 @@ end
 # ∂xᶠᶜᶠ: w x-derivative
 @inline function ∂xᶠᶜᶠ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶠ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
+    ∂z_ϕ = ℑxzᶠᶜᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
     ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶠ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶠ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
+    ∂z_ϕ = ℑxzᶠᶜᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
     ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -233,14 +233,14 @@ end
 # ∂xᶜᶠᶜ: vorticity x-derivative (Leith)
 @inline function ∂xᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶜᶠᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
+    ∂z_ϕ = ℑxzᶜᶠᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
     ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶜᶠᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
+    ∂z_ϕ = ℑxzᶜᶠᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
     ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -248,14 +248,14 @@ end
 # ∂xᶠᶠᶜ: filtered v x-derivative
 @inline function ∂xᶠᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶠᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
+    ∂z_ϕ = ℑxzᶠᶠᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
     ∂x_z = ∂x_zᶠᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶠᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
+    ∂z_ϕ = ℑxzᶠᶠᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
     ∂x_z = ∂x_zᶠᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -267,14 +267,14 @@ end
 # ∂yᶜᶠᶜ: tracer/buoyancy/pressure y-derivatives (most common)
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
+    ∂z_ϕ = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
+    ∂z_ϕ = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -282,14 +282,14 @@ end
 # ∂yᶜᶜᶜ: filtered velocity derivatives
 @inline function ∂yᶜᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶜᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
+    ∂z_ϕ = ℑyzᶜᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
     ∂y_z = ∂y_zᶜᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶜᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
+    ∂z_ϕ = ℑyzᶜᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
     ∂y_z = ∂y_zᶜᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -297,14 +297,14 @@ end
 # ∂yᶜᶠᶠ: w y-derivative
 @inline function ∂yᶜᶠᶠ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶠ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
+    ∂z_ϕ = ℑyzᶜᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶠ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶠ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
+    ∂z_ϕ = ℑyzᶜᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -312,14 +312,14 @@ end
 # ∂yᶠᶜᶜ: vorticity y-derivative
 @inline function ∂yᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶠᶜᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
+    ∂z_ϕ = ℑyzᶠᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
     ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶠᶜᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
+    ∂z_ϕ = ℑyzᶠᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
     ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -327,14 +327,14 @@ end
 # ∂yᶠᶠᶜ: filtered u y-derivative
 @inline function ∂yᶠᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶠᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
+    ∂z_ϕ = ℑyzᶠᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
     ∂y_z = ∂y_zᶠᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶠᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶠᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
+    ∂z_ϕ = ℑyzᶠᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
     ∂y_z = ∂y_zᶠᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end

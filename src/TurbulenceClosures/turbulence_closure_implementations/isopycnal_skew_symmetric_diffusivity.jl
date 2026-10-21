@@ -182,8 +182,8 @@ end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    by   = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
-    bz   = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    by   = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   = ℑxzᶠᶜᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
     bx   =  ∂xᵣ_b(i, j, k, grid, buoyancy, tracers)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
@@ -193,8 +193,8 @@ end
 
 @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx   = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
-    bz   = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    bx   = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    bz   = ℑyzᶜᶠᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
     by   =  ∂yᵣ_b(i, j, k, grid, buoyancy, tracers)
     ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
@@ -204,8 +204,8 @@ end
 
 @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx   = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
-    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bx   = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    by   = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
     bz   =  ∂z_b(i, j, k, grid, buoyancy, tracers)
     ∂x_z = ∂x_zᶜᶜᶠ(i, j, k, grid)
     ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
@@ -254,8 +254,8 @@ end
     ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂y_c = ℑxyᶠᶜᶜ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
+    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(grid)
     R₁₂ = zero(grid)
@@ -284,8 +284,8 @@ end
     ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂x_c = ℑxyᶜᶠᶜ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
+    ∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(grid)
     R₂₂ = one(grid)
@@ -312,8 +312,8 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
+    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)

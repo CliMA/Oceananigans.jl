@@ -49,7 +49,7 @@ end
 
 # znode for an AbstractMutableGrid grid is the reference node (`rnode`) scaled by the derivative with respect to the reference (σⁿ)
 # added to the surface value of `z` (which we here call ηⁿ)
-@inline Grids.znode(i, j, k, grid::AMG, ::C, ::C, ℓz) = rnode(i, j, k, grid, C(), C(), ℓz) * σⁿ(i, j, k, grid, C(), C(), ℓz) + @inbounds grid.z.ηⁿ[i, j, 1]
-@inline Grids.znode(i, j, k, grid::AMG, ::F, ::C, ℓz) = rnode(i, j, k, grid, F(), C(), ℓz) * σⁿ(i, j, k, grid, F(), C(), ℓz) +  ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline Grids.znode(i, j, k, grid::AMG, ::C, ::F, ℓz) = rnode(i, j, k, grid, C(), F(), ℓz) * σⁿ(i, j, k, grid, C(), F(), ℓz) +  ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline Grids.znode(i, j, k, grid::AMG, ::F, ::F, ℓz) = rnode(i, j, k, grid, F(), F(), ℓz) * σⁿ(i, j, k, grid, F(), F(), ℓz) + ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::C, ::C, ℓz) = rnode(i, j, k, grid, C(), C(), ℓz) * σⁿ(i, j, k, grid, C(), C(), ℓz) + @inbounds grid.z.ηⁿ[i, j, grid.Nz+1]
+@inline Grids.znode(i, j, k, grid::AMG, ::F, ::C, ℓz) = rnode(i, j, k, grid, F(), C(), ℓz) * σⁿ(i, j, k, grid, F(), C(), ℓz) +  ℑxᶠᶜᶠ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::C, ::F, ℓz) = rnode(i, j, k, grid, C(), F(), ℓz) * σⁿ(i, j, k, grid, C(), F(), ℓz) +  ℑyᶜᶠᶠ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::F, ::F, ℓz) = rnode(i, j, k, grid, F(), F(), ℓz) * σⁿ(i, j, k, grid, F(), F(), ℓz) + ℑxyᶠᶠᶠ(i, j, grid.Nz+1, grid, grid.z.ηⁿ)

@@ -55,7 +55,7 @@ end
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²⁺ = clip(N²)
-    w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
+    w★ = ℑzᶜᶜᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, e)
     return ifelse(N²⁺ == 0, FT(Inf), w★ / sqrt(N²⁺))
 end
 
@@ -110,8 +110,8 @@ end
 
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
     Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
-    w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
+    w★       = ℑzᶜᶜᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
+    w★³      = ℑzᶜᶜᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
     S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
     N²       = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
@@ -138,7 +138,7 @@ end
     ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
 
     #=
-    w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
+    w★² = ℑzᶜᶜᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
     Riᶠ = w★² * S² / sqrt(N²) / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
     ϵˢᵖ = 1 - Cˢᵖ * Riᶠ                    # ϵ = Sheared convection factor
     ℓᵉ = clip(ϵˢᵖ * ℓᵉ)

@@ -18,7 +18,7 @@ function cache_fluxes!(dissipation, model, tracer_name)
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
-    cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
+    cache_fluxes!(dissipation, model, U, tracer_name, Val(tracer_id))
 
     return nothing
 end
@@ -32,14 +32,13 @@ function flux_parameters(grid)
     return KernelParameters(Fx, Fy, Fz)
 end
 
-function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
+function cache_fluxes!(dissipation, model, U, tracer_name::Symbol, tracer_id)
 
     # Grab tracer properties
     c    = model.tracers[tracer_name]
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    U = model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
     timestepper = model.timestepper

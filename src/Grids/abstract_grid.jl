@@ -65,6 +65,7 @@ $(TYPEDSIGNATURES)
 Return the topology of the `grid` for the `dim`-th dimension.
 """
 @inline topology(grid, dim) = topology(grid)[dim]
+@inline topology(grid::AbstractGrid, ::Val{dim}) where dim = topology(grid)[dim]
 
 """
 $(TYPEDSIGNATURES)

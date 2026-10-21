@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat
+using Oceananigans.Grids: Flat, node_has_data
 using Oceananigans.Grids: peripheral_node
 
 #####
@@ -56,21 +56,6 @@ using Oceananigans.Grids: peripheral_node
 @inline ℑyzᵃᶜᶠ(i, j, k, grid, f, args...) = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, f, args...)
 
 #####
-##### Triple interpolation
-#####
-
-@inline ℑxyzᶜᶜᶜ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, f, args...)
-@inline ℑxyzᶠᶠᶠ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, f, args...)
-
-@inline ℑxyzᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶜᶠᶜ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
-@inline ℑxyzᶠᶜᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, f, args...)
-
-@inline ℑxyzᶜᶠᶠ(i, j, k, grid, f, args...) = ℑxᶜᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶠᶜᶠ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, f, args...)
-@inline ℑxyzᶠᶠᶜ(i, j, k, grid, f, args...) = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, f, args...)
-
-#####
 ##### Leftover
 #####
 
@@ -111,6 +96,80 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 
+
+#####
+##### Location-explicit interpolations average the operands with data, take the one with data next to a boundary, and
+##### vanish where neither has data: beyond the sides of the interpolated direction, or inside an immersed boundary
+#####
+
+@inline function conditional_ℑ(i, j, k, grid, ::Val{d}, ℓx, ℓy, ℓz, ψ, args...) where d
+    n⁻, n⁺, ℓᵒ = operands(i, j, k, Val(d), ℓx, ℓy, ℓz)
+    d⁻ = node_has_data(n⁻..., grid, Val(d), ℓᵒ...)
+    d⁺ = node_has_data(n⁺..., grid, Val(d), ℓᵒ...)
+    ψ⁻ = getvalue(ψ, n⁻..., grid, args...)
+    ψ⁺ = getvalue(ψ, n⁺..., grid, args...)
+    return ifelse(d⁻ & d⁺, interior_ℑ(i, j, k, grid, Val(d), ℓx, ℓy, ℓz, ψ⁻, ψ⁺, ψ, args...), ifelse(d⁻, ψ⁻, ifelse(d⁺, ψ⁺, zero(ψ⁺))))
+end
+
+# The interpolation between two operands with data
+@inline interior_ℑ(i, j, k, grid, d, ℓx, ℓy, ℓz, ψ⁻, ψ⁺, ψ, args...) = (ψ⁻ + ψ⁺) / 2
+
+@inline conditional_ℑ(i, j, k, grid::XFlatGrid, ::Val{1}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+@inline conditional_ℑ(i, j, k, grid::YFlatGrid, ::Val{2}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+@inline conditional_ℑ(i, j, k, grid::ZFlatGrid, ::Val{3}, ℓx, ℓy, ℓz, ψ, args...) = getvalue(ψ, i, j, k, grid, args...)
+
+# One-direction interpolations, named by the location they interpolate to
+for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ)
+    ℑx = Symbol(:ℑx, ℓ1, ℓ2, ℓ3)
+    ℑy = Symbol(:ℑy, ℓ2, ℓ1, ℓ3)
+    ℑz = Symbol(:ℑz, ℓ2, ℓ3, ℓ1)
+
+    ℓ  = ℓ1 == :ᶜ ? :(Center()) : :(Face())
+    ℓa = ℓ2 == :ᶜ ? :(Center()) : :(Face())
+    ℓb = ℓ3 == :ᶜ ? :(Center()) : :(Face())
+
+    @eval begin
+        @inline $ℑx(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, ψ, args...)
+        @inline $ℑy(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, ψ, args...)
+        @inline $ℑz(i, j, k, grid, ψ, args...) = conditional_ℑ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, ψ, args...)
+
+        @inline $ℑx(i, j, k, grid, ψ::Number, args...) = ψ
+        @inline $ℑy(i, j, k, grid, ψ::Number, args...) = ψ
+        @inline $ℑz(i, j, k, grid, ψ::Number, args...) = ψ
+
+        export $ℑx, $ℑy, $ℑz
+    end
+end
+
+# Interpolations in two and three directions, composed of one-direction ones: x before y before z, except xyz, which interpolates z first
+for ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
+    ℓx⁰ = ℓx == :ᶜ ? :ᶠ : :ᶜ
+    ℓy⁰ = ℓy == :ᶜ ? :ᶠ : :ᶜ
+    ℓz⁰ = ℓz == :ᶜ ? :ᶠ : :ᶜ
+
+    ℑxy  = Symbol(:ℑxy,  ℓx, ℓy, ℓz)
+    ℑxz  = Symbol(:ℑxz,  ℓx, ℓy, ℓz)
+    ℑyz  = Symbol(:ℑyz,  ℓx, ℓy, ℓz)
+    ℑxyz = Symbol(:ℑxyz, ℓx, ℓy, ℓz)
+
+    x_then_y = Symbol(:ℑx, ℓx, ℓy⁰, ℓz)
+    x_then_z = Symbol(:ℑx, ℓx, ℓy, ℓz⁰)
+    y_then_z = Symbol(:ℑy, ℓx, ℓy, ℓz⁰)
+    last_x   = Symbol(:ℑx, ℓx, ℓy, ℓz)
+    last_y   = Symbol(:ℑy, ℓx, ℓy, ℓz)
+    last_z   = Symbol(:ℑz, ℓx, ℓy, ℓz)
+    middle_y = Symbol(:ℑy, ℓx⁰, ℓy, ℓz)
+    first_z  = Symbol(:ℑz, ℓx⁰, ℓy⁰, ℓz)
+
+    @eval begin
+        @inline $ℑxy(i, j, k, grid, ψ, args...)  = $last_y(i, j, k, grid, $x_then_y, ψ, args...)
+        @inline $ℑxz(i, j, k, grid, ψ, args...)  = $last_z(i, j, k, grid, $x_then_z, ψ, args...)
+        @inline $ℑyz(i, j, k, grid, ψ, args...)  = $last_z(i, j, k, grid, $y_then_z, ψ, args...)
+        @inline $ℑxyz(i, j, k, grid, ψ, args...) = $last_x(i, j, k, grid, $middle_y, $first_z, ψ, args...)
+
+        export $ℑxy, $ℑxz, $ℑyz, $ℑxyz
+    end
+end
 
 #####
 ##### Active-weighted interpolation

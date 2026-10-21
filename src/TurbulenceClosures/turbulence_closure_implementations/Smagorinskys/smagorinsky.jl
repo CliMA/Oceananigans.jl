@@ -136,9 +136,9 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorins
     return merge(viscosity_nt, coefficient_fields)
 end
 
-@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᶜᶜ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᶜᶠᶜ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᶜᶜᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
 Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
 function Base.show(io::IO, closure::Smagorinsky)

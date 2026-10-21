@@ -42,11 +42,13 @@ end
 #####
 
 # ∂x_rTᶠᶜᶠ: topology-aware x-derivative at constant r (for free surface η)
-@inline ∂xᵣTᶠᶜᶠ(i, j, k, grid, f, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-@inline ∂xᵣTᶠᶜᶠ(i, j, k, grid, c::AbstractArray) = δxTᶠᵃᵃ(i, j, k, grid, c) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
+@inline ∂xᵣTᶠᶜᶠ(i, j, k, grid, ϕ, args...) = conditional_δ(i, j, k, grid, Val(1), Face(), Center(), Face(), δxTᶠᵃᵃ, ϕ, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
 
 # ∂y_rTᶜᶠᶠ: topology-aware y-derivative at constant r (for free surface η)
-@inline ∂yᵣTᶜᶠᶠ(i, j, k, grid, f, args...) = δyTᵃᶠᵃ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
-@inline ∂yᵣTᶜᶠᶠ(i, j, k, grid, c::AbstractArray) = δyTᵃᶠᵃ(i, j, k, grid, c) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+@inline ∂yᵣTᶜᶠᶠ(i, j, k, grid, ϕ, args...) = conditional_δ(i, j, k, grid, Val(2), Center(), Face(), Face(), δyTᵃᶠᵃ, ϕ, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
+
+# The topology-aware derivatives at constant r are the topology-aware derivatives of the barotropic mode
+const ∂xTᶠᶜᶠ = ∂xᵣTᶠᶜᶠ
+const ∂yTᶜᶠᶠ = ∂yᵣTᶜᶠᶠ
 
 export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ

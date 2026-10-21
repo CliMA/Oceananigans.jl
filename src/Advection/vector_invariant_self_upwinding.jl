@@ -13,8 +13,8 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
 @inline δy_V_plus_∂t_σ(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + Az_Δr_∂t_σ(i, j, k, grid)
 
 # Velocity smoothness for divergence upwinding
-@inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
-@inline V_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
+@inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
+@inline V_smoothness(i, j, k, grid, u, v) = ℑyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
@@ -25,8 +25,8 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V_plus_∂t_σ, u, v)
-    δuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v)
+    δvˢ = symmetric_interpolate_xᶠᶜᶜ(i, j, k, grid, cross_scheme, δy_V_plus_∂t_σ, u, v)
+    δuᴿ =    biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v)
 
     return û * (δvˢ + δuᴿ)
 end
@@ -37,8 +37,8 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U_plus_∂t_σ, u, v)
-    δvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v)
+    δuˢ = symmetric_interpolate_yᶜᶠᶜ(i, j, k, grid, cross_scheme, δx_U_plus_∂t_σ, u, v)
+    δvᴿ =    biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v)
 
     return v̂ * (δuˢ + δvᴿ)
 end
@@ -49,14 +49,15 @@ end
 
 @inline half_ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2 / 2
 
-@inline δx_u²(i, j, k, grid, u, v) = δxᶜᵃᵃ(i, j, k, grid, half_ϕ², u)
+@inline δx_u²(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, half_ϕ², u)
 @inline δy_u²(i, j, k, grid, u, v) = δyᶠᶠᶜ(i, j, k, grid, half_ϕ², u)
 
 @inline δx_v²(i, j, k, grid, u, v) = δxᶠᶠᶜ(i, j, k, grid, half_ϕ², v)
-@inline δy_v²(i, j, k, grid, u, v) = δyᵃᶜᵃ(i, j, k, grid, half_ϕ², v)
+@inline δy_v²(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, half_ϕ², v)
 
-@inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)
-@inline v_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
+
+@inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᶜᶜ(i, j, k, grid, u)
+@inline v_smoothness(i, j, k, grid, u, v) = ℑyᶜᶜᶜ(i, j, k, grid, v)
 
 @inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
 
@@ -65,8 +66,8 @@ end
     δu²_stencil  = scheme.upwinding.δu²_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKvˢ = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
-    δKuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
+    δKvˢ = symmetric_interpolate_yᶠᶜᶜ(i, j, k, grid, cross_scheme, δx_v², u, v)
+    δKuᴿ =    biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
 
     return (δKuᴿ + δKvˢ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
@@ -78,8 +79,8 @@ end
     δv²_stencil  = scheme.upwinding.δv²_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKuˢ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
-    δKvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
+    δKuˢ = symmetric_interpolate_xᶜᶠᶜ(i, j, k, grid, cross_scheme, δy_u², u, v)
+    δKvᴿ =    biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
 
     return (δKvᴿ + δKuˢ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 end

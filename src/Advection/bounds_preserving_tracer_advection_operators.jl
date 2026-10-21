@@ -42,8 +42,8 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
 #####
 
 @inline function reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -51,8 +51,8 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
 end
 
 @inline function reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -60,8 +60,8 @@ end
 end
 
 @inline function reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -120,12 +120,6 @@ end
     return θᵢ * (ĉ - cᵢ) + cᵢ
 end
 
-@inline without_bounds_preservation(scheme) = scheme
-
-@inline function without_bounds_preservation(scheme::WENO{N, FT, WCT}) where {N, FT, WCT}
-    return WENO{N, FT, WCT}(nothing, scheme.buffer_scheme, scheme.advecting_velocity_scheme, scheme.time_discretization)
-end
-
 #####
 ##### Flux divergence
 #####
@@ -153,10 +147,10 @@ end
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i,   j, k, grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i+1, j, k, grid, θ, c)
@@ -165,8 +159,8 @@ end
 
     u⁺ = @inbounds u[i+1, j, k]
     u⁻ = @inbounds u[i,   j, k]
-    Ax_ρuc⁺ = ℑxᶠᵃᵃ(i+1, j, k, grid, ρ) * Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u⁺, c₊ᴸ, c₊ᴿ)
-    Ax_ρuc⁻ = ℑxᶠᵃᵃ(i,   j, k, grid, ρ) * Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u⁻, c₋ᴸ, c₋ᴿ)
+    Ax_ρuc⁺ = ℑxᶠᶜᶜ(i+1, j, k, grid, ρ) * Axᶠᶜᶜ(i+1, j, k, grid) * upwind_biased_product(u⁺, c₊ᴸ, c₊ᴿ)
+    Ax_ρuc⁻ = ℑxᶠᶜᶜ(i,   j, k, grid, ρ) * Axᶠᶜᶜ(i,   j, k, grid) * upwind_biased_product(u⁻, c₋ᴸ, c₋ᴿ)
 
     return Ax_ρuc⁺ - Ax_ρuc⁻
 end
@@ -174,10 +168,10 @@ end
 @inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j,   k, grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j+1, k, grid, θ, c)
@@ -186,8 +180,8 @@ end
 
     v⁺ = @inbounds v[i, j+1, k]
     v⁻ = @inbounds v[i, j,   k]
-    Ay_ρvc⁺ = ℑyᵃᶠᵃ(i, j+1, k, grid, ρ) * Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v⁺, c₊ᴸ, c₊ᴿ)
-    Ay_ρvc⁻ = ℑyᵃᶠᵃ(i, j,   k, grid, ρ) * Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v⁻, c₋ᴸ, c₋ᴿ)
+    Ay_ρvc⁺ = ℑyᶜᶠᶜ(i, j+1, k, grid, ρ) * Ayᶜᶠᶜ(i, j+1, k, grid) * upwind_biased_product(v⁺, c₊ᴸ, c₊ᴿ)
+    Ay_ρvc⁻ = ℑyᶜᶠᶜ(i, j,   k, grid, ρ) * Ayᶜᶠᶜ(i, j,   k, grid) * upwind_biased_product(v⁻, c₋ᴸ, c₋ᴿ)
 
     return Ay_ρvc⁺ - Ay_ρvc⁻
 end
@@ -195,10 +189,10 @@ end
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j, k,   grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j, k+1, grid, θ, c)
@@ -207,8 +201,8 @@ end
 
     w⁺ = @inbounds w[i, j, k+1]
     w⁻ = @inbounds w[i, j, k]
-    Az_ρwc⁺ = ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
-    Az_ρwc⁻ = ℑzᵃᵃᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
+    Az_ρwc⁺ = ℑzᶜᶜᶠ(i, j, k+1, grid, ρ) * Azᶜᶜᶠ(i, j, k+1, grid) * upwind_biased_product(w⁺, c₊ᴸ, c₊ᴿ)
+    Az_ρwc⁻ = ℑzᶜᶜᶠ(i, j, k,   grid, ρ) * Azᶜᶜᶠ(i, j, k,   grid) * upwind_biased_product(w⁻, c₋ᴸ, c₋ᴿ)
 
     return Az_ρwc⁺ - Az_ρwc⁻
 end

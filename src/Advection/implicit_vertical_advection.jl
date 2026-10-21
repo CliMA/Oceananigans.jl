@@ -1,6 +1,6 @@
 using Oceananigans.Grids: peripheral_node, Center, Face
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
+using Oceananigans.Operators: Az, volume, ℑzᶜᶜᶠ
 
 @inline vertical_scheme(advection) = advection
 @inline vertical_scheme(advection::VectorInvariant) = advection.vertical_advection_scheme
@@ -34,7 +34,7 @@ end
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -42,7 +42,7 @@ end
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -50,7 +50,7 @@ end
 @inline function implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
-    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -69,7 +69,7 @@ end
 # Density at the tracer cell centre (ᶜᶜᶜ) and the vertical interface (ᶜᶜᶠ). `nothing` ⇒ unit weight,
 # which recovers the volume-conserving (Boussinesq) coefficients.
 @inline densityᶜᶜᶜ(i, j, k, grid, ρ) = @inbounds ρ[i, j, k]
-@inline densityᶜᶜᶠ(i, j, k, grid, ρ) = ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+@inline densityᶜᶜᶠ(i, j, k, grid, ρ) = ℑzᶜᶜᶠ(i, j, k, grid, ρ)
 @inline densityᶜᶜᶜ(i, j, k, grid, ::Nothing) = one(grid)
 @inline densityᶜᶜᶠ(i, j, k, grid, ::Nothing) = one(grid)
 

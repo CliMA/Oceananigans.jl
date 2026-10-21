@@ -64,8 +64,8 @@ end
 
 const ESC = AbstractRotation{<:EnstrophyConserving}
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᶜ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᶜ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -73,11 +73,11 @@ const ESC = AbstractRotation{<:EnstrophyConserving}
 
 const ENC = AbstractRotation{<:EnergyConserving}
 
-@inline f_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
-@inline f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
+@inline f_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᶠᶜ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
+@inline f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᶠᶠᶜ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - ℑyᶠᶜᶜ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds + ℑxᶜᶠᶜ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Active-weighted schemes (Jamart & Ozer, 1986)

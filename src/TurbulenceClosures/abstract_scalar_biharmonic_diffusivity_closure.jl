@@ -98,7 +98,7 @@ const AZBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantForm
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
-    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Δy_∇²u, u, v) + δyᶜᶜᶜ(i, j, k, grid, Δx_∇²v, u, v))
 end
 
 @inline function δ★ⱽᴵᶜᶜᶜ(i, j, k, grid, u, v)
@@ -107,7 +107,7 @@ end
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
-    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u, v))
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᶠᶜ(i, j, k, grid, Δy_∇²v, u, v) - δyᶠᶠᶜ(i, j, k, grid, Δx_∇²u, u, v))
 end
 
 @inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid, u, v)
@@ -141,8 +141,8 @@ end
 ##### Biharmonic-specific diffusion operators
 #####
 
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = Az⁻¹ᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = Az⁻¹ᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = Az⁻¹ᶠᶜᶜ(i, j, k, grid) * δxᶠᶜᶜ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = Az⁻¹ᶜᶠᶜ(i, j, k, grid) * δyᶜᶠᶜ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
 ##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the Laplacian operator

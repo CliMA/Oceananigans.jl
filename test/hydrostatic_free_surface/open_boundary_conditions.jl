@@ -766,6 +766,27 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+# A tracer without open boundary conditions keeps its default flux condition on the open sides, whose exterior cell
+# continues the interior: a uniform tracer carried through them by a uniform inflow stays uniform, over a flat bottom too
+function test_uniform_tracer_through_open_sides(; immersed)
+    underlying = RectilinearGrid(size = (16, 4, 2), x = (0, 1), y = (0, 1), z = (-1, 0), halo = (4, 4, 4),
+                                 topology = (Open, Periodic, Bounded))
+    grid  = immersed ? ImmersedBoundaryGrid(underlying, GridFittedBottom((x, y) -> -1/2)) : underlying
+    depth = immersed ? 1/2 : 1
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(1/10), east = NormalFlowBoundaryCondition(1/10))
+    U_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(depth / 10), east = NormalFlowBoundaryCondition(depth / 10))
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :T, buoyancy = nothing, tracer_advection = WENO(order = 5),
+                                        boundary_conditions = (; u = u_bcs, U = U_bcs),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
+    set!(model, u = 1/10, T = 1)
+    for _ in 1:20
+        time_step!(model, 1/100)
+    end
+    T = Array(interior(model.tracers.T))
+    wet = immersed ? (2:2) : (1:2)
+    return all(T[:, :, wet] .≈ 1)
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
@@ -825,5 +846,9 @@ end
 
     @testset "TracerReservoir recovers exported water" begin
         @test test_tracer_reservoir_recovers_exported_water()
+    end
+
+    @testset "A uniform tracer stays uniform through open sides (immersed = $immersed)" for immersed in (false, true)
+        @test test_uniform_tracer_through_open_sides(; immersed)
     end
 end

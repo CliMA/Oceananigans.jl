@@ -69,8 +69,8 @@ Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::TwoDim
 end
 
 @inline function abs²_∇h_ζ(i, j, k, grid, u, v)
-    ζx = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᵣᶜᶠᶜ, ζ₃ᶠᶠᶜ, u, v)
-    ζy = ℑxᶜᵃᵃ(i, j, k, grid, ∂yᵣᶠᶜᶜ, ζ₃ᶠᶠᶜ, u, v)
+    ζx = ℑyᶜᶜᶜ(i, j, k, grid, ∂xᵣᶜᶠᶜ, ζ₃ᶠᶠᶜ, u, v)
+    ζy = ℑxᶜᶜᶜ(i, j, k, grid, ∂yᵣᶠᶜᶜ, ζ₃ᶠᶠᶜ, u, v)
     return ζx^2 + ζy^2
 end
 
@@ -80,8 +80,8 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = @inbounds ψ[i, j, k]^2
 
 @inline function abs²_∇h_wz(i, j, k, grid, w)
-    wxz = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᵣᶠᶜᶜ, ∂zᶜᶜᶜ, w)
-    wyz = ℑyᵃᶜᵃ(i, j, k, grid, ∂yᵣᶜᶠᶜ, ∂zᶜᶜᶜ, w)
+    wxz = ℑxᶜᶜᶜ(i, j, k, grid, ∂xᵣᶠᶜᶜ, ∂zᶜᶜᶜ, w)
+    wyz = ℑyᶜᶜᶜ(i, j, k, grid, ∂yᵣᶜᶠᶜ, ∂zᶜᶜᶜ, w)
     return wxz^2 + wyz^2
 end
 
@@ -133,10 +133,10 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑxᶠᶜᶜ(i, j, k, grid, νₑ)
 
     ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂z_c = ℑxzᶠᶜᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
 
@@ -152,10 +152,10 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑyᶜᶠᶜ(i, j, k, grid, νₑ)
 
     ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
+    ∂z_c = ℑyzᶜᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
@@ -170,10 +170,10 @@ end
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
 
-    νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
+    νₑⁱʲᵏ = ℑzᶜᶜᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᶜᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
+    ∂y_c = ℑyzᶜᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)

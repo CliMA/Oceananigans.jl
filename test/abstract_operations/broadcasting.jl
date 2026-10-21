@@ -29,8 +29,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
         fill_halo_regions!(c) # Does not happen by default in broadcasting now
 
         @allowscalar begin
-            @test c[1, 1, 0] == 4
-            @test c[1, 1, Nz+1] == 4
+            @test c[0, 1, 1] == 4
+            @test c[1, Ny+1, 1] == 4
         end
 
         #####

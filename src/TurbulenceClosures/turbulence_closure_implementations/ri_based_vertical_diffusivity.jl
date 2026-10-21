@@ -2,7 +2,6 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
-using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_seconds
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -56,7 +55,7 @@ Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependent
 # Horizontal filtering for the Richardson number
 struct FivePointHorizontalFilter end
 @inline filter_horizontally(i, j, k, grid, ::Nothing, ϕ) = @inbounds ϕ[i, j, k]
-@inline filter_horizontally(i, j, k, grid, ::FivePointHorizontalFilter, ϕ) = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ϕ)
+@inline filter_horizontally(i, j, k, grid, ::FivePointHorizontalFilter, ϕ) = ℑxyᶜᶜᶠ(i, j, k, grid, ℑxyᶠᶠᶠ, ϕ)
 
 """
     RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -258,8 +257,8 @@ const Tanh   = HyperbolicTangentRiDependentTapering
 @inline ϕ²(i, j, k, grid, ϕ, args...) = ϕ(i, j, k, grid, args...)^2
 
 @inline function shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
-    ∂z_u² = ℑxᶜᵃᵃ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
-    ∂z_v² = ℑyᵃᶜᵃ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
+    ∂z_u² = ℑxᶜᶜᶠ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyᶜᶜᶠ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     return ∂z_u² + ∂z_v²
 end
 

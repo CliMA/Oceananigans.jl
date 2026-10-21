@@ -366,8 +366,8 @@ end
 end
 
 @inline function κuᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
-    e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
-    ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
+    e² = ℑzᶜᶜᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
+    ϵ  = ℑzᶜᶜᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
     𝕊u = momentum_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κu = 𝕊u * e² / ϵ
     κu_max = closure.maximum_viscosity
@@ -375,8 +375,8 @@ end
 end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
-    e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
-    ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
+    e² = ℑzᶜᶜᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
+    ϵ  = ℑzᶜᶜᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
     𝕊c = tracer_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κc = 𝕊c * e² / ϵ
     κc_max = closure.maximum_tracer_diffusivity
@@ -384,8 +384,8 @@ end
 end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
-    e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
-    ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
+    e² = ℑzᶜᶜᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
+    ϵ  = ℑzᶜᶜᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
     𝕊e = tke_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κe = 𝕊e * e² / ϵ
     κe_max = closure.maximum_tke_diffusivity
@@ -393,8 +393,8 @@ end
 end
 
 @inline function κϵᶜᶜᶠ(i, j, k, grid, closure::TDVD, velocities, tracers, buoyancy)
-    e² = ℑzᵃᵃᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
-    ϵ  = ℑzᵃᵃᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
+    e² = ℑzᶜᶜᶠ(i, j, k, grid, ϕ², turbulent_kinetic_energyᶜᶜᶜ, closure, tracers)
+    ϵ  = ℑzᶜᶜᶠ(i, j, k, grid, dissipationᶜᶜᶜ, closure, tracers, buoyancy)
     𝕊ϵ = dissipation_stability_functionᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
     κϵ = 𝕊ϵ * e² / ϵ
     κϵ_max = closure.maximum_dissipation_diffusivity

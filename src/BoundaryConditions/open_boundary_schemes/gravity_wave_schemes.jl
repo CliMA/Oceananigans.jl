@@ -243,7 +243,7 @@ end
     H = column_depthᶠᶜᵃ(i, j, kᴺ⁺¹, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = ℑxᶠᵃᵃ(i, j, kᴺ⁺¹, grid, η)
+    ηᵇ = ℑxᶠᶜᶠ(i, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, j, k] = ifelse(H <= zero(H), zero(grid), Uᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
@@ -259,7 +259,7 @@ end
     H = column_depthᶠᶜᵃ(1, j, kᴺ⁺¹, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = ℑxᶠᵃᵃ(1, j, kᴺ⁺¹, grid, η)
+    ηᵇ = ℑxᶠᶜᶠ(1, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[1, j, k] = ifelse(H <= zero(H), zero(grid), Uᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
@@ -276,7 +276,7 @@ end
     H = column_depthᶜᶠᵃ(i, j, kᴺ⁺¹, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = ℑyᵃᶠᵃ(i, j, kᴺ⁺¹, grid, η)
+    ηᵇ = ℑyᶜᶠᶠ(i, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, j, k] = ifelse(H <= zero(H), zero(grid), Vᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
@@ -292,7 +292,7 @@ end
     H = column_depthᶜᶠᵃ(i, 1, kᴺ⁺¹, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = ℑyᵃᶠᵃ(i, 1, kᴺ⁺¹, grid, η)
+    ηᵇ = ℑyᶜᶠᶠ(i, 1, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, 1, k] = ifelse(H <= zero(H), zero(grid), Vᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 

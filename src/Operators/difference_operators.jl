@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat
+using Oceananigans.Grids: Flat, immersed_inactive_node, topology, unit_vector, within_bounds
 
 #####
 ##### Base difference operators
@@ -57,6 +57,31 @@ export δxᶠᵃᵃ, δxᶜᵃᵃ
 export δyᵃᶠᵃ, δyᵃᶜᵃ
 export δzᵃᵃᶠ, δzᵃᵃᶜ
 
+#####
+##### A 3D difference is zero when one of its operands has no data: beyond the sides of the differenced direction, or
+##### inside an immersed boundary
+#####
+
+# The operands, along d, of a difference or an interpolation to (ℓx, ℓy, ℓz): the nodes n - 1 and n of a Face, n and n + 1
+# of a Center, at the location flipped along d
+@inline function operands(i, j, k, ::Val{d}, ℓx, ℓy, ℓz) where d
+    di, dj, dk = unit_vector(Val(d))
+    s = ifelse((ℓx, ℓy, ℓz)[d] isa Face, -1, 0)
+    n⁻ = (i + s * di, j + s * dj, k + s * dk)
+    n⁺ = (n⁻[1] + di, n⁻[2] + dj, n⁻[3] + dk)
+    ℓᵒ = (d == 1 ? flip_location(ℓx) : ℓx, d == 2 ? flip_location(ℓy) : ℓy, d == 3 ? flip_location(ℓz) : ℓz)
+    return n⁻, n⁺, ℓᵒ
+end
+
+@inline function conditional_δ(i, j, k, grid, ::Val{d}, ℓx, ℓy, ℓz, δ, args...) where d
+    n⁻, n⁺, ℓᵒ = operands(i, j, k, Val(d), ℓx, ℓy, ℓz)
+    other = (ℓx, ℓy, ℓz)[d] isa Face ? n⁻ : n⁺
+    no_data = !within_bounds(n⁻[d], n⁺[d], topology(grid, d), ℓᵒ[d], size(grid, d)) |
+              immersed_inactive_node(i, j, k, grid, ℓᵒ...) |
+              immersed_inactive_node(other..., grid, ℓᵒ...)
+    return ifelse(no_data, zero(grid), δ(i, j, k, grid, args...))
+end
+
 # Define and export 2D and 3D differences
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
     if !(ℓ2 == ℓ3 == :ᵃ) # 1D differences are defined above!
@@ -68,16 +93,32 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
         δyᵃ = Symbol(:δy, :ᵃ, ℓ1, :ᵃ)
         δzᵃ = Symbol(:δz, :ᵃ, :ᵃ, ℓ1)
 
-        @eval begin
-            @inline $δx(i, j, k, grid, f::Function, args...) = $δxᵃ(i, j, k, grid, f, args...)
-            @inline $δy(i, j, k, grid, f::Function, args...) = $δyᵃ(i, j, k, grid, f, args...)
-            @inline $δz(i, j, k, grid, f::Function, args...) = $δzᵃ(i, j, k, grid, f, args...)
+        if ℓ2 == :ᵃ || ℓ3 == :ᵃ
+            @eval begin
+                @inline $δx(i, j, k, grid, f::Function, args...) = $δxᵃ(i, j, k, grid, f, args...)
+                @inline $δy(i, j, k, grid, f::Function, args...) = $δyᵃ(i, j, k, grid, f, args...)
+                @inline $δz(i, j, k, grid, f::Function, args...) = $δzᵃ(i, j, k, grid, f, args...)
 
-            @inline $δx(i, j, k, grid, c) = $δxᵃ(i, j, k, grid, c)
-            @inline $δy(i, j, k, grid, c) = $δyᵃ(i, j, k, grid, c)
-            @inline $δz(i, j, k, grid, c) = $δzᵃ(i, j, k, grid, c)
+                @inline $δx(i, j, k, grid, c) = $δxᵃ(i, j, k, grid, c)
+                @inline $δy(i, j, k, grid, c) = $δyᵃ(i, j, k, grid, c)
+                @inline $δz(i, j, k, grid, c) = $δzᵃ(i, j, k, grid, c)
+            end
+        else
+            ℓ = ℓ1 == :ᶜ ? :(Center()) : :(Face())
+            ℓa = ℓ2 == :ᶜ ? :(Center()) : :(Face())
+            ℓb = ℓ3 == :ᶜ ? :(Center()) : :(Face())
 
-            export $δx, $δy, $δz
+            @eval begin
+                @inline $δx(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, $δxᵃ, f, args...)
+                @inline $δy(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, $δyᵃ, f, args...)
+                @inline $δz(i, j, k, grid, f::Function, args...) = conditional_δ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, $δzᵃ, f, args...)
+
+                @inline $δx(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(1), $ℓ, $ℓa, $ℓb, $δxᵃ, c)
+                @inline $δy(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(2), $ℓa, $ℓ, $ℓb, $δyᵃ, c)
+                @inline $δz(i, j, k, grid, c) = conditional_δ(i, j, k, grid, Val(3), $ℓa, $ℓb, $ℓ, $δzᵃ, c)
+            end
         end
+
+        @eval export $δx, $δy, $δz
     end
 end

@@ -94,7 +94,7 @@ function immersed_value_flux_on_stretched_grid(arch, FT)
     return Array(interior(Field(Integral(model.tracers.c))))[1, 1, 1] ≈ 1
 end
 
-function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+function gradient_wall_flux_budget_is_correct(arch, FT)
     Lz = 1
     κ₀ = FT(exp(-3))
     bz = FT(π)
@@ -102,16 +102,12 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
 
     grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
-    buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
-    κₑ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), bottom=ValueBoundaryCondition(κ₀))
-    model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
-
     model = NonhydrostaticModel(grid;
                                 timestepper = :QuasiAdamsBashforth2,
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer(),
-                                closure = AnisotropicMinimumDissipation(),
-                                boundary_conditions = model_bcs)
+                                closure = ScalarDiffusivity(κ = κ₀),
+                                boundary_conditions = (; b = FieldBoundaryConditions(bottom = GradientBoundaryCondition(bz))))
 
     b₀(x, y, z) = z * bz
     set!(model, b=b₀)
@@ -127,24 +123,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
         time_step!(model, Δt, euler= n==1)
     end
 
-    # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
-    # therefore <ϕ> = bottom_flux * t / Lz
-    #
-    # Use an atol of 1e-6 so test passes with Float32 as there's a big cancellation
-    # error due to buoyancy order of magnitude.
-    #
-    # Float32:
-    # mean_b₀ = -1.5707965f0
-    # mean(interior(b)) = -1.5708286f0
-    # mean(interior(b)) - mean_b₀ = -3.20673f-5
-    # (flux * model.clock.time) / Lz = -3.141593f-5
-    #
-    # Float64
-    # mean_b₀ = -1.5707963267949192
-    # mean(interior(b)) = -1.57082774272148
-    # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
-    # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-
+    # budget: Lz ∂⟨b⟩/∂t = - bottom flux, the top is insulating; the atol absorbs the Float32 cancellation of ⟨b⟩ ≈ -π/2
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
@@ -589,8 +568,8 @@ function test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
     east_halo     = Array(view(parent(model.tracers.c), east, 1, 1))[]
     east_interior = Array(interior(model.tracers.c, grid.Nx, 1, 1))[]
 
-    # A `Value` BC sets the east halo by linear extrapolation: c_halo = 2 c̄ - c_interior.
-    @test east_halo ≈ 2c̄ - east_interior   # tracer Value BC applied during the merged fill
+    # A `Value` BC sets the east halo to the wall value c̄
+    @test east_halo ≈ c̄   # tracer Value BC applied during the merged fill
     @test east_halo != 999                  # sentinel was overwritten (the fill ran)
 end
 
@@ -801,8 +780,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         @test immersed_value_flux_on_stretched_grid(arch, Float64)
     end
 
-    @testset "Custom diffusivity boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
-        @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+    @testset "Gradient wall flux budget [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types
+        @test gradient_wall_flux_budget_is_correct(arch, FT)
     end
 
     @testset "Open boundary conditions [$(summary(arch)), $FT]" for arch in archs, FT in (Float64,) #float_types

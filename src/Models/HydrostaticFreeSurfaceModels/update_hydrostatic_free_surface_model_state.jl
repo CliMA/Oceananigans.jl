@@ -24,17 +24,16 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 Update the model state to be consistent with the current prognostic fields.
 
 This function performs the following steps:
-1. Mask immersed boundary regions (set field values to zero in solid regions)
-2. Update time-dependent field boundary conditions
-3. Fill halo regions for tracers
-4. Compute diagnostic quantities:
+1. Update time-dependent field boundary conditions
+2. Fill halo regions for tracers
+3. Compute diagnostic quantities:
    - Buoyancy gradients (for turbulence closures)
    - Vertical velocity `w` from continuity equation
    - Hydrostatic pressure `pHY′`
    - Closure fields
-5. Fill local halos for closure fields and pressure
-6. Execute any callbacks registered for `UpdateStateCallsite`
-7. Update biogeochemical state
+4. Fill local halos for closure fields and pressure
+5. Execute any callbacks registered for `UpdateStateCallsite`
+6. Update biogeochemical state
 
 Note: Halo regions for free surface fields are filled separately after the barotropic step,
 while for velocities they are filled in the time-stepping function.
@@ -46,7 +45,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        mask_immersed_field!(model.tracers)
         update_model_field_time_series!(model, model.clock)
         compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)

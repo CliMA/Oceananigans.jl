@@ -131,13 +131,13 @@ summarize_stability_functions(s::VariableStabilityFunctions{FT}, prefix="", sep=
 end
 
 @inline function shear_numberᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
-    τ² = ℑzᵃᵃᶠ(i, j, k, grid, square_time_scaleᶜᶜᶜ, closure, tracers, buoyancy)
+    τ² = ℑzᶜᶜᶠ(i, j, k, grid, square_time_scaleᶜᶜᶜ, closure, tracers, buoyancy)
     S² = shearᶜᶜᶠ(i, j, k, grid, velocities.u, velocities.v)
     return τ² * S²
 end
 
 @inline function stratification_numberᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-    τ² = ℑzᵃᵃᶠ(i, j, k, grid, square_time_scaleᶜᶜᶜ, closure, tracers, buoyancy)
+    τ² = ℑzᶜᶜᶠ(i, j, k, grid, square_time_scaleᶜᶜᶜ, closure, tracers, buoyancy)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return τ² * N²
 end

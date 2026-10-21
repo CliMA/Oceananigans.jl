@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection
+using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
@@ -11,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, mask_immersed_field!
 using Oceananigans.Solvers: ConjugateGradientSolver
 using Oceananigans.Utils: configure_kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -21,11 +21,6 @@ const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 
 function Advection.adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
-    return new_advection
-end
-
-function Advection.materialize_advection(advection::MultiRegionObject, grid::MultiRegionGrids)
-    @apply_regionally new_advection = materialize_advection(advection, grid)
     return new_advection
 end
 
@@ -97,6 +92,8 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 # reconcile_state! for a multi-region model.
 # A cubed-sphere grid needs to fill u and v velocity halos together.
 function TimeSteppers.reconcile_state!(model::MultiRegionModel)
+
+    @apply_regionally mask_immersed_field!(model.tracers)
 
     u = model.velocities.u
     v = model.velocities.v

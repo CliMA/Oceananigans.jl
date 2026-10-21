@@ -10,10 +10,9 @@ using Printf: @sprintf
 using Adapt: Adapt
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: AbstractGrid, Center, Face, ynode, znode
-using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
-                              ℑyᵃᶜᵃ, ℑyᵃᶠᵃ,
-                              ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
-                              ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶠ,
+using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ,
+                              ℑxᶜᶜᶜ, ℑxᶜᶜᶠ, ℑxᶜᶠᶜ, ℑxᶠᶜᶜ, ℑxᶠᶜᶠ, ℑxᶠᶠᶜ, ℑyᶜᶜᶜ, ℑyᶜᶠᶜ, ℑyᶠᶜᶜ, ℑyᶠᶠᶜ,
+                              ℑzᶜᶜᶜ, ℑzᶜᶜᶠ, ℑzᶠᶜᶜ, ℑzᶠᶜᶠ, ℑxyᶜᶠᶜ, ℑxyᶠᶜᶜ, ℑxzᶜᶜᶠ,
                               Ay⁻¹ᶠᶜᶜ, Ax⁻¹ᶜᶠᶜ,
                               Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid

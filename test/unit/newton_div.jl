@@ -39,14 +39,8 @@ if CUDA.functional()
     end
 end
 
-function append_weight_computation_type!(list, weno::WENO{<:Any, <:Any, WCT}) where {WCT}
-    push!(list, WCT)
-    append_weight_computation_type!(list, weno.buffer_scheme)
-end
-append_weight_computation_type!(::Any, ::Any) = nothing
+append_weight_computation_type!(list, ::WENO{<:Any, <:Any, WCT}) where {WCT} = push!(list, WCT)
 
-# Extract all weight computation types from WENO
-# Assumes a non-weno buffer scheme will not have WENO buffer scheme
 function get_weight_computation_from_weno_advection(weno::WENO)
     weight_computation_types = DataType[]
     append_weight_computation_type!(weight_computation_types, weno)
