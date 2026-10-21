@@ -274,11 +274,14 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
             compute_average_surface_buoyancy_flux!,
             closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
-    # The diffusivities are computed one cell into the halos, where they read the averaged flux
-    fill_halo_regions!(closure_fields.Jᵇ)
+    fill_average_surface_buoyancy_flux_halos!(closure_fields.Jᵇ, grid)
 
     return nothing
 end
+
+# The diffusivities are computed one cell into the halos, where they read the averaged flux
+fill_average_surface_buoyancy_flux_halos!(Jᵇ, grid) = nothing
+fill_average_surface_buoyancy_flux_halos!(Jᵇ, ::DistributedGrid) = fill_halo_regions!(Jᵇ)
 
 function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
