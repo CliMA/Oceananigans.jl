@@ -69,6 +69,23 @@ end
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
 end
 
+# Vᵐ holds the stage flux and Vⁿ the running sum Σₘ βₘ Vᵐ
+@kernel function _accumulate_ssp_diffusive_fluxes!(Vⁿ, Vᵐ, grid::AbstractGrid, clo, K, b, c, c_id, clk, fields, β, keep)
+    i, j, k = @index(Global, NTuple)
+
+    Vᵐ.x[i, j, k] = zero(grid)
+    Vᵐ.y[i, j, k] = zero(grid)
+    Vᵐ.z[i, j, k] = zero(grid)
+
+    compute_diffusive_fluxes!(Vᵐ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
+
+    @inbounds begin
+        Vⁿ.x[i, j, k] = keep * Vⁿ.x[i, j, k] + β * Vᵐ.x[i, j, k]
+        Vⁿ.y[i, j, k] = keep * Vⁿ.y[i, j, k] + β * Vᵐ.y[i, j, k]
+        Vⁿ.z[i, j, k] = keep * Vⁿ.z[i, j, k] + β * Vᵐ.z[i, j, k]
+    end
+end
+
 # Deal with tuples of closures and closure_fields
 @inline compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple{<:Any}, K, args...) =
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)
