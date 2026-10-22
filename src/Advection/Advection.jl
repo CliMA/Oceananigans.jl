@@ -77,7 +77,7 @@ include("flux_form_advection.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 
-include("topologically_conditional_interpolation.jl")
+include("interpolation_stencils.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")

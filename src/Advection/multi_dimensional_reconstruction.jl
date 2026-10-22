@@ -1,6 +1,3 @@
-@inline _multi_dimensional_reconstruction_x(args...) = multi_dimensional_reconstruction_x(args...)
-@inline _multi_dimensional_reconstruction_y(args...) = multi_dimensional_reconstruction_y(args...)
-
 #####
 ##### Fifth order centered WENO reconstruction scheme
 #####

@@ -34,7 +34,7 @@ end
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -42,7 +42,7 @@ end
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
@@ -50,7 +50,7 @@ end
 @inline function implicit_vertical_velocityᶜᶜᶜ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
-    w  = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
+    w  = symmetric_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end

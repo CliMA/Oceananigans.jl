@@ -1,21 +1,5 @@
 using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 
-# Generic reconstruction methods valid for all reconstruction schemes
-# Unroll the functions to pass the coordinates in case of a stretched grid
-""" same as [`symmetric_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_xᶠᵃᵃ(i + 1, j, k, grid, scheme, ψ, args...)
-""" same as [`symmetric_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j + 1, k, grid, scheme, ψ, args...)
-""" same as [`symmetric_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k + 1, grid, scheme, ψ, args...)
-
-""" same as [`biased_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_xᶠᵃᵃ(i + 1, j, k, grid, scheme, bias, ψ, args...)
-""" same as [`biased_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_yᵃᶠᵃ(i, j + 1, k, grid, scheme, bias, ψ, args...)
-""" same as [`biased_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_zᵃᵃᶠ(i, j, k + 1, grid, scheme, bias, ψ, args...)
-
 struct FirstDerivative end
 struct SecondDerivative end
 struct Primitive end
@@ -102,9 +86,9 @@ uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ?
 uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
 """
-    calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
+    calc_reconstruction_stencil(FT, buffer, shift)
 
-Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
+Reconstruction from the stencil `S` returned by `load_stencil` (note that WENO has its own reconstruction stencils)
 
 The first argument is the `buffer`, not the `order`!
 - `order = 2 * buffer` for Centered reconstruction
@@ -116,23 +100,23 @@ Examples
 ```jldoctest
 julia> using Oceananigans.Advection: calc_reconstruction_stencil
 
-julia> calc_reconstruction_stencil(Float32, 1, :right, :x)
-:(+(1.0f0 * ψ[i + 0, j, k]))
+julia> calc_reconstruction_stencil(Float32, 1, :right)
+:(+(1.0f0 * S[2]))
 
-julia> calc_reconstruction_stencil(Float64, 1, :left, :x)
-:(+(1.0 * ψ[i + -1, j, k]))
+julia> calc_reconstruction_stencil(Float64, 1, :left)
+:(+(1.0 * S[1]))
 
-julia> calc_reconstruction_stencil(Float64, 1, :symmetric, :y)
-:(0.5 * ψ[i, j + -1, k] + 0.5 * ψ[i, j + 0, k])
+julia> calc_reconstruction_stencil(Float64, 1, :symmetric)
+:(0.5 * S[1] + 0.5 * S[2])
 
-julia> calc_reconstruction_stencil(Float32, 2, :symmetric, :x)
-:(-0.083333254f0 * ψ[i + -2, j, k] + 0.5833333f0 * ψ[i + -1, j, k] + 0.5833333f0 * ψ[i + 0, j, k] + -0.083333336f0 * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(Float32, 2, :symmetric)
+:(-0.083333254f0 * S[1] + 0.5833333f0 * S[2] + 0.5833333f0 * S[3] + -0.083333336f0 * S[4])
 
-julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
-:(0.0333333f0 * ψ[i + -3, j, k] + -0.21666667f0 * ψ[i + -2, j, k] + 0.78333336f0 * ψ[i + -1, j, k] + 0.45f0 * ψ[i + 0, j, k] + -0.05f0 * ψ[i + 1, j, k])
+julia> calc_reconstruction_stencil(Float32, 3, :left)
+:(0.0333333f0 * S[1] + -0.21666667f0 * S[2] + 0.78333336f0 * S[3] + 0.45f0 * S[4] + -0.05f0 * S[5])
 ```
 """
-@inline function calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
+@inline function calc_reconstruction_stencil(FT, buffer, shift)
     N = buffer * 2
     order = shift == :symmetric ? N : N - 1
     if shift != :symmetric
@@ -145,21 +129,8 @@ julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
     stencil_full = Vector(undef, N)
     coeff = uniform_reconstruction_coefficients(FT, Val(shift), buffer)
     for (idx, n) in enumerate(rng)
-        c = n - buffer - 1
         C = coeff[order - idx + 1]
-        if func
-            stencil_full[idx] = dir == :x ?
-                                :($C * ψ(i + $c, j, k, grid, args...)) :
-                                dir == :y ?
-                                :($C * ψ(i, j + $c, k, grid, args...)) :
-                                :($C * ψ(i, j, k + $c, grid, args...))
-        else
-            stencil_full[idx] =  dir == :x ?
-                                :($C * ψ[i + $c, j, k]) :
-                                dir == :y ?
-                                :($C * ψ[i, j + $c, k]) :
-                                :($C * ψ[i, j, k + $c])
-        end
+        stencil_full[idx] = :($C * S[$n])
     end
     return Expr(:call, :+, stencil_full...)
 end

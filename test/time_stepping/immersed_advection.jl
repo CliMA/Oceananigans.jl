@@ -2,14 +2,17 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
 using Oceananigans.Advection:
-        _symmetric_interpolate_xᶠᵃᵃ,
-        _symmetric_interpolate_xᶜᵃᵃ,
-        _symmetric_interpolate_yᵃᶠᵃ,
-        _symmetric_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_xᶜᵃᵃ,
-        _biased_interpolate_xᶠᵃᵃ,
-        _biased_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_yᵃᶠᵃ,
+        symmetric_interpolate_xᶠᶜᶜ,
+        symmetric_interpolate_xᶜᶜᶜ,
+        symmetric_interpolate_xᶜᶠᶜ,
+        symmetric_interpolate_yᶠᶜᶜ,
+        symmetric_interpolate_yᶜᶜᶜ,
+        biased_interpolate_xᶠᶜᶜ,
+        biased_interpolate_xᶜᶜᶜ,
+        biased_interpolate_xᶜᶠᶜ,
+        biased_interpolate_yᶜᶠᶜ,
+        biased_interpolate_yᶠᶜᶜ,
+        biased_interpolate_yᶜᶜᶜ,
         FluxFormAdvection,
         LeftBias,
         RightBias,
@@ -32,12 +35,12 @@ function run_tracer_interpolation_test(c, ibg, scheme)
     scheme = materialize_advection(scheme, ibg)
     for j in 6:19, i in 6:19
         if typeof(scheme) <: Centered
-            @test @allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶠᶜ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶠᶜ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
         end
     end
 end
@@ -81,20 +84,20 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
 
     for i in 7:19, j in 7:19
         if typeof(scheme) <: Centered
-            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
 
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
         end
     end
 

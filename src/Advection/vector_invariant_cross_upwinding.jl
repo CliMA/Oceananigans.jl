@@ -40,8 +40,8 @@ using Oceananigans.Operators: Δrᶜᶜᶜ
     δ_stencil = scheme.upwinding.divergence_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δᴿ   =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
-    ∂t_σ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+    δᴿ   =    biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
+    ∂t_σ = symmetric_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
 
     return û * (δᴿ + ∂t_σ) # For static grids, ∂t_σ == 0
 end
@@ -51,8 +51,8 @@ end
     δ_stencil = scheme.upwinding.divergence_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δᴿ   =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
-    ∂t_σ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+    δᴿ   =    biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
+    ∂t_σ = symmetric_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
 
     return v̂ * (δᴿ + ∂t_σ) # For static grids, ∂t_σ == 0
 end

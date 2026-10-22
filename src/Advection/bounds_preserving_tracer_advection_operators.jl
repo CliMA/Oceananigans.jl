@@ -42,8 +42,8 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
 #####
 
 @inline function reconstruction_extrema_x(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -51,8 +51,8 @@ const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:BoundsPreservati
 end
 
 @inline function reconstruction_extrema_y(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -60,8 +60,8 @@ end
 end
 
 @inline function reconstruction_extrema_z(i, j, k, grid, scheme, c, m, M, ω̂₁)
-    c⁻ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, scheme, RightBias, c)
-    c⁺ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, LeftBias,  c)
+    c⁻ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, scheme, RightBias, c)
+    c⁺ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, scheme, LeftBias,  c)
     cᵢ = @inbounds c[i, j, k]
     p̃  = (cᵢ - ω̂₁ * (c⁻ + c⁺)) / (1 - 2ω̂₁)
 
@@ -158,10 +158,10 @@ end
 @inline function bounded_tracer_flux_divergence_x(i, j, k, grid, advection::BoundsPreservingWENO, ρ, u, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_xᶠᶜᶜ(i+1, j, k, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_xᶠᶜᶜ(i,   j, k, grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i,   j, k, grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i+1, j, k, grid, θ, c)
@@ -179,10 +179,10 @@ end
 @inline function bounded_tracer_flux_divergence_y(i, j, k, grid, advection::BoundsPreservingWENO, ρ, v, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_yᶜᶠᶜ(i, j+1, k, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_yᶜᶠᶜ(i, j,   k, grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j,   k, grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j+1, k, grid, θ, c)
@@ -200,10 +200,10 @@ end
 @inline function bounded_tracer_flux_divergence_z(i, j, k, grid, advection::BoundsPreservingWENO, ρ, w, c)
     θ = advection.bounds.limiter
 
-    c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias,  c)
-    c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias, c)
-    c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias,  c)
-    c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias, c)
+    c₊ᴸ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, advection, LeftBias,  c)
+    c₊ᴿ = biased_interpolate_zᶜᶜᶠ(i, j, k+1, grid, advection, RightBias, c)
+    c₋ᴸ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, advection, LeftBias,  c)
+    c₋ᴿ = biased_interpolate_zᶜᶜᶠ(i, j, k,   grid, advection, RightBias, c)
 
     c₊ᴸ = rescaled_reconstruction(c₊ᴸ, i, j, k,   grid, θ, c)
     c₊ᴿ = rescaled_reconstruction(c₊ᴿ, i, j, k+1, grid, θ, c)

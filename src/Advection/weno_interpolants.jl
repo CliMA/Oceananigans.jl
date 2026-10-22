@@ -26,12 +26,12 @@ calculation in the `VectorInvariant` advection formulation.
 
 Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
 ```
 
 For scalar reconstructions
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
 ```
 the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
@@ -446,11 +446,11 @@ The ``α`` values are normalized before returning
     return α .* Σα⁻¹
 end
 
-@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
+@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ℓ, ::VelocityStencil, u, v) where {N, FT}
     i, j, k = ijk
 
-    uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
-    vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
+    uₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ℑyᵃᶠᵃ, u)
+    vₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ℑxᶠᵃᵃ, v)
     βᵤ = beta_loop(scheme, weno_differences(scheme, uₛ))
     βᵥ = beta_loop(scheme, weno_differences(scheme, vₛ))
     β  = beta_sum(scheme, βᵤ, βᵥ)
@@ -461,90 +461,14 @@ end
     return α .* Σα⁻¹
 end
 
-"""
-    load_weno_stencil(buffer, dir, func::Bool = false)
-
-Stencils for WENO reconstruction calculations
-
-The first argument is the `buffer`, not the `order`!
-- `order = 2 * buffer - 1` for WENO reconstruction
-
-Examples
-========
-
-```jldoctest
-julia> using Oceananigans.Advection: load_weno_stencil
-
-julia> load_weno_stencil(3, :x)
-:((ψ[i + -3, j, k], ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k], ψ[i + 2, j, k]))
-
-julia> load_weno_stencil(2, :x)
-:((ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]))
-```
-"""
-@inline function load_weno_stencil(buffer, dir, func::Bool = false)
-    N = buffer * 2 - 1
-    stencil = Vector(undef, N+1)
-
-    for (idx, c) in enumerate(-buffer:buffer-1)
-        if func
-            stencil[idx] =  dir == :x ?
-                            :(ψ(i + $c, j, k, grid, args...)) :
-                            dir == :y ?
-                            :(ψ(i, j + $c, k, grid, args...)) :
-                            :(ψ(i, j, k + $c, grid, args...))
-        else
-            stencil[idx] =  dir == :x ?
-                            :(ψ[i + $c, j, k]) :
-                            dir == :y ?
-                            :(ψ[i, j + $c, k]) :
-                            :(ψ[i, j, k + $c])
-        end
-    end
-
-    return :($(stencil...),)
-end
-
 # The right-biased stencil is the mirror of the left-biased one, so both use the left-biased coefficients
-for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
-    stencil = Symbol(:weno_stencil_, dir)
-    @eval begin
-        @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(2, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3]), (S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{3}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(3, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{4}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(4, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7]), (S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(5, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]), (S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(6, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9], S[10], S[11]), (S[12], S[11], S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-    end
+@inline function weno_stencil(i, j, k, grid, dir, ℓ, ::WENO{N}, bias, ψ, args...) where N
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return @inbounds ifelse(bias == LeftBias, ntuple(n -> S[n], Val(2N - 1)), ntuple(n -> S[2N + 1 - n], Val(2N - 1)))
 end
 
 @inline weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
-
-# Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
-# Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{1}, u) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{2}, u) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{1}, v) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{2}, v) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -582,54 +506,35 @@ for buffer in advection_buffers[2:end]
 end
 
 # Interpolation functions
-for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3])
-    interpolate_func = Symbol(:biased_interpolate_, interp)
-    stencil          = Symbol(:weno_stencil_, dir)
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
+    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    ω  = biased_weno_weights(δ, grid, scheme, bias, args...)
+    return weno_reconstruction(scheme, ψ₀, δ, ω)
+end
 
-    @eval begin
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, args...) where {N, FT}
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    ω  = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
+    return weno_reconstruction(scheme, ψ₀, δ, ω)
+end
 
-            S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, bias, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
-        end
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
+    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, u, v, args...)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    ω  = biased_weno_weights((i, j, k), grid, scheme, bias, dir, ℓ, VI, u, v)
+    return weno_reconstruction(scheme, ψ₀, δ, ω)
+end
 
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
-
-            S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
-        end
-
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
-
-            S  = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
-        end
-
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::FunctionStencil, args...) where {N, FT}
-
-            S  = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            Sₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
-            ω  = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω)
-        end
-    end
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::FunctionStencil, args...) where {N, FT}
+    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    Sₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, VI.func, args...)
+    ω  = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, bias, VI, args...)
+    return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
