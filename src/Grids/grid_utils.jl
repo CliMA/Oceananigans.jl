@@ -41,7 +41,7 @@ end
 end
 
 # The right side owns the face at N+1
-const FaceExtendedTopology = Sides{<:Any, <:Union{Closed, FaceFolded, FaceFoldConnected}}
+const FaceExtendedTopology = Sides{<:Any, <:Union{Closed, Open, FaceFolded, FaceFoldConnected}}
 const SerialFoldedTopology = Sides{Closed, <:Union{CenterFolded, FaceFolded}}
 const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
 const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
@@ -51,14 +51,18 @@ const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFold
 # Sides whose halo comes from another rank
 const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnected}
 
+# Sides whose halo holds boundary data rather than grid data
+const BoundarySide = Union{Closed, Open}
+const BoundaryTopology = Sides{<:BoundarySide, <:BoundarySide}
+
 # Nothing locations just default to 1:N
 @inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
 @inline connected_range(::Nothing, topo, N, H) = 1:N
 
 @inline connected_range(topo, N, H)                                =    1:N
 @inline connected_range(::Type{Sides{Connected, Connected}}, N, H)  = -H+2:N+H-1
-@inline connected_range(::Type{Sides{Closed, Connected}}, N, H)    =    1:N+H-1
-@inline connected_range(::Type{Sides{Connected, Closed}},  N, H)   = -H+2:N
+@inline connected_range(::Type{<:Sides{<:BoundarySide, Connected}}, N, H) =    1:N+H-1
+@inline connected_range(::Type{<:Sides{Connected, <:BoundarySide}}, N, H) = -H+2:N
 @inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
@@ -546,7 +550,7 @@ function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Union{Bounded, Sides{Closed, Connected}}, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Sides{<:BoundarySide}, N::Int) = ifelse(N > 1, 1, 0)
 
 #####
 ##### Kernel parameters that extend into the halos

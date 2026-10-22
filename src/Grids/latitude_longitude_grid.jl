@@ -723,7 +723,7 @@ Construct a `LatitudeLongitudeGrid` from a `RectilinearGrid`. The horizontal coo
 rectilinear grid are transformed to longitude-latitude coordinates in degrees, accounting for
 spherical Earth geometry. The longitudes are computed approximately using the latitudinal origin.
 
-The vertical coordinate and architecture are inherited from the input grid.
+The topology, vertical coordinate and architecture are inherited from the input grid.
 
 Keyword Arguments
 ================
@@ -742,10 +742,10 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
 
     TX, TY, TZ = topology(rectilinear_grid)
     tx, ty, tz = TX(), TY(), TZ()
-    triply_bounded = tx isa Bounded && ty isa Bounded && tz isa Bounded
+    triply_bounded = tx isa BoundaryTopology && ty isa BoundaryTopology && tz isa BoundaryTopology
     if !triply_bounded
         msg = string("The source RectilinearGrid for constructing LatitudeLongitudeGrid ",
-                     "must be triply-bounded, but has topology=($tx, $ty, $tz)!")
+                     "must be bounded by `Closed` or `Open` sides in every direction, but has topology=($tx, $ty, $tz)!")
         throw(ArgumentError(msg))
     end
 
@@ -766,7 +766,7 @@ function LatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
     z = cpu_face_constructor_z(rectilinear_grid)
 
     return LatitudeLongitudeGrid(arch, eltype(rectilinear_grid); z, radius,
-                                 topology = (Bounded, Bounded, Bounded),
+                                 topology = (TX, TY, TZ),
                                  size = (Nx, Ny, Nz),
                                  halo = (Hx, Hy, Hz),
                                  longitude = λᶠ,
