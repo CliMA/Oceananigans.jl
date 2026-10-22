@@ -139,8 +139,9 @@ Keyword Arguments
               then the number of substeps will be computed on the fly from the baroclinic time step to
               maintain a constant cfl.
 
-- `extend_halos`: If `true` (default), extend the halos in `Connected` directions and substep into them,
-                  avoiding communication at each substep. If `false`, halos are not extended and
+- `extend_halos`: If `true` (default), extend the halos in `Connected` directions, up to the smallest local
+                  grid size, and substep into them, communicating only when the substeps outnumber the
+                  halo cells. If `false`, halos are not extended and
                   `fill_halo_regions!` is called after each individual update of `U` and `η`, including
                   communication (`CompleteHaloFilling`). Note that when the barotropic velocities
                   have prescribed normal-flow boundary conditions (e.g. `GravityWaveRadiation`), the per-substep
@@ -416,24 +417,14 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
-    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
+    # Every rank shares the same halo, so it is capped at the smallest local size
+    Nx = all_reduce(min, size(grid, 1), architecture(grid))
+    Ny = all_reduce(min, size(grid, 2), architecture(grid))
+
+    Hx = TX() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[1]), Nx) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? min(max(Nsubsteps+2, old_halos[2]), Ny) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
-
-    # Warn if extended halos are larger than or equal to interior grid size
-    # This can cause out-of-bounds memory access in distributed computations
-    Nx, Ny, _ = size(grid)
-    if Hx >= Nx && TX() isa ConnectedTopology
-        @warn "SplitExplicitFreeSurface: Extended halo size Hx=$Hx >= local grid size Nx=$Nx. " *
-              "This may cause incorrect results in distributed computations. " *
-              "Consider using a larger grid or fewer substeps."
-    end
-    if Hy >= Ny && TY() isa ConnectedTopology
-        @warn "SplitExplicitFreeSurface: Extended halo size Hy=$Hy >= local grid size Ny=$Ny. " *
-              "This may cause incorrect results in distributed computations. " *
-              "Consider using a larger grid or fewer substeps."
-    end
 
     if new_halos == old_halos
         return grid

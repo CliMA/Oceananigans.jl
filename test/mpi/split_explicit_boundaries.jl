@@ -24,8 +24,8 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
 
 bᵢ(x, y, z) = z + 0.02 * sin(2π * x) * cos(2π * y)
 
-function build(grid)
-    free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+function build(grid; substeps=10)
+    free_surface = SplitExplicitFreeSurface(grid; substeps)
     model = HydrostaticFreeSurfaceModel(grid; free_surface, buoyancy=BuoyancyTracer(), tracers=:b)
     set!(model, b=bᵢ)
     for _ in 1:10
@@ -78,14 +78,45 @@ end
     end
 end
 
+# # More substeps than local cells
+#
+# `substeps = 30` extends the halo beyond the local size of every partition in `archs` at this grid size,
+# so the halo is capped at the smallest local size and refilled during the substepping.
+
+@testset "Distributed SplitExplicitFreeSurface with more substeps than local cells" begin
+    for arch in archs
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(32, 32, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(3, 3, 3), topology=(Bounded, Bounded, Bounded))
+
+        mp = build(grid; substeps=30)
+        ms = build(reconstruct_global_grid(grid); substeps=30)
+
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
+
+        us = partition(interior(on_architecture(CPU(), ms.velocities.u)), cpu_arch, size(up))
+        vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
+        ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
+
+        @testset "serial vs distributed [$(typeof(arch.partition))]" begin
+            @test all(isapprox.(up, us))
+            @test all(isapprox.(vp, vs))
+            @test all(isapprox.(ηp, ηs))
+        end
+    end
+end
+
 # # Distributed open boundaries
 #
-# `substeps = 8` extends the halo to 7 in Connected directions, which must stay below the local
-# extent: this rules out the `Fractional` partitions of `archs` at this grid size.
+# `substeps = 30` extends the halo beyond the local size of both partitions, so the halo is capped and refilled
+# during the substepping.
 
 ηᵢ(x, y, z) = 0.01 * exp(-(x - 0.5)^2 / 0.08) * (1 + 0.2 * cos(2π * y))
 
-function build_open(grid; extend_halos)
+function build_open(grid; extend_halos, substeps)
     u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
                                     east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
 
@@ -93,7 +124,7 @@ function build_open(grid; extend_halos)
                                     west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
                                     east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps=8, extend_halos)
+    free_surface = SplitExplicitFreeSurface(grid; substeps, extend_halos)
 
     model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                         boundary_conditions = (u = u_bcs, U = U_bcs),
@@ -113,15 +144,15 @@ end
     open_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
                   Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
 
-    for arch in open_archs, extend_halos in (true, false)
+    for arch in open_archs, extend_halos in (true, false), substeps in (8, 30)
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
                                halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
-        mp = build_open(grid; extend_halos)         # partitioned
-        ms = build_open(global_grid; extend_halos)  # serial reference
+        mp = build_open(grid; extend_halos, substeps)         # partitioned
+        ms = build_open(global_grid; extend_halos, substeps)  # serial reference
 
         strategy = extend_halos ? LocalHaloFilling : CompleteHaloFilling
 
@@ -134,7 +165,7 @@ end
         vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
         ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
 
-        @testset "open boundaries [extend_halos=$extend_halos, $(typeof(arch.partition))]" begin
+        @testset "open boundaries [extend_halos=$extend_halos, substeps=$substeps, $(typeof(arch.partition))]" begin
             @test mp.free_surface isa SplitExplicitFreeSurface{strategy}
             @test ms.free_surface isa SplitExplicitFreeSurface{strategy}
 

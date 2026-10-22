@@ -17,7 +17,7 @@ using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_
                           LeftConnected, RightConnected, FullyConnected,
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                           LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, all_reduce
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
