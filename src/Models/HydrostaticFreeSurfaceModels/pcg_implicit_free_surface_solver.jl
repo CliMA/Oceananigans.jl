@@ -213,7 +213,7 @@ end
 @inline ∇H_∇η(i, j, k, grid, η) = zero(grid) # fallback
 @inline depth(i, j, k, grid) = grid.Lz
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedVerticalBoundaries}
 
 # Assumes surface is z=0:
 @inline depth(i, j, k, ibg::GFBIBG) = @inbounds max(zero(eltype(ibg)), min(ibg.Lz, -ibg.immersed_boundary.bottom[i, j]))
