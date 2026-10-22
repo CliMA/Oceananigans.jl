@@ -24,12 +24,12 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
 
 bᵢ(x, y, z) = z + 0.02 * sin(2π * x) * cos(2π * y)
 
-function build(grid; substeps=10)
+function build(grid; substeps=10, Δt=2e-3)
     free_surface = SplitExplicitFreeSurface(grid; substeps)
     model = HydrostaticFreeSurfaceModel(grid; free_surface, buoyancy=BuoyancyTracer(), tracers=:b)
     set!(model, b=bᵢ)
     for _ in 1:10
-        time_step!(model, 2e-3)
+        time_step!(model, Δt)
     end
     return model
 end
@@ -81,7 +81,8 @@ end
 # # More substeps than local cells
 #
 # `substeps = 30` extends the halo beyond the local size of every partition in `archs` at this grid size,
-# so the halo is capped at the smallest local size and refilled during the substepping.
+# so the halo is capped at the smallest local size and refilled during the substepping. `Δt = 0.05` gives a
+# barotropic Courant number large enough for a stale halo to reach the interior.
 
 @testset "Distributed SplitExplicitFreeSurface with more substeps than local cells" begin
     for arch in archs
@@ -90,8 +91,8 @@ end
         grid = RectilinearGrid(arch, size=(32, 32, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
                                halo=(3, 3, 3), topology=(Bounded, Bounded, Bounded))
 
-        mp = build(grid; substeps=30)
-        ms = build(reconstruct_global_grid(grid); substeps=30)
+        mp = build(grid; substeps=30, Δt=0.05)
+        ms = build(reconstruct_global_grid(grid); substeps=30, Δt=0.05)
 
         up = interior(on_architecture(cpu_arch, mp.velocities.u))
         vp = interior(on_architecture(cpu_arch, mp.velocities.v))
@@ -112,11 +113,11 @@ end
 # # Distributed open boundaries
 #
 # `substeps = 30` extends the halo beyond the local size of both partitions, so the halo is capped and refilled
-# during the substepping.
+# during the substepping, with a `Δt` large enough for a stale halo to reach the interior.
 
 ηᵢ(x, y, z) = 0.01 * exp(-(x - 0.5)^2 / 0.08) * (1 + 0.2 * cos(2π * y))
 
-function build_open(grid; extend_halos, substeps)
+function build_open(grid; extend_halos, substeps, Δt)
     u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)),
                                     east = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(outflow_timescale = 100.0)))
 
@@ -134,7 +135,7 @@ function build_open(grid; extend_halos, substeps)
     set!(model, η = ηᵢ)
 
     for _ in 1:10
-        time_step!(model, 5e-3)
+        time_step!(model, Δt)
     end
 
     return model
@@ -144,15 +145,15 @@ end
     open_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
                   Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
 
-    for arch in open_archs, extend_halos in (true, false), substeps in (8, 30)
+    for arch in open_archs, extend_halos in (true, false), (substeps, Δt) in ((8, 5e-3), (30, 5e-2))
         cpu_arch = cpu_architecture(arch)
 
         grid = RectilinearGrid(arch, size=(40, 20, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
                                halo=(4, 4, 2), topology=(Bounded, Periodic, Bounded))
         global_grid = reconstruct_global_grid(grid)
 
-        mp = build_open(grid; extend_halos, substeps)         # partitioned
-        ms = build_open(global_grid; extend_halos, substeps)  # serial reference
+        mp = build_open(grid; extend_halos, substeps, Δt)         # partitioned
+        ms = build_open(global_grid; extend_halos, substeps, Δt)  # serial reference
 
         strategy = extend_halos ? LocalHaloFilling : CompleteHaloFilling
 

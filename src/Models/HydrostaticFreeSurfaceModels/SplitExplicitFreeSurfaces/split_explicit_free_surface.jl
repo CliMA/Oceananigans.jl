@@ -204,8 +204,14 @@ end
 # A free surface where halos are explicitly filled at each substep
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling}}
 
-@inline fill_only_local_halos(::SplitExplicitFreeSurface{LocalHaloFilling})    = true
-@inline fill_only_local_halos(::SplitExplicitFreeSurface{CompleteHaloFilling}) = false
+# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds H - 2 substeps
+@inline halo_exchange_interval(::SplitExplicitFreeSurface{CompleteHaloFilling}, grid, Nsubsteps) = 1
+
+function halo_exchange_interval(free_surface, grid, Nsubsteps)
+    TX, TY, _ = topology(grid)
+    Hx, Hy, _ = halo_size(grid)
+    return min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps, TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+end
 
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
