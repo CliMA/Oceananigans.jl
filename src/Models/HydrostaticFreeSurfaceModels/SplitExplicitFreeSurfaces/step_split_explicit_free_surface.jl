@@ -270,6 +270,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     t = model.clock.time
     update_model_field_time_series!(model, Time(t), Time(t + (Nsubsteps - 1) * Δτᴮ))
 
+    # The targets of this step carry the current free surface forcing out of the domain
+    compute_exported_volume_flux!(free_surface.boundary_transport, F, model.clock, (; η, U, V))
+
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 

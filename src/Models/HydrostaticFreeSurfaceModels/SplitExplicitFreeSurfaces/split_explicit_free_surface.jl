@@ -109,7 +109,7 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
   contains no auxiliary fields).
 
-- `boundary_transport`: `nothing`, or a `NamedTuple` `(; west, east, south, north)` holding the `target_transport` of each
+- `boundary_transport`: `nothing`, a `FreeSurfaceForcingExport` (see `export_free_surface_forcing`), or a `NamedTuple` `(; west, east, south, north)` holding the `target_transport` of each
   side whose `GravityWaveRadiation` boundary condition carries one (`nothing` on the other sides). After every substep each
   targeted face is integrated over its wet columns and shifted uniformly by a single kernel so its transport equals the target.
 
@@ -159,6 +159,11 @@ Keyword Arguments
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
   * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
 
+- `export_free_surface_forcing`: If `true`, the free surface forcing `Fη` (e.g. a surface freshwater flux) integrated
+                                 over the wet surface is added every time step to the targets of the sides with a
+                                 `target_transport`, as outflow split in proportion to their wet lengths, so that the
+                                 forcing leaves the domain volume unchanged. Default: `false`.
+
 References
 ==========
 
@@ -171,7 +176,8 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   fixed_Δt = nothing,
                                   extend_halos = true,
                                   averaging_kernel = averaging_shape_function,
-                                  timestepper = ForwardBackwardScheme())
+                                  timestepper = ForwardBackwardScheme(),
+                                  export_free_surface_forcing = false)
 
     if !isnothing(grid)
         FT = eltype(grid)
@@ -196,7 +202,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                                   nothing,
                                                   substepping,
                                                   timestepper,
-                                                  nothing)
+                                                  export_free_surface_forcing)
 end
 
 # A free surface where halos are explicitly filled at each substep
@@ -284,7 +290,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
-    boundary_transport = materialize_barotropic_boundary_transport(U, V, maybe_extended_grid)
+    boundary_transport = materialize_barotropic_boundary_transport(U, V, maybe_extended_grid, free_surface.boundary_transport)
 
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)

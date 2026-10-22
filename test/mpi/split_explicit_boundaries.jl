@@ -274,3 +274,69 @@ end
         end
     end
 end
+
+# # Distributed export of the free surface forcing
+#
+# The surface forcing is integrated over every rank before it is shared among the targeted sides,
+# so the exported flux and the resulting state must match the serial model.
+
+function build_exporting(grid)
+    flather(target) = GravityWaveRadiationBoundaryCondition((0.0, 0.0); target_transport = target)
+    Q = 1e-3
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = flather(Q), east = flather(Q))
+    V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = flather(0), north = flather(0))
+
+    surface_freshwater_flux = Field{Center, Center, Nothing}(grid)
+    set!(surface_freshwater_flux, (x, y) -> 1e-4 * (1 + x * y))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps=8, extend_halos=false, export_free_surface_forcing=true)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
+                                        timestepper = :QuasiAdamsBashforth2,
+                                        coriolis = FPlane(f = 10),
+                                        boundary_conditions = (U = U_bcs, V = V_bcs),
+                                        forcing = (; η = surface_freshwater_flux),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+    set!(model, η = ηᵢ)
+
+    for _ in 1:10
+        time_step!(model, 5e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed export of the free surface forcing" begin
+    exporting_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
+                       Distributed(child_arch; synchronized_communication=false, partition=Partition(1, 4)),
+                       Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
+
+    for arch in exporting_archs
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(40, 40, 2), x=(0, 1), y=(0, 1), z=MutableVerticalDiscretization((-1, 0)),
+                               halo=(4, 4, 2), topology=(Bounded, Bounded, Bounded))
+        global_grid = reconstruct_global_grid(grid)
+
+        mp = build_exporting(grid)
+        ms = build_exporting(global_grid)
+
+        Up = interior(on_architecture(cpu_arch, mp.free_surface.barotropic_velocities.U))
+        Vp = interior(on_architecture(cpu_arch, mp.free_surface.barotropic_velocities.V))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
+
+        Us = partition(interior(on_architecture(CPU(), ms.free_surface.barotropic_velocities.U)), cpu_arch, size(Up))
+        Vs = partition(interior(on_architecture(CPU(), ms.free_surface.barotropic_velocities.V)), cpu_arch, size(Vp))
+        ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
+
+        @testset "free surface forcing export [$(arch.partition)]" begin
+            @test mp.free_surface.boundary_transport.exported_volume_flux[] ≈ ms.free_surface.boundary_transport.exported_volume_flux[]
+            @test all(isapprox.(Up, Us))
+            @test all(isapprox.(Vp, Vs))
+            @test all(isapprox.(ηp, ηs))
+        end
+    end
+end

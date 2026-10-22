@@ -1,5 +1,8 @@
 using Oceananigans.BoundaryConditions: GWNFBC, has_target_transport, get_target_transport, TransportTimeSeries
 using Oceananigans.DistributedComputations: all_reduce, device_all_reduce!, synchronize_communication!
+using Oceananigans.Architectures: CPU
+using Oceananigans.Grids: column_depthᶜᶜᵃ
+using Oceananigans.Operators: Azᶜᶜᶜ
 
 #####
 ##### Targeted barotropic transports through GravityWaveRadiation boundaries
@@ -17,12 +20,32 @@ has_targeted_barotropic_sides(U_bcs, V_bcs) =
     targeted_side(side_condition(V_bcs, :south)) || targeted_side(side_condition(V_bcs, :north))
 
 # The target of each side (or `nothing`); the same targets pin `(U, V)` during the substeps and `(Ũ, Ṽ)` after them.
-function materialize_barotropic_boundary_transport(U, V, grid)
+function materialize_barotropic_boundary_transport(U, V, grid, export_forcing = false)
     targets = (west  = side_transport(side_condition(U.boundary_conditions, :west),  grid),
                east  = side_transport(side_condition(U.boundary_conditions, :east),  grid),
                south = side_transport(side_condition(V.boundary_conditions, :south), grid),
                north = side_transport(side_condition(V.boundary_conditions, :north), grid))
-    return materialize_barotropic_boundary_transport(targets, grid)
+    return materialize_barotropic_boundary_transport(targets, U, grid, Val(exports_free_surface_forcing(export_forcing)))
+end
+
+materialize_barotropic_boundary_transport(targets, U, grid, ::Val{false}) = materialize_barotropic_boundary_transport(targets, grid)
+
+function materialize_barotropic_boundary_transport(targets, U, grid, ::Val{true})
+    lengths = targeted_wet_lengths(targets, U, grid)
+    total_length = sum(lengths)
+
+    total_length > 0 ||
+        throw(ArgumentError("export_free_surface_forcing = true needs at least one wet side with a `target_transport`."))
+
+    exported_volume_flux = Ref(zero(eltype(grid)))
+    outward_shares = (west = - lengths.west / total_length, east  = lengths.east  / total_length,
+                      south = - lengths.south / total_length, north = lengths.north / total_length)
+
+    exporting_targets = map((target, share) -> exporting_target(target, share, exported_volume_flux), targets, outward_shares)
+    boundary_transport = materialize_barotropic_boundary_transport(exporting_targets, grid)
+    volume_flux = Field{Center, Center, Nothing}(grid)
+
+    return FreeSurfaceForcingExport(boundary_transport, volume_flux, exported_volume_flux)
 end
 
 materialize_barotropic_boundary_transport(targets, grid) = all(isnothing, targets) ? nothing : targets
@@ -46,6 +69,93 @@ current_target(FT, ::Nothing, time) = nothing
 current_target(FT, target::Number, time) = convert(FT, target)
 current_target(FT, target::TransportTimeSeries, time) = convert(FT, target(time))
 current_target(FT, target, time) = convert(FT, target(time)) # any other target is a callable of the model time
+
+#####
+##### Exporting the free surface forcing through the targeted sides
+#####
+
+exports_free_surface_forcing(export_forcing::Bool) = export_forcing
+exports_free_surface_forcing(boundary_transport) = false
+
+"""
+$(TYPEDEF)
+
+Barotropic targets whose targeted sides also carry the area-integrated free surface forcing `∫Fη dA` out of the
+domain, split in proportion to their wet lengths, so that the forcing leaves the domain volume unchanged.
+
+$(TYPEDFIELDS)
+"""
+struct FreeSurfaceForcingExport{B, F, R}
+    "the barotropic targets, with each targeted side shifted by its share of `exported_volume_flux`"
+    boundary_transport :: B
+    "the free surface forcing times the cell area of each wet column [m³ s⁻¹]"
+    volume_flux :: F
+    "the free surface forcing integrated over the wet surface [m³ s⁻¹], updated every time step"
+    exported_volume_flux :: R
+end
+
+exports_free_surface_forcing(::FreeSurfaceForcingExport) = true
+
+Adapt.adapt_structure(to, ::FreeSurfaceForcingExport) = nothing
+
+"""
+$(TYPEDEF)
+
+The target of one side plus its `outward_share` of the exported volume flux, positive out of the domain.
+
+$(TYPEDFIELDS)
+"""
+struct ExportingTarget{T, FT, R}
+    "the target transport of the side"
+    target :: T
+    "the side's wet length over the total targeted wet length, signed so that it points out of the domain"
+    outward_share :: FT
+    "the free surface forcing integrated over the wet surface [m³ s⁻¹]"
+    exported_volume_flux :: R
+end
+
+exporting_target(::Nothing, outward_share, exported_volume_flux) = nothing
+exporting_target(target, outward_share, exported_volume_flux) = ExportingTarget(target, outward_share, exported_volume_flux)
+
+current_target(FT, target::ExportingTarget, time) =
+    current_target(FT, target.target, time) + convert(FT, target.outward_share * target.exported_volume_flux[])
+
+# The wet length of each targeted side, summed over all ranks
+function targeted_wet_lengths(targets, U, grid)
+    arch = architecture(grid)
+    sums = on_architecture(arch, zeros(eltype(grid), 8))
+    workgroup = StaticSize((FACE_WORKGROUP_SIZE,))
+    integrate! = _integrate_barotropic_face!(device(arch), workgroup, workgroup)
+
+    integrate_wet_length!(integrate!, sums, 1, targets.west,  U, grid, 1,           Val(:x))
+    integrate_wet_length!(integrate!, sums, 3, targets.east,  U, grid, grid.Nx + 1, Val(:x))
+    integrate_wet_length!(integrate!, sums, 5, targets.south, U, grid, 1,           Val(:y))
+    integrate_wet_length!(integrate!, sums, 7, targets.north, U, grid, grid.Ny + 1, Val(:y))
+
+    sums = all_reduce(+, on_architecture(CPU(), sums), arch)
+
+    return (west = sums[2], east = sums[4], south = sums[6], north = sums[8])
+end
+
+integrate_wet_length!(integrate!, sums, n, ::Nothing, U, grid, index, direction) = nothing
+integrate_wet_length!(integrate!, sums, n, target, U, grid, index, direction) = integrate!(sums, n, U, grid, index, direction)
+
+@kernel function _compute_free_surface_volume_flux!(volume_flux, grid, F, clock, model_fields)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz + 1
+    wet = column_depthᶜᶜᵃ(i, j, grid) > 0
+    @inbounds volume_flux[i, j, 1] = ifelse(wet, F(i, j, k_top, grid, clock, model_fields) * Azᶜᶜᶜ(i, j, 1, grid), zero(grid))
+end
+
+compute_exported_volume_flux!(boundary_transport, F, clock, model_fields) = nothing
+
+function compute_exported_volume_flux!(forcing_export::FreeSurfaceForcingExport, F, clock, model_fields)
+    volume_flux = forcing_export.volume_flux
+    grid = volume_flux.grid
+    launch!(architecture(grid), grid, :xy, _compute_free_surface_volume_flux!, volume_flux, grid, F, clock, model_fields)
+    forcing_export.exported_volume_flux[] = sum(volume_flux)
+    return nothing
+end
 
 """
 $(TYPEDEF)
@@ -172,6 +282,8 @@ function configure_face_pin(arch, grid, field, index, target, direction)
 end
 
 configure_face_pins(arch, grid, U, V, ::Nothing, time) = nothing
+configure_face_pins(arch, grid, U, V, forcing_export::FreeSurfaceForcingExport, time) =
+    configure_face_pins(arch, grid, U, V, forcing_export.boundary_transport, time)
 
 function configure_face_pins(arch, grid, U, V, targets, time)
     FT = eltype(grid)
