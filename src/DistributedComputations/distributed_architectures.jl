@@ -247,12 +247,18 @@ Keyword arguments
                                 Default: `false`, specifying the use of asynchronous algorithms where supported,
                                 which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU();
-                     partition = nothing,
-                     devices = nothing,
-                     communicator = nothing,
-                     synchronized_communication = false,
-                     field_count = Threads.Atomic{UInt64}(0))
+function Distributed(child_architecture = CPU(); kwargs...)
+    arch = distributed_architecture(child_architecture; kwargs...)
+    validate_distributed_configuration(arch)
+    return arch
+end
+
+function distributed_architecture(child_architecture;
+                                  partition = nothing,
+                                  devices = nothing,
+                                  communicator = nothing,
+                                  synchronized_communication = false,
+                                  field_count = Threads.Atomic{UInt64}(0))
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
@@ -295,8 +301,6 @@ function Distributed(child_architecture = CPU();
         node_rank  = MPI.Comm_rank(local_comm)
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
-
-    validate_distributed_configuration(child_architecture, communicator)
 
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,

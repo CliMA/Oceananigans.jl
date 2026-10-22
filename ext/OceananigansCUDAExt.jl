@@ -17,6 +17,7 @@ else
 end
 using GPUArraysCore: allowscalar
 using MPI: MPI
+using Base.Libc.Libdl: dllist, dlopen, dlsym
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
@@ -74,9 +75,13 @@ function DC.gpu_configuration(::CUDAGPU)
     bus = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_BUS_ID)
     slot = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DEVICE_ID)
     pci_address = string(string(domain; base=16, pad=4), ':', string(bus; base=16, pad=2), ':', string(slot; base=16, pad=2), ".0")
-    cray_gpu_support = MPI.MPI_LIBRARY == "CrayMPICH" && get(ENV, "MPICH_GPU_SUPPORT_ENABLED", "0") == "1"
+    # the vendor library also loads behind MPItrampoline, which does not forward MPIX extensions
+    libraries = filter(contains("libmpi"), dllist())
+    queries = filter(!isnothing, [dlsym(dlopen(library), :MPIX_Query_cuda_support; throw_error=false) for library in libraries])
+    cray_gpu_support = MPI.MPI_LIBRARY == "CrayMPICH" ? get(ENV, "MPICH_GPU_SUPPORT_ENABLED", "0") == "1" : nothing
+    gpu_aware_mpi = isempty(queries) ? cray_gpu_support : ccall(first(queries), Cint, ()) == 1
     memory_pool = get(ENV, "JULIA_CUDA_MEMORY_POOL", "cuda") == "cuda"
-    return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi = MPI.has_cuda() || cray_gpu_support, memory_pool)
+    return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi, memory_pool)
 end
 
 AC.architecture(::CuArray) = CUDAGPU()
