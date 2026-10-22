@@ -27,8 +27,8 @@ Architectures.on_architecture(::MetalGPU, a::MtlArray) = a
 
 # Convert StepRangeLen with ref/step::Float64 to ref/step::Float32 for Metal architecture
 function Architectures.on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, Float64}) where FT
-    ref = convert(Float32, s.ref)
-    step = convert(Float32, s.step)
+    ref = convert(TwicePrecision{Float32}, s.ref)
+    step = convert(TwicePrecision{Float32}, s.step)
     len = s.len
     offset = s.offset
     return StepRangeLen{FT}(ref, step, len, offset)
