@@ -11,10 +11,10 @@ include(joinpath(@__DIR__, "..", "setup", "zstar_conservation_test_utils.jl"))
             continue
         end
 
-        for fold_topology in (RightCenterFolded, RightFaceFolded)
+        for fold_topology in (CenterFolded, FaceFolded)
             @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
                 # Check that the grid is correctly partitioned in case of a distributed architecture
-                if arch isa Distributed && ((arch.ranks[1] != 1 || arch.ranks[2] == 1) || (fold_topology == RightFaceFolded))
+                if arch isa Distributed && ((arch.ranks[1] != 1 || arch.ranks[2] == 1) || (fold_topology == FaceFolded))
                     continue
                 end
 

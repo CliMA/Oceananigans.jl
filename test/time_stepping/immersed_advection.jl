@@ -1,7 +1,10 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!, peripheral_node
 using Oceananigans.Advection:
+        div_𝐯u,
+        div_𝐯v,
+        div_𝐯w,
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
@@ -13,8 +16,7 @@ using Oceananigans.Advection:
         FluxFormAdvection,
         LeftBias,
         RightBias,
-        materialize_advection,
-        div_𝐯u
+        materialize_advection
 
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -131,6 +133,52 @@ function run_kinetic_energy_conservation_test(arch, Bottom)
     return nothing
 end
 
+function run_uniform_momentum_preservation_test(arch, Bottom, scheme)
+    grid = RectilinearGrid(arch, size=(16, 16, 32), halo=(6, 6, 6), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, Bottom((x, y) -> staircase(x) + staircase(y)))
+
+    pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
+    model = NonhydrostaticModel(ibg; advection=scheme, pressure_solver)
+
+    u, v, w = model.velocities
+    set!(model, u = rand(size(u)...) .- 1/2, v = rand(size(v)...) .- 1/2, w = rand(size(w)...) .- 1/2)
+
+    uniform = XFaceField(ibg)
+    parent(uniform) .= 1
+
+    advection = model.advection.momentum
+    Gu = KernelFunctionOperation{Face, Center, Center}(div_𝐯u, ibg, advection, model.velocities, uniform)
+    Gv = KernelFunctionOperation{Center, Face, Center}(div_𝐯v, ibg, advection, model.velocities, uniform)
+    Gw = KernelFunctionOperation{Center, Center, Face}(div_𝐯w, ibg, advection, model.velocities, uniform)
+
+    active(ℓx, ℓy, ℓz) = (i, j, k, grid, G) -> !peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    scale = maximum(abs, u) / minimum_xspacing(ibg)
+
+    @test maximum(abs, Gu; condition=active(Face(), Center(), Center())) < 1e-10 * scale
+    @test maximum(abs, Gv; condition=active(Center(), Face(), Center())) < 1e-10 * scale
+    @test maximum(abs, Gw; condition=active(Center(), Center(), Face())) < 1e-10 * scale
+
+    return nothing
+end
+
+function run_uniform_through_flow_test(arch, scheme)
+    grid = RectilinearGrid(arch, size=(16, 16), halo=(5, 5), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+
+    through_flow = NormalFlowBoundaryCondition(1)
+    u_bcs = FieldBoundaryConditions(grid, (Face(), Center(), Center()); west=through_flow, east=through_flow)
+    u = XFaceField(grid, boundary_conditions=u_bcs)
+    set!(u, 1)
+    fill_halo_regions!(u)
+
+    velocities = (; u, v=YFaceField(grid), w=ZFaceField(grid))
+    Gu = KernelFunctionOperation{Face, Center, Center}(div_𝐯u, grid, materialize_advection(scheme, grid), velocities, u)
+    interior_face(i, j, k, grid, G) = !peripheral_node(i, j, k, grid, Face(), Center(), Center())
+
+    @test maximum(abs, Gu; condition=interior_face) < 1e-12
+
+    return nothing
+end
+
 function run_staircase_convection_test(arch)
     grid = RectilinearGrid(arch, size=(16, 128), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
     ibg  = ImmersedBoundaryGrid(grid, PartialCellBottom(x -> 2staircase(x)))
@@ -239,6 +287,19 @@ for arch in archs
     @testset "Immersed momentum advection conserves kinetic energy" begin
         @testset "$Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom)
             run_kinetic_energy_conservation_test(arch, Bottom)
+        end
+    end
+
+    @testset "Immersed momentum advection preserves a uniform field" begin
+        @testset "$(summary(scheme)), $Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom),
+                                                                      scheme in (Centered(), UpwindBiased(), WENO(), WENO(order=9))
+            run_uniform_momentum_preservation_test(arch, Bottom, scheme)
+        end
+    end
+
+    @testset "Uniform through-flow stays uniform [$(summary(arch))]" begin
+        @testset "$(summary(scheme))" for scheme in (Centered(), UpwindBiased(), WENO(), WENO(order=9))
+            run_uniform_through_flow_test(arch, scheme)
         end
     end
 
