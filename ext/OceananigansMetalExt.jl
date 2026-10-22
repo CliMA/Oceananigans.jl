@@ -1,6 +1,7 @@
 module OceananigansMetalExt
 
 using AbstractFFTs: plan_fft!, plan_ifft!
+using Adapt: Adapt
 using KernelAbstractions: KernelAbstractions, __dynamic_checkbounds, __iterspace
 using Metal: Metal, MtlArray, thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d, threadgroup_position_in_grid, thread_position_in_threadgroup
 using Oceananigans: Oceananigans, CPU, GPU
@@ -18,6 +19,9 @@ Architectures.architecture(::MtlArray) = MetalGPU()
 Architectures.architecture(::Type{MtlArray}) = MetalGPU()
 
 Architectures.array_type(::MetalGPU) = MtlArray
+
+# Metal has no Float64
+Architectures.convert_to_device(::MetalGPU, args) = Adapt.adapt(Architectures.Float32Adaptor(), args)
 
 Architectures.on_architecture(::MetalGPU, a::Number) = a
 Architectures.on_architecture(::MetalGPU, a::Array) = MtlArray(a)
