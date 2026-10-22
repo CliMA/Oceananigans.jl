@@ -66,6 +66,10 @@ end
     @test mean(c; condition=top_level) ≈ 3 rtol=tolerance
     @test single_value(Field(Integral(c; condition=top_level))) ≈ 3 * 4π / Nz rtol=tolerance
     @test single_value(Field(Integral(c * u))) ≈ 3 * 4π rtol=tolerance
+    d = CenterField(grid)
+    set!(d, 3)
+    @test c ≈ d # unowned points are excluded
+    @test c != d
     for loc in ((Face, Center, Center), (Face, Face, Center), (Center, Center, Nothing))
         f = Field{loc...}(grid)
         set!(f, 3)
