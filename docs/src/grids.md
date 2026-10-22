@@ -146,6 +146,7 @@ The shape of the physical domain determines what grid type should be used:
 1. [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid) can be fashioned into lines, rectangles and boxes.
 2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
+4. [`YinYangGrid`](@ref) covers the whole thin spherical shell, poles included, with two overlapping latitude-longitude panels.
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
@@ -238,6 +239,38 @@ is `Bounded` by default, because `longitude = (0, 60)`.
 !!! note "LatitudeLongitudeGrid topologies"
     It's still possible to use `topology = (Periodic, Bounded, Bounded)` even if `longitude` doesn't span 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
+
+### Covering the whole sphere: `YinYangGrid`
+
+A `LatitudeLongitudeGrid` cannot include the poles, where its meridians converge. The [`YinYangGrid`](@ref)
+of [KageyamaSato2004](@citet) covers the whole sphere with two identical panels, Yin and Yang. Each panel is a
+[`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
+that spans 270° of longitude and 90° of latitude around its own equator, where the grid is nearly uniform.
+Yang is Yin rotated so that its equator passes through the geographic poles. The panels overlap at their edges,
+and each one fills its halos by interpolating from the interior of the other.
+
+The `size` gives the cells in the 270° × 90° core of each panel, so it must be `(3Nφ, Nφ, Nz)`:
+
+```jldoctest yinyang_grid
+using Oceananigans
+
+grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
+
+# output
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
+├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
+├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
+├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
+├── Yin (region 1):  panel frame = geographic frame
+├── Yang (region 2): (x, y, z) ↦ (-x, z, y), panel (λ′, φ′) = (0, 0) at (λ, φ) = (180, 0)
+└── z: Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=250.0
+```
+
+A `YinYangGrid` is a two-region `MultiRegionGrid`: `grid[1]` is Yin and `grid[2]` is Yang. Each panel stores
+horizontal velocities in its own basis, but `set!` takes geographic velocity components and rotates them
+into each panel's basis. Reductions over both horizontal dimensions, such as `sum`, `maximum` and [`Integral`](@ref),
+count every point of the sphere once. The [Barotropic jet and Double Drake on a Yin-Yang grid](@ref) example
+runs two simulations on a `YinYangGrid`.
 
 ### Bathymetry, topography, and other irregularities
 

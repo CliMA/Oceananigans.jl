@@ -342,10 +342,17 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
+# Vertical fluxes vanish on faces that touch an immersed boundary
+@inline vertical_flux_Wu(i, j, k, grid, scheme, W, u) =
+    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u))
+
+@inline vertical_flux_Wv(i, j, k, grid, scheme, W, v) =
+    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v))
+
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
@@ -353,7 +360,7 @@ end
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
 
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
