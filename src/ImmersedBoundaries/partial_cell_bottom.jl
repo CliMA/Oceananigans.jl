@@ -78,7 +78,6 @@ function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height, fractional_bottom_index)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
-    fill_halo_regions!(bottom_field)
     @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
     return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height, fractional_bottom_index.data)
