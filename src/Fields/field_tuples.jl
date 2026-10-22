@@ -73,16 +73,16 @@ The remaining fields are filled one by one.
 @inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
     groups = halo_fill_groups(select_fields(tupled_fillable, fields))
     individual_fields = select_fields(!tupled_fillable, fields)
-    fill_halo_groups!(groups, args...; kwargs...)
-    fill_individual_halo_regions!(individual_fields, args...; kwargs...)
+    foreach_halo_fill!(fill_halo_group!, groups, args...; kwargs...)
+    foreach_halo_fill!(fill_halo_regions!, individual_fields, args...; kwargs...)
     return nothing
 end
 
-@inline fill_individual_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
+@inline foreach_halo_fill!(fill!, ::Tuple{}, args...; kwargs...) = nothing
 
-@inline function fill_individual_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
-    fill_halo_regions!(first(fields), args...; kwargs...)
-    fill_individual_halo_regions!(Base.tail(fields), args...; kwargs...)
+@inline function foreach_halo_fill!(fill!::F, items::Tuple, args::Vararg{Any, N}; kwargs...) where {F, N}
+    fill!(first(items), args...; kwargs...)
+    foreach_halo_fill!(fill!, Base.tail(items), args...; kwargs...)
     return nothing
 end
 
@@ -90,18 +90,15 @@ end
 ##### Tupled halo filling
 #####
 
+const CenterOrFace = Union{Center, Face}
 const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Union{CPU, GPU}}
-const TupledFillLocation = Union{Center, Face}
-
-const TupledFillField = Field{<:TupledFillLocation, <:TupledFillLocation, <:TupledFillLocation, <:Any, <:SerialGrid,
-                             <:Tuple{Colon, Colon, Colon}, <:OffsetArray, <:Any, <:FieldBoundaryConditions}
+const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:OffsetArray}
 
 # Whether the halos of `field` may be filled together with those of other fields
 @inline tupled_fillable(field) = false
-@inline tupled_fillable(field::TupledFillField) = tupled_fillable_boundary_conditions(field.boundary_conditions)
-
-@inline tupled_fillable_boundary_conditions(bcs::FieldBoundaryConditions) = !needs_halo_fill_args(bcs)
-@inline tupled_fillable_boundary_conditions(::NoKernelFBC) = false
+@inline tupled_fillable(field::TupledFillField) = tupled_fillable(field.boundary_conditions)
+@inline tupled_fillable(bcs::FieldBoundaryConditions) = !needs_halo_fill_args(bcs)
+@inline tupled_fillable(::NoKernelFBC) = false
 
 # Whether two fields launch the same halo-filling kernels
 @inline shares_halo_fill(a, b) = false
@@ -127,14 +124,6 @@ end
     return (group, halo_fill_groups(others)...)
 end
 
-@inline fill_halo_groups!(::Tuple{}, args...; kwargs...) = nothing
-
-@inline function fill_halo_groups!(groups::Tuple, args::Vararg{Any, N}; kwargs...) where N
-    fill_halo_group!(first(groups), args...; kwargs...)
-    fill_halo_groups!(Base.tail(groups), args...; kwargs...)
-    return nothing
-end
-
 @inline fill_halo_group!(group::Tuple{Any}, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(first(group), args...; kwargs...)
 
@@ -142,27 +131,19 @@ function fill_halo_group!(group::Tuple, args::Vararg{Any, N}; kwargs...) where N
     field = first(group)
     grid = field.grid
 
-    if !all_on_grid(grid, group)
-        fill_individual_halo_regions!(group, args...; kwargs...)
-        return nothing
-    end
+    all(f -> f.grid === grid, group) || return foreach_halo_fill!(fill_halo_regions!, group, args...; kwargs...)
 
-    arch = architecture(grid)
-    kernels! = field.boundary_conditions.kernels
-    loc = instantiated_location(field)
     data = map(f -> f.data, group)
     bcs = map(f -> f.boundary_conditions.ordered_bcs, group)
 
     GC.@preserve group begin
-        device_data, device_bcs, device_grid = convert_to_device(arch, (data, bcs, grid))
-        tupled_fill_halo_regions!(device_data, kernels!, device_bcs, loc, device_grid; kwargs...)
+        device_data, device_bcs, device_grid = convert_to_device(architecture(grid), (data, bcs, grid))
+        tupled_fill_halo_regions!(device_data, field.boundary_conditions.kernels, device_bcs,
+                                  instantiated_location(field), device_grid; kwargs...)
     end
 
     return nothing
 end
-
-@inline all_on_grid(grid, ::Tuple{}) = true
-@inline all_on_grid(grid, fields::Tuple) = (first(fields).grid === grid) & all_on_grid(grid, Base.tail(fields))
 
 #####
 ##### Tracer names
