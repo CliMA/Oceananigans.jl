@@ -167,7 +167,7 @@ end
 
 add_callback!(jet_simulation, progress, IterationInterval(1000))
 
-# Every three hours, we save a snapshot of the vertical vorticity at the top of the fluid.
+# Every three hours, we save the vertical vorticity.
 
 @inline ζᶜᶜᶜ(i, j, k, grid, u, v) = ℑxyᶜᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
 
@@ -176,25 +176,10 @@ function vertical_vorticity(model)
     return Field(KernelFunctionOperation{Center, Center, Center}(ζᶜᶜᶜ, model.grid, u, v))
 end
 
-function surface_snapshot(field)
-    snapshot = Field{Center, Center, Nothing}(field.grid)
-    set!(snapshot, view(field, :, :, size(field.grid, 3)))
-    return snapshot
-end
-
-jet_ζ = vertical_vorticity(jet_model)
-
-jet_times = Float64[]
-vorticity = []
-
-function save_vorticity(sim)
-    compute!(jet_ζ)
-    push!(jet_times, time(sim))
-    push!(vorticity, surface_snapshot(jet_ζ))
-    return nothing
-end
-
-add_callback!(jet_simulation, save_vorticity, TimeInterval(3hours))
+jet_simulation.output_writers[:vorticity] = JLD2Writer(jet_model, (; ζ=vertical_vorticity(jet_model));
+                                                       filename = "yin_yang_barotropic_jet",
+                                                       schedule = TimeInterval(3hours),
+                                                       overwrite_files = true)
 
 # We also track the volume of the fluid. The ``z^\star`` coordinate stretches the cells with
 # the free surface, so the volume is the integral of one over the grid.
@@ -228,8 +213,11 @@ function globe!(position, azimuth, elevation; width=400)
     return ax
 end
 
+jet_ζ = FieldTimeSeries("yin_yang_barotropic_jet.jld2", "ζ")
+jet_times = jet_ζ.times
+
 jet_frame = Observable(1)
-ζₙ = @lift vorticity[$jet_frame]
+ζₙ = @lift jet_ζ[$jet_frame]
 azimuth = @lift 2π * ($jet_frame - 1) / length(jet_times)
 title = @lift "Vertical vorticity, t = " * prettytime(jet_times[$jet_frame])
 
@@ -496,23 +484,15 @@ add_conservation_fixer!(drake_simulation)
 
 add_callback!(drake_simulation, progress, IterationInterval(1000))
 
-# For plotting, we save the surface vorticity and temperature of each panel every three hours.
+# For plotting, we save the surface vorticity and temperature every three hours.
 
-drake_ζ = vertical_vorticity(drake_model)
+surface_outputs = (; ζ=vertical_vorticity(drake_model), T=drake_model.tracers.T)
 
-drake_times = Float64[]
-surface_ζ = []
-surface_T = []
-
-function save_surface_fields(sim)
-    compute!(drake_ζ)
-    push!(drake_times, time(sim))
-    push!(surface_ζ, surface_snapshot(drake_ζ))
-    push!(surface_T, surface_snapshot(sim.model.tracers.T))
-    return nothing
-end
-
-add_callback!(drake_simulation, save_surface_fields, TimeInterval(3hours))
+drake_simulation.output_writers[:surface] = JLD2Writer(drake_model, surface_outputs;
+                                                       filename = "yin_yang_double_drake",
+                                                       schedule = TimeInterval(3hours),
+                                                       indices = (:, :, Nz),
+                                                       overwrite_files = true)
 
 # We also track the heat content, ``∫ T \, \mathrm{d}V``, which changes only through surface
 # restoring, since the conservation fixer removes the small errors of the interpolation between the panels.
@@ -532,8 +512,12 @@ run!(drake_simulation)
 # ### Visualization
 #
 # We plot the surface fields on the sphere, seen from the north and from the south, while
-# the camera circles the globe once. The snapshots live on the immersed grid, so `quadmesh!`
+# the camera circles the globe once. The saved fields live on the immersed grid, so `quadmesh!`
 # masks the continents, which `nan_color` paints gray.
+
+surface_ζ = FieldTimeSeries("yin_yang_double_drake.jld2", "ζ")
+surface_T = FieldTimeSeries("yin_yang_double_drake.jld2", "T")
+drake_times = surface_ζ.times
 
 drake_frame = Observable(1)
 ζₙ = @lift surface_ζ[$drake_frame]
