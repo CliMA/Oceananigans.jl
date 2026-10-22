@@ -242,7 +242,7 @@ using Oceananigans
 grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
 
 # output
-54×22×4 YinYangGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
 ├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
 ├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
 ├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
