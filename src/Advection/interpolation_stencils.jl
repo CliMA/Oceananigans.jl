@@ -49,6 +49,17 @@ end
     return c(1), (G₂ + (1 - G₂) * G₁) * Δ₁, G₂ * κ₁
 end
 
+# Second and First order schemes
+@inline wall_continuation(S::NTuple{2}, first, step, available) = (@inbounds(S[clamp(first, 1, 2)]), zero(S[1]), zero(S[1]))
+
+# Third and Fourth order schemes, all the others use the general `wall_continuation`
+@inline function wall_continuation(S::NTuple{4}, first, step, available)
+    c(q) = @inbounds S[clamp(first + (q - 1) * step, 1, 4)]
+    Δ₁ = ifelse(available ≥ 2, c(2) - c(1), zero(S[1]))
+    Δ₂ = ifelse(available ≥ 3, c(3) - c(2), Δ₁)
+    return c(1), agreement(Δ₁, Δ₂)^2 * Δ₁, zero(Δ₁)
+end
+
 @inline continued_value((c₁, σ, κ), g) = c₁ - g * σ - g * (g + 1) * κ / 2
 
 """
