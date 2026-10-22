@@ -70,8 +70,9 @@ end
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, grid::DistributedGrid, args...; kwargs...) = nothing
 
 function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, loc, grid, buffers, args; only_local_halos = false, kwargs...)
-    # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused
-    only_local_halos || wait_for_messages!(buffers)
+    # Complete an asynchronous fill of this field still in flight before its send buffers and requests are reused;
+    # this fill supersedes it, so its halos are never unpacked
+    only_local_halos || (wait_for_messages!(buffers); take_unpack_pending!(buffers))
 
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, buffers, args; only_local_halos, kwargs...)
@@ -120,6 +121,7 @@ end
 function async_corner_halo_comms(connectivity, arch, grid, buffers)
     record_event!(buffers.state.pack_event, arch)
     post_corner_messages!(connectivity, arch, grid, buffers)
+    mark_unpack_pending!(buffers)
     return nothing
 end
 
@@ -154,6 +156,7 @@ function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
 
     if async && (arch isa AsynchronousDistributed)
         kernel!(bcs..., grid, arch, buffers)
+        mark_unpack_pending!(buffers)
     else
         # The main thread waits for these messages anyway
         kernel!(bcs..., grid, arch, posted_by_main_thread(buffers))

@@ -442,6 +442,8 @@ _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+
 
 # Pass throughs to communication state
 wait_for_messages!(buff::CommunicationBuffers) = wait_for_messages!(buff.state)
+mark_unpack_pending!(buff::CommunicationBuffers) = mark_unpack_pending!(buff.state)
+take_unpack_pending!(buff::CommunicationBuffers) = take_unpack_pending!(buff.state)
 
 posted_by_main_thread(buff::CommunicationBuffers) =
     CommunicationBuffers(buff.west, buff.east, buff.south, buff.north,

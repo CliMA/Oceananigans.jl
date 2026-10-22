@@ -95,7 +95,7 @@ complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
     wait_for_messages!(field)
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+    take_unpack_pending!(field.communication_buffers) && recv_from_buffers!(field.data, field.communication_buffers, field.grid)
     return nothing
 end
 

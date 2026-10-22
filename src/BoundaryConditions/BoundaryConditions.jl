@@ -8,7 +8,7 @@ export
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     implicit_flux_coefficient,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
-    PerturbationAdvection, has_target_transport, get_target_transport,
+    PerturbationAdvection, has_target_transport, get_target_transport, TransportTimeSeries,
     GravityWaveRadiation, NormalRadiation, ObliqueRadiation, TracerReservoir, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
     TidalHarmonics, tidal_boundary_conditions, tidal_atlas_constants,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
@@ -21,7 +21,7 @@ export
     DistributedFillHalo
 
 using Adapt: Adapt, adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, defaults
