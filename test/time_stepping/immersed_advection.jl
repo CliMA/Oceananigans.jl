@@ -132,7 +132,7 @@ function run_kinetic_energy_conservation_test(arch, Bottom)
 end
 
 function run_staircase_convection_test(arch)
-    grid = RectilinearGrid(arch, size=(16, 128), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+    grid = RectilinearGrid(arch, size=(16, 128), halo=(4, 4), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
     ibg  = ImmersedBoundaryGrid(grid, PartialCellBottom(x -> 2staircase(x)))
 
     model = NonhydrostaticModel(ibg; advection=WENO(), tracers=:b, buoyancy=BuoyancyTracer(),

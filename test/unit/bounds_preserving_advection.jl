@@ -122,8 +122,7 @@ end
         grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1), halo=(3, 3, 3))
         @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=WENO(order=5, bounds=(0, 1)))
         @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; tracers=:c, tracer_advection=(; c=WENO(order=5, bounds=(0, 1))))
-        model = NonhydrostaticModel(grid; advection=WENO(order=5, bounds=(0, 1)), tracers=:c)
-        @test Oceananigans.Grids.halo_size(model.grid) == (4, 4, 3)
+        @test_throws ArgumentError NonhydrostaticModel(grid; advection=WENO(order=5, bounds=(0, 1)), tracers=:c)
     end
 
     @testset "Model integration" begin
