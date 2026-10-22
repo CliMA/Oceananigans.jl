@@ -121,28 +121,9 @@ DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Di
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 
-With the default `ExplicitTimeDiscretization`, `flux` is an ordinary flux boundary condition integrated
-through the tendency.
-
-With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux that is linear in the boundary-cell field
-value `φ_b` is integrated implicitly by the vertical tridiagonal solver, which removes the `Δz`-dependent CFL
-limit that an explicit dissipative flux imposes. The flux is split at the boundary cell as `J(φ_b) ≈ Fₑ + λ φ_b`,
-in one of two ways:
-
-```julia
-FluxBoundaryCondition(J;  time_discretization = IMEXFluxTimeDiscretization())   # J split automatically
-FluxBoundaryCondition(Fₑ; time_discretization = IMEXFluxTimeDiscretization(λ))  # J = Fₑ + λ φ_b
-```
-
-Without a coefficient, `J` is any flux condition (a number, an array, a `Field`, or a function) and is split by
-[`implicit_flux_coefficient`](@ref). With a coefficient, `flux` is the explicit part `Fₑ` and `λ` follows the same
-conventions as any other function boundary condition; `kwargs` (`parameters`, `discrete_form`,
-`field_dependencies`) are applied to both. See [`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
-
-!!! warning "Vertical boundaries only"
-    The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
-    `IMEXFluxTimeDiscretization` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
-    (`west`/`east`/`south`/`north`) boundary errors.
+With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux linear in the boundary-cell value
+is integrated by the vertical tridiagonal solver. This is supported only on `top` and `bottom` boundaries.
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to both `flux` and the implicit coefficient.
 """
 function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
                                parameters = nothing, discrete_form = false, field_dependencies = ())

@@ -26,7 +26,6 @@ export BulkDragFunction,
        QuadraticFormulation
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
@@ -142,60 +141,47 @@ function Base.show(io::IO, df::BulkDragFunction)
 end
 
 #####
-##### The drag coefficient λ, such that the drag flux on the tangential velocity is λ (u + U∞)
+##### The drag flux λ (u + U∞) on the tangential velocity u, with λ = -Cᴰ |U| (quadratic) or -Cᴰ (linear)
 #####
-
-# Quadratic drag: λ = -Cᴰ |U|
-@inline x_drag_coefficient(i, j, k, grid, ::QuadraticFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ * sqrt(speed²ᶠᶜᶜ(i, j, k, grid, fields, U∞, V∞, W∞))
-@inline y_drag_coefficient(i, j, k, grid, ::QuadraticFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ * sqrt(speed²ᶜᶠᶜ(i, j, k, grid, fields, U∞, V∞, W∞))
-@inline z_drag_coefficient(i, j, k, grid, ::QuadraticFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ * sqrt(speed²ᶜᶜᶠ(i, j, k, grid, fields, U∞, V∞, W∞))
-
-# Linear drag (Rayleigh friction): λ = -Cᴰ
-@inline x_drag_coefficient(i, j, k, grid, ::LinearFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ
-@inline y_drag_coefficient(i, j, k, grid, ::LinearFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ
-@inline z_drag_coefficient(i, j, k, grid, ::LinearFormulation, fields, Cᴰ, U∞, V∞, W∞) = - Cᴰ
 
 const XDBDF = XDirectionBulkDragFunction
 const YDBDF = YDirectionBulkDragFunction
 const ZDBDF = ZDirectionBulkDragFunction
 
-@inline drag_coefficient(i, j, k, grid, df::XDBDF, fields) = x_drag_coefficient(i, j, k, grid, df.formulation, fields, df.coefficient, df.background_velocities...)
-@inline drag_coefficient(i, j, k, grid, df::YDBDF, fields) = y_drag_coefficient(i, j, k, grid, df.formulation, fields, df.coefficient, df.background_velocities...)
-@inline drag_coefficient(i, j, k, grid, df::ZDBDF, fields) = z_drag_coefficient(i, j, k, grid, df.formulation, fields, df.coefficient, df.background_velocities...)
+@inline speed²(i, j, k, grid, df::XDBDF, fields) = speed²ᶠᶜᶜ(i, j, k, grid, fields, df.background_velocities...)
+@inline speed²(i, j, k, grid, df::YDBDF, fields) = speed²ᶜᶠᶜ(i, j, k, grid, fields, df.background_velocities...)
+@inline speed²(i, j, k, grid, df::ZDBDF, fields) = speed²ᶜᶜᶠ(i, j, k, grid, fields, df.background_velocities...)
 
-@inline tangential_velocity(i, j, k, grid, ::XDBDF, fields) = @inbounds fields.u[i, j, k]
-@inline tangential_velocity(i, j, k, grid, ::YDBDF, fields) = @inbounds fields.v[i, j, k]
-@inline tangential_velocity(i, j, k, grid, ::ZDBDF, fields) = @inbounds fields.w[i, j, k]
+@inline drag_speed(i, j, k, grid, ::QuadraticFormulation, df, fields) = sqrt(speed²(i, j, k, grid, df, fields))
+@inline drag_speed(i, j, k, grid, ::LinearFormulation, df, fields) = one(grid)
+
+@inline drag_coefficient(i, j, k, grid, df, fields) = - df.coefficient * drag_speed(i, j, k, grid, df.formulation, df, fields)
 
 @inline background_velocity(df::XDBDF) = df.background_velocities[1]
 @inline background_velocity(df::YDBDF) = df.background_velocities[2]
 @inline background_velocity(df::ZDBDF) = df.background_velocities[3]
 
-# The drag flux λ (u + U∞) along the inward-pointing boundary normal
-@inline function bulk_drag(i, j, k, grid, df::BulkDragFunction, fields)
-    λ  = drag_coefficient(i, j, k, grid, df, fields)
-    u  = tangential_velocity(i, j, k, grid, df, fields)
-    U∞ = background_velocity(df)
-    return λ * (u + U∞)
-end
+@inline tangential_velocity(i, j, k, ::XDBDF, fields) = @inbounds fields.u[i, j, k]
+@inline tangential_velocity(i, j, k, ::YDBDF, fields) = @inbounds fields.v[i, j, k]
+@inline tangential_velocity(i, j, k, ::ZDBDF, fields) = @inbounds fields.w[i, j, k]
+
+@inline bulk_drag(i, j, k, grid, df, fields) =
+    drag_coefficient(i, j, k, grid, df, fields) * (tangential_velocity(i, j, k, df, fields) + background_velocity(df))
 
 #####
-##### Domain boundaries: map the two boundary indices to (i, j, k) and orient the flux
+##### getbc: domain boundaries map their two indices to (i, j, k); immersed facets pass (i, j, k)
 #####
 
 @inline boundary_index(::LeftBoundary,  N) = 1
 @inline boundary_index(::RightBoundary, N) = N
 
-# `dim` is the boundary-normal direction: the boundary index replaces the missing one
 @inline boundary_ijk(::Val{1}, side, j, k, grid) = (boundary_index(side, grid.Nx), j, k)
 @inline boundary_ijk(::Val{2}, side, i, k, grid) = (i, boundary_index(side, grid.Ny), k)
 @inline boundary_ijk(::Val{3}, side, i, j, grid) = (i, j, boundary_index(side, grid.Nz))
 
-# A flux on a left boundary (west, south, bottom) enters the tendency as +J/Δ, and on a right
-# boundary (east, north, top) as -J/Δ. The drag `λ (u + U∞)` is a sink along the inward normal,
-# so on a right boundary it must be flipped to oppose the flow rather than accelerate it.
-@inline boundary_sign(::LeftBoundary)  = 1
-@inline boundary_sign(::RightBoundary) = -1
+# Fluxes are positive along +x, +y, +z, so the drag changes sign on right boundaries (east, north, top)
+@inline boundary_sign(::Union{LeftBoundary, Bottom, ImmersedFacet}) = 1
+@inline boundary_sign(::Union{RightBoundary, Top}) = -1
 
 @inline function BoundaryConditions.getbc(df::BulkDragFunction, a::Integer, b::Integer,
                                           grid::AbstractGrid, clock, fields, args...)
@@ -203,22 +189,10 @@ end
     return boundary_sign(df.side) * bulk_drag(i, j, k, grid, df, fields)
 end
 
-#####
-##### Immersed boundaries: (i, j, k) is the boundary-adjacent cell and every facet flux points inward
-#####
-
 @inline BoundaryConditions.getbc(df::BulkDragFunction, i::Integer, j::Integer, k::Integer,
                                  grid::AbstractGrid, clock, fields, args...) = bulk_drag(i, j, k, grid, df, fields)
 
-#####
-##### Implicit-explicit time discretization: the drag λ (u + U∞) is affine in the tangential velocity, so
-##### the explicit part is `λ U∞` and the linear part `λ u` goes into the vertical tridiagonal solver.
-##### For the quadratic formulation the speed |U| in λ is lagged (evaluated when the diagonal is built).
-#####
-
-@inline boundary_sign(::Top) = -1
-@inline boundary_sign(::Union{Bottom, ImmersedFacet}) = 1
-
+# IMEX split: λ u is implicit and λ U∞ explicit; the speed in the quadratic λ is lagged.
 @inline BoundaryConditions.implicit_flux_coefficient(df::BulkDragFunction, boundary, i, j, k, grid, ϕ, clock, fields, args...) =
     boundary_sign(boundary) * drag_coefficient(i, j, k, grid, df, fields)
 
@@ -235,32 +209,14 @@ const BulkDragBoundaryCondition = BoundaryCondition{<:Flux, <:BulkDragFunction}
 ##### Regularization: infer direction from field location and set Side
 #####
 
-"""
-$(TYPEDSIGNATURES)
-
-Regularize a `BulkDragFunction` by:
-1. Inferring the direction from the field location if not specified
-2. Setting the boundary side and dimension from the regularization context
-3. Converting numeric parameters to the grid's float type
-
-The direction is inferred as follows:
-- If `loc[1] == Face`, the field is a u-velocity → `XDirection()`
-- If `loc[2] == Face`, the field is a v-velocity → `YDirection()`
-- If `loc[3] == Face`, the field is a w-velocity → `ZDirection()`
-
-The dimension `dim` indicates which axis the boundary is normal to:
-- `dim=1`: x-normal boundary (west/east)
-- `dim=2`: y-normal boundary (south/north)
-- `dim=3`: z-normal boundary (bottom/top)
-"""
+# Infer the direction from the field location, record the boundary side and normal dimension,
+# and convert numeric parameters to the grid's float type.
 function BoundaryConditions.regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_names)
     direction = infer_direction(df.direction, loc)
     FT = eltype(grid)
     coefficient = regularize_parameter(FT, df.coefficient)
     background_velocities = map(U -> regularize_parameter(FT, U), df.background_velocities)
 
-    # Side() instantiates the Side type (e.g., LeftBoundary → LeftBoundary())
-    # Val{dim} is used for type dispatch in getbc methods
     return BulkDragFunction(direction, Side(), Val{dim}(), df.formulation, coefficient, background_velocities)
 end
 
@@ -324,33 +280,11 @@ See [`BulkDragFunction`](@ref) for details.
                the field location during boundary condition regularization.
 - `background_velocities`: Background velocities as a tuple `(U∞, V∞, W∞)` (default: `(0, 0, 0)`).
   These are added to the prognostic velocities when computing both the speed and the drag.
-- `time_discretization`: Either `ExplicitTimeDiscretization()` (default), which integrates the drag
-                         through the tendency, or `IMEXFluxTimeDiscretization()`, which integrates
-                         the linear part of the drag implicitly (see below).
+- `time_discretization`: `ExplicitTimeDiscretization()` (default) or `IMEXFluxTimeDiscretization()`.
 
-# Implicit-explicit time discretization
-
-The drag is affine in the tangential velocity, ``τ = λ (u + U_∞)``, so with
-`time_discretization = IMEXFluxTimeDiscretization()` the explicit part ``λ U_∞`` is integrated through the
-tendency while ``λ u`` is embedded in the vertical tridiagonal solver, which removes the time step restriction
-``C^D |U| Δt / Δz < 2``. For the quadratic formulation the speed in ``λ = -C^D |U + U_∞|`` is evaluated when the
-implicit solve is built, so the drag is linearized about the current speed. Like every
-[`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` boundaries and on the
-`bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref).
-
-```jldoctest
-using Oceananigans
-
-drag = BulkDrag(coefficient=1e-3, time_discretization=IMEXFluxTimeDiscretization())
-u_bcs = FieldBoundaryConditions(bottom=drag)
-
-grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs))
-model.velocities.u.boundary_conditions.bottom
-
-# output
-IMEXFluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
-```
+With `time_discretization = IMEXFluxTimeDiscretization()`, the part of the drag linear in the tangential
+velocity is integrated implicitly by the vertical tridiagonal solver, with the speed in the quadratic
+drag lagged. This is supported only on `bottom` and `top` boundaries and `bottom` and `top` immersed facets.
 
 # Examples
 
