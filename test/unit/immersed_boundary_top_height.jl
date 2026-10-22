@@ -322,6 +322,21 @@ function test_partial_cell_top_staggered_faces(FT, arch)
     return nothing
 end
 
+function test_top_load_construction(FT, arch, Boundary)
+    @test isnothing(Boundary(bottom_height=-0.8, top_height=-0.2).top_load)
+    @test Boundary(bottom_height=-0.8, top_height=-0.2) != Boundary(bottom_height=-0.8, top_height=-0.2, top_load=1)
+    @test_throws ArgumentError Boundary(bottom_height=-0.8, top_load=1)
+
+    underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+    ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8, top_height=-0.2, top_load=(x, y) -> x))
+    top_load = Array(bottom_height_interior(ibg.immersed_boundary.top_load))
+
+    @test top_load[:, 1] ≈ FT[0.125, 0.375, 0.625, 0.875]
+    @test occursin("top_load", sprint(show, ibg.immersed_boundary))
+
+    return nothing
+end
+
 @testset "Immersed boundary top height" begin
     for arch in archs, FT in float_types
         A = typeof(arch)
@@ -333,6 +348,7 @@ end
             @testset "$Boundary without bottom [$FT, $A]"        test_no_bottom_height(FT, arch, Boundary)
             @testset "$BottomOnly alias [$FT, $A]"               test_bottom_only_alias(FT, arch, Boundary, BottomOnly)
             @testset "$Boundary face column depth [$FT, $A]"     test_face_column_depth_beneath_sloping_top(FT, arch, Boundary)
+            @testset "$Boundary top load [$FT, $A]"              test_top_load_construction(FT, arch, Boundary)
         end
         @testset "GridFittedVerticalBoundaries top pattern [$FT, $A]"                     test_grid_fitted_top_immersed_cell_pattern(FT, arch)
         @testset "GridFittedVerticalBoundaries column closure [$FT, $A]"                  test_grid_fitted_top_column_closure(FT, arch)

@@ -15,16 +15,20 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedVerticalBoundaries{H, T, I, KB, KT} <: AbstractGridFittedBottom{H}
+struct GridFittedVerticalBoundaries{H, T, I, KB, KT, L} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     immersed_condition :: I
     bottom_cell_index :: KB
     top_cell_index :: KT
+    top_load :: L
 end
 
-GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition) =
-    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, nothing, nothing)
+GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, top_load=nothing) =
+    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, nothing, nothing, top_load)
+
+GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, bottom_cell_index, top_cell_index) =
+    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, bottom_cell_index, top_cell_index, nothing)
 
 const GridFittedBottom{H, I} = GridFittedVerticalBoundaries{H, Nothing, I, <:Any, Nothing}
 const GridFittedWithTop = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, <:Any, <:AbstractArray}
@@ -35,7 +39,7 @@ Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedVerticalBoundaries}
 
 """
-    GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition())
+    GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition(), top_load=nothing)
 
 Return an immersed boundary that bounds each column from below by `bottom_height`
 and from above by `top_height`.
@@ -61,6 +65,12 @@ Keyword arguments
                         minimum fractional cell height for partial cells is set
                         to 0. The same condition applies to the top.
 
+* `top_load`: the potential of the weight of the solid top, added to the hydrostatic
+              pressure of every column. Either `nothing` (default, no load), a [`TopLoad`](@ref)
+              computed from a reference state, or an array, function of `(x, y)` or
+              two-dimensional field such as the one returned by [`top_load_potential`](@ref).
+              Requires `top_height`.
+
 Columns in which the top lies at or below the bottom are immersed entirely.
 
 Example
@@ -80,8 +90,10 @@ julia> ImmersedBoundaryGrid(grid, GridFittedVerticalBoundaries(bottom_height=-90
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition()) =
-    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition)
+function GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immersed_condition=CenterImmersedCondition(), top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, top_load)
+end
 
 """
     GridFittedBottom(bottom_height, [immersed_condition=CenterImmersedCondition()])
@@ -185,7 +197,8 @@ end
 function Base.show(io::IO, ib::GridFittedVerticalBoundaries)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
-    print(io, "└── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "└── top_load: ", prettysummary(ib.top_load), '\n')
 end
 
 Architectures.on_architecture(arch, ib::GridFittedVerticalBoundaries) =
@@ -193,7 +206,8 @@ Architectures.on_architecture(arch, ib::GridFittedVerticalBoundaries) =
                                  on_architecture(arch, ib.top_height),
                                  ib.immersed_condition,
                                  on_architecture(arch, ib.bottom_cell_index),
-                                 on_architecture(arch, ib.top_cell_index))
+                                 on_architecture(arch, ib.top_cell_index),
+                                 on_architecture(arch, ib.top_load))
 
 # Kernels read the bottom and top through `bottom_cell_index` and `top_cell_index` only, see `bottom_height(i, j, ibg)`
 Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
@@ -201,7 +215,8 @@ Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
                                  nothing,
                                  adapt(to, ib.immersed_condition),
                                  adapt(to, ib.bottom_cell_index),
-                                 adapt(to, ib.top_cell_index))
+                                 adapt(to, ib.top_cell_index),
+                                 adapt(to, ib.top_load))
 
 """
 $(TYPEDSIGNATURES)
@@ -225,11 +240,20 @@ function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
 
     @apply_regionally compute_cell_indices!(grid, compute_ib, bottom_cell_index, top_cell_index, bottom, top)
 
+    unloaded_ib = GridFittedVerticalBoundaries(stored_data(bottom),
+                                               stored_data(top),
+                                               ib.immersed_condition,
+                                               stored_data(bottom_cell_index),
+                                               stored_data(top_cell_index))
+
+    top_load = materialize_top_load(grid, unloaded_ib, ib.top_load)
+
     return GridFittedVerticalBoundaries(stored_data(bottom),
                                         stored_data(top),
                                         ib.immersed_condition,
                                         stored_data(bottom_cell_index),
-                                        stored_data(top_cell_index))
+                                        stored_data(top_cell_index),
+                                        top_load)
 end
 
 # Without a top, kernels take the top of the domain and need no `top_cell_index`
@@ -414,5 +438,6 @@ end
 function Base.:(==)(gfb1::GridFittedVerticalBoundaries, gfb2::GridFittedVerticalBoundaries)
     return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) &&
            bottom_heights_equal(gfb1.top_height, gfb2.top_height) &&
+           bottom_heights_equal(gfb1.top_load, gfb2.top_load) &&
            gfb1.immersed_condition == gfb2.immersed_condition
 end
