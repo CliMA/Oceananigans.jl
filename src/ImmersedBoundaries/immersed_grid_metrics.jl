@@ -5,7 +5,7 @@ using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜ�
 using Oceananigans.Operators: Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ
 using Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
-using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
+using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rotation_angle
 
 # Grid metrics for ImmersedBoundaryGrid
 #
@@ -100,3 +100,4 @@ end
 
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v, w) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
 @inline Operators.extrinsic_vector(i, j, k, ibg::IBG, u, v, w) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
+@inline Operators.rotation_angle(i, j, ibg::IBG, ℓx, ℓy) = rotation_angle(i, j, ibg.underlying_grid, ℓx, ℓy)
