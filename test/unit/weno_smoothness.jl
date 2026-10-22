@@ -32,7 +32,8 @@ smooth_stencil(FT, buffer) = ntuple(i -> FT(300 + 0.1 * sinpi((i - 1) / buffer))
         for S in stencils, weight_computation in (NormalDivision, BackendOptimizedDivision)
             δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
             scheme = WENO(FT; order, weight_computation)
-            ω = biased_weno_weights(δ, nothing, scheme)
+            α = biased_weno_weights(δ, nothing, scheme)
+            ω = α ./ sum(α)
 
             β = beta_loop(scheme, δ)
             τ = global_smoothness_indicator(Val(buffer), β)
@@ -69,7 +70,8 @@ end
 
         for weight_computation in (NormalDivision, BackendOptimizedDivision)
             scheme = WENO(FT; order, weight_computation)
-            ω = biased_weno_weights(δ, nothing, scheme)
+            α = biased_weno_weights(δ, nothing, scheme)
+            ω = α ./ sum(α)
             optimal = ntuple(r -> big(C★(scheme, Val(r - 1))), buffer)
             optimal = optimal ./ sum(optimal) # the FT-rounded C★ do not sum exactly to one
 

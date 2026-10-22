@@ -436,14 +436,12 @@ where
 - ``ϵ★`` is the regularization computed by `zweno_regularization`: the constant ``ϵ = 10⁻⁸``, which grows with
   ``τ`` beside large jumps in Float32 and BFloat16 so that ``α`` cannot overflow
 
-The ``α`` values are normalized before returning
+The ``α`` values are returned unnormalized: [`weno_reconstruction`](@ref) divides by their sum.
 """
 @inline function biased_weno_weights(δ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ = weight_normalization(scheme, α)
-    return α .* Σα⁻¹
+    return zweno_alpha_loop(scheme, β, τ)
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ℓ, ::VelocityStencil, u, v) where {N, FT}
@@ -456,9 +454,7 @@ end
     β  = beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ = weight_normalization(scheme, α)
-    return α .* Σα⁻¹
+    return zweno_alpha_loop(scheme, β, τ)
 end
 
 # The right-biased stencil is the mirror of the left-biased one, so both use the left-biased coefficients
@@ -477,30 +473,30 @@ end
         elem[stencil] = :(ω[$stencil] * biased_p(scheme, Val($(stencil-1)), $(stencil_differences(buffer, stencil-1))))
     end
 
-    return Expr(:call, :+, :ψ₀, elem...)
+    return :(ψ₀ + $(Expr(:call, :+, elem...)) * weight_normalization(scheme, ω))
 end
 
 """
 $(TYPEDSIGNATURES)
 
 Reconstruction of a WENO scheme of order `buffer * 2 - 1` from the anchor value `ψ₀` and the `2buffer - 2`
-first differences `δ` of the bias-ordered stencil, weighted by the WENO weights `ω`.
+first differences `δ` of the bias-ordered stencil, weighted by the unnormalized WENO weights `ω`.
 
 The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_weno_reconstruction` function which, for
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ψ₀ + ω[1] * biased_p(scheme, Val(0), (δ[4], δ[5], δ[6])) +
-         ω[2] * biased_p(scheme, Val(1), (δ[3], δ[4], δ[5])) +
-         ω[3] * biased_p(scheme, Val(2), (δ[2], δ[3], δ[4])) +
-         ω[4] * biased_p(scheme, Val(3), (δ[1], δ[2], δ[3]))
+ψ̂ = ψ₀ + (ω[1] * biased_p(scheme, Val(0), (δ[4], δ[5], δ[6])) +
+          ω[2] * biased_p(scheme, Val(1), (δ[3], δ[4], δ[5])) +
+          ω[3] * biased_p(scheme, Val(2), (δ[2], δ[3], δ[4])) +
+          ω[4] * biased_p(scheme, Val(3), (δ[1], δ[2], δ[3]))) / (ω[1] + ω[2] + ω[3] + ω[4])
 ```
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
 @inline weno_reconstruction(scheme, ψ₀, δ, args...) = ψ₀ # Fallback only for documentation purposes
 
-# Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
+# Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ) / ∑ᵣwᵣ
 for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
