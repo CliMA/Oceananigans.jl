@@ -57,8 +57,7 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side;
-                             xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
+    inside_immersed_boundary(buffer, shift, dir, side)
 
 Check if the stencil required for reconstruction contains immersed nodes
 
@@ -67,11 +66,10 @@ Example
 
 ```
 julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
-4-element Vector{Any}:
- :(inactive_node(i, j, k + -1, ibg, c, c, f))
- :(inactive_node(i, j, k + 0,  ibg, c, c, f))
- :(inactive_node(i, j, k + 1,  ibg, c, c, f))
- :(inactive_node(i, j, k + 2,  ibg, c, c, f))
+3-element Vector{Any}:
+ :(inactive_node(i, j, k + -1, ibg, c, c, c))
+ :(inactive_node(i, j, k + 0,  ibg, c, c, c))
+ :(inactive_node(i, j, k + 1,  ibg, c, c, c))
 
 julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
@@ -82,7 +80,7 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
  :(inactive_node(i + 1,  j, k, ibg, c, c, c))
 ```
 """
-@inline function inside_immersed_boundary(buffer, shift, dir, side; xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
+@inline function inside_immersed_boundary(buffer, shift, dir, side)
 
     N = buffer * 2
     if shift != :none
@@ -97,18 +95,17 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
         rng = 1:N
     end
 
-    inactive_cells  = Vector(undef, length(rng))
+    # A stencil of faces is checked through the cells between its faces
+    cells = side == :ᶜ ? rng[1:end-1] : rng
+    inactive_cells  = Vector(undef, length(cells))
 
-    for (idx, n) in enumerate(rng)
-        c = side == :ᶠ ? n - buffer - 1 : n - buffer
-        xflipside = xside == :ᶠ ? :c : :f
-        yflipside = yside == :ᶠ ? :c : :f
-        zflipside = zside == :ᶠ ? :c : :f
+    for (idx, n) in enumerate(cells)
+        offset = side == :ᶠ ? n - buffer - 1 : n - buffer
         inactive_cells[idx] =  dir == :x ?
-                               :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i + $offset, j, k, ibg, c, c, c)) :
                                dir == :y ?
-                               :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
+                               :(inactive_node(i, j + $offset, k, ibg, c, c, c)) :
+                               :(inactive_node(i, j, k + $offset, ibg, c, c, c))
     end
 
     return inactive_cells
@@ -135,13 +132,13 @@ for side in (:ᶜ, :ᶠ)
 
     for buffer in advection_buffers
         @eval begin
-            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side; xside = side)...))
-            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side; yside = side)...))
-            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side; zside = side)...))
+            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side)...))
+            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side)...))
+            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side)...))
 
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side)...))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side)...))
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side)...))
         end
     end
 end

@@ -100,7 +100,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
 - `kernel_parameters`: Kernel parameters for subcycling kernel launching. This is `Val(:xy)` when the substeps span
-  the interior, and a `KernelParameters` struct with the execution ranges when they extend into the halos.
+  the interior. When they extend into the halos, it is `surface_kernel_parameters(grid)` for `ExtendedHalos`, and a `KernelParameters` struct with the
+  execution ranges for `LocalHaloFilling`.
 
 - `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
@@ -289,7 +290,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)
     else
-        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
+        materialize_kernel_parameters(TX, TY, maybe_extended_grid, substepping, strategy)
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs.U, bcs.V)
@@ -441,16 +442,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = Val(:xy)
+materialize_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
+function materialize_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(connected_range, (TX, TY), (Nx, Ny), (Hx, Hy))
+    kernel_parameters = materialized_kernel_parameters(strategy, grid, kernel_sizes)
 
-    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : KernelParameters(kernel_sizes...)
+    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_parameters
 end
+
+materialized_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
+materialized_kernel_parameters(::LocalHaloFilling, grid, kernel_sizes) = KernelParameters(kernel_sizes...)
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
