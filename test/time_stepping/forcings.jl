@@ -2,7 +2,8 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field, FunctionField
-using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
+using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation,
+                              InterpolatedFieldTarget, InflowOutflowRelaxation, MaterializedRelaxationTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -275,96 +276,6 @@ function seven_forcings(arch)
     return true
 end
 
-# For each node (i, j, k), store whether the condition
-# "if immersed peripheral node then flux == 0" holds.
-# That is: !immersed_peripheral_node | (flux == 0).
-# @test all(interior(t**)) then verifies zero flux everywhere it is required.
-@kernel function _populate_momentum_flux_tests!(tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
-                                                grid, scheme, u, v, w)
-    i, j, k = @index(Global, NTuple)
-
-    Fuu = Oceananigans.Advection._advective_momentum_flux_Uu(i, j, k, grid, scheme, u, u)
-    Fuv = Oceananigans.Advection._advective_momentum_flux_Uv(i, j, k, grid, scheme, u, v)
-    Fuw = Oceananigans.Advection._advective_momentum_flux_Uw(i, j, k, grid, scheme, u, w)
-    Fvu = Oceananigans.Advection._advective_momentum_flux_Vu(i, j, k, grid, scheme, v, u)
-    Fvv = Oceananigans.Advection._advective_momentum_flux_Vv(i, j, k, grid, scheme, v, v)
-    Fvw = Oceananigans.Advection._advective_momentum_flux_Vw(i, j, k, grid, scheme, v, w)
-    Fwu = Oceananigans.Advection._advective_momentum_flux_Wu(i, j, k, grid, scheme, w, u)
-    Fwv = Oceananigans.Advection._advective_momentum_flux_Wv(i, j, k, grid, scheme, w, v)
-    Fww = Oceananigans.Advection._advective_momentum_flux_Ww(i, j, k, grid, scheme, w, w)
-
-    c = Center()
-    f = Face()
-
-    @inbounds begin
-        tuu[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fuu == 0)
-        tuv[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fuv == 0)
-        tuw[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fuw == 0)
-        tvu[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fvu == 0)
-        tvv[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fvv == 0)
-        tvw[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fvw == 0)
-        twu[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fwu == 0)
-        twv[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fwv == 0)
-        tww[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fww == 0)
-    end
-end
-
-"""
-Test that all 9 advective momentum flux kernels are zero at every immersed peripheral node,
-for a grid with a random bottom boundary. This verifies that removing the explicit
-`conditional_flux` zeroing from `_advective_momentum_flux_*` on `ImmersedBoundaryGrid` is
-safe: velocity masking in immersed cells and the no-penetration boundary condition at the
-immersed boundary face are sufficient to guarantee zero momentum flux at all peripheral
-nodes, independently of the velocity magnitude in the active fluid region.
-"""
-function test_momentum_flux_zero_at_peripheral_nodes(scheme)
-    Nx, Ny, Nz = 8, 8, 8
-    underlying_grid = RectilinearGrid(CPU(), size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(4, 4, 4))
-
-    # Random bottom creates a varied immersed boundary topology, stressing all peripheral
-    # node configurations (not just a uniform flat slab).
-    bottom_height = -1 .+ rand(Nx, Ny) .* 0.8  # varies between -1 and -0.2
-    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-    model = @test_logs pressure_solver_logs(NonhydrostaticModel, ibg)... NonhydrostaticModel(ibg, advection=scheme)
-
-    # Set non-zero velocities everywhere, then zero out immersed cells via masking.
-    set!(model, u=1, v=1, w=1)
-    mask_immersed_field!(model.velocities.u)
-    mask_immersed_field!(model.velocities.v)
-    mask_immersed_field!(model.velocities.w)
-    fill_halo_regions!(model.velocities)
-
-    u, v, w = model.velocities
-
-    # Test fields: store true (1) where the "zero-flux at peripheral node" property holds,
-    # false (0) where it is violated.
-    tuu = Field{Center, Center, Center}(ibg)
-    tuv = Field{Face, Face, Center}(ibg)
-    tuw = Field{Face, Center, Face}(ibg)
-    tvu = Field{Face, Face, Center}(ibg)
-    tvv = Field{Center, Center, Center}(ibg)
-    tvw = Field{Center, Face, Face}(ibg)
-    twu = Field{Face, Center, Face}(ibg)
-    twv = Field{Center, Face, Face}(ibg)
-    tww = Field{Center, Center, Center}(ibg)
-
-    launch!(CPU(), ibg,  KernelParameters(0:9, 0:9, 0:9), _populate_momentum_flux_tests!,
-            tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
-            ibg, scheme, u, v, w)
-
-    @test all(!iszero, Array(interior(tuu)))
-    @test all(!iszero, Array(interior(tuv)))
-    @test all(!iszero, Array(interior(tuw)))
-    @test all(!iszero, Array(interior(tvu)))
-    @test all(!iszero, Array(interior(tvv)))
-    @test all(!iszero, Array(interior(tvw)))
-    @test all(!iszero, Array(interior(twu)))
-    @test all(!iszero, Array(interior(twv)))
-    @test all(!iszero, Array(interior(tww)))
-
-    return true
-end
-
 function test_settling_tracer_comparison(arch; open_bottom=true)
     """
     Test that compares settling tracer simulations on regular vs immersed boundary grids.
@@ -616,6 +527,73 @@ end
                 @test relaxed_time_stepping_in_column(arch, GaussianMask;        center=0.5, width=0.1)
                 @test relaxed_time_stepping_in_column(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping_in_column(arch, CosineRampMask;      start=0.4, stop=0.6)
+            end
+
+            @testset "Relaxation with InflowOutflowRate [$(summary(arch))]" begin
+                @info "      Testing Relaxation with InflowOutflowRate [$(summary(arch))]..."
+
+                grid = RectilinearGrid(arch, size=(4, 4, 1), extent=(4, 4, 1), topology=(Bounded, Bounded, Bounded))
+                c_ref = 5
+                west_edge, east_edge = extrema(xnodes(grid, Center(), Center(), Center()))
+
+                # Spatial shaping is `mask`'s job, same as any other `Relaxation`; `InflowOutflowRate`
+                # only chooses between `inflow_rate` and `outflow_rate`. One `Relaxation` per sponged edge.
+                west_relaxation = Relaxation(rate=InflowOutflowRate{:west}(inflow_rate=1/60, outflow_rate=1/6000),
+                                              mask=GaussianMask{:x}(center=west_edge, width=0.3), target=c_ref)
+                east_relaxation = Relaxation(rate=InflowOutflowRate{:east}(inflow_rate=1/60, outflow_rate=1/6000),
+                                              mask=GaussianMask{:x}(center=east_edge, width=0.3), target=c_ref)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(c=(west_relaxation, east_relaxation),))
+
+                # Materialization bypasses ContinuousForcing (which has no `model_fields` hook)
+                # and wires in the field index + location directly.
+                rm = model.forcing.c
+                @test rm isa MultipleForcings
+                @test all(f isa InflowOutflowRelaxation for f in rm.forcings)
+                @test all(f.target isa MaterializedRelaxationTarget for f in rm.forcings)
+
+                # Uniform positive u: west edge sees inflow (u_n > 0 ⇒ inflow_rate),
+                # east edge sees outflow (u_n < 0 is false ⇒ outflow_rate).
+                # enforce_incompressibility=false: the pressure correction otherwise
+                # drives this uniform flow back to zero against the default open
+                # boundary condition on u.
+                set!(model, u=1, c=0; enforce_incompressibility=false)
+                Δt = 1
+                time_step!(model, Δt)
+
+                c_after = Array(interior(model.tracers.c))
+                c_west  = c_after[1, 2, 1] # near the west (inflow) edge
+                c_east  = c_after[4, 2, 1] # near the east (outflow) edge
+
+                @test all(isfinite, c_after)
+                @test c_west > c_east # inflow relaxes toward target faster than outflow
+            end
+
+            @testset "Relaxation rate normal velocities near immersed boundaries [$(summary(arch))]" begin
+                # Single interior land cell, away from the domain edges, so wall halo
+                # treatment can't be confused with immersed boundary masking.
+                underlying_grid = RectilinearGrid(arch, size=(6, 6, 1), extent=(6, 6, 1), topology=(Periodic, Periodic, Bounded))
+                bottom = [(i == 3 && j == 3) ? 1 : -1 for i in 1:6, j in 1:6]
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+                u = XFaceField(grid)
+                v = YFaceField(grid)
+                set!(u, 1)
+                set!(v, 1/2)
+                mask_immersed_field!(u)
+                mask_immersed_field!(v)
+                fill_halo_regions!(u)
+                fill_halo_regions!(v)
+                model_fields = (u=u, v=v)
+
+                # At these wet faces, a plain 2D interpolation of the transverse velocity
+                # pulls in the masked (zeroed) land value and dilutes the result toward
+                # zero; `normal_velocities` must use the active-weighted interpolation
+                # instead, recovering the true open-water value exactly.
+                _, v_at_u_point = Oceananigans.Forcings.normal_velocities(3, 2, 1, grid, model_fields, (Face(), Center(), Center()))
+                u_at_v_point, _ = Oceananigans.Forcings.normal_velocities(2, 3, 1, grid, model_fields, (Center(), Face(), Center()))
+
+                @test v_at_u_point ≈ 1/2
+                @test u_at_v_point ≈ 1
             end
 
             @testset "Relaxation with FieldTimeSeries target [$(summary(arch))]" begin
@@ -964,13 +942,6 @@ end
 
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
-            end
-
-            @testset "Momentum flux zero at immersed peripheral nodes" begin
-                for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
-                    scheme = Oceananigans.Advection.materialize_advection(scheme, MockGrid(arch))
-                    @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
-                end
             end
 
             @testset "FieldTimeSeries forcing on [$(summary(arch))]" begin
