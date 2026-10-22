@@ -293,7 +293,6 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
             VectorInvariant(vorticity_scheme = EnergyConservingUpwinding(WENO())),
             WENOVectorInvariant(),
             WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
-            WENOVectorInvariant(; multi_dimensional_stencil = true),
         )
 
         for momentum_advection in momentum_advections
