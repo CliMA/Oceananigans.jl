@@ -124,27 +124,26 @@ boundaries ``\partial \Omega_b``:
 
 Flux boundary conditions are represented by the [`Flux`](@ref) type.
 
-## Open boundary conditions
+## Normal flow boundary conditions
 
-Open boundary conditions directly specify the value of the halo points. Typically this is used
-to impose no penetration boundary conditions, i.e. setting wall normal velocity components
-to zero on the boundary.
+Normal flow boundary conditions directly specify the velocity component normal to the boundary.
+Typically this is used to impose no penetration boundary conditions, i.e. setting wall normal
+velocity components to zero on the boundary, or to prescribe the velocity of an inflow or outflow.
 
-The nuance here is that open boundaries behave differently for fields on face points in the
-boundary direction due to the [staggered grid](@ref finite_volume). For example, the u-component
-of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the
-point specified by the boundary condition is the point lying on the boundary, whereas for a
-tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
-of the domain (hence the difference with `Value` boundary conditions).
+On the [staggered grid](@ref finite_volume) the boundary-normal velocity lies on face points in the
+boundary direction. For example, the u-component of velocity lies on `(Face, Center, Center)` points,
+so on `west` or `east` boundaries the point specified by the boundary condition lies on the boundary
+itself. A tracer on `(Center, Center, Center)` points has no point on the boundary, and its boundary
+conditions set the halo points outside of the domain instead.
 
-The other important detail is that open (including no-penetration) boundary conditions are the
+The other important detail is that normal flow boundary conditions, including no-penetration, are the
 only conditions used on wall normal velocities when the domain is not periodic. This means that
 their value affects the pressure calculation for nonhydrostatic models as it is involved in
 calculating the divergence in the boundary adjacent center point (as described in the
 [fractional step method](@ref time_stepping) documentation). Usually boundary points are filled
 for the predictor velocity (i.e. before the pressure is calculated), and on the corrected field
-(i.e. after the pressure correction is applied), but for open boundaries this would result in
-the boundary adjacent center point becoming divergent so open boundaries are only filled for the
+(i.e. after the pressure correction is applied), but for normal flow boundary conditions this would
+result in the boundary adjacent center point becoming divergent, so they are only filled for the
 predictor velocity and stay the same after the pressure correction (so the boundary point is filled
 with the final corrected velocity at the predictor step).
 
@@ -197,12 +196,12 @@ but we have changed ``p^{n+1}`` to ``\phi`` and ``\boldsymbol{u}^\star`` to ``\t
 so for ``\boldsymbol{\nabla}\phi \big |_{\partial\Omega} = 0`` the modified predictor velocity must
 equal the corrected velocity on the boundary.
 
-For simple open boundary conditions such as no penetration or a straight forward prescription of
+For simple normal flow boundary conditions such as no penetration or a straight forward prescription of
 a known velocity at ``t^{n+1}`` this is simple to implement as we just set the boundary condition
-on the predictor velocity and don't change it after the correction. But some open boundary methods
-calculate the boundary value based on the interior solution. As a simple example, if we wanted to
-set the wall normal velocity gradient to zero at the west boundary then we would set the boundary
-point to
+on the predictor velocity and don't change it after the correction. But open boundary conditions,
+which are normal flow conditions with a `scheme`, calculate the boundary value based on the interior
+solution. As a simple example, if we wanted to set the wall normal velocity gradient to zero at the
+west boundary then we would set the boundary point to
 ```math
     \begin{equation}
     \label{eq:zero_wall_normal_velocity_gradient}
@@ -217,13 +216,10 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
 ```
-This is preferred to a divergent interior solution as open boundary conditions (except no penetration)
-are typically already unphysical and only used in an attempt to allow information to enter or exit
-the domain.
+This is preferred to a divergent interior solution as open boundary conditions are typically already
+unphysical and only used in an attempt to allow information to enter or exit the domain.
 
-Open boundary conditions are represented by the [`NormalFlow`](@ref) classification (for the
-boundary-normal velocity), and tracer open boundaries by a [`Value`](@ref) condition with a
-matching `scheme`.
+Normal flow boundary conditions are represented by the [`NormalFlow`](@ref) classification.
 
 ## Open boundary condition "schemes"
 
@@ -232,7 +228,10 @@ approximated as it is outside the computed domain. There is insufficient informa
 full equation of motion as gradients across the boundary cannot be computed and simply prescribing
 a boundary normal velocity is unphysical and reflects energy leaving the domain [Orlanksi1976](@citep).
 
-A scheme is passed to a boundary condition with the `scheme` keyword argument. In a
+An open boundary condition is a `NormalFlowBoundaryCondition` or a `ValueBoundaryCondition` with a
+scheme, passed through the `scheme` keyword argument. The scheme computes the boundary value from the
+interior solution and is designed to let disturbances propagate out of the domain. Other ocean models,
+such as ROMS, CROCO and MITgcm, sometimes call these radiation boundary conditions. In a
 `NormalFlowBoundaryCondition` the scheme sets the boundary-normal velocity on the boundary face. In a
 `ValueBoundaryCondition` it sets the first halo cell of a field that is `Center`-located in the
 boundary-normal direction, such as a tracer or a boundary-tangential velocity component. The available
