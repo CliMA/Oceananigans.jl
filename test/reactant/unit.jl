@@ -448,3 +448,20 @@ end
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
+
+@testset "Fields allocated inside a compiled function on a lat-lon grid" begin
+    doubled_sum(c) = sum(interior(compute!(Field(2c))))
+    regional_kw = (; size=(8, 8, 4), longitude=(-100, -90), latitude=(30, 40), z=(0, 1000))
+
+    cpu_c = CenterField(LatitudeLongitudeGrid(CPU(); regional_kw...))
+    c = CenterField(LatitudeLongitudeGrid(ReactantState(); regional_kw...))
+    set!(cpu_c, 1)
+    set!(c, 1)
+    @test Reactant.to_number(@jit doubled_sum(c)) ≈ doubled_sum(cpu_c)
+
+    # Eagerly the latitudes are concrete, so a grid reaching the poles still gets polar conditions.
+    global_grid = LatitudeLongitudeGrid(ReactantState(); size=(8, 8, 4), longitude=(0, 360), latitude=(-90, 90), z=(0, 1000))
+    bcs = CenterField(global_grid).boundary_conditions
+    @test bcs.north.condition isa Oceananigans.BoundaryConditions.PolarValue
+    @test bcs.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+end
