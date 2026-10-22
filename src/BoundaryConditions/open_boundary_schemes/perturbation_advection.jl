@@ -189,7 +189,7 @@ _eval_tt(f, grid) = f(grid)
 
     U = outward(side, advecting_velocity(bc, side, model_fields, grid, 0, i, j, ψ̄))
     c = U + pa.gravity_wave_speed
-    Ũ = clamp(Δt / boundary_spacing(side, grid, i, j) * c, zero(c), one(c))
+    Ũ = clamp(Δt * reciprocal_boundary_spacing(side, grid, i, j) * c, zero(c), one(c))
 
     τ = ifelse(U >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
