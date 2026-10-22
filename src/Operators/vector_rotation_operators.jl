@@ -85,6 +85,9 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     return θ
 end
 
+# The cell-centre angle, for grids without a location-aware method
+@inline rotation_angle(i, j, grid::OrthogonalSphericalShellGrid, ℓx, ℓy) = rotation_angle(i, j, grid)
+
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
 # If the coordinates match with the coordinates of a latitude-longitude grid
