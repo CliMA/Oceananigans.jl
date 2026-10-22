@@ -263,8 +263,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish.
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
-    @apply_regionally update_reference_transports!(barotropic_timestepper, baroclinic_timestepper, U, V)
-
     # Reset the filtered fields and the barotropic timestepper to zero.
     @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 

@@ -6,10 +6,6 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 const CoriolisSplitExplicit = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CoriolisForwardBackwardScheme}
 
-const FillHaloCoriolisSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling},
-                                                               <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
-                                                               <:CoriolisForwardBackwardScheme}
-
 substep_coriolis_args(timestepper, model) = ()
 substep_coriolis_args(::CoriolisForwardBackwardScheme, model) = (model.coriolis,)
 
@@ -17,28 +13,28 @@ substep_coriolis_args(::CoriolisForwardBackwardScheme, model) = (model.coriolis,
 ##### Reference transports: the barotropic transports whose Coriolis force is already in `Gᵁ` and `Gⱽ`
 #####
 
-update_reference_transports!(timestepper, baroclinic_timestepper, U, V) = nothing
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper::QuasiAdamsBashforth2TimeStepper, timestepper::CoriolisForwardBackwardScheme)
+    U, V = free_surface.barotropic_velocities
+    Uʳ, Vʳ = timestepper.reference_transports
+    U⁻, V⁻ = timestepper.previous_transports
 
-function update_reference_transports!(timestepper::CoriolisForwardBackwardScheme, baroclinic_timestepper::QuasiAdamsBashforth2TimeStepper, U, V)
     FT = eltype(U)
     α = convert(FT, 3/2) + baroclinic_timestepper.χ
     β = convert(FT, 1/2) + baroclinic_timestepper.χ
-
-    Uʳ, Vʳ = timestepper.reference_transports
-    U⁻, V⁻ = timestepper.previous_transports
 
     parent(Uʳ) .= α .* parent(U) .- β .* parent(U⁻)
     parent(Vʳ) .= α .* parent(V) .- β .* parent(V⁻)
     parent(U⁻) .= parent(U)
     parent(V⁻) .= parent(V)
 
-    return nothing
+    return invoke(initialize_free_surface_state!, Tuple{Any, Any, Any}, free_surface, baroclinic_timestepper, timestepper)
 end
 
-function update_reference_transports!(timestepper::CoriolisForwardBackwardScheme, ::SplitRungeKuttaTimeStepper, U, V)
-    parent(timestepper.reference_transports.U) .= parent(U)
-    parent(timestepper.reference_transports.V) .= parent(V)
-    return nothing
+# Before restarting from the state at tⁿ, `U` and `V` hold the transports of the previous stage
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper::SplitRungeKuttaTimeStepper, timestepper::CoriolisForwardBackwardScheme)
+    parent(timestepper.reference_transports.U) .= parent(free_surface.barotropic_velocities.U)
+    parent(timestepper.reference_transports.V) .= parent(free_surface.barotropic_velocities.V)
+    return invoke(initialize_free_surface_state!, Tuple{Any, SplitRungeKuttaTimeStepper, Any}, free_surface, baroclinic_timestepper, timestepper)
 end
 
 #####
@@ -98,104 +94,66 @@ end
 end
 
 #####
-##### Substepping drivers
+##### Substepping driver, for both extended halos and halo filling
 #####
 
+@inline fills_halos(::SplitExplicitFreeSurface{ExtendedHalos}) = Val(false)
+@inline fills_halos(::FillHaloSplitExplicit) = Val(true)
+@inline fill_only_local_halos(::SplitExplicitFreeSurface{ExtendedHalos}) = true # unused, extended halos are never filled
+
+@inline substep_fill_halos!(::Val{false}, arch, args, clock, only_local_halos) = nothing
+@inline substep_fill_halos!(::Val{true},  arch, args, clock, only_local_halos) = maybe_distributed_fill_halo_regions!(arch, args[1:end-1]..., clock, args[end]; only_local_halos)
+
 iterate_split_explicit!(free_surface::CoriolisSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, coriolis) where Nsubsteps =
-    @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps), coriolis)
+    @apply_regionally iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps), coriolis)
 
-function iterate_split_explicit_in_halo!(free_surface::CoriolisSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, coriolis) where Nsubsteps
-    arch = architecture(grid)
-
-    η           = free_surface.displacement
-    grid        = free_surface.displacement.grid
-    state       = free_surface.filtered_state
-    timestepper = free_surface.timestepper
-    g           = free_surface.gravitational_acceleration
-    parameters  = free_surface.kernel_parameters
-
-    U, V    = free_surface.barotropic_velocities
-    Uʳ, Vʳ  = timestepper.reference_transports
-    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
-
-    x_velocity_kernel!, _   = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_x_velocity!)
-    y_velocity_kernel!, _   = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_y_velocity!)
-    free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, g, Ũ, Vʳ, coriolis, timestepper)
-    V_args = (grid, Val(false), Δτᴮ, η, U, V, GVⁿ, g, Ṽ, Uʳ, coriolis, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
-
-    GC.@preserve U_args V_args η_args begin
-        converted_U_args = convert_to_device(arch, U_args)
-        converted_V_args = convert_to_device(arch, V_args)
-        converted_η_args = convert_to_device(arch, η_args)
-
-        for substep in 1:Nsubsteps # unrolling stalls LLVM's SLP vectorizer on immersed grids
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
-
-            x_velocity_kernel!(transport_weight, converted_U_args...)
-            y_velocity_kernel!(transport_weight, converted_V_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
-    end
-
-    return nothing
-end
-
-function iterate_split_explicit!(free_surface::FillHaloCoriolisSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, coriolis) where Nsubsteps
+function iterate_split_explicit_with_coriolis!(free_surface, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}, coriolis) where Nsubsteps
     η           = free_surface.displacement
     grid        = free_surface.displacement.grid
     arch        = architecture(grid)
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
-    parameters  = free_surface.kernel_parameters
+    filled      = fills_halos(free_surface)
 
     U, V    = free_surface.barotropic_velocities
     Uʳ, Vʳ  = timestepper.reference_transports
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    @apply_regionally x_velocity_kernel!, _   = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_x_velocity!)
-    @apply_regionally y_velocity_kernel!, _   = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_y_velocity!)
-    @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    workspec = Utils.possibly_load_active_cells_map(grid, free_surface.kernel_parameters, false)
+    x_velocity_kernel!, _   = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_x_velocity!)
+    y_velocity_kernel!, _   = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_y_velocity!)
+    free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, g, Ũ, Vʳ, coriolis, timestepper)
-    V_args = (grid, Val(true), Δτᴮ, η, U, V, GVⁿ, g, Ṽ, Uʳ, coriolis, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, filled, Δτᴮ, η, U, V, GUⁿ, g, Ũ, Vʳ, coriolis, timestepper)
+    V_args = (grid, filled, Δτᴮ, η, U, V, GVⁿ, g, Ṽ, Uʳ, coriolis, timestepper)
+    η_args = (grid, filled, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     barotropic_model_fields = (; U, V, η)
-
-    substep_clock = (; time = clock.time, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
-    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, substep_clock, barotropic_model_fields)
-    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, substep_clock, barotropic_model_fields)
-    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, substep_clock, barotropic_model_fields)
-
+    halo_args = map(field -> build_halo_fill_args(field, grid, barotropic_model_fields), (U, V, η))
     only_local_halos = fill_only_local_halos(free_surface)
 
-    GC.@preserve U_args V_args η_args U_halo_args V_halo_args η_halo_args begin
-        @apply_regionally converted_U_args = convert_to_device(arch, U_args)
-        @apply_regionally converted_V_args = convert_to_device(arch, V_args)
-        @apply_regionally converted_η_args = convert_to_device(arch, η_args)
-        @apply_regionally converted_U_halo_args = prepare_halo_fill_args(arch, U_halo_args, grid, free_surface)
-        @apply_regionally converted_V_halo_args = prepare_halo_fill_args(arch, V_halo_args, grid, free_surface)
-        @apply_regionally converted_η_halo_args = prepare_halo_fill_args(arch, η_halo_args, grid, free_surface)
+    GC.@preserve U_args V_args η_args halo_args begin
+        converted_U_args = convert_to_device(arch, U_args)
+        converted_V_args = convert_to_device(arch, V_args)
+        converted_η_args = convert_to_device(arch, η_args)
+        Uh, Vh, ηh = map(args -> prepare_halo_fill_args(arch, args, grid, free_surface), halo_args)
+        face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport)
 
         for substep in 1:Nsubsteps # unrolling stalls LLVM's SLP vectorizer on immersed grids
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args...; only_local_halos)
-            @apply_regionally apply_barotropic_kernel!(x_velocity_kernel!, transport_weight, converted_U_args)
+            substep_clock = (; time = clock.time + (substep - 1) * Δτᴮ, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
 
-            maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
-            @apply_regionally apply_barotropic_kernel!(y_velocity_kernel!, transport_weight, converted_V_args)
-
-            maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            substep_fill_halos!(filled, arch, ηh, substep_clock, only_local_halos)
+            x_velocity_kernel!(transport_weight, converted_U_args...)
+            substep_fill_halos!(filled, arch, Uh, substep_clock, only_local_halos)
+            y_velocity_kernel!(transport_weight, converted_V_args...)
+            substep_fill_halos!(filled, arch, Vh, substep_clock, only_local_halos)
+            pin_barotropic_faces!(face_pins)
+            free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
