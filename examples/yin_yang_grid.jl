@@ -167,8 +167,7 @@ end
 
 add_callback!(jet_simulation, progress, IterationInterval(1000))
 
-# Every three hours, we save a snapshot of the vertical vorticity, in units of
-# ``10^{-5} \, \mathrm{s^{-1}}``, at the top of the fluid.
+# Every three hours, we save a snapshot of the vertical vorticity at the top of the fluid.
 
 @inline ζᶜᶜᶜ(i, j, k, grid, u, v) = ℑxyᶜᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
 
@@ -177,9 +176,9 @@ function vertical_vorticity(model)
     return Field(KernelFunctionOperation{Center, Center, Center}(ζᶜᶜᶜ, model.grid, u, v))
 end
 
-function surface_snapshot(field; scale=1)
+function surface_snapshot(field)
     snapshot = Field{Center, Center, Nothing}(field.grid)
-    set!(snapshot, scale * view(field, :, :, size(field.grid, 3)))
+    set!(snapshot, view(field, :, :, size(field.grid, 3)))
     return snapshot
 end
 
@@ -191,7 +190,7 @@ vorticity = []
 function save_vorticity(sim)
     compute!(jet_ζ)
     push!(jet_times, time(sim))
-    push!(vorticity, surface_snapshot(jet_ζ, scale=1e5))
+    push!(vorticity, surface_snapshot(jet_ζ))
     return nothing
 end
 
@@ -235,7 +234,7 @@ azimuth = @lift 2π * ($jet_frame - 1) / length(jet_times)
 title = @lift "Vertical vorticity, t = " * prettytime(jet_times[$jet_frame])
 
 colormap = :balance
-colorrange = (-15, 15)
+colorrange = (-1.5e-4, 1.5e-4)
 
 jet_fig = Figure()
 Label(jet_fig[0, 1:2], title, fontsize=20, tellwidth=false)
@@ -249,7 +248,7 @@ for (column, name, offset) in sides
     quadmesh!(ax, ζₙ; colormap, colorrange)
 end
 
-Colorbar(jet_fig[3, 1:2]; colormap, colorrange, label="Vertical vorticity (10⁻⁵ s⁻¹)",
+Colorbar(jet_fig[3, 1:2]; colormap, colorrange, label="Vertical vorticity (s⁻¹)",
          vertical=false, width=500)
 
 resize_to_layout!(jet_fig)
@@ -508,7 +507,7 @@ surface_T = []
 function save_surface_fields(sim)
     compute!(drake_ζ)
     push!(drake_times, time(sim))
-    push!(surface_ζ, surface_snapshot(drake_ζ, scale=1e5))
+    push!(surface_ζ, surface_snapshot(drake_ζ))
     push!(surface_T, surface_snapshot(sim.model.tracers.T))
     return nothing
 end
@@ -552,7 +551,7 @@ for (column, name, elevation) in views
     Label(drake_fig[1, column], name, fontsize=16, tellwidth=false)
 end
 
-rows = ((ζₙ, :balance, (-10, 10), "Vertical vorticity (10⁻⁵ s⁻¹)"),
+rows = ((ζₙ, :balance, (-1e-4, 1e-4), "Vertical vorticity (s⁻¹)"),
         (Tₙ, :thermal, (0, 24), "Temperature (ᵒC)"))
 
 for (row, (values, colormap, colorrange, label)) in enumerate(rows)
