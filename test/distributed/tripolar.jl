@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "distributed_tests_utils.jl"))
 
 using MPI
 
-fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+fold_topologies = ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
 distributed_tests_utils = joinpath(@__DIR__, "..", "setup", "distributed_tests_utils.jl")
 
@@ -66,7 +66,7 @@ tripolar_reconstructed_field_script(fold_topology, pivot) = """
              Distributed(CPU(), partition=Partition(2, 2))]
 
     u = [i + 10 * j for i in 1:40, j in 1:40]
-    v = [i + 10 * j for i in 1:40, j in 1:$(fold_topology == RightCenterFolded ? 40 : 41)]
+    v = [i + 10 * j for i in 1:40, j in 1:$(fold_topology == CenterFolded ? 40 : 41)]
     c = [i + 10 * j for i in 1:40, j in 1:40]
 
     global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology, pivot = $pivot)
@@ -117,7 +117,7 @@ tripolar_boundary_conditions_script(fold_topology, pivot) = """
     vs =  YFaceField(serial_grid)
     cs = CenterField(serial_grid)
 
-    I_v = [i + j * 100 for i in 1:20, j in 1:$(fold_topology == RightCenterFolded ? 20 : 21)]
+    I_v = [i + j * 100 for i in 1:20, j in 1:$(fold_topology == CenterFolded ? 20 : 21)]
     I_c = [i + j * 100 for i in 1:20, j in 1:20]
 
     set!(vs, I_v)
@@ -150,7 +150,7 @@ tripolar_boundary_conditions_script(fold_topology, pivot) = """
     v = YFaceField(grid)
     c = CenterField(grid)
 
-    Nyv = fold_topology == RightCenterFolded ? 20 : 21
+    Nyv = fold_topology == CenterFolded ? 20 : 21
     I_v = [i + j * 100 for i in 1:20, j in 1:Nyv]
     I_c = [i + j * 100 for i in 1:20, j in 1:20]
 

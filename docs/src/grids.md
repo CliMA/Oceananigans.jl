@@ -242,7 +242,7 @@ using Oceananigans
 grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
 
 # output
-54×22×4 YinYangGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
 ├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
 ├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
 ├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
@@ -1103,7 +1103,7 @@ Now we're getting somewhere. Let's note a few things:
   of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
-  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  topology `(Connected, Periodic, Bounded)`. That means that each local grid, which represents
   half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
   and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
 

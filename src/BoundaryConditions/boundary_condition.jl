@@ -240,7 +240,7 @@ validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
 
 # Validate the north boundary condition on a tripolar (folded) grid.
 # TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
-# y-topology. The pivot is redundantly encoded in both the topology (e.g. RightCenterFolded
+# y-topology. The pivot is redundantly encoded in both the topology (e.g. CenterFolded
 # ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a
 # BC classification. Right now a user who supplies the wrong pivot passes validation.
 validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.FoldedTopology, side) = nothing
