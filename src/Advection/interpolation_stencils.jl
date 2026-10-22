@@ -86,8 +86,8 @@ end
 
 @inline continued_value((c₁, σ, κ), g) = c₁ - g * σ - g * (g + 1) * κ / 2
 
-# `ψ` continued past walls with the agreement factors `G = (Gᴸ, Gᴿ)`, its own when `nothing`; returns the stencil and the factors
-@inline function load_stencil(i, j, k, grid, dir::Val{d}, ℓ, ::Val{N}, G::Union{Nothing, Tuple}, ψ, args...) where {d, N}
+# The `M` values of `ψ` along `dir` about `(i, j, k)`, the walls `nᴸ` (last node without data in 1:N) and `nᴿ` (first in M-N+1:M), and the nodes `cᴸ` and `cᴿ` inward from each wall
+@inline function load_raw_stencil(i, j, k, grid, dir::Val{d}, ℓ, ::Val{N}, ::Val{M}, ψ, args...) where {d, N, M}
     ℓⁿ = node_location(dir, ℓ)
     σ  = ℓ[d] isa Center
 
@@ -96,29 +96,41 @@ end
     no_data(n) = ifelse(σ, inactive_node(stencil_node(i, j, k, dir, s(n) - (n > N))..., grid, ℓ...),
                            inactive_node(stencil_node(i, j, k, dir, s(n))...,           grid, ℓⁿ...))
 
-    nᴸ = max(0,      ntuple(n -> ifelse(no_data(n),     n,      0),     Val(N))...)
-    nᴿ = min(2N + 1, ntuple(n -> ifelse(no_data(N + n), N + n, 2N + 1), Val(N))...)
+    nᴸ = max(0,     ntuple(n -> ifelse(no_data(n),         n,         0),     Val(N))...)
+    nᴿ = min(M + 1, ntuple(n -> ifelse(no_data(M - N + n), M - N + n, M + 1), Val(N))...)
 
-    S = ntuple(n -> stencil_value(stencil_node(i, j, k, dir, s(n))..., grid, ψ, args...), Val(2N))
+    S = ntuple(n -> stencil_value(stencil_node(i, j, k, dir, s(n))..., grid, ψ, args...), Val(M))
 
-    # the q-th node inward from each wall, picked along the scan that finds it; no wall shares the values of a wall at 1 or 2N
+    # the q-th node inward from each wall, picked along the scan that finds it; no wall shares the values of a wall at 1 or M
     R = Val(min(5, 2N - 1))
 
-    left_wall_positions  = ntuple(n -> n + 1,  Val(N - 1))
-    right_wall_positions = ntuple(n -> 2N - n, Val(N - 1))
+    left_wall_positions  = ntuple(n -> n + 1, Val(N - 1))
+    right_wall_positions = ntuple(n -> M - n, Val(N - 1))
 
-    left_inward_node(q)  = foldl((c, n) -> ifelse(no_data(n), S[min(n + q, 2N)], c), left_wall_positions;  init = S[min(1 + q, 2N)])
-    right_inward_node(q) = foldl((c, n) -> ifelse(no_data(n), S[max(n - q, 1)],  c), right_wall_positions; init = S[max(2N - q, 1)])
+    left_inward_node(q)  = foldl((c, n) -> ifelse(no_data(n), S[min(n + q, M)], c), left_wall_positions;  init = S[min(1 + q, M)])
+    right_inward_node(q) = foldl((c, n) -> ifelse(no_data(n), S[max(n - q, 1)], c), right_wall_positions; init = S[max(M - q, 1)])
 
     cᴸ = ntuple(left_inward_node,  R)
     cᴿ = ntuple(right_inward_node, R)
 
+    return S, nᴸ, nᴿ, cᴸ, cᴿ
+end
+
+@inline function wall_agreements(::Nothing, cᴸ,  cᴿ, availableᴸ, availableᴿ)
+    Gᴸ = wall_agreement(cᴸ, availableᴸ)
+    Gᴿ = wall_agreement(cᴿ, availableᴿ)
+    return Gᴸ, Gᴿ
+end
+
+@inline wall_agreements(G::Tuple, args...) = G
+
+# The `2N` values `S` with the nodes past the walls `nᴸ` and `nᴿ` replaced by ghosts continued from the nodes `cᴸ` and `cᴿ`, with
+# the agreement factors `G = (Gᴸ, Gᴿ)`, their own when `nothing`; returns the stencil and the factors
+@inline function fill_stencil_ghosts(S, nᴸ, nᴿ, cᴸ, cᴿ, G, ::Val{N}) where N
     availableᴸ = min(nᴿ - 1, 2N) - nᴸ
     availableᴿ = nᴿ - 1 - nᴸ
-
-    Gᴸ     = wall_agreement(cᴸ, availableᴸ)
-    Gᴿ     = wall_agreement(cᴿ, availableᴿ)
-    Gᴸ, Gᴿ = something(G, (Gᴸ, Gᴿ))
+    
+    Gᴸ, Gᴿ = wall_agreements(G, cᴸ, cᴿ, availableᴸ, availableᴿ)
     left   = wall_continuation(cᴸ, availableᴸ, Gᴸ)
     right  = wall_continuation(cᴿ, availableᴿ, Gᴿ)
 
@@ -128,6 +140,12 @@ end
     stencil = ntuple(n -> ifelse(n ≤ nᴸ, left_ghost(n), ifelse(n ≥ nᴿ, right_ghost(n), S[n])), Val(2N))
 
     return stencil, (Gᴸ, Gᴿ)
+end
+
+# `ψ` continued past walls with the agreement factors `G = (Gᴸ, Gᴿ)`, its own when `nothing`; returns the stencil and the factors
+@inline function load_stencil(i, j, k, grid, dir, ℓ, ::Val{N}, G::Union{Nothing, Tuple}, ψ, args...) where N
+    S, nᴸ, nᴿ, cᴸ, cᴿ = load_raw_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, args...)
+    return fill_stencil_ghosts(S, nᴸ, nᴿ, cᴸ, cᴿ, G, Val(N))
 end
 
 """
@@ -147,4 +165,8 @@ where `c₁` is the node with data next to the wall, `Δⱼ` the differences inw
 `φ(a, b) = 2ab / (a² + b²)` when `a` and `b` share a sign, zero otherwise. Linear data, and quadratic data on five nodes, are
 continued exactly, and next to a front (`G₁ = G₂ = 0`) the ghosts are constant.
 """
-@inline load_stencil(i, j, k, grid, dir, ℓ, N::Val, ψ, args...) = first(load_stencil(i, j, k, grid, dir, ℓ, N, nothing, ψ, args...))
+@inline function load_stencil(i, j, k, grid, dir, ℓ, ::Val{N}, ψ, args...) where N
+    S, nᴸ, nᴿ, cᴸ, cᴿ = load_raw_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), ψ, args...)
+    S, _ = fill_stencil_ghosts(S, nᴸ, nᴿ, cᴸ, cᴿ, nothing, Val(N))
+    return S
+end
