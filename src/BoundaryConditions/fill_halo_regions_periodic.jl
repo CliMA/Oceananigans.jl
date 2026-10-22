@@ -2,19 +2,19 @@
 ##### Periodic boundary condition kernels
 #####
 
-@kernel function _fill_periodic_west_and_east_halo!(c, N, H)
+@kernel function _fill_periodic_west_and_east_halo!(c, ::Val{N}, ::Val{H}) where {N, H}
     j, k = @index(Global, NTuple)
-    fill_periodic_west_and_east_halo!(j, k, c, N, H)
+    fill_periodic_west_and_east_halo!(j, k, c, Val(N), Val(H))
 end
 
-@kernel function _fill_periodic_south_and_north_halo!(c, N, H)
+@kernel function _fill_periodic_south_and_north_halo!(c, ::Val{N}, ::Val{H}) where {N, H}
     i, k = @index(Global, NTuple)
-    fill_periodic_south_and_north_halo!(i, k, c, N, H)
+    fill_periodic_south_and_north_halo!(i, k, c, Val(N), Val(H))
 end
 
-@kernel function _fill_periodic_bottom_and_top_halo!(c, N, H)
+@kernel function _fill_periodic_bottom_and_top_halo!(c, ::Val{N}, ::Val{H}) where {N, H}
     i, j = @index(Global, NTuple)
-    fill_periodic_bottom_and_top_halo!(i, j, c, N, H)
+    fill_periodic_bottom_and_top_halo!(i, j, c, Val(N), Val(H))
 end
 
 @inline function fill_periodic_west_and_east_halo!(j, k, c, ::Val{N}, ::Val{H}) where {N, H}

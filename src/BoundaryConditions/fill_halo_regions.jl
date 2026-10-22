@@ -50,10 +50,7 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 ##### Trailing arguments of the fill kernels
 #####
 
-# Whether filling the halo of a boundary with boundary condition `bc` reads the trailing `args` of
-# `fill_halo_regions!` (usually `clock` and `model_fields`). Boundary conditions are assumed to read
-# them unless they are known not to: flux halos copy the interior whatever the flux, and `getbc`
-# ignores the trailing arguments for the conditions in `ArgumentFreeCondition`.
+# Whether `bc` reads the trailing `args` of `fill_halo_regions!` (usually `clock` and `model_fields`)
 @inline needs_halo_fill_args(bc) = true
 @inline needs_halo_fill_args(::Union{Nothing, Missing}) = false
 @inline needs_halo_fill_args(::Union{PBC, FBC}) = false
@@ -73,15 +70,7 @@ const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{No
     needs_halo_fill_args(bcs.south)  | needs_halo_fill_args(bcs.north) |
     needs_halo_fill_args(bcs.bottom) | needs_halo_fill_args(bcs.top)
 
-"""
-$(TYPEDSIGNATURES)
-
-Return the trailing arguments `args` of `fill_halo_regions!` that are passed to the kernels
-filling halos with the boundary conditions `bcs`: `args` if any of `bcs` reads them, and `()`
-otherwise. The decision depends only on the types of `bcs`. Converting `args` for the device,
-which for `(clock, model_fields)` means adapting every model field, can cost more than filling
-the halos.
-"""
+# Converting `args` for the device can cost more than filling the halos
 @inline halo_fill_args(bcs, args) = needs_halo_fill_args(bcs) ? args : ()
 
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)

@@ -1,9 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition, MixedBoundaryCondition
-using Oceananigans.Fields: batchable, halo_fill_groups, select_fields
+using Oceananigans.Fields: tupled_fillable, halo_fill_groups, select_fields
 
-function batched_halo_test_fields(grid)
+function tupled_halo_test_fields(grid)
     TX, TY, TZ = topology(grid)
     x_bounded = TX === Bounded
     y_bounded = TY === Bounded
@@ -46,37 +46,37 @@ end
 halo_test_grid(arch, topology) = RectilinearGrid(arch; topology, size = (4, 5, 6), halo = (2, 3, 2),
                                                  x = (0, 1), y = (0, 2), z = [0, 0.5, 1, 2, 2.5, 3, 4])
 
-@testset "Batched halo filling for tuples of fields" begin
+@testset "Tupled halo filling for tuples of fields" begin
     topologies = ((Periodic, Periodic, Bounded),
                   (Periodic, Bounded, Bounded),
                   (Bounded, Periodic, Bounded),
                   (Bounded, Bounded, Bounded))
 
-    @testset "Batched fills are bitwise per-field fills [$(typeof(arch)), $topology]" for arch in archs, topology in topologies
+    @testset "Tupled fills are bitwise per-field fills [$(typeof(arch)), $topology]" for arch in archs, topology in topologies
         grid = halo_test_grid(arch, topology)
         clock = Clock(grid)
         clock.time = 2
 
         for kwargs in ((;), (; fill_normal_flow_bcs = false))
-            individual = batched_halo_test_fields(grid)
-            batched = batched_halo_test_fields(grid)
+            individual = tupled_halo_test_fields(grid)
+            tupled = tupled_halo_test_fields(grid)
             set_random_interiors!(individual, 1)
-            set_random_interiors!(batched, 1)
+            set_random_interiors!(tupled, 1)
 
             for field in individual
                 fill_halo_regions!(field, clock, individual; kwargs...)
             end
 
-            fill_halo_regions!(batched, clock, batched; kwargs...)
+            fill_halo_regions!(tupled, clock, tupled; kwargs...)
 
             for name in keys(individual)
-                @test Array(parent(individual[name])) == Array(parent(batched[name]))
+                @test Array(parent(individual[name])) == Array(parent(tupled[name]))
             end
         end
 
         # Nested tuples are filled by recursion
-        individual = batched_halo_test_fields(grid)
-        nested = batched_halo_test_fields(grid)
+        individual = tupled_halo_test_fields(grid)
+        nested = tupled_halo_test_fields(grid)
         set_random_interiors!(individual, 2)
         set_random_interiors!(nested, 2)
         names = (:c₁, :u₁, :c₂, :w, :reduced)
@@ -90,33 +90,33 @@ halo_test_grid(arch, topology) = RectilinearGrid(arch; topology, size = (4, 5, 6
 
     @testset "Grouping fields by halo-filling kernels" begin
         grid = halo_test_grid(CPU(), (Periodic, Bounded, Bounded))
-        fields = batched_halo_test_fields(grid)
+        fields = tupled_halo_test_fields(grid)
 
-        @test batchable(fields.c₁)
-        @test batchable(fields.c₃)
-        @test batchable(fields.w)
-        @test !batchable(fields.time_dependent)
-        @test !batchable(fields.reduced)
-        @test !batchable(fields.windowed)
-        @test !batchable(parent(fields.c₁))
+        @test tupled_fillable(fields.c₁)
+        @test tupled_fillable(fields.c₃)
+        @test tupled_fillable(fields.w)
+        @test !tupled_fillable(fields.time_dependent)
+        @test !tupled_fillable(fields.reduced)
+        @test !tupled_fillable(fields.windowed)
+        @test !tupled_fillable(parent(fields.c₁))
 
-        batchable_fields = @inferred select_fields(batchable, values(fields))
-        groups = @inferred halo_fill_groups(batchable_fields)
-        @test length(batchable_fields) == 9
+        tupled_fillable_fields = @inferred select_fields(tupled_fillable, values(fields))
+        groups = @inferred halo_fill_groups(tupled_fillable_fields)
+        @test length(tupled_fillable_fields) == 9
         @test length(groups) == 5
         @test groups[1] === (fields.c₁, fields.c₂, fields.c₃, fields.c₄)
         @test groups[2] === (fields.u₁, fields.u₂)
 
-        halo_fill_groups(batchable_fields)
-        @test (@allocated halo_fill_groups(batchable_fields)) == 0
+        halo_fill_groups(tupled_fillable_fields)
+        @test (@allocated halo_fill_groups(tupled_fillable_fields)) == 0
     end
 
-    @testset "Batched halo filling does not allocate on CPU" begin
+    @testset "Tupled halo filling does not allocate on CPU" begin
         grid = halo_test_grid(CPU(), (Periodic, Bounded, Bounded))
-        fields = batched_halo_test_fields(grid)
-        batchable_fields = select_fields(batchable, values(fields))
+        fields = tupled_halo_test_fields(grid)
+        tupled_fillable_fields = select_fields(tupled_fillable, values(fields))
 
-        fill_halo_regions!(batchable_fields)
-        @test (@allocated fill_halo_regions!(batchable_fields)) == 0
+        fill_halo_regions!(tupled_fillable_fields)
+        @test (@allocated fill_halo_regions!(tupled_fillable_fields)) == 0
     end
 end
