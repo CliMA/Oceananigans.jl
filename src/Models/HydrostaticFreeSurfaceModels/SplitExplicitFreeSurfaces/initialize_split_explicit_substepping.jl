@@ -1,5 +1,6 @@
 using Oceananigans.Utils
 using Oceananigans.Grids: peripheral_node
+using Oceananigans.ImmersedBoundaries: underlying_grid
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 
 # This file contains two different methods performed at different stages of the simulation.

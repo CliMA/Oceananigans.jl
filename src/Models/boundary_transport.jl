@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, has_target_transport, get_target_transport
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior, compute!
+using Oceananigans.ImmersedBoundaries: immersed_inflow_operation
 using GPUArraysCore: @allowscalar
 
 const NFBC = BoundaryCondition{<:NormalFlow} # "Radiantion" NormalFlowBoundaryCondition (with a matching scheme)
@@ -169,10 +170,13 @@ function initialize_boundary_transport(velocities::NamedTuple)
         needs_pool_correction(w_bcs.top) && (total_area_pool_boundaries += boundary_transports.top_area)
     end
 
+    immersed_inflow = immersed_inflow_operation(velocities)
+
     boundary_transports = merge(boundary_transports, (; left_scheme_boundaries,
                                                         right_scheme_boundaries,
                                                         total_area_scheme_boundaries,
-                                                        total_area_pool_boundaries))
+                                                        total_area_pool_boundaries,
+                                                        immersed_inflow))
 
     if length(boundary_transports.left_scheme_boundaries) == 0 && length(boundary_transports.right_scheme_boundaries) == 0
         return nothing
@@ -203,11 +207,14 @@ open_boundary_transport(bt, ::ZINFBC, ::Val{:top})    = zero(bt.total_area_schem
 
 open_boundary_transport(bt, bc, side) = zero(bt.total_area_scheme_boundaries)
 
+immersed_inflow_transport(bt, ::Nothing) = zero(bt.total_area_scheme_boundaries)
+immersed_inflow_transport(bt, immersed_inflow) = sum(immersed_inflow)
+
 function open_boundary_inflow_transport(boundary_transport, velocities)
     update_open_boundary_transport!(boundary_transport)
 
     u, v, w = velocities
-    total_transport = zero(boundary_transport.total_area_scheme_boundaries)
+    total_transport = immersed_inflow_transport(boundary_transport, boundary_transport.immersed_inflow)
 
     # Add transport through left boundaries
     total_transport += open_boundary_transport(boundary_transport, u.boundary_conditions.west,   Val(:west))

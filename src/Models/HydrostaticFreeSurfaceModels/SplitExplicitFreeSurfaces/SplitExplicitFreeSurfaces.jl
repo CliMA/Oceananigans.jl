@@ -18,8 +18,7 @@ using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_
                           LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
                           LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
-                                       column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,

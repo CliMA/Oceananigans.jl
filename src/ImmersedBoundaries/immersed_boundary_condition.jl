@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux,
+                                       VBC, GBC, FBC, NFBC, Flux,
                                        needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
@@ -77,7 +77,7 @@ regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::I
     regularize_immersed_boundary_condition(default.boundary_condition, ibg, loc, field_name, args...)
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
-function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
+function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC, NFBC}, ibg::IBG, loc, field_name, args...)
     _ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
     regularize_immersed_boundary_condition(_ibc, ibg, loc, field_name, args...)
 end
@@ -87,15 +87,22 @@ $(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 
-    west   = isa(loc[1], Center) ? regularize_boundary_condition(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names) : nothing
-    east   = isa(loc[1], Center) ? regularize_boundary_condition(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names) : nothing
-    south  = isa(loc[2], Center) ? regularize_boundary_condition(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names) : nothing
-    north  = isa(loc[2], Center) ? regularize_boundary_condition(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names) : nothing
-    bottom = isa(loc[3], Center) ? regularize_boundary_condition(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names) : nothing
-    top    = isa(loc[3], Center) ? regularize_boundary_condition(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names) : nothing
+    west   = regularize_immersed_side(bc.west,   grid, loc, 1, LeftBoundary,  prognostic_field_names)
+    east   = regularize_immersed_side(bc.east,   grid, loc, 1, RightBoundary, prognostic_field_names)
+    south  = regularize_immersed_side(bc.south,  grid, loc, 2, LeftBoundary,  prognostic_field_names)
+    north  = regularize_immersed_side(bc.north,  grid, loc, 2, RightBoundary, prognostic_field_names)
+    bottom = regularize_immersed_side(bc.bottom, grid, loc, 3, LeftBoundary,  prognostic_field_names)
+    top    = regularize_immersed_side(bc.top,    grid, loc, 3, RightBoundary, prognostic_field_names)
 
     return ImmersedBoundaryCondition(; west, east, south, north, bottom, top)
 end
+
+# Conditions apply on the sides of the cells of a field, except `NormalFlow`, which applies on the faces the field lives on
+@inline applies_on_side(bc, ℓ) = ℓ isa Center
+@inline applies_on_side(::NFBC, ℓ) = ℓ isa Face
+
+@inline regularize_immersed_side(bc, grid, loc, dim, side, prognostic_field_names) =
+    applies_on_side(bc, loc[dim]) ? regularize_boundary_condition(bc, grid, loc, dim, side, prognostic_field_names) : nothing
 
 Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondition(Adapt.adapt(to, bc.west),
                                                                                      Adapt.adapt(to, bc.east),

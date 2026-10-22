@@ -191,12 +191,13 @@ end
     δuᵢ = ifelse(Hᶠᶜ == 0, zero(grid), (Ũᵐ⁺¹ - Ũ) / Hᶠᶜ)
     δvⱼ = ifelse(Hᶜᶠ == 0, zero(grid), (Ṽᵐ⁺¹ - Ṽ) / Hᶜᶠ)
 
+    # Boundary faces keep their velocity: closed ones carry none, open ones carry the prescribed flow
     @inbounds for k in 1:Nz
-        immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
-        immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+        boundaryᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+        boundaryᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
 
-        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ[i, j, k] + δuᵢ)
-        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ[i, j, k] + δvⱼ)
+        ũ[i, j, k] = ifelse(boundaryᶠᶜᶜ, ũ[i, j, k], ũ[i, j, k] + δuᵢ)
+        ṽ[i, j, k] = ifelse(boundaryᶜᶠᶜ, ṽ[i, j, k], ṽ[i, j, k] + δvⱼ)
     end
 end
 
