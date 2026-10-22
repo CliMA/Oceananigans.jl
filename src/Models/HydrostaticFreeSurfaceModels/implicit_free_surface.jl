@@ -153,7 +153,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 end
 
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
-    parent(free_surface.displacement) .= parent(timestepper.Ψ⁻.η)
+    set!(free_surface.displacement, timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end

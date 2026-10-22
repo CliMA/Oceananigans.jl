@@ -38,7 +38,7 @@ include("f_plane.jl")
 include("constant_cartesian_coriolis.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
-include("spherical_coriolis.jl")
 include("dual_grid_scheme.jl")
+include("spherical_coriolis.jl")
 
 end # module

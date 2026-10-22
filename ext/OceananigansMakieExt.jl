@@ -529,7 +529,7 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
 plt = surface!(ax, T; colormap=:viridis)
-typeof(plt).name.name
+nameof(typeof(plt))
 
 # output
 :Plot

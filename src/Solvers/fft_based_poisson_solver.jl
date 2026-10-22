@@ -10,7 +10,7 @@ end
 
 Architectures.architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
 
-transform_str(transform) = string(typeof(transform).name.wrapper, ", ")
+transform_str(transform) = string(nameof(typeof(transform)), ", ")
 
 function transform_list_str(transform_list)
     transform_strs = (transform_str(t) for t in transform_list)
