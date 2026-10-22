@@ -153,3 +153,15 @@ end
     mask = active_nodes == 0
     return ifelse(mask, zero(grid), ℑyzᵃᶜᶜ(i, j, k, grid, q, args...) / active_nodes)
 end
+
+@inline function active_weighted_ℑxzᶠᶜᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑxzᶠᵃᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑxzᶠᵃᶜ(i, j, k, grid, q, args...) / active_nodes)
+end
+
+@inline function active_weighted_ℑyzᶜᶠᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑyzᵃᶠᶜ(i, j, k, grid, not_peripheral_node, c, c, f)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑyzᵃᶠᶜ(i, j, k, grid, q, args...) / active_nodes)
+end
