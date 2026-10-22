@@ -36,28 +36,26 @@ end
 
 @inline agreement(a, b) = ifelse(a * b > 0, newton_div(BackendOptimizedDivision, 2a * b, max(a^2 + b^2, floatmin(a))), zero(a))
 
-# first node with data next to the wall (`first`), inward direction `step`, `available` nodes with data inward
-@inline function wall_continuation(S, first, step, available)
-    c(q) = @inbounds S[clamp(first + (q - 1) * step, 1, length(S))]
-    Δ₁ = ifelse(available ≥ 2, c(2) - c(1), zero(S[1]))
-    Δ₂ = ifelse(available ≥ 3, c(3) - c(2), Δ₁)
-    Δ₃ = ifelse(available ≥ 4, c(4) - c(3), Δ₂)
-    Δ₄ = ifelse(available ≥ 5, c(5) - c(4), Δ₃)
+# the nodes `c` inward from a wall, starting with the node next to it, of which `available` have data
+@inline function wall_continuation(c, available)
+    Δ₁ = ifelse(available ≥ 2, c[2] - c[1], zero(c[1]))
+    Δ₂ = ifelse(available ≥ 3, c[3] - c[2], Δ₁)
+    Δ₃ = ifelse(available ≥ 4, c[4] - c[3], Δ₂)
+    Δ₄ = ifelse(available ≥ 5, c[5] - c[4], Δ₃)
     κ₁, κ₂, κ₃ = Δ₁ - Δ₂, Δ₂ - Δ₃, Δ₃ - Δ₄
     G₁ = (agreement(Δ₁, Δ₂) * agreement(Δ₂, Δ₃))^2
     G₂ = (agreement(κ₁, κ₂) * agreement(κ₂, κ₃))^2
-    return c(1), (G₂ + (1 - G₂) * G₁) * Δ₁, G₂ * κ₁
+    return c[1], (G₂ + (1 - G₂) * G₁) * Δ₁, G₂ * κ₁
 end
 
 # Second and First order schemes
-@inline wall_continuation(S::NTuple{2}, first, step, available) = (@inbounds(S[clamp(first, 1, 2)]), zero(S[1]), zero(S[1]))
+@inline wall_continuation(c::NTuple{1}, available) = (c[1], zero(c[1]), zero(c[1]))
 
 # Third and Fourth order schemes, all the others use the general `wall_continuation`
-@inline function wall_continuation(S::NTuple{4}, first, step, available)
-    c(q) = @inbounds S[clamp(first + (q - 1) * step, 1, 4)]
-    Δ₁ = ifelse(available ≥ 2, c(2) - c(1), zero(S[1]))
-    Δ₂ = ifelse(available ≥ 3, c(3) - c(2), Δ₁)
-    return c(1), agreement(Δ₁, Δ₂)^2 * Δ₁, zero(Δ₁)
+@inline function wall_continuation(c::NTuple{3}, available)
+    Δ₁ = ifelse(available ≥ 2, c[2] - c[1], zero(c[1]))
+    Δ₂ = ifelse(available ≥ 3, c[3] - c[2], Δ₁)
+    return c[1], agreement(Δ₁, Δ₂)^2 * Δ₁, zero(Δ₁)
 end
 
 @inline continued_value((c₁, σ, κ), g) = c₁ - g * σ - g * (g + 1) * κ / 2
@@ -93,8 +91,13 @@ continued exactly, and next to a front (`G₁ = G₂ = 0`) the ghosts are consta
 
     S = ntuple(n -> stencil_value(stencil_node(i, j, k, dir, s(n))..., grid, ψ, args...), Val(2N))
 
-    left  = wall_continuation(S, nᴸ + 1, +1, min(nᴿ - 1, 2N) - nᴸ)
-    right = wall_continuation(S, nᴿ - 1, -1, nᴿ - 1 - nᴸ)
+    # the q-th node inward from each wall, picked along the scan that finds it; no wall shares the values of a wall at 1 or 2N
+    R  = Val(min(5, 2N - 1))
+    cᴸ = ntuple(q -> foldl((c, n) -> ifelse(no_data(n), S[min(n + q, 2N)], c), ntuple(n -> n + 1, Val(N - 1)); init = S[min(1 + q, 2N)]), R)
+    cᴿ = ntuple(q -> foldl((c, n) -> ifelse(no_data(n), S[max(n - q, 1)], c), ntuple(n -> 2N - n, Val(N - 1)); init = S[max(2N - q, 1)]), R)
+
+    left  = wall_continuation(cᴸ, min(nᴿ - 1, 2N) - nᴸ)
+    right = wall_continuation(cᴿ, nᴿ - 1 - nᴸ)
 
     return ntuple(n -> ifelse(n ≤ nᴸ, continued_value(left, nᴸ + 1 - n), ifelse(n ≥ nᴿ, continued_value(right, n - nᴿ + 1), S[n])), Val(2N))
 end
