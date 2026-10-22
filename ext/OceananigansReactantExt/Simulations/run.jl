@@ -128,6 +128,12 @@ reactant_model_time_step!(model, Δt, callbacks, euler) = time_step!(model, Δt;
 reactant_model_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt, callbacks, euler) =
     time_step!(model, Δt; callbacks, euler)
 
+# Whether `run!` takes the first step outside the traced loop. Only the Adams-Bashforth step needs it,
+# to be a forward-Euler step; for every other stepper the first step is a loop iteration exactly, and
+# peeling it would only trace the step body a second time.
+peels_first_step(model) = false
+peels_first_step(::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}) = true
+
 """
     time_step!(sim::ReactantSimulation; euler = false)
     time_step!(sim::ReactantSimulation, Δt; euler = false)
@@ -200,8 +206,8 @@ remainder_step!(sim, step::RemainderStep) = time_step!(sim, step.Δt; euler = tr
 """
     run!(sim::ReactantSimulation)
 
-`initialize!(sim)`, a first step (forward Euler for an Adams-Bashforth stepper, as eagerly),
-the remaining whole steps through [`time_step_for!`](@ref), one remainder step when the
+`initialize!(sim)`, the whole steps through [`time_step_for!`](@ref) (an Adams-Bashforth stepper
+takes its first, forward-Euler step before the loop, as eagerly), one remainder step when the
 simulation was given a `stop_time` that `Δt` does not divide, and then `finalize!(callback, sim)`
 on every callback.
 
@@ -220,10 +226,11 @@ function run!(sim::ReactantSimulation)
         "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
 
     N = Int(sim.stop_iteration)
+    peeled = N ≥ 1 && peels_first_step(sim.model)
 
     initialize!(sim)
-    N ≥ 1 && time_step!(sim; euler = true)
-    time_step_for!(sim, N - 1)
+    peeled && time_step!(sim; euler = true)
+    time_step_for!(sim, N - peeled)
     remainder_step!(sim, sim.stop_time)
     foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
 
