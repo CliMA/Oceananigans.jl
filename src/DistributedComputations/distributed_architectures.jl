@@ -296,6 +296,8 @@ function Distributed(child_architecture = CPU();
         isnothing(devices) ? device!(child_architecture, node_rank % ndevices(child_architecture)) : device!(child_architecture, devices[node_rank+1])
     end
 
+    validate_distributed_configuration(child_architecture, communicator)
+
     return Distributed{synchronized_communication}(child_architecture,
                                                    partition,
                                                    ranks,

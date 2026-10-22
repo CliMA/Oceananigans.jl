@@ -16,6 +16,7 @@ else
     const cuFFT = CUDA.CUFFT
 end
 using GPUArraysCore: allowscalar
+using MPI: MPI
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
@@ -66,6 +67,17 @@ end
 
 Base.summary(::CUDAGPU) = "CUDAGPU"
 AC.device!(::CUDAGPU, i) = CUDA.device!(i)
+
+function DC.gpu_configuration(::CUDAGPU)
+    device = CUDA.device()
+    domain = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DOMAIN_ID)
+    bus = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_BUS_ID)
+    slot = CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_PCI_DEVICE_ID)
+    pci_address = string(string(domain; base=16, pad=4), ':', string(bus; base=16, pad=2), ':', string(slot; base=16, pad=2), ".0")
+    cray_gpu_support = MPI.MPI_LIBRARY == "CrayMPICH" && get(ENV, "MPICH_GPU_SUPPORT_ENABLED", "0") == "1"
+    memory_pool = get(ENV, "JULIA_CUDA_MEMORY_POOL", "cuda") == "cuda"
+    return (; uuid = UInt128(CUDA.uuid(device)), pci_address, gpu_aware_mpi = MPI.has_cuda() || cray_gpu_support, memory_pool)
+end
 
 AC.architecture(::CuArray) = CUDAGPU()
 AC.architecture(::Type{CuArray}) = CUDAGPU()
