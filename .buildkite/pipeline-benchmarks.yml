@@ -191,30 +191,34 @@ steps:
       # ==========================================
       #  Distributed benchmark on GPUs 0 and 2 (both free now)
       # ==========================================
-      export CUDA_VISIBLE_DEVICES=0,2
-      export JULIA_CUDA_MEMORY_POOL=none
+      # Skipped while the 1x2 distributed run deadlocks during set!(model) (since #6271).
+      # Set RUN_DISTRIBUTED_BENCHMARK=true to re-enable.
+      if [ "$${RUN_DISTRIBUTED_BENCHMARK:-false}" = "true" ]; then
+        export CUDA_VISIBLE_DEVICES=0,2
+        export JULIA_CUDA_MEMORY_POOL=none
 
-      echo "========================================"
-      echo "  Default configuration, 1x2 partition [GPUs 0 and 2]"
-      echo "========================================"
-      $MPIWRAPPER_HOME/bin/mpiwrapperexec --map-by socket --bind-to socket -n 2 \
-        -x MPITRAMPOLINE_LIB -x JULIA_CUDA_MEMORY_POOL -x CUDA_VISIBLE_DEVICES \
-        $JULIA $JULIA_ARGS -t 4,2 $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
+        echo "========================================"
+        echo "  Default configuration, 1x2 partition [GPUs 0 and 2]"
+        echo "========================================"
+        $MPIWRAPPER_HOME/bin/mpiwrapperexec --map-by socket --bind-to socket -n 2 \
+          -x MPITRAMPOLINE_LIB -x JULIA_CUDA_MEMORY_POOL -x CUDA_VISIBLE_DEVICES \
+          $JULIA $JULIA_ARGS -t 4,2 $BENCHMARK_SCRIPT --distributed --partition=1x2x1 --size=360x180x50 --group="Distributed" --output=$OUTPUT_FILE
 
-      # Combine across ranks to calculate total throughput
-      # jq filter to selectively merge the ranks
-      echo -n 'map(select(has("rank")))' > filter.jq
-      echo -n '|(.[0].name| match("[0-9]+x[0-9]+x[0-9]+"; "s").string | split("x") | map(tonumber)) as \$gs' >> filter.jq
-      echo -n '|(map(.total_time_seconds) | max) as \$tts' >> filter.jq
-      echo -n '|(map(.grid_points_per_second) | add) as \$gpps' >> filter.jq
-      echo -n '| .[0] | .grid_size = \$gs | .total_time_seconds = \$tts | .grid_points_per_second = \$gpps | del(.rank)' >> filter.jq
+        # Combine across ranks to calculate total throughput
+        # jq filter to selectively merge the ranks
+        echo -n 'map(select(has("rank")))' > filter.jq
+        echo -n '|(.[0].name| match("[0-9]+x[0-9]+x[0-9]+"; "s").string | split("x") | map(tonumber)) as \$gs' >> filter.jq
+        echo -n '|(map(.total_time_seconds) | max) as \$tts' >> filter.jq
+        echo -n '|(map(.grid_points_per_second) | add) as \$gpps' >> filter.jq
+        echo -n '| .[0] | .grid_size = \$gs | .total_time_seconds = \$tts | .grid_points_per_second = \$gpps | del(.rank)' >> filter.jq
 
-      jq -f filter.jq $OUTPUT_FILE > combined_throughputs.json
-      # Create a separate json file with the non-distributed results
-      jq 'map(select(has("rank") == false))' $OUTPUT_FILE > non_distributed_results.json
-      # Merge the lists back together
-      jq -s 'flatten' non_distributed_results.json combined_throughputs.json > final_results.json
-      mv final_results.json $OUTPUT_FILE
+        jq -f filter.jq $OUTPUT_FILE > combined_throughputs.json
+        # Create a separate json file with the non-distributed results
+        jq 'map(select(has("rank") == false))' $OUTPUT_FILE > non_distributed_results.json
+        # Merge the lists back together
+        jq -s 'flatten' non_distributed_results.json combined_throughputs.json > final_results.json
+        mv final_results.json $OUTPUT_FILE
+      fi
 
     artifact_paths:
       - "benchmark_results.json"
