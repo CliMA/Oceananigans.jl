@@ -14,6 +14,7 @@ deconcretize(gfb::GridFittedVerticalBoundaries) = GridFittedVerticalBoundaries(d
                                                                                gfb.immersed_condition,
                                                                                deconcretize(gfb.bottom_cell_index),
                                                                                deconcretize(gfb.top_cell_index),
+                                                                               deconcretize(gfb.top_load),
                                                                                deconcretize_face_column_depths(gfb.face_column_depths))
 
 deconcretize_face_column_depths(::Nothing) = nothing

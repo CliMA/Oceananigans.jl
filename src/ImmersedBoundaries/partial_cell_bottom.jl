@@ -9,17 +9,21 @@ import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜ�
 ##### PartialCellVerticalBoundaries
 #####
 
-struct PartialCellVerticalBoundaries{H, T, E, SB, ST, D} <: AbstractGridFittedBottom{H}
+struct PartialCellVerticalBoundaries{H, T, E, SB, ST, L, D} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     minimum_fractional_cell_height :: E
     fractional_bottom_index :: SB
     fractional_top_index :: ST
+    top_load :: L
     face_column_depths :: D
 end
 
 PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height) =
-    PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, nothing, nothing, nothing)
+    PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, nothing, nothing, nothing, nothing)
+
+PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, top_load) =
+    PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, nothing, nothing, top_load, nothing)
 
 # A missing top is materialized as a `ConstantField` at the top of the domain, without a `fractional_top_index`
 const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, <:Union{Nothing, ConstantField}, E, <:Any, Nothing}
@@ -74,11 +78,12 @@ function Base.show(io::IO, ib::PartialCellVerticalBoundaries)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
     print(io, "├── top_height: ", prettysummary(ib.top_height), '\n')
+    print(io, "├── top_load: ", prettysummary(ib.top_load), '\n')
     print(io, "└── minimum_fractional_cell_height: ", prettysummary(ib.minimum_fractional_cell_height))
 end
 
 """
-    PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
+    PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
 
 Return `PartialCellVerticalBoundaries` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced
@@ -97,6 +102,11 @@ minimum_fractional_cell_height * Δz,
 where `Δz` is the original height of the cell in the underlying grid.
 Columns in which the top and bottom leave less than this height are immersed entirely.
 
+`top_load` is the potential of the weight of the solid top, added to the hydrostatic pressure of
+every column: either `nothing` (default, no load), a [`TopLoad`](@ref) computed from a reference
+state, or an array, function of `(x, y)` or two-dimensional field such as the one returned by
+[`top_load_potential`](@ref). It requires `top_height`.
+
 Example
 =======
 
@@ -114,14 +124,16 @@ julia> ImmersedBoundaryGrid(grid, PartialCellVerticalBoundaries(bottom_height=-9
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2)
-    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height)
+function PartialCellVerticalBoundaries(; bottom_height=nothing, top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, top_load)
 end
 
 """
-    PartialCellBottom(bottom_height=nothing; minimum_fractional_cell_height=0.2)
+    PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
 
-Return a [`PartialCellVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
+Return a [`PartialCellVerticalBoundaries`](@ref) bounded below by `bottom_height`. See
+[`PartialCellVerticalBoundaries`](@ref) for the meaning of the keyword arguments.
 
 Example
 =======
@@ -140,8 +152,9 @@ julia> ImmersedBoundaryGrid(grid, PartialCellBottom(-95))
 └── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
 ```
 """
-function PartialCellBottom(bottom_height=nothing; minimum_fractional_cell_height=0.2)
-    return PartialCellVerticalBoundaries(bottom_height, nothing, minimum_fractional_cell_height)
+function PartialCellBottom(bottom_height=nothing; top_height=nothing, minimum_fractional_cell_height=0.2, top_load=nothing)
+    validate_top_load(top_height, top_load)
+    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, top_load)
 end
 
 function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
@@ -161,12 +174,17 @@ function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
     @apply_regionally compute_top_cell!(grid, compute_ib, fractional_top_index, top)
 
     materialized_ib = PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height,
-                                                    index_data(fractional_bottom_index), index_data(fractional_top_index), nothing)
+                                                    index_data(fractional_bottom_index), index_data(fractional_top_index), nothing, nothing)
 
     face_column_depths = materialize_face_column_depths(grid, materialized_ib)
 
+    unloaded_ib = PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height,
+                                                index_data(fractional_bottom_index), index_data(fractional_top_index), nothing, face_column_depths)
+
+    top_load = materialize_top_load(grid, unloaded_ib, ib.top_load)
+
     return PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height,
-                                         index_data(fractional_bottom_index), index_data(fractional_top_index), face_column_depths)
+                                         index_data(fractional_bottom_index), index_data(fractional_top_index), top_load, face_column_depths)
 end
 
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::PartialCellVerticalBoundaries)
@@ -260,6 +278,7 @@ Adapt.adapt_structure(to, ib::PartialCellVerticalBoundaries) =
                                   ib.minimum_fractional_cell_height,
                                   adapt(to, ib.fractional_bottom_index),
                                   adapt(to, ib.fractional_top_index),
+                                  adapt(to, ib.top_load),
                                   adapt(to, ib.face_column_depths))
 
 Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
@@ -268,6 +287,7 @@ Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
                                   on_architecture(to, ib.minimum_fractional_cell_height),
                                   on_architecture(to, ib.fractional_bottom_index),
                                   on_architecture(to, ib.fractional_top_index),
+                                  on_architecture(to, ib.top_load),
                                   on_architecture(to, ib.face_column_depths))
 
 # kᵇ = ⌊sᵇ⌋: `unsafe_trunc` is a single conversion, while mixed `Int`-`Float` comparisons of `sᵇ` are exact but several times longer
@@ -398,5 +418,6 @@ end
 function Base.:(==)(pcb1::PartialCellVerticalBoundaries, pcb2::PartialCellVerticalBoundaries)
     return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) &&
            bottom_heights_equal(pcb1.top_height, pcb2.top_height) &&
+           bottom_heights_equal(pcb1.top_load, pcb2.top_load) &&
            pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
 end
