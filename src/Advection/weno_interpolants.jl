@@ -444,24 +444,8 @@ The ``α`` values are returned unnormalized: [`weno_reconstruction`](@ref) divid
     return zweno_alpha_loop(scheme, β, τ)
 end
 
-@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ℓ, ::VelocityStencil, u, v) where {N, FT}
-    i, j, k = ijk
-
-    uₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ℑyᵃᶠᵃ, u)
-    vₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ℑxᶠᵃᵃ, v)
-    βᵤ = beta_loop(scheme, weno_differences(scheme, uₛ))
-    βᵥ = beta_loop(scheme, weno_differences(scheme, vₛ))
-    β  = beta_sum(scheme, βᵤ, βᵥ)
-
-    τ = global_smoothness_indicator(Val(N), β)
-    return zweno_alpha_loop(scheme, β, τ)
-end
-
 # The right-biased stencil is the mirror of the left-biased one, so both use the left-biased coefficients
-@inline function weno_stencil(i, j, k, grid, dir, ℓ, ::WENO{N}, bias, ψ, args...) where N
-    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
-    return @inbounds ifelse(bias == LeftBias, ntuple(n -> S[n], Val(2N - 1)), ntuple(n -> S[2N + 1 - n], Val(2N - 1)))
-end
+@inline weno_stencil(::WENO{N}, bias, S) where N = @inbounds ifelse(bias == LeftBias, ntuple(n -> S[n], Val(2N - 1)), ntuple(n -> S[2N + 1 - n], Val(2N - 1)))
 
 @inline weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
@@ -503,7 +487,8 @@ end
 
 # Interpolation functions
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
-    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    S  = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    S  = weno_stencil(scheme, bias, S)
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
     ω  = biased_weno_weights(δ, grid, scheme, bias, args...)
@@ -511,26 +496,42 @@ end
 end
 
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
-    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    S  = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    S  = weno_stencil(scheme, bias, S)
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
     ω  = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
 
+# The smoothness stencils continue past walls with the agreement factors of the reconstructed stencil
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
-    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, u, v, args...)
+    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, u, v, args...)
+    Sᵤ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑyᵃᶠᵃ, u)
+    Sᵥ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑxᶠᵃᵃ, v)
+    S  = weno_stencil(scheme, bias, S)
+    Sᵤ = weno_stencil(scheme, bias, Sᵤ)
+    Sᵥ = weno_stencil(scheme, bias, Sᵥ)
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
-    ω  = biased_weno_weights((i, j, k), grid, scheme, bias, dir, ℓ, VI, u, v)
+    δᵤ = weno_differences(scheme, Sᵤ)
+    δᵥ = weno_differences(scheme, Sᵥ)
+    βᵤ = beta_loop(scheme, δᵤ)
+    βᵥ = beta_loop(scheme, δᵥ)
+    β  = beta_sum(scheme, βᵤ, βᵥ)
+    τ  = global_smoothness_indicator(Val(N), β)
+    ω  = zweno_alpha_loop(scheme, β, τ)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
 
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::FunctionStencil, args...) where {N, FT}
-    S  = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, ψ, args...)
+    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, args...)
+    Sₛ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, VI.func, args...)
+    S  = weno_stencil(scheme, bias, S)
+    Sₛ = weno_stencil(scheme, bias, Sₛ)
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
-    Sₛ = weno_stencil(i, j, k, grid, dir, ℓ, scheme, bias, VI.func, args...)
-    ω  = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, bias, VI, args...)
+    δₛ = weno_differences(scheme, Sₛ)
+    ω  = biased_weno_weights(δₛ, grid, scheme, bias, VI, args...)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
