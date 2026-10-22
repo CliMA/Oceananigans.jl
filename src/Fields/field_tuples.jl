@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: CPU, GPU, architecture, convert_to_device
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoKernelFBC, regularize_field_boundary_conditions,
     tupled_fill_halo_regions!, needs_halo_fill_args
+using Oceananigans.Utils: foreach_element
 using LinearAlgebra: LinearAlgebra
 
 const FieldTuple = Tuple{Field, Vararg{Field}}
@@ -73,16 +74,8 @@ The remaining fields are filled one by one.
 @inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
     groups = halo_fill_groups(select_fields(tupled_fillable, fields))
     individual_fields = select_fields(!tupled_fillable, fields)
-    foreach_halo_fill!(fill_halo_group!, groups, args...; kwargs...)
-    foreach_halo_fill!(fill_halo_regions!, individual_fields, args...; kwargs...)
-    return nothing
-end
-
-@inline foreach_halo_fill!(fill!, ::Tuple{}, args...; kwargs...) = nothing
-
-@inline function foreach_halo_fill!(fill!::F, items::Tuple, args::Vararg{Any, N}; kwargs...) where {F, N}
-    fill!(first(items), args...; kwargs...)
-    foreach_halo_fill!(fill!, Base.tail(items), args...; kwargs...)
+    foreach_element(fill_halo_group!, groups, args...; kwargs...)
+    foreach_element(fill_halo_regions!, individual_fields, args...; kwargs...)
     return nothing
 end
 
@@ -131,7 +124,7 @@ function fill_halo_group!(group::Tuple, args::Vararg{Any, N}; kwargs...) where N
     field = first(group)
     grid = field.grid
 
-    all(f -> f.grid === grid, group) || return foreach_halo_fill!(fill_halo_regions!, group, args...; kwargs...)
+    all(f -> f.grid === grid, group) || return foreach_element(fill_halo_regions!, group, args...; kwargs...)
 
     data = map(f -> f.data, group)
     bcs = map(f -> f.boundary_conditions.ordered_bcs, group)
