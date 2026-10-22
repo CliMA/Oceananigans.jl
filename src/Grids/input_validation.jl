@@ -49,7 +49,7 @@ end
 validate_topology(topology::Tuple{Any, Any, Any}) = map(validate_topology, topology)
 validate_topology((L, R)::Tuple{Any, Any}) = Sides{L, R}
 validate_topology(T::Type{<:Union{Periodic, Flat, Sides}}) = T
-validate_topology(T::Type{<:Union{Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}) = Sides{T, T}
+validate_topology(T::Type{<:Union{Closed, Open, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}) = Sides{T, T}
 validate_topology(T) = throw(ArgumentError("$T is not a valid topology; valid topologies are Periodic, Flat, Bounded, or a pair of side topologies."))
 
 function validate_size(TX, TY, TZ, sz)

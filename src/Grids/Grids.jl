@@ -2,7 +2,7 @@ module Grids
 
 export Center, Face
 export AbstractTopology, topology
-export Periodic, Flat, Sides, Bounded, Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
+export Periodic, Flat, Sides, Bounded, Closed, Open, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected
 export RightCenterFolded, RightFaceFolded
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
@@ -82,7 +82,7 @@ struct Flat <: AbstractTopology end
     Sides{L, R}
 
 Grid topology for dimensions whose left side has topology `L` and right side has topology `R`.
-The topology of a side is `Closed`, `Connected`, `CenterFolded`, `FaceFolded`, `CenterFoldConnected`, or
+The topology of a side is `Closed`, `Open`, `Connected`, `CenterFolded`, `FaceFolded`, `CenterFoldConnected`, or
 `FaceFoldConnected`. A side topology used on its own, for example `Closed`, applies to both sides.
 """
 struct Sides{L, R} <: AbstractTopology end
@@ -93,6 +93,13 @@ struct Sides{L, R} <: AbstractTopology end
 Topology of a side closed by a wall.
 """
 struct Closed end
+
+"""
+    Open
+
+Topology of a side where the domain continues into an exterior.
+"""
+struct Open end
 
 """
     Bounded
