@@ -201,7 +201,7 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo = validate_topology(topo)
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(ds.attrib, "output_includes_halos")
