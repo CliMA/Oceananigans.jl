@@ -6,6 +6,9 @@ using Oceananigans.Operators: Δx, Δy, Δz
 
 @inline linearly_extrapolate(c₀, ∇c, Δ) = c₀ + ∇c * Δ
 
+@inline flip(::Center) = Face()
+@inline flip(::Face) = Center()
+
 @inline  left_gradient(bc::GBC, c¹, Δ, i, j, args...) = getbc(bc, i, j, args...)
 @inline right_gradient(bc::GBC, cᴺ, Δ, i, j, args...) = getbc(bc, i, j, args...)
 

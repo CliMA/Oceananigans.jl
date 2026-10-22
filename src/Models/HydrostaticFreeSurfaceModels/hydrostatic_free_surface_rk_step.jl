@@ -34,7 +34,6 @@ The order of operations for explicit free surfaces is:
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
 
-        compute_momentum_flux_bcs!(model)
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
@@ -79,9 +78,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     @apply_regionally begin
         update_transport_velocities!(model.transport_velocities, model.velocities, free_surface)
-
-        # Computing tendencies...
-        compute_momentum_flux_bcs!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)

@@ -20,7 +20,7 @@ import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.BoundaryConditions: step_boundary_conditions!
+using Oceananigans.BoundaryConditions: step_boundary_conditions!, FBC
 import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
@@ -79,12 +79,19 @@ function free_surface_displacement_field(velocities, free_surface, grid; boundar
         return ZFaceField(grid; indices)
     else
         bcs = boundary_conditions
-        @apply_regionally windowed = windowed_bc(bcs, Nz)
+        @apply_regionally windowed = windowed_surface_bc(bcs, Nz)
         return ZFaceField(grid; indices, boundary_conditions = windowed)
     end
 end
 
-windowed_bc(bcs, Nz) = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+function windowed_surface_bc(bcs, Nz)
+    for side in (:west, :east, :south, :north)
+        bc = getproperty(bcs, side)
+        bc isa FBC && !isnothing(bc.condition) &&
+            throw(ArgumentError("η does not support a Flux condition on its $side side: mass crosses the boundary through the barotropic velocity."))
+    end
+    return FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+end
 
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
@@ -192,7 +199,6 @@ include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
-include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")

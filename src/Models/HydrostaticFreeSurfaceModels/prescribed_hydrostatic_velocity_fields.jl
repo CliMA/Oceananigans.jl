@@ -149,7 +149,6 @@ hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = 
 previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters) = nothing
 
-compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),

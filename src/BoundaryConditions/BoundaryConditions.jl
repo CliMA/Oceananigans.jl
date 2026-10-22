@@ -13,7 +13,6 @@ export
     TidalHarmonics, tidal_boundary_conditions, tidal_atlas_constants,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
-    compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
     fill_halo_regions!,
     WestAndEast, SouthAndNorth, BottomAndTop,
     West, East, South, North, Bottom, Top,
@@ -29,7 +28,7 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
                           FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, Sides,
                           connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
-using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
 # All possible fill_halo! kernels
@@ -61,7 +60,6 @@ include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
 
-include("compute_flux_bcs.jl")
 
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")

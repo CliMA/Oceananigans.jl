@@ -3,7 +3,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper, ImpenetrableBoundaryCondition
 using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
-using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
+using Oceananigans.TurbulenceClosures: boundary_∇_dot_qᶜ
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -402,18 +402,11 @@ end
             # Regularize like model constructors do
             bcs = regularize_field_boundary_conditions(bcs, grid, loc)
             c = CenterField(grid; boundary_conditions=bcs)
-            Gc = CenterField(grid)
             clock = (; time = 0.0)
+            boundary_flux_divergence = KernelFunctionOperation{Center, Center, Center}(boundary_∇_dot_qᶜ, grid, c, NamedTuple(bcs),
+                                                                                       nothing, nothing, nothing, clock, (; c), nothing)
 
-            if bounded_dim == 1
-                compute_x_bcs!(Gc, c, CPU(), clock, tuple())
-            elseif bounded_dim == 2
-                compute_y_bcs!(Gc, c, CPU(), clock, tuple())
-            else
-                compute_z_bcs!(Gc, c, CPU(), clock, tuple())
-            end
-
-            @test !all(Array(interior(Gc)) .== 0)
+            @test !all(Array(interior(Field(boundary_flux_divergence))) .== 0)
         end
 
         # ContinuousBoundaryFunction with field_dependencies on a Flat topology

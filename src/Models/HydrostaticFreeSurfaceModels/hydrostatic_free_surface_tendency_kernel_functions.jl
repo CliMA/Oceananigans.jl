@@ -8,7 +8,7 @@ using Oceananigans.Biogeochemistry: biogeochemical_transition,
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
-                                       immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
+                                       boundary_∂ⱼ_τ₁ⱼ, boundary_∂ⱼ_τ₂ⱼ, boundary_∇_dot_qᶜ,
                                        closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
 
@@ -49,7 +49,7 @@ implicitly during time-stepping.
                                                               advection,
                                                               coriolis,
                                                               closure,
-                                                              u_immersed_bc,
+                                                              u_bcs,
                                                               velocities,
                                                               free_surface,
                                                               tracers,
@@ -70,7 +70,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, closure_fields, clock, model_fields)
+             - boundary_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities.u, u_bcs, closure, closure_fields, clock, model_fields, buoyancy)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -91,7 +91,7 @@ implicitly during time-stepping.
                                                               advection,
                                                               coriolis,
                                                               closure,
-                                                              v_immersed_bc,
+                                                              v_bcs,
                                                               velocities,
                                                               free_surface,
                                                               tracers,
@@ -112,7 +112,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, closure_fields, clock, model_fields)
+             - boundary_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities.v, v_bcs, closure, closure_fields, clock, model_fields, buoyancy)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -146,7 +146,7 @@ where `c = C[tracer_index]`.
                                                           val_tracer_name,
                                                           advection,
                                                           closure,
-                                                          c_immersed_bc,
+                                                          c_bcs,
                                                           buoyancy,
                                                           biogeochemistry,
                                                           velocities,
@@ -170,7 +170,7 @@ where `c = C[tracer_index]`.
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_tracer_index, c, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, closure_fields, val_tracer_index, clock, model_fields)
+             - boundary_∇_dot_qᶜ(i, j, k, grid, c, c_bcs, closure, closure_fields, val_tracer_index, clock, model_fields, buoyancy)
              + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end

@@ -27,9 +27,6 @@ This predictor-corrector scheme:
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 
-    # Compute flux bc tendencies
-    compute_flux_bc_tendencies!(model)
-
     # Prognostic variables stepping
     χ = model.timestepper.χ
     @inline substep_velocity!(u, Gⁿ, G⁻) = launch!(architecture(grid), grid, :xyz, _ab2_step_field!, u, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)

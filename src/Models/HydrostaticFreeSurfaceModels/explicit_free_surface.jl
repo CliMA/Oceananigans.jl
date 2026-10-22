@@ -175,13 +175,6 @@ function compute_explicit_free_surface_tendency!(grid, model)
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
             grid, model.vertical_coordinate, args)
 
-    args = (model.clock,
-            fields(model),
-            model.closure,
-            model.buoyancy)
-
-    compute_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
-
     return nothing
 end
 
