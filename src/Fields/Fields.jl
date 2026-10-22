@@ -6,11 +6,12 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
-export interpolate
+export interpolate, interpolate!
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArray
+using StaticArrays: StaticArray
 
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture

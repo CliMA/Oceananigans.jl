@@ -56,7 +56,7 @@ simulation = Simulation(model, Δt = 10, stop_time = 4hours)
 conjure_time_step_wizard!(simulation, IterationInterval(100), cfl = 0.5, diffusive_cfl = 0.5)
 
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities;
-                                                    overwrite_existing = true,
+                                                    overwrite_files = true,
                                                     filename = "drogued_velocities.jld2",
                                                     schedule = TimeInterval(10minutes))
 
@@ -67,11 +67,11 @@ add_callback!(simulation, prog, IterationInterval(50))
 run!(simulation)
 
 simulation.output_writers[:particles] = JLD2Writer(model, (; particles);
-                                                   overwrite_existing = true,
+                                                   overwrite_files = true,
                                                    filename = "drogued_particles.jld2",
                                                    schedule = TimeInterval(0.1minutes))
 simulation.output_writers[:tracer] = JLD2Writer(model, model.tracers;
-                                                overwrite_existing = true,
+                                                overwrite_files = true,
                                                 filename = "drogued_tracer.jld2",
                                                 schedule = TimeInterval(0.1minutes))
 

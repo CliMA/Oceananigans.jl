@@ -141,7 +141,7 @@ function Base.getindex(fts::OnDiskFTS, n::Int)
 
     # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
-    filepath, local_n = file_and_local_index(fts.path, n)
+    filepath, local_n = file_and_local_index(fts.path, n, fts.times[n], fts.reader_kw)
     file = jldopen(filepath; fts.reader_kw...)
     iter = keys(file["timeseries/t"])[local_n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
@@ -151,7 +151,7 @@ function Base.getindex(fts::OnDiskFTS, n::Int)
     loc = instantiated_location(fts)
     @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    status = @allowscalar FixedTime(fts.times[n])
+    status = @allowscalar FixedTime(time)
 
     field = Field(loc, fts.grid;
                   indices = fts.indices,
@@ -409,6 +409,23 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
     n₁ = indices.first_index
     n₂ = indices.second_index
+    return update_field_time_series!(fts, n₁, n₂)
+end
+
+update_field_time_series!(fts, first_time::Time, last_time::Time) = nothing
+
+# Update the `fts` to contain every time between `first_time.time` and `last_time.time`
+function update_field_time_series!(fts::PartlyInMemoryFTS, first_time::Time, last_time::Time)
+    arch = architecture(fts)
+    n₁ = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, first_time.time).first_index
+    n₂ = cpu_interpolating_time_indices(arch, fts.times, fts.time_indexing, last_time.time).second_index
+    Nm = length(fts.backend)
+    Nt = length(fts.times)
+
+    min(n₂, Nt) - n₁ < Nm ||
+        throw(ArgumentError("times $(first_time.time) to $(last_time.time) span time indices $n₁ to $n₂, " *
+                            "more than the $Nm held in memory; increase `time_indices_in_memory`."))
+
     return update_field_time_series!(fts, n₁, n₂)
 end
 

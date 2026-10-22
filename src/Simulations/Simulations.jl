@@ -4,9 +4,12 @@ export
     TimeStepWizard,
     conjure_time_step_wizard!,
     Simulation,
+    AutomaticDifferentiation,
     run!,
     Callback,
     add_callback!,
+    add_conservation_fixer!,
+    TimeDerivativeCallback,
     iteration
 
 using DocStringExtensions: TYPEDSIGNATURES

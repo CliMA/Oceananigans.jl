@@ -13,7 +13,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
-using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_location
 using Oceananigans.Grids: Center, Face, unwrapped_eltype
 using Oceananigans.Operators: interpolation_operator
 
@@ -25,6 +25,9 @@ import Oceananigans.Fields: compute_at!, indices
 #####
 
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
+
+# An operation computes its values rather than wrapping a buffer, so it is its own ancestor
+Adapt.parent_type(T::Type{<:AbstractOperation}) = T
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
@@ -93,9 +96,14 @@ include("show_abstract_operations.jl")
 @binary Base.atand
 @binary Base.mod
 
-# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
-Base.:<(::AbstractField, ::Missing) = missing
-Base.:<(::Missing, ::AbstractField) = missing
+# Base defines matrix powers `^(::AbstractMatrix, ::Integer)`, `^(::AbstractMatrix, ::Real)` and
+# `^(::Irrational{:ℯ}, ::AbstractMatrix)`, which two-dimensional fields also match
+for P in (:Integer, :Real)
+    @eval Base.:^(a::AbstractField, b::$P) = ^(instantiated_location(a), a, b)
+    @eval Base.:^(a::ConstantField, b::$P) = ConstantField(a.constant ^ b)
+end
+Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
+Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
 @multiary +
 

@@ -169,14 +169,14 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
                                                   filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_fields",
                                                   # schedule = TimeInterval(5e-4),
                                                   schedule = IterationInterval(10000),
-                                                  overwrite_existing = true,
+                                                  overwrite_files = true,
                                                   init = init_save_some_metadata!)
 
     simulation.output_writers[:timeseries] = JLD2Writer(model, (; WB);
                                                         filename = prefix * "_Ra_$(Ra)_Nr_$(Nr)_Nz_$(Nz)_WENO_time_series",
                                                         #   schedule = TimeInterval(5e-4),
                                                         schedule = IterationInterval(10000),
-                                                        overwrite_existing = true,
+                                                        overwrite_files = true,
                                                         init = init_save_some_metadata!)
 
     run!(simulation)

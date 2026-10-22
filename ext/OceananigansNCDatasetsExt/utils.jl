@@ -1,3 +1,7 @@
+#####
+##### Utilities for general use
+#####
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
@@ -18,6 +22,7 @@ convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_
 convert_for_netcdf(x::Number) = x
 convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
+convert_for_netcdf(z::AbstractVerticalCoordinate) = serialize_vertical_coordinate(z)
 convert_for_netcdf(x) = string(x)
 convert_for_netcdf(::GPU) = "GPU()"
 convert_for_netcdf(::CenterImmersedCondition) = "CenterImmersedCondition()"

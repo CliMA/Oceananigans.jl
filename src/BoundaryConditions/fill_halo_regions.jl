@@ -23,6 +23,13 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     return nothing
 end
 
+"Fill only the bottom and top halo regions of a field's data."
+function fill_bottom_and_top_halo!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
+    fill_halo_event!(c, kernels!.bottom_and_top, bcs.bottom_and_top, loc, grid, args...; kwargs...)
+    return nothing
+end
+
 @inline fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
 
 @inline function fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
@@ -33,8 +40,37 @@ end
 
 const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 
-@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], bcs[2], loc, grid, args)
-@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], loc, grid, args)
+# Whether the halo of `bc` is filled given the `fill_normal_flow_bcs` flag
+@inline fills_halo(bc, fill_normal_flow_bcs) = true
+
+# Work done on `c` before the filling kernel is launched
+@inline prepare_halo_fill!(bc, c, grid, loc) = nothing
+
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
+        prepare_halo_fill!(bcs[1], c, grid, loc)
+        prepare_halo_fill!(bcs[2], c, grid, loc)
+        kernel!(c, bcs[1], bcs[2], loc, grid, args)
+    end
+    return nothing
+end
+
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fills_halo(bcs[1], fill_normal_flow_bcs)
+        prepare_halo_fill!(bcs[1], c, grid, loc)
+        kernel!(c, bcs[1], loc, grid, args)
+    end
+    return nothing
+end
+
+@inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fills_halo(bc, fill_normal_flow_bcs)
+        prepare_halo_fill!(bc, c, grid, loc)
+        kernel!(c, bc, loc, grid, args)
+    end
+    return nothing
+end
+
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
 
 #####

@@ -39,17 +39,33 @@ function zarr_chunk_shape(zarr_path::AbstractString, variable_name::AbstractStri
     end
 end
 
+"""
+    used_gpu_memory()
+
+Bytes of GPU memory currently allocated by this process on the active device. Reads the stream-ordered memory pool
+when one is active, and CUDA's own live-allocation accounting when the pool is disabled
+(`JULIA_CUDA_MEMORY_POOL=none`, as required by CUDA-aware MPI).
+"""
+function used_gpu_memory()
+    pool_used_bytes = CUDACore.MemoryInfo().pool_used_bytes
+    return something(pool_used_bytes, CUDACore.memory_stats().live)
+end
+
 
 """
     benchmark_time_stepping(model;
                             time_steps = 100,
                             Δt = 60,
                             warmup_steps = 10,
+                            samples = 5,
                             name = "benchmark",
                             verbose = true)
 
-Run a benchmark by executing `time_steps` time steps of the given model.
-Uses `many_time_steps!` to avoid Simulation overhead.
+Run a benchmark by executing `samples` timing windows of `time_steps` time steps
+each of the given model. Uses `many_time_steps!` to avoid Simulation overhead.
+
+The reported time per step is the minimum over the windows; the median and
+maximum are recorded alongside it to expose the run-to-run spread.
 
 Returns a `BenchmarkResult` containing timing information and system metadata.
 """
@@ -57,6 +73,7 @@ function benchmark_time_stepping(model;
                                  time_steps = 100,
                                  Δt = 60,
                                  warmup_steps = 10,
+                                 samples = 5,
                                  name = "benchmark",
                                  group = "",
                                  verbose = true)
@@ -74,7 +91,7 @@ function benchmark_time_stepping(model;
         @info "  Grid size: $Nx × $Ny × $Nz ($total_points points)"
         @info "  Time step: $Δt s"
         @info "  Warmup steps: $warmup_steps"
-        @info "  Benchmark steps: $time_steps"
+        @info "  Benchmark steps: $time_steps × $samples windows"
     end
 
     # Warmup phase
@@ -86,21 +103,43 @@ function benchmark_time_stepping(model;
     # Synchronize device before timing
     sync_device!(arch)
 
-    # Benchmark phase
+    # Benchmark phase: one timing window per sample
     if verbose
         @info "  Running benchmark..."
     end
-    start_time = time_ns()
-    many_time_steps!(model, Δt, time_steps)
-    sync_device!(arch)
-    end_time = time_ns()
+    window_seconds = zeros(samples)
+    gc_time_seconds = 0.0
+    allocated_bytes = 0
+    allocations = 0
+    for s in 1:samples
+        # Start every window from the same heap state, so a collection triggered by
+        # earlier allocations does not land in some windows and not in others
+        GC.gc(true); GC.gc(false); GC.gc(true)
+        stats = @timed begin
+            many_time_steps!(model, Δt, time_steps)
+            sync_device!(arch)
+        end
+        window_seconds[s] = stats.time
+        gc_time_seconds += stats.gctime
+        allocated_bytes += stats.bytes
+        allocations += Base.gc_alloc_count(stats.gcstats)
+    end
 
-    total_time_seconds = (end_time - start_time) / 1e9
-    time_per_step_seconds = total_time_seconds / time_steps
-    steps_per_second = time_steps / total_time_seconds
+    host_time_per_step_seconds = host_time_per_step(model, Δt)
+    iterations = pressure_solver_iterations(model)
+
+    total_steps = warmup_steps + samples * time_steps + host_time_steps
+    hasnan(model) && error("Benchmark $name: the model state contains NaN after $total_steps time steps")
+
+    total_time_seconds = sum(window_seconds)
+    step_seconds = window_seconds ./ time_steps
+    time_per_step_seconds = minimum(step_seconds)
+    time_per_step_median_seconds = median(step_seconds)
+    time_per_step_max_seconds = maximum(step_seconds)
+    steps_per_second = 1 / time_per_step_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = BenchmarkResult(
@@ -109,31 +148,70 @@ function benchmark_time_stepping(model;
         string(FT),
         (Nx, Ny, Nz),
         time_steps,
+        samples,
         Δt,
         total_time_seconds,
         time_per_step_seconds,
+        time_per_step_median_seconds,
+        time_per_step_max_seconds,
         steps_per_second,
         grid_points_per_second,
         gpu_memory_used,
+        gc_time_seconds,
+        allocated_bytes / (samples * time_steps),
+        allocations / (samples * time_steps),
+        host_time_per_step_seconds,
+        iterations,
         metadata,
     )
 
     if verbose
         @info "  Results:"
         @info "    Total time: $(@sprintf("%.3f", total_time_seconds)) s"
-        @info "    Time per step: $(@sprintf("%.6f", time_per_step_seconds)) s"
+        @info "    Time per step: $(@sprintf("%.6f", time_per_step_seconds)) s (min of $samples windows; median $(@sprintf("%.6f", time_per_step_median_seconds)) s, max $(@sprintf("%.6f", time_per_step_max_seconds)) s)"
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
-        if arch isa GPU
+        @info "    Host time per step: $(@sprintf("%.6f", host_time_per_step_seconds)) s (time to enqueue one step, median of $host_time_steps)"
+        @info "    Host allocations per step: $(Base.format_bytes(result.allocated_bytes_per_step)) in $(round(Int, result.allocations_per_step)) allocations"
+        @info "    GC time: $(@sprintf("%.3f", gc_time_seconds)) s over $samples windows"
+        iterations > 0 && @info "    Pressure solver iterations (last solve): $iterations"
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 
     return result
 end
+
+const host_time_steps = 10
+
+"""
+    host_time_per_step(model, Δt)
+
+Median over `host_time_steps` time steps of the time the host takes to return from `time_step!`,
+with the device synchronized before each step. On a GPU this is the time to enqueue one step:
+when it is close to the time per step, the benchmark measures the host rather than the device.
+"""
+function host_time_per_step(model, Δt)
+    arch = architecture(model.grid)
+    host_seconds = zeros(host_time_steps)
+    for n in 1:host_time_steps
+        sync_device!(arch)
+        start_time = time_ns()
+        time_step!(model, Δt)
+        host_seconds[n] = (time_ns() - start_time) / 1e9
+    end
+    sync_device!(arch)
+    return median(host_seconds)
+end
+
+# Iterations of the most recent pressure solve, or 0 for models and solvers that don't iterate
+pressure_solver_iterations(model) = hasproperty(model, :pressure_solver) ? solver_iterations(model.pressure_solver) : 0
+solver_iterations(solver) = 0
+solver_iterations(solver::ConjugateGradientPoissonSolver) = iteration(solver)
 
 #####
 ##### Full simulation with output (for validation and longer runs)
@@ -215,14 +293,14 @@ function run_benchmark_simulation(model;
         filename = output_filename,
         indices = (:, :, Nz),
         schedule = TimeInterval(output_interval),
-        overwrite_existing = true
+        overwrite_files = true
     )
 
     # Final snapshot: full 3D fields
     simulation.output_writers[:final_3d] = JLD2Writer(model, outputs;
         filename = final_filename,
         schedule = IterationInterval(typemax(Int)),
-        overwrite_existing = true
+        overwrite_files = true
     )
 
     function save_final_snapshot(sim)
@@ -248,7 +326,7 @@ function run_benchmark_simulation(model;
     steps_per_second = time_steps / wall_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = SimulationResult(
@@ -276,12 +354,12 @@ function run_benchmark_simulation(model;
         @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
         @info "    Surface timeseries: $output_filename"
         @info "    Final 3D snapshot: $final_filename"
-        if arch isa GPU
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 
@@ -383,19 +461,19 @@ function run_io_benchmark(model;
         simulation.output_writers[:fields_3d] = JLD2Writer(model, outputs;
             filename = output_filename,
             schedule = IterationInterval(output_iteration_interval),
-            overwrite_existing = true,
+            overwrite_files = true,
         )
     elseif output_format == "netcdf"
         simulation.output_writers[:fields_3d] = NetCDFWriter(model, outputs;
             filename = output_filename,
             schedule = IterationInterval(output_iteration_interval),
-            overwrite_existing = true,
+            overwrite_files = true,
         )
     else  # zarr
         simulation.output_writers[:fields_3d] = ZarrWriter(model, outputs;
             filename = output_filename,
             schedule = IterationInterval(output_iteration_interval),
-            overwrite_existing = true,
+            overwrite_files = true,
             chunks = zarr_chunks,
         )
     end
@@ -432,7 +510,7 @@ function run_io_benchmark(model;
                   zarr_chunk_shape(output_filename, "T") :
                   nothing
 
-    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = Oceananigans.Architectures.child_architecture(arch) isa GPU ? used_gpu_memory() : 0
     metadata = BenchmarkMetadata(arch)
 
     result = IOBenchmarkResult(
@@ -465,12 +543,12 @@ function run_io_benchmark(model;
         if !isnothing(chunk_shape)
             @info "    Chunk shape: $(Tuple(chunk_shape))"
         end
-        if arch isa GPU
+        if Oceananigans.Architectures.child_architecture(arch) isa GPU
             @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
         end
     end
 
-    if arch isa GPU
+    if Oceananigans.Architectures.child_architecture(arch) isa GPU
         CUDA.reclaim()
     end
 

@@ -19,8 +19,8 @@ using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Field, TracerFields
-using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.Fields: Field, TracerFields, ZeroField
+using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
@@ -50,6 +50,7 @@ total_velocities(model::AbstractModel) = nothing
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
+update_model_field_time_series!(model::AbstractModel, first_time::Time, last_time::Time) = nothing
 
 #####
 ##### Model-building utilities
@@ -184,19 +185,36 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
     return nothing
 end
 
+# Update every `FieldTimeSeries` to hold all times between `first_time` and `last_time`, e.g. the barotropic substeps
+function update_model_field_time_series!(model::OceananigansModels, first_time::Time, last_time::Time)
+    possible_fts = possible_field_time_series(model)
+    time_series_tuple = extract_field_time_series(possible_fts)
+
+    for fts in time_series_tuple
+        update_field_time_series!(fts, first_time, last_time)
+    end
+
+    return nothing
+end
+
+zero_field!(field) = fill!(field, 0)
+zero_field!(::ZeroField) = nothing # eg the vertical velocity of single column models
+
 function reset!(model::OceananigansModels)
 
     for field in fields(model)
-        fill!(field, 0)
+        zero_field!(field)
     end
 
     for field in model.timestepper.G⁻
-        fill!(field, 0)
+        zero_field!(field)
     end
 
     for field in model.timestepper.Gⁿ
-        fill!(field, 0)
+        zero_field!(field)
     end
+
+    reset!(model.closure_fields, model.closure)
 
     return nothing
 end

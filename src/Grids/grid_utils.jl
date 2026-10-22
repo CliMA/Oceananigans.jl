@@ -48,6 +48,17 @@ const SlabFoldedTopology = Union{LeftConnectedRightCenterFolded, LeftConnectedRi
 const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
 const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
+const LeftConnectedOnlyTopology = Union{LeftConnected, SlabFoldedTopology}
+
+# Nothing locations just default to 1:N
+@inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
+@inline connected_range(::Nothing, topo, N, H) = 1:N
+
+@inline connected_range(topo, N, H)                                =    1:N
+@inline connected_range(::Type{FullyConnected}, N, H)              = -H+2:N+H-1
+@inline connected_range(::Type{RightConnected}, N, H)              =    1:N+H-1
+@inline connected_range(::Type{LeftConnected},  N, H)              = -H+2:N
+@inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
 
@@ -59,9 +70,11 @@ Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
+const LocationInstance = Union{Face, Center, Nothing}
+
 # "Indices-aware" length
-Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
+Base.length(loc::LocationInstance, topo::AT, N, ::Colon) = length(loc, topo, N)
+Base.length(loc::LocationInstance, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -83,14 +96,10 @@ is restricted by `length(ind)`.
 @inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 @inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
+@inline function Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc))))
+    topo = topology(grid)
+    sz = size(grid)
+    return ntuple(Val(length(loc))) do d
         Base.@_inline_meta
         length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
     end
@@ -209,12 +218,15 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::Flat, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::AT, halo) = Colon()
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Colon, args...) = Colon()
 
 parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)
@@ -581,4 +593,66 @@ function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Union{Bounded, RightConnected}, N::Int) = ifelse(N > 1, 1, 0)
+
+#####
+##### Kernel parameters that extend into the halos
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D variables in the interior plus one extra cell
+in the horizontal directions (indices `0:Nx+1` and `0:Ny+1`).
+
+The extra cells provide the values that interior stencils read at cell faces (e.g., for viscous fluxes)
+without requiring (possibly costly) halo exchanges.
+"""
+@inline function horizontally_extended_interior_kernel_parameters(grid)
+    Wx, Wy, Wz = worksize(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    kk = 1:Wz
+
+    return KernelParameters(ii, jj, kk)
+end
