@@ -1,4 +1,5 @@
 using Oceananigans.Grids: inactive_node, flip_location
+using Oceananigans.Utils: newton_div, BackendOptimizedDivision
 
 #####
 ##### Interpolations to a three-dimensional location along one direction
@@ -30,17 +31,14 @@ end
 @inline node_location(::Val{2}, (ℓx, ℓy, ℓz)) = (ℓx, flip_location(ℓy), ℓz)
 @inline node_location(::Val{3}, (ℓx, ℓy, ℓz)) = (ℓx, ℓy, flip_location(ℓz))
 
-@inline stencil_value(i, j, k, grid, ψ, args...) = @inbounds ψ[i, j, k]
+@inline stencil_value(i, j, k, grid, ψ, args...)           = @inbounds ψ[i, j, k]
 @inline stencil_value(i, j, k, grid, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
 
-@inline agreement(a, b) = ifelse(a * b > 0, 2a * b / (a^2 + b^2), zero(a))
-
-# S at a runtime position p, without indexing the tuple at runtime
-@inline pick(S, p) = foldl((value, n) -> ifelse(n == p, S[n], value), ntuple(identity, Val(length(S))); init = S[1])
+@inline agreement(a, b) = ifelse(a * b > 0, newton_div(BackendOptimizedDivision, 2a * b, max(a^2 + b^2, floatmin(a))), zero(a))
 
 # first node with data next to the wall (`first`), inward direction `step`, `available` nodes with data inward
 @inline function wall_continuation(S, first, step, available)
-    c(q) = pick(S, first + (q - 1) * step)
+    c(q) = @inbounds S[clamp(first + (q - 1) * step, 1, length(S))]
     Δ₁ = ifelse(available ≥ 2, c(2) - c(1), zero(S[1]))
     Δ₂ = ifelse(available ≥ 3, c(3) - c(2), Δ₁)
     Δ₃ = ifelse(available ≥ 4, c(4) - c(3), Δ₂)
