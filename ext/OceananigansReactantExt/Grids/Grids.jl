@@ -13,7 +13,7 @@ using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDi
 using Oceananigans.Utils: unparameterized_type
 using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedVerticalBoundaries, AbstractImmersedBoundary
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
