@@ -53,7 +53,7 @@ export
     interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
+    Forcing, Relaxation, InflowOutflowRate, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
@@ -102,7 +102,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
+    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, add_conservation_fixer!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -121,10 +121,11 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
     ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
-    # MultiRegion and Cubed sphere
+    # MultiRegion, cubed sphere, and Yin-Yang
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+    YinYangGrid, YinYangConservationFixer,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
@@ -202,8 +203,20 @@ abstract type AbstractOutputWriter end
 
 # Callsites for Callbacks
 struct TimeStepCallsite end
-struct TendencyCallsite end
 struct UpdateStateCallsite end
+
+# The tendencies that the callbacks of a `TendencyCallsite` act on
+struct MomentumTendency end
+struct TracerTendency end
+
+struct TendencyCallsite{T}
+    tendency :: T
+end
+
+TendencyCallsite() = TendencyCallsite(MomentumTendency())
+TendencyCallsite{T}() where T = TendencyCallsite(T())
+
+const TracerTendencyCallsite = TendencyCallsite{TracerTendency}
 
 #####
 ##### Place-holder functions

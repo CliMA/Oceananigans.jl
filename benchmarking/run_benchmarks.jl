@@ -81,6 +81,10 @@ function parse_commandline()
             help = "Use distributed architecture."
             action = :store_true
 
+        "--no_load_balancing"
+            help = "Run the distributed benchmark withought automatic load balancing of partitions"
+            action = :store_true
+
         "--partition"
             help = "Partition for distributed architecture as Rx x Ry x Rz (e.g., 2x2x1). Ignored unless --distributed is set."
             arg_type = String
@@ -316,6 +320,7 @@ function run_benchmarks(args)
 
 
     distributed_enabled = args["distributed"]
+    load_balancing_enabled = distributed_enabled && !args["no_load_balancing"]
     partition_ranks = parse_size(args["partition"])
 
     if distributed_enabled
@@ -463,7 +468,8 @@ function run_benchmarks(args)
                 tracer_advection,
                 closure,
                 tracers,
-                timestepper
+                timestepper,
+                load_balanced_partition=load_balancing_enabled
             )
         elseif case == "nonhydrostatic"
             model = nonhydrostatic_box(arch; Nx, Ny, Nz, float_type = FT, pressure_solver)
@@ -638,8 +644,8 @@ function generate_markdown_report(filename, entries)
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Spread | Units/s | Points/s | Size | Chunks | Timestamp |")
-        println(io, "|-----------|-------------|-------|------|----------------|--------|---------|----------|------|--------|-----------|")
+        println(io, "| Benchmark | Distributed | Float | Grid | Time/unit (ms) | Spread | Host time/step (ms) | Host allocations/step | GC (ms) | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------------|-------|------|----------------|--------|---------------------|-----------------------|---------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
@@ -666,13 +672,26 @@ function generate_markdown_report(filename, entries)
                 "—"
             end
 
-            @printf(io, "| `%s` | %s | %s | %s | %.2f | %s | %.2f | %.2e | %s | %s | %s |\n",
+            # Host-side cost of a time step: when the host time is close to the time per step,
+            # the benchmark measures the host rather than the device
+            host_time_str, host_allocations_str, gc_str = if haskey(entry, "host_time_per_step_seconds")
+                (@sprintf("%.2f", 1000 * entry["host_time_per_step_seconds"]),
+                 Base.format_bytes(round(Int, entry["allocated_bytes_per_step"])),
+                 @sprintf("%.1f", 1000 * entry["gc_time_seconds"]))
+            else
+                ("—", "—", "—")
+            end
+
+            @printf(io, "| `%s` | %s | %s | %s | %.2f | %s | %s | %s | %s | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
                     distributed_str,
                     entry["float_type"],
                     grid_str,
                     time_per_unit_seconds * 1000,
                     spread_str,
+                    host_time_str,
+                    host_allocations_str,
+                    gc_str,
                     units_per_second,
                     entry["grid_points_per_second"],
                     size_str,

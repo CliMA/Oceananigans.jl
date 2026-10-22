@@ -317,6 +317,35 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, I
     end
 
     #####
+    ##### Test that drag decelerates the flow on every boundary
+    #####
+
+    @testset "Quadratic drag tendency on $side boundary" for (side, velocity, topology) in
+                ((:bottom, :u, (Periodic, Periodic, Bounded)), (:top,   :u, (Periodic, Periodic, Bounded)),
+                 (:west,   :v, (Bounded, Periodic, Periodic)), (:east,  :v, (Bounded, Periodic, Periodic)),
+                 (:south,  :u, (Periodic, Bounded, Periodic)), (:north, :u, (Periodic, Bounded, Periodic)))
+        for arch in archs
+            grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1), topology)
+
+            Cᴰ = 0.1
+            U₀ = 0.5
+            drag_bc = BulkDrag(coefficient=Cᴰ)
+
+            bcs = NamedTuple{(velocity,)}((FieldBoundaryConditions(; NamedTuple{(side,)}((drag_bc,))...),))
+            model = NonhydrostaticModel(grid; boundary_conditions=bcs)
+            set!(model; NamedTuple{(velocity,)}((U₀,))...)
+
+            Δt = 1e-6
+            time_step!(model, Δt)
+
+            expected_Δu = -Cᴰ * U₀^2 * Δt
+            actual_Δu = Array(interior(getproperty(model.velocities, velocity)))[1, 1, 1] - U₀
+
+            @test actual_Δu ≈ expected_Δu rtol=1e-4
+        end
+    end
+
+    #####
     ##### Test similarity theory drag coefficient
     #####
 

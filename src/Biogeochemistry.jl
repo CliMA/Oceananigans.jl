@@ -163,7 +163,7 @@ contains biogeochemical auxiliary fields.
     req_auxiliary_fields = required_biogeochemical_auxiliary_fields(bgc)
 
     all(field ∈ tracernames(auxiliary_fields) for field in req_auxiliary_fields) ||
-        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(typeof(bgc).name.wrapper)")
+        error("$(req_auxiliary_fields) must be among the list of auxiliary fields to use $(nameof(typeof(bgc)))")
 
     # Return tracers and aux fields so that users may overload and
     # define their own special auxiliary fields
@@ -200,20 +200,19 @@ the corresponding tendency `Gⁿ[name]`, using one kernel launch per tracer. `mo
 same fields that the tracer tendency kernel passes to `biogeochemical_transition`.
 Does nothing when `separate_tracer_transitions(bgc)` is empty.
 """
-add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields;
-                                kernel_parameters=:xyz, active_cells_map=nothing) =
+add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields; kernel_parameters=:xyz) =
     add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, separate_tracer_transitions(bgc);
-                                    kernel_parameters, active_cells_map)
+                                    kernel_parameters)
 
 add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, ::Tuple{}; kwargs...) = nothing
 
 @inline function add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, names::Tuple;
-                                                 kernel_parameters=:xyz, active_cells_map=nothing)
+                                                 kernel_parameters=:xyz)
     name = first(names)
     launch!(architecture(grid), grid, kernel_parameters, _add_biogeochemical_transition!,
-            Gⁿ[name], grid, bgc, Val(name), clock, model_fields; active_cells_map)
+            Gⁿ[name], grid, bgc, Val(name), clock, model_fields)
     return add_biogeochemical_transitions!(Gⁿ, bgc, grid, clock, model_fields, Base.tail(names);
-                                           kernel_parameters, active_cells_map)
+                                           kernel_parameters)
 end
 
 @kernel function _add_biogeochemical_transition!(Gc, grid, bgc, val_tracer_name, clock, fields)

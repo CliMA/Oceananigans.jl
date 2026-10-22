@@ -38,6 +38,7 @@ const serialized_output_values = Dict{Symbol, Any}(
     :ConformalCubedSpherePanelGrid => ConformalCubedSpherePanelGrid,
     :ConformalConicGrid => ConformalConicGrid,
     :LambertConformalConicGrid => ConformalConicGrid,
+    :MutableVerticalDiscretization => MutableVerticalDiscretization,
     :GridFittedBoundary => GridFittedBoundary,
     :GridFittedBottom => GridFittedBottom,
     :PartialCellBottom => PartialCellBottom,
@@ -172,6 +173,7 @@ end
 serialized_output_callable(callable) = callable === CPU ||
                                        callable === GPU ||
                                        callable === Colon ||
+                                       callable === MutableVerticalDiscretization ||
                                        callable === CenterImmersedCondition ||
                                        callable === InterfaceImmersedCondition ||
                                        (callable isa Type && callable <: ColumnEnsembleSize)
@@ -181,3 +183,10 @@ function materialize_serialized_output_range(arguments)
     length(arguments) == 3 && return arguments[1]:arguments[2]:arguments[3]
     throw(ArgumentError("A serialized range must contain two or three values"))
 end
+
+#####
+##### Serialization of vertical coordinates
+#####
+
+# Serialize only type and reference interfaces of a generic vertical coordinate.
+serialize_vertical_coordinate(z::AbstractVerticalCoordinate) = string(nameof(typeof(z)), "(", collect(z.cᵃᵃᶠ), ")")
