@@ -48,7 +48,7 @@ function Base.show(io::IO, ib::PartialCellBottom)
 end
 
 """
-    PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
+$(MethodSignatures(; defaults = true))
 
 Return `PartialCellBottom` representing an immersed boundary with "partial"
 bottom cells. That is, the height of the bottommost cell in each column is reduced

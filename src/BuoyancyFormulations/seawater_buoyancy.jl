@@ -40,11 +40,7 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
 end
 
 """
-    SeawaterBuoyancy([FT = Float64;]
-                     gravitational_acceleration = Oceananigans.defaults.gravitational_acceleration,
-                     equation_of_state = LinearEquationOfState(FT),
-                     constant_temperature = nothing,
-                     constant_salinity = nothing)
+$(MethodSignatures(; defaults = true))
 
 Return parameters for a temperature- and salt-stratified seawater buoyancy model
 with a `gravitational_acceleration` constant (typically called ``g``), and an

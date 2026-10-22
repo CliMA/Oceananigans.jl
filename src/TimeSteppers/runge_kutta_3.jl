@@ -24,10 +24,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, prognostic_fields;
-                           implicit_solver = nothing,
-                           Gⁿ = map(similar, prognostic_fields),
-                           G⁻ = map(similar, prognostic_fields))
+$(MethodSignatures(; defaults = true))
 
 Return a 3rd-order Runge-Kutta timestepper (`RungeKutta3TimeStepper`) on `grid`
 and with `prognostic_fields`. The tendency fields `Gⁿ` and `G⁻`, typically equal
@@ -80,7 +77,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+$(MethodSignatures(; defaults = true))
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 

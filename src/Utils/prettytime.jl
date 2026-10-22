@@ -6,7 +6,7 @@ using Oceananigans.Units: day, hour, minute
 maybe_int(t) = isinteger(t) ? Int(t) : t
 
 """
-    prettytime(t, longform=true)
+$(MethodSignatures(; defaults = true))
 
 Convert a floating point value `t` representing an amount of time in
 SI units of seconds to a human-friendly string with three decimal places.

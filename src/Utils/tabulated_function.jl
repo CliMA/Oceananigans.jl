@@ -48,7 +48,7 @@ _normalize_points(points::NTuple{N, <:Integer}, ::Val{N}) where N = points
 #####
 
 """
-    $(TYPEDSIGNATURES)
+$(TYPEDSIGNATURES)
 
 Construct a `TabulatedFunction` by precomputing values over the specified range(s)
 for fast linear, bilinear, or trilinear interpolation.

@@ -56,13 +56,7 @@ struct VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M} <: AbstractAdvectionSche
 end
 
 """
-    VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
-                      vorticity_stencil = VelocityStencil(),
-                      vertical_advection_scheme = EnergyConserving(),
-                      divergence_scheme = vertical_advection_scheme,
-                      kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
-                      multi_dimensional_stencil = false)
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant momentum advection scheme.
 
@@ -192,17 +186,7 @@ end
 nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? default : user_value
 
 """
-    WENOVectorInvariant(FT = Float64;
-                        upwinding = nothing,
-                        vorticity_stencil = VelocityStencil(),
-                        order = nothing,
-                        vorticity_order = nothing,
-                        vertical_order = nothing,
-                        divergence_order = nothing,
-                        kinetic_energy_gradient_order = nothing,
-                        multi_dimensional_stencil = false,
-                        minimum_buffer_upwind_order = 1,
-                        weno_kw...)
+$(MethodSignatures(; defaults = true))
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.

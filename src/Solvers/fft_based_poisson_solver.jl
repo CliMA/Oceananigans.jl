@@ -31,7 +31,7 @@ Base.show(io::IO, solver::FFTBasedPoissonSolver) =
               "    └── backward: ", transform_list_str(solver.transforms.backward))
 
 """
-    FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
+$(MethodSignatures(; defaults = true))
 
 Return an `FFTBasedPoissonSolver` that solves the "generalized" Poisson equation,
 

@@ -8,6 +8,8 @@ paths:
 ## Use DocStringExtensions.jl
 
 - Include `$(TYPEDSIGNATURES)` for automatic signature documentation
+- For signatures with default argument values, use `$(MethodSignatures(; defaults = true))`.
+  Keep the `;`: without it ExplicitImports mistakes `defaults = true` for an assignment
 - Add examples in docstrings when helpful
 
 ## CRITICAL: Always use `jldoctest`, NEVER plain `julia` blocks

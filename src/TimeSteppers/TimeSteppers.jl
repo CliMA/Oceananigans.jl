@@ -14,7 +14,7 @@ export
     time_discretization
 
 using Adapt: Adapt
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
