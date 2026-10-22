@@ -127,7 +127,6 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     compute_ib = GridFittedBottom(bottom_field, ib.immersed_condition, bottom_cell_index)
 
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
-    fill_halo_regions!(bottom_field)
     @apply_regionally compute_bottom_cell!(grid, compute_ib)
 
     return GridFittedBottom(bottom_field.data, ib.immersed_condition, bottom_cell_index.data)
