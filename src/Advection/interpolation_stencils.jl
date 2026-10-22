@@ -80,8 +80,7 @@ continued exactly, and next to a front (`G₁ = G₂ = 0`) the ghosts are consta
     nᴸ = max(0,      ntuple(n -> ifelse(no_data(n),     n,      0),     Val(N))...)
     nᴿ = min(2N + 1, ntuple(n -> ifelse(no_data(N + n), N + n, 2N + 1), Val(N))...)
 
-    m(n) = clamp(n, nᴸ + 1, nᴿ - 1)
-    S = ntuple(n -> stencil_value(stencil_node(i, j, k, dir, s(m(n)))..., grid, ψ, args...), Val(2N))
+    S = ntuple(n -> stencil_value(stencil_node(i, j, k, dir, s(n))..., grid, ψ, args...), Val(2N))
 
     left  = wall_continuation(S, nᴸ + 1, +1, min(nᴿ - 1, 2N) - nᴸ)
     right = wall_continuation(S, nᴿ - 1, -1, nᴿ - 1 - nᴸ)
