@@ -13,7 +13,8 @@ using Oceananigans.Advection:
         FluxFormAdvection,
         LeftBias,
         RightBias,
-        materialize_advection
+        materialize_advection,
+        div_𝐯u
 
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -148,6 +149,20 @@ function run_staircase_convection_test(arch)
     return nothing
 end
 
+function left_of_thin_wall_tendency(arch, scheme, right_velocity)
+    grid = RectilinearGrid(arch, size=(17, 8), x=(0, 17), z=(0, 8), halo=(6, 6), topology=(Bounded, Flat, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, z) -> 8 < x < 9))
+
+    u = XFaceField(ibg)
+    set!(u, (x, z) -> x < 8 ? -1 : x > 9 ? right_velocity : 0)
+    velocities = (u, YFaceField(ibg), ZFaceField(ibg))
+
+    advection = materialize_advection(scheme, ibg)
+    G = Field(KernelFunctionOperation{Face, Center, Center}(div_𝐯u, ibg, advection, velocities, u))
+
+    return Array(interior(G, 1:8, 1, :))
+end
+
 for arch in archs
     @testset "Immersed tracer reconstruction" begin
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
@@ -229,5 +244,11 @@ for arch in archs
 
     @testset "Convection over an immersed staircase stays bounded [$(summary(arch))]" begin
         run_staircase_convection_test(arch)
+    end
+
+    @testset "Momentum advection does not reach across a one-cell immersed wall" begin
+        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (UpwindBiased(order=5), WENO(), WENO(order=9))
+            @test left_of_thin_wall_tendency(arch, scheme, 0) == left_of_thin_wall_tendency(arch, scheme, 1)
+        end
     end
 end
