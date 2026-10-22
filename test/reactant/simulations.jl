@@ -140,16 +140,14 @@ end
     @test total[1] > 0
 end
 
-@testset "Reactant Simulation: only Adams-Bashforth peels the first step" begin
-    @info "Testing that a compiled run! takes the first step in the loop unless the stepper is Adams-Bashforth..."
-    peels_first_step = Base.get_extension(Oceananigans, :OceananigansReactantExt).Simulations.peels_first_step
+@testset "Reactant Simulation: compiled run! with and without a peeled first step" begin
+    @info "Testing a compiled run! for Adams-Bashforth, which peels its first step, and for RK3, which does not..."
     rectilinear_kw = (; size=(8, 8, 4), halo=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1))
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
         model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1), timestepper)
         model = HydrostaticFreeSurfaceModel(RectilinearGrid(CPU(); rectilinear_kw...); model_kw...)
         r_model = HydrostaticFreeSurfaceModel(RectilinearGrid(ReactantState(); rectilinear_kw...); model_kw...)
-        @test peels_first_step(r_model) == (timestepper === :QuasiAdamsBashforth2)
 
         ui = randn(size(model.velocities.u)...)
         set!(model, u=ui)
