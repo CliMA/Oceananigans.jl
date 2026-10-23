@@ -54,6 +54,16 @@ end
     @test matches(c -> sum(abs2, c), c, m)
     @test all(extrema(m) .≈ extrema(c))
 
+    # Comparisons
+    m′ = CenterField(mrg)
+    set!(m′, reduction_test_function)
+    @test m == m′
+    @test m ≈ m′
+    set!(m′, (x, y, z) -> 1.001 * reduction_test_function(x, y, z))
+    @test m != m′
+    @test !(m ≈ m′)
+    @test isapprox(m, m′; rtol=1e-2)
+
     # Scans spanning the partition live on the grid of the first region
     for (Reduction, dims) in ((Integral, (1, 2, 3)), (Integral, pdim), (Integral, 3), (Average, (1, 2)))
         @test matches(f -> Field(Reduction(f; dims)), c, m)
