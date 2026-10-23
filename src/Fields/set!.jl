@@ -152,7 +152,7 @@ task_error(err::TaskFailedException) = task_error(err.task.result)
 task_error(err) = err
 
 function set_to_array!(u, a)
-    a = on_architecture(architecture(u), a)
+    a = on_architecture(architecture(u), convert(AbstractArray{eltype(u)}, a))
 
     try
         copyto!(u, a)
