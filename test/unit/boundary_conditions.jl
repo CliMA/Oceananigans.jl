@@ -4,6 +4,7 @@ using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper, Impenetrabl
 using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
+using Oceananigans.BoundaryConditions: NormalRadiation
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -62,6 +63,56 @@ end
         default_bcs = FieldBoundaryConditions(grid, loc)
         @test default_bcs.north.classification isa Zipper
         @test default_bcs.south isa ZFBC
+    end
+
+    @testset "Default conditions on flat axes" begin
+        for (topo, side) in (((Bounded, Flat, Flat), :west),
+                             ((Flat, Bounded, Flat), :south),
+                             ((Flat, Flat, Bounded), :bottom))
+            grid = RectilinearGrid(topology=topo, size=4, extent=1)
+            boundary_conditions = FieldBoundaryConditions(; Dict(side => GradientBoundaryCondition(2))...)
+            field = CenterField(grid; boundary_conditions)
+            @test field isa Field
+            for (axis, sides) in enumerate(((:west, :east), (:south, :north), (:bottom, :top)))
+                topo[axis] == Flat || continue
+                @test all(getproperty(field.boundary_conditions, flat_side) === nothing for flat_side in sides)
+            end
+
+            set!(field, 3)
+            fill_halo_regions!(field)
+            halo = topo[1] == Bounded ? (0, 1, 1) : topo[2] == Bounded ? (1, 0, 1) : (1, 1, 0)
+            opposite = topo[1] == Bounded ? (5, 1, 1) : topo[2] == Bounded ? (1, 5, 1) : (1, 1, 5)
+            @test field[halo...] ≈ 2.5
+            @test field[opposite...] ≈ 3
+            @test field[1, 1, 1] ≈ 3
+        end
+
+        grid = RectilinearGrid(topology=(Bounded, Flat, Flat), size=4, extent=1)
+        boundary_conditions = FieldBoundaryConditions(west=GradientBoundaryCondition(2))
+        model = NonhydrostaticModel(grid; tracers=:c,
+                                     boundary_conditions=(c=boundary_conditions,))
+        set!(model, c=3)
+        fill_halo_regions!(model.tracers.c)
+        @test model.tracers.c[0, 1, 1] ≈ 2.5
+        time_step!(model, 1e-3)
+        @test model.clock.iteration == 1
+
+        @test CenterField(grid; boundary_conditions=FieldBoundaryConditions(south=nothing)) isa Field
+        @test_throws ArgumentError CenterField(grid; boundary_conditions=FieldBoundaryConditions(south=ValueBoundaryCondition(0)))
+        @test_throws ArgumentError CenterField(grid; boundary_conditions=FieldBoundaryConditions(south=GradientBoundaryCondition(0)))
+
+        face = XFaceField(grid; boundary_conditions=FieldBoundaryConditions(west=nothing, east=nothing))
+        @test face isa Field
+
+        periodic_grid = RectilinearGrid(topology=(Periodic, Flat, Flat), size=4, extent=1)
+        @test CenterField(periodic_grid; boundary_conditions=FieldBoundaryConditions()) isa Field
+
+        radiation_bcs = FieldBoundaryConditions(west=ValueBoundaryCondition(0; scheme=NormalRadiation()))
+        regularized_radiation_bcs = regularize_field_boundary_conditions(radiation_bcs, grid,
+                                                                        (Center(), Center(), Center()))
+        radiation_field = CenterField(grid; boundary_conditions=regularized_radiation_bcs)
+        @test radiation_field.boundary_conditions.west.classification.scheme.φ₁ ===
+              regularized_radiation_bcs.west.classification.scheme.φ₁
     end
 
     @testset "Boundary condition instantiation" begin
