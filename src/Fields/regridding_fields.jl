@@ -5,6 +5,7 @@ using Oceananigans.Operators: Δzᶜᶜᶜ
 using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
 using Oceananigans.Grids: constructor_arguments, halo_size, pop_flat_elements, reconstruction_faces,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.Utils: unparameterized_type
 
 using Base: ForwardOrdering
 
@@ -21,6 +22,7 @@ a time, through intermediate fields on grids that combine the coordinates of the
 in the dimensions already regridded with the coordinates of the source grid in the remaining
 ones. This requires grids of the same type (`RectilinearGrid` or `LatitudeLongitudeGrid`)
 with the same topology, and `Center` locations in the differing dimensions.
+Fields on grids with identical cell faces are copied.
 
 Examples
 ========
@@ -81,7 +83,7 @@ function we_can_regrid_in_z(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same horizontal size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[1:2] === size(b)[1:2] && return true
 
     return false
@@ -91,7 +93,7 @@ function we_can_regrid_in_y(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same xz size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[[1, 3]] === size(b)[[1, 3]] && return true
 
     return false
@@ -101,7 +103,7 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same yz size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[[2, 3]] === size(b)[[2, 3]] && return true
 
     return false
@@ -142,16 +144,14 @@ regrid_in_y!(a, b) = regrid_in_y!(a, a.grid, b.grid, b)
 regrid_in_z!(a, b) = regrid_in_z!(a, a.grid, b.grid, b)
 
 function regrid!(a, target_grid, source_grid, b)
-    arch = architecture(a)
-
-    if we_can_regrid_in_z(a, target_grid, source_grid, b)
+    if we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    elseif we_can_regrid_in_z(a, target_grid, source_grid, b)
         return regrid_in_z!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
         return regrid_in_y!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
         return regrid_in_x!(a, target_grid, source_grid, b)
-    elseif we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
-        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -163,7 +163,7 @@ function regrid!(a, target_grid, source_grid, b)
 end
 
 #####
-##### Multi-dimensional regridding, one dimension at a time
+##### Dimension-by-dimension regridding
 #####
 
 coordinate_keys(::RectilinearGrid) = (:x, :y, :z)
@@ -177,11 +177,11 @@ end
 function dimension_differs(target_grid, source_grid, dimension)
     topology(source_grid, dimension) == Flat && return false
     size(source_grid, dimension) == size(target_grid, dimension) || return true
-    return !isapprox(dimension_faces(source_grid, dimension), dimension_faces(target_grid, dimension))
+    return dimension_faces(source_grid, dimension) != dimension_faces(target_grid, dimension)
 end
 
 function we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper || return false
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) || return false
     target_grid isa Union{RectilinearGrid, LatitudeLongitudeGrid} || return false
     topology(source_grid) == topology(target_grid) || return false
 
@@ -211,14 +211,13 @@ function dimension_swapped_grid(source_grid, target_grid, dimension)
     kwargs[:size] = pop_flat_elements(grid_size, grid_topology)
     kwargs[:halo] = pop_flat_elements(grid_halo, grid_topology)
 
-    GridConstructor = typeof(source_grid).name.wrapper
-    return GridConstructor(args[:architecture], args[:number_type]; kwargs...)
+    GridType = unparameterized_type(typeof(source_grid))
+    return GridType(args[:architecture], args[:number_type]; kwargs...)
 end
 
 function regrid_multiple_dimensions!(a, target_grid, source_grid, b)
-    # At least two dimensions differ here: with fewer, one of the single-dimension
-    # paths in regrid! passes its size checks and is dispatched to instead.
     differing_dimensions = Tuple(n for n in 1:3 if dimension_differs(target_grid, source_grid, n))
+    isempty(differing_dimensions) && return set!(a, b)
 
     regrid_dimension! = (regrid_in_x!, regrid_in_y!, regrid_in_z!)
 

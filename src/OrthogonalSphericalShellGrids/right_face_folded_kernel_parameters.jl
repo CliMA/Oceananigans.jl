@@ -2,12 +2,12 @@ using Oceananigans.Utils: Utils
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
 
 #####
-##### `RightFaceFolded` topologies have prognostic values at Ny+1 for `Face` fields in y
-##### This file extends all kernel parameters to Ny + 1 for `RightFaceFolded` topologies so that
+##### `FaceFolded` north sides have prognostic values at Ny+1 for `Face` fields in y
+##### This file extends all kernel parameters to Ny + 1 for `FaceFolded` north sides so that
 ##### the extra row in y is correctly computed
 #####
                                     #  FT     TX     TY
-const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
+const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:Sides{Closed, FaceFolded}}
 
 # Kernels are typically launched
 # - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `horizontally_extended_interior_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
