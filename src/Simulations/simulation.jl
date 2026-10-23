@@ -251,6 +251,7 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 $(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
+The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
 """
 function Oceananigans.TimeSteppers.reset!(sim::Simulation)
     reset_clock!(sim.model)
