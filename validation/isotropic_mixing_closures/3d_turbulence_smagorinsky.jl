@@ -49,7 +49,7 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     simulation.output_writers[:fields] = JLD2Writer(model, outputs,
                                                     schedule = TimeInterval(0.6),
                                                     filename = filename * ".jld2",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
     run!(simulation)
 end
 

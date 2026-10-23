@@ -7,18 +7,20 @@ export
     ConjugateGradientSolver,
     KrylovSolver
 
+using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Utils: launch!
-using Oceananigans.Fields: AbstractField, CenterField, field
-using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic, XYRegularRG, XZRegularRG, YZRegularRG,
-    XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate, inactive_cell, topology
+using Oceananigans.Fields: AbstractField, CenterField, field, topology
+using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic,
+                          XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG,
+                          RectilinearGrid, RegularVerticalCoordinate, inactive_cell
+using Oceananigans.Utils: launch!, worksize
 
 """
-    ω(M, k)
+$(TYPEDSIGNATURES)
 
 Return the `M`th root of unity raised to the `k`th power.
 """

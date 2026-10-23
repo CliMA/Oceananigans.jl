@@ -3,21 +3,27 @@ module OceananigansCUDAExt
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
     context!, cu, CUDA.CUDABackend
-# TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore` to list of
-# triggers of this extensions, and simplify the condition below.
+# TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore`/`cuFFT` to
+# list of triggers of this extensions, and simplify the conditions below.
 if isdefined(CUDA, :cuSPARSE)
     using CUDA.cuSPARSE: CuSparseMatrixCSC
 else
     using CUDA.CUSPARSE: CuSparseMatrixCSC
 end
+if isdefined(CUDA, :cuFFT)
+    using CUDA.cuFFT: cuFFT
+else
+    const cuFFT = CUDA.CUFFT
+end
 using GPUArraysCore: allowscalar
-using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 import Oceananigans.Architectures as AC
 import Oceananigans.BoundaryConditions as BC
 import Oceananigans.DistributedComputations as DC
 import Oceananigans.Fields as FD
+import Oceananigans.MultiRegion as MR
+import Oceananigans.Utils: apply_regionally!
 import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
@@ -100,8 +106,6 @@ AC.unified_array(::CUDAGPU, a::AbstractArray) = map(eltype(a), cu(a; unified = t
     return dst
 end
 
-@inline AC.unsafe_free!(a::CuArray) = unsafe_free!(a)
-
 @inline AC.convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
 @inline AC.convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
@@ -112,15 +116,16 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
 
 function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_fft!(A, dims)
+    return cuFFT.plan_fft!(A, dims)
 end
 
 FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
 FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
+FD.set!(v::MR.MultiRegionField, a::CuArray) = apply_regionally!(FD.set!, v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_ifft!(A, dims)
+    return cuFFT.plan_ifft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly
@@ -137,6 +142,27 @@ end
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
+
+# MPI needs the event's context bound to the thread that posts (for CUDA IPC)
+struct ContextEvent
+    event :: CUDA.CuEvent
+    context :: CUDA.CuContext
+end
+
+DC.new_event(::CUDAGPU) = ContextEvent(CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING), CUDA.context())
+DC.record_event!(event::ContextEvent, ::CUDAGPU) = CUDA.record(event.event, CUDA.stream())
+DC.bind_thread_to_device!(event::ContextEvent) = CUDA.activate(event.context)
+
+# Same as `CUDA.isdone`, without the allocation of its GC-safe ccall: the progress worker polls this in a loop,
+# and `cuEventQuery` never blocks. The driver bindings live in `CUDA` on CUDA.jl v5 and in `CUDACore` on v6.
+const CUDADriver = parentmodule(CUDA.isdone)
+
+function DC.event_done(event::ContextEvent)
+    result = ccall((:cuEventQuery, CUDADriver.libcuda), CUDADriver.CUresult, (CUDADriver.CUevent,), event.event)
+    result == CUDADriver.ERROR_NOT_READY && return false
+    result == CUDADriver.SUCCESS && return true
+    return CUDADriver.throw_api_error(result)
+end
 
 # Use faster versions of `newton_div` on Nvidia GPUs
 CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedDivision}, a, b) = a * fast_inv_cuda(b)

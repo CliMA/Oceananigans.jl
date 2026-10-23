@@ -11,10 +11,7 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, FullyConnected,
-    RightCenterFolded, RightFaceFolded,
-    LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, Sides,
     SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
 using Oceananigans.DistributedComputations: insert_connected_topology
 using Oceananigans.Utils: Utils
@@ -53,30 +50,37 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
                       halo=(4, 4, 4),
                       kwargs...)
 
+    # We build the global grid on a CPU architecture, in order to split it easily
+    global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
+    return distribute_tripolar_grid(arch, global_grid)
+end
+
+"""
+    distribute_tripolar_grid(arch, global_grid)
+
+Return the slice of the global tripolar `global_grid` owned by `arch`'s rank. The fold pairs points
+across the northern seam, so a tripolar grid is built globally and then partitioned. See
+[`TripolarGrid`](@ref) for the supported partitionings. On a serial `arch` the whole grid is returned,
+moved to that architecture.
+"""
+distribute_tripolar_grid(arch, global_grid) = on_architecture(arch, global_grid)
+
+function distribute_tripolar_grid(arch::Distributed, global_grid)
+
     workers = ranks(arch.partition)
     px = ifelse(isnothing(arch.partition.x), 1, arch.partition.x)
     py = ifelse(isnothing(arch.partition.y), 1, arch.partition.y)
 
-    # Check that partitioning in x is correct:
-    try
-        if isodd(px) && (px != 1)
-            throw(ArgumentError("Only even partitioning in x is supported with TripolarGrid."))
-        end
-    catch
-        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number."))
+    if isodd(px) && px != 1
+        throw(ArgumentError("the x partition $(px) is not supported by TripolarGrid, it must be 1 or even"))
     end
 
-    # a slab decomposition in x is not supported
     if px != 1 && py == 1
-        throw(ArgumentError("An x-only partitioning is not supported for TripolarGrid. \n
-                             Please, use a y partitioning configuration or an x-y pencil partitioning."))
+        throw(ArgumentError("an x-only partitioning is not supported by TripolarGrid, use a y or x-y pencil partitioning"))
     end
 
-    Hx, Hy, Hz = halo
-
-    # We build the global grid on a CPU architecture, in order to split it easily
-    global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
     Nx, Ny, Nz = global_size = size(global_grid)
+    Hx, Hy, Hz = halo_size(global_grid)
 
     # Splitting the grid manually
     lsize = local_size(arch, global_size)
@@ -121,7 +125,7 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LX = workers[1] == 1 ? Periodic : FullyConnected
+    LX = workers[1] == 1 ? Periodic : Sides{Connected, Connected}
 
     global_fold_topology = topology(global_grid, 2)
 
@@ -254,7 +258,7 @@ end
 
 # DefaultBC on a slab fold-north rank → local `Zipper` with sign
 BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SlabTRG, loc, dim, bound, prognostic_names, sign) =
-    north_fold_boundary_condition(grid)(sign)
+    north_fold_boundary_condition(grid, sign)
 
 # DefaultBC on a pencil fold-north rank → `DistributedZipper` comm BC with sign
 function BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::PencilTRG, loc, dim, bound, prognostic_names, sign)
@@ -268,6 +272,10 @@ end
 # this is strictly more specific and disambiguates.
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
 
+# Only to solve the ambiguities (this method should never be used)
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.TRVBC, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
+
 # Non-fold distributed ranks: no specific 7-arg method — the generic `args...`-accepting
 # methods in BoundaryConditions (lines 244-254) take over and drop the extra `sign` arg.
 
@@ -277,7 +285,8 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                                                  prognostic_names=nothing)
 
     loc  = assumed_field_location(field_name)
-    sign = (field_name == :u) || (field_name == :v) ? -1 : 1
+    sign = field_name == :u || field_name == :v ||
+           field_name == :U || field_name == :V ? -1 : 1
 
     west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
@@ -305,9 +314,7 @@ north_zipper_bc(::SlabFoldedTopology, ::Nothing, loc, grid) = nothing
 north_zipper_bc(::PencilFoldedTopology, ::Nothing, loc, grid) = nothing
 
 # Distributed slab fold-north rank: local Zipper BC (sign from incoming BC)
-function north_zipper_bc(::TY, north_bc, loc, grid) where TY <: SlabFoldedTopology
-    return north_fold_boundary_condition(TY)(zipper_sign(north_bc))
-end
+north_zipper_bc(::SlabFoldedTopology, north_bc, loc, grid) = north_fold_boundary_condition(grid, zipper_sign(north_bc))
 
 # Distributed pencil fold-north rank (y-topology is `Connected` but carries the fold via MPI):
 # wrap the sign into a `DistributedZipper` communication BC
@@ -377,7 +384,8 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(grid.conformal_mapping))
+                        fold_topology = fold_topology(grid.conformal_mapping),
+                        pivot = fold_pivot(grid.conformal_mapping))
 end
 
 function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
@@ -398,14 +406,15 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology = fold_topology(old_grid.conformal_mapping))
+                        fold_topology = fold_topology(old_grid.conformal_mapping),
+                        pivot = fold_pivot(old_grid.conformal_mapping))
 end
 
 #####
 ##### Extend worksize for distributed FPivot grids (matches RFTRG worksize for serial FPivot)
 #####
 
-const DistributedFPivotTopology = Union{LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected}
+const DistributedFPivotTopology = Sides{Connected, <:Union{FaceFolded, FaceFoldConnected}}
 const DRFTRG = Union{MPITripolarGrid{<:Any, <:Any, <:DistributedFPivotTopology},
                      ImmersedBoundaryGrid{<:Any, <:Any, <:DistributedFPivotTopology, <:Any, <:MPITripolarGrid}}
 

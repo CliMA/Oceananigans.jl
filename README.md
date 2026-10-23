@@ -176,11 +176,16 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
+* **Lee et al. (2026), ["NORi: An ML-augmented ocean boundary layer parameterization"](https://doi.org/10.1029/2025MS005667).**
+
+  *This paper describes the development of NORi, a machine-learning-augmented parameterization for ocean boundary layer mixing,
+  trained and validated using large eddy simulations with Oceananigans and tested in a centennial double-gyre simulation.*
+
 * **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
 
   *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
 
-* **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
+* **Moses et al. (2026), ["DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations"](https://doi.org/10.1029/2025MS005615).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
 
@@ -204,7 +209,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
   *This article in the Journal of Open Source Software describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
-We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
+We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Publications-using-Oceananigans).
 If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
@@ -214,7 +219,7 @@ Cause we're all in this together.
 
 If you'd like to work on a new feature, or if you're new to open source and want to crowd-source neat projects that fit your interests, you should [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?) right away.
 
-For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/contributing/).
+For more information check out our [contributor's guide](https://clima.github.io/OceananigansDocumentation/stable/developer_docs/contributing).
 
 ## Movies
 

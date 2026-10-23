@@ -2,22 +2,25 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
-struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct UpwindBiased{N, FT, TD, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
+    time_discretization :: TD
 
-    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} =
-        new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
+    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI, time_discretization::TD) where {N, FT, CA, SI, TD} =
+        new{N, FT, TD, CA, SI}(buffer_scheme, advecting_velocity_scheme, time_discretization)
 end
 
-function UpwindBiased(FT::DataType = Float64;
+function UpwindBiased(FT::DataType = Oceananigans.defaults.FloatType;
                       order = 3,
+                      time_discretization = ExplicitTimeDiscretization(),
                       buffer_scheme = DecreasingOrderAdvectionScheme(),
                       minimum_buffer_upwind_order = 1)
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
     N = Int((order + 1) ÷ 2)
+    advecting_velocity_scheme = Centered(FT; order = 2)
 
     if N > 1
         # coefficients = Tuple(nothing for i in 1:6)
@@ -25,7 +28,6 @@ function UpwindBiased(FT::DataType = Float64;
         # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
         # Some tests are needed to verify why this is the case (and if it is expected)
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
-        advecting_velocity_scheme = Centered(FT; order = order - 1)
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order
                 # At minimum order, switch to Centered scheme
@@ -35,11 +37,10 @@ function UpwindBiased(FT::DataType = Float64;
             end
         end
     else
-        advecting_velocity_scheme = Centered(FT; order = 2)
         buffer_scheme  = nothing
     end
 
-    return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme, time_discretization)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
@@ -73,11 +74,13 @@ end
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),
-                        Adapt.adapt(to, scheme.advecting_velocity_scheme))
+                        Adapt.adapt(to, scheme.advecting_velocity_scheme),
+                        Adapt.adapt(to, scheme.time_discretization))
 
 Architectures.on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(on_architecture(to, scheme.buffer_scheme),
-                        on_architecture(to, scheme.advecting_velocity_scheme))
+                        on_architecture(to, scheme.advecting_velocity_scheme),
+                        on_architecture(to, scheme.time_discretization))
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 

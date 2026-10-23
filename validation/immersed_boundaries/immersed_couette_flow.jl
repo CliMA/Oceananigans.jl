@@ -37,7 +37,7 @@ outputs = merge(model.velocities, model.tracers)
 simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
                                               filename = "immersed_couette_flow.jld2",
                                               schedule = IterationInterval(10),
-                                              overwrite_existing = true)
+                                              overwrite_files = true)
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))

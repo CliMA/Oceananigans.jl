@@ -1,5 +1,5 @@
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
-using Oceananigans.Models: surface_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
@@ -96,7 +96,7 @@ on_architecture(to, free_surface::ImplicitFreeSurface) =
                         on_architecture(to, free_surface.solver_settings))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid, bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
@@ -139,7 +139,8 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     end
 
     fill_halo_regions!((u, v), model.clock, fields(model))
-    compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
+    @apply_regionally compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η,
+                                                                     model.forcing.η, model.clock, fields(model))
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
@@ -154,7 +155,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 end
 
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
-    parent(free_surface.displacement) .= parent(timestepper.Ψ⁻.η)
+    set!(free_surface.displacement, timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
