@@ -80,7 +80,7 @@ end
             @test sum(ω) ≈ 1
             @test all(isapprox.(ω, reference_weno_weights(scheme, β, τ); rtol=100eps(eltype(ω))))
             # the β agree only to FT rounding, so τ ≠ 0 moves the weights off the optimal ones by O((τ / β)²)
-            @test all(isapprox.(ω, optimal; rtol=1e-6 + (τ / minimum(β))^2))
+            @test all(isapprox.(ω, optimal; rtol=4eps(eltype(ω)) + (τ / minimum(β))^2))
         end
     end
 end
