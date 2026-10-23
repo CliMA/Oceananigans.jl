@@ -149,6 +149,8 @@ function PrescribedVelocityFields(; u = ZeroField(),
     end
 end
 
+PrescribedVelocityFields(u, v, w, parameters) = PrescribedVelocityFields(nothing, u, v, w, parameters)
+
 materialize_prescribed_velocity(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 
 function materialize_prescribed_velocity(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...)
@@ -217,6 +219,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
+@inline Base.merge(obj::PrescribedVelocityFields, others::NamedTuple) = merge(velocities(obj), others)
 
 # Extend sum_of_velocities for `PrescribedVelocityFields` (`PVF` alias)
 @inline sum_of_velocities(U1::PVF, U2) = sum_of_velocities(velocities(U1), U2)

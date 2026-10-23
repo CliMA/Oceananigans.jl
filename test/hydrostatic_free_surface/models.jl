@@ -387,6 +387,29 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
             @test u[1, 1, 1] ≈ 0.2
         end
 
+        @testset "PrescribedVelocityFields with FieldTimeSeries and CATKE [$arch]" begin
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            times = 0:0.1:1.0
+
+            u_fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+            for (n, t) in enumerate(times)
+                set!(u_fts, t, n)
+            end
+
+            velocities = PrescribedVelocityFields(; u=u_fts)
+            model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=(:T, :S),
+                                                buoyancy=SeawaterBuoyancy(),
+                                                closure=CATKEVerticalDiffusivity())
+
+            time_step!(model, 0.05)
+            time_step!(model, 0.05)
+
+            # CATKE stores the prescribed velocity at the current time as its previous velocity
+            u⁻ = model.closure_fields.previous_velocities.u
+            @test all(Array(interior(u⁻)) .≈ 0.1)
+            @test all(isfinite, Array(interior(model.tracers.e)))
+        end
+
         @testset "PrescribedVelocityFields with FieldTimeSeries output [$arch]" begin
             grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
             times = 0:0.1:1.0
@@ -533,8 +556,8 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
 
             Nx, Ny, _ = size(grid, (Center, Center, Center))
             σ = view(grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
-            expected_σ = (H + 0.1) / H
-            @test all(≈(expected_σ, atol=1e-10), σ)
+            expected_scaling = (H + 0.1) / H
+            @test all(≈(expected_scaling, atol=1e-10), σ)
 
             @info "    PrescribedFreeSurface with constant Field displacement and ZStar test passed"
         end
@@ -559,7 +582,7 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
 
             eta_file = "eta.jld2"
 
-            η_ts_ondisk = FieldTimeSeries{Center, Center, Face}(grid, fts_times;
+            on_disk_displacement = FieldTimeSeries{Center, Center, Face}(grid, fts_times;
                 indices = (:, :, Nz + 1),
                 backend = OnDisk(), path = eta_file, name = "eta",
                 time_indexing = Cyclical(year))
@@ -567,7 +590,7 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
             for n in 1:12
                 η = Field{Center, Center, Face}(grid; indices = (:, :, Nz + 1))
                 set!(η, sin(2π * n / 12))
-                set!(η_ts_ondisk, η, n)
+                set!(on_disk_displacement, η, n)
             end
 
             # Reload with InMemory(4) — only 4 of 12 snapshots fit in memory
@@ -698,8 +721,8 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
 
             # ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt = (η(Δt) − η(0)) / (H · Δt)
             # Initial η(0) = 0, so expected = uniform_displacement(Δt) / (H * Δt)
-            expected_∂t_σ = uniform_displacement(1.0) / (H * 1.0)
-            @test zstar_grid.z.∂t_σ[1, 1, 1] ≈ expected_∂t_σ atol=1e-10
+            expected_scaling_tendency = uniform_displacement(1.0) / (H * 1.0)
+            @test zstar_grid.z.∂t_σ[1, 1, 1] ≈ expected_scaling_tendency atol=1e-10
 
             # --- ZStar grid with constant u and spatially-varying displacement ---
             # When displacement is constant in time, ∂t_σ = 0.
@@ -707,33 +730,33 @@ reduced_z_advection_log = (:info, "Using the advection scheme UpwindBiased(order
             # a non-zero volume flux divergence even for constant u.
             U₀ = 1.0
 
-            σx_zstar = MutableVerticalDiscretization((-H, 0))
-            σx_grid = RectilinearGrid(arch;
-                                      size = (Nx, Ny, Nz),
-                                      x = (0, Lx), y = (0, Ly), z = σx_zstar,
-                                      halo = (3, 3, 3),
-                                      topology = (Periodic, Periodic, Bounded))
+            varying_coordinate = MutableVerticalDiscretization((-H, 0))
+            varying_grid = RectilinearGrid(arch;
+                                           size = (Nx, Ny, Nz),
+                                           x = (0, Lx), y = (0, Ly), z = varying_coordinate,
+                                           halo = (3, 3, 3),
+                                           topology = (Periodic, Periodic, Bounded))
 
-            σx_velocities = PrescribedVelocityFields(; u = (x, y, z, t) -> U₀,
-                                                       formulation = DiagnosticVerticalVelocity())
+            varying_velocities = PrescribedVelocityFields(; u = (x, y, z, t) -> U₀,
+                                                            formulation = DiagnosticVerticalVelocity())
 
-            σx_free_surface = PrescribedFreeSurface(displacement = (x, y, z, t) -> A * sin(2π * x / Lx))
+            varying_free_surface = PrescribedFreeSurface(displacement = (x, y, z, t) -> A * sin(2π * x / Lx))
 
-            σx_model = HydrostaticFreeSurfaceModel(σx_grid;
-                                                   velocities = σx_velocities,
-                                                   free_surface = σx_free_surface,
-                                                   tracers = :c,
-                                                   buoyancy = nothing)
+            varying_model = HydrostaticFreeSurfaceModel(varying_grid;
+                                                        velocities = varying_velocities,
+                                                        free_surface = varying_free_surface,
+                                                        tracers = :c,
+                                                        buoyancy = nothing)
 
-            @test σx_model isa HydrostaticFreeSurfaceModel
-            @test σx_model.velocities.formulation isa DiagnosticVerticalVelocity
+            @test varying_model isa HydrostaticFreeSurfaceModel
+            @test varying_model.velocities.formulation isa DiagnosticVerticalVelocity
 
-            time_step!(σx_model, 1.0)
+            time_step!(varying_model, 1.0)
 
-            wσ = σx_model.velocities.w
+            wσ = varying_model.velocities.w
 
             # ∂t_σ should be zero (displacement is time-independent)
-            @test all(iszero, parent(σx_grid.z.∂t_σ))
+            @test all(iszero, parent(varying_grid.z.∂t_σ))
 
             # w should be non-zero (spatially varying σ creates flux divergence)
             @test !all(iszero, interior(wσ))
