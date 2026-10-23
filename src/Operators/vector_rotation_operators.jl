@@ -138,7 +138,7 @@ end
 # 3D vectors
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
-    uₑ, vₑ = intrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+    uₑ, vₑ = extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
     wₑ = getvalue(wᵢ, i, j, k, grid)
 
     return uₑ, vₑ, wₑ
