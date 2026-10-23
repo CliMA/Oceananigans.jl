@@ -1275,7 +1275,7 @@ end
 
 
         # Test OrthogonalSphericalShellGrid (TripolarGrid)
-        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        fold_topologies = (CenterFolded, FaceFolded)
         for arch in archs, FT in float_types
             @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
                 grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
