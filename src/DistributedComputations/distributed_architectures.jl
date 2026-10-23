@@ -148,6 +148,9 @@ ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
 
+Base.isodd(r::Sizes) = isodd(length(r.sizes))
+Base.isodd(r::Fractional) = isodd(length(r.sizes))
+
 Base.size(p::Partition) = ranks(p)
 
 # If a direction has only 1 rank, then it is not partitioned
@@ -402,8 +405,8 @@ Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring
 NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
     NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
-# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
-# The "Bounded" topologies are `Bounded` and `LeftConnected`
+# The "Periodic" topologies are `Periodic` and those connected on the right
+# The "Bounded" topologies are those bounded on the right
 function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R

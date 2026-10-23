@@ -13,10 +13,7 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
-                          LeftConnected, RightConnected, FullyConnected,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Sides
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
@@ -24,6 +21,8 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
+using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Units: Time
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,

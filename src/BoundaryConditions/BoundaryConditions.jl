@@ -6,7 +6,7 @@ export
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    implicit_flux_coefficient,
+    implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
     GravityWaveRadiation, NormalRadiation, ObliqueRadiation, TracerReservoir, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
@@ -26,10 +26,8 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, defaults
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
-using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFoldedTopology, Face,
-                          Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
-                          RightCenterFolded, RightConnected, RightFaceFolded, halo_size, node, λnode, φnode,
-                          λnodes, φnodes, topology
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Connected, Face, Flat, LatitudeLongitudeGrid, Sides,
+                          connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
@@ -43,6 +41,7 @@ struct South end
 struct North end
 struct Bottom end
 struct Top end
+struct ImmersedFacet end
 
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
@@ -61,6 +60,7 @@ include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
+include("tupled_fill_halo_regions.jl")
 
 include("compute_flux_bcs.jl")
 

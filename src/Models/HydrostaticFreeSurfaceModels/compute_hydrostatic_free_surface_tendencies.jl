@@ -1,7 +1,7 @@
 import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
-using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
+using Oceananigans: fields, prognostic_fields, TendencyCallsite, TracerTendencyCallsite, UpdateStateCallsite, MomentumTendency
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!, add_biogeochemical_transitions!, biogeochemical_auxiliary_fields
@@ -31,7 +31,16 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     complete_communication_and_compute_momentum_buffer!(model, grid, arch)
 
     for callback in callbacks
-        callback.callsite isa TendencyCallsite && callback(model)
+        callback.callsite isa TendencyCallsite{MomentumTendency} && callback(model)
+    end
+
+    return nothing
+end
+
+# Tracer tendencies are computed in each substep, after the velocities and the free surface are stepped
+function execute_tracer_tendency_callbacks!(model, callbacks)
+    for callback in callbacks
+        callback.callsite isa TracerTendencyCallsite && callback(model)
     end
 
     return nothing

@@ -879,7 +879,9 @@ end
                 set!(r, (x, y) -> (x - 1/3)^2 + (y - 2)^2)
                 reduced_values = Array(interior(r))
                 everywhere(i, j, k, grid, r) = true
+                @test findmin(r; condition = everywhere) == findmin(reduced_values)
                 @test argmin(r; condition = everywhere) == argmin(reduced_values)
+                @test argmax(-r; condition = everywhere) == argmin(reduced_values)
 
                 # Adapted operations drop their indices but keep their size
                 conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
@@ -923,6 +925,15 @@ end
             wet_pattern = copy(pattern)
             wet_pattern[:, :, 1] .= false
             @test Array(interior(any(bᵢ; dims=(1, 2)))) == any(wet_pattern; dims=(1, 2))
+
+            # Boolean functions of a floating-point field, where immersed cells are masked
+            for c in (CenterField(grid), CenterField(immersed_grid))
+                set!(c, 1)
+                @test !any(isnan, c)
+                @test all(isfinite, c)
+                @test maximum(isnan, c) == 0
+                @test !any(Array(interior(any(isnan, c; dims=1))))
+            end
         end
 
         for arch in archs, FT in float_types
@@ -1080,8 +1091,8 @@ end
                 @test all(interior(interpolated_field) .≈ interior(reference_field))
             end
 
-            # 3D source → 1D column target: the column's specified (x, y) must drive
-            # horizontal sampling of the source.
+            # 3D source → 1D column target: interpolate! requires matching Flat-ness,
+            # so interpolating from a non-Flat source to a Flat destination must throw.
             source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
             source_3d = CenterField(source_3d_grid)
             set!(source_3d, (x, y, z) -> x + 2y + 3z)
@@ -1091,9 +1102,7 @@ end
                                           topology=(Flat, Flat, Bounded),
                                           x=x_col, y=y_col, z=(0,1))
             column = CenterField(column_grid)
-            interpolate!(column, source_3d)
-            expected = [x_col + 2y_col + 3z for z in znodes(column)]
-            @test all(Array(interior(column))[1, 1, :] .≈ expected)
+            @test_throws ArgumentError interpolate!(column, source_3d)
 
             grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
             for ℓ in (nothing, Center(), Face())
@@ -1264,7 +1273,7 @@ end
 
 
         # Test OrthogonalSphericalShellGrid (TripolarGrid)
-        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        fold_topologies = (CenterFolded, FaceFolded)
         for arch in archs, FT in float_types
             @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
                 grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)

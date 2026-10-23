@@ -1,4 +1,4 @@
-using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Utils: unparameterized_type
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries:
     has_active_z_columns,
     active_cells_maps
 
-using Oceananigans.Grids: LeftConnectedOnlyTopology
+using Oceananigans.Grids: CommunicatingSide, Sides
 
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
@@ -73,8 +73,7 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     nx, ny, _ = local_size
     bottom_interior = bottom_height_interior(ib.bottom_height)
     local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
-    ImmersedBoundaryConstructor = getnamewrapper(ib)
-    local_ib = ImmersedBoundaryConstructor(local_bottom_height)
+    local_ib = unparameterized_type(typeof(ib))(local_bottom_height)
 
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
@@ -100,7 +99,7 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
     if any(size(ib.mask) .!= mask_size)
         @warn "Resizing the mask to match the grids' halos"
         mask = compute_mask(grid, ib)
-        return getnamewrapper(ib)(mask)
+        return GridFittedBoundary(mask)
     end
 
     return ib
@@ -120,7 +119,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
         cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny, :]
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
-        return getnamewrapper(ib)(bottom_field.data)
+        return unparameterized_type(typeof(ib))(bottom_field.data)
     end
 
     return ib
@@ -143,11 +142,14 @@ function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
 
-    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty <: LeftConnectedOnlyTopology ? Ny - Hy : Ny - 2Hy)
+    one_sided_x = (Tx <: Sides{<:CommunicatingSide}) != (Tx <: Sides{<:Any, <:CommunicatingSide})
+    one_sided_y = (Ty <: Sides{<:CommunicatingSide}) != (Ty <: Sides{<:Any, <:CommunicatingSide})
 
-    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    nx = Rx == 1 ? Nx : (one_sided_x ? Nx - Hx : Nx - 2Hx)
+    ny = Ry == 1 ? Ny : (one_sided_y ? Ny - Hy : Ny - 2Hy)
+
+    ox = Rx == 1 || !(Tx <: Sides{<:CommunicatingSide}) ? 0 : Hx
+    oy = Ry == 1 || !(Ty <: Sides{<:CommunicatingSide}) ? 0 : Hy
 
     regions = ((ox+1:ox+nx, oy+1:oy+ny, 1:Nz),
                (1:ox,       1:Ny,       1:Nz),
