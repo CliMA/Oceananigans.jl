@@ -150,6 +150,54 @@ function buoyancy_force end # to be defined by models that want to use Turbulenc
 function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
+##### Interface for radiation absorbed below the surface
+#####
+
+"""
+    surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, fields)
+
+Return the buoyancy flux of `radiation` through the surface of column `(i, j)`, positive upward.
+"""
+@inline surface_radiative_buoyancy_flux(i, j, grid, ::Nothing, buoyancy, fields) = zero(grid)
+
+"""
+    transmitted_fraction(radiation, i, j, grid, d)
+
+Return the fraction of the surface radiative flux of `radiation` that reaches the depth `d` in column `(i, j)`.
+"""
+function transmitted_fraction end
+
+"""
+    transmitted_thickness(radiation, i, j, grid, h)
+
+Return the integral of `transmitted_fraction` from the surface to the depth `h` in column `(i, j)`.
+"""
+function transmitted_thickness end
+
+"""
+    penetrative_radiation(forcing)
+
+Return the radiation absorbed below the surface that `forcing` applies, or `nothing`.
+"""
+penetrative_radiation(forcing) = nothing
+
+function penetrative_radiation(forcings::Union{Tuple, NamedTuple})
+    for forcing in forcings
+        radiation = penetrative_radiation(forcing)
+        isnothing(radiation) || return radiation
+    end
+    return nothing
+end
+
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with `radiation` handed to every closure in it that adjusts for radiation absorbed below the surface.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
+
+#####
 ##### Fallback: flux = 0
 #####
 

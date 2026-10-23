@@ -12,7 +12,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_model_halo, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!,
+                                       penetrative_radiation, with_penetrative_radiation
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
@@ -349,6 +350,7 @@ function build_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper,
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver)
 
     # Materialize forcing for model tracer and velocity fields.
+    closure = with_penetrative_radiation(closure, penetrative_radiation(forcing))
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
     # Initialize boundary transport container

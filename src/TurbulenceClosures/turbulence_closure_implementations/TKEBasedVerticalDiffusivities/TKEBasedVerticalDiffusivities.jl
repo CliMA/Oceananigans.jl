@@ -22,7 +22,8 @@ using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹
                               ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,
-                                       VerticallyImplicitTimeDiscretization
+                                       VerticallyImplicitTimeDiscretization, surface_radiative_buoyancy_flux,
+                                       transmitted_fraction, transmitted_thickness
 using Oceananigans.Utils: Utils, launch!, prettysummary, named_tuple, f32_safe_cbrt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -42,7 +43,8 @@ import Oceananigans.TurbulenceClosures:
     viscosity,
     diffusivity,
     viscosity_location,
-    diffusivity_location
+    diffusivity_location,
+    with_penetrative_radiation
 
 const c = Center()
 const f = Face()
@@ -165,6 +167,7 @@ get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_condit
 get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
 get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("penetrative_radiation.jl")
 include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
