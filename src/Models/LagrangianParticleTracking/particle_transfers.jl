@@ -185,22 +185,36 @@ transfer_attributes(properties) = values(components(properties))
     return nothing
 end
 
-# Move particle `p` of species `s` to its position `q` in the species `t` it belongs to after transfers.
-# Particles that stay are copied to position `q` = (rank among the particles that stay) of `own_target`.
-# Particles transferred to species `t` are converted and appended to the particles that stay in species `t`,
-# in order of their source species and then of their index.
-@inline function reassign_particle!((source, flags, ranks, columns, N, s, bases, own_target), p, (targets, kept, S))
+# Element `i` of `items` for a runtime index `i`, selected without indexing into a tuple: runtime indexing
+# stores the tuple in thread-local memory, which can copy all kernel arguments to local memory
+# and slow down a kernel by an order of magnitude.
+@inline tuple_element(items::Tuple{Any}, i) = first(items)
+@inline tuple_element(items::Tuple, i) = ifelse(i == 1, first(items), tuple_element(Base.tail(items), i - 1))
+
+# Copy particle `p` of species `s`, if it stays in species `s`, to position (rank among the particles that stay)
+# of `target`, which is the buffer of species `s`. The ranks are stored in column `column` of `ranks`.
+@inline function compact_particle!((source, flags, ranks, column, N, s, target), p, S)
     @inbounds t = transfer_target(flags[p], s, S)
 
-    if t != 0
-        @inbounds rank = ranks[p + N * (columns[t] - 1)]
-        if t == s
-            copy_elements!(transfer_attributes(own_target), rank, transfer_attributes(source), p)
-        else
-            @inbounds q = kept[t] + bases[t] + rank
-            @inbounds particle = source[p]
-            apply_at_index(write_transferred_particle!, t, targets, q, particle)
-        end
+    if t == s
+        @inbounds rank = ranks[p + N * (column - 1)]
+        copy_elements!(transfer_attributes(target), rank, transfer_attributes(source), p)
+    end
+
+    return nothing
+end
+
+# Convert particle `p` of species `s`, if it is transferred to species `t`, and append it to the particles
+# that stay in species `t`, in order of source species and then of index. Transfers are rare, so they are
+# handled by a separate kernel, so that the compaction kernel does not include conversions for every pair of species.
+@inline function transfer_particle!((source, flags, ranks, columns, N, s, bases), p, (targets, kept, S))
+    @inbounds t = transfer_target(flags[p], s, S)
+
+    if (t != 0) & (t != s)
+        column = tuple_element(columns, t)
+        @inbounds q = tuple_element(kept, t) + tuple_element(bases, t) + ranks[p + N * (column - 1)]
+        @inbounds particle = source[p]
+        apply_at_index(write_transferred_particle!, t, targets, q, particle)
     end
 
     return nothing
@@ -297,8 +311,14 @@ function transfer_particles!(particles::LagrangianParticles, grid)
     targets = map((compacted, species, buffer) -> compacted ? buffer : species, compacted, species, buffers)
     foreach(resize!, targets, new_counts)
 
-    reassign_args = map(tuple, species, flags, ranks, columns, counts, numbers, bases, targets)
-    launch_species!(arch, reassign_particle!, source_counts, reassign_args, (targets, kept, S))
+    keep_columns = map((columns, s) -> columns[s], columns, numbers)
+    compact_args = map(tuple, species, flags, ranks, keep_columns, counts, numbers, targets)
+    launch_species!(arch, compact_particle!, source_counts, compact_args, S)
+
+    transferring = map(s -> any(d -> d != s && transfer_counts[s, d] > 0, numbers), numbers)
+    transfer_source_counts = map((N, transferring) -> transferring ? N : 0, counts, transferring)
+    transfer_args = map(tuple, species, flags, ranks, columns, counts, numbers, bases)
+    launch_species!(arch, transfer_particle!, transfer_source_counts, transfer_args, (targets, kept, S))
 
     # Copy compacted species back from their buffers
     foreach(compacted, species, new_counts) do compacted, species, N

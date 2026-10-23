@@ -206,7 +206,7 @@ end
 
 function compute_permutation!(sorting::CellSorting{<:ComparisonSort}, arch, grid, counts, cell_indices, permutations)
     launch_species!(arch, compute_sort_key!, counts, map(tuple, permutations, cell_indices, counts), nothing)
-    foreach(sort!, permutations)
+    foreach(keys -> isempty(keys) || sort!(keys), permutations) # CUDA's sort! fails for empty arrays
     launch_species!(arch, decode_sort_key!, counts, map(tuple, permutations, counts), nothing)
     return nothing
 end
@@ -270,7 +270,8 @@ $(TYPEDSIGNATURES)
 Reorder the properties and transfer flags of each species of `particles`
 according to `permutations`, so that particle `p` of species `s` becomes particle `q`, where
 `permutations[s][q] = p`. All attributes of all species are gathered in a single kernel, and
-copied back in a second kernel.
+copied back in a second kernel. For permutations that move a small fraction of particles,
+as when sorted particles are sorted again, this is faster than gathering each attribute separately.
 """
 function permute_particles!(particles, arch, permutations)
     properties = particles.properties

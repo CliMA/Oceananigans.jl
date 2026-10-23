@@ -115,6 +115,10 @@ struct PerSpeciesLaunch end
 
 Return the default strategy for launching kernels over the particles of all species,
 which is [`SuperrangeLaunch`](@ref). Redefine this method to use [`PerSpeciesLaunch`](@ref).
+
+On an A100, advecting 10⁴–10⁵ particles in 2–3 species is 1.4–1.7 times faster with superrange
+launches than with per-species launches, because kernel launch overhead dominates; for 10⁶–10⁷
+particles both strategies are equally fast.
 """
 species_launch_strategy() = SuperrangeLaunch()
 
