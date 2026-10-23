@@ -79,8 +79,10 @@ jet_model = HydrostaticFreeSurfaceModel(jet_grid; buoyancy=nothing, tracers=(),
 # \quad \text{for} \quad φ₀ < φ < φ₁ ,
 # ```
 #
-# and zero elsewhere, with ``u_{\max} = 80 \, \mathrm{m \, s^{-1}}``, ``φ₀ = π/7``,
-# ``φ₁ = π/2 - φ₀``, and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]``, so that the jet peaks at 45°N.
+# and zero elsewhere. The above expression peaks at ``(φ₀ + φ₁)/2``. Choosing
+# ``u_{\max} = 80 \, \mathrm{m \, s^{-1}}``, ``φ₀ = π/7``, ``φ₁ = π/2 - φ₀``,
+# and ``e_n = \exp[-4 / (φ₁ - φ₀)^2]`` the jet peaks at 45°N with maximum
+# speed ``u_{\max}``.
 
 uₘₐₓ = 80
 φ₀ = π / 7
