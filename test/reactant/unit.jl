@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
 using CUDA
 using Statistics: mean
-using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical
+using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical, update_field_time_series!, InMemory
 using Oceananigans.Units: Time
 
 arch = ReactantState()
@@ -448,3 +448,16 @@ end
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
+
+@testset "Updating a FieldTimeSeries whose window holds every snapshot, at a traced time" begin
+    times = [0.0, 1.0, 2.0, 3.0]
+    grid = RectilinearGrid(ReactantState(); size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend = InMemory(length(times)))
+    refresh!(fts, t) = (update_field_time_series!(fts, Time(t)); nothing)
+
+    t = Reactant.ConcreteRNumber(1.5)
+    @jit refresh!(fts, t)
+    @test fts.backend.start == 1
+    @test length(fts.backend) == length(times)
+end
+
