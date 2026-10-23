@@ -6,11 +6,12 @@ using Dates: DateTime
 using TimesDates: TimeDate
 
 using Oceananigans
-using Oceananigans.Simulations: Simulation, run!, Callback
+using Oceananigans.Simulations: Simulation, run!, Callback, add_callback!
 using Oceananigans.Units: hour, Time
 using Oceananigans.TimeSteppers: Clock, tick!
-using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
-using Oceananigans.OutputWriters: AveragedTimeInterval
+using Oceananigans.Utils: TimeInterval, SpecifiedTimes, TimeOffset, schedule_aligned_time_step, IterationInterval
+using Oceananigans.OutputWriters: AveragedTimeInterval, JLD2Writer, Checkpointer
+using Oceananigans.OutputReaders: Cyclical
 import Oceananigans: initialize!
 
 struct DummyModel
@@ -193,6 +194,118 @@ function numeric_specified_times_schedule_checks(FT)
     return true
 end
 
+function numeric_schedules_on_calendar_clock(start_time, dir)
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+    function build_simulation(stop_time)
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=start_time), tracers=:c, buoyancy=nothing)
+        simulation = Simulation(model; Δt=600, stop_time, verbose=false)
+
+        callback_times = typeof(start_time)[]
+        offset_times = typeof(start_time)[]
+        add_callback!(simulation, sim -> push!(callback_times, sim.model.clock.time), TimeInterval(hour))
+        add_callback!(simulation, sim -> push!(offset_times, sim.model.clock.time), TimeOffset(TimeInterval(2hour), 600))
+
+        outputs = (; c=model.tracers.c)
+        simulation.output_writers[:c] = JLD2Writer(model, outputs; filename=joinpath(dir, "c.jld2"),
+                                                   schedule=TimeInterval(hour), overwrite_files=true)
+        simulation.output_writers[:averaged] = JLD2Writer(model, outputs; filename=joinpath(dir, "averaged.jld2"),
+                                                          schedule=AveragedTimeInterval(2hour, window=hour), overwrite_files=true)
+        simulation.output_writers[:checkpointer] = Checkpointer(model; dir, schedule=TimeInterval(2hour), overwrite_files=true)
+
+        return simulation, callback_times, offset_times
+    end
+
+    hours(n) = start_time + Dates.Hour(n)
+
+    simulation, callback_times, offset_times = build_simulation(hours(4))
+    run!(simulation)
+
+    @test callback_times == hours.(0:4)
+    @test offset_times == [hours(0), hours(0) + Dates.Minute(10), hours(2), hours(2) + Dates.Minute(10), hours(4)]
+    @test FieldTimeSeries(joinpath(dir, "c.jld2"), "c").times == hours.(0:4)
+    @test FieldTimeSeries(joinpath(dir, "averaged.jld2"), "c").times == hours.(0:2:4)
+
+    picked_up, callback_times, _ = build_simulation(hours(6))
+    run!(picked_up; pickup=true)
+
+    @test callback_times == hours.(5:6)
+
+    return true
+end
+
+function period_schedule_on_numeric_clock()
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, buoyancy=nothing)
+    simulation = Simulation(model; Δt=600, stop_time=4hour, verbose=false)
+
+    callback_times = Float64[]
+    add_callback!(simulation, sim -> push!(callback_times, sim.model.clock.time), TimeInterval(Dates.Hour(1)))
+    run!(simulation)
+
+    @test callback_times ≈ 0:hour:4hour
+
+    return true
+end
+
+function calendar_cyclical_checks()
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+    # A monthly climatology stamped mid-month in 2018, valued by month
+    months = [DateTime(2018, m, 15) for m in 1:12]
+    climatology = FieldTimeSeries{Center, Center, Center}(grid, months; time_indexing=Cyclical(Dates.Year(1)))
+    for n in 1:12
+        set!(climatology[n], n)
+    end
+
+    c(t) = climatology[1, 1, 1, Time(t)]
+    @test c(DateTime(1958, 3, 15)) == 3
+    @test c(DateTime(2043, 7, 15)) == 7
+    @test c(DateTime(1993, 12, 31)) ≈ 12 + 16 / 31 * (1 - 12) # wraps from December to January
+    @test c(DateTime(1994, 1, 1))   ≈ 12 + 17 / 31 * (1 - 12)
+
+    # A 3-hourly repeat year in 1990 (not a leap year), valued by hours since its start
+    hours = DateTime(1990) : Dates.Hour(3) : DateTime(1990, 12, 31, 21)
+    repeat_year = FieldTimeSeries{Center, Center, Center}(grid, collect(hours); time_indexing=Cyclical(Dates.Year(1)))
+    for n in eachindex(hours)
+        set!(repeat_year[n], 3 * (n - 1))
+    end
+
+    r(t) = repeat_year[1, 1, 1, Time(t)]
+    @test r(DateTime(2044, 2, 29, 12)) == r(DateTime(2044, 2, 28, 12)) # 29 February reads the 28th
+    @test r(DateTime(2044, 3, 1, 12)) == 24 * (31 + 28) + 12
+
+    # A cycle of several years
+    years = [DateTime(y, 7, 1) for y in 1958:1960]
+    cycle = FieldTimeSeries{Center, Center, Center}(grid, years; time_indexing=Cyclical(Dates.Year(3)))
+    for n in 1:3
+        set!(cycle[n], n)
+    end
+
+    @test cycle[1, 1, 1, Time(DateTime(1961, 7, 1))] == 1
+    @test cycle[1, 1, 1, Time(DateTime(1957, 7, 1))] == 3
+
+    return true
+end
+
+function calendar_cyclical_forcing(arch)
+    grid = RectilinearGrid(arch; size=(1, 1, 1), extent=(1, 1, 1))
+    months = [DateTime(2018, m, 15) for m in 1:12]
+    climatology = FieldTimeSeries{Center, Center, Center}(grid, months; time_indexing=Cyclical(Dates.Year(1)))
+    for n in 1:12
+        set!(climatology[n], n)
+    end
+
+    forcing = Forcing((i, j, k, grid, clock, fields, p) -> @inbounds(p[i, j, k, Time(clock.time)]),
+                      discrete_form=true, parameters=climatology)
+
+    clock = Clock(time=DateTime(1993, 3, 15))
+    model = HydrostaticFreeSurfaceModel(grid; clock, tracers=:c, buoyancy=nothing, forcing=(; c=forcing))
+    time_step!(model, 1)
+
+    return model.tracers.c[1, 1, 1]
+end
+
 @testset "DateTime clocks" begin
     test_date_types = [DateTime, TimeDate]
 
@@ -220,6 +333,36 @@ end
                 @test forcing_history ≈ expected_forcing
             end
         end
+    end
+
+    @testset "Cyclical FieldTimeSeries over calendar years" begin
+        @test calendar_cyclical_checks()
+
+        for arch in archs
+            @test calendar_cyclical_forcing(arch) == 3 # March, after a step of 1 second
+        end
+    end
+
+    @testset "Numeric schedules on a calendar clock" begin
+        @test numeric_schedules_on_calendar_clock(DateTime(2020, 1, 1), mktempdir())
+    end
+
+    @testset "Period schedule on a numeric clock" begin
+        @test period_schedule_on_numeric_clock()
+    end
+
+    @testset "Numeric stop time on a calendar clock" begin
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=DateTime(2020, 1, 1)))
+        @test_throws ArgumentError Simulation(model; Δt=60, stop_time=2hour)
+    end
+
+    @testset "Simulation without a stop time [$(TimeType)]" for TimeType in test_date_types
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=TimeType(2020, 1, 1)))
+        simulation = Simulation(model; Δt=60, stop_iteration=3, verbose=false)
+        run!(simulation)
+        @test model.clock.time == TimeType(2020, 1, 1, 0, 3)
     end
 
     start_time = DateTime(2020, 1, 1)

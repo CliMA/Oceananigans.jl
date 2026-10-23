@@ -3,6 +3,7 @@ using StructArrays: StructArray
 
 using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils: materialize_schedule
 
 const NonCheckpointingOutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
 
@@ -61,6 +62,8 @@ function Checkpointer(model; schedule,
     mkpath(dir)
     filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
     prefix = String(chop(filename, tail=length(".jld2")))
+
+    schedule = materialize_schedule(schedule, model.clock)
 
     return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup)
 end
