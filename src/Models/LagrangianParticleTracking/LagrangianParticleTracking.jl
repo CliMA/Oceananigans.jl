@@ -14,7 +14,7 @@ using StructArrays: components
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, compute!, location
 using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid, hack_cosd,
+using Oceananigans.Grids: hack_cosd,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid
 using Oceananigans.ImmersedBoundaries
