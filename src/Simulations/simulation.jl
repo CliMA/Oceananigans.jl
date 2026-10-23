@@ -1,4 +1,4 @@
-using Dates: Dates, AbstractTime
+using Dates: Dates
 using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
