@@ -247,12 +247,18 @@ Keyword arguments
                                 Default: `false`, specifying the use of asynchronous algorithms where supported,
                                 which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU();
-                     partition = nothing,
-                     devices = nothing,
-                     communicator = nothing,
-                     synchronized_communication = false,
-                     field_count = Threads.Atomic{UInt64}(0))
+function Distributed(child_architecture = CPU(); kwargs...)
+    arch = distributed_architecture(child_architecture; kwargs...)
+    validate_distributed_configuration(arch)
+    return arch
+end
+
+function distributed_architecture(child_architecture;
+                                  partition = nothing,
+                                  devices = nothing,
+                                  communicator = nothing,
+                                  synchronized_communication = false,
+                                  field_count = Threads.Atomic{UInt64}(0))
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
