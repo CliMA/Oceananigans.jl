@@ -400,7 +400,7 @@ ax = Axis3(fig[1, 1]; aspect=:data)
 plt = geo_surface!(ax, T)
 
 # output
-:Plot
+Surface{Tuple{Matrix{Float64}, Matrix{Float64}, Matrix{Float32}}}
 ```
 """
 function geo_surface!(ax, f::Field; kwargs...)
