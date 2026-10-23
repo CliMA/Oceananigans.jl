@@ -7,7 +7,7 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch, Nothing}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
@@ -25,14 +25,10 @@ end
 
 const CellMaps = Union{AbstractArray, NamedTuple, Tuple}
 const ActiveInteriorIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveInteriorIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 const ActiveZColumnsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CellMaps}
-const NoActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nothing}
 
-has_active_cells_map(::ActiveInteriorIBG) = true
-has_active_z_columns(::ActiveZColumnsIBG) = true
-has_active_cells_map(::NoActiveInteriorIBG) = false
-has_active_z_columns(::NoActiveZColumnsIBG) = false
+has_active_cells_map(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.interior_active_cells)
+has_active_z_columns(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.active_z_columns)
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
@@ -70,12 +66,10 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
 end
 
 function with_halo(halo, ibg::ImmersedBoundaryGrid)
-    active_cells_map = has_active_cells_map(ibg)
-    active_z_columns = has_active_z_columns(ibg)
     underlying_grid = with_halo(halo, ibg.underlying_grid)
     return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
-                                active_cells_map,
-                                active_z_columns)
+                                active_cells_map = has_active_cells_map(ibg),
+                                active_z_columns = has_active_z_columns(ibg))
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -88,6 +82,9 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+
+@inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
+@inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
 
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
@@ -116,15 +113,17 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
+Grids.has_static_discretization(grid::IBG) = Grids.has_static_discretization(grid.underlying_grid)
+
 # Defining the bottom
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
 @inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(grid),
-                  " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " ImmersedBoundaryGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 

@@ -1,10 +1,9 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition,
-    default_auxiliary_bc, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition, default_auxiliary_bc, regularize_field_boundary_conditions
 using Oceananigans.Diagnostics: Diagnostics, hasnan
-using Oceananigans.DistributedComputations: DistributedComputations, reconstruct_global_field, CommunicationBuffers
-using Oceananigans.Fields: FunctionField, AbstractField, compute!, compute_at!, data_summary,
-    instantiated_location, interior, set!, validate_indices
+using Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+using Oceananigans.Fields: FunctionField, AbstractField, ZeroField, Scan, compute!, compute_at!, data_summary
+using Oceananigans.Fields: Fields, indices, instantiated_location, interior, set!, validate_indices
 using Oceananigans.Grids: xnodes, ynodes
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
@@ -13,8 +12,9 @@ using Base: @propagate_inbounds
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
-const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:AbstractOperation, <:MultiRegionGrids} where {LX, LY, LZ}
+const MultiRegionComputedField{LX, LY, LZ, O} = Field{LX, LY, LZ, <:Union{AbstractOperation, FunctionField}, <:MultiRegionGrids} where {LX, LY, LZ}
 const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, C, P, F, <:MultiRegionGrids} where {LX, LY, LZ, C, P, F}
+const MultiRegionScannedField{LX, LY, LZ} = Field{LX, LY, LZ, <:Scan, <:MultiRegionGrids} where {LX, LY, LZ}
 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
@@ -22,6 +22,8 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
+Fields.axes_indices(f::AbstractField{<:Any, <:Any, <:Any, <:MultiRegionGrids}) = getregion(something(indices(f), (:, :, :)), 1)
+Base.:(==)(a::MultiRegionField, b::MultiRegionField) = all(construct_regionally(==, a, b).regional_objects)
 @inline Utils.isregional(f::GriddedMultiRegionField) = true
 @inline Utils.regions(f::GriddedMultiRegionField) = regions(f.grid)
 
@@ -114,9 +116,13 @@ Base.fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 Fields.set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
 Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
-Fields.set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
-Fields.set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
+Fields.set!(mrf::MultiRegionField, f::Function, args...) = apply_regionally!(set!, mrf, f)
+Fields.set!(mrf::MultiRegionField, a::Union{Array, OffsetArray}) = apply_regionally!(set!, mrf, a)
+Fields.set!(mrf::MultiRegionField, v::Field) = apply_regionally!(set!, mrf, v)
+Fields.set!(mrf::MultiRegionField, z::ZeroField) = apply_regionally!(set!, mrf, z)
+Fields.set!(::MultiRegionField, ::Nothing) = nothing
 Fields.compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
+Fields.compute!(mrf::MultiRegionScannedField, time=nothing) = apply_regionally!(compute!, mrf, time)
 
 # Disambiguation (same as computed_field.jl:64)
 function Fields.compute!(comp::MultiRegionComputedField, time=nothing)
@@ -141,7 +147,7 @@ function Fields.interior(mrf::MultiRegionField, I...)
     return interior_mrf
 end
 
-@inline Diagnostics.hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
+@inline Diagnostics.hasnan(field::MultiRegionField) = any(construct_regionally(hasnan, field).regional_objects)
 
 Fields.validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
@@ -152,8 +158,8 @@ Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) =
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
 Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
-DistributedComputations.CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
-    construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
+# Yin-Yang halos are interpolated from the other panel's data without buffers
+Fields.communication_buffers(grid::YinYangGrid, data, ::MultiRegionObject) = nothing
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  mrg::MultiRegionGrids,
@@ -189,7 +195,10 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
 
-function Base.show(io::IO, field::MultiRegionField)
+Base.show(io::IO, field::MultiRegionScannedField) = show_multi_region_field(io, field)
+Base.show(io::IO, field::MultiRegionField) = show_multi_region_field(io, field)
+
+function show_multi_region_field(io::IO, field::MultiRegionField)
     bcs = getregion(field, 1).boundary_conditions
 
     prefix =

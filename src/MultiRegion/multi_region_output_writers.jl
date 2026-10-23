@@ -1,5 +1,7 @@
-using Oceananigans.Fields: compute_at!
-using Oceananigans.OutputWriters: OutputWriters, _saveproperty!, serializeproperty!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarCoordinate
+using Oceananigans.Fields: Fields, compute_at!, set!
+using Oceananigans.OutputWriters: OutputWriters, WindowedTimeAverage, _saveproperty!, serializeproperty!,
+                                  accumulate_average!, set_average!
 
 # This is working just fine at the moment?
 # But it will be veeeeery slow, as reconstruct_global_field is not
@@ -9,6 +11,14 @@ function OutputWriters.fetch_output(mrf::MultiRegionField, model)
     compute_at!(field, model.clock.time)
     return parent(field)
 end
+
+Fields.set!(mrf::MultiRegionField, wta::WindowedTimeAverage) = set!(mrf, wta.result)
+
+# Time averages of panel fields accumulate the parent arrays of each region
+OutputWriters.set_average!(result::MultiRegionObject, value) = apply_regionally!(set_average!, result, value)
+
+OutputWriters.accumulate_average!(result::MultiRegionObject, integrand::MultiRegionObject, previous_weight, integrand_weight) =
+    apply_regionally!(accumulate_average!, result, integrand, previous_weight, integrand_weight)
 
 OutputWriters.saveproperty!(file, address, p::Union{MultiRegionObject, MultiRegionField}) = _saveproperty!(file, address, p)
 
@@ -27,10 +37,12 @@ function OutputWriters.serializeproperty!(file, location, mrg::MultiRegionGrids)
 end
 
 #####
-##### For a cubed sphere, we dump the entire field as is.
+##### For a cubed sphere or a Yin-Yang grid, we dump the data of every panel as is.
 #####
 
-function OutputWriters.fetch_output(csf::CubedSphereField, model)
+const PanelField{LX, LY, LZ} = Union{CubedSphereField{LX, LY, LZ}, YinYangField{LX, LY, LZ}}
+
+function OutputWriters.fetch_output(csf::PanelField, model)
     compute_at!(csf, model.clock.time)
     return parent(csf)
 end
@@ -47,7 +59,7 @@ function OutputWriters.construct_output(mrf::MultiRegionField{LX, LY, LZ}, user_
     return Field(mrf; indices, NamedTuple()...)
 end
 
-function OutputWriters.serializeproperty!(file, location, csf::CubedSphereField{LX, LY, LZ}) where {LX, LY, LZ}
+function OutputWriters.serializeproperty!(file, location, csf::PanelField{LX, LY, LZ}) where {LX, LY, LZ}
     csf_CPU = on_architecture(CPU(), csf)
 
     serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
@@ -57,6 +69,19 @@ function OutputWriters.serializeproperty!(file, location, csf::CubedSphereField{
     return nothing
 end
 
-function OutputWriters.serializeproperty!(file, location, csg::ConformalCubedSphereGridOfSomeKind)
+function OutputWriters.serializeproperty!(file, location, csg::Union{ConformalCubedSphereGridOfSomeKind, YinYangGridOfSomeKind})
     file[location] = on_architecture(CPU(), csg)
 end
+
+Oceananigans.prognostic_state(coordinate::ZStarCoordinate, grid::MultiRegionGrids) =
+    (; regions = Tuple(on_architecture(CPU(), Oceananigans.prognostic_state(coordinate, getregion(grid, r))) for r in regions(grid)))
+
+function Oceananigans.restore_prognostic_state!(coordinate::ZStarCoordinate, grid::MultiRegionGrids, from::NamedTuple{(:regions,)})
+    for r in regions(grid)
+        Oceananigans.restore_prognostic_state!(coordinate, getregion(grid, r), from.regions[r])
+    end
+    return coordinate
+end
+
+Oceananigans.restore_prognostic_state!(::ZStarCoordinate, ::MultiRegionGrids, from) =
+    throw(ArgumentError("A z-star checkpoint of a multi-region grid must hold the vertical coordinate of every region."))

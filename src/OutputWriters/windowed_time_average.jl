@@ -1,13 +1,13 @@
-using Oceananigans.Diagnostics: AbstractDiagnostic
-using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Utils: AbstractSchedule, prettytime, period_type, time_type
-using Oceananigans.TimeSteppers: Clock
 using Dates: Period, Second, value, AbstractDateTime
 
-import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
-import Oceananigans.Utils: TimeInterval, SpecifiedTimes, initialize_actuations!
-import Oceananigans.Grids: grid
-import Oceananigans.Fields: location, indices, set!
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
+using Oceananigans.Diagnostics: AbstractDiagnostic
+using Oceananigans.Fields: Fields, set!, indices, location
+using Oceananigans.Grids: Grids, grid
+using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Utils: Utils, AbstractSchedule, prettytime, period_type, time_type,
+                          TimeInterval, initialize_actuations!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -35,7 +35,7 @@ during the averaging window. For example, `stride=1` computes output every itera
 whereas `stride=2` computes output every other iteration. Time-averages with
 longer `stride`s are faster to compute, but less accurate.
 
-The time-average of ``a`` is a left Riemann sum corresponding to
+The time-average of ``a`` is a right Riemann sum corresponding to
 
 ```math
 ⟨a⟩ = T⁻¹ \\int_{tᵢ-T}^{tᵢ} a \\mathrm{d} t \\, ,
@@ -110,9 +110,9 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 
-initialize!(sch::AveragedTimeInterval, model) = initialize_actuations!(sch, model.clock.time)
+Oceananigans.initialize!(sch::AveragedTimeInterval, model) = initialize_actuations!(sch, model.clock.time)
 
-function initialize_actuations!(schedule::AveragedTimeInterval, first_actuation_time)
+function Utils.initialize_actuations!(schedule::AveragedTimeInterval, first_actuation_time)
     if schedule.first_actuation_time isa Number && first_actuation_time isa AbstractDateTime
         T = typeof(schedule.first_actuation_time)
         msg = "Cannot use $T AveragedTimeInterval times with DateTime clock. Use a Dates.Period instead."
@@ -137,27 +137,35 @@ function end_of_window(sch::AveragedTimeInterval, clock)
     return clock.time >= t★ - eps(t★)
 end
 
-TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
+Utils.TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
 #####
 ##### Checkpointing
 #####
 
-function prognostic_state(schedule::AveragedTimeInterval)
-    return (first_actuation_time = schedule.first_actuation_time,
+function Oceananigans.prognostic_state(schedule::AveragedTimeInterval)
+    return (interval = schedule.interval,
+            window = schedule.window,
+            first_actuation_time = schedule.first_actuation_time,
             actuations = schedule.actuations,
             collecting = schedule.collecting)
 end
 
-function restore_prognostic_state!(restored::AveragedTimeInterval, from)
-    restored.first_actuation_time = from.first_actuation_time
-    restored.actuations = from.actuations
+function Oceananigans.restore_prognostic_state!(restored::AveragedTimeInterval, from)
+    same_cadence = !hasproperty(from, :interval) ||
+                   (restored.interval == from.interval && restored.window == from.window)
+
+    if same_cadence
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
+
     restored.collecting = from.collecting
     return restored
 end
 
-restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
 
 #####
 ##### WindowedTimeAverage
@@ -195,7 +203,7 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
     if fetch_operand
         output = fetch_output(operand, model)
         result = similar(output)
-        result .= output
+        set_average!(result, output)
     else
         result = similar(operand)
         result .= operand
@@ -211,10 +219,10 @@ get_default_time(schedule::AveragedTimeInterval) = zero(typeof(schedule.interval
 get_default_time(schedule::AveragedSpecifiedTimes) = zero(eltype(schedule.specified_times.times))
 
 # Time-averaging doesn't change spatial location or grid
-grid(wta::WindowedTimeAverage) = grid(wta.operand)
-location(wta::WindowedTimeAverage) = location(wta.operand)
-indices(wta::WindowedTimeAverage) = indices(wta.operand)
-set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
+Grids.grid(wta::WindowedTimeAverage) = grid(wta.operand)
+Fields.location(wta::WindowedTimeAverage) = location(wta.operand)
+Fields.indices(wta::WindowedTimeAverage) = indices(wta.operand)
+Fields.set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
 Base.parent(wta::WindowedTimeAverage) = parent(wta.result)
 
 # This is called when output is requested.
@@ -245,8 +253,12 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     T_current = period_to_number(clock.time - wta.window_start_time)
     T_previous = period_to_number(wta.previous_collection_time - wta.window_start_time)
 
-    # Accumulate left Riemann sum
-    @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
+    FT = eltype(wta.result)
+    previous_weight = convert(FT, T_previous / T_current)
+    integrand_weight = convert(FT, Δt / T_current)
+
+    # Accumulate right Riemann sum
+    accumulate_average!(wta.result, integrand, previous_weight, integrand_weight)
 
     # Save time of integrand collection
     wta.previous_collection_time = clock.time
@@ -254,13 +266,18 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     return nothing
 end
 
+set_average!(result, value) = result .= value
+
+accumulate_average!(result, integrand, previous_weight, integrand_weight) =
+    @. result = result * previous_weight + integrand * integrand_weight
+
 function advance_time_average!(wta::WindowedTimeAverage, model)
 
     unscheduled = model.clock.iteration == 0 || outside_window(wta.schedule, model.clock)
     if !(unscheduled)
         if !(wta.schedule.collecting)
             # Zero out result to begin new accumulation window
-            wta.result .= 0
+            set_average!(wta.result, 0)
 
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true
@@ -292,7 +309,7 @@ function advance_time_average!(wta::SpecifiedWindowedTimeAverage, model)
     if !(unscheduled)
         if !(wta.schedule.collecting)
             # Zero out result to begin new accumulation window
-            wta.result .= 0
+            set_average!(wta.result, 0)
 
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true
@@ -320,9 +337,9 @@ end
 
 
 # So it can be used as a Diagnostic
-run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
+Oceananigans.run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
-function prognostic_state(wta::WindowedTimeAverage)
+function Oceananigans.prognostic_state(wta::WindowedTimeAverage)
     return (result = prognostic_state(wta.result),
             window_start_time = wta.window_start_time,
             window_start_iteration = wta.window_start_iteration,
@@ -330,16 +347,28 @@ function prognostic_state(wta::WindowedTimeAverage)
             schedule = prognostic_state(wta.schedule))
 end
 
-function restore_prognostic_state!(restored::WindowedTimeAverage, from)
+function Oceananigans.restore_prognostic_state!(restored::WindowedTimeAverage, from)
     restore_prognostic_state!(restored.result, from.result)
     restored.window_start_time = from.window_start_time
     restored.window_start_iteration = from.window_start_iteration
     restored.previous_collection_time = from.previous_collection_time
+
+    same_cadence = !hasproperty(from.schedule, :interval) ||
+                   (restored.schedule.interval == from.schedule.interval &&
+                    restored.schedule.window == from.schedule.window)
+
     restore_prognostic_state!(restored.schedule, from.schedule)
+
+    if !same_cadence
+        window_start_time = from.schedule.collecting ? from.window_start_time : from.previous_collection_time
+        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window - restored.schedule.interval
+        restored.schedule.actuations = 0
+    end
+
     return restored
 end
 
-restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
 
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 
@@ -366,12 +395,12 @@ $(TYPEDSIGNATURES)
 
 Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
 
-Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `Dict` of the wrapped
-outputs.
+Returns the `TimeInterval` associated with `schedule` and a `NamedTuple` or `OrderedDict` of the wrapped
+outputs, in the order of `outputs`.
 """
-function time_average_outputs(schedule::AveragedTimeSchedule, outputs::Dict, model)
-    averaged_outputs = Dict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
-                            for (name, output) in outputs)
+function time_average_outputs(schedule::AveragedTimeSchedule, outputs::AbstractDict, model)
+    averaged_outputs = OrderedDict(name => WindowedTimeAverage(output, model; schedule=copy(schedule))
+                                   for (name, output) in outputs)
 
     return TimeInterval(schedule), averaged_outputs
 end

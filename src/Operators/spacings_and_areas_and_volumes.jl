@@ -290,6 +290,24 @@ end
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
 
+for sym in (:Δyᵃᶜᵃ, :Δyᵃᶠᵃ)
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGFY)
+        val = $sym(1, 1, 1, grid)
+        return Base.fill(val, (length(Base.axes(i, 1)),
+                               length(Base.axes(j, 2)),
+                               length(Base.axes(k, 3))))
+    end
+
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGF)
+        y = [$sym(1, j′, 1, grid) for j′ in j]
+        bc = Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(y)),
+                                        Base.identity,
+                                        (Base.Broadcast.Extruded(y, (false, true, false), (1, 1, 1)),),
+                                        (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3)))
+        return Base.Broadcast.materialize(bc)
+    end
+end
+
 #####
 #####
 ##### Two-dimensional horizontal spacings
@@ -347,12 +365,34 @@ end
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j])
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j])
 
+for sym in (:Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δxᶜᶜᵃ)
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGF)
+        xy = [$sym(i′, j′, 1, grid) for i′ in i, j′ in j]
+        bc = Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(xy)),
+                                        Base.identity,
+                                        (Base.Broadcast.Extruded(xy, (true, true, false), (1, 1, 1)),),
+                                        (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3)))
+        return Base.Broadcast.materialize(bc)
+    end
+end
+
 ### XRegularLLG with on-the-fly metrics
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ) * hack_cosd(grid.φᵃᶜᵃ[j])
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ) * hack_cosd(grid.φᵃᶠᵃ[j])
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ) * hack_cosd(grid.φᵃᶠᵃ[j])
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ) * hack_cosd(grid.φᵃᶜᵃ[j])
+
+for sym in (:Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δxᶜᶜᵃ)
+    @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGFX)
+        x = [$sym(1, j′, 1, grid) for j′ in j]
+        bc = Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(x)),
+                                        Base.identity,
+                                        (Base.Broadcast.Extruded(x, (false, true, false), (1, 1, 1)),),
+                                        (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3)))
+        return Base.Broadcast.materialize(bc)
+    end
+end
 
 #####
 #####  OrthogonalSphericalShellGrid (does not have one-dimensional spacings)

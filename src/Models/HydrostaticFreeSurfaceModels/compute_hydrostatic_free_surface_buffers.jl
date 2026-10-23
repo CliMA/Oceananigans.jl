@@ -1,4 +1,3 @@
-using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
@@ -76,8 +75,7 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary.
         if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
+            compute_hydrostatic_momentum_tendencies!(model, model.velocities, active_cells_map)
         end
     end
 
@@ -132,8 +130,7 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
         # If the map == nothing, we don't need to compute the buffer because
         # the buffer is not adjacent to a processor boundary
         if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_tracer_tendencies!(model, nothing; active_cells_map)
+            compute_hydrostatic_tracer_tendencies!(model, active_cells_map)
         end
     end
 
@@ -148,7 +145,7 @@ Return kernel parameters for computing 2D (surface) variables in buffer regions.
 The buffer regions are strips along processor boundaries where computations depend on halo data.
 Returns parameters for west, east, south, and north buffer regions.
 """
-function buffer_surface_kernel_parameters(grid, arch)
+@inline function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
@@ -175,7 +172,7 @@ Return kernel parameters for computing 3D (volume) variables in buffer regions.
 Similar to `buffer_surface_kernel_parameters` but for three-dimensional fields.
 The buffer regions span the full vertical extent of the grid.
 """
-function buffer_volume_kernel_parameters(grid, arch)
+@inline function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
