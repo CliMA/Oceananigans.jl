@@ -1,7 +1,9 @@
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
+using Oceananigans.AbstractOperations: intersect_indices
 using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
+using Oceananigans.Utils: construct_regionally
 using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 
 "Extend `SeawaterPolynomials.ρ` to compute density for a `KernelFunctionOperation` -
@@ -9,8 +11,10 @@ using SeawaterPolynomials: SeawaterPolynomials, BoussinesqEquationOfState, ρ
 @inline SeawaterPolynomials.ρ(i, j, k, grid::AbstractGrid, eos, T, S, Z) = @inbounds ρ(T[i, j, k], S[i, j, k], Z[i, j, k], eos)
 
 "Return a `KernelFunctionOperation` to compute the in-situ `seawater_density`."
-seawater_density(grid, eos, temperature, salinity, geopotential_height) =
-    KernelFunctionOperation{Center, Center, Center}(ρ, grid, eos, temperature, salinity, geopotential_height)
+function seawater_density(grid, eos, temperature, salinity, geopotential_height)
+    indices = construct_regionally(intersect_indices, (Center, Center, Center), temperature, salinity, geopotential_height)
+    return KernelFunctionOperation{Center, Center, Center}(ρ, grid, eos, temperature, salinity, geopotential_height; indices)
+end
 
 const ModelsWithBuoyancy = Union{NonhydrostaticModel, HydrostaticFreeSurfaceModel}
 
