@@ -82,7 +82,7 @@ using Oceananigans
 grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
 
 # output
-54×22×4 YinYangGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
 ├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
 ├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
 ├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
@@ -114,7 +114,7 @@ function YinYangGrid(arch::AbstractArchitecture = CPU(),
     connectivity = YinYangConnectivity(overlap, (Nλ, Nφ), stencil_width, masks, interpolation)
 
     λᶠ, φᶠ = panel_faces
-    topology = (FullyConnected, FullyConnected, Bounded)
+    topology = (Sides{Connected, Connected}, Sides{Connected, Connected}, Bounded)
     panel_size = (Nλ + 2overlap, Nφ + 2overlap, Nz)
     panel(longitude, north_pole) = RotatedLatitudeLongitudeGrid(arch, FT; size = panel_size, z, halo, radius, topology,
                                                                 latitude = (φᶠ[1], φᶠ[end]), longitude, north_pole)
@@ -165,7 +165,7 @@ end
 Grids.grid_name(::YinYangGridOfSomeKind) = "YinYangGrid"
 
 function Base.summary(grid::YinYangGridOfSomeKind{FT}) where FT
-    nTX, nTY, nTZ = map(nameof, topology(grid))
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(size(grid)), " YinYangGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end

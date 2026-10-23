@@ -6,7 +6,7 @@
 # as a model for Jupiter's polar vortex clusters observed by Juno's JIRAM
 # instrument.
 #
-# The grid is a [`LambertConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid)
+# The grid is a [`ConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalConicGrid)
 # centred exactly on the North Pole with `standard_parallel = 90` — the
 # polar stereographic limit, where the cone is tangent to the sphere at the
 # pole and the projection has no antemeridian wedge.
@@ -27,14 +27,14 @@ Nx = Ny = 128
 Δ  = 25kilometers
 H  = 1000meters
 
-grid = LambertConformalConicGrid(; size = (Nx, Ny, 1),
-                                   center = (0, 90),
-                                   spacing = Δ,
-                                   standard_parallel = 90,
-                                   latitude_of_origin = 90,
-                                   central_longitude = 0,
-                                   z = (-H, 0),
-                                   halo = (7, 7, 7))
+grid = ConformalConicGrid(; size = (Nx, Ny, 1),
+                            center = (0, 90),
+                            spacing = Δ,
+                            standard_parallel = 90,
+                            latitude_of_origin = 90,
+                            central_longitude = 0,
+                            z = (-H, 0),
+                            halo = (7, 7, 7))
 
 R = grid.radius
 disk_radius = 1500kilometers
@@ -76,7 +76,7 @@ ring_radius = 900kilometers
 ring_latitude = 90 - rad2deg(ring_radius / R)
 ring_longitudes = [360k / ring_size for k in 0:ring_size-1]
 vortex_coordinates = [[(λ, ring_latitude) for λ in ring_longitudes]; (0, 90)]
-vortex_centres = [lcc_forward(grid.conformal_mapping, λ, φ) for (λ, φ) in vortex_coordinates]
+vortex_centres = [geographic_to_conformal_conic(grid.conformal_mapping, λ, φ) for (λ, φ) in vortex_coordinates]
 
 g = Oceananigans.defaults.gravitational_acceleration
 f = 2 * Oceananigans.defaults.planet_rotation_rate
@@ -84,17 +84,17 @@ f = 2 * Oceananigans.defaults.planet_rotation_rate
 ηᵥ(x, y, xᵥ, yᵥ) = η₀ * exp(-((x - xᵥ)^2 + (y - yᵥ)^2) / 2σ^2)
 
 function η_init(λ, φ, z)
-    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    x, y = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum(ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 
 function u_init(λ, φ, z)
-    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    x, y = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum(g / f * (y - yᵥ) / σ^2 * ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 
 function v_init(λ, φ, z)
-    x, y = lcc_forward(grid.conformal_mapping, λ, φ)
+    x, y = geographic_to_conformal_conic(grid.conformal_mapping, λ, φ)
     return sum(- g / f * (x - xᵥ) / σ^2 * ηᵥ(x, y, xᵥ, yᵥ) for (xᵥ, yᵥ) in vortex_centres)
 end
 

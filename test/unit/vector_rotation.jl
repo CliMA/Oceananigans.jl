@@ -166,5 +166,18 @@ end
                 test_vector_rotation(grid)
             end
         end
+
+        @testset "Extrinsic velocities on an immersed TripolarGrid [$(typeof(arch))]" begin
+            grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1, 0))
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((λ, φ) -> -2))
+            model = HydrostaticFreeSurfaceModel(grid)
+            immersed_model = HydrostaticFreeSurfaceModel(immersed_grid)
+            set!(model, u = 1, v = 0)
+            set!(immersed_model, u = 1, v = 0)
+
+            @test any(interior(model.velocities.v) .!= 0) # rotated in the northern cap
+            @test interior(immersed_model.velocities.u) == interior(model.velocities.u)
+            @test interior(immersed_model.velocities.v) == interior(model.velocities.v)
+        end
     end
 end
