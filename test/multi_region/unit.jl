@@ -1,5 +1,9 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
+using Oceananigans.Diagnostics: hasnan
+using Oceananigans.Fields: dot!
+using Oceananigans.Utils: getregion
+
 # To be extended as we find new use cases
 @testset "Test @apply_regionally macro" begin
     a = 1
@@ -80,8 +84,7 @@ end
                 return single_region_field
             end
 
-            for Partition in partition_types, region in regions
-                @info "Testing multi region $(getnamewrapper(grid)) on $regions $(Partition)s"
+            @testset "Multi region $(nameof(typeof(grid))) on $regions $(Partition)s" for Partition in partition_types, region in regions
                 mrg = MultiRegionGrid(grid, partition = Partition(region))
 
                 @test minimum_xspacing(mrg) == minimum(minimum_xspacing(mrg[r]) for r in 1:length(mrg.region_grids))
@@ -90,9 +93,7 @@ end
 
                 @test reconstruct_global_grid(mrg) == grid
 
-                for (FieldType, single_region_field) in zip(field_types, single_region_fields)
-                    @info "Testing multi region $(FieldType) on $(getnamewrapper(grid)) on $regions $(Partition)s"
-
+                @testset "Multi region $(FieldType)" for (FieldType, single_region_field) in zip(field_types, single_region_fields)
                     multi_region_field = FieldType(mrg)
                     set!(multi_region_field, (x, y, z) -> x)
                     fill_halo_regions!(multi_region_field)
@@ -103,8 +104,7 @@ end
                     @test parent(reconstructed_field) ≈ Array(parent(single_region_field))
                 end
 
-                for immersed_boundary in immersed_boundaries
-                    @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
+                @testset "Multi region immersed boundaries" for immersed_boundary in immersed_boundaries
                     ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
                     mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
@@ -133,7 +133,7 @@ end
         lat_lon_grid = LatitudeLongitudeGrid(arch, size=(12, 12, 1), longitude=(-180, 180), latitude=(-60, 60), z=(0, 1))
 
         for grid in (rectilinear_grids..., lat_lon_grid), Partition in (XPartition, YPartition), regions in (2, 3)
-            @testset "Halo filling on $(getnamewrapper(grid)) with topology $(topology(grid)) on $regions $(Partition)s on $arch" begin
+            @testset "Halo filling on $(nameof(typeof(grid))) with topology $(topology(grid)) on $regions $(Partition)s on $arch" begin
                 mrg = MultiRegionGrid(grid, partition = Partition(regions))
 
                 for FieldType in (CenterField, XFaceField, YFaceField)
@@ -152,4 +152,35 @@ end
             end
         end
     end
+end
+
+@testset "Multi region dot products [$(summary(arch))]" for arch in archs
+    grid = RectilinearGrid(arch; size=(8, 8, 4), extent=(1, 1, 1))
+    mrg = MultiRegionGrid(grid; partition=XPartition(2))
+
+    a = CenterField(mrg)
+    b = CenterField(mrg)
+    set!(a, 2)
+    set!(b, 3)
+
+    Ncells = prod(size(grid))
+    @test dot(a, b) == 2 * 3 * Ncells
+    @test norm(a) == 2 * sqrt(Ncells)
+
+    # `dot!` sums the regional dot products into the one-element array `r`
+    r = zeros(mrg, 1)
+    @test dot!(r, a, b) === r
+    @test Array(r)[1] == 2 * 3 * Ncells
+
+    # The condition is evaluated on each regional grid
+    western_half(i, j, k, grid, c) = i <= size(grid, 1) ÷ 2
+    @test dot(a, b; condition=western_half) == 2 * 3 * Ncells ÷ 2
+    @test Array(dot!(r, a, b; condition=western_half))[1] == 2 * 3 * Ncells ÷ 2
+end
+
+@testset "NaN in one region of a multi-region field [$(summary(arch))]" for arch in archs
+    c = CenterField(MultiRegionGrid(RectilinearGrid(arch; size=(8, 8, 1), extent=(1, 1, 1)); partition=XPartition(2)))
+    @test !hasnan(c)
+    set!(getregion(c, 2), NaN)
+    @test hasnan(c)
 end

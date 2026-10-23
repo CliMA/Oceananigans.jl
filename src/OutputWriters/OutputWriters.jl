@@ -5,7 +5,8 @@ export
     Checkpointer, checkpoint,
     written_names,
     WindowedTimeAverage, AveragedSpecifiedTimes, FileSizeLimit, TimeDerivative,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel
 
 using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays: OffsetArrays, OffsetArray
@@ -17,11 +18,9 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
-                          RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
-                          ColumnEnsembleSize, Periodic, Bounded, FullyConnected,
-                          LeftConnected, RightConnected, RightFaceFolded, RightCenterFolded,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+                          RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
+                          ColumnEnsembleSize, Periodic, Sides, Bounded, Closed, Connected,
+                          CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected,
                           grid, topology, halo_size, xspacings, yspacings, rspacings,
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
@@ -34,10 +33,10 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                    ConformalCubedSpherePanelGrid,
-                                                   LambertConformalConicGrid,
+                                                   ConformalConicGrid,
                                                    Tripolar, LatitudeLongitudeRotation,
                                                    CubedSphereConformalMapping,
-                                                   LambertConformalConic
+                                                   ConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize
@@ -58,6 +57,7 @@ include("windowed_time_average.jl")
 include("time_derivative.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
+include("filtered_time_interval.jl")
 include("output_attributes.jl")
 include("dimension_names.jl")
 include("output_serialization.jl")

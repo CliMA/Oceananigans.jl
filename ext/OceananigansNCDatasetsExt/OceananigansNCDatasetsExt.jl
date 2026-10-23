@@ -29,8 +29,8 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 import Oceananigans.Fields
 using Oceananigans.Fields: Fields, AbstractField, Field, data, interior, set!, Reduction, location, indices
 using Oceananigans.Grids:
-    Center, Face, grid, nodes, constructor_arguments,
-    generate_coordinate
+    Center, Face, Sides, grid, nodes, constructor_arguments,
+    generate_coordinate, validate_topology, AbstractVerticalCoordinate
 using Oceananigans.OrthogonalSphericalShellGrids:
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     Tripolar, LatitudeLongitudeRotation,
@@ -56,11 +56,14 @@ using Oceananigans.OutputWriters:
     show_averaging_schedule,
     WindowedTimeAverage,
     TimeDerivative,
+    TimeFilteredOutput,
     NoFileSplitting,
     update_file_splitting_schedule!,
     construct_output,
     output_names,
     time_average_outputs,
+    has_initial_output,
+    output_time,
     fetch_output,
     convert_output,
     fetch_and_convert_output,
@@ -74,6 +77,7 @@ using Oceananigans.OutputWriters:
     squeeze_reduced_dimensions,
     inflate_reduced_dimensions,
     materialize_serialized_output,
+    serialize_vertical_coordinate,
     construct_ossg_halo_padded_array,
     halo_fill_2d_metric
 using Oceananigans.Utils:

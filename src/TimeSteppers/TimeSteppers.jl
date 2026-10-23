@@ -18,9 +18,11 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
                           VerticallyImplicitTimeDiscretization,
-                          AdaptiveVerticallyImplicitDiscretization
+                          AdaptiveVerticallyImplicitDiscretization,
+                          kernel_time_step
 
 """
     abstract type AbstractTimeStepper
@@ -53,6 +55,7 @@ end
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
+update_lagrangian_particle_state!(model) = nothing
 
 # Materialize clock fields to avoid aliasing issues with Reactant.
 # For QAB2, last_Δt and last_stage_Δt must be distinct objects.

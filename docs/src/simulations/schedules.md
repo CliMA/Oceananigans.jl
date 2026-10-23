@@ -204,6 +204,16 @@ and samples every `stride` iterations inside the window.
 [`SpecifiedTimes`](@ref Oceananigans.OutputWriters.SpecifiedTimes) but with a trailing averaging window.
 Pass either a `SpecifiedTimes` instance or raw times.
 
+### `FilteredTimeInterval`
+
+[`FilteredTimeInterval`](@ref Oceananigans.OutputWriters.FilteredTimeInterval) asks an output writer to write time-filtered output: a
+weighted average over the `window` of a kernel, centered on the output time, with weights from the kernel:
+[`LanczosKernel`](@ref Oceananigans.OutputWriters.LanczosKernel)`(window; cutoff)`, which removes periods shorter than `cutoff`,
+[`HanningKernel`](@ref Oceananigans.OutputWriters.HanningKernel) or [`BoxcarKernel`](@ref Oceananigans.OutputWriters.BoxcarKernel) (a running mean).
+Any [`AbstractFilterKernel`](@ref Oceananigans.OutputWriters.AbstractFilterKernel) can be supplied.
+Because the window is centered, the output carries no phase shift, unlike the trailing window of `AveragedTimeInterval`;
+each output is therefore written `window / 2` after its time.
+
 ### `FileSizeLimit`
 
 [`FileSizeLimit`](@ref Oceananigans.OutputWriters.FileSizeLimit) actuates when the target file grows beyond `size_limit` bytes.

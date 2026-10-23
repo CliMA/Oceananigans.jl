@@ -142,27 +142,23 @@ function can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end = :bottom)
 end
 
 @testset "Batched tridiagonal solvers" begin
-    @info "Testing BatchedTridiagonalSolver..."
+    @testset "Batched tridiagonal solver [$arch]" for arch in archs
+        for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
+            @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
+        end
 
-    for arch in archs
-        @testset "Batched tridiagonal solver [$arch]" begin
-            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
-                @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
-            end
+        for Nz in [8, 11], tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
+            @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
+        end
 
-            for Nz in [8, 11], tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
-                @test can_solve_single_tridiagonal_system(arch, Nz; tridiagonal_direction)
+        for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
+            for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
+                @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction)
             end
+        end
 
-            for Nx in [3, 8], Ny in [5, 16], Nz in [8, 11]
-                for tridiagonal_direction in (XDirection(), YDirection(), ZDirection())
-                    @test can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz; tridiagonal_direction)
-                end
-            end
-
-            for FT in float_types, Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
-                @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
-            end
+        for FT in float_types, Nx in [3, 8], Ny in [5, 16], Nz in [8, 11], garbage_end in (:bottom, :top)
+            @test can_isolate_decoupled_rows(arch, FT, Nx, Ny, Nz; garbage_end)
         end
     end
 end

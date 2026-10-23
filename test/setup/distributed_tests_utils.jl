@@ -7,6 +7,8 @@ using Oceananigans.TimeSteppers: first_time_step!
 
 include(joinpath(@__DIR__, "dependencies_for_runtests.jl"))
 
+using Oceananigans.BoundaryConditions: UPivot, TPivot, FPivot
+
 if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
 const _DISTRIBUTED_TESTS_UTILS_LOADED = true
 
@@ -21,7 +23,7 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
     # We need a bottom height field that ``masks'' the singularities.
     # Note: For the test to pass we also need to mask the southernmost row near φm.
     # We use φ < φm + radius (not just φ < φm) to also immerse the southernmost row on
-    # RightFaceFolded grids, for which φm sits at the cell face and j=1 centers
+    # FaceFolded grids, for which φm sits at the cell face and j=1 centers
     # are slightly north of φm.
     # TODO: Investigate why masking near φm is necessary. Shouldn't the no-flux south
     # BC already make the south halo behave as if everything south was immersed?
@@ -35,8 +37,8 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 end
 
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename; fold_topology)
-    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
+function run_distributed_tripolar_grid(arch, filename; fold_topology, pivot)
+    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology, pivot)
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 

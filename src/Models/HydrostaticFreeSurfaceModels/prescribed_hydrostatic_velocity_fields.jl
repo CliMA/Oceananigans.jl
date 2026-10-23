@@ -147,7 +147,7 @@ materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFie
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
-compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
+compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
@@ -169,8 +169,9 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
+    update_lagrangian_particle_state!(model)
+    step_lagrangian_particles!(model, Δt)
 end
 
 update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =

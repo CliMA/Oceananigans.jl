@@ -11,12 +11,11 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RightConnected, LeftConnected, FullyConnected,
-    RightFaceFolded, RightCenterFolded,
+    CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
-    LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
+    TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
+    geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor,
     MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
@@ -44,15 +43,16 @@ export
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, GravityWaveRadiationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection, GravityWaveRadiation, NormalRadiation, SurfaceWaveRadiation,
+    TidalHarmonics, tidal_forcing, tidal_boundary_conditions, tidal_atlas_constants,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!, RegriddedOperation,
+    interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
+    Forcing, Relaxation, InflowOutflowRate, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
@@ -101,7 +101,7 @@ export
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, TimeDerivativeCallback, iteration,
+    Simulation, AutomaticDifferentiation, run!, Callback, add_callback!, add_conservation_fixer!, TimeDerivativeCallback, iteration,
 
     # Diagnostics
     CFL, AdvectiveCFL, DiffusiveCFL,
@@ -111,6 +111,7 @@ export
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     PrecedingIterations, TimeOffset,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    FilteredTimeInterval, AbstractFilterKernel, LanczosKernel, BoxcarKernel, HanningKernel,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk, time_average,
@@ -119,10 +120,11 @@ export
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation, InterpolatedOperation,
     ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV,
 
-    # MultiRegion and Cubed sphere
+    # MultiRegion, cubed sphere, and Yin-Yang
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+    YinYangGrid, YinYangConservationFixer,
 
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
@@ -200,8 +202,20 @@ abstract type AbstractOutputWriter end
 
 # Callsites for Callbacks
 struct TimeStepCallsite end
-struct TendencyCallsite end
 struct UpdateStateCallsite end
+
+# The tendencies that the callbacks of a `TendencyCallsite` act on
+struct MomentumTendency end
+struct TracerTendency end
+
+struct TendencyCallsite{T}
+    tendency :: T
+end
+
+TendencyCallsite() = TendencyCallsite(MomentumTendency())
+TendencyCallsite{T}() where T = TendencyCallsite(T())
+
+const TracerTendencyCallsite = TendencyCallsite{TracerTendency}
 
 #####
 ##### Place-holder functions
