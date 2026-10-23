@@ -40,9 +40,6 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Ax�
 
 const fused_multiply_add_choice = @load_preference("fused_multiply_add", "muladd")
 
-fused_multiply_add_choice in ("muladd", "fma") ||
-    error("The fused_multiply_add preference must be \"muladd\" or \"fma\", got \"$fused_multiply_add_choice\".")
-
 @inline fused_multiply_add(a, b, c) = fused_multiply_add(promote(a, b, c)...)
 @inline fused_multiply_add(a::T, b::T, c::T) where T = fma(a, b, c)
 @inline fused_multiply_add(a::BFloat16, b::BFloat16, c::BFloat16) = BFloat16(fma(Float32(a), Float32(b), Float32(c)))
@@ -53,6 +50,12 @@ replace_muladd(x::Function, replacement) = x === Base.muladd ? replacement : x
 replace_muladd(x::GlobalRef, replacement) = x.name === :muladd ? replacement : x
 replace_muladd(ex::Expr, replacement) = Expr(ex.head, map(arg -> replace_muladd(arg, replacement), ex.args)...)
 
+function apply_fused_multiply_add_choice(expression, choice)
+    choice == "muladd" && return expression
+    choice == "fma" && return replace_muladd(expression, GlobalRef(@__MODULE__, :fused_multiply_add))
+    error("The fused_multiply_add preference must be \"muladd\" or \"fma\", got \"$choice\".")
+end
+
 """
     @muladd expression
 
@@ -61,8 +64,7 @@ Oceananigans is `"muladd"`, the default) or replaced by `fma` (`"fma"`).
 """
 macro muladd(ex)
     expanded = macroexpand(__module__, Expr(:macrocall, GlobalRef(MuladdMacro, Symbol("@muladd")), __source__, ex))
-    fused_multiply_add_choice == "fma" && (expanded = replace_muladd(expanded, GlobalRef(@__MODULE__, :fused_multiply_add)))
-    return esc(expanded)
+    return esc(apply_fused_multiply_add_choice(expanded, fused_multiply_add_choice))
 end
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end

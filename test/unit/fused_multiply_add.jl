@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans: fully_supported_float_types
-using Oceananigans.Advection: fused_multiply_add, replace_muladd
+using Oceananigans.Advection: apply_fused_multiply_add_choice, fused_multiply_add, replace_muladd
 
 BFloat16 = last(fully_supported_float_types)
 
@@ -31,5 +31,14 @@ contains_value(x, v) = x === v || x isa Expr && any(arg -> contains_value(arg, v
         @test contains_value(expression, muladd)
         @test contains_value(replaced, :replacement)
         @test !contains_value(replaced, muladd)
+    end
+
+    @testset "apply_fused_multiply_add_choice" begin
+        expression = :(muladd(x, y, z))
+
+        @test apply_fused_multiply_add_choice(expression, "muladd") === expression
+        @test !contains_value(apply_fused_multiply_add_choice(expression, "fma"), :muladd)
+        @test contains_value(apply_fused_multiply_add_choice(expression, "fma"), GlobalRef(Oceananigans.Advection, :fused_multiply_add))
+        @test_throws ErrorException apply_fused_multiply_add_choice(expression, "bogus")
     end
 end
