@@ -141,7 +141,7 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
 
 # `a * b` if `a != 0`, 0 otherwise (masks away NaNs in `b`)
-@inline masked_multiply(x, y) = x * y * (x == 0)
+@inline masked_multiply(x, y) = x * y * (x != 0)
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
