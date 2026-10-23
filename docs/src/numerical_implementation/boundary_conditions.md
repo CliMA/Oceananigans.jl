@@ -465,9 +465,9 @@ constants of a tidal atlas.
 ### Net transport through open boundaries
 
 Before the pressure solve of a [`NonhydrostaticModel`](@ref), the boundary-normal velocities set by the
-schemes are corrected so that the net volume transport into the domain vanishes, which the pressure
-Poisson equation with a rigid lid requires. The `target_transport` keyword argument of the schemes
-controls how the correction is distributed among the boundaries.
+schemes are corrected so that the net volume transport into the domain vanishes. The `target_transport`
+keyword argument of the schemes gives the user more control on how the correction is distributed among
+the boundaries.
 
 The correction has two steps. First, the normal velocity on every boundary whose scheme has a
 `target_transport` ``Q`` is shifted uniformly so that the transport through that boundary matches the
@@ -477,11 +477,11 @@ target,
 ```
 where ``A`` is the area of the boundary and the transport is positive in the positive coordinate
 direction. Second, the remaining net inflow is removed by the same uniform shift of the normal velocity on
-all boundaries that have a scheme and no target. If every such boundary has a target, the targets must add
-up to zero net transport.
+all boundaries that have a scheme and no target. If every boundary with a scheme has a target, the
+targets and the transport through boundaries with a prescribed normal velocity must add up to zero net
+transport into the domain.
 
 A [`HydrostaticFreeSurfaceModel`](@ref) skips the second step because the free surface absorbs a net
-imbalance. With an [`ImplicitFreeSurface`](@ref) the first step is applied to the predictor velocity
-before the free surface solve, so the transport after the barotropic correction matches the target only
-approximately. With a `SplitExplicitFreeSurface` the transport is prescribed through the
-`target_transport` of `GravityWaveRadiation` on the barotropic transport.
+imbalance. A net transport through the open boundaries changes the mean free surface height, so the
+targets do not need to add up to zero net transport. With a `SplitExplicitFreeSurface` the transport can
+be controlled through the `target_transport` of `GravityWaveRadiation` on the barotropic transport.
