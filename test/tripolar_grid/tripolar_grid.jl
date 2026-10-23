@@ -1,12 +1,12 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, TPivot, pivot_shift
-using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Utils: KernelParameters
 using Statistics
 
-fold_topologies = ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+fold_topologies = ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -286,9 +286,9 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (FaceFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
+            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (CenterFolded)
             #          │           │           │           │           │           │           │
             #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
             #          │           │           │           │           │           │           │
@@ -302,18 +302,18 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # Use half-indices for the pivot-point index, which depends on the topology and location.
             # pivotjᶜ is the pivot index for center fields, and pivotjᶠ for face fields.
-            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
+            pivotjᶜ, pivotjᶠ = (fold_topology == FaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
 
             # Then we take views centered around the pivot and rotate that view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices
             # that remain within the interior + halo after 180° rotation.
             maxjᶜ = Ny + Hy # max j for center fields
-            maxjᶠ = Ny + Hy + (fold_topology == RightFaceFolded) # +1 for y-face fields if FPivot
+            maxjᶠ = Ny + Hy + (fold_topology == FaceFolded) # +1 for y-face fields if FPivot
             jᶜ = pivotable_indices(1 - Hy, maxjᶜ, pivotjᶜ)
             jᶠ = pivotable_indices(1 - Hy, maxjᶠ, pivotjᶠ)
 
             # Enforce zero velocities on the pivot points where u = -u and v = -v!
-            # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)
+            # Only u velocity can be on pivot point for UPointPivot grid (CenterFolded)
             if pivot == UPivot
                 u.data[[1, Nx ÷ 2 + 1, Nx + 1], pivotjᶜ, :] .= 0.0
             end
@@ -350,7 +350,7 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
 
             # The fold row is its own mirror at every level, vertical halos included
             @testset "Test fold row vertical halos" begin
-                if fold_topology == RightFaceFolded
+                if fold_topology == FaceFolded
                     @test view(CF.data, iᶜ, Ny+1, :) ==  view(CF.data, iᶜ′, Ny+1, :)
                     @test view(FF.data, iᶠ, Ny+1, :) ==  view(FF.data, iᶠ′, Ny+1, :)
                     @test view( v.data, iᶜ, Ny+1, :) == -view( v.data, iᶜ′, Ny+1, :)

@@ -338,7 +338,7 @@ RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
 function Base.summary(grid::RectilinearGrid)
     FT = eltype(grid)
-    nTX, nTY, nTZ = map(T -> nameof(T), topology(grid))
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(grid),
                   " RectilinearGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
