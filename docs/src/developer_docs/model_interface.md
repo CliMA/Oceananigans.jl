@@ -77,7 +77,8 @@ implement (or inherit sane fallbacks for) the items listed below.
   prognostic variables by one step. Simulation hands in the tuple of
   `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute
   `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite`
-  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)`
+  callbacks (after auxiliary updates), and `TracerTendencyCallsite` callbacks after the tracer
+  tendencies, which a model may compute separately. The method must call `tick!(model.clock, Δt)`
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
   At iteration 0, `time_step!` calls `maybe_prepare_first_time_step!(model, Δt, callbacks)`
   as a safety net for bare model time-stepping (without `Simulation`). This calls

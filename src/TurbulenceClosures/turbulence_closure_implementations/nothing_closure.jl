@@ -3,6 +3,10 @@
 @inline ∂ⱼ_τ₂ⱼ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
 @inline ∂ⱼ_τ₃ⱼ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
 
+@inline diffusive_flux_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
 compute_closure_fields!(closure_fields, ::Nothing, args...; kwargs...) = nothing
 compute_closure_fields!(::Nothing, ::Nothing, args...; kwargs...) = nothing
 

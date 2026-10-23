@@ -10,12 +10,13 @@ using Oceananigans.Fields: ReducedAbstractField,
                            filltype,
                            reduced_dimensions,
                            reduced_location
-using Oceananigans.Fields: condition_operand, conditional_length, local_dot!
+using Oceananigans.Fields: condition_operand, conditional_length, local_dot!, reduction_operand
 using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
 import Oceananigans.Fields: Field, set!, conditional_length
+import Oceananigans.Solvers: reduce_partial_sums!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm
 import Statistics: mean
@@ -176,7 +177,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             Base.$(reduction!)(identity,
                                interior(r),
-                               operand;
+                               reduction_operand(operand);
                                kwargs...)
 
             return maybe_all_reduce!($(all_reduce_op), r)
@@ -190,7 +191,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             Base.$(reduction!)(identity,
                                interior(r),
-                               condition_operand(a, condition, mask);
+                               reduction_operand(condition_operand(a, condition, mask));
                                kwargs...)
 
             return maybe_all_reduce!($(all_reduce_op), r)
@@ -208,7 +209,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             maybe_all_reduce!($(all_reduce_op), r)
 
@@ -237,6 +238,15 @@ end
 @inline function norm(u::DistributedAbstractField; condition=nothing)
     n² = dot(u, u; condition)
     return sqrt(n²)
+end
+
+# The column sums of the fused conjugate-gradient iteration: each rank reduces
+# its own, then the ranks' sums are added on the host and copied back into `sums`
+function reduce_partial_sums!(sums, partial_sums, arch::Distributed)
+    reduce_partial_sums!(sums, partial_sums, child_architecture(arch))
+    host_sums = Array(sums)
+    all_reduce!(+, host_sums, arch)
+    return copyto!(sums, host_sums)
 end
 
 # Distributed dot product: the local dot products are summed across ranks on the host,
