@@ -1,5 +1,5 @@
 using Oceananigans: Oceananigans
-using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected
+using Oceananigans.Grids: Grids, Flat
 using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo, connected_range
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
@@ -255,9 +255,7 @@ Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, fre
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected,
-                                LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                                LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+const ConnectedTopology = Union{Sides{Connected}, Sides{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}

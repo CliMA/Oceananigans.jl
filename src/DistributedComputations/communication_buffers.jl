@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
-using Oceananigans.Grids: halo_size, size, topology
+using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
 
 using Adapt
@@ -107,7 +107,7 @@ contains the full extent of the halo region including the corners. This allows c
 data to be communicated in a single pass along with the edge data.
 
 `OneDBuffer` is also used in two-dimensional parallelizations for processes at domain
-edges (e.g., boundaries with `RightConnected` or `LeftConnected` topologies), where
+edges (directions connected on one side only), where
 corner communication is not needed in that direction.
 
 # Size
@@ -178,7 +178,7 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     _, Ty, Tz = size(parent(data))
     Ny = size(grid, 2)
     FT = eltype(data)
-    if (ranks(arch)[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
+    if (ranks(arch)[2] == 1) || ((TY <: Sides{<:CommunicatingSide}) != (TY <: Sides{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, H, Ty, Tz))
         recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
         return OneDBuffer(send, recv)
@@ -193,7 +193,7 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     Nx = size(grid, 1)
-    if (ranks(arch)[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
+    if (ranks(arch)[1] == 1) || ((TX <: Sides{<:CommunicatingSide}) != (TX <: Sides{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, Tx, H, Tz))
         recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
         return OneDBuffer(send, recv)
