@@ -117,10 +117,7 @@ for bias in (:symmetric, :biased)
                     if $outside_buffer($index, topology(grid, $d), grid.$N, scheme)
                         return ψ̂
                     else
-                        # The buffer schemes of a reduced-precision scheme may return a different floating-point type
-                        # than the high-order reconstruction (e.g. BFloat16 versus Float32). Converting to the type of
-                        # ψ̂ keeps the interpolation type-stable, rather than returning a `Union`.
-                        return convert(typeof(ψ̂), $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                        return $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...)
                     end
                 end
             else
