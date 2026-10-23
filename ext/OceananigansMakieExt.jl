@@ -399,7 +399,7 @@ ax = Axis3(fig[1, 1]; aspect=:data)
 plt = geo_surface!(ax, T)
 
 # output
-:Plot
+Surface{Tuple{Matrix{Float64}, Matrix{Float64}, Matrix{Float32}}}
 ```
 """
 function geo_surface!(ax, f::Field; kwargs...)
@@ -529,7 +529,7 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
 plt = surface!(ax, T; colormap=:viridis)
-typeof(plt).name.name
+nameof(typeof(plt))
 
 # output
 :Plot

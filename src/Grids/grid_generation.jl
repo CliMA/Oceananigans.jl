@@ -95,7 +95,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 end
 
 # Special case for tripolar grids.
-# For RightCenterFolded, we want to generate coordinates that start and end at center locations,
+# For a `CenterFolded` right side, we want to generate coordinates that start and end at center locations,
 # but the default `generate_coordinate` assumes that the interval is located on faces,
 # so we must extend the interval by half a cell on both sides:
 # Example with N = 4
@@ -106,7 +106,7 @@ end
 #                       │                               │
 # extended interval:    f₁                              f₂
 extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
+function extend_node_interval(::Sides{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)
