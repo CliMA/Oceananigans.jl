@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, Azᶠᶜᶠ, Azᶜᶠᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
@@ -25,10 +25,27 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
+# Computed the vertical veloicty from the transport to correctly compute
+# on curvilinear grids
+@inline function vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W)
+    transport = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
+    Az = Azᶠᶜᶠ(i, j, k, grid)
+    return ifelse(Az > 0, transport / Az, zero(transport))
+end
+
+@inline function vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, W)
+    transport = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
+    Az = Azᶜᶠᶠ(i, j, k, grid)
+    return ifelse(Az > 0, transport / Az, zero(transport))
+end
+
+@inline vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme::CenteredScheme, W) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+@inline vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme::CenteredScheme, W) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+
 @inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
+    w  = vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
@@ -36,7 +53,7 @@ end
 @inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
+    w  = vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
     return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
