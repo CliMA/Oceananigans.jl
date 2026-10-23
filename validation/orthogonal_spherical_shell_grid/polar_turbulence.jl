@@ -62,7 +62,7 @@ if make_movie
     simulation.output_writers[:jld2] = JLD2Writer(model, (; u, v, ζ, s),
                                                   schedule = TimeInterval(2hours),
                                                   filename = "polar_turbulence",
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 end
 
 @info "Run rotated-pole turbulence validation..."

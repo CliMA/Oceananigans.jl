@@ -44,7 +44,7 @@ simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename = "ossg_splash",
                                                 with_halos = true,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 @info "Run simulation..."
 

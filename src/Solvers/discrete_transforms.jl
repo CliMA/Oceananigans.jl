@@ -109,7 +109,15 @@ end
 ##### Applying discrete transforms
 #####
 
-(transform::DiscreteTransform{<:Nothing})(A, buffer) = nothing
+(transform::DiscreteTransform{<:Nothing, <:Nothing})(A, buffer) = nothing
+
+apply_transforms!(::Tuple{}, A, buffer) = nothing
+
+function apply_transforms!(transforms::Tuple, A, buffer)
+    first(transforms)(A, buffer)
+    apply_transforms!(Base.tail(transforms), A, buffer)
+    return nothing
+end
 
 function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
     maybe_permute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)

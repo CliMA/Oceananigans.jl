@@ -1,9 +1,8 @@
-using Oceananigans: TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!
+using Dates: Dates
+using Oceananigans: Oceananigans, initialize!, prognostic_state, restore_prognostic_state!,
+                    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.OutputWriters: WindowedTimeAverage, advance_time_average!, TimeDerivative
 using Oceananigans.Utils: prettysummary
-using Dates
-
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 struct Callback{P, F, S, CS}
     func :: F
@@ -26,7 +25,7 @@ which in turn does nothing by default.
 or specialized for `callback.func`.
 `
 """
-initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
+Oceananigans.initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
 
 """
 $(TYPEDSIGNATURES)
@@ -40,7 +39,7 @@ or specialized for `callback.func`.
 """
 finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
 
-initialize!(func, sim) = nothing
+Oceananigans.initialize!(func, sim) = nothing
 finalize!(func, sim) = nothing
 
 """
@@ -61,6 +60,9 @@ The `callsite` determines where `Callback` is executed. The possible values for
 
 * `TendencyCallsite()`: after tendencies are calculated, but before taking
   a time-step (useful for modifying tendency calculations).
+
+* `TracerTendencyCallsite()`: after the tracer tendencies are calculated, which
+  `HydrostaticFreeSurfaceModel` does later in each substep than the momentum tendencies.
 
 * `UpdateStateCallsite()`: within `update_state!`, after auxiliary variables have
   been computed (for multi-stage time-steppers, `update_state!` may be called multiple
@@ -91,6 +93,49 @@ end
 Callback(wta::WindowedTimeAverage, schedule; kw...) =
     throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage.
                         Use Callback(windowed_time_average)"))
+
+const TimeDerivativeCallback = Callback{<:Any, <:TimeDerivative}
+
+"""
+    TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1))
+
+Return a [`Callback`](@ref) that updates a [`TimeDerivative`](@ref) of `operand` on
+`schedule`, so that the derivative is differenced over the interval between actuations.
+The derivative itself is `callback.func`, whose `result` is a `Field`.
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+model = NonhydrostaticModel(grid)
+
+simulation = Simulation(model, Δt=1e-2, stop_iteration=10)
+
+simulation.callbacks[:∂ₜu] = TimeDerivativeCallback(model.velocities.u, schedule=TimeInterval(0.1))
+
+# output
+Callback of TimeDerivative of 4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU on TimeInterval(100 ms)
+```
+"""
+TimeDerivativeCallback(operand, model=nothing; schedule=IterationInterval(1)) =
+    Callback(TimeDerivative(operand, model), schedule)
+
+function Oceananigans.prognostic_state(callback::TimeDerivativeCallback)
+    return (schedule = prognostic_state(callback.schedule),
+            time_derivative = prognostic_state(callback.func))
+end
+
+function Oceananigans.restore_prognostic_state!(restored::TimeDerivativeCallback, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    restore_prognostic_state!(restored.func, from.time_derivative)
+    return restored
+end
+
+Oceananigans.restore_prognostic_state!(::TimeDerivativeCallback, ::Nothing) = nothing
 
 struct GenericName end
 
@@ -138,13 +183,26 @@ end
 
 validate_schedule(func, schedule) = schedule
 
-function prognostic_state(callback::Callback)
-    return (; schedule = prognostic_state(callback.schedule))
+"""
+    add_conservation_fixer!(simulation)
+
+Add the conservation fixer of `simulation.model.grid`, if the grid has one, as the callback
+`simulation.callbacks[:conservation_fixer]`; calling it again replaces that callback.
+"""
+add_conservation_fixer!(simulation) = add_conservation_fixer!(simulation, simulation.model.grid)
+add_conservation_fixer!(simulation, grid) = nothing
+
+Oceananigans.prognostic_state(::Function) = nothing
+
+function Oceananigans.prognostic_state(callback::Callback)
+    return (; schedule = prognostic_state(callback.schedule),
+              func = prognostic_state(callback.func))
 end
 
-function restore_prognostic_state!(restored::Callback, from)
+function Oceananigans.restore_prognostic_state!(restored::Callback, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
+    restore_prognostic_state!(restored.func, from.func)
     return restored
 end
 
-restore_prognostic_state!(::Callback, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Callback, ::Nothing) = nothing

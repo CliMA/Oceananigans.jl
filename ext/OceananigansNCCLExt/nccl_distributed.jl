@@ -25,6 +25,35 @@ MPI.Barrier(c::NCCLCommunicator) = MPI.Barrier(c.mpi)
 MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs...)
 MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
 MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
+DC.mpi_communicator(c::NCCLCommunicator) = c.mpi
+DC.check_field_tags(c::NCCLCommunicator, field_count) = DC.check_field_tags(c.mpi, field_count)
+
+# The host MPI library need not be CUDA-aware: device buffers reaching these forwarded
+# collectives (e.g. the tiny result arrays of distributed field reductions) must be
+# staged through the host, or MPI's host memcpy segfaults on the device pointer.
+function MPI.Allreduce!(sendbuf::CUDA.AnyCuArray, recvbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator)
+    host_sendbuf = Array(sendbuf)
+    host_recvbuf = similar(host_sendbuf)
+    MPI.Allreduce!(host_sendbuf, host_recvbuf, op, c.mpi)
+    copyto!(recvbuf, host_recvbuf)
+    return recvbuf
+end
+
+function MPI.Allreduce!(sendrecvbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator)
+    host_buffer = Array(sendrecvbuf)
+    MPI.Allreduce!(host_buffer, op, c.mpi)
+    copyto!(sendrecvbuf, host_buffer)
+    return sendrecvbuf
+end
+
+MPI.Allreduce(sendbuf::CUDA.AnyCuArray, op, c::NCCLCommunicator) = MPI.Allreduce(Array(sendbuf), op, c.mpi)
+
+function MPI.Bcast!(buf::CUDA.AnyCuArray, c::NCCLCommunicator; kwargs...)
+    host_buffer = Array(buf)
+    MPI.Bcast!(host_buffer, c.mpi; kwargs...)
+    copyto!(buf, host_buffer)
+    return buf
+end
 
 #####
 ##### Type aliases for dispatch
@@ -52,8 +81,7 @@ function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.local_index,
                           mpi_arch.connectivity,
                           nccl_communicator,
-                          mpi_arch.mpi_requests,
-                          mpi_arch.mpi_tag,
+                          mpi_arch.field_count,
                           mpi_arch.devices)
 end
 
@@ -71,12 +99,11 @@ const pending_unpacks = Vector{Any}()
 const pending_unpacks_lock = ReentrantLock()
 
 function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
-                                         grid::NCCLDistributedGrid, buffers, args...;
+                                         arch::NCCLDistributedArchitecture, grid, buffers, args;
                                          async = false, only_local_halos = false,
                                          fill_open_bcs = true, kwargs...)
     only_local_halos && return nothing
 
-    arch = DC.architecture(grid)
     communicator = arch.communicator
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
@@ -85,7 +112,7 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
     pack_done = CUDA.CuEvent(CUDA.EVENT_DISABLE_TIMING)
     CUDA.record(pack_done)
-    CUDA.cuStreamWaitEvent(communicator.comm_stream, pack_done, UInt32(0))
+    CUDA.wait(pack_done, communicator.comm_stream)
 
     NCCL.groupStart()
     enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
@@ -102,7 +129,7 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     end
 
     # Sync: have the default stream wait for this fill's NCCL ops, then unpack.
-    CUDA.cuStreamWaitEvent(CUDA.stream(), comm_done, UInt32(0))
+    CUDA.wait(comm_done, CUDA.stream())
     DC.recv_from_buffers!(c, buffers, grid, buffer_side)
     return nothing
 end
@@ -117,18 +144,14 @@ function synchronize_communication!(field::NCCLDistributedField)
     arch = DC.architecture(field.grid)
 
     # Synchronize when using heterogeneous NCCL/MPI
-    if !isempty(arch.mpi_requests)
-        DC.cooperative_waitall!(arch.mpi_requests)
-        arch.mpi_tag[] = 0
-        empty!(arch.mpi_requests)
-    end
+    DC.wait_for_messages!(field)
 
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)
             # Wait on each fill's completion event before unpacking; this also
             # fences the next iteration's packs behind the finished transfers.
             for pending in pending_unpacks
-                CUDA.cuStreamWaitEvent(CUDA.stream(), pending.event, UInt32(0))
+                CUDA.wait(pending.event, CUDA.stream())
                 DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
             end
             empty!(pending_unpacks)
@@ -141,8 +164,8 @@ end
 ##### NCCL corner communication
 #####
 
-function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
-                          grid, buffers, args...; only_local_halos=false, kw...)
+function DC.fill_corners!(c, connectivity, arch::NCCLDistributedArchitecture,
+                          grid, buffers; only_local_halos=false, kw...)
     only_local_halos && return nothing
 
     isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
@@ -167,10 +190,8 @@ nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
-    send_buf = eltype(buffers.send) === Bool ? reinterpret(UInt8, buffers.send) : buffers.send
-    recv_buf = eltype(buffers.recv) === Bool ? reinterpret(UInt8, buffers.recv) : buffers.recv
-    NCCL.Send(send_buf, nccl_comm; dest=corner_rank)
-    NCCL.Recv!(recv_buf, nccl_comm; source=corner_rank)
+    NCCL.Send(nccl_buffer(buffers.send), nccl_comm; dest=corner_rank)
+    NCCL.Recv!(nccl_buffer(buffers.recv), nccl_comm; source=corner_rank)
     return nothing
 end
 
@@ -178,25 +199,38 @@ end
 ##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
 #####
 
+# NCCL has no Bool dtype; reinterpret as UInt8 (same size)
+nccl_buffer(a::AbstractArray{Bool}) = reinterpret(UInt8, a)
+nccl_buffer(a) = a
+
 function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
     isnothing(buf) && return nothing
-    # NCCL has no Bool dtype; reinterpret as UInt8 (same size)
-    send_buf = eltype(buf.send) === Bool ? reinterpret(UInt8, buf.send) : buf.send
-    recv_buf = eltype(buf.recv) === Bool ? reinterpret(UInt8, buf.recv) : buf.recv
-    NCCL.Send(send_buf, nccl_comm; dest=bc.condition.to, stream_kw...)
-    NCCL.Recv!(recv_buf, nccl_comm; source=bc.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf.send), nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf.recv), nccl_comm; source=bc.condition.to, stream_kw...)
+    return nothing
+end
+
+# NCCL matches Send/Recv by post order per peer, not by tag. When west and
+# east share one peer (2-rank periodic axis), reversing recv order relative
+# to send order pairs each side with the opposite-side recv on the peer, as
+# MPI's send_tag/recv_tag scheme does; no-op when the peers differ.
+function _nccl_send_recv_dual!(buf1, bc1, buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf1) && return _nccl_send_recv_pair!(buf2, bc2, nccl_comm; stream_kw...)
+    isnothing(buf2) && return _nccl_send_recv_pair!(buf1, bc1, nccl_comm; stream_kw...)
+    NCCL.Send(nccl_buffer(buf1.send), nccl_comm; dest=bc1.condition.to, stream_kw...)
+    NCCL.Send(nccl_buffer(buf2.send), nccl_comm; dest=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf2.recv), nccl_comm; source=bc2.condition.to, stream_kw...)
+    NCCL.Recv!(nccl_buffer(buf1.recv), nccl_comm; source=bc1.condition.to, stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.west, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.east, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.west, bcs[1], bufs.east, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs; stream_kw...)
-    _nccl_send_recv_pair!(bufs.south, bcs[1], nccl_comm; stream_kw...)
-    _nccl_send_recv_pair!(bufs.north, bcs[2], nccl_comm; stream_kw...)
+    _nccl_send_recv_dual!(bufs.south, bcs[1], bufs.north, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 

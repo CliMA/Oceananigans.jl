@@ -23,7 +23,7 @@ end
 
 @inline function fill_cubed_sphere_field_horizontal_halo_event!(grid, field, multiregion_field, region, connections,
                                                                 side, _fill_halo_kernel!)
-    sz = fill_halo_size(field.data, side, field.indices, FullyConnected, instantiated_location(field), grid)
+    sz = fill_halo_size(field.data, side, field.indices, Sides{Connected, Connected}, instantiated_location(field), grid)
     of = fill_halo_offset(sz, side, field.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field)
@@ -252,7 +252,7 @@ end
                                                                       multiregion_field_2, region, connections, plmn,
                                                                       side, _fill_halo_kernel!)
 
-    sz = fill_halo_size(field_1.data, side, field_1.indices, FullyConnected, instantiated_location(field_1), grid)
+    sz = fill_halo_size(field_1.data, side, field_1.indices, Sides{Connected, Connected}, instantiated_location(field_1), grid)
     of = fill_halo_offset(sz, side, field_1.indices)
     kernel_parameters = KernelParameters(sz, of)
     reduced_dims = reduced_dimensions(field_1)

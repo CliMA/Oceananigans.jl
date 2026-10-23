@@ -1,9 +1,11 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition,
+using Oceananigans.BoundaryConditions: BoundaryConditions,
+                                       BoundaryCondition,
                                        DefaultBoundaryCondition,
                                        LeftBoundary,
                                        RightBoundary,
                                        regularize_boundary_condition,
-                                       VBC, GBC, FBC, Flux
+                                       VBC, GBC, FBC, IEFBC, Flux,
+                                       needs_implicit_solver
 
 import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,
                                         bc_str,
@@ -62,11 +64,20 @@ function ImmersedBoundaryCondition(; west = nothing,
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 
+BoundaryConditions.needs_implicit_solver(ibc::ImmersedBoundaryCondition) = needs_implicit_solver(ibc.bottom) | needs_implicit_solver(ibc.top)
+
+function BoundaryConditions.validate_immersed_implicit_explicit_flux(ibc::ImmersedBoundaryCondition)
+    for facet in (ibc.west, ibc.east, ibc.south, ibc.north)
+        facet isa IEFBC && error("IMEXFluxTimeDiscretization is supported only on the bottom and top facets of an ImmersedBoundaryCondition")
+    end
+    return nothing
+end
+
 #####
 ##### Boundary condition "regularization"
 #####
 
-const ZFBC = BoundaryCondition{Flux, Nothing}
+const ZFBC = BoundaryCondition{<:Flux, Nothing}
 regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
 regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =

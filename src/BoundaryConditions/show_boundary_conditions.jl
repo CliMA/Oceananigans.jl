@@ -16,6 +16,7 @@ bc_str(::MCBC)                          = "MultiRegionCommunication"
 bc_str(::DCBC)                          = "DistributedCommunication"
 bc_str(::Nothing)                       = "Nothing"
 bc_str(bc::UZBC)                        = "U-point Zipper($(bc.condition))"
+bc_str(bc::TZBC)                        = "T-Pivot Zipper($(bc.condition))"
 bc_str(bc::FZBC)                        = "F-Pivot Zipper($(bc.condition))"
 
 #####
@@ -26,11 +27,13 @@ Base.summary(bc::DFBC)                          = string("DefaultBoundaryConditi
 Base.summary(bc::NFBC{NormalFlow{MS}}) where MS = string("NormalFlowBoundaryCondition{$MS}: ", prettysummary(bc.condition))
 Base.summary(bc::IBC)                           = string("ImpenetrableBoundaryCondition")
 Base.summary(bc::FBC)                           = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::IEFBC)                         = string("IMEXFluxBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::VBC)                           = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::GBC)                           = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(::PBC)                             = string("PeriodicBoundaryCondition")
 Base.summary(bc::DCBC)                          = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::UZBC)                          = string("UPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::TZBC)                          = string("TPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::FZBC)                          = string("FPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
 
 function Base.summary(bc::MBC)
@@ -40,6 +43,9 @@ function Base.summary(bc::MBC)
 end
 
 Base.show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
+
+Base.summary(c::IMEXFlux) = string(prettysummary(c.explicit_flux), " + ", prettysummary(c.implicit_coefficient), " φᵦ")
+Base.show(io::IO, c::IMEXFlux) = print(io, summary(c))
 
 #####
 ##### FieldBoundaryConditions

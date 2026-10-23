@@ -5,7 +5,7 @@ export VarianceDissipation, flatten_dissipation_fields
 using KernelAbstractions: @kernel, @index
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: UpdateStateCallsite
+using Oceananigans: Oceananigans, UpdateStateCallsite
 using Oceananigans.Advection
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
@@ -32,6 +32,8 @@ struct VarianceDissipation{P, K, A, D, S}
     previous_state :: S
     tracer_name :: Symbol
 end
+
+Oceananigans.prognostic_state(::VarianceDissipation) = nothing
 
 function c_grid_vector(grid)
     x = XFaceField(grid)
