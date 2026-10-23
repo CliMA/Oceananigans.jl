@@ -230,12 +230,11 @@ a boundary normal velocity is unphysical and reflects energy leaving the domain 
 
 An open boundary condition is a `NormalFlowBoundaryCondition` or a `ValueBoundaryCondition` with a
 scheme, passed through the `scheme` keyword argument. The scheme computes the boundary value from the
-interior solution and is designed to let disturbances propagate out of the domain. Other ocean models,
-such as ROMS, CROCO and MITgcm, sometimes call these radiation boundary conditions. In a
-`NormalFlowBoundaryCondition` the scheme sets the boundary-normal velocity on the boundary face. In a
-`ValueBoundaryCondition` it sets the first halo cell of a field that is `Center`-located in the
-boundary-normal direction, such as a tracer or a boundary-tangential velocity component. The available
-schemes are
+interior solution and is designed to let disturbances propagate out of the domain. In other literature
+this is sometimes called radiation boundary conditions. In a `NormalFlowBoundaryCondition` the scheme
+sets the boundary-normal velocity on the boundary face. In a `ValueBoundaryCondition` it sets the first
+halo cell of a field that is `Center`-located in the boundary-normal direction, such as a tracer or a
+boundary-tangential velocity component. The available schemes are
 
 | Scheme                          | Boundary condition                                      | Fields                          |
 |:--------------------------------|:--------------------------------------------------------|:--------------------------------|
@@ -380,7 +379,7 @@ Where ``\delta_s \phi = 0`` the scheme reduces to \eqref{eq:normal_radiation_upd
 is applied on lateral boundaries only, so top and bottom boundaries use normal radiation. The treatment of
 inflow and outflow, the advecting velocity, and the stored values are the same as in normal radiation.
 
-### Tracer reservoirs
+### Tracer reservoir
 
 A tracer boundary with a prescribed exterior value has no memory of the water that leaves the domain. When
 the boundary-normal flow reverses, the water that re-enters carries the exterior value ``c^{\mathrm{ext}}``
@@ -466,9 +465,11 @@ constants of a tidal atlas.
 
 Before the pressure solve of a [`NonhydrostaticModel`](@ref), the boundary-normal velocities set by the
 schemes are corrected so that the net volume transport into the domain vanishes, which the pressure
-Poisson equation with a rigid lid requires to have a solution. The correction has two steps. First, every
-boundary whose scheme has a `target_transport` ``Q`` is shifted uniformly so that its transport matches
-the target,
+Poisson equation with a rigid lid requires. The keyword argument `target_transport` helps the user have
+control over how this correction is applied.
+
+The correction has two steps. First, every boundary whose scheme has a `target_transport` ``Q`` is shifted
+uniformly so that its transport matches the target,
 ```math
     u^b \leftarrow u^b - \frac{1}{A} \left ( \int u^b \, \mathrm{d}A - Q \right ) \, ,
 ```
@@ -477,8 +478,9 @@ direction. Second, the remaining net inflow is removed by the same uniform shift
 all boundaries that have a scheme and no target. If every such boundary has a target, the targets must add
 up to zero net transport.
 
-A [`HydrostaticFreeSurfaceModel`](@ref) does not need the second step because the free surface absorbs a
-net imbalance. With an [`ImplicitFreeSurface`](@ref) the first step is applied to the predictor velocity
+A [`HydrostaticFreeSurfaceModel`](@ref) or a [`NonhydrostaticFreeSurfaceModel`](@ref) with a free surface
+do not need the second step because the free surface absorbs a net imbalance.
+With an [`ImplicitFreeSurface`](@ref) the first step is applied to the predictor velocity
 before the free surface solve, so the transport after the barotropic correction matches the target only
 approximately. With a `SplitExplicitFreeSurface` the transport is prescribed through the
 `target_transport` of `GravityWaveRadiation` on the barotropic transport.
