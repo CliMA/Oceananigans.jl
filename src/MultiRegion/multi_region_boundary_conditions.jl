@@ -9,12 +9,15 @@ using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     fill_halo_event!,
+    needs_implicit_solver,
     MultiRegionFillHalo,
     MultiRegionCommunicationBoundaryCondition
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
-BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
+BoundaryConditions.needs_implicit_solver(bcs::MultiRegionObject) = any(needs_implicit_solver, bcs.regional_objects)
+
+BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args::Vararg{Any, N}; kwargs...) where N =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -25,6 +28,7 @@ BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs..
                        kwargs...)
 
 BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
+BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, indices, loc, ::MultiRegionGrid, buffers, args...; kwargs...) = nothing
 
 #####
 ##### fill_halo_regions! for a MultiRegionObject
@@ -34,7 +38,10 @@ BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; 
 # TODO: Optimize this some way (needs infra-regional-function synchronization between regions).
 # The complication here is the possibility of different regions having different number of tasks,
 # Which might happen, for example, for a grid that partitioned in a Bounded direction.
-function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_normal_flow_bcs=true, kwargs...)
+#
+# `Vararg{Any, N}` makes the compiler specialize on the `args` that are only passed on.
+function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args::Vararg{Any, N};
+                                               fill_normal_flow_bcs=true, kwargs...) where N
     buff_ref = Reference(buffers.regional_objects)
 
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)

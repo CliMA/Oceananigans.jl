@@ -5,6 +5,7 @@ using Oceananigans.Utils: @apply_regionally
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::Base.OneTo, loc, topo, N) = restrict_to_interior(UnitRange(index), loc, topo, N)
+restrict_to_interior(::Base.OneTo, ::Nothing, topo, N) = UnitRange(1, 1)
 restrict_to_interior(index::AbstractUnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
 
 function restrict_to_interior(index::AbstractUnitRange, loc, topo, N)
@@ -41,7 +42,8 @@ intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, 
 output_indices(output::AbstractField, indices, with_halos) = output_indices(output, output.grid, indices, with_halos)
 output_indices(output::Reduction, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
 
-function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
+# Runs once per output at writer construction, so it is not specialized on the output type
+Base.@nospecializeinfer function output_indices(@nospecialize(output::Union{AbstractField, Reduction}), @nospecialize(grid), indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
     if !with_halos # Maybe chop those indices
@@ -55,7 +57,7 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
     return intersected
 end
 
-function construct_output(user_output::Union{AbstractField, Reduction}, user_indices, with_halos)
+Base.@nospecializeinfer function construct_output(@nospecialize(user_output::Union{AbstractField, Reduction}), user_indices, with_halos)
     indices = output_indices(user_output, user_indices, with_halos)
 
     # Don't compute AbstractOperations or Reductions
@@ -71,4 +73,13 @@ end
 function construct_output(averaged_output::WindowedTimeAverage{<:Field}, indices, with_halos)
     output = construct_output(averaged_output.operand, indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
+end
+
+#####
+##### Time differentiation
+#####
+
+function construct_output(derivative::TimeDerivative, indices, with_halos)
+    output = construct_output(derivative.operand, indices, with_halos)
+    return TimeDerivative(output; expected_max_time_step_growth = derivative.expected_max_time_step_growth)
 end

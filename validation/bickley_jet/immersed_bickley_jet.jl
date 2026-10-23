@@ -77,7 +77,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
-    name = typeof(model.advection.momentum).name.wrapper
+    name = nameof(typeof(model.advection.momentum))
     if model.advection.momentum isa WENOVectorInvariantVel
         name = string(name) * "VectorInvariantVel"
     end
@@ -91,7 +91,7 @@ function run_immersed_bickley_jet(; output_time_interval = 2, stop_time = 200, a
         JLD2Writer(model, outputs,
                    schedule = TimeInterval(output_time_interval),
                    filename = experiment_name,
-                   overwrite_existing = true)
+                   overwrite_files = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 
