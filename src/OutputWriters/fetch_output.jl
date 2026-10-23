@@ -11,7 +11,7 @@ time(::Nothing) = nothing
 
 fetch_output(output, model) = output(model)
 
-function fetch_output(field::AbstractField, model)
+Base.@nospecializeinfer function fetch_output(@nospecialize(field::AbstractField), @nospecialize(model))
     compute_at!(field, time(model))
     return parent(field)
 end

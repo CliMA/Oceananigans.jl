@@ -3,15 +3,19 @@ module OceananigansBenchmarks
 export
     # Benchmark cases
     earth_ocean,
+    nonhydrostatic_box,
 
     # Benchmark utilities
     many_time_steps!,
     benchmark_time_stepping,
     run_benchmark_simulation,
     run_io_benchmark,
+    run_read_benchmark,
+    path_size,
     BenchmarkResult,
     SimulationResult,
     IOBenchmarkResult,
+    ReadBenchmarkResult,
     BenchmarkMetadata
 
 using Dates
@@ -20,16 +24,27 @@ using Printf
 using Statistics
 
 using Oceananigans
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Diagnostics: hasnan
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, iteration
 using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
 
 using NCDatasets
+using Zarr
+
+using Zarr
 
 using DataDeps
 
 using CUDA: CUDA
+# Compatibility for CUDA v5 and v6
+if isdefined(CUDA, :CUDACore)
+    using CUDA: CUDACore
+else
+    const CUDACore = CUDA
+end
 
 const BATHYMETRY_URL = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/ss/bathymetry-for-benchmarks/bathymetry_for_benchmarks"
 
@@ -54,5 +69,6 @@ include("utils.jl")
 
 # Benchmark cases
 include("earth_ocean.jl")
+include("nonhydrostatic_box.jl")
 
 end # module

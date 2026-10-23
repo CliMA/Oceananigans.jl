@@ -1,17 +1,16 @@
-using Glob
+using Glob: Glob, glob
 using StructArrays: StructArray
 
-using Oceananigans
+using Oceananigans: Oceananigans, prognostic_state, restore_prognostic_state!
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
-import Oceananigans.Fields: set!
+const NonCheckpointingOutputWriters = Union{JLD2Writer, NetCDFWriter, ZarrWriter}
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     cleanup :: Bool
 end
@@ -21,11 +20,11 @@ end
                  schedule,
                  dir = ".",
                  prefix = "checkpoint",
-                 overwrite_existing = false,
+                 overwrite_files = false,
                  verbose = false,
                  cleanup = false)
 
-Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
+Construct a `Checkpointer` that checkpoints the `model` to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
 
 To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
@@ -42,8 +41,9 @@ Keyword arguments
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
+            On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
-- `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
+- `overwrite_files`: Remove existing files if their filenames conflict. Default: `false`.
 
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
@@ -54,13 +54,15 @@ Keyword arguments
 function Checkpointer(model; schedule,
                       dir = ".",
                       prefix = "checkpoint",
-                      overwrite_existing = false,
+                      overwrite_files = false,
                       verbose = false,
                       cleanup = false)
 
     mkpath(dir)
+    filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
+    prefix = String(chop(filename, tail=length(".jld2")))
 
-    return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_files, verbose, cleanup)
 end
 
 #####
@@ -73,7 +75,7 @@ checkpointer_address(model) = ""
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
-    checkpoint_path(iteration::Int, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 Return the path to the `checkpointer` file associated with model `iteration`.
 """
@@ -91,7 +93,7 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 `checkpointer.prefix` and return the path to the most recently modified
@@ -103,7 +105,7 @@ function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 end
 
 """
-    checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For symbol-based pickup modes:
 
@@ -159,18 +161,20 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 ##### Writing checkpoints
 #####
 
-prognostic_state(obj) = obj
-prognostic_state(::NamedTuple{()}) = nothing
+Oceananigans.prognostic_state(obj) = obj
+Oceananigans.prognostic_state(::NamedTuple{()}) = nothing
+Oceananigans.prognostic_state(::NoFileSplitting) = nothing
+Oceananigans.prognostic_state(::FileSizeLimit) = nothing
 
-prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
+Oceananigans.prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
-function prognostic_state(nt::NamedTuple)
+function Oceananigans.prognostic_state(nt::NamedTuple)
     ks = keys(nt)
     vs = Tuple(prognostic_state(v) for v in values(nt))
     return NamedTuple{ks}(vs)
 end
 
-function prognostic_state(dict::AbstractDict)
+function Oceananigans.prognostic_state(dict::AbstractDict)
     isempty(dict) && return nothing
     ks = tuple(keys(dict)...)
     vs = Tuple(prognostic_state(v) for v in values(dict))
@@ -184,7 +188,7 @@ function cleanup_checkpoints(checkpointer)
     return nothing
 end
 
-function write_output!(c::Checkpointer, simulation)
+function Oceananigans.write_output!(c::Checkpointer, simulation)
     iter = iteration(simulation)
     filepath = checkpoint_path(iter, c)
 
@@ -209,7 +213,7 @@ end
 #####
 
 """
-    load_nested_data(obj)
+$(TYPEDSIGNATURES)
 
 Recursively load data from a JLD2 group or dataset, reconstructing nested NamedTuples for
 groups and returning raw data for leaf nodes.
@@ -239,46 +243,52 @@ end
 # Handle case when no checkpoint file exists (filepath is nothing)
 load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
-restore_prognostic_state!(obj, ::Nothing) = nothing
-restore_prognostic_state!(::NamedTuple{()}, from) = nothing
-restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
-restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
-restore_prognostic_state!(::Nothing, from) = nothing
-restore_prognostic_state!(::Nothing, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(obj, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, from) = nothing
+Oceananigans.restore_prognostic_state!(::Nothing, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, from) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, from) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, from) = nothing
 
-# To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
-restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
-restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
-restore_prognostic_state!(::StructArray, ::Nothing) = nothing
-restore_prognostic_state!(::Ref, ::Nothing) = nothing
-restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
-restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
+# Disambiguation methods for `restore_prognostic_state!(obj, ::Nothing)`
+Oceananigans.restore_prognostic_state!(::Ref, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NonCheckpointingOutputWriters, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::NoFileSplitting, ::Nothing) = nothing
+Oceananigans.restore_prognostic_state!(::FileSizeLimit, ::Nothing) = nothing
 
-function restore_prognostic_state!(restored::AbstractArray, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractArray, from)
     copyto!(restored, from)
     return restored
 end
 
-function restore_prognostic_state!(restored::AbstractDict, from)
+function Oceananigans.restore_prognostic_state!(restored::AbstractDict, from)
     for (name, value) in pairs(from)
         haskey(restored, name) && restore_prognostic_state!(restored[name], value)
     end
     return restored
 end
 
-function restore_prognostic_state!(restored::NamedTuple, from)
+function Oceananigans.restore_prognostic_state!(restored::NamedTuple, from)
     for (name, value) in pairs(from)
         restore_prognostic_state!(restored[name], value)
     end
     return restored
 end
 
-function restore_prognostic_state!(t::Tuple, from::Tuple)
-    new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
-    return new_t
+function Oceananigans.restore_prognostic_state!(restored::Tuple, from::Tuple)
+    for (j, value) in pairs(from)
+        restore_prognostic_state!(restored[j], value)
+    end
+    return restored
 end
 
-function restore_prognostic_state!(restored::StructArray, from)
+function Oceananigans.restore_prognostic_state!(restored::StructArray, from)
     # Get the architecture from one of the component arrays
     some_property = first(propertynames(restored))
     arch = architecture(getproperty(restored, some_property))
@@ -293,24 +303,24 @@ function restore_prognostic_state!(restored::StructArray, from)
 end
 
 # Ref handling: dereference on save, set on restore
-prognostic_state(r::Ref) = r[]
-restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
+Oceananigans.prognostic_state(r::Ref) = r[]
+Oceananigans.restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
 
 #####
 ##### Checkpointing the checkpointer
 #####
 
-function prognostic_state(checkpointer::Checkpointer)
+function Oceananigans.prognostic_state(checkpointer::Checkpointer)
     return (; schedule = prognostic_state(checkpointer.schedule))
 end
 
-function restore_prognostic_state!(restored::Checkpointer, from)
+function Oceananigans.restore_prognostic_state!(restored::Checkpointer, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     return restored
 end
 
 #####
-##### Checkpointing file-based output writers (JLD2Writer, NetCDFWriter)
+##### Checkpointing file-based output writers
 #####
 
 output_key_to_symbol(name::Symbol) = name
@@ -318,20 +328,38 @@ output_key_to_symbol(name::AbstractString) = Symbol(name)
 
 output_lookup_key(::JLD2Writer, name::Symbol) = name
 output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
+output_lookup_key(::ZarrWriter, name::Symbol) = name
 
-function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
+function Oceananigans.prognostic_state(writer::NonCheckpointingOutputWriters)
     wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
                              for (name, output) in pairs(writer.outputs)
                              if output isa WindowedTimeAverage)
 
+    derivative_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
+                                    for (name, output) in pairs(writer.outputs)
+                                    if output isa TimeDerivative)
+
     return (schedule = prognostic_state(writer.schedule),
             part = writer.part,
-            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
+            file_splitting = prognostic_state(writer.file_splitting),
+            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
+            time_derivatives = isempty(derivative_outputs) ? nothing : derivative_outputs)
 end
 
-function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
+function Oceananigans.restore_prognostic_state!(restored::NonCheckpointingOutputWriters, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
+
+    # Update the filepath to match the restored part number so that
+    # the writer appends to the correct part file after pickup.
+    restored.filepath = filepath_for_part(restored.filepath, restored.part)
+
+    # Restore file_splitting schedule state (e.g., TimeInterval actuations)
+    # so splitting doesn't re-trigger immediately after pickup.
+    # Backward compatible: old checkpoints may not have file_splitting.
+    if hasproperty(from, :file_splitting) && !isnothing(from.file_splitting)
+        restore_prognostic_state!(restored.file_splitting, from.file_splitting)
+    end
 
     if hasproperty(from, :windowed_time_averages) && !isnothing(from.windowed_time_averages)
         for (name, wta_state) in pairs(from.windowed_time_averages)
@@ -340,26 +368,83 @@ function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, fr
                 restore_prognostic_state!(restored.outputs[key], wta_state)
             end
         end
+
+        averaged_outputs = [output for output in values(restored.outputs)
+                            if output isa WindowedTimeAverage]
+        if !isempty(averaged_outputs)
+            first_average = first(averaged_outputs)::WindowedTimeAverage
+            restored.schedule.first_actuation_time = first_average.schedule.first_actuation_time
+            restored.schedule.actuations = first_average.schedule.actuations
+        end
+    end
+
+    if hasproperty(from, :time_derivatives) && !isnothing(from.time_derivatives)
+        for (name, derivative_state) in pairs(from.time_derivatives)
+            key = output_lookup_key(restored, name)
+            if haskey(restored.outputs, key) && restored.outputs[key] isa TimeDerivative
+                restore_prognostic_state!(restored.outputs[key], derivative_state)
+            end
+        end
     end
 
     return restored
 end
 
-function restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
+reconcile_restored_output_schedule!(writer, model) = nothing
+
+function reset_restored_time_average!(average::WindowedTimeAverage, clock)
+    initialize_actuations!(average.schedule, clock.time)
+    average.schedule.collecting = false
+    average.window_start_time = clock.time
+    average.window_start_iteration = clock.iteration
+    average.previous_collection_time = clock.time
+    return nothing
+end
+
+function reconcile_restored_output_schedule!(writer::NonCheckpointingOutputWriters, model)
+    averaged_outputs = [output for output in values(writer.outputs)
+                        if output isa IntervalWindowedTimeAverage]
+    isempty(averaged_outputs) && return nothing
+
+    first_average = first(averaged_outputs)::IntervalWindowedTimeAverage
+    schedule = first_average.schedule
+    clock = model.clock
+    next_time = next_actuation_time(schedule)
+    latest_valid_next_time = Utils.add_time_interval(clock.time, schedule.interval)
+
+    # A restored periodic schedule must actuate no more than one interval after the
+    # restored clock. Older checkpoints may pair a new interval with an actuation
+    # count from the old interval, which can put the next output far in the future.
+    if next_time < clock.time || next_time > latest_valid_next_time
+        for average in averaged_outputs
+            reset_restored_time_average!(average, clock)
+        end
+
+        writer.schedule.first_actuation_time = clock.time
+        writer.schedule.actuations = 0
+    end
+
+    return nothing
+end
+
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
     restored_parent = parent(restored)
     return restore_prognostic_state!(restored_parent, from)
 end
 
-function restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
+function Oceananigans.restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
     restored_parent = parent(restored)
     from_parent = parent(from)
     return restore_prognostic_state!(restored_parent, from_parent)
 end
 
-function restore_prognostic_state!(restored::Number, from::Number)
+function Oceananigans.restore_prognostic_state!(restored::Number, from::Number)
     restored = convert(typeof(restored), from)
     return restored
 end
+
+# Immutable labels such as the open boundary side names in `boundary_transport`
+Oceananigans.restore_prognostic_state!(::Symbol, from::Symbol) = from
 
 #####
 ##### Manual checkpointing
@@ -370,11 +455,11 @@ end
 
 Manually checkpoint `simulation` state to a JLD2 file.
 
-If `simulation.output_writers` contains a `Checkpointer`, it will be used
-(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings).
-
-Otherwise, the checkpoint is written to `filepath`, or to
-`"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
+If `filepath` is provided, the checkpoint is written there. Otherwise, if
+`simulation.output_writers` contains a single `Checkpointer`, it is used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings); if no
+`filepath` is given and there is no single `Checkpointer`, the checkpoint is
+written to `"checkpoint_iteration{N}.jld2"` in the current directory.
 """
 function checkpoint(simulation; filepath=nothing)
     checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))

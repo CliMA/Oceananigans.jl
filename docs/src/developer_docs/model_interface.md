@@ -77,9 +77,10 @@ implement (or inherit sane fallbacks for) the items listed below.
   prognostic variables by one step. Simulation hands in the tuple of
   `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute
   `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite`
-  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)`
+  callbacks (after auxiliary updates), and `TracerTendencyCallsite` callbacks after the tracer
+  tendencies, which a model may compute separately. The method must call `tick!(model.clock, Δt)`
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
-  At iteration 0, `time_step!` calls `maybe_prepare_first_time_step!(model, callbacks)`
+  At iteration 0, `time_step!` calls `maybe_prepare_first_time_step!(model, Δt, callbacks)`
   as a safety net for bare model time-stepping (without `Simulation`). This calls
   `reconcile_state!(model)` and `update_state!(model, callbacks)` to ensure the
   model state is current before the first tendency computation.
@@ -198,7 +199,7 @@ Base.summary(::LorenzModel) = "LorenzModel"
 update_state!(model::LorenzModel, cb=nothing; compute_tendencies=true) = nothing
 
 function time_step!(model::LorenzModel, Δt; callbacks = ())
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     (; σ, ρ, β) = model.parameters
     (; x, y, z) = model.state
@@ -333,7 +334,7 @@ end
 
 function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # First stage: initialize
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
     [callback(model) for callback in callbacks if callback.callsite isa TendencyCallsite]
 
     # RK3 coefficients (Williamson's low-storage scheme)
@@ -382,8 +383,7 @@ simulation = Simulation(ks_model; Δt=0.002, stop_time=60)
 simulation.output_writers[:solution] = JLD2Writer(ks_model, (; u=ks_model.solution),
                                                   filename = "ks_solution.jld2",
                                                   schedule = TimeInterval(1),
-                                                  overwrite_existing = true,
-                                                  including = [:grid])
+                                                  overwrite_files = true)
 
 run!(simulation)
 nothing # hide

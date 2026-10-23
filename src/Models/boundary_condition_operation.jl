@@ -50,7 +50,7 @@ const BoundaryConditionField{LX, LY, LZ} =
     Field{LX, LY, LZ, <:BoundaryConditionOperation} where {LX, LY, LZ}
 
 """
-    BoundaryConditionOperation(field::Field, side::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Returns a `KernelFunctionOperation` that evaluates a `field`'s boundary condition
 on the specified `side` using the properties of `model`.
@@ -83,7 +83,6 @@ Next, we build a `Field` for the top flux, and compute it:
 
 ```jldoctest bc_op
 c_flux_field = Field(c_flux_op)
-compute!(c_flux_field)
 
 # output
 16×16×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU

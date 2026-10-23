@@ -200,14 +200,13 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     end
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
+Base.@constprop :aggressive hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
-# Disambiguation: PVF always suppresses u, v tendencies regardless of free surface type
-hydrostatic_tendency_fields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names, bcs) =
-    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
-hydrostatic_tendency_fields(::PrescribedVelocityFields, ::SplitExplicitFreeSurface, grid, tracer_names, bcs) =
-    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+for FS in (:ExplicitFreeSurface, :SplitExplicitFreeSurface)
+    @eval Base.@constprop :aggressive hydrostatic_tendency_fields(velocities::PrescribedVelocityFields, ::$FS, grid, tracer_names, bcs) =
+        hydrostatic_tendency_fields(velocities, nothing, grid, tracer_names, bcs)
+end
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
@@ -255,13 +254,14 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, args...) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, args...) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, args...) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, args...) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, bcs) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
-compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
+previous_hydrostatic_state_fields(::SplitRungeKutta, ::PrescribedVelocityFields, ::Nothing, tracers) = (; Ψ⁻ = map(similar, tracers))
+compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
@@ -285,11 +285,12 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
+    update_lagrangian_particle_state!(model)
+    step_lagrangian_particles!(model, Δt)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) =
+update_state!(model::OnlyParticleTrackingModel, callbacks=[]) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
 prognostic_state(::PrescribedVelocityFields) = nothing
@@ -340,7 +341,7 @@ end
 # Fallback: if already a field, just return it
 materialize_prescribed_displacement(f, grid; kwargs...) = f
 
-function materialize_free_surface(free_surface::PrescribedFreeSurface, velocities, grid, clock)
+function materialize_free_surface(free_surface::PrescribedFreeSurface, velocities, grid, bcs, clock)
     # Create a separate clock so that step_free_surface! can advance it to tⁿ⁺¹
     # before the grid update, matching prognostic free surfaces. The model clock
     # must not be modified because other operations (e.g. tracer tendency forcings)
@@ -354,8 +355,8 @@ function materialize_free_surface(free_surface::PrescribedFreeSurface, velocitie
 end
 
 # PrescribedFreeSurface is NOT nullified by PrescribedVelocityFields — delegate to its own method
-materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, clock) =
-    materialize_free_surface(fs, nothing, grid, clock)
+materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, bcs, clock) =
+    materialize_free_surface(fs, nothing, grid, bcs, clock)
 
 #####
 ##### PrescribedFreeSurface time stepping

@@ -102,7 +102,7 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
-`ε` will not compile on GPUs when we call [`compute!`](@ref):
+`ε` will not compile on GPUs when being computed (e.g. via [`compute!`](@ref)):
 
 ```julia
 using Oceananigans
@@ -115,9 +115,6 @@ u, v, w = model.velocities
 
 u² = Field(u^2)
 ε = Field(ν*(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2 + ∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2 + ∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2))
-
-compute!(u²)
-compute!(ε)
 ```
 
 There are a few ways to work around this issue.
@@ -127,7 +124,6 @@ ddx² = Field(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2)
 ddy² = Field(∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2)
 ddz² = Field(∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2)
 ε = Field(ν * (ddx² + ddy² + ddz²))
-compute!(ε)
 ```
 
 This method increases the computational cost since it requires computing and storing 3 intermediate terms.
@@ -157,8 +153,6 @@ end
                                                        grid, u, v, w, ν)
 
 ε = Field(ε_op)
-
-compute!(ε)
 ```
 
 Writing kernel functions like `isotropic_viscous_dissipation_rate_ccc`
