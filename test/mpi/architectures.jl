@@ -61,6 +61,9 @@ using CUDA
     @onrank split_comm 1 @test a == [2, 4, 6, 8, 10]
 end
 
+include(joinpath(@__DIR__, "..", "setup", "latitude_node_views.jl"))
+test_latitude_node_views(MPI.COMM_WORLD)
+
 #=
 @testset "Distributed architectures" begin
     for arch in test_architectures()
