@@ -450,8 +450,7 @@ end
 end
 
 @testset "Fields allocated inside a compiled function on a lat-lon grid" begin
-    # The halos of `Field(2c)` take the default boundary conditions of a field allocated inside the program:
-    # polar at a boundary on a pole, where they hold the zonal mean, and zero gradient elsewhere.
+    # `c = λ`, so a polar halo (the zonal mean) differs from a zero-gradient one
     doubled(c) = parent(compute!(Field(2c)))
 
     for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))

@@ -1,9 +1,7 @@
 using KernelAbstractions: @kernel, @index
 using OrderedCollections: OrderedDict
 
-# `P = Poles{south, north}` records which latitudinal boundaries are poles. It is decided on construction and
-# kept in the type, like `SZ`, so it survives where the latitudes cannot be read on the host, for instance
-# inside a compiled Reactant program.
+# `P = Poles{south, north}` lives in the type, like `SZ`, so it is known where the latitudes are traced
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                              DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ, P} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
@@ -161,6 +159,7 @@ Keyword arguments
   3. single-argument function that takes an index and returns cell interface location.
 
   **Note**: the latitude and longitude coordinates extents are expected in degrees.
+  A latitude bound at ±90 degrees is a pole, where fields take polar boundary conditions.
 
 - `radius`: The radius of the sphere the grid lives on. By default is equal to the radius of Earth.
 

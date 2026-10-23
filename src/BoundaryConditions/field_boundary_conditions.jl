@@ -330,30 +330,22 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 @inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return poles(grid).north ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
-end
+polar_or(default_bc, grid, side, ℓy, ℓz) =
+    getproperty(poles(grid), side) ? maybe_polar_boundary_condition(grid, side, ℓy, ℓz) : default_bc
 
-function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz), default)
-    default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return poles(grid).south ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
-end
+for side in (:south, :north)
+    S = Val{side}
+    @eval begin
+        default_prognostic_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz), default) =
+            polar_or(default_prognostic_bc(topology(grid, 2)(), ℓy, default), grid, $(QuoteNode(side)), ℓy, ℓz)
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz))
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return poles(grid).north ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
-end
+        default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::$S, (ℓx, ℓy, ℓz)) =
+            polar_or(_default_auxiliary_bc(topology(grid, 2)(), ℓy), grid, $(QuoteNode(side)), ℓy, ℓz)
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz))
-    default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return poles(grid).south ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
+        default_prognostic_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc, default) = default
+        default_auxiliary_bc(::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::$S, loc) = nothing
+    end
 end
-
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default
-default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc, default) = default
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc) = nothing
- default_auxiliary_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:south}, loc) = nothing
 
 Oceananigans.prognostic_state(bcs::FieldBoundaryConditions) =
     Oceananigans.prognostic_state((; bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top))

@@ -63,6 +63,7 @@ end
         @test poles(grid) == (south = true, north = true)
         @test poles(Adapt.adapt(Array, grid)) == poles(grid)
         @test poles(with_halo((4, 4, 4), grid)) == poles(grid)
+        @test all(poles(on_architecture(arch, grid)) == poles(grid) for arch in archs)
         @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(0, 90), longitude=(-10, 10), z=(0, 1))) == (south = false, north = true)
         @test poles(LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-30, 30), longitude=(-10, 10), z=(0, 1))) == (south = false, north = false)
 
