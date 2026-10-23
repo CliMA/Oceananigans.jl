@@ -200,7 +200,7 @@ function JLD2Writer(model, outputs; filename, schedule,
     update_file_splitting_schedule!(file_splitting, filepath)
 
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
-    schedule = materialize_schedule(schedule)
+    schedule = materialize_schedule(schedule, model.clock)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)

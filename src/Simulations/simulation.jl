@@ -9,6 +9,9 @@ using Oceananigans.Utils: period_to_seconds, prettytime
 
 default_progress(simulation) = nothing
 
+# The `stop_time` of a calendar clock that never stops
+const max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
+
 """
     AutomaticDifferentiation(; checkpointing, track_numbers = false, mincut = true)
 
@@ -159,6 +162,11 @@ function Simulation(model;
    end
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
+   if model.clock.time isa AbstractTime && stop_time isa Number
+       isinf(stop_time) || throw(ArgumentError(string("stop_time must be a date for a model with a ",
+                                                      typeof(model.clock.time), " clock, not ", stop_time)))
+       stop_time = max_datetime
+   end
 
    return Simulation(model,
                      Δt,
@@ -259,7 +267,6 @@ function Oceananigans.TimeSteppers.reset!(sim::Simulation)
     if sim.stop_time isa Number
         sim.stop_time = Inf
     elseif sim.stop_time isa AbstractTime
-        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
         sim.stop_time = max_datetime
     end
 

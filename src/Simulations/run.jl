@@ -6,7 +6,7 @@ using Oceananigans.DistributedComputations: all_reduce, check_field_tags
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, TimeFilteredOutput, TimeDerivative, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: time_step!, update_state!, unit_time
-using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step
+using Oceananigans.Utils: PrecedingIterations, schedule_aligned_time_step, materialize_schedule
 
 # Simulations are for running
 
@@ -104,6 +104,7 @@ function Oceananigans.Fields.set!(sim::Simulation; checkpoint=nothing, iteration
     end
 
     state = load_checkpoint_state(checkpoint_filepath)
+    materialize_callback_schedules!(sim)
     restore_prognostic_state!(sim, state)
     return nothing
 end
@@ -314,6 +315,17 @@ end
 add_dependencies!(sim, writer) = [add_dependency!(sim, out, writer.schedule) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
+# Callbacks are built without a clock, so a schedule that keeps time differently is rebuilt here.
+# Other schedules are left in place (not copied), so references to them stay valid.
+function materialize_callback_schedules!(sim)
+    for (name, callback) in sim.callbacks
+        schedule = materialize_schedule(callback.schedule, sim.model.clock)
+        typeof(schedule) === typeof(callback.schedule) && continue
+        sim.callbacks[name] = Callback(callback.func, schedule, callback.callsite, callback.parameters)
+    end
+    return nothing
+end
+
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup::Integer) = true
 we_want_to_pickup(pickup::Symbol) = true
@@ -352,6 +364,7 @@ function Oceananigans.initialize!(sim::Simulation)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim, writer) for writer in values(sim.output_writers)]
+    materialize_callback_schedules!(sim)
 
     for writer in values(sim.output_writers)
         initialize!(writer, model)

@@ -106,7 +106,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
 
     initialize!(file_splitting, model)
 
-    schedule = materialize_schedule(schedule)
+    schedule = materialize_schedule(schedule, model.clock)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))

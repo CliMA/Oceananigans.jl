@@ -70,6 +70,29 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     return ifelse(cycling, cycled_indices, uncycled_indices)
 end
 
+# Calendar years have no fixed length, so fold `t` into the first period by whole years.
+# Year arithmetic clamps 29 February to the 28th of a non-leap year.
+@inline function interpolating_time_indices(ti::Cyclical{<:Dates.Year}, times, t)
+    Nt = length(times)
+    t¹ = first(times)
+    tᴺ = last(times)
+
+    T = ti.period
+    P = Dates.value(T)
+    cycles = fld(Dates.year(t) - Dates.year(t¹), P)
+    folded_t = t - Dates.Year(cycles * P)
+    folded_t = ifelse(folded_t < t¹, folded_t + T, folded_t)
+
+    ñ, n₁, n₂ = find_time_index(times, folded_t)
+
+    cycling = folded_t > tᴺ # we are _between_ tᴺ and t¹ + T
+    θ = time_difference_seconds(folded_t, tᴺ) / time_difference_seconds(t¹ + T, tᴺ)
+    cycled_indices   = (θ, Nt, 1)
+    uncycled_indices = (ñ, n₁, n₂)
+
+    return ifelse(cycling, cycled_indices, uncycled_indices)
+end
+
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(::Clamp, times, t)
     ñ, n₁, n₂ = find_time_index(times, t)
