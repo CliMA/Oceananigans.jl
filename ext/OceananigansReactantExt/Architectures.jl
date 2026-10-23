@@ -99,20 +99,10 @@ Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Re
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
 
-# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray.
-# `Adapt.adapt` recurses through any struct with an `adapt_structure` method, so every vertical
-# coordinate, including those defined by downstream packages, is rebuilt with its arrays materialized.
-struct ToReactant end
-
-Adapt.adapt_storage(::ToReactant, a::AbstractArray) = Reactant.to_rarray(collect(a))
-
-# Adapt rebuilds ranges from their endpoints; here they are materialized like any other array.
-Adapt.adapt_structure(::ToReactant, r::StepRangeLen) = Reactant.to_rarray(collect(r))
-Adapt.adapt_structure(::ToReactant, r::UnitRange)    = Reactant.to_rarray(collect(r))
-Adapt.adapt_structure(::ToReactant, r::StepRange)    = Reactant.to_rarray(collect(r))
-Adapt.adapt_structure(::ToReactant, r::LinRange)     = Reactant.to_rarray(collect(r))
-
-_to_reactant(x) = Adapt.adapt(ToReactant(), x)
+# Materialize CPU data into ConcreteRArrays, ranges included (StepRangeLen with TwicePrecision internals
+# among them). `Adapt.adapt` recurses through any struct with an `adapt_structure` method, so every
+# vertical coordinate, including those defined by downstream packages, is rebuilt with its arrays moved.
+_to_reactant(x) = Adapt.adapt(Reactant.ConcreteRArrayAdaptor(materialize_ranges = true), x)
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
 # then transfer the materialized arrays to Reactant. This avoids Float64 leakage from
