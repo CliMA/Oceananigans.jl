@@ -1,5 +1,5 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, halo_fill_args, NFBC, MCBC,
     BoundaryCondition, AbstractBoundaryConditionClassification, LeftBoundary, RightBoundary,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology,
     update_boundary_time_series!
@@ -1010,7 +1010,7 @@ function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...;
             field.indices,
             instantiated_location(field),
             field.grid,
-            positional_args...)
+            halo_fill_args(field.boundary_conditions, positional_args)...)
 
     # Manually convert args... to be
     # passed to the fill_halo_regions! function.

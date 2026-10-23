@@ -162,7 +162,10 @@ const MRD = Union{MultiRegionField, MultiRegionObject}
 # make it more efficient?
 LinearAlgebra.dot(f::MRD, g::MRD; condition = nothing) =
     sum(construct_regionally(dot, f, g; condition).regional_objects)
-LinearAlgebra.norm(f::MRD) = sqrt(dot(f, f))
+LinearAlgebra.norm(f::MultiRegionObject) = sqrt(dot(f, f))
+
+# Also covers operations such as `a - b`, so that `a ≈ b` works; on a Yin-Yang grid each point counts once
+LinearAlgebra.norm(f::MultiRegionAbstractField; condition = nothing) = sqrt(sum(abs2, f; condition))
 
 # The regional dot products are summed on the host; all regions share one device and hence one `r`
 Fields.dot!(r, f::MRD, g::MRD; condition = nothing) = fill!(r, dot(f, g; condition))
