@@ -110,6 +110,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
     update_file_splitting_schedule!(file_splitting, filepath)
 
     outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
+    foreach(validate_netcdf_output, values(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
     output_grids = OrderedDict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
@@ -398,6 +399,15 @@ define_output_variable!(model, dataset, output::TimeDerivative, output_name; kwa
 """ Defines empty field variable for `TimeFilteredOutput`s over fields. """
 define_output_variable!(model, dataset, output::TimeFilteredOutput, output_name; kwargs...) =
     define_output_variable!(model, dataset, output.operand, output_name; kwargs...)
+
+validate_netcdf_output(output) = nothing
+
+# TODO: support multiple particle species, for example with one `particle_id` dimension per species
+function validate_netcdf_output(particles::LagrangianParticles)
+    particles.properties isa NamedTuple &&
+        throw(ArgumentError("NetCDFWriter does not support LagrangianParticles with multiple species. Use JLD2Writer instead."))
+    return nothing
+end
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(model, dataset, output::LagrangianParticles, output_name; array_type,

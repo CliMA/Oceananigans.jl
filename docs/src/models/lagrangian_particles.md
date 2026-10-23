@@ -163,6 +163,110 @@ After sorting, the particles in cell `(i, j, k)` are indexed by
     Sorting reorders particle properties, so a particle's index may change from one time step
     to the next. To follow individual particles, add an identifying property to a custom particle type.
 
+## Multiple species
+
+Particles of several species, each with its own element type and properties, can be stored together
+by passing a `NamedTuple` of `StructArray`s to `LagrangianParticles`. For example, cloud microphysics
+may represent liquid droplets and ice crystals as separate species:
+
+```jldoctest species
+using Oceananigans
+using StructArrays
+
+struct LiquidDroplet{T}
+    x :: T
+    y :: T
+    z :: T
+    radius :: T
+end
+
+struct IceCrystal{T}
+    x :: T
+    y :: T
+    z :: T
+    radius :: T
+    aspect_ratio :: T
+end
+
+liquid = StructArray{LiquidDroplet}((rand(4), rand(4), rand(4), fill(1e-5, 4)))
+ice = StructArray{IceCrystal}((rand(2), rand(2), rand(2), fill(2e-5, 2), fill(0.5, 2)))
+
+particles = LagrangianParticles((; liquid, ice); sorting=CountingSort())
+
+# output
+6 LagrangianParticles in 2 species:
+├── liquid: 4 LiquidDroplet with 4 properties (:x, :y, :z, :radius)
+├── ice: 2 IceCrystal with 5 properties (:x, :y, :z, :radius, :aspect_ratio)
+├── boundary conditions: ParticleBoundaryConditions(ReflectingBoundary(1.0))
+├── 0 tracked fields: ()
+├── sorting: CellSorting(CountingSort())
+└── dynamics: no_dynamics
+```
+
+`particles.properties` is the `NamedTuple` that was passed in, so that `particles.properties.ice.x` are
+the positions of the ice crystals, and `length(particles)` is the total number of particles.
+Every species must have positions `x`, `y`, `z` stored in the same type of array. Species may be empty,
+and may be resized. Sorting, boundary conditions, and `dynamics` are shared by all species, while particle velocities can be customized for each species by extending
+`particle_u_velocity(particles, p, u)` (and similarly for `v` and `w`) for the `StructArray` type of the species.
+`tracked_fields` are tracked by every species that has a property with the name of the field.
+
+Kernels that loop over particles, such as particle advection, are launched once over the particles of
+all species: species `s` occupies a contiguous block of a global index range, and each thread selects
+its species with an unrolled, type-stable recursion over the tuple of species, so that warps execute
+code specialized for one element type except at block boundaries.
+
+### Sorting multiple species
+
+All species are sorted with a single joint counting sort over (cell, species). After sorting,
+the particles of species `s` in cell `(i, j, k)` are
+`cell_particle_indices(i, j, k, grid, particles.sorting, s)`, which index into the
+`StructArray` of species `s`:
+
+```jldoctest species
+using Oceananigans.Models.LagrangianParticleTracking: sort_lagrangian_particles!, cell_particle_indices
+
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+sort_lagrangian_particles!(particles, grid)
+cell_particle_indices(1, 1, 1, grid, particles.sorting, 2)
+
+# output
+1:2
+```
+
+### Transferring particles between species
+
+Particles can change species, for example when droplets freeze. Each particle has a transfer flag
+in `particles.transfers.destinations`, which mirrors `particles.properties`. Setting the flag of a particle
+to the index of another species transfers the particle to that species after the particles are advected,
+and setting it to a negative value removes the particle. Flags can be set in `dynamics` or in any kernel.
+Transferred particles are converted with `convert_particle(destination_type, particle)`, whose default
+copies properties by name. Destination properties that the source lacks require a new method:
+
+```jldoctest species
+using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticleTracking,
+                                                      species_index, transfer_particles!
+
+@inline LagrangianParticleTracking.convert_particle(::Type{<:IceCrystal}, p::LiquidDroplet) =
+    IceCrystal(p.x, p.y, p.z, p.radius, one(p.radius))
+
+flags = particles.transfers.destinations.liquid
+flags .= [0, species_index(particles, :ice), 0, -1] # freeze droplet 2 and remove droplet 4
+transfer_particles!(particles, grid)
+particles.properties.ice.aspect_ratio
+
+# output
+3-element Vector{Float64}:
+ 0.5
+ 0.5
+ 1.0
+```
+
+Transferred particles are appended to their destination species in order, and the remaining particles
+keep their order. Absorbed particles are removed, and flagged particles are transferred, after particles
+are advected in every model time step.
+
+Checkpointing and `JLD2Writer` support multiple species. `NetCDFWriter` supports only a single species.
+
 ## Writing particle properties to disk
 
 Particle properties can be written to disk using JLD2 or NetCDF.

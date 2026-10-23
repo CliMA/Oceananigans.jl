@@ -2,8 +2,7 @@
 ##### Updating particle "field properties"
 #####
 
-@kernel function update_property!(particle_property, particles, grid, field, ℓx, ℓy, ℓz)
-    p = @index(Global)
+@inline function update_tracked_property!((particle_property, particles), p, (grid, field, ℓx, ℓy, ℓz))
     @inbounds begin
         x = particles.x[p]
         y = particles.y[p]
@@ -11,26 +10,29 @@
         X = flattened_node((x, y, z), grid)
         particle_property[p] = interpolate(X, field, (ℓx, ℓy, ℓz), grid)
     end
+    return nothing
 end
+
+# Species without the tracked property are skipped
+@inline update_tracked_property!(::Tuple{Nothing, Any}, p, shared_args) = nothing
+
+tracked_property(species, name) = name in propertynames(species) ? getproperty(species, name) : nothing
+tracking_count(species, name) = name in propertynames(species) ? length(species) : 0
 
 update_lagrangian_particle_state!(particles, model) = nothing
 
 function update_lagrangian_particle_state!(particles::LagrangianParticles, model)
     grid = model.grid
     arch = architecture(grid)
-    workgroup = min(length(particles), 256)
-    worksize = length(particles)
+    species = particle_species(particles)
 
-    # Update particle "properties"
+    # Update particle "properties" of the species that have them
     for (name, field) in pairs(particles.tracked_fields)
         compute!(field)
-        particle_property = getproperty(particles.properties, name)
         ℓx, ℓy, ℓz = map(instantiate, location(field))
-
-        update_field_property_kernel! = update_property!(device(arch), workgroup, worksize)
-
-        update_field_property_kernel!(particle_property, particles.properties, model.grid,
-                                      datatuple(field), ℓx, ℓy, ℓz)
+        counts = map(species -> tracking_count(species, name), species)
+        species_args = map(species -> (tracked_property(species, name), species), species)
+        launch_species!(arch, update_tracked_property!, counts, species_args, (grid, datatuple(field), ℓx, ℓy, ℓz))
     end
 
     return nothing

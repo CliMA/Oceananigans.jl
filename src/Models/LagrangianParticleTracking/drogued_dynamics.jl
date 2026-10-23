@@ -43,24 +43,21 @@ Adapt.adapt_structure(to, dbd::DroguedParticleDynamics) =
 
 const DroguedParticles = LagrangianParticles{<:Any, <:Any, <:Any, <:DroguedParticleDynamics}
 
-# Sorting and removal reorder particle properties, but not the depths of drogued particles
-validate_reordering(dynamics, sorting, removal) = nothing
+# Sorting and transfers reorder particle properties, but not the depths of drogued particles
+validate_reordering(dynamics, sorting, transfers) = nothing
 
-function validate_reordering(::DroguedParticleDynamics, sorting, removal)
-    isnothing(sorting) && isnothing(removal) && return nothing
-    throw(ArgumentError("DroguedParticleDynamics does not support sorting or AbsorbingBoundary conditions."))
+function validate_reordering(::DroguedParticleDynamics, sorting, transfers)
+    isnothing(sorting) && isnothing(transfers) && return nothing
+    throw(ArgumentError("DroguedParticleDynamics does not support sorting, AbsorbingBoundary conditions, " *
+                        "or multiple particle species."))
 end
 
 function advect_lagrangian_particles!(particles::DroguedParticles, model, Δt)
     grid = model.grid
     arch = architecture(grid)
-    Np = length(particles)
-    Np == 0 && return nothing
-
-    launch!(arch, grid, KernelParameters(1:Np),
-            _advect_drogued_particles!,
-            particles.properties, particles.boundary_conditions, model.grid, Δt, total_velocities(model),
-            particles.dynamics.depths)
+    launch_particle_kernel!(arch, _advect_drogued_particles!, length(particles),
+                            particles.properties, particles.boundary_conditions, model.grid, Δt, total_velocities(model),
+                            particles.dynamics.depths)
 
     return nothing
 end
