@@ -1,25 +1,24 @@
 ---
 paths:
   - src/**/*.jl
+  - ext/**/*.jl
 ---
 
 # Docstring Rules
 
-## Use DocStringExtensions.jl
-
-- Include `$(TYPEDSIGNATURES)` for automatic signature documentation
-- Add examples in docstrings when helpful
-
-## CRITICAL: Always use `jldoctest`, NEVER plain `julia` blocks
-
-Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorrect.
-Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
-
-### Example:
+- Use `$(TYPEDSIGNATURES)` from DocStringExtensions when the signature has no default values for
+  positional or keyword arguments. Write the signature by hand when it does, so the defaults show.
+- Code examples in docstrings are `jldoctest` blocks, not `julia` blocks. Doctests run in the
+  documentation build; plain `julia` blocks are never executed and go stale silently.
+- End a doctest with an expression whose `show` output is worth reading, and put that output after
+  `# output`. This tests the feature and its `show` method at once. A final line such as
+  `x ≈ 1.0` or `obj isa Type` prints `true` and tests almost nothing.
+- Write math in Unicode (`Δt`, `η`, `ρ`), not LaTeX; docstrings are read in the REPL, where LaTeX
+  does not render.
 
 ~~~~
 """
-    my_function(x)
+    my_function(grid)
 
 Example:
 
@@ -27,19 +26,10 @@ Example:
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-typeof(grid)
+my_function(grid)
 
 # output
-RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
+<the printed result>
 ```
 """
 ~~~~
-
-## Doctest Best Practices
-
-- Always include expected output after `# output`
-- Use simple, verifiable output (e.g., `typeof(result)`, accessing a field)
-- Doctests should exercise `Base.show` to verify objects display correctly
-- Keep doctests minimal but complete enough to verify the feature works
-- **Do NOT use boolean comparisons as the final line** (e.g., avoid `x ≈ 1.0` or `obj isa Type`)
-- Instead, make the final line invoke a `show` method that prints something useful
