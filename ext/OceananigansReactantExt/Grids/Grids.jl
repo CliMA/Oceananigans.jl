@@ -20,8 +20,6 @@ import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSph
 import Oceananigans.Grids: total_length
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
-import Oceananigans.BoundaryConditions: touches_pole
-using Oceananigans.BoundaryConditions: boundary_latitude, pole_latitude
 
 const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
 
@@ -57,15 +55,6 @@ const ReactantStateLatitudeLongitudeGrid =
 # structural metadata instead, which is what equality means for a traced grid.
 function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantStateLatitudeLongitudeGrid)
     return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
-end
-
-# Allocating a Field asks whether the north and south boundaries are poles. Inside a compiled function the
-# latitudes, and the grid's extents with them, are traced, so the answer cannot be read on the host there;
-# the grid is taken to be regional, with wall conditions on both boundaries. A grid that reaches a pole
-# allocates Fields eagerly, where its latitudes are concrete and the check is exact.
-function touches_pole(grid::ReactantStateLatitudeLongitudeGrid, side)
-    parent(grid.φᵃᶠᵃ) isa Reactant.AnyTracedRArray && return false
-    return boundary_latitude(grid, side) ≈ pole_latitude(side)
 end
 
 function total_size(grid::ShardedGrid, loc, indices)

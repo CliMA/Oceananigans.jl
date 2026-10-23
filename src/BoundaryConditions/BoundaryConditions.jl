@@ -28,7 +28,7 @@ using Oceananigans: Oceananigans, defaults
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, DistributedFoldedTopology, Face,
                           Flat, FullyConnected, LatitudeLongitudeGrid, LeftConnected,
-                          RightCenterFolded, RightConnected, RightFaceFolded, connected_range, halo_size, node,
+                          RightCenterFolded, RightConnected, RightFaceFolded, connected_range, halo_size, node, poles,
                           λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple

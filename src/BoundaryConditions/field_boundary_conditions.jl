@@ -1,4 +1,3 @@
-using GPUArraysCore: GPUArraysCore, @allowscalar
 using Oceananigans.Grids: YFlatGrid
 using Oceananigans.Operators: assumed_field_location
 
@@ -344,32 +343,24 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 @inline regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) =
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-# Whether a lat-lon grid's `side` boundary is a pole, where its fields take polar boundary conditions.
-# A host decision: architectures whose latitudes are not host-readable extend `touches_pole`.
-boundary_latitude(grid, ::Val{:north}) = @allowscalar φnode(grid.Ny+1, grid, Face())
-boundary_latitude(grid, ::Val{:south}) = @allowscalar φnode(1, grid, Face())
-pole_latitude(::Val{:north}) = 90
-pole_latitude(::Val{:south}) = -90
-touches_pole(grid, side) = boundary_latitude(grid, side) ≈ pole_latitude(side)
-
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz), default)
     default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return touches_pole(grid, Val(:north)) ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
+    return poles(grid).north ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
 end
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz), default)
     default_bc = default_prognostic_bc(topology(grid, 2)(), ℓy, default)
-    return touches_pole(grid, Val(:south)) ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
+    return poles(grid).south ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, (ℓx, ℓy, ℓz))
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return touches_pole(grid, Val(:north)) ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
+    return poles(grid).north ? maybe_polar_boundary_condition(grid, :north, ℓy, ℓz) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, (ℓx, ℓy, ℓz))
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), ℓy)
-    return touches_pole(grid, Val(:south)) ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
+    return poles(grid).south ? maybe_polar_boundary_condition(grid, :south, ℓy, ℓz) : default_bc
 end
 
 default_prognostic_bc(grid::LatitudeLongitudeGrid{<:Any, <:Any, Flat}, ::Val{:north}, loc, default) = default

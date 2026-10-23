@@ -450,18 +450,21 @@ end
 end
 
 @testset "Fields allocated inside a compiled function on a lat-lon grid" begin
-    doubled_sum(c) = sum(interior(compute!(Field(2c))))
-    regional_kw = (; size=(8, 8, 4), longitude=(-100, -90), latitude=(30, 40), z=(0, 1000))
+    # The halos of `Field(2c)` take the default boundary conditions of a field allocated inside the program:
+    # polar at a boundary on a pole, where they hold the zonal mean, and zero gradient elsewhere.
+    doubled(c) = parent(compute!(Field(2c)))
 
-    cpu_c = CenterField(LatitudeLongitudeGrid(CPU(); regional_kw...))
-    c = CenterField(LatitudeLongitudeGrid(ReactantState(); regional_kw...))
-    set!(cpu_c, 1)
-    set!(c, 1)
-    @test Reactant.to_number(@jit doubled_sum(c)) ≈ doubled_sum(cpu_c)
+    for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))
+        kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
+        cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
+        grid = LatitudeLongitudeGrid(ReactantState(); kw...)
+        @test Oceananigans.Grids.poles(grid) == Oceananigans.Grids.poles(cpu_grid) ==
+              (south = latitude[1] == -90, north = latitude[2] == 90)
 
-    # Eagerly the latitudes are concrete, so a grid reaching the poles still gets polar conditions.
-    global_grid = LatitudeLongitudeGrid(ReactantState(); size=(8, 8, 4), longitude=(0, 360), latitude=(-90, 90), z=(0, 1000))
-    bcs = CenterField(global_grid).boundary_conditions
-    @test bcs.north.condition isa Oceananigans.BoundaryConditions.PolarValue
-    @test bcs.south.condition isa Oceananigans.BoundaryConditions.PolarValue
+        cpu_c = CenterField(cpu_grid)
+        c = CenterField(grid)
+        set!(cpu_c, (λ, φ, z) -> λ)
+        set!(c, (λ, φ, z) -> λ)
+        @test Array(@jit doubled(c)) ≈ Array(doubled(cpu_c))
+    end
 end
