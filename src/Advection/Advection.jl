@@ -57,12 +57,12 @@ function apply_fused_multiply_add_choice(expression, choice)
 end
 
 """
-    @muladd expression
+    @fused_muladd expression
 
 `MuladdMacro.@muladd`, with the `muladd` calls it generates either kept (the `fused_multiply_add` preference of
 Oceananigans is `"muladd"`, the default) or replaced by `fma` (`"fma"`).
 """
-macro muladd(ex)
+macro fused_muladd(ex)
     expanded = macroexpand(__module__, Expr(:macrocall, GlobalRef(MuladdMacro, Symbol("@muladd")), __source__, ex))
     return esc(apply_fused_multiply_add_choice(expanded, fused_multiply_add_choice))
 end
