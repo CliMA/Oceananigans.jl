@@ -73,14 +73,14 @@ b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; 
 # \nu = \sqrt{\frac{Pr b_* L_x^3}{Ra}} \quad \text{and} \quad \kappa = \sqrt{\frac{b_* L_x^3}{Pr Ra}} \, .
 # ```
 #
-# We use isotropic viscosity and diffusivities, `ν` and `κ` whose values are obtain from the
+# We use isotropic viscosity and diffusivity, `ν` and `κ`, whose values are obtained from the
 # prescribed ``Ra`` and ``Pr`` numbers. Here, we use ``Pr = 1`` and ``Ra = 10^8``:
 
-Pr = 1      # Prandtl number
-Ra = 1e8    # Rayleigh number
+Pr = 1
+Ra = 1e8
 
-ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
-κ = ν / Pr                     # Laplacian diffusivity
+ν = sqrt(Pr * b★ * Lx^3 / Ra)
+κ = sqrt(b★ * Lx^3 / (Pr * Ra))
 nothing #hide
 
 # ## Model instantiation
@@ -101,11 +101,11 @@ model = NonhydrostaticModel(grid;
 # We set up a simulation that runs up to ``t = 40`` with a `JLD2Writer` that saves the flow
 # speed, ``\sqrt{u^2 + w^2}``, the buoyancy, ``b``, and the vorticity, ``\partial_z u - \partial_x w``.
 
-simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
+simulation = Simulation(model, Δt=1e-2, stop_time=40)
 
 # ### The `TimeStepWizard`
 #
-# The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy
+# The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Friedrichs-Lewy
 # (CFL) number close to `0.7`.
 
 conjure_time_step_wizard!(simulation, IterationInterval(50), cfl=0.7, max_Δt=1e-1)
@@ -126,30 +126,24 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 # and the buoyancy, ``b``. Note that computed `Field`s take "AbstractOperations" on `Field`s as
 # input:
 
-u, v, w = model.velocities # unpack velocity `Field`s
-b = model.tracers.b        # unpack buoyancy `Field`
+u, v, w = model.velocities
+b = model.tracers.b
 
-## total flow speed
 s = @at (Center, Center, Center) sqrt(u^2 + w^2)
-
-## y-component of vorticity
 ζ = ∂z(u) - ∂x(w)
 nothing #hide
 
-# We create a `JLD2Writer` that saves the speed, and the vorticity. Because we want
-# to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
-# to ``|\boldsymbol{\nabla} b|^2``) we use the `with_halos = true`. This way, the halos for
-# the fields are saved and thus when we load them as fields they will come with the proper
-# boundary conditions.
-#
-# We then add the `JLD2Writer` to the `simulation`.
+# We add to the `simulation` a `JLD2Writer` that saves the speed, the buoyancy, and the vorticity.
+# We want to post-process buoyancy to compute the buoyancy variance dissipation (which is
+# proportional to ``|\boldsymbol{\nabla} b|^2``). By default `JLD2Writer` saves the fields'
+# halos, so when we load the buoyancy back it comes with the proper boundary conditions
+# for computing gradients.
 
-saved_output_filename = "horizontal_convection.jld2"
+filename = "horizontal_convection.jld2"
 
 simulation.output_writers[:fields] = JLD2Writer(model, (; s, b, ζ),
                                                 schedule = TimeInterval(0.5),
-                                                filename = saved_output_filename,
-                                                with_halos = true,
+                                                filename = filename,
                                                 overwrite_files = true)
 nothing #hide
 
@@ -161,35 +155,27 @@ run!(simulation)
 
 # ## Load saved output, process, visualize
 #
-# We animate the results by loading the saved output, extracting data for the iterations we ended
-# up saving at, and plotting the saved fields. From the saved buoyancy field we compute the
-# buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
+# We animate the results by loading the saved output and plotting the saved fields.
+# From the saved buoyancy field we compute the buoyancy dissipation,
+# ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
 #
-# To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
-# creating coordinate arrays that each field lives on.
+# To start we load the saved fields as `FieldTimeSeries`.
 
 using CairoMakie
-using Oceananigans
-using Oceananigans.Fields
-using Oceananigans.AbstractOperations: volume
 
-saved_output_filename = "horizontal_convection.jld2"
-
-## Open the file with our data
-s_timeseries = FieldTimeSeries(saved_output_filename, "s")
-b_timeseries = FieldTimeSeries(saved_output_filename, "b")
-ζ_timeseries = FieldTimeSeries(saved_output_filename, "ζ")
+s_timeseries = FieldTimeSeries(filename, "s")
+b_timeseries = FieldTimeSeries(filename, "b")
+ζ_timeseries = FieldTimeSeries(filename, "ζ")
 
 times = b_timeseries.times
-nothing #hide
+Nt = length(times)
 
 χ_timeseries = deepcopy(b_timeseries)
 
-for n in 1:length(times)
-    bn = b_timeseries[n]
-    χ_timeseries[n] .= @at (Center, Center, Center) κ * (∂x(bn)^2 + ∂z(bn)^2)
+for n in 1:Nt
+    b = b_timeseries[n]
+    χ_timeseries[n] .= @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
 end
-
 
 # Now we're ready to animate using Makie.
 
@@ -241,26 +227,21 @@ Colorbar(fig[5, 2], hm_χ)
 
 # And, finally, we record a movie.
 
-frames = 1:length(times)
-
-record(fig, "horizontal_convection.mp4", frames, framerate=8) do i
-    msg = string("Plotting frame ", i, " of ", frames[end])
-    print(msg * " \r")
+record(fig, "horizontal_convection.mp4", 1:Nt, framerate=8) do i
     n[] = i
 end
 nothing #hide
 
 # ![](horizontal_convection.mp4)
 
-
 # At higher Rayleigh numbers the flow becomes much more vigorous. See, for example, an animation
-# of the voricity of the fluid at ``Ra = 10^{12}`` on [vimeo](https://vimeo.com/573730711).
+# of the vorticity of the fluid at ``Ra = 10^{12}`` on [vimeo](https://vimeo.com/573730711).
 
 # ### The Nusselt number
 #
-# Often we are interested on how much the flow enhances mixing. This is quantified by the
-# Nusselt number, which measures how much the flow enhances mixing compared if only diffusion
-# was in operation. The Nusselt number is given by
+# Often we are interested in how much the flow enhances mixing. This is quantified by the
+# Nusselt number, which compares the mixing achieved by the flow with the mixing that
+# diffusion alone would achieve. The Nusselt number is given by
 #
 # ```math
 # Nu = \frac{\langle \chi \rangle}{\langle \chi_{\rm diff} \rangle} \, ,
@@ -274,7 +255,7 @@ nothing #hide
 # \kappa \nabla^2 b_{\rm diff} = 0 \, ,
 # ```
 #
-# with the same boundary conditions same as our setup. In this case, we can readily find that
+# with the same boundary conditions as our setup. In this case, we can readily find that
 #
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
@@ -283,44 +264,30 @@ nothing #hide
 # where ``b_s(x)`` is the surface boundary condition. The diffusive solution implies
 #
 # ```math
-# \langle \chi_{\rm diff} \rangle = \frac{\kappa b_*^2 \pi}{L_x H} \tanh(2 \pi Η / L_x) .
+# \langle \chi_{\rm diff} \rangle = \frac{\kappa b_*^2 \pi}{L_x H} \tanh(2 \pi H / L_x) \, .
 # ```
 #
-# We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
-# average kinetic energy of the fluid.
+# We use the loaded `FieldTimeSeries` to compute the instantaneous Nusselt number and the
+# volume-averaged kinetic energy of the fluid.
 #
-# First we compute the diffusive buoyancy dissipation, ``\chi_{\rm diff}`` (which is just a
-# scalar):
+# First we compute the diffusive buoyancy dissipation, ``\langle \chi_{\rm diff} \rangle``
+# (which is just a scalar):
 
-χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
+χᵈⁱᶠᶠ = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
 nothing #hide
 
-# We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
-# the volume-averaged kinetic energy and the instantaneous Nusselt number,
+# Then we compute the volume averages with `Average`, and plot.
 
-t = b_timeseries.times
-
-kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
-nothing #hide
-
-# Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
-# and plot. We make use of `∫dV` to compute the volume integral of fields over our domain.
-
-for n = 1:length(t)
-    ke = ∫dV(1/2 * s_timeseries[n]^2 / (Lx * H))
-    kinetic_energy[n] = ke[1, 1, 1]
-
-    χ = ∫dV(χ_timeseries[n] / (Lx * H))
-    Nu[n] = χ[1, 1, 1] / χ_diff
-end
+kinetic_energy = [Field(Average(s_timeseries[n]^2 / 2))[1, 1, 1] for n in 1:Nt]
+Nu = [Field(Average(χ_timeseries[n]))[1, 1, 1] / χᵈⁱᶠᶠ for n in 1:Nt]
 
 fig = Figure(size = (850, 450))
 
 ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
-lines!(ax_KE, t, kinetic_energy; linewidth = 3)
+lines!(ax_KE, times, kinetic_energy; linewidth = 3)
 
 ax_Nu = Axis(fig[2, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"Nu")
-lines!(ax_Nu, t, Nu; linewidth = 3)
+lines!(ax_Nu, times, Nu; linewidth = 3)
 
 current_figure() #hide
 fig

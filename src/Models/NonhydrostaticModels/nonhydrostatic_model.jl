@@ -7,9 +7,9 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture, halo_size
+using Oceananigans.Grids: topology, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection, materialize_tracers, timestepper_name
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_model_halo, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
@@ -263,7 +263,8 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = materialize_model_advection(advection, grid)
 
-    grid = inflate_grid_halo_size(grid, values(advection)..., closure)
+    # Check halos and throw an error if the grid's halo is too small
+    validate_model_halo(grid, values(advection)..., closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -373,33 +374,9 @@ end
 architecture(model::NonhydrostaticModel) = model.architecture
 timestepper(model::NonhydrostaticModel) = model.timestepper
 
-# Kept out of the constructor so the mapping does not capture `grid`, which is rebound by
-# `inflate_grid_halo_size` and would therefore be boxed.
 function materialize_model_advection(advection, grid)
     advection = map(scheme -> adapt_advection_order(scheme, grid), advection)
     return map(scheme -> materialize_advection(scheme, grid), advection)
-end
-
-Base.@constprop :aggressive @inline function inflate_grid_halo_size(grid, tendency_terms...)
-    user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(user_halo..., grid, tendency_terms...)
-    needs_inflation = any(map(<, user_halo, required_halo))
-    return inflate_grid_halo_size(needs_inflation, grid, required_halo)
-end
-
-# `needs_inflation` folds to a compile-time constant when the halo sizes do, so the grid type is
-# known to the compiler whenever the user grid already has sufficient halos
-@inline inflate_grid_halo_size(needs_inflation::Bool, grid, required_halo) =
-    needs_inflation ? with_inflated_halo(grid, required_halo) : grid
-
-@noinline function with_inflated_halo(grid, required_halo)
-    Hx, Hy, Hz = required_halo
-    @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
-          "Note that an ImmersedBoundaryGrid requires an extra halo point in all non-flat directions compared to a non-immersed boundary grid. " *
-          "The model grid will be different from the input grid. To avoid this warning, " *
-          "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
-
-    return with_halo((Hx, Hy, Hz), grid)
 end
 
 # return the total advective velocities

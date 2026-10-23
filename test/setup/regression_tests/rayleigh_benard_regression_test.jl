@@ -182,8 +182,6 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                         b = partition(Array(b₁), cpu_arch, size(b)),
                         c = partition(Array(c₁), cpu_arch, size(c)))
 
-    summarize_regression_test(test_fields, reference_fields)
-
     CUDA.allowscalar(true)
     @test all(test_fields.u .≈ reference_fields.u)
     @test all(test_fields.v .≈ reference_fields.v)

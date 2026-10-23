@@ -19,18 +19,15 @@ using MPI
 #
 # julia> include("test/mpi/models.jl")
 
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
-using Oceananigans.Fields: AbstractField, interior
+using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid,
+                                            synchronize_communication!
+using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
-using Oceananigans.Grids:
-    architecture,
-    halo_size,
-    interior_indices,
-    left_halo_indices, right_halo_indices,
-    underlying_left_halo_indices, underlying_right_halo_indices
+using Oceananigans.Solvers: ZeroMeanGaugeCondition
+using Oceananigans.Grids: architecture, halo_size, interior_indices, FaceExtendedTopology
 
 #####
 ##### Viewing halos
@@ -38,6 +35,13 @@ using Oceananigans.Grids:
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+left_halo_indices(loc, topo, N, H) = 1-H:0
+left_halo_indices(::Nothing, topo, N, H) = 1:0
+
+right_halo_indices(loc, topo, N, H) = N+1:N+H
+right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
+right_halo_indices(::Nothing, topo, N, H) = 1:0
 
 west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
     include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
@@ -445,6 +449,38 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
     return nothing
 end
 
+# A fill of a field whose asynchronous fill is still in flight completes that fill first, and its own halos win
+function test_halo_communication_after_asynchronous_fill(child_arch)
+    arch = Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2))
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3))
+    field, reference = CenterField(grid), CenterField(grid)
+
+    fill!(reference, arch.local_rank + 10)
+    fill_halo_regions!(reference)
+
+    for second_fill_async in (false, true)
+        fill!(field, arch.local_rank)
+        fill_halo_regions!(field; async=true)
+        fill!(field, arch.local_rank + 10)
+        fill_halo_regions!(field; async=second_fill_async)
+        synchronize_communication!(field)
+
+        @test Array(parent(field)) == Array(parent(reference))
+    end
+
+    return nothing
+end
+
+# Halo tags count the distributed fields: a rank creating an extra one is an error at `run!`, not a hang in the first exchange
+function test_mismatched_field_creation(child_arch)
+    arch = Distributed(child_arch; partition=Partition(2, 2))
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3))
+    simulation = Simulation(NonhydrostaticModel(grid); Δt=1, stop_iteration=1, verbose=false)
+    arch.local_rank == 0 && CenterField(grid)
+    @test_throws ArgumentError run!(simulation)
+    return nothing
+end
+
 #####
 ##### Run tests!
 #####
@@ -480,6 +516,9 @@ end
             test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
+
+        test_halo_communication_after_asynchronous_fill(child_arch)
+        test_mismatched_field_creation(child_arch)
     end
 
     @testset "Complex boundary conditions" begin
@@ -619,6 +658,7 @@ end
             Ntot = 4N # total number of grid points across the 4 ranks
             @test dot(c, c) == (1^2 + 2^2 + 3^2 + 4^2) * N
             @test norm(c) == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
+            @test norm(2c) == 2 * norm(c)
             @test mean(c) == (1 + 2 + 3 + 4) * N / Ntot
             @test minimum(c) == 1
             @test maximum(c) == 4
@@ -641,6 +681,19 @@ end
             # The four equal rank-blocks hold 1, 2, 3, 4, so the global mean is 2.5
             # regardless of the local block size N.
             @test mean(c) == (1 + 2 + 3 + 4) / 4
+
+            # The in-place counterparts used by ConjugateGradientSolver also reduce across ranks
+            r = zeros(grid, 1)
+            @test Array(dot!(r, c, c))[1] == (1^2 + 2^2 + 3^2 + 4^2) * N
+
+            gauge = ZeroMeanGaugeCondition(grid)
+            @test gauge.number_of_active_cells == Ntot
+
+            d = CenterField(grid)
+            set!(d, 2 * (arch.local_rank + 1))
+            gauge(c, d)
+            @test all(Array(interior(c)) .== arch.local_rank + 1 - 5/2)
+            @test all(Array(interior(d)) .== 2 * (arch.local_rank + 1) - 5)
         end
     end
 
