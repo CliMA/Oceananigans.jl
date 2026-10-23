@@ -15,7 +15,6 @@ using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions: BoundaryCondition
-using Oceananigans.Grids: AbstractTopology
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
 using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
