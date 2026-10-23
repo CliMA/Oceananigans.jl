@@ -32,8 +32,6 @@ function Base.show(io::IO, model::NonhydrostaticModel)
     if isnothing(model.particles)
         print(io, "└── coriolis: ", summary(model.coriolis))
     else
-        particles = model.particles.properties
-        properties = propertynames(particles)
         print(io, "├── coriolis: ", summary(model.coriolis), "\n")
         print(io, "└── particles: ", summary(model.particles))
     end

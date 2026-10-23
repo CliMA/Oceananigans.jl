@@ -1,4 +1,4 @@
-using Oceananigans.Utils: instantiate, KernelParameters
+using Oceananigans.Utils: instantiate
 using Oceananigans.Models: total_velocities
 using Oceananigans.Fields: interpolator, FractionalIndices
 
@@ -161,16 +161,21 @@ end
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 @inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
 
-@kernel function _advect_particles!(particles, boundary_conditions, absorbed, grid::AbstractGrid, Δt, velocities)
-    p = @index(Global)
+"""
+$(TYPEDSIGNATURES)
 
+Advect particle `p` of a species with properties `particles` by `Δt` with a forward Euler step.
+`flags` are the transfer flags of the species (or `nothing`; see [`ParticleTransfers`](@ref)),
+and particles absorbed at an [`AbsorbingBoundary`](@ref) are flagged for removal.
+"""
+@inline function advect_particle!((particles, flags), p, (boundary_conditions, grid, Δt, velocities))
     @inbounds begin
         x = particles.x[p]
         y = particles.y[p]
         z = particles.z[p]
     end
 
-    (x⁺, y⁺, z⁺), absorbed_p = advect_particle((x, y, z), particles, p, boundary_conditions, grid, Δt, velocities)
+    (x⁺, y⁺, z⁺), absorbed = advect_particle((x, y, z), particles, p, boundary_conditions, grid, Δt, velocities)
 
     @inbounds begin
         particles.x[p] = x⁺
@@ -178,21 +183,27 @@ end
         particles.z[p] = z⁺
     end
 
-    record_absorption!(absorbed, p, absorbed_p)
+    record_absorption!(flags, p, absorbed)
+
+    return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Advect the particles of all species by `Δt` with the velocities of `model`, in a single kernel launch
+(see [`SuperrangeLaunch`](@ref)).
+"""
 function advect_lagrangian_particles!(particles, model, Δt)
     grid = model.grid
     arch = architecture(grid)
-    Np = length(particles)
-    Np == 0 && return nothing
+    properties = particles.properties
+    species = particle_species(properties)
+    flags = species_tuple(properties, transfer_flags(particles.transfers))
 
-    prepare_removal!(particles.removal, Np)
-
-    launch!(arch, grid, KernelParameters(1:Np),
-            _advect_particles!,
-            particles.properties, particles.boundary_conditions, absorbed_flags(particles.removal),
-            model.grid, Δt, total_velocities(model))
+    species_args = map(tuple, species, flags)
+    shared_args = (particles.boundary_conditions, grid, Δt, total_velocities(model))
+    launch_species!(arch, advect_particle!, map(length, species), species_args, shared_args)
 
     return nothing
 end
