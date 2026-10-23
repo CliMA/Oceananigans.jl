@@ -193,7 +193,7 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegi
 
 # The immersed boundary of a connected region is materialized on the whole multi-region grid, so it moves to
 # another architecture as it is, without being materialized again on the region alone.
-const RegionalConnectedTopology = Union{Sides{Connected, Connected}, Sides{Connected, <:BoundarySide}, Sides{<:BoundarySide, Connected}}
+const RegionalConnectedTopology = Union{TwoSided{Connected, Connected}, TwoSided{Connected, <:BoundarySide}, TwoSided{<:BoundarySide, Connected}}
 const RegionalGrid = Union{RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
 
 const ImmersedRegionalGrid = Union{ImmersedBoundaryGrid{<:Any, <:RegionalConnectedTopology, <:Any, <:Any, <:RegionalGrid},

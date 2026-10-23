@@ -145,7 +145,7 @@ for side in (:ᶜ, :ᶠ)
 
     # The halos beyond an Open side are active, so order reduction there comes from the topology
     for (ξ, d) in ((:x, 1), (:y, 2), (:z, 3))
-        open_topology = :(Union{Sides{Open}, Sides{<:Any, Open}})
+        open_topology = :(Union{TwoSided{Open}, TwoSided{<:Any, Open}})
         open_grid = d == 1 ? :(IBG{<:Any, <:$open_topology}) :
                     d == 2 ? :(IBG{<:Any, <:Any, <:$open_topology}) :
                              :(IBG{<:Any, <:Any, <:Any, <:$open_topology})

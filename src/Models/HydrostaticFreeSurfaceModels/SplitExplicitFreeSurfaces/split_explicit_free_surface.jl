@@ -248,7 +248,7 @@ Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, fre
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{Sides{Connected}, Sides{<:Any, Connected}}
+const ConnectedTopology = Union{TwoSided{Connected}, TwoSided{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}

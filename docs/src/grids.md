@@ -80,10 +80,10 @@ For example, a channel closed on the west and open on the east is
 channel = RectilinearGrid(topology = ((Closed, Open), Periodic, Bounded), size = (16, 8, 4), extent = (64, 32, 8))
 
 # output
-16×8×4 RectilinearGrid{Float64, Sides{Closed, Open}, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Sides{Closed, Open} x ∈ [0.0, 64.0] regularly spaced with Δx=4.0
-├── Periodic y ∈ [0.0, 32.0)            regularly spaced with Δy=4.0
-└── Bounded  z ∈ [-8.0, 0.0]            regularly spaced with Δz=2.0
+16×8×4 RectilinearGrid{Float64, TwoSided{Closed, Open}, Periodic, Bounded} on CPU with 3×3×3 halo
+├── TwoSided{Closed, Open} x ∈ [0.0, 64.0] regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)               regularly spaced with Δy=4.0
+└── Bounded  z ∈ [-8.0, 0.0]               regularly spaced with Δz=2.0
 ```
 
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).

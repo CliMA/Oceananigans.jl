@@ -238,8 +238,8 @@ validate_boundary_condition_topology(bc::Union{PBC, MCBC, Nothing}, topo::Grids.
 validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 
-# Each side of a `Sides` direction is validated against its own side topology
-validate_boundary_condition_topology(bc, ::Sides{L, R}, side) where {L, R} = validate_boundary_condition_topology(bc, side ∈ (:west, :south, :bottom) ? L() : R(), side)
+# Each side of a `TwoSided` direction is validated against its own side topology
+validate_boundary_condition_topology(bc, ::TwoSided{L, R}, side) where {L, R} = validate_boundary_condition_topology(bc, side ∈ (:west, :south, :bottom) ? L() : R(), side)
 
 validate_boundary_condition_topology(bc::Union{VBC, NFBC}, ::Closed, side) =
     isnothing(bc.classification.scheme) ? nothing : throw(ArgumentError(
