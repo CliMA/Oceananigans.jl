@@ -62,6 +62,7 @@ z_interfaces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
 grid = RectilinearGrid(GPU(),
                        size = (Nx, Ny, Nz),
+                       halo = (4, 4, 4),
                        x = (0, Lx),
                        y = (0, Ly),
                        z = z_interfaces)

@@ -57,12 +57,9 @@ update_model_field_time_series!(model::AbstractModel, first_time::Time, last_tim
 ##### Model-building utilities
 #####
 
-function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+function validate_model_halo(grid, tendency_terms...)
     user_halo = halo_size(grid)
-    required_halo = inflate_halo_size(1, 1, 1, grid,
-                                      momentum_advection,
-                                      tracer_advection,
-                                      closure)
+    required_halo = inflate_halo_size(1, 1, 1, grid, tendency_terms...)
 
     any(user_halo .< required_halo) &&
         throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n \

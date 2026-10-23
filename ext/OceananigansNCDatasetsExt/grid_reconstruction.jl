@@ -201,7 +201,7 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(ds.attrib, "output_includes_halos")
@@ -325,19 +325,19 @@ end
 
 # Rebuild the `conformal_mapping` from its serialized attributes (see
 # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
-# argument is the y-topology type — for `Tripolar`, that's the fold flavor
-# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# argument is the y-topology type — for `Tripolar`, its north side is the fold flavor
+# (`CenterFolded`/`FaceFolded`) which lives as a type-parameter on
 # the struct rather than a runtime field.
 reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:Sides{<:Any, R}}) where R
     return Tripolar(
         attrib["north_poles_latitude"],
         attrib["first_pole_longitude"],
         attrib["southernmost_latitude"],
-        TY,
+        R,
     )
 end
 
