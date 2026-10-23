@@ -21,6 +21,10 @@ contains_value(x, v) = x === v || x isa Expr && any(arg -> contains_value(arg, v
         @test fused_multiply_add(2, 3.0, 1) === 7.0
         @test fused_multiply_add(BFloat16(2), BFloat16(3), BFloat16(1)) === BFloat16(7)
         @test fused_multiply_add(2, BFloat16(3), BFloat16(1)) === BFloat16(7)
+
+        values = rand(Xoshiro(1), BFloat16, 3, 1000)
+        a, b, c = values[1, :], values[2, :], values[3, :]
+        @test all(fused_multiply_add.(a, b, c) .=== BFloat16.(fma.(Float32.(a), Float32.(b), Float32.(c))))
     end
 
     @testset "replace_muladd" begin
