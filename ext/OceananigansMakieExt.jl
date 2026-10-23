@@ -839,8 +839,8 @@ const yang_radius_fraction = 0.995
 # The cells of each panel that are drawn, from the fractions of their area that each panel owns.
 function yin_yang_drawn_cells(grid)
     weights = owned_weights(grid)
-    yin_weights = on_architecture(CPU(), interior(weights[1], :, :, 1))
-    yang_weights = on_architecture(CPU(), interior(weights[2], :, :, 1))
+    yin_weights = interior(weights[1], :, :, 1)
+    yang_weights = interior(weights[2], :, :, 1)
     return (yin = findall(≥(1/2), yin_weights), yang = findall(>(0), yang_weights))
 end
 
@@ -861,13 +861,12 @@ function yin_yang_mesh(f::YinYangField, radius)
     size(f, 3) == 1 ||
         throw(ArgumentError("Yin-Yang plots require a single vertical index; use, e.g., view(f, :, :, k)."))
 
-    grid = underlying_grid(f.grid)
+    # The mesh is built on the CPU, so the grid is moved there once
+    grid = on_architecture(CPU(), underlying_grid(f.grid))
     cells = yin_yang_drawn_cells(grid)
-    yin = on_architecture(CPU(), grid[1])
-    yang = on_architecture(CPU(), grid[2])
 
-    vertices = vcat(panel_quad_vertices(yin, cells.yin, radius),
-                    panel_quad_vertices(yang, cells.yang, yang_radius_fraction * radius))
+    vertices = vcat(panel_quad_vertices(grid[1], cells.yin, radius),
+                    panel_quad_vertices(grid[2], cells.yang, yang_radius_fraction * radius))
 
     faces = quad_faces(length(cells.yin) + length(cells.yang))
 
