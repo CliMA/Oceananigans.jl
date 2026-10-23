@@ -1,32 +1,10 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans: fully_supported_float_types
-using Oceananigans.Advection: apply_fused_multiply_add_choice, fused_multiply_add, replace_muladd
-
-BFloat16 = last(fully_supported_float_types)
+using Oceananigans.Advection: apply_fused_multiply_add_choice, replace_muladd
 
 contains_value(x, v) = x === v || x isa Expr && any(arg -> contains_value(arg, v), x.args)
 
 @testset "Fused multiply-add" begin
-    @testset "fused_multiply_add rounds once [$FT]" for FT in (Float32, Float64)
-        a, b = FT(1) + eps(FT), FT(1) - eps(FT)
-        c = -FT(1)
-
-        @test fused_multiply_add(a, b, c) == fma(a, b, c)
-        @test fused_multiply_add(a, b, c) != a * b + c
-    end
-
-    @testset "fused_multiply_add accepts mixed and BFloat16 arguments" begin
-        @test fused_multiply_add(2, 3, 1) == 7
-        @test fused_multiply_add(2, 3.0, 1) === 7.0
-        @test fused_multiply_add(BFloat16(2), BFloat16(3), BFloat16(1)) === BFloat16(7)
-        @test fused_multiply_add(2, BFloat16(3), BFloat16(1)) === BFloat16(7)
-
-        values = rand(Xoshiro(1), BFloat16, 3, 1000)
-        a, b, c = values[1, :], values[2, :], values[3, :]
-        @test all(fused_multiply_add.(a, b, c) .=== BFloat16.(fma.(Float32.(a), Float32.(b), Float32.(c))))
-    end
-
     @testset "replace_muladd" begin
         muladd_macro = GlobalRef(Oceananigans.Advection.MuladdMacro, Symbol("@muladd"))
         expression = macroexpand(@__MODULE__, Expr(:macrocall, muladd_macro, LineNumberNode(0), :(x * y + z)))
@@ -42,7 +20,7 @@ contains_value(x, v) = x === v || x isa Expr && any(arg -> contains_value(arg, v
 
         @test apply_fused_multiply_add_choice(expression, "muladd") === expression
         @test !contains_value(apply_fused_multiply_add_choice(expression, "fma"), :muladd)
-        @test contains_value(apply_fused_multiply_add_choice(expression, "fma"), GlobalRef(Oceananigans.Advection, :fused_multiply_add))
+        @test contains_value(apply_fused_multiply_add_choice(expression, "fma"), GlobalRef(Base, :fma))
         @test_throws ErrorException apply_fused_multiply_add_choice(expression, "bogus")
     end
 end

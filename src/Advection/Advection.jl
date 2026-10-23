@@ -23,7 +23,6 @@ using Adapt: Adapt
 using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
 import MuladdMacro
-using BFloat16s: BFloat16
 using Preferences: @load_preference
 using OffsetArrays: OffsetArray
 
@@ -40,10 +39,6 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Ax�
 
 const fused_multiply_add_choice = @load_preference("fused_multiply_add", "muladd")
 
-@inline fused_multiply_add(a, b, c) = fused_multiply_add(promote(a, b, c)...)
-@inline fused_multiply_add(a::T, b::T, c::T) where T = fma(a, b, c)
-@inline fused_multiply_add(a::BFloat16, b::BFloat16, c::BFloat16) = BFloat16(Float32(a) * Float32(b) + Float32(c))
-
 replace_muladd(x, replacement) = x
 replace_muladd(x::Symbol, replacement) = x === :muladd ? replacement : x
 replace_muladd(x::Function, replacement) = x === Base.muladd ? replacement : x
@@ -52,7 +47,7 @@ replace_muladd(ex::Expr, replacement) = Expr(ex.head, map(arg -> replace_muladd(
 
 function apply_fused_multiply_add_choice(expression, choice)
     choice == "muladd" && return expression
-    choice == "fma" && return replace_muladd(expression, GlobalRef(@__MODULE__, :fused_multiply_add))
+    choice == "fma" && return replace_muladd(expression, GlobalRef(Base, :fma))
     error("The fused_multiply_add preference must be \"muladd\" or \"fma\", got \"$choice\".")
 end
 
