@@ -18,16 +18,16 @@ using Distances: haversine
 @inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ) =
     @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[2]
 
-@inline intrinsic_vector_3d_x_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+@inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ, wₑ) =
     @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[1]
 
-@inline intrinsic_vector_3d_y_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+@inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ, wₑ) =
     @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[2]
 
-@inline extrinsic_vector_3d_x_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+@inline extrinsic_vector_x_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
     @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[1]
 
-@inline extrinsic_vector_3d_y_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+@inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
     @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[2]
 
 function pointwise_approximate_equal(field1, field2)
@@ -91,10 +91,10 @@ function test_vector_rotation(grid)
     @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
 
     @info "  Testing that the 3-component methods rotate the horizontal pair identically on $(summary(grid))"
-    xᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_3d_x_component, grid, x₁, y₁, z₁)
-    yᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_3d_y_component, grid, x₁, y₁, z₁)
-    xₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_3d_x_component, grid, xᵢ₁, yᵢ₁, z₁)
-    yₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_3d_y_component, grid, xᵢ₁, yᵢ₁, z₁)
+    xᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁, z₁)
+    yᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁, z₁)
+    xₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₁, yᵢ₁, z₁)
+    yₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₁, yᵢ₁, z₁)
 
     xᵢ₃ = compute!(Field(xᵢ₃))
     yᵢ₃ = compute!(Field(yᵢ₃))
