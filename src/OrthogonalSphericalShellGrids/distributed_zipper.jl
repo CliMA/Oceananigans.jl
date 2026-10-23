@@ -1,9 +1,7 @@
 using Oceananigans.BoundaryConditions: DistributedCommunication, pivot_shift
 using Oceananigans.DistributedComputations: CommunicationBuffers, halo_tag_slots, side_id
 using Oceananigans.Grids: AbstractGrid, topology,
-    RightCenterFolded, RightFaceFolded,
-    LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+    CenterFolded, CenterFoldConnected, FaceFolded, FaceFoldConnected, Sides,
     PencilFoldedTopology
 using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer, communication_state
 
@@ -22,12 +20,8 @@ const DistributedZipper = BoundaryCondition{<:DistributedCommunication, <:Zipper
 ##### Topology unions for dispatch
 #####
 
-const UPivotTopology = Union{RightCenterFolded,
-                             LeftConnectedRightCenterFolded,
-                             LeftConnectedRightCenterConnected}
-const FPivotTopology = Union{RightFaceFolded,
-                             LeftConnectedRightFaceFolded,
-                             LeftConnectedRightFaceConnected}
+const UPivotTopology = Sides{<:Any, <:Union{CenterFolded, CenterFoldConnected}}
+const FPivotTopology = Sides{<:Any, <:Union{FaceFolded, FaceFoldConnected}}
 
 # UPivot fold line is at Center-y; FPivot fold line is at Face-y
 has_fold_line(::Type{<:UPivotTopology}, ::Center) = true

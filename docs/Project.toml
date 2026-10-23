@@ -30,7 +30,7 @@ Oceananigans = {path = ".."}
 
 [compat]
 CairoMakie = "0.15"
-CUDA = "=5.8.5, 5.9.1, 6.0 - 6.1"
+CUDA = "=5.8.5, 5.9.1, 6"
 ConservativeRegridding = "0.2"
 Documenter = "1 - 1.17"
 DocumenterCitations = "1"
@@ -41,6 +41,7 @@ MPI = "0.20"
 Optim = "2"
 Pkg = "<0.0.1, 1"
 Polynomials = "4"
+Reactant = "0.2.278 - 0.2.292"
 
 [preferences.Reactant]
 xla_runtime = "IFRT"
