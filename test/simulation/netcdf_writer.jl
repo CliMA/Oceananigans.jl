@@ -2903,17 +2903,18 @@ function test_netcdf_windowed_field_output(arch)
                           schedule = IterationInterval(1),
                           array_type = Array{Float64},
                           include_grid_metrics = false,
-                          overwrite_existing = true)
+                          overwrite_files = true)
 
+    # The second write reuses the windowed dimensions; at the same time it overwrites the first snapshot
     Oceananigans.write_output!(writer, model)
     Oceananigans.write_output!(writer, model)
 
     ds = NCDataset(fp_coexist)
 
     # The full tracer keeps the canonical `z_aac`; the windowed tracer gets a distinct dim.
-    @test dimsize(ds[:T])     == (x_caa=Nx, y_aca=Ny, z_aac=Nz,   time=2)
-    @test dimsize(ds[:T_top]) == (x_caa=Nx, y_aca=Ny, z_aac_2=1,  time=2)
-    @test dimsize(ds[:w_mid]) == (x_caa=Nx, y_aca=Ny, z_aaf_2=1,  time=2)
+    @test dimsize(ds[:T])     == (x_caa=Nx, y_aca=Ny, z_aac=Nz,   time=1)
+    @test dimsize(ds[:T_top]) == (x_caa=Nx, y_aca=Ny, z_aac_2=1,  time=1)
+    @test dimsize(ds[:w_mid]) == (x_caa=Nx, y_aca=Ny, z_aaf_2=1,  time=1)
 
     @test haskey(ds, "z_aac")
     @test haskey(ds, "z_aac_2")
@@ -2950,7 +2951,7 @@ function test_netcdf_windowed_field_output(arch)
                               schedule = IterationInterval(1),
                               array_type = Array{Float64},
                               include_grid_metrics = false,
-                              overwrite_existing = true)
+                              overwrite_files = true)
 
     Oceananigans.write_output!(eta_writer, model)
 
@@ -2974,7 +2975,7 @@ function test_netcdf_windowed_field_output(arch)
                                  schedule = IterationInterval(1),
                                  array_type = Array{Float64},
                                  include_grid_metrics = false,
-                                 overwrite_existing = true)
+                                 overwrite_files = true)
 
     Oceananigans.write_output!(sliced_writer, model)
 
