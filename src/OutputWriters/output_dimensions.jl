@@ -2,7 +2,7 @@
 ##### Output dimensions and coordinates
 #####
 
-function effective_reduced_dimensions(field)
+Base.@nospecializeinfer function effective_reduced_dimensions(@nospecialize(field))
     location_reduced_dimensions = reduced_dimensions(field)
     topology_reduced_dimensions = findall(==(Flat), topology(field))
     return Tuple(unique((location_reduced_dimensions..., topology_reduced_dimensions...)))
@@ -16,7 +16,7 @@ end
 drop_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}, values) =
     drop_reduced_dimensions(output.operand, values)
 
-function squeeze_reduced_dimensions(field::AbstractField, data; array_type=identity)
+Base.@nospecializeinfer function squeeze_reduced_dimensions(@nospecialize(field::AbstractField), @nospecialize(data); array_type=identity)
     data = array_type(data)
     reduced_dimensions = effective_reduced_dimensions(field)
     selectors = ntuple(dimension -> dimension in reduced_dimensions ? 1 : Colon(), 3)
@@ -464,7 +464,7 @@ gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::OneDimensionalHorizontalCoordinateGrid, dim_name_generator; grid_index=nothing)
+Base.@nospecializeinfer function field_dimensions(@nospecialize(fd::AbstractField), @nospecialize(grid::OneDimensionalHorizontalCoordinateGrid), dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
     x = string(ξname(grid))
@@ -478,7 +478,7 @@ function field_dimensions(fd::AbstractField, grid::OneDimensionalHorizontalCoord
     return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (x_dim_name, y_dim_name, z_dim_name))
 end
 
-function field_dimensions(fd::AbstractField, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
+Base.@nospecializeinfer function field_dimensions(@nospecialize(fd::AbstractField), @nospecialize(grid::OrthogonalSphericalShellGrid), dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
     # On OSSG, field dimensions are the bare horizontal index dimensions (i_*, j_*)

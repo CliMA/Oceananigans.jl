@@ -26,6 +26,9 @@ materialize_advection(u::CrossAndSelfUpwinding, grid) = CrossAndSelfUpwinding(ma
 
 materialize_advection(u::VelocityUpwinding, grid) = VelocityUpwinding(materialize_advection(u.cross_scheme, grid))
 
+materialize_advection(a::EnergyConservingUpwinding{N, FT, TD}, grid) where {N, FT, TD} =
+    EnergyConservingUpwinding{N, FT, TD}(materialize_advection(a.scheme, grid))
+
 # VectorInvariant wraps multiple sub-schemes; recurse into each
 function materialize_advection(vi::VectorInvariant{N, FT, TD, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, M}, grid) where {N, FT, TD, M}
     return VectorInvariant{N, FT, TD, M}(materialize_advection(vi.vorticity_scheme, grid),

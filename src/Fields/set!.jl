@@ -44,8 +44,8 @@ function set!(dst::NamedFieldTuple, src::NamedTuple)
 end
 
 # This interface helps us do things like set distributed fields
-set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, f::Function, args...) = set_to_function!(u, f)
+set!(u::Field, a::Union{Array, OffsetArray}, args...) = set_to_array!(u, a)
 
 """
 $(TYPEDSIGNATURES)
@@ -60,20 +60,25 @@ architectures.
 
 Note that the interpolation path samples `v` pointwise; for conservative
 remapping, call [`regrid!`](@ref) explicitly.
-"""
-set!(u::Field, v::Field) = set_to_field!(u, v)
 
-function set!(u::Field, a::Number)
+When `u` is set from a model's `set!(model; kwargs...)`, `args...` (eg `clock, model_fields`)
+carries the model's simulation context through to the halo fill of `v`, so that `v`'s
+boundary conditions may depend on `clock` (e.g. a `ContinuousBoundaryFunction`). Different
+models pass different `args` into `fill_halo_regions!`, so this is kept generic.
+"""
+set!(u::Field, v::Field, args...) = set_to_field!(u, v, args...)
+
+function set!(u::Field, a::Number, args...)
     fill!(interior(u), a) # note all other set! only change interior
     return u # return u, not parent(u), for type-stability
 end
 
-function set!(u::Field, v)
+function set!(u::Field, v, args...)
     u .= v # fallback
     return u
 end
 
-set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+set!(u::Field, z::ZeroField, args...) = set!(u, zero(eltype(u)))
 
 #####
 ##### Setting to specific things
@@ -99,7 +104,7 @@ function set_to_function!(u, f, clock=nothing)
 
     # Try to set the FunctionField to cpu_u
     try
-        set!(cpu_u, f_field)
+        set_on_host!(cpu_u, f_field)
     catch err
         u_loc = Tuple(L() for L in location(u))
 
@@ -115,7 +120,7 @@ function set_to_function!(u, f, clock=nothing)
                      "callable via", '\n', '\n',
                      "     func(", arg_str, ")", '\n')
         @warn msg
-        throw(err)
+        throw(task_error(err))
     end
 
     # Transfer data to GPU if u is on the GPU
@@ -124,6 +129,27 @@ function set_to_function!(u, f, clock=nothing)
     end
     return u
 end
+
+# Evaluate `f_field` at the points of the CPU field `u` with a threaded loop rather than a kernel,
+# so that `set!(field, func)` accepts any Julia function, e.g. closures capturing arrays or types.
+# It covers the same indices as `u .= f_field`.
+function set_on_host!(u, f_field)
+    offsets = map(offset_index, indices(u))
+    Nx, Ny, Nz = size(u)
+    Threads.@threads for jk in CartesianIndices((Ny, Nz))
+        j, k = Tuple(jk)
+        for i in 1:Nx
+            i′, j′, k′ = (i, j, k) .+ offsets
+            @inbounds u[i′, j′, k′] = f_field[i′, j′, k′]
+        end
+    end
+    return u
+end
+
+# The error thrown by `func` rather than the exceptions `Threads.@threads` wraps it in
+task_error(err::CompositeException) = task_error(first(err.exceptions))
+task_error(err::TaskFailedException) = task_error(err.task.result)
+task_error(err) = err
 
 function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
@@ -147,16 +173,14 @@ function set_to_array!(u, a)
     return u
 end
 
-function set_to_field!(u, v)
+function set_to_field!(u, v, args...)
     if copyable_fields(u, v)
         copy_to_field!(u, v)
     else
-        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
-        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
-        # boundary conditions, mismatching fill_halo_regions! dispatch.
-        fill_halo_regions!(v)
-        v_on_u = on_architecture(child_architecture(u), v)
-        interpolate!(u, v_on_u)
+        fill_halo_regions!(v, args...)
+        # Avoid reconstructing immersed grids when architectures already match.
+        v_on_u = child_architecture(u) === child_architecture(v) ? v : on_architecture(child_architecture(u), v)
+        interpolate!(u, v_on_u, args...)
     end
 
     return u

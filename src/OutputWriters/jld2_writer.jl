@@ -47,7 +47,8 @@ in `outputs` to a JLD2 file.
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
 strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects that
 are called with the signature `output(model)`, or `WindowedTimeAverage`s of `AbstractFields`s,
-functions, or callable objects.
+functions, or callable objects. A `TimeDerivative` of a `Field`, `AbstractOperation`, or
+`Reduction` may also be used.
 
 Keyword arguments
 =================
@@ -214,10 +215,10 @@ end
 
 # Inferring this for a concrete model type means inferring `serializeproperty!` for the
 # union of all the model's property types, which takes seconds and is never needed
-Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including)
+Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including, serialized)
     saveproperties!(file, model, including)
 
-    for property in including
+    for property in serialized
         serializeproperty!(file, "serialized/$property", getproperty(model, property))
     end
 
@@ -225,6 +226,9 @@ Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecial
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+    # Output is appended to an existing file, which already holds the metadata
+    isfile(filepath) && return nothing
+
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
@@ -233,18 +237,21 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try
-        jldopen(filepath, "a+"; jld2_kw...) do file
-            save_and_serialize_properties!(file, model, including)
-        end
-    catch err
-        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
-    end
-
     # Extract grids from outputs, falling back to `nothing` for non-field outputs
     output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
     unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
     single_grid  = length(unique_grids) == 1
+
+    # A single output grid is serialized at `serialized/grid` below, in place of `model.grid`
+    serialized = single_grid ? filter(!=(:grid), including) : including
+
+    try
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            save_and_serialize_properties!(file, model, including, serialized)
+        end
+    catch err
+        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
+    end
 
     # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
     # (no suffix); with multiple grids they are stored at `serialized/grid_1`, `grid_2`, ...
@@ -355,6 +362,8 @@ function iteration_exists(filepath, iter=0)
 end
 
 function Oceananigans.write_output!(writer::JLD2Writer, model)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
     # Ensure the writer is initialized before writing
     if !writer.initialized
         initialize!(writer, model)
@@ -393,7 +402,7 @@ function Oceananigans.write_output!(writer::JLD2Writer, model)
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
-        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        jld2output!(writer.filepath, model.clock.iteration, output_time(model.clock, writer.schedule), data, writer.jld2_kw)
         end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",

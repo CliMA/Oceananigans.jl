@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-shortsummary(x, args...) = string(typeof(x).name.wrapper)
+shortsummary(x, args...) = string(nameof(typeof(x)))
 prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
@@ -16,6 +16,7 @@ function prettysummary(f::Function, showmethods=true)
 end
 
 prettysummary(x::Int, args...) = string(x)
+prettysummary(x::Nothing, args...) = string(x)
 
 # This is very important
 function prettysummary(nt::NamedTuple, args...)

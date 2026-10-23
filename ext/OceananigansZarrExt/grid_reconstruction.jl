@@ -6,7 +6,7 @@
 ##### Grid reconstruction
 #####
 
-zarr_grid_type_string(g) = string(typeof(g).name.wrapper)
+zarr_grid_type_string(g) = string(nameof(typeof(g)))
 
 add_conformal_mapping_info_to_kwargs!(kwargs, grid) = nothing
 
@@ -180,7 +180,7 @@ reconstruct_immersed_boundary(grid_group, immersed_boundary_type, prefix) = erro
 function reconstruct_immersed_boundary(grid_group)
     grid_reconstruction_metadata = grid_group.attrs["grid_reconstruction_metadata"]
     immersed_boundary_type = grid_reconstruction_metadata["immersed_boundary_type"]
-    immersed_boundary = reconstruct_immersed_boundary(grid_group, Val(Symbol(immersed_boundary_type)))
+    immersed_boundary = reconstruct_immersed_boundary(grid_group, Val(Symbol(last(split(immersed_boundary_type, '.')))))
     return immersed_boundary
 end
 
@@ -268,7 +268,7 @@ function reconstruct_zarr_ossg_grid(root_group, args, kwargs, grid_suffix)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(root_group.attrs, "output_includes_halos")
@@ -394,18 +394,18 @@ end
 # Rebuild the `conformal_mapping` from its serialized attributes (see
 # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
 # argument is the y-topology type — for `Tripolar`, that's the fold flavor
-# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# (`CenterFolded`/`FaceFolded`) of its north side, which lives as a type-parameter on
 # the struct rather than a runtime field.
 reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(nameof(attrib[:type])), TY)
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:Sides{<:Any, R}}) where R
     return Tripolar(
         attrib[:north_poles_latitude],
         attrib[:first_pole_longitude],
         attrib[:southernmost_latitude],
-        TY,
+        R,
     )
 end
 

@@ -88,17 +88,17 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: ValueBoundaryCondition: 0.0
 ├── north: ValueBoundaryCondition: 0.0
 ├── bottom: ValueBoundaryCondition: 0.0
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 
 julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: NormalFlowBoundaryCondition{Nothing}: Nothing
-├── north: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── south: NormalFlowBoundaryCondition{Nothing}: nothing
+├── north: NormalFlowBoundaryCondition{Nothing}: nothing
 ├── bottom: ValueBoundaryCondition: 0.0
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: Nothing
 ```
 
@@ -166,7 +166,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── south: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── north: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ├── bottom: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
-├── top: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: nothing
 └── immersed: DefaultBoundaryCondition (ValueBoundaryCondition: 0)
 ```
 
@@ -235,7 +235,44 @@ that can be used, for example, to specify cooling, heating, evaporation, or wind
     Conversely, a positive flux at a _bottom_ boundary acts to increase the interior
     values of a quantity.
 
-### 3. Spatially- and temporally-varying flux
+### 3. Implicit `Flux` boundary condition
+
+A flux that depends on the boundary-cell value of its field, like a bottom drag or a surface relaxation, limits
+the time step when integrated explicitly: with ``J = \lambda \phi_b`` the explicit step is unstable for
+``\lambda \Delta t / \Delta z > 2`` in the boundary-adjacent cell. Passing [`IMEXFluxTimeDiscretization`](@ref)
+to [`FluxBoundaryCondition`](@ref) integrates the part of the flux that is linear in ``\phi_b`` with the vertical
+tridiagonal solver instead, which the model builds automatically:
+
+```jldoctest
+julia> @inline linear_drag(i, j, grid, clock, fields, r) = @inbounds r * fields.u[i, j, grid.Nz];
+
+julia> drag_bc = IMEXFluxBoundaryCondition(linear_drag; discrete_form=true, parameters=1e-3)
+IMEXFluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 0.001
+```
+
+[`IMEXFluxBoundaryCondition`](@ref)`(flux; kwargs...)` is shorthand for
+`FluxBoundaryCondition(flux; time_discretization=IMEXFluxTimeDiscretization(), kwargs...)`.
+
+Any flux condition, whether a number, an array, a `Field`, or a function, may be integrated this way. The flux is
+split at the boundary cell into ``J \approx F_e + \lambda \phi_b`` by the Patankar rule, ``\lambda = J / \phi_b``,
+keeping only the part of ``\lambda`` that damps ``\phi_b``. A flux proportional to ``\phi_b`` is thereby fully
+implicit, while a source, such as a wind stress, is integrated explicitly. Because the rule only sees the value
+of the flux, it cannot tell a relaxation toward a nonzero target from a source. For such a flux, or whenever the
+split is known, pass the explicit part as the flux and the linear coefficient to the discretization:
+
+```jldoctest
+julia> c★, k = 20.0, 1e-4;  # relaxation target and rate
+
+julia> relaxation_bc = IMEXFluxBoundaryCondition(-k * c★, k)
+IMEXFluxBoundaryCondition: -0.002 + 0.0001 φᵦ
+```
+
+which represents ``J = k (c_b - c^\star)``.
+An implicit flux is supported only on the `bottom` and `top` boundaries and on the `bottom` and `top` facets of
+an [`ImmersedBoundaryCondition`](@ref). See also [`BulkDrag`](@ref), whose drag is split exactly rather than
+by the Patankar rule.
+
+### 4. Spatially- and temporally-varying flux
 
 Boundary conditions may be specified by functions,
 
@@ -258,7 +295,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction surface_flux at (Nothing, Noth
     Alternative function signatures are specified by keyword arguments to
     `BoundaryCondition`, as illustrated in subsequent examples.
 
-### 4. Spatially- and temporally-varying flux with parameters
+### 5. Spatially- and temporally-varying flux with parameters
 
 Boundary condition functions may be 'parameterized',
 
@@ -275,7 +312,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction wind_stress at (Nothing, Nothi
     However, relatively simple objects such as floating point numbers or `NamedTuple`s must be used
     when running on the GPU.
 
-### 5. 'Field-dependent' boundary conditions
+### 6. 'Field-dependent' boundary conditions
 
 Boundary conditions may also depend on model fields. For example, a linear drag boundary condition
 is implemented with
@@ -290,7 +327,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 
 `field_dependencies` specifies the name of the dependent fields either with a `Symbol` or `Tuple` of `Symbol`s.
 
-### 6. 'Field-dependent' boundary conditions with parameters
+### 7. 'Field-dependent' boundary conditions with parameters
 
 When boundary conditions depends on fields _and_ parameters, their functions take the form
 
@@ -305,7 +342,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction quadratic_drag at (Nothing, No
 Put differently, `ξ, η, t` come first in the function signature, followed by field dependencies,
 followed by `parameters` is `!isnothing(parameters)`.
 
-### 7. Discrete-form boundary condition with parameters
+### 8. Discrete-form boundary condition with parameters
 
 Discrete field data may also be accessed directly from boundary condition functions
 using the `discrete_form`. For example:
@@ -333,7 +370,7 @@ FluxBoundaryCondition: DiscreteBoundaryFunction with filtered_drag
     The signature is similar for ``x`` and ``y`` boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-### 8. Discrete-form boundary condition with parameters
+### 9. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2; # drag coefficient
@@ -351,7 +388,7 @@ FluxBoundaryCondition: DiscreteBoundaryFunction linear_drag with parameters 0.2
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
+### 10. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
@@ -384,7 +421,7 @@ julia> p_top_bc = GradientBoundaryCondition(∂z_p)
 GradientBoundaryCondition: 4×4×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
-### 10. Open boundary condition with matching scheme
+### 11. Open boundary condition with matching scheme
 
 As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often necessary to specify a matching scheme
 on open boundaries to approximate the behavior of the boundary nodes given the interior state
@@ -398,8 +435,8 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
-└── target_transport: Nothing
+├── density: nothing
+└── target_transport: nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
@@ -408,9 +445,9 @@ NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
 The boundary value and timescales need to be carefully chosen to allow information to enter/
 exit the domain in each specific problem.
 
-### 11. Open boundary condition with a target transport
+### 12. Open boundary condition with a target transport
 
-A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
+A [`PerturbationAdvection`](@ref) or [`NormalRadiation`](@ref) scheme can additionally pin the *net volume transport*
 through the boundary — the integral of the normal velocity over the boundary area,
 ``\oint \mathbf{u} \cdot \mathrm{d} \mathbf{A}`` (units m³ s⁻¹) — to a prescribed value
 through the `target_transport` keyword:
@@ -423,11 +460,27 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-├── density: Nothing
+├── density: nothing
 └── target_transport: 2.0
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
 NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+```
+
+The same keyword is accepted by [`NormalRadiation`](@ref) and [`ObliqueRadiation`](@ref):
+
+```jldoctest
+julia> using Oceananigans
+
+julia> scheme = NormalRadiation(; inflow_timescale=1, outflow_timescale=10, target_transport=2)
+NormalRadiation{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── use_boundary_velocity: false
+└── target_transport: 2.0
+
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{NormalRadiation{Float64, Nothing, Float64}}: 1
 ```
 
 At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
@@ -450,13 +503,13 @@ we write
 julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20.0),
                                        bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ├── bottom: GradientBoundaryCondition: 0.01
 ├── top: ValueBoundaryCondition: 20.0
-└── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+└── immersed: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ```
 
 If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultBoundaryCondition`
@@ -631,12 +684,12 @@ velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── bottom: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── top: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Value, top=Nothing
 ```
 
@@ -689,12 +742,12 @@ u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── south: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
-├── north: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── west: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── east: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── south: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
+├── north: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 ├── bottom: FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
-├── top: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
+├── top: DefaultBoundaryCondition (FluxBoundaryCondition: nothing)
 └── immersed: ImmersedBoundaryCondition with west=Nothing, east=Nothing, south=Nothing, north=Nothing, bottom=Flux, top=Nothing
 ```
 
@@ -806,3 +859,35 @@ The tuple `(U∞, V∞, W∞)` is added to the prognostic velocities when comput
 speed `|U|` and the drag flux. Without this, the drag would only see the resolved
 perturbation velocity and underestimate the stress in the presence of a strong background
 current.
+
+### Implicit-explicit bottom drag
+
+An explicit drag flux limits the time step to ``C^D |\boldsymbol{U}| \Delta t / \Delta z < 2`` in the
+boundary-adjacent cell, which can be restrictive with thin bottom cells or strong near-bottom flow.
+Since the drag ``\tau = \lambda (u + U_\infty)`` with ``\lambda = -C^D |\boldsymbol{U}|`` is affine in the
+tangential velocity, its linear part can be integrated by the vertical tridiagonal solver instead.
+Pass `time_discretization=IMEXFluxTimeDiscretization()` to [`BulkDrag`](@ref):
+
+```jldoctest
+using Oceananigans
+
+drag = BulkDrag(coefficient=2e-3, time_discretization=IMEXFluxTimeDiscretization())
+u_bcs = FieldBoundaryConditions(bottom=drag)
+v_bcs = FieldBoundaryConditions(bottom=drag)
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs))
+
+model.velocities.u.boundary_conditions.bottom
+
+# output
+IMEXFluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.002)
+```
+
+The explicit part ``\lambda U_\infty`` is integrated through the tendency, and the linear part
+``\lambda u`` is embedded in the boundary-cell diagonal of the implicit vertical solver, which the model
+builds automatically. For the quadratic formulation the speed ``|\boldsymbol{U}|`` is evaluated from the
+current velocities when the implicit solve is built, so the drag is linearized about the current speed.
+Like every [`IMEXFluxTimeDiscretization`](@ref), this is supported only on the `bottom` and `top` domain
+boundaries and on the `bottom` and `top` facets of an [`ImmersedBoundaryCondition`](@ref); lateral facets
+must keep the explicit drag.

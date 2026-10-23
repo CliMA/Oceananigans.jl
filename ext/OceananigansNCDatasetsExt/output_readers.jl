@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
-using Oceananigans.Fields: instantiated_location
+using Oceananigans: instantiated_location
 using Oceananigans.Grids: offset_data
 using Oceananigans.Utils: @apply_regionally
 

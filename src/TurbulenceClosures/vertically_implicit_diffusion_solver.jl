@@ -1,7 +1,7 @@
 using Oceananigans.Advection: implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.BoundaryConditions: implicit_flux_coefficient, immersed_implicit_flux_coefficient, needs_implicit_solver
+using Oceananigans.BoundaryConditions: implicit_flux_coefficient, needs_implicit_solver, Bottom, Top, ImmersedFacet
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, ImmersedBoundaryCondition, immersed_inactive_node, immersed_peripheral_node
@@ -81,9 +81,10 @@ end
     Δz⁻¹ᶠₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, f)
     dl     = - Δt * κᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
 
-    # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
-    # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
-    return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, c)
+    # The flux through face k vanishes when that face lies on a boundary, which also makes the diagonal
+    # correct. (Note we use LinearAlgebra.Tridiagonal indexing convention, so that lower_diagonal
+    # should be defined for k′ = 1 ⋯ N-1.)
+    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
 end
 
 #####
@@ -98,7 +99,8 @@ end
     Δz⁻¹ᶜₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₖ = Δz⁻¹(i, j, k, grid, ℓx, ℓy, f)
     du     = - Δt * νᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
-    return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
+    # w = 0 on a face that lies on the bottom or on an immersed boundary, so its row is an identity row
+    return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
 end
 
 # `dl(m)` multiplies `ϕ[m]` in row `m + 1`, and the viscous flux between faces `m` and `m + 1` sits at center `m`
@@ -108,7 +110,7 @@ end
     Δz⁻¹ᶜₘ   = Δz⁻¹(i, j, m,   grid, ℓx, ℓy, c)
     Δz⁻¹ᶠₘ₊₁ = Δz⁻¹(i, j, m+1, grid, ℓx, ℓy, f)
     dl       = - Δt * νᵐ * (Δz⁻¹ᶜₘ * Δz⁻¹ᶠₘ₊₁)
-    return dl * !peripheral_node(i, j, m, grid, ℓx, ℓy, c)
+    return dl * !peripheral_node(i, j, m+1, grid, ℓx, ℓy, f)
 end
 
 ### Diagonal terms
@@ -138,18 +140,24 @@ end
 ##### boundary-cell diagonal (top: k = Nz, bottom: k = 1).
 #####
 
-@inline function boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
+# `ϕ` is the field being solved for; the coefficients see its boundary-cell value after the explicit step.
+@inline function boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc, ϕ)
+    # Constant-folds away unless a boundary condition is implicit-explicit
+    if !(needs_implicit_solver(top_bc) | needs_implicit_solver(bottom_bc) | needs_implicit_solver(immersed_bc))
+        return zero(grid)
+    end
+
     Nz  = size(grid, 3)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-    λᵗ  = implicit_flux_coefficient(top_bc,    i, j, grid, clk, fields)
-    λᵇ  = implicit_flux_coefficient(bottom_bc, i, j, grid, clk, fields)
+    λᵗ  = implicit_flux_coefficient(top_bc,    Top(),    i, j, Nz, grid, ϕ, clk, fields)
+    λᵇ  = implicit_flux_coefficient(bottom_bc, Bottom(), i, j, 1,  grid, ϕ, clk, fields)
     dᵗ  = ifelse(k == Nz,  Δt * λᵗ / Δzᵏ, zero(grid))  # top flux:     tendency −J/Δz
     dᵇ  = ifelse(k == 1,  -Δt * λᵇ / Δzᵏ, zero(grid))  # bottom flux:  tendency +J/Δz
-    dⁱ  = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc)
+    dⁱ  = immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc, ϕ)
     return dᵗ + dᵇ + dⁱ
 end
 
-@inline immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc) = zero(grid)
+@inline immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc, ϕ) = zero(grid)
 
 @inline immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k,   grid, ℓx, ℓy, f)
 @inline    immersed_top_facet(i, j, k, grid, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
@@ -158,15 +166,15 @@ end
 
 # Immersed fluxes point along the inward-facing normal on every facet, so both immersed faces contribute
 # `+J/Δz` to the tendency, unlike the domain top which contributes `-J/Δz`.
-@inline function immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc::ImmersedBoundaryCondition)
+@inline function immersed_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, immersed_bc::ImmersedBoundaryCondition, ϕ)
     Δzᵏ = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
     active = !immersed_inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
     on_bottom = active & immersed_bottom_facet(i, j, k, grid, ℓx, ℓy, ℓz)
     on_top    = active &    immersed_top_facet(i, j, k, grid, ℓx, ℓy, ℓz)
 
-    λᵇ = immersed_implicit_flux_coefficient(immersed_bc.bottom, i, j, k, grid, clk, fields)
-    λᵗ = immersed_implicit_flux_coefficient(immersed_bc.top,    i, j, k, grid, clk, fields)
+    λᵇ = implicit_flux_coefficient(immersed_bc.bottom, ImmersedFacet(), i, j, k, grid, ϕ, clk, fields)
+    λᵗ = implicit_flux_coefficient(immersed_bc.top,    ImmersedFacet(), i, j, k, grid, ϕ, clk, fields)
 
     return ifelse(on_bottom, -Δt * λᵇ / Δzᵏ, zero(grid)) +
            ifelse(on_top,    -Δt * λᵗ / Δzᵏ, zero(grid))
@@ -197,6 +205,11 @@ and
 
 where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
 and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
+
+The row of ``w`` on the bottom face, and on any immersed face, is an identity row since ``w = 0``
+there; the top face is not part of the system. On an `ImmersedBoundaryGrid`, the off-diagonals
+vanish across the immersed boundary, so the rows of the inactive cells are decoupled from the
+active part of the column.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -218,7 +231,7 @@ end
 # density-weighted (mass-flux) advection coefficients.
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     duκ = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     duw = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return duκ + duw
@@ -226,7 +239,7 @@ end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dlκ = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dlw = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
     return dlκ + dlw
@@ -234,10 +247,10 @@ end
 
 @inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
                                  clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
-                                 advection, w, density, top_bc, bottom_bc, immersed_bc)
+                                 advection, w, density, top_bc, bottom_bc, immersed_bc, ϕ)
     dκ  = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
     dw  = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy, ℓz, density)
-    dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc)
+    dbc = boundary_flux_diagonal(i, j, k, grid, ℓx, ℓy, ℓz, Δt, clk, fields, top_bc, bottom_bc, immersed_bc, ϕ)
     return dκ + dw + dbc
 end
 
@@ -284,6 +297,11 @@ function implicit_step!(field::Field,
 
     vi_closure, vi_closure_fields = vertically_implicit_closures(closure, closure_fields)
 
+    if vi_closure === ()
+        vi_closure = nothing
+        vi_closure_fields = nothing
+    end
+
     bcs = field.boundary_conditions
     isnothing(vi_closure) && !needs_implicit_solver(advection) && !needs_implicit_solver(bcs) && return nothing
 
@@ -293,5 +311,5 @@ function implicit_step!(field::Field,
     return solve!(field, implicit_solver, field,
                   vi_closure, vi_closure_fields, tracer_index,
                   LX(), LY(), LZ(), Δt, clock, fields,
-                  advection, w, density, bcs.top, bcs.bottom, bcs.immersed)
+                  advection, w, density, bcs.top, bcs.bottom, bcs.immersed, field)
 end

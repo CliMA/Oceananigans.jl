@@ -23,6 +23,7 @@ Distributed.addprocs(2)
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
     using NCDatasets
+    using Zarr
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -37,9 +38,12 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "global_wind_driven_gyres.jl",
+        "single_column_parameter_estimation.jl",
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "yin_yang_grid.jl",
         "polar_vortex_crystal.jl",
         "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
@@ -138,7 +142,10 @@ example_pages = [
     "Horizontal convection"                 => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
-    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
+    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md",
+    "Global wind-driven gyres"              => "literated/global_wind_driven_gyres.md",
+    "Barotropic jet and Double Drake on a Yin-Yang grid" => "literated/yin_yang_grid.md",
+    "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
 ]
 
 model_pages = [
@@ -264,8 +271,9 @@ DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursiv
 
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansMakieExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansMakieExt) : Oceananigans.OceananigansMakieExt
 
-for m in [Oceananigans, OceananigansNCDatasetsExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansMakieExt]
     if !isnothing(m)
         push!(modules, m)
     end

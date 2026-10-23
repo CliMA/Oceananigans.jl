@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux, Top
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}
@@ -70,8 +70,8 @@ end
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
     Nz = size(grid, 3)
-    τx = total_boundary_flux(velocity_bcs.u, i, j, Nz, grid, clock, fields, fields.u)
-    τy = total_boundary_flux(velocity_bcs.v, i, j, Nz, grid, clock, fields, fields.v)
+    τx = total_boundary_flux(velocity_bcs.u, Top(), i, j, Nz, grid, fields.u, clock, fields)
+    τy = total_boundary_flux(velocity_bcs.v, Top(), i, j, Nz, grid, fields.v, clock, fields)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 
@@ -93,3 +93,21 @@ end
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy)
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any, <:Any, <:Any}, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[4], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[5], buoyancy)
+
+# Longer tuples recurse down to the unrolled methods above
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, first(closure_tuple), buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, Base.tail(closure_tuple), buoyancy)
