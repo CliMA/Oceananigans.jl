@@ -8,6 +8,16 @@ all_reduce(op, val, arch) = val
 all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
 all_reduce!(op, val, arch) = val
 
+# Reduces a device array in place, staged through the host
+function device_all_reduce!(op, val, arch::Distributed)
+    host_val = on_architecture(CPU(), val)
+    all_reduce!(op, host_val, arch)
+    copyto!(val, host_val)
+    return val
+end
+
+device_all_reduce!(op, val, arch) = val
+
 # MPI Barrier
 barrier(arch) = nothing
 barrier(arch::Distributed) = barrier(arch.communicator)

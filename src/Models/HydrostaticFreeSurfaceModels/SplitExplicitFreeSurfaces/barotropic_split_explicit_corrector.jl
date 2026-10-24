@@ -123,6 +123,10 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     synchronize_communication!(Ũ)
     synchronize_communication!(Ṽ)
 
+    # Pinned once the halo exchange completes, which would otherwise restore the unshifted halo columns along the face
+    free_surface_grid = free_surface.displacement.grid
+    enforce_barotropic_transport_targets!(architecture(free_surface_grid), free_surface_grid, Ũ, Ṽ, free_surface.boundary_transport, model.clock.time)
+
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(architecture(grid), grid, volume_kernel_parameters(grid),
             _compute_split_explicit_transport_velocities!,

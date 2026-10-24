@@ -5,7 +5,7 @@ MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
-using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
+using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition, TransportTimeSeries
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling
 
 # # Distributed SplitExplicitFreeSurface boundary handling
@@ -208,6 +208,68 @@ end
         @testset "rotating open boundaries [$timestepper, $(typeof(arch.partition))]" begin
             @test all(isapprox.(up, us))
             @test all(isapprox.(vp, vs))
+            @test all(isapprox.(ηp, ηs))
+        end
+    end
+end
+
+# # Distributed targeted barotropic transports
+#
+# The face integral of a targeted side spans every rank along it, so the pinned transports and the resulting state
+# must match the serial model, including a time-dependent target and sides split across ranks in both directions.
+
+function build_targeted(grid)
+    flather(target) = GravityWaveRadiationBoundaryCondition((0.0, 0.0); target_transport = target)
+    Q = 1e-3
+    series = TransportTimeSeries([0, 0.05], [Q, 3Q])
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = flather(series), east = flather(2Q))
+    V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = flather(Q / 2), north = flather(Q / 2))
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps=8, extend_halos=false)
+
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
+                                        timestepper = :QuasiAdamsBashforth2,
+                                        coriolis = FPlane(f = 10),
+                                        boundary_conditions = (U = U_bcs, V = V_bcs),
+                                        momentum_advection = nothing,
+                                        buoyancy = nothing,
+                                        tracers = ())
+    set!(model, η = ηᵢ)
+
+    for _ in 1:10
+        time_step!(model, 5e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed targeted barotropic transport" begin
+    targeted_archs = (Distributed(child_arch; synchronized_communication=false, partition=Partition(4)),
+                      Distributed(child_arch; synchronized_communication=false, partition=Partition(1, 4)),
+                      Distributed(child_arch; synchronized_communication=false, partition=Partition(2, 2)))
+
+    for arch in targeted_archs
+        cpu_arch = cpu_architecture(arch)
+
+        grid = RectilinearGrid(arch, size=(40, 40, 2), x=(0, 1), y=(0, 1), z=(-1, 0),
+                               halo=(4, 4, 2), topology=(Bounded, Bounded, Bounded))
+        global_grid = reconstruct_global_grid(grid)
+
+        mp = build_targeted(grid)
+        ms = build_targeted(global_grid)
+
+        Up = interior(on_architecture(cpu_arch, mp.free_surface.barotropic_velocities.U))
+        Vp = interior(on_architecture(cpu_arch, mp.free_surface.barotropic_velocities.V))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
+
+        Us = partition(interior(on_architecture(CPU(), ms.free_surface.barotropic_velocities.U)), cpu_arch, size(Up))
+        Vs = partition(interior(on_architecture(CPU(), ms.free_surface.barotropic_velocities.V)), cpu_arch, size(Vp))
+        ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
+
+        @testset "targeted transport [$(arch.partition)]" begin
+            @test all(isapprox.(Up, Us))
+            @test all(isapprox.(Vp, Vs))
             @test all(isapprox.(ηp, ηs))
         end
     end
