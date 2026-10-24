@@ -9,6 +9,7 @@ using Oceananigans.DistributedComputations: child_architecture, Distributed
 using Oceananigans.Fields: Fields, interpolate, interpolator, _interpolate, FixedTime,
                            FractionalIndices, instantiated_location, flatten_node, mapped_data
 using Oceananigans.Grids: _node
+using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
 using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
 
@@ -441,6 +442,15 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
         fill_halo_regions!(fts)
     end
 
+    return nothing
+end
+
+# Bring the series held by boundary conditions to the time of a clocked halo fill
+function BoundaryConditions.update_boundary_time_series!(boundary_conditions, clock::Clock, args...)
+    time = Time(clock.time)
+    for fts in extract_field_time_series(boundary_conditions)
+        update_field_time_series!(fts, time)
+    end
     return nothing
 end
 
