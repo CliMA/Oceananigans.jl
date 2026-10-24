@@ -408,7 +408,8 @@ function run_immersed_boundary_bounce_tests(arch, FT)
 
     @testset "Lagrangian particles bouncing off an immersed boundary [$(typeof(arch)), $FT] with restitution $restitution" for restitution in (1.0, 0.5)
         x, y, z = on_architecture.(Ref(arch), (copy(x₀), copy(y₀), copy(z₀)))
-        particles = LagrangianParticles(; x, y, z, restitution)
+        boundary_conditions = ParticleBoundaryConditions(ReflectingBoundary(restitution))
+        particles = LagrangianParticles(; x, y, z, boundary_conditions)
         model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
         time_step!(model, 1)
 
