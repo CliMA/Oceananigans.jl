@@ -67,6 +67,20 @@ end
             end
         end
 
+        @testset "Uniform inertial oscillation on a periodic grid [$(typeof(arch))]" begin
+            @info "  Testing substep Coriolis across periodic halos [$(typeof(arch))]..."
+            for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                grid = RectilinearGrid(arch; size = (4, 4, 4), extent = (1e5, 1e5, 450), topology = (Periodic, Periodic, Bounded))
+                free_surface = SplitExplicitFreeSurface(grid; substeps = 30, timestepper = CoriolisForwardBackwardScheme())
+                model = HydrostaticFreeSurfaceModel(grid; free_surface, timestepper, coriolis = FPlane(f = -1.409e-4),
+                                                    momentum_advection = nothing, tracers = (), buoyancy = nothing)
+                set!(model, u = 0.1)
+                λ = velocity_growth(model; Nwarmup = 10, Nsteps = 50)
+                @info "    $timestepper: λ = $λ"
+                @test λ < 1
+            end
+        end
+
         @testset "Substep Coriolis follows the Coriolis scheme [$(typeof(arch))]" begin
             @info "  Testing CoriolisForwardBackwardScheme with every Coriolis scheme [$(typeof(arch))]..."
             for scheme in (EnstrophyConserving(), EnergyConserving(), ActiveWeightedEnstrophyConserving(),

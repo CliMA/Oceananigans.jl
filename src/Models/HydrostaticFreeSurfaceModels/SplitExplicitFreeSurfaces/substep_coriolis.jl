@@ -46,8 +46,21 @@ end
 @inline horizontal_peripheral_node(i, j, grid, ℓx, ℓy) = peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
 @inline horizontal_peripheral_node(i, j, grid::ImmersedBoundaryGrid, ℓx, ℓy) = horizontal_peripheral_node(i, j, grid.underlying_grid, ℓx, ℓy)
 
-@inline Δx_δVᶜᶠᶠ(i, j, k, grid, V, Vʳ) = @inbounds Δxᶜᶠᶠ(i, j, k, grid) * (V[i, j, 1] - Vʳ[i, j, 1])
-@inline Δy_δUᶠᶜᶠ(i, j, k, grid, U, Uʳ) = @inbounds Δyᶠᶜᶠ(i, j, k, grid) * (U[i, j, 1] - Uʳ[i, j, 1])
+# Periodic halos are not refilled between substeps, so wrap the stencil indices like the topology-aware differences
+@inline wrap_index(i, N, topo) = i
+@inline wrap_index(i, N, ::Type{Periodic}) = ifelse(i < 1, i + N, ifelse(i > N, i - N, i))
+
+@inline function Δx_δVᶜᶠᶠ(i, j, k, grid, V, Vʳ)
+    i′ = wrap_index(i, grid.Nx, topology(grid, 1))
+    j′ = wrap_index(j, grid.Ny, topology(grid, 2))
+    return @inbounds Δxᶜᶠᶠ(i, j, k, grid) * (V[i′, j′, 1] - Vʳ[i′, j′, 1])
+end
+
+@inline function Δy_δUᶠᶜᶠ(i, j, k, grid, U, Uʳ)
+    i′ = wrap_index(i, grid.Nx, topology(grid, 1))
+    j′ = wrap_index(j, grid.Ny, topology(grid, 2))
+    return @inbounds Δyᶠᶜᶠ(i, j, k, grid) * (U[i′, j′, 1] - Uʳ[i′, j′, 1])
+end
 
 # Wet columns, counted by the active-weighted schemes in place of active cells
 @inline wet_columnᶜᶠ(i, j, k, grid) = !peripheral_node(i, j, grid.Nz, grid, Center(), Face(), Center())
