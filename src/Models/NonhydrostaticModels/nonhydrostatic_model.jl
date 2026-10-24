@@ -56,7 +56,12 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, CL, B, R, 
    advecting_vertical_velocity :: AW # `wⁿ` for the adaptive-implicit advection split (`nothing` without it)
 end
 
-supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+supported_timesteppers = (:QuasiAdamsBashforth2,
+                          :RungeKutta3,
+                          :PressureProjectionRungeKutta3,
+                          :ConstantPressureProjectionRungeKutta3,
+                          :LinearPressureProjectionRungeKutta3,
+                          :MidpointPressureProjectionRungeKutta3)
 
 """
     NonhydrostaticModel(grid;
