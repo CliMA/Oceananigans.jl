@@ -2,7 +2,7 @@ using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
 using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
-using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, ObliqueRadiation, fill_boundary_state_halos!
 
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
@@ -103,6 +103,13 @@ end
 
 const MOOBC = BoundaryCondition{<:NormalFlow, <:BoundaryAdjacentMean}
 @inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+function update_boundary_condition!(bc::BoundaryCondition{<:NormalFlow{<:ObliqueRadiation}, <:BoundaryAdjacentMean},
+                                    val_side, u, model)
+    bc.condition(val_side, u)
+    fill_boundary_state_halos!(bc.classification.scheme)
+    return nothing
+end
 
 # Public dispatcher over the per-side area helpers defined in `boundary_transport.jl`.
 boundary_total_area(::Val{:west},   grid) = get_west_area(grid)
