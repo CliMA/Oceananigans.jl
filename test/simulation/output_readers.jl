@@ -1086,6 +1086,24 @@ end
     end
     end
 
+    # A series captured only as a `KernelFunctionOperation` argument (eg forcing built from a
+    # prescribed atmosphere) must still be found, so that `update_field_time_series!` advances
+    # its in-memory window even though it never appears in the field's boundary conditions.
+    @testset "Series held by a computed field's operand are extracted [$(summary(arch))]" for arch in archs
+        grid  = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Bounded, Bounded, Bounded))
+        times = [0.0, 1.0, 2.0, 3.0]
+        fts   = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+        @inline read_series(i, j, k, grid, clock, series) = @inbounds series[i, j, k, Time(clock.time)]
+
+        clock = Clock{Float64}(time = 0)
+        operation = KernelFunctionOperation{Center, Center, Center}(read_series, grid, clock, fts)
+        computed_field = Field(operation)
+
+        @test length(extract_field_time_series(computed_field)) == 1
+        @test first(extract_field_time_series(computed_field)) === fts
+    end
+
     for arch in archs
         @testset "Partly-in-memory window covers a time span [$(typeof(arch))]" begin
             test_in_memory_window_covers_time_span(arch)
