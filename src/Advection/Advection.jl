@@ -22,7 +22,8 @@ export
 using Adapt: Adapt
 using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
-using MuladdMacro: @muladd
+import MuladdMacro
+using Preferences: @load_preference
 using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
@@ -35,6 +36,31 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Ax�
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
                               δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+
+const fused_multiply_add_choice = @load_preference("fused_multiply_add", "muladd")
+
+replace_muladd(x, replacement) = x
+replace_muladd(x::Symbol, replacement) = x === :muladd ? replacement : x
+replace_muladd(x::Function, replacement) = x === Base.muladd ? replacement : x
+replace_muladd(x::GlobalRef, replacement) = x.name === :muladd ? replacement : x
+replace_muladd(ex::Expr, replacement) = Expr(ex.head, map(arg -> replace_muladd(arg, replacement), ex.args)...)
+
+function apply_fused_multiply_add_choice(expression, choice)
+    choice == "muladd" && return expression
+    choice == "fma" && return replace_muladd(expression, GlobalRef(Base, :fma))
+    error("The fused_multiply_add preference must be \"muladd\" or \"fma\", got \"$choice\".")
+end
+
+"""
+    @fused_muladd expression
+
+`MuladdMacro.@muladd`, with the `muladd` calls it generates either kept (the `fused_multiply_add` preference of
+Oceananigans is `"muladd"`, the default) or replaced by `fma` (`"fma"`).
+"""
+macro fused_muladd(ex)
+    expanded = macroexpand(__module__, Expr(:macrocall, GlobalRef(MuladdMacro, Symbol("@muladd")), __source__, ex))
+    return esc(apply_fused_multiply_add_choice(expanded, fused_multiply_add_choice))
+end
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
