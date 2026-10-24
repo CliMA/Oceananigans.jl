@@ -887,6 +887,27 @@ end
                 conditioned_r = Oceananigans.Fields.condition_operand(r, everywhere, zero(FT))
                 @test Base.size(Adapt.adapt(Array, conditioned_r)) == Base.size(r)
             end
+
+            @testset "Coordinates at extrema [$(typeof(arch)), $FT]" begin
+                c = CenterField(regular_grid)
+                set!(c, (x, y, z) -> - (x - 1/3)^2 - (y - 2)^2 - (z + 1/2)^2)
+                i, j, k = Tuple(argmax(c))
+                xᶜ = Array(xnodes(c))
+                yᶜ = Array(ynodes(c))
+                zᶜ = Array(znodes(c))
+                @test at_maximum(c, :x) == xᶜ[i]
+                @test at_maximum(c, (:y, :z)) == (yᶜ[j], zᶜ[k])
+                @test at_minimum(c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test at_maximum(abs, c, :z) == zᶜ[last(Tuple(argmin(c)))]
+                @test findmax(abs, c) == (abs(minimum(c)), argmin(c))
+                @test_throws ArgumentError at_maximum(c, :q)
+
+                # Fields at other locations are interpolated to the location of the extremum
+                w = ZFaceField(regular_grid)
+                set!(w, (x, y, z) -> z)
+                @test at_maximum(c, w) ≈ zᶜ[k]
+                @test at_maximum(c, c) == maximum(c)
+            end
         end
 
         @testset "Boolean reductions [$(typeof(arch))]" for arch in archs
