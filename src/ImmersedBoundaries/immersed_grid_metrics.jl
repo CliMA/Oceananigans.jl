@@ -1,5 +1,6 @@
-using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
+using Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ, Δz⁻¹ᵃᵃᶠ, Δz⁻¹ᵃᵃᶜ
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
+using Oceananigans.Operators: Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
 using Oceananigans.Operators: Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ
 using Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -25,6 +26,11 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rot
 @inline Operators.Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶠ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+
+@inline Operators.Δr⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δr⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δr⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δz⁻¹ᵃᵃᶜ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δz⁻¹ᵃᵃᶠ(i, j, k, ibg::IBG) = Δz⁻¹ᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 # 1D Horizontal spacings
 
@@ -67,6 +73,26 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rot
 @inline Operators.Azᶜᶠᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶜᶠᵃ(i, j, k, ibg.underlying_grid)
 @inline Operators.Azᶠᶠᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 @inline Operators.Azᶜᶜᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Azᶜᶜᵃ(i, j, k, ibg.underlying_grid)
+
+# Reciprocal spacings and areas
+
+@inline Operators.Δx⁻¹ᶠᵃᵃ(i, j, k, ibg::RGIBG) = Δx⁻¹ᶠᵃᵃ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δx⁻¹ᶜᵃᵃ(i, j, k, ibg::RGIBG) = Δx⁻¹ᶜᵃᵃ(i, j, k, ibg.underlying_grid)
+
+@inline Operators.Δy⁻¹ᵃᶠᵃ(i, j, k, ibg::Union{RGIBG, LLIBG}) = Δy⁻¹ᵃᶠᵃ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δy⁻¹ᵃᶜᵃ(i, j, k, ibg::Union{RGIBG, LLIBG}) = Δy⁻¹ᵃᶜᵃ(i, j, k, ibg.underlying_grid)
+
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
+    Δx⁻¹ˡˡᵃ = Symbol(:Δx⁻¹, LX, LY, :ᵃ)
+    Δy⁻¹ˡˡᵃ = Symbol(:Δy⁻¹, LX, LY, :ᵃ)
+    Az⁻¹ˡˡᵃ = Symbol(:Az⁻¹, LX, LY, :ᵃ)
+
+    @eval begin
+        @inline Operators.$Δx⁻¹ˡˡᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Operators.$Δx⁻¹ˡˡᵃ(i, j, k, ibg.underlying_grid)
+        @inline Operators.$Δy⁻¹ˡˡᵃ(i, j, k, ibg::OSIBG)               = Operators.$Δy⁻¹ˡˡᵃ(i, j, k, ibg.underlying_grid)
+        @inline Operators.$Az⁻¹ˡˡᵃ(i, j, k, ibg::Union{LLIBG, OSIBG}) = Operators.$Az⁻¹ˡˡᵃ(i, j, k, ibg.underlying_grid)
+    end
+end
 
 # Extend both 2D and 3D methods
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v)
