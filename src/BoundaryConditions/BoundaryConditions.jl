@@ -27,7 +27,7 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans: Oceananigans, defaults
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Connected, Face, Flat, LatitudeLongitudeGrid, Sides,
-                          connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
+                          connected_range, halo_size, node, poles, λnode, φnode, λnodes, φnodes, topology
 using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
