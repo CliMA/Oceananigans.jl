@@ -3,8 +3,9 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation, NormalRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition, fill_halo_regions!
 using Oceananigans.BoundaryConditions: ObliqueRadiation, oblique_radiation_update, normal_radiation_update
-using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update
+using Oceananigans.BoundaryConditions: TracerReservoir, reservoir_update, TransportTimeSeries
 using Oceananigans.Units
+using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 using Statistics: mean
 using Test
@@ -758,9 +759,114 @@ function test_gravity_wave_target_transport()
     return pinned && flat && drift && inert && wet_only && rejected
 end
 
+#####
+##### Test: exporting the free surface forcing through the targeted sides
+#####
+# A uniform surface freshwater flux on a z★ grid with land in the south raises the mean free surface by Jʷ Δt per
+# step; with `export_free_surface_forcing` the targeted sides carry it out in proportion to their wet lengths.
+
+function test_free_surface_forcing_export()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    underlying_grid = RectilinearGrid(size = (Nx, Ny, 2), halo = (3, 3, 3), x = (0, Lx), y = (0, Ly),
+                                      z = MutableVerticalDiscretization((-H, 0)), topology = (Bounded, Bounded, Bounded))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < Ly / 4 ? 0 : -H))
+    Q, Jʷ, Δt, steps = 200.0, 1e-6, 30.0, 20
+
+    flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+    wet = Ny÷4+1:Ny
+    mean_η(model) = sum(interior(model.free_surface.displacement, :, wet, :)) / (Nx * length(wet))
+
+    function run_model(export_free_surface_forcing)
+        surface_freshwater_flux = Field{Center, Center, Nothing}(grid)
+        set!(surface_freshwater_flux, (x, y) -> y < Ly / 4 ? 0 : Jʷ)
+        boundary_conditions = (U = FieldBoundaryConditions(west = flather(Q), east = flather(Q)),
+                               V = FieldBoundaryConditions(south = flather(0), north = flather(0)))
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4, export_free_surface_forcing)
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, free_surface, buoyancy = nothing, tracers = (),
+                                            forcing = (; η = surface_freshwater_flux))
+        η₀ = mean_η(model)
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return mean_η(model) - η₀, model.free_surface.boundary_transport
+    end
+
+    rise, _ = run_model(false)
+    held, forcing_export = run_model(true)
+
+    raised = isapprox(rise, Jʷ * Δt * steps; rtol = 1e-6)
+    flat = abs(held) < 1e-6 * Jʷ * Δt * steps
+    exported = isapprox(forcing_export.exported_volume_flux[], Jʷ * Lx * Ly * 3 / 4; rtol = 1e-12)
+
+    # the west and east faces are wet over 3/4 of their length, the south face is dry
+    shares = map(target -> target.outward_share, forcing_export.boundary_transport)
+    split = shares.west ≈ -3/10 && shares.east ≈ 3/10 && shares.south == 0 && shares.north ≈ 4/10
+
+    untargeted = try
+        HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 4, export_free_surface_forcing = true),
+                                    buoyancy = nothing, tracers = ())
+        false
+    catch error
+        error isa ArgumentError
+    end
+
+    return raised && flat && exported && split && untargeted
+end
+
+# A time-dependent target is evaluated at the start of each barotropic step, so after a QuasiAdamsBashforth2 step
+# the face carries the target of the previous model time.
+function test_gravity_wave_time_dependent_target_transport()
+    Nx, Ny, H = 8, 8, 10.0
+    Lx = Ly = 1e4
+    grid = RectilinearGrid(size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Bounded, Bounded, Bounded))
+    Δy = Ly / Ny
+    Q = 200.0
+    Δt, steps = 30.0, 5
+
+    flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
+
+    function run_model(west)
+        boundary_conditions = (; U = FieldBoundaryConditions(west = flather(west), east = flather(Q)))
+        model = HydrostaticFreeSurfaceModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2,
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                            buoyancy = nothing, tracers = ())
+        for _ in 1:steps
+            time_step!(model, Δt)
+        end
+        return model
+    end
+
+    west_transport(model) = sum(interior(model.free_surface.barotropic_velocities.U, 1, :, 1)) * Δy
+
+    series = TransportTimeSeries([0, 10Δt], [Q, 3Q])
+    with_series = run_model(series)
+    follows_series = isapprox(west_transport(with_series), series(with_series.clock.time - Δt); rtol = 1e-12)
+
+    ramp = 2Q / 10Δt
+    with_callable = run_model(grid -> (t -> Q + ramp * t))
+    follows_callable = isapprox(west_transport(with_callable), west_transport(with_series); rtol = 1e-12)
+
+    constant_series = run_model(TransportTimeSeries([0, 10Δt], [Q, Q]))
+    constant_number = run_model(Q)
+    matches_number = interior(constant_series.free_surface.barotropic_velocities.U) ==
+                     interior(constant_number.free_surface.barotropic_velocities.U)
+
+    return follows_series && follows_callable && matches_number
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "GravityWaveRadiation with target_transport" begin
         @test test_gravity_wave_target_transport()
+    end
+
+    @testset "GravityWaveRadiation with a time-dependent target_transport" begin
+        @test test_gravity_wave_time_dependent_target_transport()
+    end
+
+    @testset "SplitExplicitFreeSurface exports the free surface forcing through targeted sides" begin
+        @test test_free_surface_forcing_export()
     end
 
     @testset "Barotropic gravity wave radiation" begin

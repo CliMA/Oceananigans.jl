@@ -144,7 +144,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
         @apply_regionally converted_U_halo_args = prepare_halo_fill_args(arch, U_halo_args, grid, free_surface)
         @apply_regionally converted_V_halo_args = prepare_halo_fill_args(arch, V_halo_args, grid, free_surface)
         @apply_regionally converted_η_halo_args = prepare_halo_fill_args(arch, η_halo_args, grid, free_surface)
-        face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport)
+        face_pins = configure_face_pins(arch, grid, U, V, free_surface.boundary_transport, clock.time)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
@@ -270,6 +270,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     t = model.clock.time
     update_model_field_time_series!(model, Time(t), Time(t + (Nsubsteps - 1) * Δτᴮ))
 
+    # The targets of this step carry the current free surface forcing out of the domain
+    compute_exported_volume_flux!(free_surface.boundary_transport, F, model.clock, (; η, U, V))
+
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
@@ -284,8 +287,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # The Flather refills above undo the pin, so re-pin the faces before the barotropic corrector reads them
     arch = architecture(free_surface_grid)
     boundary_transport = free_surface.boundary_transport
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport)
-    enforce_barotropic_transport_targets!(arch, free_surface_grid, filtered_state.Ũ, filtered_state.Ṽ, boundary_transport)
+    enforce_barotropic_transport_targets!(arch, free_surface_grid, U, V, boundary_transport, model.clock.time)
 
     return nothing
 end

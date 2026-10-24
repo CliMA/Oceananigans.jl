@@ -6,6 +6,7 @@ struct CommunicationState{R, E, M}
     tag :: UInt64
     pack_event :: E
     mailbox :: M # to the progress worker, or `nothing`
+    unpack_pending :: Base.RefValue{Bool} # an asynchronous fill was posted but its halos are not yet unpacked
 end
 
 # CommunicationState only lives on host, so never needs to be converted
@@ -18,7 +19,7 @@ function communication_state(arch::Distributed, west, east, south, north, southw
     sides = (; west, east, south, north, southwest, southeast, northwest, northeast)
     tag = UInt64(mod(next_field_tag!(arch), MPI.tag_ub() ÷ halo_tag_slots))
     pack_event = new_event(arch)
-    return CommunicationState(Threads.Atomic{UInt64}(0), map(side_requests, sides), tag, pack_event, progress_mailbox(pack_event))
+    return CommunicationState(Threads.Atomic{UInt64}(0), map(side_requests, sides), tag, pack_event, progress_mailbox(pack_event), Ref(false))
 end
 
 side_requests(::Nothing) = nothing
@@ -37,4 +38,16 @@ function wait_for_messages!(cs::CommunicationState)
     return nothing
 end
 
-posted_by_main_thread(cs::CommunicationState) = CommunicationState(cs.pending_messages, cs.requests, cs.tag, cs.pack_event, nothing)
+posted_by_main_thread(cs::CommunicationState) = CommunicationState(cs.pending_messages, cs.requests, cs.tag, cs.pack_event, nothing, cs.unpack_pending)
+
+mark_unpack_pending!(cs::CommunicationState) = (cs.unpack_pending[] = true; nothing)
+mark_unpack_pending!(_) = nothing
+
+# Unpacking twice would overwrite halos modified since the first unpack with the stale received values
+function take_unpack_pending!(cs::CommunicationState)
+    pending = cs.unpack_pending[]
+    cs.unpack_pending[] = false
+    return pending
+end
+
+take_unpack_pending!(_) = true

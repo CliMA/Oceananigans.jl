@@ -165,6 +165,7 @@ get_target_transport(scheme::PerturbationAdvection, grid) = _eval_tt(scheme.targ
 get_target_transport(scheme::PerturbationAdvection) = scheme.target_transport
 
 _eval_tt(x::Number, grid) = x
+_eval_tt(s::TransportTimeSeries, grid) = s
 _eval_tt(f, grid) = f(grid)
 
 # Helper to convert between density-weighted and intensive fields.
