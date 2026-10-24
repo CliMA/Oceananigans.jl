@@ -40,9 +40,11 @@ end
 ##### Flux difference across a cell, from one stencil of 2N + 1 values shared by both faces
 #####
 
-# the velocity that sets the upwind bias and the volume flux through the faces along `dir` of a tracer cell
+# the velocity that sets the upwind bias: the volume flux, or the velocity itself across a tracer cell
+@inline upwind_velocity(i, j, k, grid, dir, ℓ, scheme, U) = transport(i, j, k, grid, dir, ℓ, scheme, U)
 @inline upwind_velocity(i, j, k, grid, dir, ::Tuple{Center, Center, Center}, scheme, U) = @inbounds U[i, j, k]
 
+# the volume flux through the faces along `dir` of a tracer cell
 @inline transport(i, j, k, grid, ::Val{1}, ::Tuple{Center, Center, Center}, scheme, U) = Ax_qᶠᶜᶜ(i, j, k, grid, U)
 @inline transport(i, j, k, grid, ::Val{2}, ::Tuple{Center, Center, Center}, scheme, V) = Ay_qᶜᶠᶜ(i, j, k, grid, V)
 @inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Center, Center, Center}, scheme, W) = Az_qᶜᶜᶠ(i, j, k, grid, W)

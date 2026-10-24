@@ -366,16 +366,9 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
-# The vertical volume flux through the faces of a horizontal velocity cell sets the upwind bias, and vanishes on faces that
-# touch an immersed boundary
-@inline upwind_velocity(i, j, k, grid, ::Val{3}, ::Tuple{Face, Center, Center}, scheme, W) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
-@inline upwind_velocity(i, j, k, grid, ::Val{3}, ::Tuple{Center, Face, Center}, scheme, W) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
-
-@inline transport(i, j, k, grid, dir, ℓ::Tuple{Face, Center, Center}, scheme, W) =
-    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), upwind_velocity(i, j, k, grid, dir, ℓ, scheme, W))
-
-@inline transport(i, j, k, grid, dir, ℓ::Tuple{Center, Face, Center}, scheme, W) =
-    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), upwind_velocity(i, j, k, grid, dir, ℓ, scheme, W))
+# The vertical volume flux through the faces of a horizontal velocity cell
+@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Face, Center, Center}, scheme, W) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Center, Face, Center}, scheme, W) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
