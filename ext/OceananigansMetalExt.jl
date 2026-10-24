@@ -22,6 +22,7 @@ Architectures.array_type(::MetalGPU) = MtlArray
 
 Architectures.on_architecture(::MetalGPU, a::Number) = a
 Architectures.on_architecture(::MetalGPU, a::Array) = MtlArray(a)
+Architectures.on_architecture(::MetalGPU, a::Array{Float64}) = MtlArray(convert(Array{Float32}, a)) # Metal has no Float64
 Architectures.on_architecture(::MetalGPU, a::BitArray) = MtlArray(a)
 Architectures.on_architecture(::CPU, a::MtlArray) = Array(a)
 Architectures.on_architecture(::MetalGPU, a::MtlArray) = a
