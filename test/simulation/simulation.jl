@@ -134,8 +134,14 @@ function run_basic_simulation_tests(arch)
     @test_logs stop_logs(r"^Simulation run time .* equals or exceeds wall time limit ")... wall_time_limit_exceeded(simulation)
     @test !(simulation.running)
 
-    # Test that simulation stops at `stop_iteration`.
+    # `reset!` keeps the stop criteria
     reset!(simulation)
+    @test simulation.stop_time == 1e-12
+    @test simulation.wall_time_limit == 1e-12
+
+    # Test that simulation stops at `stop_iteration`.
+    simulation.stop_time = Inf
+    simulation.wall_time_limit = Inf
     simulation.stop_iteration = 3
     @test_logs run_logs("Model iteration 3 equals or exceeds stop iteration 3.")... run!(simulation)
 
@@ -143,6 +149,7 @@ function run_basic_simulation_tests(arch)
 
     # Test that simulation stops at `stop_time`.
     reset!(simulation)
+    simulation.stop_iteration = Inf
     simulation.stop_time = 20.20
     @test_logs run_logs("Simulation time 20.200 seconds equals or exceeds stop time 20.200 seconds.")... run!(simulation)
 
@@ -150,6 +157,7 @@ function run_basic_simulation_tests(arch)
 
     # Test that we can run a simulation with TimeStepWizard
     reset!(simulation)
+    simulation.stop_time = Inf
     simulation.stop_iteration = 2
 
     wizard = TimeStepWizard(cfl=0.1)
@@ -159,6 +167,7 @@ function run_basic_simulation_tests(arch)
 
     # Test time-step alignment with callbacks
     reset!(simulation)
+    simulation.stop_iteration = Inf
     simulation.stop_time = 2.0
     simulation.Δt = 1.0
 
