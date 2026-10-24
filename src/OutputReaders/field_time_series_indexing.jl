@@ -177,6 +177,28 @@ const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
 const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
 const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
+# Single-dimension reduced
+@propagate_inbounds Base.getindex(f::YZFTS, i, j, k, n::Int)  = getindex(f.data, 1, j, k, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::XZFTS, i, j, k, n::Int)  = getindex(f.data, i, 1, k, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::XYFTS, i, j, k, n::Int)  = getindex(f.data, i, j, 1, memory_index(f, n))
+
+@propagate_inbounds Base.setindex!(f::YZFTS, v, i, j, k, n::Int) = setindex!(f.data, v, 1, j, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::XZFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, 1, k, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::XYFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, 1, memory_index(f, n))
+
+# Double-dimension reduced
+@propagate_inbounds Base.getindex(f::XFTS, i, j, k, n::Int) = getindex(f.data, i, 1, 1, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::YFTS, i, j, k, n::Int) = getindex(f.data, 1, j, 1, memory_index(f, n))
+@propagate_inbounds Base.getindex(f::ZFTS, i, j, k, n::Int) = getindex(f.data, 1, 1, k, memory_index(f, n))
+
+@propagate_inbounds Base.setindex!(f::XFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, 1, 1, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::YFTS, v, i, j, k, n::Int) = setindex!(f.data, v, 1, j, 1, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::ZFTS, v, i, j, k, n::Int) = setindex!(f.data, v, 1, 1, k, memory_index(f, n))
+
+# Triple-dimension reduced
+@propagate_inbounds Base.getindex(f::FTS0, i, j, k, n::Int)     = getindex(f.data, 1, 1, 1, memory_index(f, n))
+@propagate_inbounds Base.setindex!(f::FTS0, v, i, j, k, n::Int) = setindex!(f.data, v, 1, 1, 1, memory_index(f, n))
+
 # `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
 
 # Bottom and top boundary conditions

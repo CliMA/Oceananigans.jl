@@ -310,7 +310,7 @@ function build_hydrostatic_free_surface_model(grid, ::Val{tracer_names}, timeste
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
     free_surface = validate_free_surface(arch, free_surface)
-    free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions)
+    free_surface = materialize_free_surface(free_surface, velocities, grid, boundary_conditions, clock)
     validate_immersed_boundary(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
