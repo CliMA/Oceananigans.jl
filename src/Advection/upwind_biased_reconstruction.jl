@@ -89,11 +89,14 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme::AUAS, args...) =
     symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme.advecting_velocity_scheme, args...)
 
-# Uniform upwind biased reconstruction
+# Uniform upwind biased reconstruction from the `2N` values `S` of `load_stencil`
 for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval @inline function biased_interpolate(i, j, k, grid, dir, ℓ, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...)
-        S = load_stencil(i, j, k, grid, dir, ℓ, Val($buffer), ψ, args...)
-        return @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left)),
-                                                          $(calc_reconstruction_stencil(FT, buffer, :right)))
-    end
+    @eval @inline biased_interpolate(::UpwindBiased{$buffer, $FT}, bias, S) =
+        @inbounds @muladd ifelse(bias == LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left)),
+                                                   $(calc_reconstruction_stencil(FT, buffer, :right)))
+end
+
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::UpwindBiased{N}, bias, ψ, args...) where N
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return biased_interpolate(scheme, bias, S)
 end

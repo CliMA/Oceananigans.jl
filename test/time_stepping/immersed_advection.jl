@@ -17,11 +17,16 @@ using Oceananigans.Advection:
         LeftBias,
         RightBias,
         materialize_advection,
-        div_𝐯u
+        div_𝐯u,
+        div_Uc,
+        _advective_tracer_flux_x,
+        _advective_tracer_flux_y,
+        _advective_tracer_flux_z
 
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using Oceananigans.TimeSteppers: compute_tendencies!
-using Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ
+using Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ, V⁻¹ᶜᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ
+using Oceananigans.Grids: inactive_cell, peripheral_node
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -166,6 +171,42 @@ function left_of_thin_wall_tendency(arch, scheme, right_velocity)
     return Array(interior(G, 1:8, 1, :))
 end
 
+@inline face_flux_divergence(i, j, k, grid, advection, U, c) =
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
+                             δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
+                             δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c))
+
+@inline active_cell_difference(i, j, k, grid, advection, U, c) =
+    ifelse(inactive_cell(i, j, k, grid), zero(grid), div_Uc(i, j, k, grid, advection, U, c) - face_flux_divergence(i, j, k, grid, advection, U, c))
+
+@inline no_wall_flow(i, j, k, grid, ψ, ℓ) = ifelse(peripheral_node(i, j, k, grid, ℓ...), zero(grid), @inbounds ψ[i, j, k])
+
+# the largest difference between div_Uc and the divergence of the face fluxes over the active cells, relative to the latter,
+# from random fields without flow through the walls
+function cell_and_face_tracer_divergence(arch, scheme)
+    grid = RectilinearGrid(arch, size=(12, 12, 12), extent=(1, 1, 1), halo=(6, 6, 6), topology=(Periodic, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -0.6 + 0.25 * sin(2π * x) * cos(π * y)))
+
+    Random.seed!(1234)
+    u, v, w, c = XFaceField(ibg), YFaceField(ibg), ZFaceField(ibg), CenterField(ibg)
+    for ψ in (u, v, w, c)
+        set!(ψ, rand(size(ψ)...) .- 0.3)
+        fill_halo_regions!(ψ)
+    end
+
+    u = compute!(Field(KernelFunctionOperation{Face, Center, Center}(no_wall_flow, ibg, u, (Face(), Center(), Center()))))
+    v = compute!(Field(KernelFunctionOperation{Center, Face, Center}(no_wall_flow, ibg, v, (Center(), Face(), Center()))))
+    w = compute!(Field(KernelFunctionOperation{Center, Center, Face}(no_wall_flow, ibg, w, (Center(), Center(), Face()))))
+    foreach(fill_halo_regions!, (u, v, w))
+
+    advection  = materialize_advection(scheme, ibg)
+    U          = (; u, v, w)
+    difference = compute!(Field(KernelFunctionOperation{Center, Center, Center}(active_cell_difference, ibg, advection, U, c)))
+    divergence = compute!(Field(KernelFunctionOperation{Center, Center, Center}(face_flux_divergence, ibg, advection, U, c)))
+
+    return maximum(abs, difference) / maximum(abs, divergence)
+end
+
 for arch in archs
     @testset "Immersed tracer reconstruction" begin
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
@@ -252,6 +293,12 @@ for arch in archs
     @testset "Momentum advection does not reach across a one-cell immersed wall" begin
         @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (UpwindBiased(order=5), WENO(), WENO(order=9))
             @test left_of_thin_wall_tendency(arch, scheme, 0) == left_of_thin_wall_tendency(arch, scheme, 1)
+        end
+    end
+
+    @testset "Tracer flux divergence of the cell stencils equals that of the face fluxes" begin
+        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (Centered(order=4), UpwindBiased(order=5), WENO(order=5), WENO(order=7), WENO(order=9))
+            @test cell_and_face_tracer_divergence(arch, scheme) < 1e-12
         end
     end
 end

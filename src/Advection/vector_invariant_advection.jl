@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
@@ -366,27 +366,31 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
-# Vertical fluxes vanish on faces that touch an immersed boundary
-@inline vertical_flux_Wu(i, j, k, grid, scheme, W, u) =
-    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u))
+# The vertical volume flux through the faces of a horizontal velocity cell sets the upwind bias, and vanishes on faces that
+# touch an immersed boundary
+@inline upwind_velocity(i, j, k, grid, ::Val{3}, ::Tuple{Face, Center, Center}, scheme, W) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+@inline upwind_velocity(i, j, k, grid, ::Val{3}, ::Tuple{Center, Face, Center}, scheme, W) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
 
-@inline vertical_flux_Wv(i, j, k, grid, scheme, W, v) =
-    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v))
+@inline transport(i, j, k, grid, dir, ℓ::Tuple{Face, Center, Center}, scheme, W) =
+    conditional_flux(i, j, k, grid, Face(), Center(), Face(), zero(grid), upwind_velocity(i, j, k, grid, dir, ℓ, scheme, W))
+
+@inline transport(i, j, k, grid, dir, ℓ::Tuple{Center, Face, Center}, scheme, W) =
+    conditional_flux(i, j, k, grid, Center(), Face(), Face(), zero(grid), upwind_velocity(i, j, k, grid, dir, ℓ, scheme, W))
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Face(), Center(), Center()), scheme.vertical_advection_scheme, U.w, U.u)
 
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return (Φᵟ + 𝒜ᶻ) * V⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, vertical_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Center(), Face(), Center()), scheme.vertical_advection_scheme, U.w, U.v)
 
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return (Φᵟ + 𝒜ᶻ) * V⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
 #####

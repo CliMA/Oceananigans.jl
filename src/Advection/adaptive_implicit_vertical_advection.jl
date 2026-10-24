@@ -62,6 +62,10 @@ end
     return s * advective_tracer_flux_z(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, c)
 end
 
+@inline explicit_velocity_scale(i, j, k, grid, ::Tuple{Center, Center, Face}, scheme, td::AVID, W) = explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
+@inline explicit_velocity_scale(i, j, k, grid, ::Tuple{Face, Center, Face},   scheme, td::AVID, W) = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+@inline explicit_velocity_scale(i, j, k, grid, ::Tuple{Center, Face, Face},   scheme, td::AVID, W) = explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
+
 # Horizontal momentum fluxes are fully explicit with AVID
 @inline advective_momentum_flux_Uu(i, j, k, grid, scheme, ::AVID, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, u)
 @inline advective_momentum_flux_Vu(i, j, k, grid, scheme, ::AVID, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, u)

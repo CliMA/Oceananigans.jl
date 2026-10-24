@@ -44,11 +44,14 @@ const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
 @inline biased_interpolate(i, j, k, grid, dir, ℓ, scheme::ACAS, bias, args...) = symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme, args...)
+@inline biased_interpolate(scheme::ACAS, bias, S) = symmetric_interpolate(scheme, S)
 
-# uniform centered reconstruction
+# uniform centered reconstruction from the `2N` values `S` of `load_stencil`
 for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval @inline function symmetric_interpolate(i, j, k, grid, dir, ℓ, ::Centered{$buffer, $FT}, ψ, args...)
-        S = load_stencil(i, j, k, grid, dir, ℓ, Val($buffer), ψ, args...)
-        return @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric))
-    end
+    @eval @inline symmetric_interpolate(::Centered{$buffer, $FT}, S) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric))
+end
+
+@inline function symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme::Centered{N}, ψ, args...) where N
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return symmetric_interpolate(scheme, S)
 end

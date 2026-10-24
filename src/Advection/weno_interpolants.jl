@@ -438,7 +438,7 @@ where
 
 The ``α`` values are returned unnormalized: [`weno_reconstruction`](@ref) divides by their sum.
 """
-@inline function biased_weno_weights(δ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
+@inline function biased_weno_weights(δ, scheme::WENO{N, FT}) where {N, FT}
     β = beta_loop(scheme, δ)
     τ = global_smoothness_indicator(Val(N), β)
     return zweno_alpha_loop(scheme, β, τ)
@@ -485,23 +485,24 @@ for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
-# Interpolation functions
-@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
-    S  = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+# Reconstruction from the `2N` values `S` of `load_stencil`
+@inline function biased_interpolate(scheme::WENO{N, FT}, bias, S) where {N, FT}
     S  = weno_stencil(scheme, bias, S)
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
-    ω  = biased_weno_weights(δ, grid, scheme, bias, args...)
+    ω  = biased_weno_weights(δ, scheme)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end
 
+# Interpolation functions
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return biased_interpolate(scheme, bias, S)
+end
+
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
-    S  = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
-    S  = weno_stencil(scheme, bias, S)
-    ψ₀ = weno_anchor(scheme, S)
-    δ  = weno_differences(scheme, S)
-    ω  = biased_weno_weights(δ, grid, scheme, bias, VI, args...)
-    return weno_reconstruction(scheme, ψ₀, δ, ω)
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return biased_interpolate(scheme, bias, S)
 end
 
 # The smoothness stencils continue past walls with the agreement factors of the reconstructed stencil
@@ -532,6 +533,6 @@ end
     ψ₀ = weno_anchor(scheme, S)
     δ  = weno_differences(scheme, S)
     δₛ = weno_differences(scheme, Sₛ)
-    ω  = biased_weno_weights(δₛ, grid, scheme, bias, VI, args...)
+    ω  = biased_weno_weights(δₛ, scheme)
     return weno_reconstruction(scheme, ψ₀, δ, ω)
 end

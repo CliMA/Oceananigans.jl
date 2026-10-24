@@ -32,7 +32,7 @@ smooth_stencil(FT, buffer) = ntuple(i -> FT(300 + 0.1 * sinpi((i - 1) / buffer))
         for S in stencils, weight_computation in (NormalDivision, BackendOptimizedDivision)
             δ = ntuple(i -> S[i+1] - S[i], Val(2buffer - 2))
             scheme = WENO(FT; order, weight_computation)
-            α = biased_weno_weights(δ, nothing, scheme)
+            α = biased_weno_weights(δ, scheme)
             ω = α ./ sum(α)
 
             β = beta_loop(scheme, δ)
@@ -57,7 +57,7 @@ smooth_stencil(FT, buffer) = ntuple(i -> FT(300 + 0.1 * sinpi((i - 1) / buffer))
             # so the reconstruction agrees with the unregularized BigFloat one to the precision of FT,
             # relative to the magnitude of the stencil values
             ψ̂ = weno_reconstruction(scheme, S[buffer], δ, ω)
-            ψ̂ᵇ = weno_reconstruction(big_scheme, big(S[buffer]), big.(δ), biased_weno_weights(big.(δ), nothing, big_scheme))
+            ψ̂ᵇ = weno_reconstruction(big_scheme, big(S[buffer]), big.(δ), biased_weno_weights(big.(δ), big_scheme))
             @test abs(ψ̂ - ψ̂ᵇ) ≤ 10eps(FT) * maximum(abs, big.(S))
         end
     end
@@ -70,7 +70,7 @@ end
 
         for weight_computation in (NormalDivision, BackendOptimizedDivision)
             scheme = WENO(FT; order, weight_computation)
-            α = biased_weno_weights(δ, nothing, scheme)
+            α = biased_weno_weights(δ, scheme)
             ω = α ./ sum(α)
             optimal = ntuple(r -> big(C★(scheme, Val(r - 1))), buffer)
             optimal = optimal ./ sum(optimal) # the FT-rounded C★ do not sum exactly to one
