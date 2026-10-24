@@ -271,7 +271,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     update_model_field_time_series!(model, Time(t), Time(t + (Nsubsteps - 1) * Δτᴮ))
 
     # Solve for the free surface at tⁿ⁺¹.
-    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps),
+                            substep_coriolis_args(barotropic_timestepper, model)...)
 
     # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)

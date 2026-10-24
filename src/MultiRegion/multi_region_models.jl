@@ -227,7 +227,7 @@ end
 HydrostaticFreeSurfaceModels.default_free_surface(grid::YinYangGridOfSomeKind; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, extend_halos=false, gravitational_acceleration)
 
-SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind, ::FixedSubstepNumber) =
+SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::YinYangGridOfSomeKind, ::FixedSubstepNumber, timestepper) =
     throw(ArgumentError("The SplitExplicitFreeSurface on a YinYangGrid needs extend_halos = false."))
 
 ## Split explicit extension for complete halo filling
