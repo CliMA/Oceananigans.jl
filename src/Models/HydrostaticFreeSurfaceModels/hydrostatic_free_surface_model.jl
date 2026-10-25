@@ -3,12 +3,13 @@ using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.DistributedComputations: Distributed, DistributedGrid
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid, all_reduce, @root
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center,
                           minimum_xspacing, minimum_yspacing
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using .SplitExplicitFreeSurfaces: extended_halos_fit
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -81,13 +82,13 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 # A heuristic computation of a possible maximum Δt for a HydrostaticFreeSurfaceModel,
 # given the grid spacings, a hypothetical `maximum_speed` (assumed to be around 3 m/s)
-# and a conservative CFL of 0.3. Note that this computation only considers the ``advective''
+# and a conservative `cfl` (0.3 by default). Note that this computation only considers the ``advective''
 # CFL, as we assume that at a high enough resolution advective processes are the bottleneck.
-function estimate_maximum_Δt(grid; maximum_speed = 3)
+function estimate_maximum_Δt(grid; maximum_speed = 3, cfl = 0.3)
     Δx  = minimum_xspacing(grid)
     Δy  = minimum_yspacing(grid)
     Δs  = sqrt((Δx^2 + Δy^2) / 2)
-    return Δs * 0.3 / maximum_speed
+    return Δs * cfl / maximum_speed
 end
 
 function default_free_surface(grid::DistributedGrid;
@@ -95,7 +96,21 @@ function default_free_surface(grid::DistributedGrid;
                               cfl = 0.7,
                               Δt = estimate_maximum_Δt(grid))
 
-    return SplitExplicitFreeSurface(grid; cfl, fixed_Δt=Δt, gravitational_acceleration)
+    free_surface = SplitExplicitFreeSurface(grid; cfl, fixed_Δt=Δt, gravitational_acceleration)
+
+    # Substep into extended halos only if they fit within every rank's subdomain
+    arch = architecture(grid)
+    extend_halos = all_reduce(&, extended_halos_fit(grid, free_surface.substepping), arch)
+
+    if !extend_halos
+        Nsubsteps = length(free_surface.substepping.averaging_weights)
+        @root arch.communicator @info string("The default SplitExplicitFreeSurface uses $Nsubsteps substeps, which require halos ",
+                                             "larger than some ranks' subdomains. Halos are not extended and the barotropic ",
+                                             "solver will communicate at every substep. To avoid this, use fewer ranks or ",
+                                             "provide a `free_surface` explicitly.")
+    end
+
+    return SplitExplicitFreeSurface(grid; cfl, fixed_Δt=Δt, gravitational_acceleration, extend_halos)
 end
 
 """
@@ -138,7 +153,8 @@ Keyword arguments
   - `free_surface`: The free surface model. The default is a `SplitExplicitFreeSurface` with
                     a number of substeps corresponding to a barotropic CFL of 0.7. On distributed
                     grids, the number of substeps is fixed and computed from a heuristic estimate of
-                    the maximum baroclinic time step.
+                    the maximum baroclinic time step; halos are extended for substepping only if
+                    the extended halos fit within every rank's subdomain.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
