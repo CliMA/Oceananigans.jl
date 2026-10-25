@@ -70,8 +70,10 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     return ifelse(cycling, cycled_indices, uncycled_indices)
 end
 
-# `t + Dates.Year(n)` validates the date it builds, which cannot compile on a GPU.
-# Like it, this clamps 29 February to the 28th of a non-leap year.
+# `t + Dates.Year(n)` builds the new date with the `DateTime(y, m, d, ...)` constructor, whose argument
+# validation formats error messages into strings: GPU kernels cannot allocate strings, so it fails to
+# compile on a GPU (InvalidIRError). This shifts `t` by whole years on its millisecond count instead and,
+# like `t + Dates.Year(n)`, clamps 29 February to the 28th of a non-leap year.
 @inline function add_years(t::Dates.DateTime, n)
     y, m, d = Dates.yearmonthday(t)
     y′ = y + n
