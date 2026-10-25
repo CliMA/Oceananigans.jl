@@ -44,6 +44,33 @@ This simple grid
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
+We can inspect the grid using [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref) to retrieve node positions.
+The `Center()` or `Face()` argument specifies whether to return positions at cell centers or faces.
+For the `Bounded` ``z`` direction, `znodes` returns ``N_z = 4`` center nodes and ``N_z + 1 = 5`` face nodes, since both boundary faces are included:
+
+```jldoctest grids
+znodes(grid, Center())
+
+# output
+1.0:2.0:7.0
+```
+
+```jldoctest grids
+znodes(grid, Face())
+
+# output
+0.0:2.0:8.0
+```
+
+For the `Periodic` ``x`` direction, the face at ``x = 64`` is identified with the face at ``x = 0`` and therefore not repeated, so there are only ``N_x = 16`` face nodes (not ``N_x + 1 = 17``):
+
+```jldoctest grids
+xnodes(grid, Face())
+
+# output
+0.0:4.0:60.0
+```
+
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
@@ -72,9 +99,28 @@ grid = RectilinearGrid(architecture,
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
 Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
-In the stretched cell interfaces specified by `z_interfaces`, the number of
-vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
+The stretched cell interfaces specified by `z_faces`. Because ``z`` is `Bounded`, the number of
+vertical cell interfaces required is `Nz + 1 = length(z_faces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
+
+The companion functions [`xspacings`](@ref), [`yspacings`](@ref), and [`zspacings`](@ref) return the cell widths in each direction and are most informative when the grid spacing varies.
+To inspect the variable ``z`` spacings the grid above, we write:
+
+```jldoctest grids_gpu
+Δz = zspacings(grid, Center(), Center(), Center())
+[CUDA.@allowscalar Δz[1, 1, k] for k in 1:grid.Nz]
+
+# output
+4-element Vector{Float64}:
+ 1.0
+ 2.0
+ 3.0
+ 4.0
+```
+
+The `CUDA.@allowscalar` above is needed because scalar indexing is by default not allowed for arrays that live on the GPU.
+(For more discussion on scalar indexing on GPUs see the [Simulation tips](@ref simulation_tips) section.)
+The ``z``-spacings increase from `1.0` to `4.0`, matching the growing gaps between successive entries in `z_faces`.
 
 A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
@@ -85,10 +131,42 @@ The shape of the physical domain determines what grid type should be used:
 1. [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid) can be fashioned into lines, rectangles and boxes.
 2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
+4. [`YinYangGrid`](@ref) covers the whole thin spherical shell, poles included, with two overlapping latitude-longitude panels.
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
-    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the ["tripolar" grid](@cite Murray1996).
+    for recipes that implement useful `OrthogonalSphericalShellGrid`s, including the [`TripolarGrid`](@ref) [Murray1996](@citep),
+    [`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid),
+    [`ConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalConicGrid), and
+    [`ConformalCubedSpherePanelGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalCubedSpherePanelGrid).
+
+A [`ConformalConicGrid`](@ref) is a regional `OrthogonalSphericalShellGrid` generated from
+projected `x/y` coordinates in meters, using the Lambert conformal conic projection. It stores longitude and latitude at every staggered horizontal
+location, together with spherical-shell metrics and cell areas, so that models use the same curvilinear-grid machinery as other `OrthogonalSphericalShellGrid`s.
+The horizontal topology is `Bounded` by default and conformal conic grids are not intended for
+global domains.
+The projection is conformal rather than equal-area, and longitude is singular at the cone apex or pole,
+so regional domains should normally avoid placing the apex on a grid point.
+
+For example, a midlatitude regional grid can be constructed from a geographic center,
+projected spacing, and two standard parallels,
+
+```jldoctest conformal_conic_grid
+using Oceananigans
+
+grid = ConformalConicGrid(size = (8, 6, 1),
+                          center = (-105, 40),
+                          spacing = 20e3,
+                          standard_parallels = (30, 60),
+                          z = (-100, 0))
+
+# output
+8×6×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+├── centered at (λ, φ) = (-105.0, 40.0)
+├── longitude: Bounded  extent 1.48547 degrees variably spaced with min(Δλ)=0.185194, max(Δλ)=0.185537
+├── latitude:  Bounded  extent 1.11223 degrees variably spaced with min(Δφ)=0.185194, max(Δφ)=0.185537
+└── z:         Bounded  z ∈ [-100.0, 0.0]      regularly spaced with Δz=100.0
+```
 
 For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and has 5 vertical levels down to 1000 meters, we write
 
@@ -120,6 +198,9 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus that f
 
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
 
+!!! note "Inspecting grids with geographical coordinates"
+    We can inspect grids with geographical coordinates `(λ, φ, z)` using  [`λnodes`](@ref), [`φnodes`](@ref) and also [`λspacings`](@ref) and [`φspacings`](@ref).
+
 If `topology` is not provided for `LatitudeLongitudeGrid`, then Oceananigans tries infer it: if the `longitude` spans 360 degrees,
 the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
 
@@ -143,6 +224,38 @@ is `Bounded` by default, because `longitude = (0, 60)`.
 !!! note "LatitudeLongitudeGrid topologies"
     It's still possible to use `topology = (Periodic, Bounded, Bounded)` even if `longitude` doesn't span 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
+
+### Covering the whole sphere: `YinYangGrid`
+
+A `LatitudeLongitudeGrid` cannot include the poles, where its meridians converge. The [`YinYangGrid`](@ref)
+of [KageyamaSato2004](@citet) covers the whole sphere with two identical panels, Yin and Yang. Each panel is a
+[`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
+that spans 270° of longitude and 90° of latitude around its own equator, where the grid is nearly uniform.
+Yang is Yin rotated so that its equator passes through the geographic poles. The panels overlap at their edges,
+and each one fills its halos by interpolating from the interior of the other.
+
+The `size` gives the cells in the 270° × 90° core of each panel, so it must be `(3Nφ, Nφ, Nz)`:
+
+```jldoctest yinyang_grid
+using Oceananigans
+
+grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
+
+# output
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
+├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
+├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
+├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
+├── Yin (region 1):  panel frame = geographic frame
+├── Yang (region 2): (x, y, z) ↦ (-x, z, y), panel (λ′, φ′) = (0, 0) at (λ, φ) = (180, 0)
+└── z: Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=250.0
+```
+
+A `YinYangGrid` is a two-region `MultiRegionGrid`: `grid[1]` is Yin and `grid[2]` is Yang. Each panel stores
+horizontal velocities in its own basis, but `set!` takes geographic velocity components and rotates them
+into each panel's basis. Reductions over both horizontal dimensions, such as `sum`, `maximum` and [`Integral`](@ref),
+count every point of the sphere once. The [Barotropic jet and Double Drake on a Yin-Yang grid](@ref) example
+runs two simulations on a `YinYangGrid`.
 
 ### Bathymetry, topography, and other irregularities
 
@@ -209,7 +322,7 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 ```@example grids
 using CairoMakie
 
-h = mountain_grid.immersed_boundary.bottom_height
+h = bottom_height_field(mountain_grid)
 
 fig = Figure()
 ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
@@ -308,8 +421,8 @@ big_halo_grid = RectilinearGrid(topology = (Periodic, Periodic, Flat),
 
 # output
 32×16×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
-├── Periodic x ∈ [-6.90805e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [-1.07194e-16, 3.14159) regularly spaced with Δy=0.19635
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 3.14159) regularly spaced with Δy=0.19635
 └── Flat z
 ```
 
@@ -921,7 +1034,7 @@ make_distributed_arch = """
 
 using Oceananigans
 using Oceananigans.DistributedComputations
-using MPI; MPI.Init()
+using MPI; MPI.Init(threadlevel=:multiple)
 architecture = Distributed()
 @onrank 0 @show architecture
 @onrank 1 @show architecture
@@ -956,7 +1069,7 @@ make_distributed_grid = """
 
 using Oceananigans
 using Oceananigans.DistributedComputations
-using MPI; MPI.Init()
+using MPI; MPI.Init(threadlevel=:multiple)
 
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
@@ -990,7 +1103,7 @@ Now we're getting somewhere. Let's note a few things:
   of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
-  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  topology `(Connected, Periodic, Bounded)`. That means that each local grid, which represents
   half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
   and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
 
@@ -1020,7 +1133,7 @@ make_y_partition = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 partition = Partition(y=Equal())
 
@@ -1063,7 +1176,7 @@ make_xy_partition = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 partition = Partition(x=Equal(), y=2)
 
@@ -1091,7 +1204,7 @@ partitioned_grid_example = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal, barrier
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 # Total number of ranks
 Nr = MPI.Comm_size(MPI.COMM_WORLD)

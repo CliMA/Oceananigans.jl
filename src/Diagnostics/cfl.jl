@@ -24,7 +24,7 @@ CFL(Δt) = CFL(Δt, cell_advection_timescale)
 (c::CFL)(model) = c.Δt / c.timescale(model)
 
 """
-    AdvectiveCFL(Δt)
+$(TYPEDSIGNATURES)
 
 Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and the time scale
@@ -50,7 +50,7 @@ julia> cfl(model)
 AdvectiveCFL(Δt) = CFL(Δt, cell_advection_timescale)
 
 """
-    DiffusiveCFL(Δt)
+$(TYPEDSIGNATURES)
 
 Returns an object for computing the diffusive Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and the time scale for diffusion

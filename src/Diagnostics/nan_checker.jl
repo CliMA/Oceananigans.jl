@@ -10,6 +10,8 @@ end
 NaNChecker(fields) = NaNChecker(fields, false, false) # default
 default_nan_checker(model) = nothing
 
+Oceananigans.prognostic_state(::NaNChecker) = nothing
+
 function Base.summary(nc::NaNChecker)
     fieldnames = prettykeys(nc.fields)
     if nc.erroring
@@ -68,7 +70,7 @@ function (nc::NaNChecker)(simulation)
 end
 
 """
-    erroring_NaNChecker!(simulation)
+$(TYPEDSIGNATURES)
 
 Toggle `simulation`'s `NaNChecker` to throw an error when a `NaN` is detected.
 """
