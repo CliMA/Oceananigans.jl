@@ -54,7 +54,8 @@ adv_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter)
 dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_flux_formulation = DiffusiveFormulation())
 
 function run_simulation(closure, grid)
-    model = HydrostaticFreeSurfaceModel(; grid, closure,
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        closure,
                                         coriolis = FPlane(latitude = -45),
                                         buoyancy = BuoyancyTracer(),
                                         tracer_advection = WENO(order=7),
@@ -91,7 +92,7 @@ function run_simulation(closure, grid)
     simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                     schedule = TimeInterval(save_fields_interval),
                                                     filename = filename * "_fields_" * suffix,
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Running the simulation..."
 

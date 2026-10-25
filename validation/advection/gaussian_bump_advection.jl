@@ -80,13 +80,13 @@ u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, pa
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
 
 u_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = u_immersed_bc)
-v_bcs = FieldBoundaryConditions(bottom = u_bottom_drag_bc, immersed = v_immersed_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc, immersed = v_immersed_bc)
 
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ = 1e-4, ν = 1e-4)
 horizontal_diffusivity = HorizontalDivergenceScalarDiffusivity(ν = 1e6)
 closure = (vertical_diffusivity, horizontal_diffusivity)
 
-model = HydrostaticFreeSurfaceModel(; grid = ibg,
+model = HydrostaticFreeSurfaceModel(ibg;
                                     buoyancy, coriolis = FPlane(; f),
                                     free_surface = ImplicitFreeSurface(),
                                     tracers = :b,

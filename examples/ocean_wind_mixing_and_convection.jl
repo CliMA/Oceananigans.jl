@@ -3,7 +3,7 @@
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
 #
-#   * How to set-up a grid with varying spacing in the vertical direction
+#   * How to set up a grid with varying spacing in the vertical direction.
 #   * How to use the `SeawaterBuoyancy` model for buoyancy with `TEOS10EquationOfState`.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
@@ -23,11 +23,13 @@
 using Oceananigans
 using Oceananigans.Units
 
-using CUDA
-using Random
-using Printf
 using CairoMakie
+using CUDA
+using Printf
+using Random
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+
+Random.seed!(1969) # for reproducible results
 
 # ## The grid
 #
@@ -37,11 +39,11 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 # maintains relatively constant vertical spacing in the mixed layer, which
 # is desirable from a numerical standpoint:
 
-Nx = Ny = 128    # number of points in each of horizontal directions
-Nz = 64          # number of points in the vertical direction
+Nx = Ny = 128
+Nz = 64
 
-Lx = Ly = 128    # (m) domain horizontal extents
-Lz = 64          # (m) domain depth
+Lx = Ly = 128meters
+Lz = 64meters
 
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
 stretching = 12  # controls rate of stretching at bottom
@@ -59,7 +61,8 @@ h(k) = (k - 1) / Nz
 z_interfaces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
 grid = RectilinearGrid(GPU(),
-                       size = (Nx, Nx, Nz),
+                       size = (Nx, Ny, Nz),
+                       halo = (4, 4, 4),
                        x = (0, Lx),
                        y = (0, Ly),
                        z = z_interfaces)
@@ -93,7 +96,7 @@ cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
-# Finally, we impose a temperature gradient `dTdz` both initially (see "Initial conditions"
+# Finally, we impose a temperature gradient `dTdz` both initially (see the "Initial conditions"
 # section below) and at the bottom of the domain, culminating in the boundary conditions on
 # temperature,
 
@@ -122,10 +125,10 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # For salinity, `S`, we impose an evaporative flux of the form
 
-@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
 nothing #hide
 
-# where `S` is salinity. We use an evaporation rate of 1 millimeter per hour,
+# We use an evaporation rate of 1 millimeter per hour,
 
 evaporation_rate = 1e-3 / hour # m s⁻¹
 
@@ -141,108 +144,108 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
 # ## Model instantiation
 #
-# We fill in the final details of the model here, i.e., Coriolis forces,
-# and the `AnisotropicMinimumDissipation` closure for large eddy simulation
-# to model the effect of turbulent motions at scales smaller than the grid scale
-# that are not explicitly resolved.
+# We fill in the final details of the model here, i.e., Coriolis forces, advection scheme, and use
+# the `DynamicSmagorinsky` closure for large eddy simulation. The effect of both the `WENO`
+# advection scheme and `DynamicSmagorinsky` turbulence closure is to dissipate variance at the grid
+# scale. In the context of large eddy simulation, this dissipation may be interpreted as
+# approximating a forward cascade of kinetic energy from resolved motions into motions that are
+# smaller than the grid scale and not explicitly resolved. Note that dissipation of grid-scale
+# variance can be achieved by the `WENO` advection scheme alone with `closure = nothing`. Typically,
+# using an explicit `closure = DynamicSmagorinsky()` will produce stronger dissipation of kinetic
+# energy; whether or not this leads to a higher quality numerical solution depends on the context.
+# An explicit `closure = DynamicSmagorinsky()` is also useful for diagnosing the kinetic energy
+# dissipation rate (the dissipation rate associated with `WENO` advection can be computed in
+# principle, but is challenging and relatively computationally intensive).
+#
+# In the `DynamicSmagorinsky` closure used below, a dynamic, multi-scale method is used to estimate
+# the Smagorinsky coefficient at every point in time and space. Specifically, we use an algorithm
+# that assumes the coefficient does not depend on the spatial scale of the implicit filter that
+# separates the "true", underlying, and unresolved flow from the "filtered", or computed flow. This
+# implementation corresponds to the "scale-invariant" formulation described by [Bou-Zeid et al.
+# (2005)](@cite BouZeid05).
 
-model = NonhydrostaticModel(; grid, buoyancy,
+model = NonhydrostaticModel(grid; buoyancy,
+                            advection = WENO(order=7),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
-                            closure = AnisotropicMinimumDissipation(),
+                            closure = DynamicSmagorinsky(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
-# Note: To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-# `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
+# Note: To use the (constant-coefficient) Smagorinsky-Lilly turbulence closure
+# rather than `DynamicSmagorinsky`, use `closure = SmagorinskyLilly()` in the model constructor.
 
 # ## Initial conditions
 #
 # Our initial condition for temperature consists of a linear stratification superposed with
-# random noise damped at the walls, while our initial condition for velocity consists
-# only of random noise.
+# random noise damped at the top and bottom, while our initial condition for velocity consists
+# only of random noise scaled by the friction velocity ``\sqrt{|τ_x|}``.
 
-## Random noise damped at top and bottom
-Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
+Ξ(z) = randn() * z / Lz * (1 + z / Lz)
 
-## Temperature initial condition: a stable density gradient with random noise superposed.
-Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
-
-## Velocity initial condition: random noise scaled by the friction velocity.
+Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * Lz * 2e-6 * Ξ(z)
 uᵢ(x, y, z) = sqrt(abs(τx)) * 1e-3 * Ξ(z)
 
-## `set!` the `model` fields using functions or constants:
 set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
 # ## Setting up a simulation
 #
-# We set-up a simulation with an initial time-step of 10 seconds
+# We set up a simulation with an initial time-step of 10 seconds
 # that stops at 2 hours, with adaptive time-stepping and progress printing.
 
 simulation = Simulation(model, Δt=10, stop_time=2hours)
 
 # The `TimeStepWizard` helps ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
+# with a Courant-Friedrichs-Lewy (CFL) number of 0.7.
 
-wizard = TimeStepWizard(cfl=1, max_change=1.1, max_Δt=1minute)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=0.7)
 
 # Nice progress messaging is helpful:
 
-## Print a progress message
 progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(40))
-
-# We then set up the simulation:
+add_callback!(simulation, progress_message, IterationInterval(200))
 
 # ## Output
 #
 # We use the `JLD2Writer` to save ``x, z`` slices of the velocity fields,
-# tracer fields, and eddy diffusivities. The `prefix` keyword argument
-# to `JLD2Writer` indicates that output will be saved in
-# `ocean_wind_mixing_and_convection.jld2`.
+# tracer fields, and eddy viscosity in `ocean_wind_mixing_and_convection.jld2`.
 
-## Create a NamedTuple with eddy viscosity
 eddy_viscosity = (; νₑ = model.closure_fields.νₑ)
 
-filename = "ocean_wind_mixing_and_convection"
+filename = "ocean_wind_mixing_and_convection.jld2"
 
 simulation.output_writers[:slices] =
-    JLD2Writer(model, merge(model.velocities, model.tracers, eddy_viscosity),
-               filename = filename * ".jld2",
-               indices = (:, grid.Ny/2, :),
+    JLD2Writer(model, merge(model.velocities, model.tracers, eddy_viscosity);
+               filename,
+               indices = (:, Ny ÷ 2, :),
                schedule = TimeInterval(1minute),
-               overwrite_existing = true)
+               overwrite_files = true)
 
 # We're ready:
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Turbulence visualization
 #
 # We animate the data saved in `ocean_wind_mixing_and_convection.jld2`.
 # We prepare for animating the flow by loading the data into
-# `FieldTimeSeries` and defining functions for computing colorbar limits.
+# `FieldTimeSeries`.
 
-filepath = filename * ".jld2"
-
-time_series = (w = FieldTimeSeries(filepath, "w"),
-               T = FieldTimeSeries(filepath, "T"),
-               S = FieldTimeSeries(filepath, "S"),
-               νₑ = FieldTimeSeries(filepath, "νₑ"))
-
-# We start the animation at ``t = 10`` minutes since things are pretty boring till then:
-
-times = time_series.w.times
-intro = searchsortedfirst(times, 10minutes)
+time_series = (w = FieldTimeSeries(filename, "w"),
+               T = FieldTimeSeries(filename, "T"),
+               S = FieldTimeSeries(filename, "S"),
+               νₑ = FieldTimeSeries(filename, "νₑ"))
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
 # [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
-n = Observable(intro)
+times = time_series.w.times
+n = Observable(length(times))
 
  wₙ = @lift time_series.w[$n]
  Tₙ = @lift time_series.T[$n]
@@ -253,13 +256,13 @@ fig = Figure(size = (1800, 900))
 
 axis_kwargs = (xlabel="x (m)",
                ylabel="z (m)",
-               aspect = AxisAspect(grid.Lx/grid.Lz),
-               limits = ((0, grid.Lx), (-grid.Lz, 0)))
+               aspect = AxisAspect(Lx / Lz),
+               limits = ((0, Lx), (-Lz, 0)))
 
 ax_w  = Axis(fig[2, 1]; title = "Vertical velocity", axis_kwargs...)
 ax_T  = Axis(fig[2, 3]; title = "Temperature", axis_kwargs...)
 ax_S  = Axis(fig[3, 1]; title = "Salinity", axis_kwargs...)
-ax_νₑ = Axis(fig[3, 3]; title = "Eddy viscocity", axis_kwargs...)
+ax_νₑ = Axis(fig[3, 3]; title = "Eddy viscosity", axis_kwargs...)
 
 title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
@@ -272,26 +275,28 @@ hm_w = heatmap!(ax_w, wₙ; colormap = :balance, colorrange = wlims)
 Colorbar(fig[2, 2], hm_w; label = "m s⁻¹")
 
 hm_T = heatmap!(ax_T, Tₙ; colormap = :thermal, colorrange = Tlims)
-Colorbar(fig[2, 4], hm_T; label = "ᵒC")
+Colorbar(fig[2, 4], hm_T; label = "°C")
 
 hm_S = heatmap!(ax_S, Sₙ; colormap = :haline, colorrange = Slims)
 Colorbar(fig[3, 2], hm_S; label = "g / kg")
 
 hm_νₑ = heatmap!(ax_νₑ, νₑₙ; colormap = :thermal, colorrange = νₑlims)
-Colorbar(fig[3, 4], hm_νₑ; label = "m s⁻²")
+Colorbar(fig[3, 4], hm_νₑ; label = "m² s⁻¹")
 
 fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 
 current_figure() #hide
 fig
 
-# And now record a movie.
+# And now record a movie. We start the animation at ``t = 10`` minutes since
+# things are pretty boring till then:
 
+intro = searchsortedfirst(times, 10minutes)
 frames = intro:length(times)
 
 @info "Making a motion picture of ocean wind mixing and convection..."
 
-CairoMakie.record(fig, filename * ".mp4", frames, framerate=8) do i
+CairoMakie.record(fig, "ocean_wind_mixing_and_convection.mp4", frames, framerate=8) do i
     n[] = i
 end
 nothing #hide

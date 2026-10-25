@@ -11,7 +11,7 @@ Base.summary(ti::Cyclical) = string("Cyclical(period=", prettysummary(ti.period)
 
 function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
     arch = architecture(fts)
-    B = string(typeof(fts.backend).name.wrapper)
+    B = nameof(typeof(fts.backend))
     sz_str = string(join(size(fts), "×"))
 
     path = fts.path
@@ -54,8 +54,10 @@ function field_time_series_suffix(fts::InMemoryFTS)
                   "    └── ", data_summary(parent(fts)))
 end
 
+show_path(path::AbstractString) = path
+show_path(path::SplitFilePath) = string(length(path.paths), " part files: ", first(path.paths), " … ", last(path.paths))
+
 field_time_series_suffix(fts::OnDiskFTS) =
     string("├── backend: ", summary(fts.backend), '\n',
-           "├── path: ", fts.path, '\n',
+           "├── path: ", show_path(fts.path), '\n',
            "└── name: ", fts.name)
-

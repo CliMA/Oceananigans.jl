@@ -12,16 +12,16 @@ get_face_node(coord::AbstractVector, i) = @allowscalar coord[i]
 const AT = AbstractTopology
 
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
 upper_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
 
 upper_interior_F(::AT, coord, Δ)           = coord - Δ
-upper_interior_F(::BoundedTopology, coord) = coord
+upper_interior_F(::FaceExtendedTopology, coord) = coord
 
 total_interior_length(::AT, N)              = N
-total_interior_length(::BoundedTopology, N) = N + 1
+total_interior_length(::FaceExtendedTopology, N) = N + 1
 
 bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
@@ -68,9 +68,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     # Trim face locations for periodic domains
     TF = total_length(Face(), topo, N, H)
-    F  = F[1:TF]
+    trimmed_F = F[1:TF]
 
-    Δᶜ = [F[i + 1] - F[i] for i = 1:TF-1]
+    Δᶜ = [trimmed_F[i + 1] - trimmed_F[i] for i = 1:TF-1]
 
     Δᶠ = [Δᶠ[1], Δᶠ..., Δᶠ[end]]
     for i = length(Δᶠ):-1:2
@@ -80,19 +80,52 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
     Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    OF = OffsetArray(trimmed_F, -H)
+    OC = OffsetArray(        C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
-    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
+    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
+    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+        return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
     else
-        return L, F, C, Δᶠ, Δᶜ
+        return L, OF, OC, Δᶠ, Δᶜ
     end
 end
+
+# Special case for tripolar grids.
+# For a `CenterFolded` right side, we want to generate coordinates that start and end at center locations,
+# but the default `generate_coordinate` assumes that the interval is located on faces,
+# so we must extend the interval by half a cell on both sides:
+# Example with N = 4
+# interval wanted:          c₁                      c₂
+#                           │◀───────── L ─────────▶│
+#                           │◀─ Δ ─▶│               │
+# face and centers:     f   c   f   c   f   c   f   c   f
+#                       │                               │
+# extended interval:    f₁                              f₂
+extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
+function extend_node_interval(::Sides{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
+    c₁, c₂ = @. BigFloat(node_interval)
+    L = c₂ - c₁
+    Δ = L / (N - 1)
+    return (c₁ - Δ/2, c₂ + Δ/2)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+`total` faces spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` are `range(c₁, c₂, length = N + 1)`.
+"""
+function regular_faces(FT, c₁, c₂, N, H, total)
+    interior = range(FT(c₁), FT(c₂), length = N + 1)
+    faces = StepRangeLen{FT}(interior.ref, interior.step, max(total, interior.offset + H), interior.offset + H)
+    return faces[1:total]
+end
+
+# The `total` cell centers between the regular faces `F`
+regular_centers(F, total) = StepRangeLen{eltype(F)}(F.ref + F.step / 2, F.step, total, F.offset)
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
@@ -102,6 +135,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
         throw(ArgumentError(msg))
     end
 
+    node_interval = extend_node_interval(topo, N, node_interval)
+
     c₁, c₂ = @. BigFloat(node_interval)
     @assert c₁ < c₂
     L = c₂ - c₁
@@ -109,17 +144,11 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
 
-    F₋ = c₁ - H * Δ
-    F₊ = F₋ + total_extent(topo, H, Δ, L)
-
-    C₋ = F₋ + Δ / 2
-    C₊ = C₋ + L + Δ * (2H - 1)
-
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = regular_faces(FT, c₁, c₂, N, H, TF)
+    C = regular_centers(F, TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)

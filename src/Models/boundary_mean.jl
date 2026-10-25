@@ -2,47 +2,42 @@ using Adapt, GPUArraysCore
 using Oceananigans: instantiated_location
 using Oceananigans.Fields: Center, Face
 using Oceananigans.AbstractOperations: grid_metric_operation, Ax, Ay, Az
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
+
+"""
+    BoundaryAdjacentMean(grid, side;
+                         flux_field::FF = boundary_reduced_field(Val(side), grid),
+                         value::BV = Ref(zero(grid)))
+
+Store the boundary mean `value` of a `Field`. Updated by calling
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.Models: BoundaryAdjacentMean
+
+julia> grid = RectilinearGrid(size = (16, 16, 16), extent = (3, 4, 5));
+
+julia> cf = CenterField(grid);
+
+julia> set!(cf, (x, y, z) -> sin(2π * y / 4)); # hide output
+
+julia> bam = BoundaryAdjacentMean(grid, :east)
+BoundaryAdjacentMean: (0.0)
+
+julia> bam(:east, cf); # computes boundary-adjacent mean
+
+julia> abs(bam.value[]) < 1e-10  # essentially zero
+true
+```
+"""
 struct BoundaryAdjacentMean{FF, BV}
     flux_field :: FF
          value :: BV
 
-    @doc """
-        BoundaryAdjacentMean(grid, side;
-                             flux_field::FF = boundary_reduced_field(Val(side), grid),
-                             value::BV = Ref(zero(grid)))
-
-    Store the boundary mean `value` of a `Field`. Updated by calling
-
-    ```jldoctest
-    julia> using Oceananigans
-
-    julia> using Oceananigans.Models: BoundaryAdjacentMean
-
-    julia> grid = RectilinearGrid(size = (16, 16, 16), extent = (3, 4, 5));
-
-    julia> cf = CenterField(grid);
-
-    julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
-    16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-    ├── boundary conditions: FieldBoundaryConditions
-    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-    └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
-
-    julia> bam = BoundaryAdjacentMean(grid, :east)
-    BoundaryAdjacentMean: (0.0)
-
-    julia> bam(:east, cf)
-
-    julia> bam
-    BoundaryAdjacentMean: (-1.5612511283791264e-18)
-    ```
-    """
     BoundaryAdjacentMean(grid, side;
                          flux_field::FF = boundary_reduced_field(Val(side), grid),
                          value::BV = Ref(zero(grid))) where {FF, BV} =
@@ -106,5 +101,14 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     return nothing
 end
 
-const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
+const MOOBC = BoundaryCondition{<:NormalFlow, <:BoundaryAdjacentMean}
 @inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+# Public dispatcher over the per-side area helpers defined in `boundary_transport.jl`.
+boundary_total_area(::Val{:west},   grid) = get_west_area(grid)
+boundary_total_area(::Val{:east},   grid) = get_east_area(grid)
+boundary_total_area(::Val{:south},  grid) = get_south_area(grid)
+boundary_total_area(::Val{:north},  grid) = get_north_area(grid)
+boundary_total_area(::Val{:bottom}, grid) = get_bottom_area(grid)
+boundary_total_area(::Val{:top},    grid) = get_top_area(grid)
+boundary_total_area(side::Symbol,   grid) = boundary_total_area(Val(side), grid)

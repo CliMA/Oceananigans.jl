@@ -16,14 +16,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     w_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition(0),
                                     south = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = nothing,
-                    tracers = nothing,
-                   coriolis = nothing,
-        boundary_conditions = (v=v_bcs, w=w_bcs),
-                    closure = ScalarDiffusivity(ν=1/Re)
-    )
+    model = NonhydrostaticModel(grid; boundary_conditions = (v=v_bcs, w=w_bcs), closure = ScalarDiffusivity(ν=1/Re))
 
     u, v, w = model.velocities
     ζ = Field(∂y(w) - ∂z(v))
@@ -76,4 +69,3 @@ simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
 simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
 simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
 simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
-

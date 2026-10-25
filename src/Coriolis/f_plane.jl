@@ -1,17 +1,19 @@
 using Oceananigans.Utils: prettysummary
 
 """
-    struct FPlane{FT} <: AbstractRotation
+    struct FPlane{S, FT} <: AbstractRotation{S}
 
 A parameter object for constant rotation around a vertical axis.
 """
-struct FPlane{FT} <: AbstractRotation
+struct FPlane{S, FT} <: AbstractRotation{S}
+    scheme :: S
     f :: FT
 end
 
 """
-    FPlane([FT = Oceananigans.defaults.FloatType;]
+    FPlane([FT = Float64;]
            f = nothing,
+           scheme = EnstrophyConserving(),
            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
            latitude = nothing)
 
@@ -27,6 +29,7 @@ a planet's rotation in a planar coordinate system tangent to the planet's surfac
 """
 function FPlane(FT::DataType=Oceananigans.defaults.FloatType;
                 f = nothing,
+                scheme = EnstrophyConserving(),
                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                 latitude = nothing)
 
@@ -39,22 +42,24 @@ function FPlane(FT::DataType=Oceananigans.defaults.FloatType;
     end
 
     if use_f
-        return FPlane{FT}(f)
+        f = convert(FT, f)
     elseif use_planet_parameters
-        return FPlane{FT}(2rotation_rate * sind(latitude))
+        f = convert(FT, 2rotation_rate * sind(latitude))
     end
+
+    return FPlane(scheme, f)
 end
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
+@inline fᶜᶜᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
 
-@inline x_f_cross_U(i, j, k, grid, c::FPlane, U) = - c.f * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid, c::FPlane, U) =   c.f * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid, c::FPlane, U) =   zero(grid)
+Adapt.adapt_structure(to, fplane::FPlane) =
+    FPlane(Adapt.adapt(to, fplane.scheme),
+           Adapt.adapt(to, fplane.f))
 
-function Base.summary(fplane::FPlane{FT}) where FT
+function Base.summary(fplane::FPlane{S, FT}) where {S, FT}
     fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end
 
 Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
-

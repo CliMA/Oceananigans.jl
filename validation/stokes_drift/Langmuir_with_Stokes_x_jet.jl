@@ -129,7 +129,7 @@ wˢ(x, y, z, t) = 2π / grid.Lx *vertical_scale * Uˢ * ( exp(z / vertical_scale
 #     as a prognostic variable, but has the advantage that ``u`` accounts for the total advection
 #     of tracers and momentum, and that ``u = v = w = 0`` is a steady solution even when Coriolis
 #     forces are present. See the
-#     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
+#     [physics documentation](@ref surface_gravity_waves)
 #     for more information.
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
@@ -175,14 +175,15 @@ coriolis = FPlane(f=0) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = NonhydrostaticModel(; grid, coriolis,
-                            advection = WENO(),
-                            timestepper = :RungeKutta3,
-                            tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            closure = AnisotropicMinimumDissipation(),
-                            stokes_drift = StokesDrift(∂x_wˢ=∂x_wˢ,∂y_uˢ=∂y_uˢ,∂y_wˢ=∂y_wˢ,∂z_uˢ=∂z_uˢ),
-                            boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
+model = NonhydrostaticModel(grid;
+                             coriolis,
+                             advection = WENO(),
+                             timestepper = :RungeKutta3,
+                             tracers = :b,
+                             buoyancy = BuoyancyTracer(),
+                             closure = AnisotropicMinimumDissipation(),
+                             stokes_drift = StokesDrift(∂x_wˢ=∂x_wˢ,∂y_uˢ=∂y_uˢ,∂y_wˢ=∂y_wˢ,∂z_uˢ=∂z_uˢ),
+                             boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions))
 
 # ## Initial conditions
 #
@@ -260,7 +261,7 @@ fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.closure
 simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
                                                 schedule = TimeInterval(output_interval),
                                                 filename = "Stokes_drift_jet_fields.jld2",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 # ### An "averages" writer
 #
@@ -279,7 +280,7 @@ wv = Average(w * v, dims=(1, 2))
 simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
                                                   schedule = AveragedTimeInterval(output_interval, window=2minutes),
                                                   filename = "Stokes_drift_jet_averages.jld2",
-                                                  overwrite_existing = true)
+                                                  overwrite_files = true)
 
 # ## Running the simulation
 #
@@ -500,4 +501,3 @@ end
 nothing #hide
 
 # ![](Stokes_drift_x_jet.mp4)
-

@@ -1,0 +1,35 @@
+using Oceananigans.Utils: Utils
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
+
+#####
+##### `FaceFolded` north sides have prognostic values at Ny+1 for `Face` fields in y
+##### This file extends all kernel parameters to Ny + 1 for `FaceFolded` north sides so that
+##### the extra row in y is correctly computed
+#####
+                                    #  FT     TX     TY
+const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:Sides{Closed, FaceFolded}}
+
+# Kernels are typically launched
+# - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `horizontally_extended_interior_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
+# - symbols (:xyz, :xy, ...)
+# - `active_cells_map`s
+
+# kernels launched with
+# - `surface_kernel_parameters`,
+# - `volume_kernel_parameters`,
+# - `horizontally_extended_interior_kernel_parameters`
+# do not need any change because they cover `-H+2:N+H-1` where H is 1-larger in the y-direction for RFTRG
+
+# TODO: fix also the "buffer" kernel parameters functions to allow asynchronous distributed RFTRG
+# TODO: fix also the "buffer" active cells map to allow for distributed asynchronous RFTRG
+
+#####
+##### Covers the symbols kernel parameters as well as
+##### `interior_tendency_kernel_parameters(grid)` and `horizontally_extended_interior_kernel_parameters(grid)`
+##### and the active cells maps which use `worksize` to find all the active indices
+#####
+
+@inline function Utils.worksize(grid::RFTRG)
+    Nx, Ny, Nz = size(grid)
+    return Nx, Ny+1, Nz
+end

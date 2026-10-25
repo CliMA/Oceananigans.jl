@@ -140,7 +140,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 
 biogeochemistry = SimplePlanktonGrowthDeath(; grid)
 
-model = NonhydrostaticModel(; grid, biogeochemistry,
+model = NonhydrostaticModel(grid; biogeochemistry,
                               advection = WENO(; grid),
                               timestepper = :RungeKutta3,
                               closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
@@ -175,7 +175,6 @@ filename = "simple_plankton_continuous_form_biogeochemistry"
 
 simulation.output_writers[:simple_output] = JLD2Writer(model, outputs; filename,
                                                        schedule = TimeInterval(20minutes),
-                                                       overwrite_existing = true)
+                                                       overwrite_files = true)
 
 run!(simulation)
-

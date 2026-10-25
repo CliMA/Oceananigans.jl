@@ -140,13 +140,10 @@ horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
 
 closure = (horizontal_closure, vertical_closure)
 
-model = NonhydrostaticModel(architecture,
-                            grid = grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             buoyancy = BuoyancyTracer(),
-                            coriolis = coriolis,
-                            closure = closure,
-                            tracers = tracers,
+                            coriolis, closure, tracers,
                             boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                             auxiliary_fields = (; ν=ν),
                             forcing = (b=b_forcing,))
@@ -259,12 +256,12 @@ outputs = merge(model.velocities, model.tracers)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                 schedule = TimeInterval(10day),
                                                 filename = "eddying_channel",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 try
     run!(simulation, pickup=false)

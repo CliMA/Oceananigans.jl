@@ -1,15 +1,15 @@
+using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 
 # Fallback
-compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = nothing
-compute_eddy_velocities!(diffusivities, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
+compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
+compute_eddy_velocities!(closure_fields, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
 
-function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, model; parameters = :xyz)
-    uₑ = diffusivities.u
-    vₑ = diffusivities.v
-    wₑ = diffusivities.w
+function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, model; parameters = :xyz)
+    uₑ = closure_fields.u
+    vₑ = closure_fields.v
+    wₑ = closure_fields.w
 
     buoyancy = model.buoyancy
     grid     = model.grid
@@ -24,10 +24,10 @@ function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, mod
 end
 
 """
-    tapering_factor(Sx, Sy, slope_limiter)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / S²)`, where `S² = Sx² + Sy²`
-that multiplies all components of the isopycnal slope tensor. 
+that multiplies all components of the isopycnal slope tensor.
 
 References
 ==========
@@ -36,69 +36,104 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
 """
 @inline function tapering_factor(Sx, Sy, slope_limiter::FluxTapering)
     S²  = Sx^2 + Sy^2
-    Sₘ² = slope_limiter.max_slope^2 
+    Sₘ² = slope_limiter.max_slope^2
     return min(one(Sx), Sₘ² / S²)
 end
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
-@inline function Sxᶠᶜᶠ(i, j, k, grid, b, C) 
-    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
-    bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-    
-    Sx = ifelse(bz == 0, zero(grid), - bx / bz)
+@inline function Sxᶠᶜᶠ(i, j, k, grid, b, C)
+    bx   = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+    bz   = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
+    Sx   = ifelse(bz == 0, ∂x_z, - bx / bz + ∂x_z)
+
+    inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
+
+    return ifelse(inactive, zero(grid), Sx)
+end
+
+# Slope in y-direction at C, F, F locations, zeroed out on peripheries
+@inline function Syᶜᶠᶠ(i, j, k, grid, b, C)
+    by   = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+    bz   = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
+    Sy   = ifelse(bz == 0, ∂y_z, - by / bz + ∂y_z)
+
+    inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
+
+    return ifelse(inactive, zero(grid), Sy)
+end
+
+# Isopycnal slope, floored and switched off in unstable stratification exactly like the
+# slope entering the isopycnal rotation tensor of the diffusive formulation.
+@inline function isopycnal_slope(bh, bz, ∂h_z, grid, slope_model)
+    FT = eltype(grid)
+    bz = max(bz, convert(FT, slope_model.minimum_bz))
+    return ifelse(bz <= 0, zero(grid), -bh / bz) + ∂h_z
+end
+
+# Buoyancy gradients at (F, C, F), the location of the x-component of the eddy streamfunction
+@inline bxᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+@inline byᶠᶜᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxyᶠᶜᵃ, ∂yᵣ_b, b, C)
+@inline bzᶠᶜᶠ(i, j, k, grid, b, C) = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+
+# Buoyancy gradients at (C, F, F), the location of the y-component of the eddy streamfunction
+@inline bxᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ℑxyᶜᶠᵃ, ∂xᵣ_b, b, C)
+@inline byᶜᶠᶠ(i, j, k, grid, b, C) = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+@inline bzᶜᶠᶠ(i, j, k, grid, b, C) = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+
+# Tapered slope in x-direction at F, C, F locations, zeroed out on peripheries
+@inline function ϵSxᶠᶜᶠ(i, j, k, grid, closure, b, C)
+    bx = bxᶠᶜᶠ(i, j, k, grid, b, C)
+    by = byᶠᶜᶠ(i, j, k, grid, b, C)
+    bz = bzᶠᶜᶠ(i, j, k, grid, b, C)
+
+    ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
+    ∂y_z = ∂y_zᶠᶜᶠ(i, j, k, grid)
+
+    ϵ  = calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    Sx = isopycnal_slope(bx, bz, ∂x_z, grid, closure.isopycnal_tensor)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
-    Sx = ifelse(inactive, zero(grid), Sx)
-    
-    return Sx
+
+    return ifelse(inactive, zero(grid), ϵ * Sx)
 end
 
-# Slope in y-direction at F, C, F locations, zeroed out on peripheries
-@inline function Syᶜᶠᶠ(i, j, k, grid, b, C) 
-    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
-    bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+# Tapered slope in y-direction at C, F, F locations, zeroed out on peripheries
+@inline function ϵSyᶜᶠᶠ(i, j, k, grid, closure, b, C)
+    bx = bxᶜᶠᶠ(i, j, k, grid, b, C)
+    by = byᶜᶠᶠ(i, j, k, grid, b, C)
+    bz = bzᶜᶠᶠ(i, j, k, grid, b, C)
 
-    Sy = ifelse(bz == 0, zero(grid), - by / bz)
+    ∂x_z = ∂x_zᶜᶠᶠ(i, j, k, grid)
+    ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
+
+    ϵ  = calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    Sy = isopycnal_slope(by, bz, ∂y_z, grid, closure.isopycnal_tensor)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
-    Sy = ifelse(inactive, zero(grid), Sy)
-    
-    return Sy
+
+    return ifelse(inactive, zero(grid), ϵ * Sy)
 end
 
-# tapered slope in x-direction at F, C, F locations
-@inline function ϵSxᶠᶜᶠ(i, j, k, grid, slope_limiter, b, C)
-    Sx = Sxᶠᶜᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(Sx, zero(grid), slope_limiter)
-    return ϵ * Sx
-end
-
-# tapered slope in y-direction at F, C, F locations
-@inline function ϵSyᶜᶠᶠ(i, j, k, grid, slope_limiter, b, C)
-    Sy = Syᶜᶠᶠ(i, j, k, grid, b, C) 
-    ϵ  = tapering_factor(zero(grid), Sy, slope_limiter)
-    return ϵ * Sy
-end
-
-@inline κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSxᶠᶜᶠ(i, j, k, grid, sl, b, fields)
-@inline κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSyᶜᶠᶠ(i, j, k, grid, sl, b, fields)
+@inline κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
+@inline κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSyᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, fields)
     i, j, k = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
     κ = closure.κ_skew
-    slope_limiter = closure.slope_limiter
 
     @inbounds begin
-        uₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
-        vₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
+        uₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
+        vₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 
-        wˣ = δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) 
-        wʸ = δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)  
-        
+        wˣ = δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
+        wʸ = δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
+
         wₑ[i, j, k] =  (wˣ + wʸ) * Az⁻¹ᶜᶜᶠ(i, j, k, grid)
     end
 end

@@ -1,10 +1,12 @@
 using Printf: @sprintf
-using JLD2
-using Oceananigans.Utils
-using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
-using Oceananigans.Fields: boundary_conditions, indices
+using JLD2: JLD2, jldopen
 
-default_included_properties(model) = [:grid]
+using Oceananigans: initialize!
+using Oceananigans.Fields: indices
+using Oceananigans.Grids: grid
+using Oceananigans.Utils: Utils, TimeInterval, prettykeys, materialize_schedule
+
+default_included_properties(model) = []
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
@@ -15,9 +17,10 @@ mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     including :: IN
     part :: Int
     file_splitting :: FS
-    overwrite_existing :: Bool
+    overwrite_files :: Bool
     verbose :: Bool
     jld2_kw :: KW
+    initialized :: Bool
 end
 
 noinit(args...) = nothing
@@ -30,11 +33,12 @@ ext(::Type{JLD2Writer}) = ".jld2"
                with_halos = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
+               overwrite_files = false,
                init = noinit,
-               including = [:grid, :coriolis, :buoyancy, :closure],
+               including = default_included_properties(model),
                verbose = false,
                part = 1,
+               compress = true,
                jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output` pairs
@@ -43,7 +47,8 @@ in `outputs` to a JLD2 file.
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
 strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects that
 are called with the signature `output(model)`, or `WindowedTimeAverage`s of `AbstractFields`s,
-functions, or callable objects.
+functions, or callable objects. A `TimeDerivative` of a `Field`, `AbstractOperation`, or
+`Reduction` may also be used.
 
 Keyword arguments
 =================
@@ -80,9 +85,12 @@ Keyword arguments
                     split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
+                    A `FileSizeLimit` must exceed the size of the metadata written to every part
+                    file, which compression barely shrinks; otherwise an `ArgumentError` is thrown
+                    at construction. See [`FileSizeLimit`](@ref).
 
-- `overwrite_existing`: Remove existing files if their filenames conflict.
-                        Default: `false`.
+- `overwrite_files`: Remove an existing file with the same filename when the writer is initialized.
+                     Default: `false`.
 
 ## Output file metadata management
 
@@ -100,18 +108,25 @@ Keyword arguments
 - `part`: The starting part number used when file splitting.
           Default: 1.
 
+- `compress`: Determines whether and how to compress data when writing to the file, forwarded
+              to `JLD2.jldopen`. Can be a `Bool` or any compressor supported by JLD2.jl; see the
+              [JLD2.jl documentation](https://juliaio.github.io/JLD2.jl/stable/compression/)
+              for the available options. Default: `true` (compression enabled, using the `Deflate` filter).
+
 - `jld2_kw`: Dict of kwargs to be passed to `JLD2.jldopen` when data is written.
+             A `:compress` entry here takes precedence over the `compress` keyword argument.
 
 Example
 =======
 
 Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 
-```@example
+```jldoctest example
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -128,15 +143,35 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "some_data.jld2",
                                                     schedule = TimeInterval(20minutes),
                                                     init = init_save_some_metadata!)
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_data.jld2
+├── 3 outputs: (u, v, w)
+├── array_type: Array{Float32}
+├── including: [:coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 
 and also output a both 5-minute-time-average and horizontal-average of the tracer ``c`` every 20 minutes
 of simulation time to a file called `some_averaged_data.jld2`
 
-```@example
+```jldoctest example
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                filename = "some_averaged_data.jld2",
                                                schedule = AveragedTimeInterval(20minute, window=5minutes))
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_averaged_data.jld2
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── array_type: Array{Float32}
+├── including: [:coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 """
 function JLD2Writer(model, outputs; filename, schedule,
@@ -145,12 +180,16 @@ function JLD2Writer(model, outputs; filename, schedule,
                     with_halos = true,
                     array_type = Array{Float32},
                     file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
+                    overwrite_files = false,
                     init = noinit,
                     including = default_included_properties(model),
                     verbose = false,
                     part = 1,
+                    compress = true,
                     jld2_kw = Dict{Symbol, Any}())
+
+    jld2_kw = Dict{Symbol, Any}(pairs(jld2_kw))
+    get!(jld2_kw, :compress, compress)
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
@@ -159,23 +198,37 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
-    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
-                         for name in keys(outputs))
-
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model)
+    schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
-    initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+    validate_file_splitting(file_splitting, filepath, init, jld2_kw, including, d_outputs, model)
 
-    return JLD2Writer(filepath, outputs, schedule, array_type, init,
-                      including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
+    # Note: file initialization is deferred until `initialize!(writer, model)` is called
+    # (typically when `run!` is invoked on a Simulation containing this writer)
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
+                      including, part, file_splitting, overwrite_files, verbose, jld2_kw, false)
+end
+
+# Inferring this for a concrete model type means inferring `serializeproperty!` for the
+# union of all the model's property types, which takes seconds and is never needed
+Base.@nospecializeinfer function save_and_serialize_properties!(file, @nospecialize(model), including, serialized)
+    saveproperties!(file, model, including)
+
+    for property in serialized
+        serializeproperty!(file, "serialized/$property", getproperty(model, property))
+    end
+
+    return nothing
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+    # Output is appended to an existing file, which already holds the metadata
+    isfile(filepath) && return nothing
+
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
@@ -184,28 +237,55 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
+    # Extract grids from outputs, falling back to `nothing` for non-field outputs
+    output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
+    unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
+    single_grid  = length(unique_grids) == 1
+
+    # A single output grid is serialized at `serialized/grid` below, in place of `model.grid`
+    serialized = single_grid ? filter(!=(:grid), including) : including
+
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
-            saveproperties!(file, model, including)
-
-            # Serialize properties in `including`.
-            for property in including
-                serializeproperty!(file, "serialized/$property", getproperty(model, property))
-            end
+            save_and_serialize_properties!(file, model, including, serialized)
         end
     catch err
         @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    # Serialize the location and boundary conditions of each output.
+    # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
+    # (no suffix); with multiple grids they are stored at `serialized/grid_1`, `grid_2`, ...
+    # and each output gets a `grid_index` entry under its own `timeseries/$name/serialized/`.
+    jldopen(filepath, "a+"; jld2_kw...) do file
+        for (i, grid) in enumerate(unique_grids)
+            address = single_grid ? "serialized/grid" : "serialized/grid_$i"
+            try
+                serializeproperty!(file, address, grid)
+            catch err
+                @warn "error $err thrown when trying to serialize the grid at $address"
+            end
+        end
+    end
+
+    # Serialize the grid index, location, indices, and boundary conditions of each output.
     for (name, field) in pairs(outputs)
-        try
-            jldopen(filepath, "a+"; jld2_kw...) do file
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            # Only write a grid index when we actually have multiple grids to choose from;
+            # otherwise all outputs use the single grid at `serialized/grid`.
+            if !single_grid && !isnothing(output_grids[string(name)])
+                grid_index = findfirst(gr -> gr === output_grids[string(name)], unique_grids)
+                try
+                    file["timeseries/$name/serialized/grid_index"] = grid_index
+                catch err
+                    @warn "error $err thrown when trying to write grid_index for $name"
+                end
+            end
+            try
                 file["timeseries/$name/serialized/location"] = location(field)
                 file["timeseries/$name/serialized/indices"] = indices(field)
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
+            catch
             end
-        catch
         end
     end
 
@@ -214,6 +294,56 @@ end
 
 initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
+
+# Measure the per-part metadata overhead by initializing a probe file in a scratch
+# directory, so the error can be thrown at construction time, before the actual
+# output file exists.
+function validate_file_splitting(file_splitting::FileSizeLimit, filepath, init, jld2_kw, including, outputs, model)
+    metadata_size = mktempdir() do dir
+        probe_filepath = joinpath(dir, basename(filepath))
+        initialize_jld2_file!(probe_filepath, init, jld2_kw, including, outputs, model)
+        filesize(probe_filepath)
+    end
+
+    if metadata_size ≥ file_splitting.size_limit
+        throw(ArgumentError(string("The metadata written when initializing ", filepath,
+                                   " (", pretty_filesize(metadata_size), ")",
+                                   " already exceeds the file size limit (", pretty_filesize(file_splitting.size_limit), ").",
+                                   " Every part file would exceed the limit and contain a single output,",
+                                   " and the total output size could be much larger than without file splitting.",
+                                   " Increase the size limit to account for the metadata written to every part file.")))
+    end
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Initialize a `JLD2Writer` by creating its output file and writing initial metadata.
+
+This function is called automatically when a `Simulation` containing the writer is initialized
+(typically during the first call to `run!`). The initialization is skipped if the writer
+has already been initialized, preventing files from being overwritten when `run!` is called
+multiple times.
+
+"""
+function Oceananigans.initialize!(writer::JLD2Writer, model)
+    # Skip if already initialized (e.g., when run! is called multiple times)
+    writer.initialized && return nothing
+
+    # Remove an existing conflicting file once, during writer initialization.
+    if writer.overwrite_files
+        isfile(writer.filepath) && rm(writer.filepath, force=true)
+    end
+
+    # Initialize the JLD2 file with metadata
+    initialize_jld2_file!(writer, model)
+
+    writer.initialized = true
+
+    return nothing
+end
 
 function iteration_exists(filepath, iter=0)
     file = jldopen(filepath, "r")
@@ -231,22 +361,20 @@ function iteration_exists(filepath, iter=0)
     return iter_exists
 end
 
-function write_output!(writer::JLD2Writer, model)
+function Oceananigans.write_output!(writer::JLD2Writer, model)
+    model.clock.iteration == 0 && !has_initial_output(writer.schedule) && return nothing
+
+    # Ensure the writer is initialized before writing
+    if !writer.initialized
+        initialize!(writer, model)
+    end
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
 
-    # Some logic to handle writing to existing files
+    # Skip writes for iterations that are already present in the file.
     if iteration_exists(writer.filepath, current_iteration)
-
-        if writer.overwrite_existing
-            # Something went wrong, so we remove the file and re-initialize it.
-            rm(writer.filepath, force=true)
-            initialize_jld2_file!(writer, model)
-        else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
-            @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing (for now...)"
-        end
-
+        @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing."
     else # ok let's do this
 
         # Fetch JLD2 output and store in `data`
@@ -258,13 +386,23 @@ function write_output!(writer::JLD2Writer, model)
         verbose && @info "Fetching time: $(prettytime(tc))"
 
         # Start a new file if the file_splitting(model) is true
-        writer.file_splitting(model) && start_next_file(model, writer)
+        split_happened = writer.file_splitting(model)
+        split_happened && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+        # After a file split, the new file may already contain this iteration
+        # (e.g., when picking up from a checkpoint that predates the latest output).
+        # In that case, skip writing to avoid duplicate key errors.
+        if split_happened && iteration_exists(writer.filepath, current_iteration)
+            @warn "Iteration $current_iteration already exists in $(writer.filepath) after file split. Skipping."
+            return nothing
+        end
+
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
-        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        jld2output!(writer.filepath, model.clock.iteration, output_time(model.clock, writer.schedule), data, writer.jld2_kw)
         end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
@@ -277,7 +415,7 @@ function write_output!(writer::JLD2Writer, model)
 end
 
 """
-    jld2output!(path, iter, time, data, kwargs)
+$(TYPEDSIGNATURES)
 
 Write the `(name, value)` pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,
@@ -305,13 +443,13 @@ function start_next_file(model, writer::JLD2Writer)
     if writer.part == 1
         part1_path = replace(writer.filepath, r".jld2$" => "_part1.jld2")
         verbose && @info "Renaming first part: $(writer.filepath) -> $part1_path"
-        mv(writer.filepath, part1_path, force=writer.overwrite_existing)
+        mv(writer.filepath, part1_path, force=writer.overwrite_files)
         writer.filepath = part1_path
     end
 
     writer.part += 1
     writer.filepath = replace(writer.filepath, r"part\d+.jld2$" => "part" * string(writer.part) * ".jld2")
-    writer.overwrite_existing && isfile(writer.filepath) && rm(writer.filepath, force=true)
+    writer.overwrite_files && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)
@@ -327,11 +465,17 @@ function Base.show(io::IO, ow::JLD2Writer)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
+    file_size_str = if ow.initialized && isfile(ow.filepath)
+        pretty_filesize(filesize(ow.filepath))
+    else
+        "0 bytes (file not yet created)"
+    end
+
     print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
-              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+              "└── file size: ", file_size_str)
 end

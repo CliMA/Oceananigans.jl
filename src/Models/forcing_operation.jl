@@ -19,7 +19,7 @@ const ForcingOperation{LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ, <:Any, <:ForcingKernelFunction} where {LX, LY, LZ}
 
 """
-    ForcingOperation(name::Symbol, model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Create a `KernelFunctionOperation` that evaluates the `model.forcing` for
 prognostic variable `name`.
@@ -35,7 +35,7 @@ grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
 damping(x, y, z, t, c, τ) = - c / τ
 c_forcing = Forcing(damping, field_dependencies=:c, parameters=60)
-model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_forcing))
 
 c_forcing_op = ForcingOperation(:c, model)
 
@@ -52,7 +52,6 @@ Next, we build a `ForcingField` for the damping, and compute it:
 using Oceananigans.Models: ForcingField
 set!(model, c=1)
 c_forcing_field = ForcingField(:c, model)
-compute!(c_forcing_field)
 
 # output
 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
