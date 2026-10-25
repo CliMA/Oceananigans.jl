@@ -59,6 +59,13 @@ abstract type AbstractStokesDrift end
 @inline y_curl_Uˢ_cross_U(i, j, k, grid, ::Nothing, U, time) = zero(grid)
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, ::Nothing, U, time) = zero(grid)
 
+"""
+    compute_stokes_drift!(stokes_drift, grid)
+
+Compute the diagnostic components of `stokes_drift`: for a [`FieldStokesDrift`](@ref),
+`wˢ` and `∂t_wˢ` from the continuity of `uˢ, vˢ` and `∂t_uˢ, ∂t_vˢ`, integrated upwards
+from `wˢ = 0` at the bottom. A no-op for the other Stokes drifts.
+"""
 compute_stokes_drift!(stokes_drift, grid) = nothing
 compute_stokes_drift!(::Nothing, grid) = nothing
 
@@ -473,9 +480,25 @@ matching staggered location and can be overridden with a user-supplied
 `Field` via the corresponding kwarg (useful when the caller wants to
 share a Field with other code).
 
-```julia
-sd = FieldStokesDrift(grid)                          # defaults
-sd = FieldStokesDrift(grid; uˢ=my_uˢ_field)          # share uˢ, default rest
+Example
+=======
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+uˢ = XFaceField(grid)
+stokes_drift = FieldStokesDrift(grid; uˢ)
+
+# output
+
+FieldStokesDrift{Nothing}:
+├── uˢ:    4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── vˢ:    4×4×4 Field{Center, Face, Center} on RectilinearGrid on CPU
+├── wˢ:    4×4×5 Field{Center, Center, Face} on RectilinearGrid on CPU
+├── ∂t_uˢ: 4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── ∂t_vˢ: 4×4×4 Field{Center, Face, Center} on RectilinearGrid on CPU
+└── ∂t_wˢ: 4×4×5 Field{Center, Center, Face} on RectilinearGrid on CPU
 ```
 """
 function FieldStokesDrift(grid;
