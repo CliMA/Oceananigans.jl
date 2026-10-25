@@ -32,9 +32,7 @@ using Oceananigans.Grids:
     architecture,
     halo_size,
     interior_indices,
-    FaceExtendedTopology,
-    left_halo_indices, right_halo_indices,
-    underlying_left_halo_indices, underlying_right_halo_indices
+    FaceExtendedTopology
 
 #####
 ##### Viewing halos
