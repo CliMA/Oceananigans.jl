@@ -67,7 +67,6 @@ Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
-Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
@@ -89,7 +88,6 @@ is restricted by `length(ind)`.
 @inline total_length(::Center,  ::AT,              N, H=0) = N + 2H
 @inline total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
 @inline total_length(::Nothing, ::AT,              N, H=0) = 1
-@inline total_length(::Nothing, ::Flat,            N, H=0) = N
 @inline total_length(::Face,    ::Flat,            N, H=0) = N
 @inline total_length(::Center,  ::Flat,            N, H=0) = N
 
@@ -157,7 +155,6 @@ regular_dimensions(grid) = ()
 @inline interior_indices(::Face,    ::FaceExtendedTopology, N) = 1:N+1
 @inline interior_indices(::Nothing, ::AT,              N) = 1:1
 
-@inline interior_indices(::Nothing, ::Flat, N) = 1:N
 @inline interior_indices(::Face,    ::Flat, N) = 1:N
 @inline interior_indices(::Center,  ::Flat, N) = 1:N
 
@@ -173,7 +170,6 @@ regular_dimensions(grid) = ()
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
 
-@inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Face,    ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Center,  ::Flat, N, H) = 1:N
 
@@ -182,7 +178,6 @@ regular_dimensions(grid) = ()
 @inline all_indices(::Face,    ::FaceExtendedTopology, N, H) = 1-H:N+1+H
 @inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
-@inline all_indices(::Nothing, ::Flat, N, H) = 1:N
 @inline all_indices(::Face,    ::Flat, N, H) = 1:N
 @inline all_indices(::Center,  ::Flat, N, H) = 1:N
 
