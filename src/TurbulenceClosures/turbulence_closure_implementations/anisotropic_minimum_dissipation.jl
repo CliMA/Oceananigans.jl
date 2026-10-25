@@ -1,6 +1,6 @@
+using Adapt: Adapt, adapt
 using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
-using Adapt: Adapt, adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -148,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -203,6 +203,20 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
+@inline function compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                                            ::Val{tracer_index}, ::Val{N}) where {tracer_index, N}
+    tracer_index > N && return nothing
+
+    @inbounds κₑ = κₑs[tracer_index]
+    @inbounds tracer = tracers[tracer_index]
+    launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
+            κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+
+    compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                               Val(tracer_index + 1), Val(N))
+    return nothing
+end
+
 function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
@@ -213,15 +227,11 @@ function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDiss
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
-        @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
-                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
-    end
+    compute_AMD_diffusivities!(closure_fields.κₑ, tracers, arch, grid, parameters, closure, velocities,
+                               Val(1), Val(length(closure_fields.κₑ)))
 
     return nothing
 end
-
 
 #####
 ##### Filter width at various locations
@@ -318,10 +328,10 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᵣᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵣᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
              * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
@@ -361,16 +371,19 @@ end
 ##### build_closure_fields
 #####
 
-function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
-    default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
+    default_κₑ_bcs = named_tuple(c -> default_diffusivity_bcs, tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 
     bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
 
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
-    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
+    κₑ = named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs.κₑ[c])
+    end
 
     return (; νₑ, κₑ)
 end

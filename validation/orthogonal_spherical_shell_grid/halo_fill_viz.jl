@@ -1,6 +1,6 @@
 using Oceananigans
 
-using Oceananigans.Grids: RightFaceFolded, RightCenterFolded, halo_size
+using Oceananigans.Grids: halo_size
 using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot, fill_halo_regions!
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition
 
@@ -8,7 +8,7 @@ using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipp
 using CairoMakie
 # using GeometryBasics
 
-fold_topologies = (RightCenterFolded, RightFaceFolded)
+fold_topologies = (CenterFolded, FaceFolded)
 locations = (Center(), Face())
 
 for fold_topology in fold_topologies
@@ -17,7 +17,7 @@ for fold_topology in fold_topologies
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny - 1/2, Ny) : (Ny, Ny + 1/2)
+    pivotjᶜ, pivotjᶠ = (fold_topology == FaceFolded) ? (Ny - 1/2, Ny) : (Ny, Ny + 1/2)
     pivotiᶜ, pivotiᶠ = Nx ÷ 2 + 1/2, Nx ÷ 2 + 1
 
     fig = Figure(size = (1000, 1200))
@@ -37,7 +37,7 @@ for fold_topology in fold_topologies
 
         # And another tracer to track which halo points are actually filled
         # by using the sign change (it's a bit of a hack, yes)
-        north = (fold_topology == RightFaceFolded) ? FPivotZipperBoundaryCondition(-1) : UPivotZipperBoundaryCondition(-1)
+        north = (fold_topology == FaceFolded) ? FPivotZipperBoundaryCondition(-1) : UPivotZipperBoundaryCondition(-1)
         boundary_conditions = FieldBoundaryConditions(grid, (locx, locy, Center()); north)
         asymfield = Field((locx, locy, Center()), grid; boundary_conditions)
         set!(asymfield, 1)
@@ -60,7 +60,7 @@ for fold_topology in fold_topologies
         color = :red, marker = :star5, markersize = 15, label = "Pivot points"
         )
         # default grid underlay
-        offset = (fold_topology == RightFaceFolded) ? 1 : 1/2 # how much more grid north of pivots
+        offset = (fold_topology == FaceFolded) ? 0 : 1/2 # how much more grid north of pivots
         interior_poly_x = pivoti .+ [-Nx ÷ 2, Nx ÷ 2, Nx ÷ 2, -Nx ÷ 2]
         interior_poly_y = pivotj + offset .+ [0, 0, -Ny, -Ny]
         poly!(ax, interior_poly_x, interior_poly_y, color = (:black, 0.05), strokecolor = :black, strokewidth = 1)
@@ -74,7 +74,8 @@ for fold_topology in fold_topologies
             radius = sqrt(sum((source .- destination) .^ 2)) / 2
             start_angle = atan(destination[2] - origin[2], destination[1] - origin[1])
             stop_angle = start_angle - π
-            scsrc = scatter!(ax, source...; color = Cycled(j), label = "Interior source points")
+            jcolor = Nyfield + 1 - source[2]
+            scsrc = scatter!(ax, source...; color = Cycled(jcolor), label = "Interior source points")
             # scatter!(ax, destination...; marker = :rect, color = Cycled(j), markersize = 20)
             scdest = scatter!(ax, destination...;
                 marker = :rect, color = :white, markersize = 15,
@@ -84,7 +85,7 @@ for fold_topology in fold_topologies
             # dtriangle = Polygon([Point(0, 0), Point(1, 1), Point(-1, 1)])
             scutri = scatter!(ax, destination...; marker = :dtriangle, rotation = stop_angle, color = Cycled(j))
             translate!(scutri, 0, 0, 2) # Hack more
-            ar = arc!(ax, origin, radius, start_angle, stop_angle, color = Cycled(j))
+            ar = arc!(ax, origin, radius, start_angle, stop_angle, color = Cycled(jcolor))
             translate!(ar, 0, 0, 2) # Hack more
 
             # add legend once

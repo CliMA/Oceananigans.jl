@@ -90,21 +90,50 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
 
     # Syncronized communication does not mean anything in this case so we set it to nothing
     return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
-                                             mesh, nothing, nothing, Ref(0), devices)
+                                             mesh, nothing, Threads.Atomic{UInt64}(0), devices)
 end
 
+Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.TracedRNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
+
+# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray
+_to_reactant(a::Number) = a
+_to_reactant(::Nothing) = nothing
+_to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
+_to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
+
+function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
+    return Oceananigans.Grids.StaticVerticalDiscretization(
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+end
+
+# Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
+# then transfer the materialized arrays to Reactant. This avoids Float64 leakage from
+# StepRangeLen internals during Reactant tracing, while keeping RectilinearGrid unaffected
+# (RG retains StepRangeLen coordinates which sidestep the CuTracedArray VX type constraint).
+function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType = Oceananigans.defaults.FloatType; kwargs...)
+    return on_architecture(arch, LatitudeLongitudeGrid(CPU(), FT; kwargs...))
+end
+
+function on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
+    props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
+                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
+    return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
+        grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
+        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius)
+end
 
 function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.z,
-                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
+                      old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ,
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ)
 
     sharding = Sharding.DimsSharding(new_arch.connectivity, (1, 2), (:x, :y))
     new_properties = Tuple(Reactant.to_rarray(p; sharding) for p in old_properties)

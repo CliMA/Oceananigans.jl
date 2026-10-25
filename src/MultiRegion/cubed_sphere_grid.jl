@@ -2,12 +2,14 @@ using Oceananigans.Grids: halo_size,
                           size_summary,
                           topology,
                           grid_name,
-                          nodes
+                          nodes,
+                          validate_topology
 
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
-using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
+using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid, CubedSphereConformalMapping,
+                                                  non_uniform_conformal_mapping_coordinates
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
     FixedSubstepNumber, ConnectedTopology
 using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
@@ -16,7 +18,7 @@ using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_hal
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
 const ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} =
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, <:Any, <:Any, <:Any, <:AbstractSerialArchitecture}
 
 const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
@@ -25,9 +27,9 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
                              panel_size,
                              z,
-                             horizontal_direction_halo = 1,
+                             horizontal_direction_halo = 3,
                              z_halo = horizontal_direction_halo,
-                             horizontal_topology = FullyConnected,
+                             horizontal_topology = Connected,
                              z_topology = Bounded,
                              radius = Oceananigans.defaults.planet_radius,
                              non_uniform_conformal_mapping = false,
@@ -40,10 +42,10 @@ of these grids as a "panel". Each panel corresponds to a face of the cube.
 
 The keyword arguments prescribe the properties of each of the panels. Only the topology in the vertical direction can be
 prescribed and that's done via the `z_topology` keyword argument (default: `Bounded`). Topologies in both horizontal
-directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
+directions for a `ConformalCubedSphereGrid` are always connected.
 
-Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the `horizontal_halo :: Integer` keyword
-argument. The number of halo points in the ``z``-direction is prescribed by the `z_halo :: Integer` keyword argument.
+Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the `horizontal_direction_halo :: Integer`
+keyword argument. The number of halo points in the ``z``-direction is prescribed by the `z_halo :: Integer` keyword argument.
 
 The connectivity between the `ConformalCubedSphereGrid` panels is depicted below.
 
@@ -145,8 +147,8 @@ julia> using Oceananigans
 julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
-ConformalCubedSphereGrid{Float64, FullyConnected, FullyConnected, Bounded} partitioned on CPU:
-├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, FullyConnected, FullyConnected, Bounded} on CPU with 3×3×3 halo
+ConformalCubedSphereGrid{Float64, Connected, Connected, Bounded} partitioned on CPU:
+├── region_grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
 ├── partition: CubedSpherePartition with (1 region in each panel)
 └── connectivity: CubedSphereConnectivity
 ```
@@ -190,7 +192,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   z,
                                   horizontal_direction_halo = 3,
                                   z_halo = horizontal_direction_halo,
-                                  horizontal_topology = FullyConnected,
+                                  horizontal_topology = Connected,
                                   z_topology = Bounded,
                                   radius = Oceananigans.defaults.planet_radius,
                                   non_uniform_conformal_mapping = false,
@@ -199,7 +201,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
                                   partition = CubedSpherePartition(; R = 1))
 
     Nx, Ny, _ = panel_size
-    region_topology = (horizontal_topology, horizontal_topology, z_topology)
+    region_topology = validate_topology((horizontal_topology, horizontal_topology, z_topology))
     region_halo = (horizontal_direction_halo, horizontal_direction_halo, z_halo)
 
     Nx !== Ny && error("Horizontal sizes for ConformalCubedSphereGrid must be equal; Nx=Ny.")
@@ -224,6 +226,13 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
         push!(region_ξ, (-1 + Lξᵢⱼ * (pᵢ - 1), -1 + Lξᵢⱼ * pᵢ))
         push!(region_η, (-1 + Lηᵢⱼ * (pⱼ - 1), -1 + Lηᵢⱼ * pⱼ))
         push!(region_rotation, connectivity.rotations[panel_index(r, partition)])
+    end
+
+    # The optimization of the non-uniform coordinates depends only on the region size and
+    # spacing, so it is carried out once and shared by all regions.
+    if non_uniform_conformal_mapping && isnothing(provided_conformal_mapping) && allequal(region_size)
+        Nξ, Nη, _ = first(region_size)
+        provided_conformal_mapping = CubedSphereConformalMapping(nothing, non_uniform_conformal_mapping_coordinates(FT, Nξ, Nη, spacing)...)
     end
 
     region_size = MultiRegionObject(tuple(region_size...))
@@ -285,7 +294,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field, region).data .= getproperty(getregion(grid, region), name)
         end
 
-        if TX == FullyConnected
+        if TX == Sides{Connected, Connected}
             fill_halo_regions!(field)
         end
 
@@ -322,7 +331,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
             getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
         end
 
-        if TX == FullyConnected
+        if TX == Sides{Connected, Connected}
             fill_halo_regions!((field₁, field₂); signed = false)
         end
 
@@ -369,7 +378,7 @@ end
                              Nz,
                              z,
                              panel_halo = (4, 4, 4),
-                             panel_topology = (FullyConnected, FullyConnected, Bounded),
+                             panel_topology = (Connected, Connected, Bounded),
                              radius = Oceananigans.defaults.planet_radius)
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
@@ -380,8 +389,10 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
                                   Nz,
                                   z,
                                   panel_halo = (4, 4, 4),
-                                  panel_topology = (FullyConnected, FullyConnected, Bounded),
+                                  panel_topology = (Connected, Connected, Bounded),
                                   radius = Oceananigans.defaults.planet_radius)
+
+    panel_topology = validate_topology(panel_topology)
 
     # only 6-panel partition, i.e. R = 1, are allowed when loading a ConformalCubedSphereGrid from file
     partition = CubedSpherePartition(R = 1)
@@ -439,24 +450,15 @@ function Grids.with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}
     return new_grid
 end
 
-function Grids.with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
-    active_cells_map = has_active_cells_map(getregion(ibg, 1))
-    active_z_columns = has_active_z_columns(getregion(ibg, 1))
-    underlying_grid = with_halo(halo, ibg.underlying_grid)
-    return ImmersedBoundaryGrid(underlying_grid, ibg.immersed_boundary;
-                                active_cells_map,
-                                active_z_columns)
-end
-
 function Grids.nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz, reshape, with_halos)
     return immersed_nodes
 end
 
 function Base.summary(grid::ConformalCubedSphereGridOfSomeKind{FT}) where FT
-    TX, TY, TZ = topology(grid)
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(grid),
-                  " ConformalCubedSphereGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " ConformalCubedSphereGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
@@ -480,8 +482,7 @@ function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCub
     end
 end
 
-function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind,
-                                                                     substepping::FixedSubstepNumber)
-    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
+function SplitExplicitFreeSurfaces.materialize_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber, strategy)
+    @apply_regionally kernel_parameters = materialize_kernel_parameters(TX, TY, grid, substepping, strategy)
     return kernel_parameters
 end

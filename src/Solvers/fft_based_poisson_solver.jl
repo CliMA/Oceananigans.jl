@@ -1,5 +1,4 @@
 using Oceananigans.Fields: indices, offset_compute_index
-using GPUArraysCore: @allowscalar
 
 struct FFTBasedPoissonSolver{G, Λ, S, B, T}
             grid :: G
@@ -11,7 +10,7 @@ end
 
 Architectures.architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
 
-transform_str(transform) = string(typeof(transform).name.wrapper, ", ")
+transform_str(transform) = string(nameof(typeof(transform)), ", ")
 
 function transform_list_str(transform_list)
     transform_strs = (transform_str(t) for t in transform_list)
@@ -51,9 +50,9 @@ See [`solve!`](@ref) for more information about the FFT-based Poisson solver alg
 function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
-    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ())
+    λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
+    λy = poisson_eigenvalues(grid, grid.Ny, grid.Ly, 2, TY())
+    λz = poisson_eigenvalues(grid, grid.Nz, grid.Lz, 3, TZ())
 
     arch = architecture(grid)
 
@@ -73,7 +72,7 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+    solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
 
 Solve the "generalized" Poisson equation,
 
@@ -93,34 +92,32 @@ elements (typically the same type as `solver.storage`).
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     arch = architecture(solver)
-    topo = TX, TY, TZ = topology(solver.grid)
-    Nx, Ny, Nz = size(solver.grid)
     λx, λy, λz = solver.eigenvalues
 
     # Temporarily store the solution in ϕc
     ϕc = solver.storage
 
     # Transform b *in-place* to eigenfunction space
-    for transform! in solver.transforms.forward
-        transform!(b, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.forward, b, solver.buffer)
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
-    @. ϕc = - b / (λx + λy + λz - m)
-
-    # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
-    # we set this to zero by default. Another slant on this "problem" is that
-    # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    m === 0 && @allowscalar ϕc[1, 1, 1] = 0
+    launch!(arch, solver.grid, :xyz, _spectral_poisson_solve!, ϕc, b, λx, λy, λz, m)
 
     # Apply backward transforms in order
-    for transform! in solver.transforms.backward
-        transform!(ϕc, solver.buffer)
-    end
+    apply_transforms!(solver.transforms.backward, ϕc, solver.buffer)
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
 
     return ϕ
+end
+
+# The mode where λx + λy + λz - m = 0 (the zeroth mode when m = 0) is undetermined and is set to zero
+@kernel function _spectral_poisson_solve!(ϕc, b, λx, λy, λz, m)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        denominator = λx[i] + λy[j] + λz[k] - m
+        ϕc[i, j, k] = ifelse(denominator == 0, zero(eltype(ϕc)), - b[i, j, k] / denominator)
+    end
 end
 
 # We have to pass the offset explicitly to this kernel (we cannot use KA implicit

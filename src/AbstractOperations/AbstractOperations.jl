@@ -1,20 +1,22 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export ∫dx, ∫dy, ∫dz, ∫∫dxdy, ∫∫dxdz, ∫∫dydz, ∫∫∫dxdydz, ∫dV
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, CumulativeIntegral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
-
-using Base: @propagate_inbounds
-
-using Oceananigans: location
-using Oceananigans.Fields: AbstractField, instantiated_location
-using Oceananigans.Grids: Center, Face
-using Oceananigans.Operators: interpolation_operator
+export RegriddedOperation
 
 using Adapt: Adapt, adapt
+using Base: @propagate_inbounds
+using DocStringExtensions: TYPEDSIGNATURES
 
+using Oceananigans: location
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
+using Oceananigans.Fields: AbstractField, fieldify_function, instantiated_location
+using Oceananigans.Grids: Center, Face, unwrapped_eltype
+using Oceananigans.Operators: interpolation_operator
+
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -23,6 +25,9 @@ import Oceananigans.Fields: compute_at!, indices
 #####
 
 abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
+
+# An operation computes its values rather than wrapping a buffer, so it is its own ancestor
+Adapt.parent_type(T::Type{<:AbstractOperation}) = T
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
@@ -37,21 +42,35 @@ Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 const operators = Set()
 
 """
-    at(loc, abstract_operation)
+$(TYPEDSIGNATURES)
 
 Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
+"""
+$(TYPEDSIGNATURES)
+
+Validate that `a` may be an operand of an `AbstractOperation`, returning `a`.
+
+The fallback validates everything. Four-dimensional fields like `FieldTimeSeries`
+extend `validate_operand` to throw an error, since `AbstractOperation`s are
+three-dimensional and would silently drop the time dimension of their operands.
+"""
+@inline validate_operand(a) = a
+
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")
+include("integral_operators.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 include("constant_field_abstract_operations.jl")
 include("kernel_function_operation.jl")
+include("regridded_operation.jl")
+include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")
@@ -61,27 +80,30 @@ include("show_abstract_operations.jl")
 # Make some operators!
 
 # Some operators:
-import Base: -, +, /, ^, *
-import Base: sqrt, sin, cos, exp, tanh, abs
-import Base: log10, log, tan, sinh, cosh
-import Base: >, <, >=, <=
+@unary Base.sqrt Base.sin Base.cos Base.exp Base.tanh Base.abs Base.log10 Base.log Base.tan Base.sinh Base.cosh
+@unary Base.:-
+@unary Base.:+
 
-@unary sqrt sin cos exp tanh abs log10 log tan sinh cosh
-@unary -
-@unary +
+@binary Base.:+
+@binary Base.:-
+@binary Base.:/
+@binary Base.:^
+@binary Base.:>
+@binary Base.:<
+@binary Base.:>=
+@binary Base.:<=
+@binary Base.atan
+@binary Base.atand
+@binary Base.mod
 
-@binary +
-@binary -
-@binary /
-@binary ^
-@binary >
-@binary <
-@binary >=
-@binary <=
-
-# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
-Base.:<(::AbstractField, ::Missing) = missing
-Base.:<(::Missing, ::AbstractField) = missing
+# Base defines matrix powers `^(::AbstractMatrix, ::Integer)`, `^(::AbstractMatrix, ::Real)` and
+# `^(::Irrational{:ℯ}, ::AbstractMatrix)`, which two-dimensional fields also match
+for P in (:Integer, :Real)
+    @eval Base.:^(a::AbstractField, b::$P) = ^(instantiated_location(a), a, b)
+    @eval Base.:^(a::ConstantField, b::$P) = ConstantField(a.constant ^ b)
+end
+Base.:^(a::Irrational{:ℯ}, b::AbstractField) = ^(instantiated_location(b), a, b)
+Base.:^(a::Irrational{:ℯ}, b::ConstantField) = ConstantField(a ^ b.constant)
 
 @multiary +
 

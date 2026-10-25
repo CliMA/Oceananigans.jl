@@ -32,7 +32,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, (
                                                 schedule = IterationInterval(1),
                                                 with_halos = true,
                                                 filename = "test_output_writing_rank$rank",
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

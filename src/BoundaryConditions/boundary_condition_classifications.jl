@@ -30,8 +30,16 @@ domain; for example, a positive, upwards flux of heat at the top of the domain a
 the interior of the domain. Conversely, a positive flux applied to the bottom boundary leads
 to an increase of the quantity in the interior of the domain. The same logic holds for east,
 west, north, and south boundaries.
+
+The type parameter `TD` records the `time_discretization` of the flux: `ExplicitTimeDiscretization`
+for an ordinary flux, or `IMEXFluxTimeDiscretization` for an affine flux whose linear part
+is integrated implicitly by the vertical solver.
 """
-struct Flux <: AbstractBoundaryConditionClassification end
+struct Flux{TD} <: AbstractBoundaryConditionClassification
+    time_discretization :: TD
+end
+
+Flux() = Flux(ExplicitTimeDiscretization())
 
 """
     struct Gradient <: AbstractBoundaryConditionClassification
@@ -42,12 +50,26 @@ called a Neumann boundary condition.
 struct Gradient <: AbstractBoundaryConditionClassification end
 
 """
-    struct Value <: AbstractBoundaryConditionClassification
+    struct Value{MS} <: AbstractBoundaryConditionClassification
 
-A classification specifying a boundary condition on the value of a field. Also called a Dirchlet
+A classification specifying a boundary condition on the value of a field. Also called a Dirichlet
 boundary condition.
+
+The optional `scheme` (type parameter `MS`) selects a "matching scheme" that determines how the
+boundary value is computed from the prescribed exterior value and the interior state. With the
+default `scheme = nothing` the prescribed value is imposed directly. A scheme such as
+[`PerturbationAdvection`](@ref) instead radiates a Center-located field (e.g. a tracer) out of
+the domain, nudging it towards the prescribed exterior value.
 """
-struct Value <: AbstractBoundaryConditionClassification end
+struct Value{MS} <: AbstractBoundaryConditionClassification
+    scheme :: MS
+end
+
+Value() = Value(nothing)
+
+(value::Value)() = value
+
+Adapt.adapt_structure(to, value::Value) = Value(adapt(to, value.scheme))
 
 """
     struct Mixed <: AbstractBoundaryConditionClassification
@@ -58,24 +80,29 @@ the field's gradient and value. Also called a Robin boundary condition.
 struct Mixed <: AbstractBoundaryConditionClassification end
 
 """
-    struct Open <: AbstractBoundaryConditionClassification
+    struct NormalFlow{MS} <: AbstractBoundaryConditionClassification
 
-A classification that specifies the halo regions of a field directly.
+A classification that specifies the boundary-normal flow on a `Face`-located boundary, and
+thereby the halo region of the field directly.
 
-For fields located at `Faces`, `Open` also specifies field value _on_ the boundary.
+`NormalFlow` is used to specify the component of a velocity field normal to a boundary; because
+that component lives _on_ the boundary (at a `Face`), the classification sets the field value on
+the boundary itself. It can also be used to describe nested or linked simulation domains.
 
-Open boundary conditions are used to specify the component of a velocity field normal to a boundary
-and can also be used to describe nested or linked simulation domains.
+The optional `scheme` (type parameter `MS`) selects a "matching scheme". With the default
+`scheme = nothing` the prescribed value is imposed directly (an imposed normal velocity). A
+scheme such as [`PerturbationAdvection`](@ref) instead radiates the boundary-normal velocity out
+of the domain.
 """
-struct Open{MS} <: AbstractBoundaryConditionClassification
-    scheme::MS
+struct NormalFlow{MS} <: AbstractBoundaryConditionClassification
+    scheme :: MS
 end
 
-Open() = Open(nothing)
+NormalFlow() = NormalFlow(nothing)
 
-(open::Open)() = open
+(normal_flow::NormalFlow)() = normal_flow
 
-Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.scheme))
+Adapt.adapt_structure(to, normal_flow::NormalFlow) = NormalFlow(adapt(to, normal_flow.scheme))
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
@@ -101,21 +128,31 @@ abstract type AbstractPivot end
 """
     struct UPivot <: AbstractPivot
 
-The type representing a U-point pivot for Zipper boundary conditions.
+The type representing a U-point pivot for Zipper boundary conditions, pivots at (Face, Center) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct UPivot <: AbstractPivot end
 
 """
+    struct TPivot <: AbstractPivot
+
+The type representing a T-point pivot for Zipper boundary conditions, pivots at (Center, Center) locations
+
+See [`TripolarGrid`](@ref) for examples.
+"""
+struct TPivot <: AbstractPivot end
+
+"""
     struct FPivot <: AbstractPivot
 
-The type representing a F-point pivot for Zipper boundary conditions.
+The type representing a F-point pivot for Zipper boundary conditions, pivots at (Face, Face) locations
 
 See [`TripolarGrid`](@ref) for examples.
 """
 struct FPivot <: AbstractPivot end
 
+@inline pivot_shift(P) = ifelse(P === TPivot, -1, 0)
 
 """
     Zipper{P} <: AbstractBoundaryConditionClassification
@@ -125,6 +162,7 @@ The points where the zipper starts and ends act as "pivots", and the grid cell l
 is encoded in the type parameter `P`.
 `P` can be set to either:
 - `UPivot`: pivots on (Face, Center)
+- `TPivot`: pivots on (Center, Center)
 - `FPivot`: pivots on (Face, Face)
 
 See [`TripolarGrid`](@ref) for examples.
@@ -132,7 +170,7 @@ See [`TripolarGrid`](@ref) for examples.
 struct Zipper{P <: AbstractPivot} <: AbstractBoundaryConditionClassification end
 
 """
-    pivot_type(zbc::Zipper)
+$(TYPEDSIGNATURES)
 
 Returns the pivot type of the Zipper boundary condition `zbc`.
 """

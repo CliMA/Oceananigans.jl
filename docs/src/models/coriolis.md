@@ -122,8 +122,17 @@ NonTraditionalBetaPlane{Float64}(fz = 1.84e-05, fy = 1.05e-04, β = 4.15e-10, γ
 ## Spherical Coriolis
 
 For simulations on latitude-longitude grids, use [`HydrostaticSphericalCoriolis`](@ref) (for hydrostatic models)
-or [`SphericalCoriolis`](@ref) (for nonhydrostatic models). These evaluate the Coriolis parameter from the
-grid's latitude:
+or [`SphericalCoriolis`](@ref) (for nonhydrostatic models). Both evaluate the Coriolis parameter
+``f = 2\Omega\sin\varphi`` from the grid's latitude.
+
+`HydrostaticSphericalCoriolis` uses the traditional approximation (only the locally vertical component
+of rotation). `SphericalCoriolis` additionally includes the horizontal component
+(the non-traditional terms), which matter in strongly stratified or near-equatorial regimes.
+`SphericalCoriolis` discretizes ``f \hat{\boldsymbol{z}} \times \boldsymbol{v}`` with the horizontal
+stencil of its `scheme`, as `HydrostaticSphericalCoriolis` does, and adds the non-traditional terms
+``(\tilde{f}^y w, -\tilde{f}^x w, \tilde{f}^x v - \tilde{f}^y u)``, where ``(\tilde{f}^x, \tilde{f}^y)``
+are the components of ``\tilde{f} = 2\Omega\cos\varphi`` along the grid's axes, rotated or not. They do
+no net work on the discrete kinetic energy.
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis()
@@ -131,9 +140,15 @@ SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
 └─ scheme: EnstrophyConserving
+
+julia> coriolis = SphericalCoriolis()
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: NonhydrostaticFormulation
+└─ scheme: EnstrophyConserving
 ```
 
-A custom rotation rate can be specified:
+A custom rotation rate can be specified for either:
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis(rotation_rate=1e-4)
@@ -160,7 +175,7 @@ Five schemes are available:
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
 
-The default scheme is `EnstrophyConserving()` for `HydrostaticSphericalCoriolis`,
+The default scheme is `EnstrophyConserving()` for `SphericalCoriolis`, `HydrostaticSphericalCoriolis`,
 `FPlane`, and `BetaPlane`.
 
 ### Selecting a scheme

@@ -4,7 +4,9 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
 
-using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
+using Oceananigans.Biogeochemistry: biogeochemical_transition,
+                                    biogeochemical_drift_velocity,
+                                    include_biogeochemistry_transitions
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
@@ -42,7 +44,7 @@ end
 
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
 direction, ``u``, at grid point `i, j, k`.
@@ -93,6 +95,7 @@ pressure anomaly.
 
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+             - U_dot_∇u_metric(i, j, k, grid, advection, velocities, velocities)
              + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
@@ -104,7 +107,7 @@ pressure anomaly.
 end
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the horizontal velocity in the ``y``-direction, or the north-south
 direction, ``v``, at grid point `i, j, k`.
@@ -155,6 +158,7 @@ pressure anomaly.
 
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+             - U_dot_∇v_metric(i, j, k, grid, advection, velocities, velocities)
              + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
@@ -171,7 +175,7 @@ end
     z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, tracers)
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 
@@ -220,6 +224,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+             - U_dot_∇w_metric(i, j, k, grid, advection, velocities, velocities)
              + maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, hydrostatic_pressure, buoyancy, tracers)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, closure_fields, clock, closure_model_fields, buoyancy)
@@ -230,7 +235,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 end
 
 """
-    $(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Return the tendency for a tracer field with index `tracer_index`
 at grid point `i, j, k`.
@@ -271,7 +276,6 @@ velocity components, tracer fields, and precalculated closure_fields where appli
                                  clock,
                                  forcing) where tracer_index
 
-
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
     total_velocities = sum_of_velocities(velocities, background_fields.velocities, biogeochemical_velocities)
@@ -290,10 +294,14 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
+    bgc_tendency = include_biogeochemistry_transitions(biogeochemistry, val_tracer_name) ?
+                   biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields) :
+                   zero(grid)
+
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_index, closure_c, clock, closure_model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, closure_fields, val_index, clock, model_fields)
-             + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
+             + bgc_tendency
              + forcing(i, j, k, grid, clock, model_fields))
 end

@@ -61,15 +61,9 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
         launch!(arch, grid, :xyz,
                 _ab2_substep_turbulent_kinetic_energy!,
                 Le, grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                model.velocities, previous_velocities,
                 tracers, buoyancy, closure_fields,
                 Δτ, χ, Gⁿe, G⁻e)
-
-        # Good idea?
-        # previous_time = model.clock.time - Δt
-        # previous_iteration = model.clock.iteration - 1
-        # current_time = previous_time + m * Δτ
-        # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
@@ -252,7 +246,6 @@ end
 
     # Advance TKE and store tendency
     FT = eltype(χ)
-    Δτ = convert(FT, Δτ)
     e  = tracers.e
 
     # See below.
@@ -307,9 +300,6 @@ end
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
-
-    FT = eltype(grid)
-    Δτ = convert(FT, Δτ)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ

@@ -46,17 +46,11 @@ end
 ##### Input validation
 #####
 
-function validate_topology(topology)
-    for T in topology
-        if !isa(T(), AbstractTopology)
-            e = "$T is not a valid topology! " *
-                "Valid topologies are: Periodic, Bounded, Flat."
-            throw(ArgumentError(e))
-        end
-    end
-
-    return topology
-end
+validate_topology(topology::Tuple{Any, Any, Any}) = map(validate_topology, topology)
+validate_topology((L, R)::Tuple{Any, Any}) = Sides{L, R}
+validate_topology(T::Type{<:Union{Periodic, Flat, Sides}}) = T
+validate_topology(T::Type{<:Union{Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}) = Sides{T, T}
+validate_topology(T) = throw(ArgumentError("$T is not a valid topology; valid topologies are Periodic, Flat, Bounded, or a pair of side topologies."))
 
 function validate_size(TX, TY, TZ, sz)
     sz = tupleit(sz)
@@ -151,6 +145,13 @@ end
 
 function validate_dimension_specification(T, ξ::Union{Function, CallableDiscretization}, dir, N, FT)
     ξ(N) ≥ ξ(1) || throw(ArgumentError("$dir should have increasing values."))
+    return ξ
+end
+
+function validate_dimension_specification(T, ξ::ExponentialDiscretization, dir, N, FT)
+    if !(length(ξ.faces) == N+1)
+        throw(ArgumentError("Coordinate $(summary(ξ)) has length $(length(ξ.faces)-1) while direction $(dir) requires a coordinate of length $(N)"))
+    end
     return ξ
 end
 

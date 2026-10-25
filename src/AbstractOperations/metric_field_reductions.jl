@@ -1,6 +1,7 @@
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions, topology, Periodic
-using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Grids: regular_dimensions, topology, Periodic, has_static_discretization
+using Oceananigans.Fields: Field, Scan, Reducing, ScannedComputedField, condition_operand, reverse_cumsum!,
+                          AbstractAccumulating, AbstractReducing
 using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
 #####
@@ -31,14 +32,12 @@ const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
 
 function average!(avg::AveragedField, operand)
     sum!(avg, operand)
-    averaging = avg.operand.type
+    volume = avg.operand.type.volume
 
-    V = if averaging.volume isa Field
-        interior(averaging.volume)
-    else
-        averaging.volume
-    end
+    # A lazy reduction: the grid metrics evolve in time, so the averaging volume is stale
+    volume isa ScannedComputedField && compute!(volume)
 
+    V = volume isa Field ? interior(volume) : volume
     interior(avg) ./= V
 
     return avg
@@ -64,29 +63,29 @@ function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dims = filter_nothing_dims(dims, instantiated_location(field))
 
-    if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
+    static_discretization = has_static_discretization(field.grid)
+
+    if static_discretization && all(d in regular_dimensions(field.grid) for d in dims)
+        # Dimensions being reduced are regular and frozen, so we don't need to involve the grid metrics
         operand = condition_operand(field, condition, mask)
         N = conditional_length(operand, dims)
         averaging = Averaging(N)
         return Scan(averaging, average!, operand, dims)
     else
-        # Compute "size" (length, area, or volume) of averaging region
+        # Compute "size" (length, area, or volume) of the averaging region
         dx = reduction_grid_metric(dims)
         metric = grid_metric_operation(location(field), dx, field.grid)
-        volume = sum(metric; condition, mask, dims)
+        metric_operand = condition_operand(metric, condition, convert(eltype(metric), mask))
 
-        # Construct summand of the Average
-        # V⁻¹_field_dx = field * dx / volume
-        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
-        # return Scan(Averaging(), sum!, operand, dims)
+        volume = if static_discretization
+            sum(metric_operand; dims)
+        else
+            Field(Scan(Reducing(), sum!, metric_operand, dims))
+        end
 
-        field_dx = field * dx
-        operand = condition_operand(field_dx, condition, mask)
-
-        metric = grid_metric_operation(location(field), dx, field.grid)
-        volume = sum(metric; condition, mask, dims)
+        operand = condition_operand(field * dx, condition, mask)
         averaging = Averaging(volume)
+
         return Scan(averaging, average!, operand, dims)
     end
 end
@@ -126,14 +125,14 @@ julia> set!(f, (x, y, z) -> x * y * z)
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
-julia> ∫f = Integral(f)
-Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
-└── operand: BinaryOperation at (Center, Center, Center)
-    └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-
-julia> ∫f = Field(Integral(f));
-
-julia> compute!(∫f);
+julia> ∫f = Integral(f) |> Field
+1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
+├── status: time=0.0
+└── data: 1×1×1 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, 1:1) with eltype Float64 with indices 1:1×1:1×1:1
+    └── max=0.125, min=0.125, mean=0.125
 
 julia> ∫f[1, 1, 1]
 0.125
@@ -176,8 +175,7 @@ grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded))
 c = CenterField(grid)
 set!(c, z -> z)
 
-∫ᶻc_ci = CumulativeIntegral(c, dims=3)
-∫ᶻc = Field(∫ᶻc_ci)
+∫ᶻc_ci = CumulativeIntegral(c, dims=3) |> Field
 
 # output
 1×1×9 Field{Center, Center, Face} on RectilinearGrid on CPU

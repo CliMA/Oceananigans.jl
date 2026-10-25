@@ -93,7 +93,7 @@ function run_nonhydrostatic_simulation!(grid_size;
         simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                         filename = output_name * "_$(rank)",
                                                         schedule = TimeInterval(1hour),
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
     end
 
     run!(simulation)
