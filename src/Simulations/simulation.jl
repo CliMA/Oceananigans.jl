@@ -1,4 +1,4 @@
-using Dates: Dates, AbstractTime
+using Dates: Dates
 using Oceananigans: AbstractModel, prognostic_state, restore_prognostic_state!
 using Oceananigans.Diagnostics: default_nan_checker
 using Oceananigans.DistributedComputations: Distributed, all_reduce
@@ -243,19 +243,10 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 $(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
+The stop criteria `stop_iteration`, `stop_time`, and `wall_time_limit` are kept.
 """
 function Oceananigans.TimeSteppers.reset!(sim::Simulation)
     reset_clock!(sim.model)
-    sim.stop_iteration = Inf
-
-    if sim.stop_time isa Number
-        sim.stop_time = Inf
-    elseif sim.stop_time isa AbstractTime
-        max_datetime = Dates.DateTime(9999, 12, 31, 23, 59, 59, 999)
-        sim.stop_time = max_datetime
-    end
-
-    sim.wall_time_limit = Inf
     sim.run_wall_time = 0.0
     sim.initialized = false
     sim.running = true

@@ -318,7 +318,7 @@ end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
-    nTX, nTY, nTZ = map(nameof, topology(grid))
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
     return string(size_summary(grid),
                   " $(grid_name(grid)){$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
@@ -348,6 +348,7 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
                                       halo = (3, 3, 3), # TODO: support Flat directions
                                       topology = (Bounded, Bounded, Bounded))
 
+    topology = validate_topology(topology)
     h_size = size[1:2]
     h_topo = topology[1:2]
     h_halo = halo[1:2]
@@ -474,8 +475,8 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     center_str = center_line_summary(grid)
 
-    λ_summary = "$(nameof(TX))  extent $(prettysummary(extent_λ)) degrees"
-    φ_summary = "$(nameof(TY))  extent $(prettysummary(extent_φ)) degrees"
+    λ_summary = "$(prettysummary(TX))  extent $(prettysummary(extent_λ)) degrees"
+    φ_summary = "$(prettysummary(TY))  extent $(prettysummary(extent_φ)) degrees"
     z_summary = domain_summary(TZ(), "z", Ωz)
 
     longest = max(length(λ_summary), length(φ_summary), length(z_summary))
@@ -483,10 +484,10 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     padding_λ = length(λ_summary) < longest ? " "^(longest - length(λ_summary)) : ""
     padding_φ = length(φ_summary) < longest ? " "^(longest - length(φ_summary)) : ""
 
-    λ_summary = "longitude: $(nameof(TX))  extent $(prettysummary(extent_λ)) degrees" * padding_λ * " " *
+    λ_summary = "longitude: $(prettysummary(TX))  extent $(prettysummary(extent_λ)) degrees" * padding_λ * " " *
                 coordinate_summary(TX, rad2deg.(grid.Δxᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "λ")
 
-    φ_summary = "latitude:  $(nameof(TY))  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
+    φ_summary = "latitude:  $(prettysummary(TY))  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
                 coordinate_summary(TY, rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
 
     z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.z, longest - length(z_summary))

@@ -310,7 +310,7 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    nTX, nTY, nTZ = map(nameof, topology(grid))
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
 
     return string(size_summary(grid),
                   " LatitudeLongitudeGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),

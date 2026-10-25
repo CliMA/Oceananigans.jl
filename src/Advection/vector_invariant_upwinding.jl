@@ -24,7 +24,7 @@ end
 # Therefore, for `@show` purposes it is better to convert an upwind scheme to it's centered counterpart
 # when it is passed as `cross_scheme`
 @inline extract_centered_scheme(scheme)       = scheme
-@inline extract_centered_scheme(scheme::AUAS) = scheme.advecting_velocity_scheme
+extract_centered_scheme(::AUAS{N, FT}) where {N, FT} = Centered(FT; order = max(2, 2N - 2))
 
 """
 $(MethodSignatures(; defaults = true))

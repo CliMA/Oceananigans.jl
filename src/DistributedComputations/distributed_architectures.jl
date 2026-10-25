@@ -401,8 +401,8 @@ Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring
 NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
     NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
-# The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
-# The "Bounded" topologies are `Bounded` and `LeftConnected`
+# The "Periodic" topologies are `Periodic` and those connected on the right
+# The "Bounded" topologies are those bounded on the right
 function increment_index(i, R)
     R == 1 && return nothing
     if i+1 > R

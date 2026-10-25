@@ -118,28 +118,9 @@ $(MethodSignatures(; defaults = true))
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 
-With the default `ExplicitTimeDiscretization`, `flux` is an ordinary flux boundary condition integrated
-through the tendency.
-
-With an [`IMEXFluxTimeDiscretization`](@ref) carrying a linear coefficient `λ`, the boundary condition
-represents the affine flux `J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The
-explicit part `flux` is integrated through the tendency, while the linear part `λ φ_b` is integrated
-implicitly by the vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit
-flux imposes and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b`
-is a sink:
-
-```julia
-FluxBoundaryCondition(flux; time_discretization = IMEXFluxTimeDiscretization(λ))
-```
-
-`flux` and the `implicit_coefficient` follow the same conventions as any other function boundary condition;
-`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both. See also
-[`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
-
-!!! warning "Vertical boundaries only"
-    The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
-    `IMEXFluxTimeDiscretization` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
-    (`west`/`east`/`south`/`north`) boundary errors.
+With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux linear in the boundary-cell value
+is integrated by the vertical tridiagonal solver. This is supported only on `top` and `bottom` boundaries.
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to both `flux` and the implicit coefficient.
 """
 function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
                                parameters = nothing, discrete_form = false, field_dependencies = ())
@@ -237,7 +218,7 @@ validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
 
 # Validate the north boundary condition on a tripolar (folded) grid.
 # TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
-# y-topology. The pivot is redundantly encoded in both the topology (e.g. RightCenterFolded
+# y-topology. The pivot is redundantly encoded in both the topology (e.g. CenterFolded
 # ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a
 # BC classification. Right now a user who supplies the wrong pivot passes validation.
 validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.FoldedTopology, side) = nothing
