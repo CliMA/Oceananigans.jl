@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using MPI
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: cpu_architecture, partition
+using Oceananigans.DistributedComputations: cpu_architecture, child_architecture, partition, reconstruct_global_grid
 using Oceananigans.Grids: λnode, φnode
 using Oceananigans.Operators: Azᶜᶜᶜ, Δxᶠᶜᶜ
 using CUDA
@@ -80,6 +80,30 @@ end
             global_values = [f(i, j, grid) for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:1]
             local_values = [f(i, j, local_grid) for i in 1:Nx, j in 1:Ny, k in 1:1]
             @test local_values == partition(global_values, cpu_architecture(arch), size(local_values))
+        end
+    end
+end
+
+@testset "Reconstructed distributed grids equal the global grid" begin
+    topologies = ((Periodic, Periodic, Bounded),
+                  (Periodic, Bounded, Bounded),
+                  (Bounded, Periodic, Bounded),
+                  (Bounded, Bounded, Bounded))
+
+    for arch in archs, topology in topologies
+        child_arch = child_architecture(arch)
+
+        kw = (size = (100, 100, 2), extent = (1, 2, 3), topology = topology)
+        local_grid = RectilinearGrid(arch; kw...)
+        global_grid = RectilinearGrid(child_arch; kw...)
+        @test reconstruct_global_grid(local_grid) == global_grid
+
+        # LatitudeLongitudeGrid cannot be Periodic in latitude
+        if topology[2] == Bounded
+            kw = (size = (100, 100, 2), longitude = (-20, 20), latitude = (-10, 10), z = (-1000, 0), topology = topology)
+            local_grid = LatitudeLongitudeGrid(arch; kw...)
+            global_grid = LatitudeLongitudeGrid(child_arch; kw...)
+            @test reconstruct_global_grid(local_grid) == global_grid
         end
     end
 end
