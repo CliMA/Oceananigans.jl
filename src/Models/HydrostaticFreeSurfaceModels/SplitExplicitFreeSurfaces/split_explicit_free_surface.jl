@@ -430,6 +430,17 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     new_halos = (Hx, Hy, old_halos[3])
 
+    x_capped = TX() isa ConnectedTopology && Hx < Nsubsteps + 2
+    y_capped = TY() isa ConnectedTopology && Hy < Nsubsteps + 2
+
+    if x_capped || y_capped
+        exchange_interval = min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps,
+                                TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+        Nexchanges = cld(Nsubsteps, exchange_interval) - 1
+        @root @info "SplitExplicitFreeSurface: the extended halos $((Hx, Hy)) are capped by the smallest local grid size $((Nx, Ny)), " *
+                    "so the $Nsubsteps barotropic substeps fill the halos $Nexchanges more time(s) per time step." maxlog=1
+    end
+
     if new_halos == old_halos
         return grid
     else
