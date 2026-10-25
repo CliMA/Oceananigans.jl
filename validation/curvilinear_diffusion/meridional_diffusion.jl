@@ -21,12 +21,10 @@ grid = LatitudeLongitudeGrid(size = (1, Ny, 1),
                              longitude = (-180, 180),
                              z = (-1, 0))
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     momentum_advection = VectorInvariant(),
                                     tracers = :c,
-                                    coriolis = nothing,
-                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1),
-                                    buoyancy = nothing)
+                                    closure = HorizontalScalarDiffusivity(κ=1, ν=1))
 
 # Tracer patch for visualization
 Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
@@ -68,7 +66,7 @@ output_prefix = "meridional_diffusion_Ny$(grid.Ny)"
 simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
                                                 schedule = TimeInterval(cell_diffusion_time_scale),
                                                 filename = output_prefix,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

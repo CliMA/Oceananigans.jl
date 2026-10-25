@@ -15,7 +15,7 @@ grid = RectilinearGrid(size = (128, 128),
                        y = (0, 2π),
                        topology = (Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid, advection=WENO())
+model = NonhydrostaticModel(grid; advection=WENO())
 
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
@@ -73,7 +73,7 @@ grid = RectilinearGrid(GPU(),
                        y = (-π, π),
                        topology = (Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid, advection=WENO(), tracers=:c)
+model = NonhydrostaticModel(grid; advection=WENO(), tracers=:c)
 
 δ = 0.5
 cᵢ(x, y) = exp(-(x^2 + y^2) / 2δ^2)

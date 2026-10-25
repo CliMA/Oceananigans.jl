@@ -49,7 +49,9 @@ end
 
 for closure in closures_to_run
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        closure,
+                                        coriolis,
                                         tracers = (:b,),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
@@ -69,7 +71,7 @@ for closure in closures_to_run
     output_writer = JLD2Writer(model, outputs,
                                schedule = TimeInterval(20minutes),
                                filename = "windy_convection_" * closurename,
-                               overwrite_existing = true)
+                               overwrite_files = true)
 
     simulation.output_writers[:fields] = output_writer
 

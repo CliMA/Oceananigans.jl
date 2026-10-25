@@ -13,11 +13,7 @@ grid = ConformalCubedSpherePanelGrid(size = (Nx, Ny, Nz),
 
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
 
-model = HydrostaticFreeSurfaceModel(; grid,
-                                    momentum_advection = VectorInvariant(),
-                                    closure,
-                                    buoyancy = nothing,
-                                    tracers=())
+model = HydrostaticFreeSurfaceModel(grid; closure, momentum_advection = VectorInvariant(), )
 
 η₀ = 1
 Δ = 10
@@ -38,7 +34,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 
 u, v, w = model.velocities
-η = model.free_surface.η
+η = model.free_surface.displacement
 
 save_fields_interval = 18minutes
 
@@ -48,7 +44,7 @@ simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename = "ossg_splash",
                                                 with_halos = true,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 @info "Run simulation..."
 

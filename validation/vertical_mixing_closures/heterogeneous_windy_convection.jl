@@ -62,7 +62,8 @@ closure = (vertical_mixing, hyperviscosity)
 filename = "heterogeneous_cooling_with_hyperviscosity.jld2"
 #filename = "heterogeneous_cooling.jld2"
 
-model = HydrostaticFreeSurfaceModel(; grid, closure,
+model = HydrostaticFreeSurfaceModel(grid;
+                                    closure,
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     coriolis = FPlane(f=1e-4),
@@ -89,7 +90,7 @@ outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                 filename,
                                                 schedule = TimeInterval(1hour),
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities

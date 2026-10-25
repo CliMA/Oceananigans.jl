@@ -6,12 +6,33 @@ using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture,
                           validate_rectilinear_grid_args, validate_lat_lon_grid_args,
                           generate_coordinate, with_precomputed_metrics,
                           cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                          metrics_precomputed, constructor_arguments
-using Oceananigans.Utils: getnamewrapper
+                          metrics_precomputed, constructor_arguments,
+                          AbstractTopology, StaticVerticalDiscretization, regular_faces, regular_centers, total_length
 
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
-                           with_halo, with_number_type, size_summary
+                           with_halo, with_number_type, size_summary, generate_coordinate
+
+# This rank's part of a regular coordinate: the nodes of the whole coordinate at this rank's indices
+function generate_coordinate(FT, topo::AbstractTopology, n, H, p::PartitionedInterval, coordinate_name, arch)
+    c₁, c₂ = @. BigFloat(p.interval)
+    Δ = (c₂ - c₁) / p.N
+
+    TF = total_length(Face(),   topo, n, H)
+    TC = total_length(Center(), topo, n, H)
+
+    whole_F = regular_faces(FT, c₁, c₂, p.N, H, p.N + 2H + p.offset + TF)
+    whole_C = regular_centers(whole_F, length(whole_F))
+
+    F = OffsetArray(on_architecture(arch, [whole_F[p.offset + i] for i in 1:TF]), -H)
+    C = OffsetArray(on_architecture(arch, [whole_C[p.offset + i] for i in 1:TC]), -H)
+
+    if coordinate_name == :z
+        return FT(n * Δ), StaticVerticalDiscretization(F, C, FT(Δ), FT(Δ))
+    else
+        return FT(n * Δ), F, C, FT(Δ), FT(Δ)
+    end
+end
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -70,7 +91,7 @@ end
 global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
 
 """
-    RectilinearGrid(arch::Distributed, FT=Float64; kw...)
+    RectilinearGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
@@ -114,12 +135,12 @@ function RectilinearGrid(arch::Distributed,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                       Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        z)
 end
 
 """
-    LatitudeLongitudeGrid(arch::Distributed, FT=Float64; kw...)
+    LatitudeLongitudeGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
@@ -127,9 +148,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                FT::DataType = Oceananigans.defaults.FloatType;
                                precompute_metrics = true,
                                size,
-                               latitude,
-                               longitude,
-                               z,
+                               latitude = nothing,
+                               longitude = nothing,
+                               z = nothing,
                                topology = nothing,
                                radius = Oceananigans.defaults.planet_radius,
                                halo = nothing)
@@ -163,7 +184,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # The Latitudinal direction is _special_:
     # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a
     # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
-    # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `RightConnected` topology)
+    # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `Sides{Closed, Connected}` topology)
     # An extra point is to precompute the Y-direction metrics in case of only one halo, hence
     # we disregard the topology when constructing the metrics and add a halo point!
     # Furthermore, the `LatitudeLongitudeGrid` requires an extra halo on it's latitudinal coordinate to allow calculating
@@ -187,7 +208,7 @@ end
 reconstruct_global_grid(grid::AbstractGrid) = grid
 
 """
-    reconstruct_global_grid(grid::DistributedGrid)
+$(TYPEDSIGNATURES)
 
 Return the global grid on `child_architecture(grid)`
 """
@@ -303,7 +324,7 @@ child_architecture(grid::AbstractGrid) = architecture(grid)
 child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """
-    scatter_grid_properties(global_grid)
+$(TYPEDSIGNATURES)
 
 Return the individual `extent`, `topology`, `size`, and `halo` of a `global_grid`.
 """
@@ -335,28 +356,40 @@ function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distribut
 end
 
 """
-    insert_connected_topology(T, R, r)
+$(TYPEDSIGNATURES)
 
 Return the local topology associated with the global topology `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
 """
 insert_connected_topology(T, R, r) = T
 
-insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
-                                                   ifelse(r == 1, RightConnected,
-                                                   ifelse(r == R, LeftConnected,
-                                                   FullyConnected)))
+insert_connected_topology(::Type{Sides{L, R}}, ranks, rank) where {L, R} = Sides{ifelse(rank == 1, L, Connected), ifelse(rank == ranks, R, Connected)}
 
-insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
+insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, Sides{Connected, Connected})
+
+# Fold-aware topology insertion for distributed tripolar grids.
+# These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
+# Ry/ry are y-rank count/index and Rx/rx are x-rank count/index (all 1-based).
+
+local_fold_topology(::Type{CenterFolded}, Rx, rx) = Rx == 1 ? CenterFolded : CenterFoldConnected
+local_fold_topology(::Type{FaceFolded},   Rx, rx) = Rx == 1 ? FaceFolded   : FaceFoldConnected
+
+function insert_connected_topology(::Type{Sides{L, R}}, Ry, ry, Rx, rx) where {L, R <: Union{CenterFolded, FaceFolded}}
+    left  = ry == 1  ? L : Connected
+    right = ry == Ry ? local_fold_topology(R, Rx, rx) : Connected
+    return Sides{left, right}
+end
 
 """
-    reconstruct_global_topology(T, R, r, r1, r2, arch)
+$(TYPEDSIGNATURES)
 
 Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
 
-If all ranks have `FullyConnected` topologies, the global topology is `Periodic`;
-otherwise it is `Bounded`.
+If all ranks are connected on both sides, the global topology is `Periodic`;
+otherwise it is bounded on both sides.
+
+This version uses MPI communication to gather topology information from all ranks.
 """
 function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
@@ -364,7 +397,7 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     end
 
     topologies = zeros(Int, R)
-    if T == FullyConnected && r1 == 1 && r2 == 1
+    if T == Sides{Connected, Connected} && r1 == 1 && r2 == 1
         topologies[r] = 1
     end
 
@@ -375,6 +408,22 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     else
         return Bounded
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Reconstruct global topology from a collection of local topologies without MPI.
+
+If `R == 1`, returns the single topology. Otherwise, if all local topologies
+are connected on both sides, returns `Periodic`; otherwise returns a topology bounded on both sides.
+
+This is an offline version that works with pre-collected topology information
+(e.g., from JLD2 files), in contrast to the MPI-based version above.
+"""
+function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
+    R == 1 && return first(local_topologies)
+    return all(==(Sides{Connected, Connected}), local_topologies) ? Periodic : Bounded
 end
 
 function with_number_type(FT, local_grid::DistributedRectilinearGrid)

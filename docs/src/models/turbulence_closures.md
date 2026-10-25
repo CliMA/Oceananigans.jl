@@ -77,7 +77,7 @@ julia> @inline νhb(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, λ) =
 νhb (generic function with 1 method)
 
 julia> closure = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=15days)
-ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=0.0)
+ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)
 ```
 
 The `ℓx`, `ℓy`, `ℓz` arguments indicate the grid location (`Center()` or `Face()`) where
@@ -91,7 +91,7 @@ Multiple closures can be combined in a tuple. All closure contributions are summ
 julia> using Oceananigans
 
 julia> closure = (HorizontalScalarDiffusivity(ν=1e-3), VerticalScalarDiffusivity(ν=1e-4))
-(HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=0.0), VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0001, κ=0.0))
+(HorizontalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.001, κ=nothing), VerticalScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0001, κ=nothing))
 ```
 
 See the [hydrostatic modeling example](@ref hydrostatic-example) below for a more complex tuple.
@@ -187,6 +187,23 @@ ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(ba
 ocean turbulence, as described by [Wagner25catke](@citet).
 It uses a prognostic equation for turbulent kinetic energy (the `:e` tracer).
 
+The `minimum_tke` keyword argument (default: `1e-9`) produces background tracer diffusivity
+
+```math
+\kappa_{bg} \approx C^{hi}_c \frac{e^{min}}{N}
+```
+
+and background viscosity
+
+```math
+\nu_{bg} \approx C^{hi}_u \frac{e^{min}}{N}
+```
+
+where ``N`` is the buoyancy frequency.
+By default, ``C^{hi}_c = 0.098`` and ``C^{hi}_u = 0.242`` are parameters of `CATKEMixingLength`.
+This feature may be used to model background mixing due to breaking internal waves
+[Wagner25catke](@citep).
+
 !!! note "HydrostaticFreeSurfaceModel only"
     `CATKEVerticalDiffusivity` is currently only supported by `HydrostaticFreeSurfaceModel`.
 
@@ -201,10 +218,10 @@ CATKEVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── minimum_tke: 1.0e-9
 ├── negative_tke_time_scale: 60.0
 ├── minimum_convective_buoyancy_flux: 1.0e-11
-├── tke_time_step: Nothing
+├── tke_time_step: nothing
 ├── mixing_length: TKEBasedVerticalDiffusivities.CATKEMixingLength
 │   ├── Cˢ:   1.131
-│   ├── Cᵇ:   0.28
+│   ├── Cᵇ:   0.967
 │   ├── Cʰⁱu: 0.242
 │   ├── Cʰⁱc: 0.098
 │   ├── Cʰⁱe: 0.548
@@ -254,7 +271,7 @@ TKEDissipationVerticalDiffusivity{VerticallyImplicitTimeDiscretization}
 ├── maximum_viscosity: Inf
 ├── minimum_tke: 1.0e-6
 ├── negative_tke_damping_time_scale: 60.0
-├── tke_dissipation_time_step: Nothing
+├── tke_dissipation_time_step: nothing
 ├── tke_dissipation_equations: Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.TKEDissipationEquations{Float64}
 │   ├── Cᵋϵ: 1.92
 │   ├── Cᴾϵ: 1.44
@@ -308,12 +325,12 @@ viscosity with a TKE-based vertical mixing scheme:
 
 ```jldoctest closures
 julia> horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true, parameters=5days)
-ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=0.0)
+ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)
 
 julia> vertical_closure = CATKEVerticalDiffusivity();
 
 julia> closure = (horizontal_closure, vertical_closure);
 
 julia> summary(horizontal_closure)
-"ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=0.0)"
+"ScalarBiharmonicDiffusivity{HorizontalFormulation}(ν=Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, Float64, typeof(νhb)}, κ=nothing)"
 ```

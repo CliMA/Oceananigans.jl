@@ -140,17 +140,16 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(
-    grid = grid,
-    free_surface = ImplicitFreeSurface(),
-    momentum_advection = WENO(grid = grid),
-    tracer_advection = WENO(grid = grid),
-    buoyancy = BuoyancyTracer(),
-    coriolis = coriolis,
-    closure = (horizontal_closure, vertical_closure, convective_adjustment),
-    tracers = :b,
-    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
-    forcing = (; b = Fb)
+model = HydrostaticFreeSurfaceModel(grid;
+                                    free_surface = ImplicitFreeSurface(),
+                                    momentum_advection = WENO(grid = grid),
+                                    tracer_advection = WENO(grid = grid),
+                                    buoyancy = BuoyancyTracer(),
+                                    coriolis = coriolis,
+                                    closure = (horizontal_closure, vertical_closure, convective_adjustment),
+                                    tracers = :b,
+                                    boundary_conditions = (b = b_bcs, u = u_bcs, v = v_bcs),
+                                    forcing = (; b = Fb)
 )
 
 @info "Built $model."
@@ -231,20 +230,20 @@ averaged_outputs = (; v′b′, w′b′, B)
 simulation.output_writers[:checkpointer] = Checkpointer(model,
     schedule = TimeInterval(100days),
     prefix = "abernathey_channel",
-    overwrite_existing = true)
+    overwrite_files = true)
 
 simulation.output_writers[:fields] = JLD2Writer(model, outputs,
     schedule = TimeInterval(5days),
     filename = "abernathey_channel",
     field_slicer = nothing,
     verbose = true,
-    overwrite_existing = true)
+    overwrite_files = true)
 
 simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
     schedule = AveragedTimeInterval(1days, window = 1days, stride = 1),
     filename = "abernathey_channel_averages",
     verbose = true,
-    overwrite_existing = true)
+    overwrite_files = true)
 
 @info "Running the simulation..."
 

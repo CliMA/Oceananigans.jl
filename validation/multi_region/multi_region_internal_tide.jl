@@ -48,7 +48,7 @@ mrg_with_bump  = MultiRegionGrid(grid_with_bump, partition=XPartition(2), device
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-model = HydrostaticFreeSurfaceModel(grid = mrg_with_bump,
+model = HydrostaticFreeSurfaceModel(mrg_with_bump;
                                     momentum_advection = Centered(),
                                     free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
                                     closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),
@@ -79,7 +79,7 @@ run!(simulation)
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 """
 
-model_ref = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
+model_ref = HydrostaticFreeSurfaceModel(grid_with_bump;
                                         momentum_advection = Centered(),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
                                         closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),

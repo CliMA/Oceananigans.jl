@@ -46,17 +46,11 @@ end
 ##### Input validation
 #####
 
-function validate_topology(topology)
-    for T in topology
-        if !isa(T(), AbstractTopology)
-            e = "$T is not a valid topology! " *
-                "Valid topologies are: Periodic, Bounded, Flat."
-            throw(ArgumentError(e))
-        end
-    end
-
-    return topology
-end
+validate_topology(topology::Tuple{Any, Any, Any}) = map(validate_topology, topology)
+validate_topology((L, R)::Tuple{Any, Any}) = Sides{L, R}
+validate_topology(T::Type{<:Union{Periodic, Flat, Sides}}) = T
+validate_topology(T::Type{<:Union{Closed, Connected, CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}) = Sides{T, T}
+validate_topology(T) = throw(ArgumentError("$T is not a valid topology; valid topologies are Periodic, Flat, Bounded, or a pair of side topologies."))
 
 function validate_size(TX, TY, TZ, sz)
     sz = tupleit(sz)
@@ -154,6 +148,13 @@ function validate_dimension_specification(T, ξ::Union{Function, CallableDiscret
     return ξ
 end
 
+function validate_dimension_specification(T, ξ::ExponentialDiscretization, dir, N, FT)
+    if !(length(ξ.faces) == N+1)
+        throw(ArgumentError("Coordinate $(summary(ξ)) has length $(length(ξ.faces)-1) while direction $(dir) requires a coordinate of length $(N)"))
+    end
+    return ξ
+end
+
 function validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT)
     # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
     ξ_cpu = ξ isa Array ? ξ : Array(ξ)
@@ -163,9 +164,6 @@ validate_dimension_specification(::Type{Flat}, ξ::Function,       dir, N, FT) =
 validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = map(FT, ξ)
 validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = nothing
 validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = convert(FT, ξ)
-
-default_horizontal_extent(T, extent) = (0, extent[i])
-default_vertical_extent(T, extent) = (-extent[3], 0)
 
 function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
     x = validate_dimension_specification(TX, x, :x, FT)

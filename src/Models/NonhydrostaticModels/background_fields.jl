@@ -15,14 +15,11 @@ function background_velocity_fields(fields, grid, clock)
     return (; u, v, w)
 end
 
-function background_tracer_fields(bg, tracer_names, grid, clock)
-    tracer_fields =
-        Tuple(c ∈ keys(bg) ?
-              regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
-              ZeroField()
-              for c in tracer_names)
-        
-    return NamedTuple{tracer_names}(tracer_fields)
+Base.@constprop :aggressive function background_tracer_fields(bg, tracer_names, grid, clock)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        c ∈ keys(bg) ? regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) : ZeroField()
+    end
 end
 
 #####
@@ -37,7 +34,7 @@ struct BackgroundFields{Q, U, C}
     end
 end
 
-Adapt.adapt_structure(to, bf::BackgroundFields{Q}) where Q =    
+Adapt.adapt_structure(to, bf::BackgroundFields{Q}) where Q =
     BackgroundFields{Q}(adapt(to, bf.velocities), adapt(to, bf.tracers))
 
 const BackgroundFieldsWithClosureFluxes = BackgroundFields{true}
@@ -51,13 +48,13 @@ function BackgroundFields(; background_closure_fluxes=false, fields...)
     return BackgroundFields{background_closure_fluxes}(velocities, tracers)
 end
 
-function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
+Base.@constprop :aggressive function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
     velocities = background_velocity_fields(background_fields.velocities, grid, clock)
     tracers = background_tracer_fields(background_fields.tracers, tracer_names, grid, clock)
     return BackgroundFields{Q}(velocities, tracers)
 end
 
-function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
+Base.@constprop :aggressive function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
     velocities = background_velocity_fields(background_fields, grid, clock)
     tracers = background_tracer_fields(background_fields, tracer_names, grid, clock)
     return BackgroundFields{false}(velocities, tracers)
@@ -111,7 +108,7 @@ function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clo
     if location(field) != (LX, LY, LZ)
         throw(ArgumentError("Cannot use field at $(location(field)) as a background field at $((LX, LY, LZ))"))
     end
-    
+
     return field
 end
 

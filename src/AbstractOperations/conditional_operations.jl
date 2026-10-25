@@ -17,11 +17,19 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
-        T = eltype(operand)
+        T = conditional_eltype(func, eltype(operand), condition, mask)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
     end
 end
+
+# The type of the values: `func`'s of the operand's elements, or the mask where the condition doesn't hold
+@inline conditional_eltype(::Nothing, T, condition, mask) = T
+@inline conditional_eltype(::Nothing, T, ::Nothing, mask) = T
+@inline conditional_eltype(func, T, ::Nothing, mask) = concrete_or(Base.promote_op(func, T), T)
+@inline conditional_eltype(func, T, condition, mask) = promote_type(conditional_eltype(func, T, nothing, mask), typeof(mask))
+
+@inline concrete_or(T, fallback) = isconcretetype(T) ? T : fallback
 
 # Some special cases
 const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
@@ -113,7 +121,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -124,7 +132,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
@@ -158,6 +166,7 @@ end
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -198,13 +207,8 @@ end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
-
-# Disambiguations
 @inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)

@@ -19,13 +19,9 @@ grid = LatitudeLongitudeGrid(
     z = (-1, 0)
 )
 
-model = HydrostaticFreeSurfaceModel(
-    grid = grid,
-    tracers = :c,
-    velocities = PrescribedVelocityFields(), # quiescent
-    closure = HorizontalScalarDiffusivity(κ = 1),
-    buoyancy = nothing
-)
+model = HydrostaticFreeSurfaceModel(grid; tracers = :c,
+                                          velocities = PrescribedVelocityFields(), # quiescent
+                                          closure = HorizontalScalarDiffusivity(κ = 1))
 
 # Tracer patch for visualization
 Gaussian(λ, φ, L) = exp(-(λ^2 + φ^2) / 2L^2)
@@ -72,7 +68,7 @@ simulation.output_writers[:fields] = JLD2Writer(
     model, output_fields,
     schedule = TimeInterval(10cell_diffusion_time_scale),
     filename = output_prefix,
-    overwrite_existing = true
+    overwrite_files = true
 )
 
 run!(simulation)

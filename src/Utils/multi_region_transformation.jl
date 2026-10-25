@@ -1,4 +1,7 @@
 using Oceananigans.Architectures: Architectures, on_architecture, CPU
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 import KernelAbstractions as KA
 
 #####
@@ -58,14 +61,11 @@ end
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
 
-@inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :regions]
-    @eval begin
-        @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
-    end
-end
+@inline isregional(::Tuple{}) = false
+@inline isregional(t::Tuple) = isregional(first(t)) || isregional(Base.tail(t))
+@inline isregional(nt::NamedTuple) = isregional(values(nt))
 
+@inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
@@ -76,18 +76,37 @@ Base.parent(mo::MultiRegionObject) = construct_regionally(parent, mo)
 
 Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(on_architecture(arch, mo.regional_objects))
 
-# For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
+# `isregional(args)` and `isregional(values(kwargs))` fold to compile-time constants for
+# non-regional arguments, so the multi-region branch is dead code (and is not inferred) for them.
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
+    if isregional(args) || isregional(values(kwargs))
+        return multi_region_apply!(regional_func!, args...; kwargs...)
+    else
+        return regional_func!(args...; kwargs...)
+    end
+end
+
+@inline function multi_region_apply!(regional_func!, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
 
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
     for r in R
-        regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_func!(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
 
+    return nothing
+end
+
+# For `MultiRegionObject` calls (think kernels with different sizes for different regions)
+# we also `getregion` for the function. Since the function itself is multiregional we do not
+# need to check if the call is single region or not.
+@inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
+    R = regions(regional_func!)
+    for r in R
+        getregion(regional_func!, r)(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
+    end
     return nothing
 end
 
@@ -96,11 +115,16 @@ end
 
 # For functions with return statements -> BLOCKING! (use as seldom as possible)
 @inline function construct_regionally(Nreturns::Int, regional_func::Base.Callable, args...; kwargs...)
-    # First, we deduce whether any of `args` or `kwargs` are multi-regional.
-    # If no regional objects are found, we call the function as usual
+    if isregional(args) || isregional(values(kwargs))
+        return multi_region_construct(Nreturns, regional_func, args...; kwargs...)
+    else
+        return regional_func(args...; kwargs...)
+    end
+end
+
+@inline function multi_region_construct(Nreturns::Int, regional_func::Base.Callable, args...; kwargs...)
     multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing :   args[findfirst(isregional, args)]
     multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func(args...; kwargs...)
 
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 
@@ -108,8 +132,7 @@ end
     # return values
     regional_return_values = Vector(undef, length(R))
     for r in R
-        regional_return_values[r] = regional_func((getregion(arg, r) for arg in args)...;
-                                                  (getregion(kwarg, r) for kwarg in kwargs)...)
+        regional_return_values[r] = regional_func(map(Base.Fix2(getregion, r), args)...; map(Base.Fix2(getregion, r), values(kwargs))...)
     end
 
     if Nreturns == 1
@@ -191,3 +214,22 @@ macro apply_regionally(expr)
         end
     end
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(mo::MultiRegionObject)
+    return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
+end
+
+function restore_prognostic_state!(restored::MultiRegionObject, from)
+    regional_states = from isa MultiRegionObject ? from.regional_objects : from
+
+    for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
+        restore_prognostic_state!(regional_obj, regional_state)
+    end
+    return restored
+end
+
+restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

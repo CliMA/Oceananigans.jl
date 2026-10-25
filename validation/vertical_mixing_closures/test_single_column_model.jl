@@ -9,8 +9,12 @@ closure = CATKEVerticalDiffusivity()
 boundary_conditions = (b = FieldBoundaryConditions(top = FluxBoundaryCondition(1e-8)),
                        u = FieldBoundaryConditions(top = FluxBoundaryCondition(-2e-4)))
 
-model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, boundary_conditions,
-                                    tracers = (:b,), buoyancy = BuoyancyTracer())
+model = HydrostaticFreeSurfaceModel(grid;
+                                    closure,
+                                    coriolis,
+                                    boundary_conditions,
+                                    tracers = (:b,),
+                                    buoyancy = BuoyancyTracer())
 
 bᵢ(z) = 1e-6 * z
 set!(model, b=bᵢ, e=1e-6)
@@ -21,4 +25,3 @@ time_step!(model, 600)
 @time for n = 1:100
     time_step!(model, 600)
 end
-

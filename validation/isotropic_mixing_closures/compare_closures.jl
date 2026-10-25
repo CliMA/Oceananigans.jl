@@ -27,7 +27,10 @@ function wind_driven_turbulence_simulation(grid, advection, closure; stop_time=9
     @info "Running closure $closure"
     coriolis = FPlane(; f)
     u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
-    model = NonhydrostaticModel(; grid, closure, coriolis, advection,
+    model = NonhydrostaticModel(grid;
+                                closure,
+                                coriolis,
+                                advection,
                                 boundary_conditions = (; u=u_bcs),
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())
@@ -61,7 +64,7 @@ advection = WENO(order=9)
 closure = nothing
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -71,7 +74,7 @@ advection = WENO(order=5)
 closure = nothing
 simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -84,7 +87,7 @@ outputs = merge(simulation.model.velocities, simulation.model.tracers)
 νₑ = simulation.model.closure_fields.νₑ
 κₑ = simulation.model.closure_fields.κₑ.b
 outputs = merge(outputs, (; νₑ, κₑ))
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -96,7 +99,7 @@ simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
 νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; νₑ))
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -108,7 +111,7 @@ simulation = wind_driven_turbulence_simulation(grid, advection, closure)
 outputs = merge(simulation.model.velocities, simulation.model.tracers)
 νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; νₑ))
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -122,7 +125,7 @@ outputs = merge(simulation.model.velocities, simulation.model.tracers)
 𝒥ᴹᴹ = simulation.model.closure_fields.𝒥ᴹᴹ
 νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; 𝒥ᴸᴹ, 𝒥ᴹᴹ, νₑ))
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)
 
@@ -138,6 +141,6 @@ outputs = merge(simulation.model.velocities, simulation.model.tracers)
 𝒥ᴹᴹ⁻ = simulation.model.closure_fields.𝒥ᴹᴹ⁻
 νₑ = simulation.model.closure_fields.νₑ
 outputs = merge(outputs, (; 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, νₑ))
-output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_existing=true)
+output_writer = JLD2Writer(simulation.model, outputs; filename, schedule, overwrite_files=true)
 simulation.output_writers[:jld2] = output_writer
 run!(simulation)

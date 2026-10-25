@@ -171,7 +171,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 @info "Building a model..."
 
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
@@ -270,13 +270,13 @@ outputs = merge(fields(model), (; vb, wb, ∇_q))
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(5years),
                                                         prefix = filename,
-                                                        overwrite_existing = true)
+                                                        overwrite_files = true)
 
 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                 schedule = TimeInterval(save_fields_interval),
                                                 filename,
                                                 verbose = false,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 @info "Running the simulation..."
 

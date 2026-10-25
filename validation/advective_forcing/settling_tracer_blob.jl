@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputWriters: NetCDFWriter
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.BoundaryConditions: NormalFlowBoundaryCondition, FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using NCDatasets
@@ -37,7 +37,7 @@ function build_simulation(grid;
     )
 
     # Create settling velocity as a field with appropriate boundary conditions
-    bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w₀) : OpenBoundaryCondition(nothing)
+    bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w₀) : NormalFlowBoundaryCondition(nothing)
     boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
     w_settle_field = ZFaceField(grid; boundary_conditions)
 
@@ -55,13 +55,9 @@ function build_simulation(grid;
     # Create settling forcing with the velocity field
     c_forcing = AdvectiveForcing(w = w_settle_field)
 
-    model = NonhydrostaticModel(
-        grid = grid,
-        advection = WENO(order=5),
-        tracers = (:c,),
-        forcing = (c = c_forcing,),
-        pressure_solver = ConjugateGradientPoissonSolver(grid)
-    )
+    model = NonhydrostaticModel(grid; advection = WENO(order=5),
+                                      pressure_solver = ConjugateGradientPoissonSolver(grid),
+                                      tracers = :c, forcing = (c = c_forcing,))
 
     # Circular initial condition for tracer c in the center of the domain
     x₀ = grid.Lx / 2
@@ -96,7 +92,7 @@ function build_simulation(grid;
         (c = model.tracers.c,),
         schedule = TimeInterval(0.5seconds),
         filename = output_filename,
-        overwrite_existing = true,
+        overwrite_files = true,
     )
 
     return simulation
