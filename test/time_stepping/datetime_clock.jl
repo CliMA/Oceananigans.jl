@@ -18,7 +18,7 @@ struct DummyModel
     clock::Clock
 end
 
-function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
+function run_forcing_simulation(arch, FT, start_time; Δt, stop_time, free_surface)
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
     forcing_times = [start_time + Dates.Hour(n) for n in 0:3]
     u_forcing = FieldTimeSeries{Face, Center, Center}(grid, forcing_times)
@@ -28,7 +28,7 @@ function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
     end
 
     clock = Clock(time=start_time)
-    model = HydrostaticFreeSurfaceModel(grid; clock, forcing=(; u=u_forcing))
+    model = HydrostaticFreeSurfaceModel(grid; clock, free_surface, forcing=(; u=u_forcing))
     simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     forcing_history = FT[]
@@ -263,8 +263,11 @@ end
 
             test_Δt = [1200, 3600, Dates.Minute(20), Dates.Hour(1)]
 
-            @testset "Hydrostatic $(TimeType) forcing [$(arch_type), $(FT), $(typeof(Δt))]" for Δt in test_Δt
-                forcing_history, time_history = run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
+            # The split-explicit substeps advance a substep clock and load the forcing window past tⁿ⁺¹
+            free_surfaces = (ImplicitFreeSurface(), SplitExplicitFreeSurface(substeps=4))
+
+            @testset "Hydrostatic $(TimeType) forcing [$(arch_type), $(FT), $(typeof(Δt)), $(nameof(typeof(free_surface)))]" for Δt in test_Δt, free_surface in free_surfaces
+                forcing_history, time_history = run_forcing_simulation(arch, FT, start_time; Δt, stop_time, free_surface)
 
                 Nt = 3 * 3600 / Oceananigans.Utils.period_to_seconds(Δt)
                 Nt = Int(Nt)
