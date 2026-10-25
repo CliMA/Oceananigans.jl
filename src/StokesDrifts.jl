@@ -400,10 +400,14 @@ const SDnoP = StokesDrift{<:Nothing}
     sw.∂x_vˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
 @inline ∂x_vˢ_cfc(i, j, k, grid, sw::SD, time) =
     sw.∂x_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
-@inline _∂x_wˢ(i, j, k, grid, sw::SD, X, time) =
-    sw.∂x_wˢ(X..., time, parameters_tuple(sw)...)
-@inline _∂y_wˢ(i, j, k, grid, sw::SD, X, time) =
-    sw.∂y_wˢ(X..., time, parameters_tuple(sw)...)
+@inline ∂x_wˢ_fcc(i, j, k, grid, sw::SD, time) =
+    sw.∂x_wˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂x_wˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂x_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline ∂y_wˢ_cfc(i, j, k, grid, sw::SD, time) =
+    sw.∂y_wˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂y_wˢ_ccf(i, j, k, grid, sw::SD, time) =
+    sw.∂y_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
 
 #####
 ##### Field-mode Stokes drift
@@ -536,10 +540,14 @@ const FSD = FieldStokesDrift
     ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
 @inline ∂x_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
     ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
-@inline _∂x_wˢ(i, j, k, grid, sw::FSD, X, time) =
+@inline ∂x_wˢ_fcc(i, j, k, grid, sw::FSD, time) =
     ℑzᵃᵃᶜ(i, j, k, grid, ∂xᶠᶜᶠ, sw.wˢ)
-@inline _∂y_wˢ(i, j, k, grid, sw::FSD, X, time) =
+@inline ∂x_wˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶠ, sw.wˢ)
+@inline ∂y_wˢ_cfc(i, j, k, grid, sw::FSD, time) =
     ℑzᵃᵃᶜ(i, j, k, grid, ∂yᶜᶠᶠ, sw.wˢ)
+@inline ∂y_wˢ_ccf(i, j, k, grid, sw::FSD, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶠ, sw.wˢ)
 
 #####
 ##### Shared vortex-force evaluation
@@ -556,9 +564,8 @@ const NonUniformSD = Union{StokesDrift, FieldStokesDrift}
     wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
     vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
-    X = node(i, j, k, grid, f, c, c)
     ∂z_uˢ = ∂z_uˢ_fcc(i, j, k, grid, sw, time)
-    ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
+    ∂x_wˢ = ∂x_wˢ_fcc(i, j, k, grid, sw, time)
     ∂y_uˢ = ∂y_uˢ_fcc(i, j, k, grid, sw, time)
     ∂x_vˢ = ∂x_vˢ_fcc(i, j, k, grid, sw, time)
 
@@ -569,9 +576,8 @@ end
     wᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, U.w)
     uᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
-    X = node(i, j, k, grid, c, f, c)
     ∂z_vˢ = ∂z_vˢ_cfc(i, j, k, grid, sw, time)
-    ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
+    ∂y_wˢ = ∂y_wˢ_cfc(i, j, k, grid, sw, time)
     ∂x_vˢ = ∂x_vˢ_cfc(i, j, k, grid, sw, time)
     ∂y_uˢ = ∂y_uˢ_cfc(i, j, k, grid, sw, time)
 
@@ -582,10 +588,9 @@ end
     uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
     vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
 
-    X = node(i, j, k, grid, c, c, f)
-    ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
+    ∂x_wˢ = ∂x_wˢ_ccf(i, j, k, grid, sw, time)
     ∂z_uˢ = ∂z_uˢ_ccf(i, j, k, grid, sw, time)
-    ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
+    ∂y_wˢ = ∂y_wˢ_ccf(i, j, k, grid, sw, time)
     ∂z_vˢ = ∂z_vˢ_ccf(i, j, k, grid, sw, time)
 
     return vᶜᶜᶠ * (∂y_wˢ - ∂z_vˢ) - uᶜᶜᶠ * (∂z_uˢ - ∂x_wˢ)

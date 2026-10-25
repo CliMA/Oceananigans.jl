@@ -111,6 +111,19 @@ end
                 @test Oceananigans.StokesDrifts.x_curl_Uˢ_cross_U(i, j, k, grid, sd, fake_U, 0.0) ≈ V * β atol=1e-12
             end
 
+            # wˢ = γ x z + γ y z: the derivatives ∂x wˢ = ∂y wˢ = γ z depend on where they are evaluated
+            γ = 0.4
+            set!(wˢ, (x, y, z) -> γ * (x + y) * z)
+            for k in 2:grid.Nz, j in 2:grid.Ny - 1, i in 2:grid.Nx - 1
+                zᶜ = Oceananigans.Grids.znode(k, grid, Center())
+                zᶠ = Oceananigans.Grids.znode(k, grid, Face())
+                @test Oceananigans.StokesDrifts.∂x_wˢ_fcc(i, j, k, grid, sd, 0.0) ≈ γ * zᶜ
+                @test Oceananigans.StokesDrifts.∂x_wˢ_ccf(i, j, k, grid, sd, 0.0) ≈ γ * zᶠ
+                @test Oceananigans.StokesDrifts.∂y_wˢ_cfc(i, j, k, grid, sd, 0.0) ≈ γ * zᶜ
+                @test Oceananigans.StokesDrifts.∂y_wˢ_ccf(i, j, k, grid, sd, 0.0) ≈ γ * zᶠ
+            end
+            set!(wˢ, 0)
+
             # ∂t_uˢ, ∂t_vˢ: constant value comes through at every point.
             a_u, a_v = 0.13, -0.27
             set!(∂t_uˢ, a_u); Oceananigans.BoundaryConditions.fill_halo_regions!(∂t_uˢ)
