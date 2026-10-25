@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using CUDA
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalConic, ConformalConicGrid,
-    geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor,
+    geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle,
     conformal_conic_xnode, conformal_conic_ynode, spherical_distance, spherical_unit_vector,
     spherical_quadrilateral_area, fill_conformal_conic_coordinates_and_metrics!
 using Oceananigans.Grids: architecture, constructor_arguments, topology, halo_size,
@@ -1077,6 +1077,30 @@ end
         @test isfinite(vᵢ)
         @test uₑ ≈ 1
         @test vₑ ≈ -2
+    end
+
+    @testset "conformal_conic_rotation_angle" begin
+        grid = ConformalConicGrid(CPU(), Float64;
+                                  size = (24, 20, 1),
+                                  center = (-105, 40),
+                                  spacing = 5e3,
+                                  standard_parallels = (30, 60),
+                                  z = (-1, 0))
+
+        map = grid.conformal_mapping
+        @test conformal_conic_rotation_angle(map, -105) == 0
+
+        # The convergence angle is what `rotation_angle` evaluates at the cell centers
+        for (i, j) in ((3, 4), (12, 10), (22, 18))
+            λ = λnode(i, j, 1, grid, Center(), Center(), Center())
+            @test conformal_conic_rotation_angle(map, λ) ≈ rotation_angle(i, j, grid) atol = 1e-4
+        end
+
+        for FT in (Float32, Float64)
+            map = ConformalConic(FT; standard_parallels = (30, 60), central_longitude = -105,
+                                 latitude_of_origin = 40, x₁ = -1000, y₁ = -1000, Δx = 100, Δy = 100)
+            @test @inferred(conformal_conic_rotation_angle(map, convert(FT, -100))) isa FT
+        end
     end
 
     @testset "hydrostatic model smoke test" begin

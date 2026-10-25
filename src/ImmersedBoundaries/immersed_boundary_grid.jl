@@ -138,9 +138,13 @@ end
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 
 function Architectures.on_architecture(arch, ibg::IBG)
-    underlying_grid   = on_architecture(arch, ibg.underlying_grid)
-    immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
-    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+    TX, TY, TZ = topology(ibg)
+    underlying_grid       = on_architecture(arch, ibg.underlying_grid)
+    immersed_boundary     = on_architecture(arch, ibg.immersed_boundary)
+    interior_active_cells = on_architecture(arch, ibg.interior_active_cells)
+    active_z_columns      = on_architecture(arch, ibg.active_z_columns)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, immersed_boundary,
+                                            interior_active_cells, active_z_columns)
 end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
