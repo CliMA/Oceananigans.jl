@@ -1,0 +1,183 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+
+using Statistics: mean
+using Oceananigans.Operators
+using Oceananigans.Operators: rotation_angle
+using Distances: haversine
+
+# To be used in the test below as `KernelFunctionOperation`s
+@inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
+
+@inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
+
+@inline extrinsic_vector_x_component(i, j, k, grid, uᵢ, vᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[1]
+
+@inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[2]
+
+@inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[1]
+
+@inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[2]
+
+@inline extrinsic_vector_x_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[1]
+
+@inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[2]
+
+function pointwise_approximate_equal(field1, field2)
+    CPU_field1 = on_architecture(CPU(), field1)
+    CPU_field2 = on_architecture(CPU(), field2)
+    @test all(interior(CPU_field1) .≈ interior(CPU_field2))
+end
+
+# Test vector invariants i.e.
+# -> dot product of two vectors
+# -> cross product of two vectors
+function test_vector_rotation(grid)
+    x₁ = CenterField(grid)
+    y₁ = CenterField(grid)
+    x₂ = CenterField(grid)
+    y₂ = CenterField(grid)
+    z₁ = CenterField(grid)
+
+    set!(x₁, (x, y, z) -> rand())
+    set!(y₁, (x, y, z) -> rand())
+    set!(x₂, (x, y, z) -> rand())
+    set!(y₂, (x, y, z) -> rand())
+    set!(z₁, (x, y, z) -> rand())
+
+    fill_halo_regions!((x₁, y₁, x₂, y₂, z₁))
+
+    d = compute!(Field(x₁ * x₂ + y₁ * y₂))
+    c = compute!(Field(x₁ * y₂ - y₁ * x₂))
+
+    @info "  Testing the conversion of a vector between to the Intrinsic reference frame on $(summary(grid))"
+    xᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁)
+    yᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁)
+    xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
+    yᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₂, y₂)
+
+    xᵢ₁ = compute!(Field(xᵢ₁))
+    yᵢ₁ = compute!(Field(yᵢ₁))
+    xᵢ₂ = compute!(Field(xᵢ₂))
+    yᵢ₂ = compute!(Field(yᵢ₂))
+
+    dᵢ = compute!(Field(xᵢ₁ * xᵢ₂ + yᵢ₁ * yᵢ₂))
+    cᵢ = compute!(Field(xᵢ₁ * yᵢ₂ - yᵢ₁ * xᵢ₂))
+
+    @apply_regionally pointwise_approximate_equal(dᵢ, d)
+    @apply_regionally pointwise_approximate_equal(cᵢ, c)
+
+    xₑ₁ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₁, yᵢ₁)
+    yₑ₁ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₁, yᵢ₁)
+    xₑ₂ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₂, yᵢ₂)
+    yₑ₂ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₂, yᵢ₂)
+
+    xₑ₁ = compute!(Field(xₑ₁))
+    yₑ₁ = compute!(Field(yₑ₁))
+    xₑ₂ = compute!(Field(xₑ₂))
+    yₑ₂ = compute!(Field(yₑ₂))
+
+    @info "  Testing the conversion of a vector between to the Extrinsic reference frame on $(summary(grid))"
+    @apply_regionally pointwise_approximate_equal(xₑ₁, x₁)
+    @apply_regionally pointwise_approximate_equal(xₑ₁, x₁)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
+    @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
+
+    @info "  Testing that the 3-component methods rotate the horizontal pair identically on $(summary(grid))"
+    xᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁, z₁)
+    yᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁, z₁)
+    xₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₁, yᵢ₁, z₁)
+    yₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₁, yᵢ₁, z₁)
+
+    xᵢ₃ = compute!(Field(xᵢ₃))
+    yᵢ₃ = compute!(Field(yᵢ₃))
+    xₑ₃ = compute!(Field(xₑ₃))
+    yₑ₃ = compute!(Field(yₑ₃))
+
+    @apply_regionally pointwise_approximate_equal(xᵢ₃, xᵢ₁)
+    @apply_regionally pointwise_approximate_equal(yᵢ₃, yᵢ₁)
+    @apply_regionally pointwise_approximate_equal(xₑ₃, xₑ₁)
+    @apply_regionally pointwise_approximate_equal(yₑ₃, yₑ₁)
+end
+
+@testset "Vector rotation" begin
+    for arch in archs
+        @testset "Rotation between Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
+
+            if arch isa CPU
+                @info "  Testing the calculation of the rotation angle between the Intrinsic and Extrinsic reference frame"
+
+                # Build a custom grid that is rotated by θᵢ degrees _clockwise_ from the vertical
+                # and test that the rotation_angle is computed correctly.
+
+                # Since we want to test the rotation angle, we build a grid with coordinates
+                # that are uniformly spaced Δ << 1 apart. Small coordinate angle spacing ensures
+                # that geometric factors related with spherical geometry don't come into play.
+                Δ = 1e-3
+
+                angles_degrees = [-150, -135, -22.5, 30, 45, 60, 120, 135, 160]
+                angles = angles_degrees .* (π / 180) # Convert to Radians
+
+                for θᵢ in angles
+                    radius = 1
+                    Nx, Ny = 4, 4
+
+                    # allocate an empty grid
+                    grid = OrthogonalSphericalShellGrid(; size=(Nx, Ny, 1), z=(0, 1), radius, conformal_mapping=nothing)
+                    λᶠᶠᵃ = grid.λᶠᶠᵃ
+                    φᶠᶠᵃ = grid.φᶠᶠᵃ
+
+                    # fill in coordinates
+                    sinθ = sin(θᵢ)
+                    cosθ = cos(θᵢ)
+                    for j in 1:Ny+1, i in 1:Nx+1
+                        λᶠᶠᵃ[i, j, 1] =   (i-1) * Δ * cosθ + (j-1) * Δ * sinθ
+                        φᶠᶠᵃ[i, j, 1] = - (i-1) * Δ * sinθ + (j-1) * Δ * cosθ
+                    end
+
+                    # fill in metrics
+                    for i in 1:Nx+1, j in 1:Ny+1
+                        grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+                        grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
+                    end
+
+                    # ensure that rotation_angle returns θᵢ
+                    for i in 1:Nx, j in 1:Ny
+                        θ = rotation_angle(i, j, grid)
+                        @test θ ≈ θᵢ
+                    end
+                end
+            end
+        end
+
+        @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
+            @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
+            cubed_sphere_grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
+            tripolar_grid = TripolarGrid(arch; size = (40, 40, 1), z=(-1, 0))
+
+            for grid in (cubed_sphere_grid, tripolar_grid)
+                test_vector_rotation(grid)
+            end
+        end
+
+        @testset "Extrinsic velocities on an immersed TripolarGrid [$(typeof(arch))]" begin
+            grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1, 0))
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((λ, φ) -> -2))
+            model = HydrostaticFreeSurfaceModel(grid)
+            immersed_model = HydrostaticFreeSurfaceModel(immersed_grid)
+            set!(model, u = 1, v = 0)
+            set!(immersed_model, u = 1, v = 0)
+
+            @test any(interior(model.velocities.v) .!= 0) # rotated in the northern cap
+            @test interior(immersed_model.velocities.u) == interior(model.velocities.u)
+            @test interior(immersed_model.velocities.v) == interior(model.velocities.v)
+        end
+    end
+end

@@ -60,7 +60,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, outputs,
                                                 schedule = TimeInterval(0.1),
                                                 filename = experiment_name,
                                                 field_slicer = nothing,
-                                                overwrite_existing = true)
+                                                overwrite_files = true)
 
 run!(simulation)
 

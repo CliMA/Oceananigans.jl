@@ -2,29 +2,30 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
-using DocStringExtensions
-
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Solvers
-
+using Oceananigans: Oceananigans
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
-using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.DistributedComputations: DistributedComputations,
+                                            reconstruct_global_grid, Distributed,
+                                            DistributedFFTBasedPoissonSolver,
+                                            DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
-using Oceananigans.Utils: sum_of_velocities
+using Oceananigans.Solvers
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+                            InhomogeneousFormulation, ZDirection
+using Oceananigans.Utils
+using Oceananigans.Utils: foreach_name, sum_of_velocities
 
 using ..Models: initialize_boundary_transport
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!, update_lagrangian_particle_state!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)
@@ -62,6 +63,7 @@ function naive_solver_with_warning(arch, ibg, free_surface)
 
               using Oceananigans.Solvers: ConjugateGradientPoissonSolver
               pressure_solver = ConjugateGradientPoissonSolver(grid)
+              model = NonhydrostaticModel(grid; pressure_solver)
 
           Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
           """
@@ -95,7 +97,7 @@ function cell_advection_timescale(model::NonhydrostaticModel)
 end
 
 """
-    fields(model::NonhydrostaticModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
@@ -106,7 +108,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities,
                                            biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """
@@ -114,6 +116,7 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+update_lagrangian_particle_state!(model::NonhydrostaticModel) = update_lagrangian_particle_state!(model.particles, model)
 
 include("cache_nonhydrostatic_tendencies.jl")
 include("nonhydrostatic_ab2_step.jl")

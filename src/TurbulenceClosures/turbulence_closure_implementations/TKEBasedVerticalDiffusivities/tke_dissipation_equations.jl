@@ -14,6 +14,8 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     minimum_roughness_length :: FT = 1e-4
 end
 
+Adapt.@adapt_structure TKEDissipationEquations
+
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
 function time_step_tke_dissipation_equations!(model, Δt)
@@ -39,10 +41,8 @@ function time_step_tke_dissipation_equations!(model, Δt)
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(model.tracers.e)
-    Δt = convert(FT, Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -64,8 +64,7 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 compute_tke_dissipation_closure_fields!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, buoyancy_force(model);
-                active_cells_map)
+                model.velocities, model.tracers, buoyancy_force(model))
 
         # Compute the linear implicit component of the RHS (closure_fields, L)
         # and step forward
@@ -75,8 +74,7 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 grid, closure,
                 model.velocities, previous_velocities,
                 model.tracers, buoyancy_force(model), closure_fields,
-                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ;
-                active_cells_map)
+                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
@@ -175,7 +173,6 @@ end
 
     # Advance TKE and store tendency
     FT = eltype(e)
-    Δτ = convert(FT, Δτ)
     χ = convert(FT, χ)
 
     # See below.

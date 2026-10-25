@@ -46,6 +46,9 @@ Base.summary(s::Scan) = string(summary(s.type), " ",
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
+# The grid of the field that holds a scan of an operand on `grid`
+scan_grid(type, grid, dims) = grid
+
 function Field(scan::Scan;
                data = nothing,
                indices = indices(scan.operand),
@@ -53,7 +56,7 @@ function Field(scan::Scan;
                recompute_safely = true)
 
     operand = scan.operand
-    grid = operand.grid
+    grid = scan_grid(scan.type, operand.grid, scan.dims)
     loc = instantiated_location(scan)
     dims = filter_nothing_dims(scan.dims, loc)
     indices = scan_indices(scan.type, indices, dims)
@@ -119,7 +122,7 @@ Base.show(io::IO, s::Scan) =
 #####
 
 """
-    Reduction(reduce!, operand; dims)
+$(TYPEDSIGNATURES)
 
 Return a `Reduction` of `operand` with `reduce!`, where `reduce!` can be called with
 
@@ -159,7 +162,7 @@ Oceananigans.location(r::Reduction) = reduced_location(location(r.operand); dims
 #####
 
 """
-    Accumulation(accumulate!, operand; dims)
+$(TYPEDSIGNATURES)
 
 Return a `Accumulation` of `operand` with `accumulate!`, where `accumulate!` can be called with
 

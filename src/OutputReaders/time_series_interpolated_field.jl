@@ -1,12 +1,11 @@
-using Adapt
+using Adapt: Adapt, adapt
+
 using Oceananigans: location
-using Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Fields: indices, show_location
+using Oceananigans.Fields: Fields, indices, show_location
 using Oceananigans.Grids: size as grid_size
 using Oceananigans.Units: Time
-
-import Oceananigans.Fields: indices
 
 #####
 ##### TimeSeriesInterpolation
@@ -21,7 +20,7 @@ struct TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T} <: AbstractOperation{LX
 end
 
 """
-    TimeSeriesInterpolation(time_series, grid; clock)
+$(TYPEDSIGNATURES)
 
 Returns a `TimeSeriesInterpolation` that wraps a `FieldTimeSeries`
 and interpolates to the current `clock.time` when indexed.
@@ -41,7 +40,7 @@ function TimeSeriesInterpolation(time_series::FTS, grid::G; clock::C) where {FTS
 end
 
 # Use indices from the underlying FieldTimeSeries
-@inline indices(f::TimeSeriesInterpolation) = indices(f.time_series)
+@inline Fields.indices(f::TimeSeriesInterpolation) = indices(f.time_series)
 
 # Override size to account for reduced indices
 @inline Base.size(f::TimeSeriesInterpolation) = grid_size(f.grid, location(f), indices(f))
@@ -67,7 +66,7 @@ struct GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, FTS, TT, I, T} <: AbstractO
     indices :: I        # Spatial indices from the original FieldTimeSeries
 end
 
-@inline indices(f::GPUAdaptedTimeSeriesInterpolation) = f.indices
+@inline Fields.indices(f::GPUAdaptedTimeSeriesInterpolation) = f.indices
 
 @inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.time)]
@@ -83,7 +82,7 @@ end
 ##### on_architecture
 #####
 
-function on_architecture(to, f::TimeSeriesInterpolation)
+function Architectures.on_architecture(to, f::TimeSeriesInterpolation)
     return TimeSeriesInterpolation(on_architecture(to, f.time_series),
                                    on_architecture(to, f.grid);
                                    clock = on_architecture(to, f.clock))

@@ -41,8 +41,9 @@ export
     cell_diffusion_timescale,
     closure_required_tracers
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
 using Oceananigans.Architectures: Architectures, on_architecture
@@ -59,14 +60,13 @@ using Oceananigans.Operators: Operators,
     ζ₃ᶠᶠᶜ,
     ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
     ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ, ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
-    ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶜᶜᶠ,
-    ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶜᶜᶠ,
+    ∂x_zᶠᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ,
+    ∂y_zᶜᶠᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶠᶜᶠ,
     ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
-using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers
-
+using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tuple
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, bottom_height
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
@@ -92,6 +92,12 @@ compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs..
 import Oceananigans.TimeSteppers: step_closure_prognostics!
 step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+
+# Reset closure fields that carry state between time steps
+import Oceananigans.TimeSteppers: reset!
+reset!(K, closure::AbstractTurbulenceClosure) = nothing
+reset!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}) = nothing
+reset!(K, ::Nothing) = nothing
 
 # Initialize closure fields when simulation starts (after velocities are properly set)
 initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
@@ -182,7 +188,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_bottom(i, j, ibg::AGFBIBG) = bottom_height(i, j, ibg)
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
