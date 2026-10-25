@@ -18,6 +18,18 @@ using Distances: haversine
 @inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ) =
     @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[2]
 
+@inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[1]
+
+@inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ, wₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[2]
+
+@inline extrinsic_vector_x_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[1]
+
+@inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ, wᵢ) =
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ, wᵢ)[2]
+
 function pointwise_approximate_equal(field1, field2)
     CPU_field1 = on_architecture(CPU(), field1)
     CPU_field2 = on_architecture(CPU(), field2)
@@ -32,13 +44,15 @@ function test_vector_rotation(grid)
     y₁ = CenterField(grid)
     x₂ = CenterField(grid)
     y₂ = CenterField(grid)
+    z₁ = CenterField(grid)
 
     set!(x₁, (x, y, z) -> rand())
     set!(y₁, (x, y, z) -> rand())
     set!(x₂, (x, y, z) -> rand())
     set!(y₂, (x, y, z) -> rand())
+    set!(z₁, (x, y, z) -> rand())
 
-    fill_halo_regions!((x₁, y₁, x₂, y₂))
+    fill_halo_regions!((x₁, y₁, x₂, y₂, z₁))
 
     d = compute!(Field(x₁ * x₂ + y₁ * y₂))
     c = compute!(Field(x₁ * y₂ - y₁ * x₂))
@@ -75,6 +89,22 @@ function test_vector_rotation(grid)
     @apply_regionally pointwise_approximate_equal(xₑ₁, x₁)
     @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
     @apply_regionally pointwise_approximate_equal(yₑ₂, y₂)
+
+    @info "  Testing that the 3-component methods rotate the horizontal pair identically on $(summary(grid))"
+    xᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁, z₁)
+    yᵢ₃ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁, z₁)
+    xₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, xᵢ₁, yᵢ₁, z₁)
+    yₑ₃ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, xᵢ₁, yᵢ₁, z₁)
+
+    xᵢ₃ = compute!(Field(xᵢ₃))
+    yᵢ₃ = compute!(Field(yᵢ₃))
+    xₑ₃ = compute!(Field(xₑ₃))
+    yₑ₃ = compute!(Field(yₑ₃))
+
+    @apply_regionally pointwise_approximate_equal(xᵢ₃, xᵢ₁)
+    @apply_regionally pointwise_approximate_equal(yᵢ₃, yᵢ₁)
+    @apply_regionally pointwise_approximate_equal(xₑ₃, xₑ₁)
+    @apply_regionally pointwise_approximate_equal(yₑ₃, yₑ₁)
 end
 
 @testset "Vector rotation" begin

@@ -346,6 +346,35 @@ show(round(conformal_conic_scale_factor(map, 60); digits=12))
     return abs(n * F * (one(FT) + T^2) / (convert(FT, 2) * T^(n + one(FT))))
 end
 
+"""
+$(SIGNATURES)
+
+Return the angle, in radians, between the projection's `y`-axis and north at longitude `λ`, in degrees.
+This is the convergence angle `n (λ - λ₀)`, with `n` the cone constant and `λ₀` the central longitude,
+and it is the value that [`rotation_angle`](@ref) approximates at the cells of a `ConformalConicGrid`.
+Unlike `rotation_angle`, it does not require a grid cell, so it is defined at any longitude.
+
+```jldoctest
+using Oceananigans
+
+map = ConformalConic(Float64;
+                     standard_parallels = (30, 60),
+                     central_longitude = -105,
+                     latitude_of_origin = 40,
+                     x₁ = -1000, y₁ = -1000,
+                     Δx = 100, Δy = 100)
+
+show(round(conformal_conic_rotation_angle(map, -105); digits=12))
+
+# output
+0.0
+```
+"""
+@inline function conformal_conic_rotation_angle(map::ConformalConic{FT}, λ) where FT
+    λ = degrees_to_radians(FT, λ)
+    return map.cone_constant * conformal_conic_wrap_to_π(λ - map.central_longitude)
+end
+
 @inline function conformal_conic_xnode(i, ::Center, map::ConformalConic{FT}) where FT
     return map.x₁ + (convert(FT, i) - convert(FT, 1//2)) * map.Δx
 end
