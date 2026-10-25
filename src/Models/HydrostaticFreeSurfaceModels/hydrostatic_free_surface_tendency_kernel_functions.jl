@@ -149,6 +149,7 @@ where `c = C[tracer_index]`.
                    zero(grid)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
+             + immersed_top_advective_form_correctionᶜᶜᶜ(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, closure_fields, val_tracer_index, clock, model_fields)
              + bgc_tendency
