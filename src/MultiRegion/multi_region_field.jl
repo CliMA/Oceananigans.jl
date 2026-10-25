@@ -27,6 +27,7 @@ Fields.axes_indices(f::AbstractField{<:Any, <:Any, <:Any, <:MultiRegionGrids}) =
 Base.:(==)(a::MultiRegionField, b::MultiRegionField) = all(construct_regionally(==, a, b).regional_objects)
 @inline Utils.isregional(f::GriddedMultiRegionField) = true
 @inline Utils.regions(f::GriddedMultiRegionField) = regions(f.grid)
+@inline Utils.static_regions(f::GriddedMultiRegionField) = Utils.static_regions(f.grid)
 
 @inline Utils.getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),

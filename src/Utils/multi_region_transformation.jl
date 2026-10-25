@@ -125,10 +125,18 @@ end
     return nothing
 end
 
+# A region count known from the type (the default `1:N` regions of a tuple of N regional objects) lets the region loop
+# unroll with no dynamic dispatch at its entry; anything else falls back to `regions`.
+@inline static_regions(a) = regions(a)
+@inline static_regions(mo::MultiRegionObject{<:NTuple{N, Any}}) where N = Val(N)
+
+@inline apply_in_regions!(regional_func!, ::Val{N}, args, kwargs) where N =
+    apply_in_regions!(regional_func!, Val(1), Val(N), args, kwargs)
+
 @inline function multi_region_apply!(regional_func!, args...; kwargs...)
     regional_argument = first_regional(args)
     regional_argument = isnothing(regional_argument) ? first_regional(Tuple(values(kwargs))) : regional_argument
-    apply_in_regions!(regional_func!, regions(regional_argument), args, values(kwargs))
+    apply_in_regions!(regional_func!, static_regions(regional_argument), args, values(kwargs))
     return nothing
 end
 
@@ -136,7 +144,7 @@ end
 # we also `getregion` for the function. Since the function itself is multiregional we do not
 # need to check if the call is single region or not.
 @inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
-    apply_in_regions!(regional_func!, regions(regional_func!), args, values(kwargs))
+    apply_in_regions!(regional_func!, static_regions(regional_func!), args, values(kwargs))
     return nothing
 end
 

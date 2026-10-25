@@ -209,10 +209,20 @@ end
 accumulate!(a::Accumulator, x) = (a.total[] += x; nothing)
 apply_and_measure(a, regional) = @allocated apply_regionally!(accumulate!, a, regional)
 
+accumulate_panel!(a::Accumulator, panel) = (a.total[] += size(panel, 1); nothing)
+apply_to_panels_and_measure(a, grid) = @allocated apply_regionally!(accumulate_panel!, a, grid)
+
 @testset "apply_regionally! over heterogeneous regions is type-stable" begin
     regional = MultiRegionObject((1, 2.0, Int32(3), 4.0f0, 5, 6.0))
     a = Accumulator(Ref(0.0))
     apply_and_measure(a, regional)
     @test apply_and_measure(a, regional) == 0
     @test a.total[] == 2 * 21
+
+    # conformal cubed-sphere panels have different rotation types
+    @test !allequal(map(typeof, grid.region_grids.regional_objects))
+    p = Accumulator(Ref(0.0))
+    apply_to_panels_and_measure(p, grid)
+    @test apply_to_panels_and_measure(p, grid) == 0
+    @test p.total[] == 2 * 6N
 end

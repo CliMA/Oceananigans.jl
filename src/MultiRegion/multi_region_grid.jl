@@ -30,6 +30,7 @@ const MultiRegionGrids{FT, TX, TY, TZ} = Union{MultiRegionGrid{FT, TX, TY, TZ}, 
 
 @inline Utils.isregional(mrg::MultiRegionGrids) = true
 @inline Utils.regions(mrg::MultiRegionGrids) = 1:length(mrg.region_grids)
+@inline Utils.static_regions(mrg::MultiRegionGrid) = Utils.static_regions(getfield(mrg, :region_grids))
 
 @inline  Utils.getregion(mrg::MultiRegionGrid, r) = _getregion(mrg.region_grids, r)
 @inline Utils._getregion(mrg::MultiRegionGrid, r) =  getregion(mrg.region_grids, r)
