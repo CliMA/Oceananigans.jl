@@ -13,6 +13,8 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
+export SphericalGrid, ZRegSphericalGrid, AnySphericalShellGrid, ThinShell, DeepShell, AbstractShell
+export EquiangularGnomonicMapping, EquiangularGnomonicPanelGrid, isorthogonal, validate_orthogonal_grid
 export MutableVerticalDiscretization
 export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
@@ -177,7 +179,9 @@ include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
+include("spherical_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
+include("spherical_grid_constructors.jl")
 include("latitude_longitude_grid.jl")
 include("coordinate_transformations.jl")
 

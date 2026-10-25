@@ -400,42 +400,42 @@ end
 
 ### Curvilinear spacings
 
-@inline Δλᶜᶜᵃ(i, j, k, grid::OSSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
-@inline Δλᶠᶜᵃ(i, j, k, grid::OSSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
-@inline Δλᶜᶠᵃ(i, j, k, grid::OSSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
-@inline Δλᶠᶠᵃ(i, j, k, grid::OSSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
+@inline Δλᶜᶜᵃ(i, j, k, grid::ASSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
+@inline Δλᶠᶜᵃ(i, j, k, grid::ASSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
+@inline Δλᶜᶠᵃ(i, j, k, grid::ASSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
+@inline Δλᶠᶠᵃ(i, j, k, grid::ASSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
 
-@inline Δφᶜᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
-@inline Δφᶠᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
-@inline Δφᶜᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
-@inline Δφᶠᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
+@inline Δφᶜᶜᵃ(i, j, k, grid::ASSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
+@inline Δφᶠᶜᵃ(i, j, k, grid::ASSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
+@inline Δφᶜᶠᵃ(i, j, k, grid::ASSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
+@inline Δφᶠᶠᵃ(i, j, k, grid::ASSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
 
 ### Linear spacings
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
 
-@inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
+@inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
-@inline Δxᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶠᶜᵃ(i, j, 1, grid) for _ in k))
+@inline Δxᶠᶜᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δxᶠᶜᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
-@inline Δxᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶜᶠᵃ(i, j, 1, grid) for _ in k))
+@inline Δxᶜᶠᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δxᶜᶠᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δxᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
-@inline Δxᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶠᶠᵃ(i, j, 1, grid) for _ in k))
+@inline Δxᶠᶠᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δxᶠᶠᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶜᵃ[i, j]
-@inline Δyᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶜᶜᵃ(i, j, 1, grid) for _ in k))
+@inline Δyᶜᶜᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δyᶜᶜᵃ[i, j]
+@inline Δyᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δyᶜᶜᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
-@inline Δyᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶠᶜᵃ(i, j, 1, grid) for _ in k))
+@inline Δyᶠᶜᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
+@inline Δyᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δyᶠᶜᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
-@inline Δyᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶜᶠᵃ(i, j, 1, grid) for _ in k))
+@inline Δyᶜᶠᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
+@inline Δyᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δyᶜᶠᵃ(i, j, 1, grid) for _ in k))
 
-@inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
-@inline Δyᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶠᶠᵃ(i, j, 1, grid) for _ in k))
+@inline Δyᶠᶠᵃ(i, j, k, grid::ASSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
+@inline Δyᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::ASSG) = Base.stack(collect(Δyᶠᶠᵃ(i, j, 1, grid) for _ in k))
 
 #####
 #####
@@ -508,7 +508,7 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
     z_area_2D = Symbol(:Az, LX, LY, :ᵃ)
 
     @eval begin
-        @inline $z_area_2D(i, j, k, grid::OSSG) = @inbounds grid.$z_area_2D[i, j]
+        @inline $z_area_2D(i, j, k, grid::ASSG) = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLG)  = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLGX) = @inbounds grid.$z_area_2D[j]
     end

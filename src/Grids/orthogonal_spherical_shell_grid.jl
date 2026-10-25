@@ -91,8 +91,12 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
-@inline x_domain(grid::OSSG) = extrema(parent(grid.λᶠᶠᵃ))
-@inline y_domain(grid::OSSG) = extrema(parent(grid.φᶠᶠᵃ))
+# Grids that share the horizontal coordinate, length and area arrays of `OrthogonalSphericalShellGrid`
+const AnySphericalShellGrid = Union{OrthogonalSphericalShellGrid, SphericalGrid}
+const ASSG = AnySphericalShellGrid
+
+@inline x_domain(grid::ASSG) = extrema(parent(grid.λᶠᶠᵃ))
+@inline y_domain(grid::ASSG) = extrema(parent(grid.φᶠᶠᵃ))
 
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
@@ -414,7 +418,7 @@ $(TYPEDSIGNATURES)
 Return the latitude-longitude coordinates of the center of the shell `(λ_center, φ_center)` and also the longitudinal
 and latitudinal extend of the shell `(extent_λ, extent_φ)`.
 """
-function get_center_and_extents_of_shell(grid::OSSG)
+function get_center_and_extents_of_shell(grid::ASSG)
     Nx, Ny, _ = size(grid)
 
     # find the indices that correspond to the center of the shell
@@ -454,7 +458,7 @@ function get_center_and_extents_of_shell(grid::OSSG)
     return (λ_center, φ_center), (extent_λ, extent_φ)
 end
 
-function center_line_summary(grid::OrthogonalSphericalShellGrid)
+function center_line_summary(grid::ASSG)
     (λ_center, φ_center), _ = get_center_and_extents_of_shell(grid)
     λ_center = round(λ_center, digits=4)
     φ_center = round(φ_center, digits=4)
@@ -508,7 +512,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
+function nodes(grid::ASSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, indices=(Colon(), Colon(), Colon()))
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1:2])
     φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[1:2])
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos, indices = indices[3])
@@ -524,74 +528,74 @@ function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false, in
     return (λ, φ, z)
 end
 
-@inline λnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+@inline λnodes(grid::ASSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.λᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+@inline λnodes(grid::ASSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.λᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+@inline λnodes(grid::ASSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.λᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline λnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+@inline λnodes(grid::ASSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.λᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+@inline φnodes(grid::ASSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+@inline φnodes(grid::ASSG, ℓx::F, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶠᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
+@inline φnodes(grid::ASSG, ℓx::C, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶜᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline φnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
+@inline φnodes(grid::ASSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
-@inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) =
+@inline xnodes(grid::ASSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) =
     grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos, indices)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos, indices))
 
-@inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos, indices))
+@inline ynodes(grid::ASSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos, indices))
 
 # convenience
-@inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = λnodes(grid, ℓx, ℓy; with_halos, indices)
-@inline φnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = φnodes(grid, ℓx, ℓy; with_halos, indices)
-@inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = xnodes(grid, ℓx, ℓy; with_halos, indices)
-@inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = ynodes(grid, ℓx, ℓy; with_halos, indices)
+@inline λnodes(grid::ASSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = λnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline φnodes(grid::ASSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = φnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline xnodes(grid::ASSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = xnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline ynodes(grid::ASSG, ℓx, ℓy, ℓz; with_halos=false, indices=(Colon(), Colon())) = ynodes(grid, ℓx, ℓy; with_halos, indices)
 
-@inline λnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]
-@inline λnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline λnode(i, j, grid::ASSG, ::Center, ::Center) = @inbounds grid.λᶜᶜᵃ[i, j]
+@inline λnode(i, j, grid::ASSG, ::Face  , ::Center) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline λnode(i, j, grid::ASSG, ::Center, ::Face  ) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline λnode(i, j, grid::ASSG, ::Face  , ::Face  ) = @inbounds grid.λᶠᶠᵃ[i, j]
 
-@inline φnode(i, j, grid::OSSG, ::Center, ::Center) = @inbounds grid.φᶜᶜᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Face  , ::Center) = @inbounds grid.φᶠᶜᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Center, ::Face  ) = @inbounds grid.φᶜᶠᵃ[i, j]
-@inline φnode(i, j, grid::OSSG, ::Face  , ::Face  ) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φnode(i, j, grid::ASSG, ::Center, ::Center) = @inbounds grid.φᶜᶜᵃ[i, j]
+@inline φnode(i, j, grid::ASSG, ::Face  , ::Center) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline φnode(i, j, grid::ASSG, ::Center, ::Face  ) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline φnode(i, j, grid::ASSG, ::Face  , ::Face  ) = @inbounds grid.φᶠᶠᵃ[i, j]
 
-@inline xnode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, j, grid, ℓx, ℓy)) * hack_cosd((φnode(i, j, grid, ℓx, ℓy)))
-@inline ynode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(φnode(i, j, grid, ℓx, ℓy))
+@inline xnode(i, j, grid::ASSG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, j, grid, ℓx, ℓy)) * hack_cosd((φnode(i, j, grid, ℓx, ℓy)))
+@inline ynode(i, j, grid::ASSG, ℓx, ℓy) = grid.radius * deg2rad(φnode(i, j, grid, ℓx, ℓy))
 
 # convenience
-@inline λnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
-@inline φnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
-@inline xnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
-@inline ynode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
+@inline λnode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
+@inline φnode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
+@inline xnode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
+@inline ynode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
 
 # Definitions for node
-@inline ξnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
-@inline ηnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
+@inline ξnode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
+@inline ηnode(i, j, k, grid::ASSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
 
-ξname(::OSSG) = :λ
-ηname(::OSSG) = :φ
-rname(::OSSG) = :z
+ξname(::ASSG) = :λ
+ηname(::ASSG) = :φ
+rname(::ASSG) = :z
 
 #####
 ##### Grid spacings in x, y, z (in meters)
 #####
 
-@inline xspacings(grid::OSSG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
-@inline yspacings(grid::OSSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline xspacings(grid::ASSG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline yspacings(grid::ASSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
 
-@inline λspacings(grid::OSSG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
-@inline φspacings(grid::OSSG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)
+@inline λspacings(grid::ASSG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
+@inline φspacings(grid::ASSG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)

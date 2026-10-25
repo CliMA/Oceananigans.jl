@@ -3,6 +3,7 @@ module MultiRegion
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
+export SphericalCubedSphereGrid, EquiangularCubedSphereGrid
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
 using Adapt: Adapt, adapt
@@ -61,6 +62,7 @@ include("multi_region_grid.jl")
 include("cubed_sphere_grid.jl")
 include("cubed_sphere_field.jl")
 include("cubed_sphere_boundary_conditions.jl")
+include("spherical_cubed_sphere_grid.jl")
 include("yin_yang_grid.jl")
 include("yin_yang_halo_reconstruction.jl")
 include("yin_yang_remapping.jl")

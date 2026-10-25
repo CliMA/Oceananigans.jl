@@ -75,3 +75,11 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rot
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v, w) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
 @inline Operators.extrinsic_vector(i, j, k, ibg::IBG, u, v, w) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
 @inline Operators.rotation_angle(i, j, ibg::IBG, ℓx, ℓy) = rotation_angle(i, j, ibg.underlying_grid, ℓx, ℓy)
+
+# Coordinate-line angles and orthogonality
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), trig in (:cosα, :sinα)
+    angle = Symbol(trig, LX, LY, :ᵃ)
+    @eval @inline Operators.$angle(i, j, k, ibg::IBG) = Operators.$angle(i, j, k, ibg.underlying_grid)
+end
+
+Grids.isorthogonal(ibg::IBG) = Grids.isorthogonal(ibg.underlying_grid)

@@ -7,7 +7,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center, validate_orthogonal_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.Advection: materialize_advection
@@ -159,6 +159,7 @@ function ShallowWaterModel(grid;
 
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+    validate_orthogonal_grid(grid, "ShallowWaterModel")
 
     prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()

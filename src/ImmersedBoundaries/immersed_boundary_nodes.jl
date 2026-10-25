@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Grids, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, RectilinearGrid,
+using Oceananigans.Grids: Grids, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, AnySphericalShellGrid, RectilinearGrid,
     cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
     xspacings, yspacings, zspacings
 
@@ -75,7 +75,7 @@ rname(ibg::IBG) = rname(ibg.underlying_grid)
 
 const RGIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:RectilinearGrid}
 const LLIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:LatitudeLongitudeGrid}
-const OSIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:OrthogonalSphericalShellGrid}
+const OSIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:AnySphericalShellGrid}
 
 @inline Grids.xspacings(grid::RGIBG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
 @inline Grids.yspacings(grid::RGIBG, ℓy) = yspacings(grid, nothing, ℓy, nothing)

@@ -7,7 +7,7 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, CenterField, ZFaceField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, architecture
+using Oceananigans.Grids: topology, architecture, validate_orthogonal_grid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_model_halo, validate_tracer_advection, materialize_tracers, timestepper_name
 using Oceananigans.Solvers: FFTBasedPoissonSolver
@@ -260,6 +260,7 @@ function materialize_nonhydrostatic_model(grid, ::Val{tracer_names}, timestepper
 
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, values(advection)..., closure)
+    validate_orthogonal_grid(grid, "NonhydrostaticModel")
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
