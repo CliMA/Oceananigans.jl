@@ -130,6 +130,12 @@ end
             Oceananigans.StokesDrifts.compute_stokes_drift!(sd_dyn, grid)
             @test maximum(abs, interior(sd_dyn.wˢ)) > 1e-6
 
+            # The vortex force reads the halos of wˢ near the boundaries
+            wˢ_cpu = on_architecture(CPU(), sd_dyn.wˢ)
+            Nx, Ny = size(grid, 1), size(grid, 2)
+            @test wˢ_cpu.data[0, 1:Ny, :] == wˢ_cpu.data[Nx, 1:Ny, :]
+            @test wˢ_cpu.data[1:Nx, 0, :] == wˢ_cpu.data[1:Nx, Ny, :]
+
             # compute_stokes_drift! is a no-op for function-mode StokesDrift.
             @test Oceananigans.StokesDrifts.compute_stokes_drift!(StokesDrift(), grid) === nothing
         end

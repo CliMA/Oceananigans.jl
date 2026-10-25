@@ -16,6 +16,7 @@ export
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
 using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶜᶠ,
@@ -587,6 +588,9 @@ end
 end
 
 function compute_stokes_drift!(sw::FieldStokesDrift, grid)
+    # The divergence at i = Nx and j = Ny, and the vortex force near the boundaries, read the halos
+    fill_halo_regions!((sw.uˢ, sw.vˢ, sw.∂t_uˢ, sw.∂t_vˢ))
+
     arch = architecture(grid)
     Nx, Ny, _ = size(grid)
     params = KernelParameters(1:Nx, 1:Ny)
@@ -594,6 +598,9 @@ function compute_stokes_drift!(sw::FieldStokesDrift, grid)
             sw.wˢ, sw.uˢ, sw.vˢ, grid)
     launch!(arch, grid, params, _compute_wˢ_from_continuity!,
             sw.∂t_wˢ, sw.∂t_uˢ, sw.∂t_vˢ, grid)
+
+    fill_halo_regions!((sw.wˢ, sw.∂t_wˢ))
+
     return nothing
 end
 
