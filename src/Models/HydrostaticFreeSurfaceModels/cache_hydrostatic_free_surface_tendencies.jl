@@ -98,23 +98,22 @@ properly handle mutable vertical coordinates (z-star). Velocities and free surfa
 are cached directly without modification.
 """
 function cache_current_fields!(model::HydrostaticFreeSurfaceModel)
-    previous_fields = model.timestepper.Ψ⁻
-    model_fields = prognostic_fields(model)
-    cache_current_fields!(previous_fields, model_fields, model, Val(keys(model_fields)))
+    cache_current_fields!(model, Val(keys(prognostic_fields(model))))
     return nothing
 end
 
-@inline cache_current_fields!(previous_fields, model_fields, model, ::Val{()}) = nothing
+@inline cache_current_fields!(model, ::Val{()}) = nothing
 
-@inline function cache_current_fields!(previous_fields, model_fields, model, ::Val{names}) where names
-    name = first(names)
-    cache_current_field!(previous_fields[name], model_fields[name], Val(name), model)
-    cache_current_fields!(previous_fields, model_fields, model, Val(Base.tail(names)))
+@inline function cache_current_fields!(model, ::Val{names}) where names
+    cache_current_field!(model, Val(first(names)))
+    cache_current_fields!(model, Val(Base.tail(names)))
     return nothing
 end
 
-@inline function cache_current_field!(Ψ⁻, Ψⁿ, ::Val{name}, model) where name
+@inline function cache_current_field!(model, ::Val{name}) where name
     grid = model.grid
+    Ψ⁻ = model.timestepper.Ψ⁻[name]
+    Ψⁿ = prognostic_fields(model)[name]
     if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
         launch!(architecture(grid), grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
     else # Velocities and free surface are stored without the grid scaling

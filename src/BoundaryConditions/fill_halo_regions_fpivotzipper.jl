@@ -34,7 +34,7 @@ Ny - 1 (center) ─▶  u₅    c₅     u₆    c₆     u₇    c₇     u₈ 
                                                          (face) (center)
 ```
 
-Note that for the `RightFaceFolded` topology used here,
+Note that for the `FaceFolded` north side used here,
 the fold is located along the y-direction faces at `j = Ny+1` (i.e., the fold
 is exactly on the northern boundary of the grid). The boundary condition
 fills the halo regions by mirroring interior values across the fold.

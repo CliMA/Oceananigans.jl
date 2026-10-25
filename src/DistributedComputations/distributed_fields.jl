@@ -1,5 +1,5 @@
 using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, instantiated_location
+using Oceananigans.Fields: Fields, validate_field_data, indices, validate_boundary_conditions, instantiated_location
 using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 using GPUArraysCore: @allowscalar
 
@@ -10,14 +10,20 @@ using Oceananigans.Fields: ReducedAbstractField,
                            filltype,
                            reduced_dimensions,
                            reduced_location
-using Oceananigans.Fields: condition_operand, conditional_length
+using Oceananigans.Fields: condition_operand, conditional_length, local_dot!, reduction_operand
+using Oceananigans.ImmersedBoundaries: NotImmersed
 using LinearAlgebra: dot, norm
 using Statistics: mean
 
-import Oceananigans.Fields: Field, set!
+import Oceananigans.Fields: Field, set!, conditional_length
+import Oceananigans.Solvers: reduce_partial_sums!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import LinearAlgebra: norm, dot
+import LinearAlgebra: norm
 import Statistics: mean
+
+const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
+const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
+const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
@@ -31,10 +37,6 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global
 
     return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
-
-const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
-const DistributedFieldTuple    = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedAbstractField = AbstractField{<:Any, <:Any, <:Any, <:DistributedGrid}
 
 global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
@@ -92,21 +94,8 @@ $(TYPEDSIGNATURES)
 complete the halo passing of `field` among processors.
 """
 function synchronize_communication!(field::DistributedField)
-    arch = architecture(field.grid)
-
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
-
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
-
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
-    end
-
+    wait_for_messages!(field)
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
     return nothing
 end
 
@@ -160,8 +149,7 @@ function maybe_all_reduce!(op, f::ReducedAbstractField)
     reduced_dims   = reduced_dimensions(f)
     partition_dims = partition_dimensions(f)
 
-    arch = architecture(f)
-    sync_device!(arch)
+    sync_device!(architecture(f))
 
     if any([dim ∈ partition_dims for dim in reduced_dims])
         all_reduce!(op, parent(f), architecture(f))
@@ -189,7 +177,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             Base.$(reduction!)(identity,
                                interior(r),
-                               operand;
+                               reduction_operand(operand);
                                kwargs...)
 
             return maybe_all_reduce!($(all_reduce_op), r)
@@ -203,7 +191,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
 
             Base.$(reduction!)(identity,
                                interior(r),
-                               condition_operand(a, condition, mask);
+                               reduction_operand(condition_operand(a, condition, mask));
                                kwargs...)
 
             return maybe_all_reduce!($(all_reduce_op), r)
@@ -221,7 +209,7 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), reduction_operand(conditioned_c), init=false)
 
             maybe_all_reduce!($(all_reduce_op), r)
 
@@ -234,24 +222,40 @@ for (reduction, all_reduce_op) in zip((:sum, :maximum, :minimum, :all, :any, :pr
     end
 end
 
+# `conditional_length` normalizes `mean`. For a bare field the generic method returns
+# `length(c)`, which on a distributed grid is the per-rank local count, whereas the paired
+# `sum` is globally reduced. Reduce the length too so `mean = sum / conditional_length`
+# divides by the global count instead of the local one.
+@inline conditional_length(c::DistributedField) = all_reduce(+, length(c), architecture(c))
+
+# A field on a distributed immersed grid matches both `DistributedField` and the immersed
+# `AbstractField{…, <:ImmersedBoundaryGrid}` method; defer to the immersed definition, which
+# excludes inactive cells and is already globally reduced through the distributed `sum`.
+@inline conditional_length(c::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedImmersedBoundaryGrid}) =
+    conditional_length(condition_operand(identity, c, NotImmersed(), 0))
+
 # Distributed norm
-@inline function norm(u::DistributedField; condition=nothing)
+@inline function norm(u::DistributedAbstractField; condition=nothing)
     n² = dot(u, u; condition)
     return sqrt(n²)
 end
 
-# Distributed dot product
-@inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
-    cu = condition_operand(u, condition, 0)
-    cv = condition_operand(v, condition, 0)
+# The column sums of the fused conjugate-gradient iteration: each rank reduces
+# its own, then the ranks' sums are added on the host and copied back into `sums`
+function reduce_partial_sums!(sums, partial_sums, arch::Distributed)
+    reduce_partial_sums!(sums, partial_sums, child_architecture(arch))
+    host_sums = Array(sums)
+    all_reduce!(+, host_sums, arch)
+    return copyto!(sums, host_sums)
+end
 
-    B = cu * cv # Binary operation
-    r = zeros(u.grid, 1)
-
-    Base.mapreducedim!(identity, +, r, B)
+# Distributed dot product: the local dot products are summed across ranks on the host,
+# so the result is copied back into `r`. `LinearAlgebra.dot` is built on `dot!`.
+function Fields.dot!(r, u::DistributedAbstractField, v::DistributedAbstractField; condition=nothing)
+    local_dot!(r, u, v; condition)
     dot_local = @allowscalar r[1]
     arch = architecture(u)
-    return all_reduce(+, dot_local, arch)
+    return fill!(r, all_reduce(+, dot_local, arch))
 end
 
 @inline function _mean(f, c::DistributedAbstractField, ::Colon; condition=nothing, mask=0)

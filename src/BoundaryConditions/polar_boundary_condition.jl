@@ -54,28 +54,7 @@ function update_pole_value!(bc::PolarValue, c, grid, loc)
     return nothing
 end
 
-const SouthPolarBC = Tuple{<:PolarBoundaryCondition, <:BoundaryCondition}
-const NorthPolarBC = Tuple{<:BoundaryCondition, <:PolarBoundaryCondition}
-const SouthAndNorthPolarBC = Tuple{<:PolarBoundaryCondition, <:PolarBoundaryCondition}
-
-# fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
-function fill_halo_event!(c, kernel!, bc::PolarBoundaryCondition, loc, grid, args...; kwargs...)
-    update_pole_value!(bc.condition, c, grid, loc)
-    return kernel!(c, bc, loc, grid, Tuple(args))
-end
-
-function fill_halo_event!(c, kernel!, bcs::SouthPolarBC, loc, grid, args...; kwargs...)
-    update_pole_value!(bcs[1].condition, c, grid, loc)
-    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
-end
-
-function fill_halo_event!(c, kernel!, bcs::NorthPolarBC, loc, grid, args...; kwargs...)
-    update_pole_value!(bcs[2].condition, c, grid, loc)
-    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
-end
-
-function fill_halo_event!(c, kernel!, bcs::SouthAndNorthPolarBC, loc, grid, args...; kwargs...)
-    update_pole_value!(bcs[1].condition, c, grid, loc)
-    update_pole_value!(bcs[2].condition, c, grid, loc)
-    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
-end
+# The pole value is refreshed before every fill, also when normal-flow halos are skipped
+@inline fills_halo(::PolarValueBoundaryCondition, fill_normal_flow_bcs) = true
+@inline fills_halo(::PolarNormalFlowBoundaryCondition, fill_normal_flow_bcs) = true
+@inline prepare_halo_fill!(bc::PolarBoundaryCondition, c, grid, loc) = update_pole_value!(bc.condition, c, grid, loc)

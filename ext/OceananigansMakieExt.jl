@@ -4,11 +4,12 @@ export geo_surface!, geo_surface, spherical_coordinates
 
 using Oceananigans
 using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
-                          topology, xnode, ynode, znode, λnodes, φnodes
+                          topology, xnode, ynode, znode, λnode, φnode, λnodes, φnodes
 using Oceananigans.Fields: AbstractField, location, interior
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.MultiRegion: YinYangField, owned_weights
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
 
@@ -134,7 +135,7 @@ grids) with NaNs;
 """
 function make_plottable_array(f)
     compute!(f)
-    mask_immersed_field!(f, NaN)
+    mask_immersed_field!(f, convert(eltype(f), NaN))
 
     Nx, Ny, Nz = size(f)
 
@@ -399,12 +400,12 @@ ax = Axis3(fig[1, 1]; aspect=:data)
 plt = geo_surface!(ax, T)
 
 # output
-:Plot
+Surface{Tuple{Matrix{Float64}, Matrix{Float64}, Matrix{Float32}}}
 ```
 """
 function geo_surface!(ax, f::Field; kwargs...)
     compute!(f)
-    mask_immersed_field!(f, NaN)
+    mask_immersed_field!(f, convert(eltype(f), NaN))
 
     fi = make_plottable_array(f)
     x, y, z = spherical_coordinates(f)
@@ -468,6 +469,41 @@ const SphericalGrid = Union{LatitudeLongitudeGrid,
 const SphericalField = Field{<:Any, <:Any, <:Any, <:Any, <:SphericalGrid}
 
 """
+    surface!(ax::Axis, f::OSSGField; kwargs...)
+
+Plot a horizontal field on an `OrthogonalSphericalShellGrid` (including a
+`TripolarGrid`) in longitude–latitude coordinates. The field must have a
+single vertical index. Coordinates and colors are transferred to the CPU
+automatically, and immersed cells are masked with NaNs.
+"""
+function surface!(ax::Axis, f::OSSGField; kwargs...)
+    λ, φ, z = longitude_latitude_coordinates(f)
+    colors = make_plottable_array(f)
+    return surface!(ax, λ, φ, z; color=colors, shading=NoShading, kwargs...)
+end
+
+function longitude_latitude_coordinates(f::OSSGField)
+    size(f, 3) == 1 || throw(ArgumentError("Longitude–latitude surface plots require a single vertical index."))
+    λ, φ, _ = nodes(f)
+    λ_cpu = on_architecture(CPU(), λ)
+    φ_cpu = on_architecture(CPU(), φ)
+    return λ_cpu, φ_cpu, zero.(λ_cpu)
+end
+
+"""
+    surface!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+
+Plot an observable horizontal field in longitude–latitude coordinates. Coordinates
+are taken from the initial field; colors and immersed masks update when the
+observable changes. All frames must use the same grid and horizontal location.
+"""
+function surface!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+    λ, φ, z = longitude_latitude_coordinates(f_obs[])
+    colors = @lift make_plottable_array($f_obs)
+    return surface!(ax, λ, φ, z; color=colors, shading=NoShading, kwargs...)
+end
+
+"""
     surface!(ax::Axis3, f::SphericalField; kwargs...)
 
 Plot a spherical field `f` on a 3D sphere in `Axis3`.
@@ -494,7 +530,7 @@ set!(T, (λ, φ, z) -> cosd(φ) * sind(λ))
 fig = Figure()
 ax = Axis3(fig[1, 1]; aspect=:data)
 plt = surface!(ax, T; colormap=:viridis)
-typeof(plt).name.name
+nameof(typeof(plt))
 
 # output
 :Plot
@@ -522,7 +558,7 @@ function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
     color_obs = @lift begin
         f = $f_obs
         compute!(f)
-        mask_immersed_field!(f, NaN)
+        mask_immersed_field!(f, convert(eltype(f), NaN))
         fi = make_plottable_array(f)
         mask_immersed_field!(f)
         fi
@@ -571,13 +607,25 @@ function quad_vertices(keep, Np, Nq, coords::Vararg{AbstractMatrix, D}) where D
     return verts
 end
 
-function build_quadmesh!(ax, coords, vals; drop_nan_cells=false, kwargs...)
+# Shift the longitudes of each quad's corners to within 180° of its first corner,
+# so that cells straddling the periodic seam or the tripolar fold are not drawn across the map.
+function unwrap_longitudes!(verts)
+    for v in 1:4:length(verts), c in v+1:v+3
+        λ₀ = verts[v][1]
+        λ, φ = verts[c]
+        verts[c] = Point(λ - 360 * round((λ - λ₀) / 360), φ)
+    end
+    return verts
+end
+
+function build_quadmesh!(ax, coords, vals; drop_nan_cells=false, periodic_longitude=false, kwargs...)
     vm = vals isa Observable ? vals[] : vals
     Np, Nq = size(vm)
     all(c -> size(c) == (Np + 1, Nq + 1), coords) ||
         throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1))"))
     keep = kept_cells(vm, drop_nan_cells)
     verts = quad_vertices(keep, Np, Nq, coords...)
+    periodic_longitude && unwrap_longitudes!(verts)
     color = vals isa Observable ? map(v -> quad_colors(v, keep), vals) : quad_colors(vm, keep)
     return mesh!(ax, verts, quad_faces(length(keep)); color, shading=NoShading, kwargs...)
 end
@@ -699,6 +747,55 @@ function quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs..
     return fig, ax, quadmesh!(ax, f; kwargs...)
 end
 
+# The corners of cells centered at `Center` are the `Face` nodes 1:N+1, and vice versa
+# the corners of cells centered at `Face` are the `Center` nodes 0:N.
+corner_location(::Type{Center}) = Face()
+corner_location(::Type{Face}) = Center()
+
+corner_indices(::Type{Center}, N) = 1:N+1
+corner_indices(::Type{Face}, N) = 0:N
+
+underlying_grid(grid) = grid
+underlying_grid(grid::ImmersedBoundaryGrid) = grid.underlying_grid
+
+function longitude_latitude_corners(f::OSSGField)
+    size(f, 3) == 1 || throw(ArgumentError("Longitude–latitude quadmesh plots require a single vertical index."))
+    LX, LY, _ = location(f)
+    grid = on_architecture(CPU(), underlying_grid(f.grid))
+    ℓx, ℓy = corner_location(LX), corner_location(LY)
+    i, j = corner_indices(LX, size(f, 1)), corner_indices(LY, size(f, 2))
+    λ = λnodes(grid, ℓx, ℓy; with_halos=true)[i, j]
+    φ = φnodes(grid, ℓx, ℓy; with_halos=true)[i, j]
+    return λ, φ
+end
+
+"""
+    quadmesh!(ax::Axis, f::OSSGField; kwargs...)
+
+Plot a horizontal field on an `OrthogonalSphericalShellGrid` (including a
+`TripolarGrid`) as flat-colored cells in longitude–latitude coordinates. The field
+must have a single vertical index. Coordinates and colors are transferred to the
+CPU automatically, and immersed cells are masked with NaNs.
+"""
+function quadmesh!(ax::Axis, f::OSSGField; kwargs...)
+    λ, φ = longitude_latitude_corners(f)
+    colors = make_plottable_array(f)
+    return quadmesh!(ax, λ, φ, colors; periodic_longitude=true, kwargs...)
+end
+
+"""
+    quadmesh!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+
+Plot an observable horizontal field as flat-colored cells in longitude–latitude
+coordinates. Coordinates are taken from the initial field; colors and immersed masks
+update when the observable changes. All frames must use the same grid and location.
+"""
+function quadmesh!(ax::Axis, f_obs::Observable{<:OSSGField}; kwargs...)
+    λ, φ = longitude_latitude_corners(f_obs[])
+    colors = @lift make_plottable_array($f_obs)
+    return quadmesh!(ax, λ, φ, colors; periodic_longitude=true, kwargs...)
+end
+
 # Draw the cell-edge polylines (rows + columns) of a corner mesh — clean quad
 # edges, unlike `wireframe!` of the triangulated mesh which shows the diagonals.
 function wireframe_lines!(ax, coords...; kwargs...)
@@ -729,5 +826,129 @@ function quadmesh!(ax, grid::AbstractGrid; color=(:black, 0.6), linewidth=0.75, 
     N = size(grid)
     return wireframe_lines!(ax, physical_corners(grid, active, flat, N[active[1]], N[active[2]])...; color, linewidth, kwargs...)
 end
+
+#####
+##### Yin-Yang fields: both panels in one flat-shaded mesh on the sphere
+#####
+##### Yin draws the cells it owns, and Yang, just beneath it, the cells in which it
+##### owns any area, so that the overlap is drawn once. Both panels go into a single
+##### mesh because CairoMakie orders triangles by depth within a plot, not across plots.
+
+const yang_radius_fraction = 0.995
+
+# The cells of each panel that are drawn, from the fractions of their area that each panel owns.
+function yin_yang_drawn_cells(grid)
+    weights = owned_weights(grid)
+    yin_weights = interior(weights[1], :, :, 1)
+    yang_weights = interior(weights[2], :, :, 1)
+    return (yin = findall(≥(1/2), yin_weights), yang = findall(>(0), yang_weights))
+end
+
+function panel_quad_vertices(panel, cells, radius)
+    function corner(i, j)
+        λ = λnode(i, j, 1, panel, Face(), Face(), Center())
+        φ = φnode(i, j, 1, panel, Face(), Face(), Center())
+        return Point{3, Float32}(spherical_coordinates(λ, φ, radius))
+    end
+
+    return [corner(c[1] + di, c[2] + dj) for c in cells for (di, dj) in ((0, 0), (1, 0), (1, 1), (0, 1))]
+end
+
+function yin_yang_mesh(f::YinYangField, radius)
+    LX, LY, _ = location(f)
+    LX === Center && LY === Center ||
+        throw(ArgumentError("Yin-Yang plots require a field at (Center, Center) horizontally; got ($LX, $LY)."))
+    size(f, 3) == 1 ||
+        throw(ArgumentError("Yin-Yang plots require a single vertical index; use, e.g., view(f, :, :, k)."))
+
+    # The mesh is built on the CPU, so the grid is moved there once
+    grid = on_architecture(CPU(), underlying_grid(f.grid))
+    cells = yin_yang_drawn_cells(grid)
+
+    vertices = vcat(panel_quad_vertices(grid[1], cells.yin, radius),
+                    panel_quad_vertices(grid[2], cells.yang, yang_radius_fraction * radius))
+
+    faces = quad_faces(length(cells.yin) + length(cells.yang))
+
+    return vertices, faces, cells
+end
+
+function plottable_panel_values(panel_field)
+    mask_immersed_field!(panel_field, convert(eltype(panel_field), NaN))
+    values = Array(on_architecture(CPU(), interior(panel_field, :, :, 1)))
+    mask_immersed_field!(panel_field)
+    return values
+end
+
+function yin_yang_colors(f, cells)
+    compute!(f)
+    yin_values = plottable_panel_values(f[1])
+    yang_values = plottable_panel_values(f[2])
+    return vcat(quad_colors(yin_values, cells.yin), quad_colors(yang_values, cells.yang))
+end
+
+"""
+    quadmesh!(ax, f::YinYangField; radius=1, kwargs...)
+
+Plot a horizontal field `f` on a `YinYangGrid` (or an `ImmersedBoundaryGrid` wrapping one)
+on a sphere of `radius` in `ax`, which is usually an `Axis3`. `f` must be at `(Center, Center)`
+horizontally and have a single vertical index; a horizontal slice of a three-dimensional field
+can be plotted with `view(f, :, :, k)`.
+
+Each cell is drawn as a quadrilateral of one color between the corners of its panel, so the
+plot shows the data as the panels hold it. Yin draws the cells it owns and Yang, just beneath it,
+the cells in which it owns any area (see `owned_weights`), so the overlap of the panels is drawn
+once. Immersed cells are masked with `NaN`; use `nan_color` to color them. All other keyword
+arguments, such as `colormap` and `colorrange`, are passed to `mesh!`.
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+using CairoMakie
+
+grid = YinYangGrid(size=(48, 16, 1), z=(-1, 0))
+c = CenterField(grid)
+set!(c, (λ, φ, z) -> cosd(φ) * sind(λ))
+
+fig = Figure()
+ax = Axis3(fig[1, 1]; aspect=:data)
+plt = quadmesh!(ax, c; colormap=:balance)
+plt isa Mesh
+
+# output
+true
+```
+"""
+function quadmesh!(ax, f::YinYangField; radius=1, kwargs...)
+    vertices, faces, cells = yin_yang_mesh(f, radius)
+    colors = yin_yang_colors(f, cells)
+    return mesh!(ax, vertices, faces; color=colors, shading=NoShading, kwargs...)
+end
+
+"""
+    quadmesh!(ax, f::Observable{<:YinYangField}; radius=1, kwargs...)
+
+Plot an observable horizontal field on a `YinYangGrid` for animations. The mesh is built
+from the initial field; colors and immersed masks update when the observable changes.
+All frames must use the same grid.
+"""
+function quadmesh!(ax, f::Observable{<:YinYangField}; radius=1, kwargs...)
+    vertices, faces, cells = yin_yang_mesh(f[], radius)
+    colors = @lift yin_yang_colors($f, cells)
+    return mesh!(ax, vertices, faces; color=colors, shading=NoShading, kwargs...)
+end
+
+"""
+    geo_surface!(ax, f::YinYangField; kwargs...)
+    geo_surface!(ax, f::Observable{<:YinYangField}; kwargs...)
+
+Plot a horizontal field on a `YinYangGrid` on the unit sphere with flat-colored cells.
+See [`quadmesh!`](@ref).
+"""
+geo_surface!(ax, f::Union{YinYangField, Observable{<:YinYangField}}; kwargs...) = quadmesh!(ax, f; kwargs...)
+
+surface!(ax::Axis3, f::Union{YinYangField, Observable{<:YinYangField}}; kwargs...) = quadmesh!(ax, f; kwargs...)
 
 end # module

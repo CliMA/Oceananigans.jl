@@ -40,14 +40,26 @@ end
     end
 end
 
-const FaceExtendedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
-                              LeftConnectedRightFaceFolded,
-                              LeftConnectedRightFaceConnected}
-const SerialFoldedTopology = Union{RightCenterFolded, RightFaceFolded}
-const SlabFoldedTopology = Union{LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded}
-const PencilFoldedTopology = Union{LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+# The right side owns the face at N+1
+const FaceExtendedTopology = Sides{<:Any, <:Union{Closed, FaceFolded, FaceFoldConnected}}
+const SerialFoldedTopology = Sides{Closed, <:Union{CenterFolded, FaceFolded}}
+const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
+const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
-const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
+const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
+
+# Sides whose halo comes from another rank
+const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnected}
+
+# Nothing locations just default to 1:N
+@inline connected_range(ℓ, topo, N, H)         = connected_range(topo, N, H)
+@inline connected_range(::Nothing, topo, N, H) = 1:N
+
+@inline connected_range(topo, N, H)                                =    1:N
+@inline connected_range(::Type{Sides{Connected, Connected}}, N, H)  = -H+2:N+H-1
+@inline connected_range(::Type{Sides{Closed, Connected}}, N, H)    =    1:N+H-1
+@inline connected_range(::Type{Sides{Connected, Closed}},  N, H)   = -H+2:N
+@inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
 
@@ -59,9 +71,11 @@ Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
+const LocationInstance = Union{Face, Center, Nothing}
+
 # "Indices-aware" length
-Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
-Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
+Base.length(loc::LocationInstance, topo::AT, N, ::Colon) = length(loc, topo, N)
+Base.length(loc::LocationInstance, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -71,26 +85,22 @@ one dimension of `topo`logy with `N` centered cells and
 `H` halo cells. If `ind` is provided the total_length
 is restricted by `length(ind)`.
 """
-total_length(::Face,    ::AT,              N, H=0) = N + 2H
-total_length(::Center,  ::AT,              N, H=0) = N + 2H
-total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
-total_length(::Nothing, ::AT,              N, H=0) = 1
-total_length(::Nothing, ::Flat,            N, H=0) = N
-total_length(::Face,    ::Flat,            N, H=0) = N
-total_length(::Center,  ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::AT,              N, H=0) = N + 2H
+@inline total_length(::Center,  ::AT,              N, H=0) = N + 2H
+@inline total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
+@inline total_length(::Nothing, ::AT,              N, H=0) = 1
+@inline total_length(::Nothing, ::Flat,            N, H=0) = N
+@inline total_length(::Face,    ::Flat,            N, H=0) = N
+@inline total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
-total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+@inline total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
+@inline total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
 
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
+@inline function Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc))))
+    topo = topology(grid)
+    sz = size(grid)
+    return ntuple(Val(length(loc))) do d
         Base.@_inline_meta
         length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
     end
@@ -106,7 +116,7 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
+@inline function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     N = ntuple(Val(D)) do d
         Base.@_inline_meta
@@ -115,7 +125,7 @@ function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(l
     return N
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
+@inline total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -142,20 +152,6 @@ regular_dimensions(grid) = ()
 #####
 ##### << Indexing >>
 #####
-
-@inline left_halo_indices(loc, ::AT, N, H) = 1-H:0
-@inline left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
-@inline right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
-@inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
-@inline underlying_left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
-
-@inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
-@inline underlying_right_halo_indices(::Face,    ::FaceExtendedTopology, N, H) = N+2+H:N+1+2H
-@inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,       ::AT,              N) = 1:N
 @inline interior_indices(::Face,    ::FaceExtendedTopology, N) = 1:N+1
@@ -190,31 +186,18 @@ regular_dimensions(grid) = ()
 @inline all_indices(::Face,    ::Flat, N, H) = 1:N
 @inline all_indices(::Center,  ::Flat, N, H) = 1:N
 
-@inline all_x_indices(grid, loc) = all_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
-@inline all_y_indices(grid, loc) = all_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
-@inline all_z_indices(grid, loc) = all_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
-
-@inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
-@inline all_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
-
-@inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
-@inline all_parent_indices(::Face,    ::Flat, N, H) = 1:N
-@inline all_parent_indices(::Center,  ::Flat, N, H) = 1:N
-
-@inline all_parent_x_indices(grid, loc) = all_parent_indices(loc[1](), topology(grid, 1)(), size(grid, 1), halo_size(grid, 1))
-@inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
-@inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
-
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::Flat, halo) = Colon()
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Nothing, ::AT, halo) = Colon()
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
+parent_index_range(::Base.Slice{<:IdOffsetRange}, ::Colon, args...) = Colon()
 
 parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)
@@ -231,13 +214,6 @@ index_range_contains(::Colon, ::AbstractUnitRange)     = true
 index_range_contains(::Colon, ::Colon)                 = true
 index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
-# Return the index range of "full" parent arrays that span an entire dimension
-parent_windowed_indices(::Colon, loc, topo, halo)             = Colon()
-parent_windowed_indices(indices::AbstractUnitRange, loc, topo, halo) = UnitRange(1, length(indices))
-
-index_range_offset(index::AbstractUnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
-index_range_offset(::Colon, loc, topo, halo)           = - interior_parent_offset(loc, topo, halo)
-
 const c = Center()
 const f = Face()
 
@@ -248,11 +224,6 @@ const f = Face()
 #####
 ##### Convenience functions
 #####
-
-unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
-
-flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
-flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 
 """
 $(TYPEDSIGNATURES)
@@ -418,19 +389,13 @@ Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, fal
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
 domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 
-function domain_summary(topo, name, (left, right))
-    interval = (topo isa Bounded) ||
-               (topo isa LeftConnected) ||
-               (topo isa RightFaceFolded) ? "]" : ")"
+Utils.prettysummary(T::Type{<:Union{Periodic, Flat}}) = string(nameof(T))
+Utils.prettysummary(::Type{Bounded}) = "Bounded"
+Utils.prettysummary(::Type{Sides{L, R}}) where {L, R} = L === R ? string(nameof(L)) : string("Sides{", nameof(L), ", ", nameof(R), "}")
 
-    topo_string = topo isa Periodic ? "Periodic " :
-                  topo isa Bounded ? "Bounded  " :
-                  topo isa FullyConnected ? "FullyConnected " :
-                  topo isa LeftConnected ? "LeftConnected  " :
-                  topo isa RightConnected ? "RightConnected  " :
-                  topo isa RightFaceFolded ? "RightFaceFolded  " :
-                  topo isa RightCenterFolded ? "RightCenterFolded  " :
-                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
+function domain_summary(topo, name, (left, right))
+    interval = topo isa FaceExtendedTopology ? "]" : ")"
+    topo_string = string(rpad(prettysummary(typeof(topo)), 8), " ")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",
@@ -574,12 +539,73 @@ end
 ##### Extensions for kernel launching
 #####
 
-function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
-    T = topology(grid, side)
-    N = size(grid, side)
-
+function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
+    T = @inbounds topology(grid)[side]
+    N = @inbounds size(grid)[side]
     return Utils.periphery_offset(loc, T(), N)
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Union{Bounded, Sides{Closed, Connected}}, N::Int) = ifelse(N > 1, 1, 0)
+
+#####
+##### Kernel parameters that extend into the halos
+#####
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing 3D variables in the interior plus one extra cell
+in the horizontal directions (indices `0:Nx+1` and `0:Ny+1`).
+
+The extra cells provide the values that interior stencils read at cell faces (e.g., for viscous fluxes)
+without requiring (possibly costly) halo exchanges.
+"""
+@inline function horizontally_extended_interior_kernel_parameters(grid)
+    Wx, Wy, Wz = worksize(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    kk = 1:Wz
+
+    return KernelParameters(ii, jj, kk)
+end

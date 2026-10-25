@@ -4,7 +4,7 @@ using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜ�
 using Oceananigans.Operators: Δλᶜᵃᵃ, Δλᶜᶜᵃ, Δλᶜᶠᵃ, Δλᶠᵃᵃ, Δλᶠᶜᵃ, Δλᶠᶠᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᵃᶠᵃ, Δφᶜᶜᵃ, Δφᶜᶠᵃ, Δφᶠᶜᵃ, Δφᶠᶠᵃ
 using Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
-using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
+using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector, rotation_angle
 
 # Grid metrics for ImmersedBoundaryGrid
 #
@@ -23,6 +23,8 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 @inline Operators.Δrᵃᵃᶜ(i, j, k, ibg::IBG) = Δrᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Operators.Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δzᵃᵃᶜ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
+@inline Operators.Δzᵃᵃᶠ(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 # 1D Horizontal spacings
 
@@ -72,3 +74,4 @@ using Oceananigans.Operators: Operators, intrinsic_vector, extrinsic_vector
 
 @inline Operators.intrinsic_vector(i, j, k, ibg::IBG, u, v, w) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
 @inline Operators.extrinsic_vector(i, j, k, ibg::IBG, u, v, w) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
+@inline Operators.rotation_angle(i, j, ibg::IBG, ℓx, ℓy) = rotation_angle(i, j, ibg.underlying_grid, ℓx, ℓy)
