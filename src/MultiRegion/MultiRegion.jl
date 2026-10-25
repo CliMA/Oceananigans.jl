@@ -2,7 +2,8 @@ module MultiRegion
 
 export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
-export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField, synchronize_shared_edges!, fill_cgrid_pair_halo_regions!
+export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField, synchronize_shared_edges!, fill_cgrid_pair_halo_regions!,
+    fill_dgrid_pair_halo_regions!
 export SphericalCubedSphereGrid, EquiangularCubedSphereGrid
 export YinYangGrid, YinYangConservationFixer, owned_weights
 
@@ -18,8 +19,8 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, S
     fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Fields: Field, location
-using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Closed, Connected, Face, Flat,
-    OrthogonalSphericalShellGrid, Periodic, Sides, on_architecture
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractHorizontallyCurvilinearGrid, AbstractUnderlyingGrid, Bounded, Center,
+    Closed, Connected, Face, Flat, OrthogonalSphericalShellGrid, Periodic, Sides, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, Utils,
     @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary

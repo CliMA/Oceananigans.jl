@@ -3,7 +3,8 @@
 ##### cubed spheres with one region per panel, using the panel side maps of the D-grid pair. In doubled index
 ##### coordinates uc sits at (2(i-1), 2j-1) and vc at (2i-1, 2(j-1)), so a mapped point with even X is a uc donor.
 ##### Owned shared-edge copies (uc at i = 1, N+1; vc at j = 1, N+1), corner blocks, slots deeper than `halo_width`,
-##### vertical halos and interiors are never written; shared edges are not synchronized.
+##### vertical halos and interiors are never written; shared edges are not synchronized. Donors are owned points,
+##### so all regions, sides and field pairs of one call run in a single launch.
 #####
 
 @inline function cgrid_neighbor_value(uc_neighbor, vc_neighbor, map, component, X, Y, k, signed)
@@ -16,16 +17,15 @@
     return s * value
 end
 
-@kernel function _fill_cubed_sphere_cgrid_side_halo!(uc, vc, uc_neighbor, vc_neighbor, map, side, N, halo_width, signed)
-    t, k = @index(Global, NTuple)
+@inline function fill_cgrid_side_point!(uc, vc, uc_neighbor, vc_neighbor, map, side, t, k, N, halo_width, signed)
     for d in 1:halo_width
-        if side === :west
+        if side == 1
             iu, ju, ku = 1 - d, t, t <= N
             iv, jv, kv = 1 - d, t, t <= N + 1
-        elseif side === :east
+        elseif side == 2
             iu, ju, ku = N + 1 + d, t, t <= N
             iv, jv, kv = N + d, t, t <= N + 1
-        elseif side === :south
+        elseif side == 3
             iu, ju, ku = t, 1 - d, t <= N + 1
             iv, jv, kv = t, 1 - d, t <= N
         else
@@ -39,6 +39,23 @@ end
             @inbounds vc[iv, jv, k] = cgrid_neighbor_value(uc_neighbor, vc_neighbor, map, 2, 2iv - 1, 2(jv - 1), k, signed)
         end
     end
+    return nothing
+end
+
+@inline fill_cgrid_pairs!(::Tuple{}, map, region, neighbor, side, t, k, N, halo_width, signed) = nothing
+
+@inline function fill_cgrid_pairs!(pairs::Tuple, map, region, neighbor, side, t, k, N, halo_width, signed)
+    ucs, vcs, Nz = first(pairs)
+    if k <= Nz
+        @inbounds fill_cgrid_side_point!(ucs[region], vcs[region], ucs[neighbor], vcs[neighbor], map, side, t, k, N,
+                                         halo_width, signed)
+    end
+    return fill_cgrid_pairs!(Base.tail(pairs), map, region, neighbor, side, t, k, N, halo_width, signed)
+end
+
+@kernel function _fill_cubed_sphere_cgrid_halos!(pairs, maps, neighbors, N, halo_width, signed)
+    t, k, s = @index(Global, NTuple)
+    @inbounds fill_cgrid_pairs!(pairs, maps[s], side_region(s), neighbors[s], side_code(s), t, k, N, halo_width, signed)
 end
 
 function regional_parents(field)
@@ -52,6 +69,8 @@ function reject_overlapping_storage(arrays, description)
     return nothing
 end
 
+# Any horizontally curvilinear panel type (OrthogonalSphericalShellGrid, SphericalGrid, ...) is accepted: the
+# exchanges read only the panel sizes and halos and the multi-region connectivity, never panel metrics.
 function validate_canonical_six_panels(grid, description)
     grid isa MultiRegionGrid || throw(ArgumentError("$description requires a MultiRegionGrid, got $(summary(grid))"))
     partition = grid.partition
@@ -66,6 +85,8 @@ function validate_canonical_six_panels(grid, description)
     end
     N = grid.Nx
     for region in 1:6
+        getregion(grid, region) isa AbstractHorizontallyCurvilinearGrid ||
+            throw(ArgumentError("$description requires horizontally curvilinear panels; region $region is a $(summary(getregion(grid, region)))"))
         size(getregion(grid, region))[1:2] == (N, N) ||
             throw(ArgumentError("region $region is not $N × $N; $description requires square panels of equal size"))
     end
@@ -145,29 +166,24 @@ end
 
 """
     fill_cgrid_pair_halo_regions!(uc, vc; halo_width = 3, signed = true)
+    fill_cgrid_pair_halo_regions!(pairs::Tuple; halo_width = 3, signed = true)
 
-Fill the horizontal halos of a C-grid normal-velocity pair (`uc` at `(Face, Center)`, `vc` at `(Center, Face)`) on a
-six-panel cubed sphere to depth `halo_width ∈ 1:3`, following the FMS `CGRID_NE` exchange: owned shared-edge copies,
-corner blocks, deeper slots, vertical halos and interiors are left untouched. Only `CubedSpherePartition(R = 1)`
-with canonical connectivity is supported; all checks run before any write.
+Fill the horizontal halos of a C-grid normal-velocity pair (`uc` at `(Face, Center)`, `vc` at `(Center, Face)`), or
+of a tuple of pairs `((uc₁, vc₁), (uc₂, vc₂), ...)` on the same grid, on a six-panel cubed sphere to depth
+`halo_width ∈ 1:3`, following the FMS `CGRID_NE` exchange: owned shared-edge copies, corner blocks, deeper slots,
+vertical halos and interiors are left untouched. All pairs, regions, sides and levels go in one kernel launch.
+Only `CubedSpherePartition(R = 1)` with canonical connectivity is supported; all checks run before any write.
 """
-function fill_cgrid_pair_halo_regions!(uc, vc; halo_width = 3, signed = true)
-    validate_cgrid_pair(uc, vc, halo_width)
-    grid = uc.grid
+function fill_cgrid_pair_halo_regions!(pairs::Tuple; halo_width = 3, signed = true)
+    foreach(pair -> pair isa Tuple && length(pair) == 2 && validate_cgrid_pair(pair..., halo_width), pairs)
+    grid = validate_pair_batch(pairs, "C-grid exchange")
     N = grid.Nx
-    uc_regions = uc.data.regional_objects
-    vc_regions = vc.data.regional_objects
-    Nz = size(getregion(uc, 1), 3)
-    for region in 1:6
-        connections = getregion(grid.connectivity.connections, region)
-        for (side, connection) in ((:west, connections.west), (:east, connections.east),
-                                   (:south, connections.south), (:north, connections.north))
-            neighbor = connection.from_rank
-            launch!(grid.architecture, getregion(grid, region), KernelParameters(1:N+1, 1:Nz),
-                    _fill_cubed_sphere_cgrid_side_halo!, uc_regions[region], vc_regions[region],
-                    uc_regions[neighbor], vc_regions[neighbor], panel_side_map(isodd(region), side, N), side, N,
-                    halo_width, signed)
-        end
-    end
+    regional_pairs = map(((uc, vc),) -> regional_pair(uc, vc), pairs)
+    Nz = maximum(last, regional_pairs)
+    maps, neighbors = panel_side_tables(grid)
+    launch!(grid.architecture, getregion(grid, 1), KernelParameters(1:N+1, 1:Nz, 1:24),
+            _fill_cubed_sphere_cgrid_halos!, regional_pairs, maps, neighbors, N, halo_width, signed)
     return nothing
 end
+
+fill_cgrid_pair_halo_regions!(uc, vc; kwargs...) = fill_cgrid_pair_halo_regions!(((uc, vc),); kwargs...)
