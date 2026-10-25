@@ -381,24 +381,24 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline ∂t_wˢ(i, j, k, grid, sw::SD, time) =
     sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
 
-# Function-mode per-derivative helpers. Each `_∂{x,y,z}_{u,v,w}ˢ_<loc>`
+# Function-mode per-derivative helpers. Each `∂{x,y,z}_{u,v,w}ˢ_<loc>`
 # returns the appropriate component of ∇uˢ at node location <loc> by
 # evaluating the user-supplied callable at the node.
-@inline _∂z_uˢ_fcc(i, j, k, grid, sw::SD, time) =
+@inline ∂z_uˢ_fcc(i, j, k, grid, sw::SD, time) =
     sw.∂z_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
-@inline _∂z_uˢ_ccf(i, j, k, grid, sw::SD, time) =
+@inline ∂z_uˢ_ccf(i, j, k, grid, sw::SD, time) =
     sw.∂z_uˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
-@inline _∂z_vˢ_cfc(i, j, k, grid, sw::SD, time) =
+@inline ∂z_vˢ_cfc(i, j, k, grid, sw::SD, time) =
     sw.∂z_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
-@inline _∂z_vˢ_ccf(i, j, k, grid, sw::SD, time) =
+@inline ∂z_vˢ_ccf(i, j, k, grid, sw::SD, time) =
     sw.∂z_vˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
-@inline _∂y_uˢ_fcc(i, j, k, grid, sw::SD, time) =
+@inline ∂y_uˢ_fcc(i, j, k, grid, sw::SD, time) =
     sw.∂y_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
-@inline _∂y_uˢ_cfc(i, j, k, grid, sw::SD, time) =
+@inline ∂y_uˢ_cfc(i, j, k, grid, sw::SD, time) =
     sw.∂y_uˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
-@inline _∂x_vˢ_fcc(i, j, k, grid, sw::SD, time) =
+@inline ∂x_vˢ_fcc(i, j, k, grid, sw::SD, time) =
     sw.∂x_vˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
-@inline _∂x_vˢ_cfc(i, j, k, grid, sw::SD, time) =
+@inline ∂x_vˢ_cfc(i, j, k, grid, sw::SD, time) =
     sw.∂x_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
 @inline _∂x_wˢ(i, j, k, grid, sw::SD, X, time) =
     sw.∂x_wˢ(X..., time, parameters_tuple(sw)...)
@@ -520,21 +520,21 @@ const FSD = FieldStokesDrift
 
 # Field-mode per-derivative helpers. Compute the relevant component of ∇uˢ
 # inline from the stored Fields via the staggered FD operators.
-@inline _∂z_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
+@inline ∂z_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
     ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
-@inline _∂z_uˢ_ccf(i, j, k, grid, sw::FSD, time) =
+@inline ∂z_uˢ_ccf(i, j, k, grid, sw::FSD, time) =
     ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
-@inline _∂z_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
+@inline ∂z_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
     ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
-@inline _∂z_vˢ_ccf(i, j, k, grid, sw::FSD, time) =
+@inline ∂z_vˢ_ccf(i, j, k, grid, sw::FSD, time) =
     ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
-@inline _∂y_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
+@inline ∂y_uˢ_fcc(i, j, k, grid, sw::FSD, time) =
     ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
-@inline _∂y_uˢ_cfc(i, j, k, grid, sw::FSD, time) =
+@inline ∂y_uˢ_cfc(i, j, k, grid, sw::FSD, time) =
     ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
-@inline _∂x_vˢ_fcc(i, j, k, grid, sw::FSD, time) =
+@inline ∂x_vˢ_fcc(i, j, k, grid, sw::FSD, time) =
     ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
-@inline _∂x_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
+@inline ∂x_vˢ_cfc(i, j, k, grid, sw::FSD, time) =
     ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
 @inline _∂x_wˢ(i, j, k, grid, sw::FSD, X, time) =
     ℑzᵃᵃᶜ(i, j, k, grid, ∂xᶠᶜᶠ, sw.wˢ)
@@ -557,10 +557,10 @@ const NonUniformSD = Union{StokesDrift, FieldStokesDrift}
     vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
     X = node(i, j, k, grid, f, c, c)
-    ∂z_uˢ = _∂z_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂z_uˢ = ∂z_uˢ_fcc(i, j, k, grid, sw, time)
     ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
-    ∂y_uˢ = _∂y_uˢ_fcc(i, j, k, grid, sw, time)
-    ∂x_vˢ = _∂x_vˢ_fcc(i, j, k, grid, sw, time)
+    ∂y_uˢ = ∂y_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂x_vˢ = ∂x_vˢ_fcc(i, j, k, grid, sw, time)
 
     return wᶠᶜᶜ * (∂z_uˢ - ∂x_wˢ) - vᶠᶜᶜ * (∂x_vˢ - ∂y_uˢ)
 end
@@ -570,10 +570,10 @@ end
     uᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
     X = node(i, j, k, grid, c, f, c)
-    ∂z_vˢ = _∂z_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂z_vˢ = ∂z_vˢ_cfc(i, j, k, grid, sw, time)
     ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
-    ∂x_vˢ = _∂x_vˢ_cfc(i, j, k, grid, sw, time)
-    ∂y_uˢ = _∂y_uˢ_cfc(i, j, k, grid, sw, time)
+    ∂x_vˢ = ∂x_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂y_uˢ = ∂y_uˢ_cfc(i, j, k, grid, sw, time)
 
     return uᶜᶠᶜ * (∂x_vˢ - ∂y_uˢ) - wᶜᶠᶜ * (∂y_wˢ - ∂z_vˢ)
 end
@@ -584,9 +584,9 @@ end
 
     X = node(i, j, k, grid, c, c, f)
     ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
-    ∂z_uˢ = _∂z_uˢ_ccf(i, j, k, grid, sw, time)
+    ∂z_uˢ = ∂z_uˢ_ccf(i, j, k, grid, sw, time)
     ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
-    ∂z_vˢ = _∂z_vˢ_ccf(i, j, k, grid, sw, time)
+    ∂z_vˢ = ∂z_vˢ_ccf(i, j, k, grid, sw, time)
 
     return vᶜᶜᶠ * (∂y_wˢ - ∂z_vˢ) - uᶜᶜᶠ * (∂z_uˢ - ∂x_wˢ)
 end
