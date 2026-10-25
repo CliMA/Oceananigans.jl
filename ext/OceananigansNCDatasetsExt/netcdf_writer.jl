@@ -8,13 +8,11 @@
 # grid metrics.
 #
 
-using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes
+using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes, ConstantFields
 
 #####
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
-
-using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
@@ -60,35 +58,16 @@ Base.@nospecializeinfer function defVar(ds::AbstractDataset, field_name, @nospec
     end
 end
 
-function defVar(ds::AbstractDataset, field_name, fd::ConstantField;
-                array_type=Array{eltype(fd)},
-                attrib=Dict(),
-                kwargs...)
-    attrib["type"] = "ConstantField"
-    attrib["location"] = "(Nothing, Nothing, Nothing)"
-    defVar(ds, field_name, eltype(array_type)(fd.constant), (); attrib)
-end
-
-
-function defVar(ds::AbstractDataset, field_name, fd::OneField;
-                array_type=Array{eltype(fd)},
-                attrib=Dict(),
+# Constant fields are written as scalars, with their type stored as an attribute
+function defVar(ds::AbstractDataset, field_name, fd::ConstantFields;
+                array_type = Array{eltype(fd)},
+                attrib = Dict(),
                 kwargs...)
 
-    attrib["type"] = "OneField"
-    attrib["location"] = "(Nothing, Nothing, Nothing)"
-    defVar(ds, field_name, eltype(array_type)(1), (); attrib)
-end
+    attrib = merge(attrib, Dict("type" => string(nameof(typeof(fd))),
+                                "location" => "(Nothing, Nothing, Nothing)"))
 
-
-function defVar(ds::AbstractDataset, field_name, fd::ZeroField;
-                array_type=Array{eltype(fd)},
-                attrib=Dict(),
-                kwargs...)
-
-    attrib["type"] = "ZeroField"
-    attrib["location"] = "(Nothing, Nothing, Nothing)"
-    defVar(ds, field_name, eltype(array_type)(0), (); attrib)
+    return defVar(ds, field_name, eltype(array_type)(fd[1, 1, 1]), (); attrib)
 end
 
 defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
@@ -145,7 +124,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
     outputs = OrderedDict(string(name) => construct_output(outputs[name], indices, with_halos) for name in output_names(outputs))
 
     # Extract grids from outputs, falling back to model grid for non-field outputs
-    output_grids = OrderedDict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
+    output_grids = OrderedDict(name => something((try grid(output) catch; nothing end), grid(model)) for (name, output) in outputs)
     unique_grids = Tuple(unique(objectid, collect(values(output_grids))))
     output_grid_map = Dict(name => findfirst(gr -> gr === output_grids[name], unique_grids) for name in keys(outputs))
 
@@ -479,7 +458,7 @@ function write_time_dependent_output!(ds, output::LagrangianParticles, data, tim
     return nothing
 end
 
-save_output!(ds, output::Union{ZeroField, OneField, ConstantField}, args...) = nothing
+write_time_dependent_output!(ds, ::ConstantFields, data, time_index, output_name) = nothing
 
 # Convert to a base Julia type (a float or DateTime).
 float_or_date_time(t) = t

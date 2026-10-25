@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_indices, Reduction, ZeroField, OneField, ConstantField
+using Oceananigans.Fields: validate_indices, Reduction
 using Oceananigans.Grids: default_indices
 using Oceananigans.Utils: @apply_regionally
 
@@ -66,8 +66,7 @@ Base.@nospecializeinfer function construct_output(@nospecialize(user_output::Uni
     return Field(user_output; indices, additional_kw...)
 end
 
-# For "constant" fields, we just return the field itself
-construct_output(user_output::Union{ZeroField, OneField, ConstantField}, user_indices, with_halos) = user_output
+construct_output(user_output::ConstantFields, user_indices, with_halos) = user_output
 
 #####
 ##### Time-averaging

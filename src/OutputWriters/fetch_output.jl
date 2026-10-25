@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+using Oceananigans.Fields: AbstractField, compute_at!
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
@@ -40,4 +40,4 @@ function fetch_and_convert_output(output, model, writer)
     return convert_output(fetched, writer)
 end
 
-fetch_and_convert_output(output::Union{ZeroField, OneField, ConstantField}, model, writer) = output[1, 1, 1]
+fetch_and_convert_output(output::ConstantFields, model, writer) = output[1, 1, 1]
