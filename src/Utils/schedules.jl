@@ -626,34 +626,7 @@ Base.show(io::IO, schedule::TimeOffset) = print(io, summary(schedule))
 
 const StatefulSchedules = Union{TimeInterval, SpecifiedTimes, ConsecutiveIterations, TimeOffset}
 
-"""
-    materialize_schedule(schedule, clock)
-
-Return a copy of `schedule`, so that a pre-defined schedule with a state can be reused,
-that keeps time like `clock`. Numeric intervals and offsets are seconds: a schedule built
-from a number runs on a calendar clock (e.g. `DateTime`), and one built from a `Dates.Period`
-runs on a numeric clock.
-"""
-materialize_schedule(s, clock) = s
-materialize_schedule(ss::StatefulSchedules, clock) = deepcopy(ss)
-materialize_schedule(or::OrSchedule, clock) = OrSchedule(Tuple(materialize_schedule(s, clock) for s in or.schedules))
-materialize_schedule(and::AndSchedule, clock) = AndSchedule(Tuple(materialize_schedule(s, clock) for s in and.schedules))
-
-function materialize_schedule(schedule::TimeInterval{<:Union{Number, Period}}, clock)
-    TT = typeof(clock.time)
-    schedule.first_actuation_time isa TT && return deepcopy(schedule)
-    return TimeInterval{typeof(schedule.interval), TT}(schedule.interval, clock.time, 0)
-end
-
-function materialize_schedule(schedule::TimeOffset, clock)
-    parent = materialize_schedule(schedule.parent, clock)
-    TT = typeof(clock.time)
-    t = schedule.parent_actuation_time
-    t = t isa TT ? t : clock.time
-    return TimeOffset{typeof(parent), typeof(schedule.offset), TT}(parent, schedule.offset, t, schedule.offset_actuated)
-end
-
-materialize_schedule(schedule::ConsecutiveIterations, clock) =
-    ConsecutiveIterations(materialize_schedule(schedule.parent, clock),
-                          schedule.consecutive_iterations,
-                          schedule.previous_parent_actuation_iteration)
+materialize_schedule(s) = s
+materialize_schedule(ss::StatefulSchedules) = deepcopy(ss) # required to reuse a pre-defined schedule with a state
+materialize_schedule(or::OrSchedule) = OrSchedule(Tuple(materialize_schedule(s) for s in or.schedules))
+materialize_schedule(and::AndSchedule) = AndSchedule(Tuple(materialize_schedule(s) for s in and.schedules))

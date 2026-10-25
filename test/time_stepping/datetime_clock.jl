@@ -9,8 +9,8 @@ using Oceananigans
 using Oceananigans.Simulations: Simulation, run!, Callback, add_callback!
 using Oceananigans.Units: hour, Time
 using Oceananigans.TimeSteppers: Clock, tick!
-using Oceananigans.Utils: TimeInterval, SpecifiedTimes, TimeOffset, schedule_aligned_time_step, IterationInterval
-using Oceananigans.OutputWriters: AveragedTimeInterval, JLD2Writer, Checkpointer
+using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
+using Oceananigans.OutputWriters: AveragedTimeInterval
 using Oceananigans.OutputReaders: Cyclical
 import Oceananigans: initialize!
 
@@ -194,60 +194,6 @@ function numeric_specified_times_schedule_checks(FT)
     return true
 end
 
-function numeric_schedules_on_calendar_clock(start_time, dir)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-
-    function build_simulation(stop_time)
-        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=start_time), tracers=:c, buoyancy=nothing)
-        simulation = Simulation(model; Δt=600, stop_time, verbose=false)
-
-        callback_times = typeof(start_time)[]
-        offset_times = typeof(start_time)[]
-        add_callback!(simulation, sim -> push!(callback_times, sim.model.clock.time), TimeInterval(hour))
-        add_callback!(simulation, sim -> push!(offset_times, sim.model.clock.time), TimeOffset(TimeInterval(2hour), 600))
-
-        outputs = (; c=model.tracers.c)
-        simulation.output_writers[:c] = JLD2Writer(model, outputs; filename=joinpath(dir, "c.jld2"),
-                                                   schedule=TimeInterval(hour), overwrite_files=true)
-        simulation.output_writers[:averaged] = JLD2Writer(model, outputs; filename=joinpath(dir, "averaged.jld2"),
-                                                          schedule=AveragedTimeInterval(2hour, window=hour), overwrite_files=true)
-        simulation.output_writers[:checkpointer] = Checkpointer(model; dir, schedule=TimeInterval(2hour), overwrite_files=true)
-
-        return simulation, callback_times, offset_times
-    end
-
-    hours(n) = start_time + Dates.Hour(n)
-
-    simulation, callback_times, offset_times = build_simulation(hours(4))
-    run!(simulation)
-
-    @test callback_times == hours.(0:4)
-    @test offset_times == [hours(0), hours(0) + Dates.Minute(10), hours(2), hours(2) + Dates.Minute(10), hours(4)]
-    @test FieldTimeSeries(joinpath(dir, "c.jld2"), "c").times == hours.(0:4)
-    @test FieldTimeSeries(joinpath(dir, "averaged.jld2"), "c").times == hours.(0:2:4)
-
-    picked_up, callback_times, _ = build_simulation(hours(6))
-    run!(picked_up; pickup=true)
-
-    @test callback_times == hours.(5:6)
-
-    return true
-end
-
-function period_schedule_on_numeric_clock()
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, buoyancy=nothing)
-    simulation = Simulation(model; Δt=600, stop_time=4hour, verbose=false)
-
-    callback_times = Float64[]
-    add_callback!(simulation, sim -> push!(callback_times, sim.model.clock.time), TimeInterval(Dates.Hour(1)))
-    run!(simulation)
-
-    @test callback_times ≈ 0:hour:4hour
-
-    return true
-end
-
 function calendar_cyclical_checks()
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
@@ -344,11 +290,11 @@ end
     end
 
     @testset "Numeric schedules on a calendar clock" begin
-        @test numeric_schedules_on_calendar_clock(DateTime(2020, 1, 1), mktempdir())
-    end
-
-    @testset "Period schedule on a numeric clock" begin
-        @test period_schedule_on_numeric_clock()
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        model = HydrostaticFreeSurfaceModel(grid; clock=Clock(time=DateTime(2020, 1, 1)))
+        simulation = Simulation(model; Δt=60, stop_iteration=1, verbose=false)
+        add_callback!(simulation, sim -> nothing, TimeInterval(hour))
+        @test_throws ArgumentError run!(simulation)
     end
 
     @testset "Numeric stop time on a calendar clock" begin

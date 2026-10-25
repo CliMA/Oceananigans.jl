@@ -7,7 +7,7 @@ using Oceananigans.Grids: Grids, grid
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Utils: Utils, AbstractSchedule, prettytime, period_type, time_type,
-                          TimeInterval, initialize_actuations!, add_time_interval
+                          TimeInterval, initialize_actuations!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -100,15 +100,13 @@ function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
     interval = sch.interval
-    return add_time_interval(t₀, interval, N + 1)
+    return t₀ + (N + 1) * interval
     # the next actuation time is the end of the time averaging window
 end
 
-start_of_window(sch::AveragedTimeInterval) = add_time_interval(next_actuation_time(sch), sch.window, -1)
-
 # Schedule actuation
 function (sch::AveragedTimeInterval)(model)
-    scheduled = sch.collecting || model.clock.time > start_of_window(sch)
+    scheduled = sch.collecting || model.clock.time > next_actuation_time(sch) - sch.window
     return scheduled
 end
 
@@ -127,7 +125,7 @@ function Utils.initialize_actuations!(schedule::AveragedTimeInterval, first_actu
     return true
 end
 
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <= start_of_window(sch)
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
 
 # Accumulated clock time from repeated Δt additions may fall just short of target times
@@ -139,15 +137,8 @@ function end_of_window(sch::AveragedTimeInterval, clock)
     return clock.time >= t★ - eps(t★)
 end
 
-Utils.TimeInterval(sch::AveragedTimeInterval{I, T}) where {I, T} = TimeInterval{I, T}(sch.interval, sch.first_actuation_time, 0)
-Base.copy(sch::AveragedTimeInterval{I, T}) where {I, T} = AveragedTimeInterval{I, T}(sch.interval, sch.window, sch.stride, sch.first_actuation_time, 0, false)
-
-function Utils.materialize_schedule(schedule::AveragedTimeInterval, clock)
-    TT = typeof(clock.time)
-    schedule.first_actuation_time isa TT && return schedule
-    (; interval, window, stride) = schedule
-    return AveragedTimeInterval{typeof(interval), TT}(interval, window, stride, clock.time, 0, false)
-end
+Utils.TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
+Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
 #####
 ##### Checkpointing
@@ -291,7 +282,7 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true
 
-            wta.window_start_time = start_of_window(wta.schedule)
+            wta.window_start_time = next_actuation_time(wta.schedule) - wta.schedule.window
             wta.previous_collection_time = wta.window_start_time
             wta.window_start_iteration = model.clock.iteration - 1
         end
@@ -370,7 +361,7 @@ function Oceananigans.restore_prognostic_state!(restored::WindowedTimeAverage, f
 
     if !same_cadence
         window_start_time = from.schedule.collecting ? from.window_start_time : from.previous_collection_time
-        restored.schedule.first_actuation_time = add_time_interval(window_start_time, restored.schedule.window - restored.schedule.interval)
+        restored.schedule.first_actuation_time = window_start_time + restored.schedule.window - restored.schedule.interval
         restored.schedule.actuations = 0
     end
 

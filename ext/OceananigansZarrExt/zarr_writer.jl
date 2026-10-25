@@ -57,7 +57,7 @@ function OutputWriters.ZarrWriter(model::AbstractModel, outputs;
 
     initialize!(file_splitting, model)
 
-    schedule = materialize_schedule(schedule, model.clock)
+    schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
