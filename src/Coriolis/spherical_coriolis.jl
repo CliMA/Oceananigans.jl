@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, φnode, hack_sind, hack_cosd
+using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, AnySphericalShellGrid, φnode, hack_sind, hack_cosd
 using Oceananigans.Operators: Δz_qᶠᶜᶜ, Δz_qᶜᶠᶜ, Az_qᶜᶜᶠ, Δz⁻¹ᶜᶜᶠ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶜᶠᶜ, rotation_angle
 
 """
@@ -108,19 +108,19 @@ function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.Float
 end
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, face)
-@inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, face)
+@inline φᶠᶠᵃ(i, j, k, grid::AnySphericalShellGrid)        = φnode(i, j, grid, face, face)
 @inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶠᵃ(i, j, k, grid.underlying_grid)
 
 @inline φᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, center)
-@inline φᶠᶜᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, face, center)
+@inline φᶠᶜᵃ(i, j, k, grid::AnySphericalShellGrid)        = φnode(i, j, grid, face, center)
 @inline φᶠᶜᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶜᵃ(i, j, k, grid.underlying_grid)
 
 @inline φᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, face)
-@inline φᶜᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, center, face)
+@inline φᶜᶠᵃ(i, j, k, grid::AnySphericalShellGrid)        = φnode(i, j, grid, center, face)
 @inline φᶜᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶜᶠᵃ(i, j, k, grid.underlying_grid)
 
 @inline φᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, center)
-@inline φᶜᶜᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, center, center)
+@inline φᶜᶜᵃ(i, j, k, grid::AnySphericalShellGrid)        = φnode(i, j, grid, center, center)
 @inline φᶜᶜᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶜᶜᵃ(i, j, k, grid.underlying_grid)
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
@@ -129,7 +129,7 @@ end
 @inline f̃ᶜᶠᵃ(i, j, k, grid, coriolis::SphericalCoriolis) = 2 * coriolis.rotation_rate * hack_cosd(φᶜᶠᵃ(i, j, k, grid))
 
 const OrthogonalSphericalShellGridOfSomeKind =
-    Union{OrthogonalSphericalShellGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}}
+    Union{AnySphericalShellGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AnySphericalShellGrid}}
 
 # The nontraditional terms (f̃ʸ w, -f̃ˣ w, f̃ˣ v - f̃ʸ u) of the horizontal rotation vector f̃ n̂ = 2Ω cos φ n̂, where
 # n̂ points north, use its components (f̃ˣ, f̃ʸ) = f̃ (-sin θ, cos θ) along the grid's axes, with θ the angle

@@ -14,6 +14,7 @@ export
     CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    SphericalGrid, ThinShell, DeepShell, EquiangularGnomonicPanelGrid, isorthogonal,
     TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
     geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle,
     MutableVerticalDiscretization,
@@ -125,6 +126,7 @@ export
     MultiRegionGrid, MultiRegionField,
     XPartition, YPartition,
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+    SphericalCubedSphereGrid, EquiangularCubedSphereGrid,
     YinYangGrid, YinYangConservationFixer,
 
     # Utils

@@ -143,3 +143,15 @@ end
 
     return uₑ, vₑ, wₑ
 end
+
+# The rotations above assume orthogonal coordinate lines. A `SphericalGrid` must convert between
+# geographic and covariant or contravariant components with its coordinate-line angles instead.
+non_orthogonal_rotation_error(name) =
+    throw(ArgumentError("$name is not defined on a non-orthogonal SphericalGrid (isorthogonal(grid) == false)"))
+
+@inline rotation_angle(i, j, grid::SG) = non_orthogonal_rotation_error("rotation_angle")
+@inline rotation_angle(i, j, grid::SG, ℓx, ℓy) = non_orthogonal_rotation_error("rotation_angle")
+@inline intrinsic_vector(i, j, k, grid::SG, uₑ, vₑ) = non_orthogonal_rotation_error("intrinsic_vector")
+@inline intrinsic_vector(i, j, k, grid::SG, uₑ, vₑ, wₑ) = non_orthogonal_rotation_error("intrinsic_vector")
+@inline extrinsic_vector(i, j, k, grid::SG, uᵢ, vᵢ) = non_orthogonal_rotation_error("extrinsic_vector")
+@inline extrinsic_vector(i, j, k, grid::SG, uᵢ, vᵢ, wᵢ) = non_orthogonal_rotation_error("extrinsic_vector")

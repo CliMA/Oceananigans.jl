@@ -53,11 +53,15 @@ export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
+# Coordinate-line angles of non-orthogonal grids
+export cosαᶜᶜᵃ, cosαᶠᶜᵃ, cosαᶜᶠᵃ, cosαᶠᶠᵃ, sinαᶜᶜᵃ, sinαᶠᶜᵃ, sinαᶜᶠᵃ, sinαᶠᶠᵃ
+
 # Variable grid operators
 export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
-    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+    OrthogonalSphericalShellGrid, SphericalGrid, ZRegSphericalGrid, AnySphericalShellGrid,
+    RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
     YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
     Center, Face, flip_location
 using DocStringExtensions: TYPEDSIGNATURES
@@ -75,6 +79,9 @@ const RGZ = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
+const SG    = SphericalGrid
+const SGZ   = ZRegSphericalGrid
+const ASSG  = AnySphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegularLLG
@@ -82,7 +89,7 @@ const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
 
 # Vertically regular grids
-const ZRG = Union{RGZ, OSSGZ, LLGZ}
+const ZRG = Union{RGZ, OSSGZ, SGZ, LLGZ}
 
 const LLGF  = LLGOTF
 const LLGFX = XRegLLGOTF
@@ -99,6 +106,7 @@ include("interpolation_utils.jl")
 
 include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
+include("coordinate_angle_operators.jl")
 include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
