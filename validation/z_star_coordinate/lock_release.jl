@@ -107,7 +107,7 @@ simulation.callbacks[:variance_dissipation_b] = Callback(ϵ, IterationInterval(1
 field_outputs = merge(model.velocities, model.tracers, (; Δz), f, model.auxiliary_fields)
 
 simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
-                                                         overwrite_existing = true,
+                                                         overwrite_files = true,
                                                          schedule = IterationInterval(100),
                                                          filename = "zstar_model")
 

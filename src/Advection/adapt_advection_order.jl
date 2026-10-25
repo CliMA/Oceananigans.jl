@@ -1,7 +1,7 @@
 using Oceananigans.Grids: topology
 
 """
-    adapt_advection_order(advection, grid::AbstractGrid)
+$(TYPEDSIGNATURES)
 
 Adapts the advection operator `advection` based on the grid `grid` by adjusting the order of advection in each direction.
 For example, if the grid has only one point in the x-direction, the advection operator in the x-direction is set to first order
@@ -76,7 +76,7 @@ function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGri
     if N >= B
         return advection
     else
-        return Centered(; order=2N)
+        return Centered(eltype(grid); order=2N)
     end
 end
 
@@ -84,13 +84,13 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
     if N >= B
         return advection
     else
-        return UpwindBiased(; order=2N-1)
+        return UpwindBiased(eltype(grid); order=2N-1)
     end
 end
 function adapt_advection_order(advection::WENO{B}, N::Int, grid::AbstractGrid) where B
     if N >= B
         return advection
     else
-        return WENO(order=2N-1)
+        return WENO(eltype(grid); order=2N-1)
     end
 end

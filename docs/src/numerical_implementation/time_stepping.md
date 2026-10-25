@@ -53,8 +53,13 @@ prognostic fields are cached, and subsequent substeps compute:
 U^{m+1} = U^0 + \frac{\Delta t}{\beta^m} G^m
 ```
 where ``U^0`` is the cached initial state and ``\beta`` are stage coefficients.
+Because every substep restarts from ``U^0``, the state ``U^{m+1}`` approximates the solution at the
+stage time ``t^n + \Delta t / \beta^m``, and the clock is advanced to this time after each substep so that
+time-dependent forcing, boundary conditions, and `FieldTimeSeries` are evaluated at the stage time when
+the next tendency ``G^{m+1}`` is computed.
 The user can specify an arbitrary number of stages with custom coefficients. The default three-stage
-scheme uses ``\beta = (3, 2, 1)``. This time stepper is used by `HydrostaticFreeSurfaceModel` for
+scheme uses ``\beta = (3, 2, 1)``, so the tendencies are evaluated at ``t^n``, ``t^n + \Delta t / 3``,
+and ``t^n + \Delta t / 2``. This time stepper is used by `HydrostaticFreeSurfaceModel` for
 split-explicit treatment of the barotropic and baroclinic modes.
 
 ## Usage
@@ -199,7 +204,7 @@ where, e.g., for the non-hydrostatic model (ignoring background velocities and s
 \boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}}
                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
                        - \boldsymbol{f} \times \boldsymbol{v}
-                       + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
+                       - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                        + \boldsymbol{F}_{\boldsymbol{v}}
 ```
 

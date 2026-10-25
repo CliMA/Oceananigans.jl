@@ -1,33 +1,40 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid,
+       ConformalConicGrid, ConformalConic,
+       geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
-using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
-using Oceananigans.BoundaryConditions: BoundaryCondition
-using Oceananigans.Grids: AbstractTopology
-using Oceananigans.Grids: halo_size, generate_coordinate, topology
-using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-
 using Distances: haversine
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
+using DocStringExtensions: TYPEDSIGNATURES
+
+using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
+using Oceananigans.BoundaryConditions: BoundaryCondition
+using Oceananigans.Grids: halo_size, generate_coordinate, topology
+using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("right_face_folded_kernel_parameters.jl")
 include("rotated_latitude_longitude_grid.jl")
+include("conformal_conic_grid.jl")
+include("conformal_conic_interpolation.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
 include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
+
+# Reductions on a tripolar grid
+include("tripolar_grid_reductions.jl")
 
 # `constructor_arguments` for an `OrthogonalSphericalShellGrid`. OSSG itself is a
 # general orthogonal grid on the surface of a sphere; `TripolarGrid`,
@@ -58,7 +65,7 @@ end
 # `TripolarGrid` / `RotatedLatitudeLongitudeGrid` type-alias on read.
 
 """
-    conformal_mapping_info(cm)
+$(TYPEDSIGNATURES)
 
 Return a `Dict{Symbol, Any}` describing the conformal mapping `cm` (or `nothing`) of an
 `OrthogonalSphericalShellGrid`, suitable for serialization to NetCDF attributes.
@@ -88,6 +95,6 @@ conformal_mapping_info(cm::LatitudeLongitudeRotation) = Dict{Symbol, Any}(
 # — `conformal_mapping` is bookkeeping that names *how* the grid was originally generated,
 # not data the grid uses at runtime. The only consequence is that the type-alias identity
 # (e.g. `ConformalCubedSpherePanelGrid`) is not restored on this code path.
-conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(typeof(cm).name.wrapper))
+conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(nameof(typeof(cm))))
 
 end # module

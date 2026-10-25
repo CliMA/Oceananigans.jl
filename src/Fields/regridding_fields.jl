@@ -1,8 +1,11 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: architecture
-using Oceananigans.Operators: Δzᶜᶜᶜ, Azᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
 using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
+using Oceananigans.Grids: constructor_arguments, halo_size, pop_flat_elements, reconstruction_faces,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
+using Oceananigans.Utils: unparameterized_type
 
 using Base: ForwardOrdering
 
@@ -10,12 +13,19 @@ const f = Face()
 const c = Center()
 
 """
-    regrid!(dst_field, src_field)
+$(TYPEDSIGNATURES)
 
-Regrid `src_field` onto the grid of `dst_field`.
+Regrid `src_field` onto the grid of `dst_field`, conserving the integral of `src_field`.
 
-Example
-=======
+When the grids differ in more than one dimension, the field is regridded one dimension at
+a time, through intermediate fields on grids that combine the coordinates of the target grid
+in the dimensions already regridded with the coordinates of the source grid in the remaining
+ones. This requires grids of the same type (`RectilinearGrid` or `LatitudeLongitudeGrid`)
+with the same topology, and `Center` locations in the differing dimensions.
+Fields on grids with identical cell faces are copied.
+
+Examples
+========
 
 Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
 
@@ -43,6 +53,28 @@ output_field[1, 1, :]
  3.0
  0.0
 ```
+
+Regrid a field between grids that differ in both `x` and `z`.
+
+```jldoctest
+using Oceananigans
+
+topology = (Bounded, Flat, Bounded)
+
+input_grid = RectilinearGrid(size=(2, 2), x=[0, 0.25, 1], z=[0, 0.5, 1], topology=topology, halo=(1, 1))
+input_field = CenterField(input_grid)
+input_field[1:2, 1, 1:2] = [1 2; 3 4]
+
+output_grid = RectilinearGrid(size=(1, 1), x=(0, 1), z=(0, 1), topology=topology, halo=(1, 1))
+output_field = CenterField(output_grid)
+
+regrid!(output_field, input_field)
+
+output_field[1, 1, 1]
+
+# output
+3.0
+```
 """
 regrid!(dst_field, src_field) =
     regrid!(dst_field, dst_field.grid, src_field.grid, src_field)
@@ -51,7 +83,7 @@ function we_can_regrid_in_z(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same horizontal size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[1:2] === size(b)[1:2] && return true
 
     return false
@@ -61,7 +93,7 @@ function we_can_regrid_in_y(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same xz size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[[1, 3]] === size(b)[[1, 3]] && return true
 
     return false
@@ -71,16 +103,21 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same yz size
-    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) &&
         size(a)[[2, 3]] === size(b)[[2, 3]] && return true
 
     return false
 end
 
+# The face search in the regridding kernels spans indices 1:N+1, so the face array must
+# include the closing face, which for a Periodic dimension lives in the halo.
+closed_face_nodes(grid, ℓx, ℓy, ℓz, dimension) =
+    view(nodes(grid, ℓx, ℓy, ℓz; with_halos=true)[dimension], 1:size(grid, dimension)+1)
+
 function regrid_in_z!(a, target_grid, source_grid, b)
     location(a, 3) == Center || throw(ArgumentError("Can only regrid fields in z with Center z-locations."))
     arch = architecture(a)
-    source_z_faces = znodes(source_grid, f)
+    source_z_faces = closed_face_nodes(source_grid, c, c, f, 3)
     launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
 
     return a
@@ -89,18 +126,16 @@ end
 function regrid_in_y!(a, target_grid, source_grid, b)
     location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
-    source_y_faces = nodes(source_grid, c, f, c)[2]
-    Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
-    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
+    source_y_faces = closed_face_nodes(source_grid, c, f, c, 2)
+    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces)
     return a
 end
 
 function regrid_in_x!(a, target_grid, source_grid, b)
     location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
-    source_x_faces = nodes(source_grid, f, c, c)[1]
-    Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
-    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
+    source_x_faces = closed_face_nodes(source_grid, f, c, c, 1)
+    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces)
     return a
 end
 
@@ -109,9 +144,9 @@ regrid_in_y!(a, b) = regrid_in_y!(a, a.grid, b.grid, b)
 regrid_in_z!(a, b) = regrid_in_z!(a, a.grid, b.grid, b)
 
 function regrid!(a, target_grid, source_grid, b)
-    arch = architecture(a)
-
-    if we_can_regrid_in_z(a, target_grid, source_grid, b)
+    if we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+        return regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    elseif we_can_regrid_in_z(a, target_grid, source_grid, b)
         return regrid_in_z!(a, target_grid, source_grid, b)
     elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
         return regrid_in_y!(a, target_grid, source_grid, b)
@@ -125,6 +160,80 @@ function regrid!(a, target_grid, source_grid, b)
 
         return throw(ArgumentError(msg))
     end
+end
+
+#####
+##### Dimension-by-dimension regridding
+#####
+
+coordinate_keys(::RectilinearGrid) = (:x, :y, :z)
+coordinate_keys(::LatitudeLongitudeGrid) = (:longitude, :latitude, :z)
+
+function dimension_faces(grid, dimension)
+    face_constructor = (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)[dimension]
+    return reconstruction_faces(face_constructor(grid), size(grid, dimension))
+end
+
+function dimension_differs(target_grid, source_grid, dimension)
+    topology(source_grid, dimension) == Flat && return false
+    size(source_grid, dimension) == size(target_grid, dimension) || return true
+    return dimension_faces(source_grid, dimension) != dimension_faces(target_grid, dimension)
+end
+
+function we_can_regrid_multiple_dimensions(a, target_grid, source_grid, b)
+    unparameterized_type(typeof(source_grid)) === unparameterized_type(typeof(target_grid)) || return false
+    target_grid isa Union{RectilinearGrid, LatitudeLongitudeGrid} || return false
+    topology(source_grid) == topology(target_grid) || return false
+
+    for dimension in 1:3
+        if dimension_differs(target_grid, source_grid, dimension)
+            location(a, dimension) == Center && location(b, dimension) == Center || return false
+        elseif size(a)[dimension] != size(b)[dimension]
+            return false
+        end
+    end
+
+    return true
+end
+
+# Return a grid identical to `source_grid` except along `dimension`, which takes the
+# coordinate, size, and halo of `target_grid`.
+function dimension_swapped_grid(source_grid, target_grid, dimension)
+    args, kwargs = constructor_arguments(source_grid)
+    target_kwargs = constructor_arguments(target_grid)[2]
+
+    key = coordinate_keys(source_grid)[dimension]
+    kwargs[key] = target_kwargs[key]
+
+    grid_size = ntuple(n -> n == dimension ? size(target_grid, n) : size(source_grid, n), 3)
+    grid_halo = ntuple(n -> n == dimension ? halo_size(target_grid, n) : halo_size(source_grid, n), 3)
+    grid_topology = topology(source_grid)
+    kwargs[:size] = pop_flat_elements(grid_size, grid_topology)
+    kwargs[:halo] = pop_flat_elements(grid_halo, grid_topology)
+
+    GridType = unparameterized_type(typeof(source_grid))
+    return GridType(args[:architecture], args[:number_type]; kwargs...)
+end
+
+function regrid_multiple_dimensions!(a, target_grid, source_grid, b)
+    differing_dimensions = Tuple(n for n in 1:3 if dimension_differs(target_grid, source_grid, n))
+    isempty(differing_dimensions) && return set!(a, b)
+
+    regrid_dimension! = (regrid_in_x!, regrid_in_y!, regrid_in_z!)
+
+    field = b
+    grid = source_grid
+
+    for (step, dimension) in enumerate(differing_dimensions)
+        final_step = step == length(differing_dimensions)
+        next_grid = final_step ? target_grid : dimension_swapped_grid(grid, target_grid, dimension)
+        next_field = final_step ? a : Field{location(b)...}(next_grid)
+        regrid_dimension![dimension](next_field, next_grid, grid, field)
+        field = next_field
+        grid = next_grid
+    end
+
+    return a
 end
 
 #####
@@ -184,15 +293,23 @@ end
     end
 end
 
-@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces, Nx_source_faces)
+# On both supported grids the horizontal cell area factorizes into a part depending only on x
+# (Δx or Δλ) and a part depending only on y (Δy or Δsinφ). Regridding in one horizontal
+# direction therefore weights cells by their measure in that direction only, which stays
+# correct when source and target differ in the other direction, e.g. for a source reduced in y.
+@inline x_measure(::RectilinearGrid, x₁, x₂) = x₂ - x₁
+@inline x_measure(::LatitudeLongitudeGrid, λ₁, λ₂) = λ₂ - λ₁
+
+@inline y_measure(::RectilinearGrid, y₁, y₂) = y₂ - y₁
+@inline y_measure(::LatitudeLongitudeGrid, φ₁, φ₂) = hack_sind(φ₂) - hack_sind(φ₁)
+
+@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces)
     i, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
     Nx_source, Ny_source, Nz_source = size(source_grid)
     i_src = ifelse(Nx_target == Nx_source, i, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-
-    i⁺_src = min(Nx_source_faces, i_src + 1)
 
     fo = ForwardOrdering()
 
@@ -216,7 +333,9 @@ end
         else
             # Add contribution from all full cells in the integration range
             for j_src = j₋_src:j₊_src-1
-                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+                yj_src  = ηnode(i_src, j_src,   k_src, source_grid, c, f, c)
+                yj⁺_src = ηnode(i_src, j_src+1, k_src, source_grid, c, f, c)
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * y_measure(source_grid, yj_src, yj⁺_src)
             end
 
             yj₋_src = ηnode(i_src, j₋_src, k_src, source_grid, c, f, c)
@@ -224,42 +343,27 @@ end
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
-            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if j₋_src > 1
-                j_left = j₋_src - 1
-
-                ξ₁ = ξnode(i_src,  j_left, k_src, source_grid, f, c, c)
-                ξ₂ = ξnode(i⁺_src, j_left, k_src, source_grid, f, c, c)
-                Az_left = fractional_horizontal_area(source_grid, ξ₁, ξ₂, y₋, yj₋_src)
-
-                target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_src, j₋_src - 1, k_src] * y_measure(source_grid, y₋, yj₋_src)
             end
 
             # Similar to above, add contribution to integral from fractional right part.
             if j₊_src < source_grid.Ny+1
-                j_right = j₊_src
-
-                ξ₁ = ξnode(i_src,  j_right, k_src, source_grid, f, c, c)
-                ξ₂ = ξnode(i⁺_src, j_right, k_src, source_grid, f, c, c)
-                Az_right = fractional_horizontal_area(source_grid, ξ₁, ξ₂, yj₊_src, y₊)
-
-                target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_src, j₊_src, k_src] * y_measure(source_grid, yj₊_src, y₊)
             end
 
-            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= y_measure(target_grid, y₋, y₊)
         end
     end
 end
 
-@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces, Ny_source_faces)
+@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces)
     j, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
     Nx_source, Ny_source, Nz_source = size(source_grid)
     j_src = ifelse(Ny_target == Ny_source, j, 1)
     k_src = ifelse(Nz_target == Nz_source, k, 1)
-
-    j⁺_src = min(Ny_source_faces, j_src + 1)
 
     fo = ForwardOrdering()
 
@@ -289,7 +393,9 @@ end
 
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
             for i_src = i₋_src:i₊_src-1
-                target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
+                ξi_src  = ξnode(i_src,   j_src, k_src, source_grid, f, c, c)
+                ξi⁺_src = ξnode(i_src+1, j_src, k_src, source_grid, f, c, c)
+                target_field[i, j, k] += source_field[i_src, j_src, k_src] * x_measure(source_grid, ξi_src, ξi⁺_src)
             end
 
             # Next, we add contributions from the "fractional" source cells on the right
@@ -299,42 +405,16 @@ end
 
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
-            # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if i₋_src > 1
-                i_left = i₋_src - 1
-
-                η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
-                η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
-                Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
-
-                target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
+                target_field[i, j, k] += source_field[i₋_src - 1, j_src, k_src] * x_measure(source_grid, ξ₋, ξi₋_src)
             end
-
 
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
-                i_right = i₊_src
-
-                η₁ = ηnode(i_right, j_src,  k_src, source_grid, c, f, c)
-                η₂ = ηnode(i_right, j⁺_src, k_src, source_grid, c, f, c)
-                Az_right = fractional_horizontal_area(source_grid, ξi₊_src, ξ₊, η₁, η₂)
-
-                target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
+                target_field[i, j, k] += source_field[i₊_src, j_src, k_src] * x_measure(source_grid, ξi₊_src, ξ₊)
             end
 
-            target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
+            target_field[i, j, k] /= x_measure(target_grid, ξ₋, ξ₊)
         end
     end
 end
-
-@inline fractional_horizontal_area(grid::RectilinearGrid, x₁, x₂, y₁, y₂) = (x₂ - x₁) * (y₂ - y₁)
-@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Flat}, x₁, x₂, y₁, y₂) = y₂ - y₁
-@inline fractional_horizontal_area(grid::RectilinearGrid{<:Any, <:Any, <:Flat}, x₁, x₂, y₁, y₂) = (x₂ - x₁)
-
-@inline function fractional_horizontal_area(grid::LatitudeLongitudeGrid, λ₁, λ₂, φ₁, φ₂)
-    Δλ = λ₂ - λ₁
-    return grid.radius^2 * deg2rad(Δλ) * (hack_sind(φ₂) - hack_sind(φ₁))
-end
-
-@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * (hack_sind(φ₂) - hack_sind(φ₁))
-@inline fractional_horizontal_area(grid::LatitudeLongitudeGrid{<:Any, <:Any, <:Flat}, λ₁, λ₂, φ₁, φ₂) = grid.radius^2 * deg2rad(λ₂ - λ₁)

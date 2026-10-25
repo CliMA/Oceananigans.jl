@@ -6,10 +6,23 @@ export
     SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
-    convert_time
+    convert_time,
+    AbstractTimeDiscretization,
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
+    time_discretization
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractModel, initialize!, prognostic_fields
+
+using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
+                          AdaptiveVerticallyImplicitDiscretization,
+                          kernel_time_step
 
 """
     abstract type AbstractTimeStepper
@@ -24,14 +37,15 @@ function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
-step_closure_prognostics!(model, Δt) = nothing
+step_closure_prognostics!(model, Δt::Number) = nothing
 
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
-function maybe_prepare_first_time_step!(model, callbacks)
+function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
         reconcile_state!(model)
         update_state!(model, callbacks)
     end
@@ -41,6 +55,7 @@ end
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
+update_lagrangian_particle_state!(model) = nothing
 
 # Materialize clock fields to avoid aliasing issues with Reactant.
 # For QAB2, last_Δt and last_stage_Δt must be distinct objects.
@@ -49,13 +64,14 @@ materialize_clock!(clock, timestepper) = nothing
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
+include("time_discretization.jl")
 include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
-    TimeStepper(name::Symbol, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 
@@ -80,9 +96,12 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...)
+const SplitRungeKuttaName = Union{Val{:SplitRungeKutta2}, Val{:SplitRungeKutta3}, Val{:SplitRungeKutta4}, Val{:SplitRungeKutta5}}
+
 for stages in 2:5
+    coefficients = Tuple(stages:-1:1)
     @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
-              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+              SplitRungeKuttaTimeStepper(args...; coefficients=$coefficients, kwargs...)
 end
 
 TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =

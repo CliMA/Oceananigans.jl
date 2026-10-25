@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
-using Oceananigans.Grids: halo_size, size, topology
+using Oceananigans.Grids: CommunicatingSide, halo_size, size, topology
 using Oceananigans.Utils: launch!
 
 using Adapt
@@ -14,7 +14,7 @@ import Oceananigans.Fields: communication_buffers
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 
-struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
+struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE, CS}
     west :: W
     east :: E
    south :: S
@@ -23,6 +23,7 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    southeast :: SE
    northwest :: NW
    northeast :: NE
+   state :: CS
 end
 
 Adapt.adapt_structure(to, buff::CommunicationBuffers) =
@@ -33,7 +34,8 @@ Adapt.adapt_structure(to, buff::CommunicationBuffers) =
                          Adapt.adapt(to, buff.southwest),
                          Adapt.adapt(to, buff.southeast),
                          Adapt.adapt(to, buff.northwest),
-                         Adapt.adapt(to, buff.northeast))
+                         Adapt.adapt(to, buff.northeast),
+                         Adapt.adapt(to, buff.state))
 
 on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
@@ -43,12 +45,14 @@ on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.southwest),
                          on_architecture(arch, buff.southeast),
                          on_architecture(arch, buff.northwest),
-                         on_architecture(arch, buff.northeast))
+                         on_architecture(arch, buff.northeast),
+                         on_architecture(arch, buff.state))
+
 
 communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
 
 """
-    CommunicationBuffers(grid, data, boundary_conditions)
+$(TYPEDSIGNATURES)
 
 Construct communication buffers for distributed halo exchange.
 
@@ -85,7 +89,9 @@ function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryCond
     nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
     ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
+    state = communication_state(arch, west, east, south, north, sw, se, nw, ne)
+
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne, state)
 end
 
 CommunicationBuffers(grid, data, ::Missing) = nothing
@@ -101,7 +107,7 @@ contains the full extent of the halo region including the corners. This allows c
 data to be communicated in a single pass along with the edge data.
 
 `OneDBuffer` is also used in two-dimensional parallelizations for processes at domain
-edges (e.g., boundaries with `RightConnected` or `LeftConnected` topologies), where
+edges (directions connected on one side only), where
 corner communication is not needed in that direction.
 
 # Size
@@ -172,7 +178,7 @@ function x_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     _, Ty, Tz = size(parent(data))
     Ny = size(grid, 2)
     FT = eltype(data)
-    if (ranks(arch)[2] == 1) || (TY == RightConnected) || (TY == LeftConnected)
+    if (ranks(arch)[2] == 1) || ((TY <: Sides{<:CommunicatingSide}) != (TY <: Sides{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, H, Ty, Tz))
         recv = on_architecture(arch, zeros(FT, H, Ty, Tz))
         return OneDBuffer(send, recv)
@@ -187,7 +193,7 @@ function y_communication_buffer(arch::Distributed, grid::AbstractGrid{<:Any, TX,
     Tx, _, Tz = size(parent(data))
     FT = eltype(data)
     Nx = size(grid, 1)
-    if (ranks(arch)[1] == 1) || (TX == RightConnected) || (TX == LeftConnected)
+    if (ranks(arch)[1] == 1) || ((TX <: Sides{<:CommunicatingSide}) != (TX <: Sides{<:Any, <:CommunicatingSide}))
         send = on_architecture(arch, zeros(FT, Tx, H, Tz))
         recv = on_architecture(arch, zeros(FT, Tx, H, Tz))
         return OneDBuffer(send, recv)
@@ -237,7 +243,7 @@ function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, xedg
 end
 
 """
-    fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing.
 """
@@ -311,7 +317,7 @@ end
 fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAndTop) = nothing
 
 """
-    recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
+$(TYPEDSIGNATURES)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred.
 """
@@ -433,3 +439,11 @@ _recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:
 _recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
 _recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+
+# Pass throughs to communication state
+wait_for_messages!(buff::CommunicationBuffers) = wait_for_messages!(buff.state)
+
+posted_by_main_thread(buff::CommunicationBuffers) =
+    CommunicationBuffers(buff.west, buff.east, buff.south, buff.north,
+                         buff.southwest, buff.southeast, buff.northwest, buff.northeast,
+                         posted_by_main_thread(buff.state))
