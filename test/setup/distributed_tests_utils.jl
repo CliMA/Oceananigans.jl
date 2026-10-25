@@ -23,7 +23,7 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
     # We need a bottom height field that ``masks'' the singularities.
     # Note: For the test to pass we also need to mask the southernmost row near φm.
     # We use φ < φm + radius (not just φ < φm) to also immerse the southernmost row on
-    # RightFaceFolded grids, for which φm sits at the cell face and j=1 centers
+    # FaceFolded grids, for which φm sits at the cell face and j=1 centers
     # are slightly north of φm.
     # TODO: Investigate why masking near φm is necessary. Shouldn't the no-flux south
     # BC already make the south halo behave as if everything south was immersed?
