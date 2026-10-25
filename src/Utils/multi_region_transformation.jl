@@ -78,7 +78,8 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
 
 # `isregional(args)` and `isregional(values(kwargs))` fold to compile-time constants for
 # non-regional arguments, so the multi-region branch is dead code (and is not inferred) for them.
-@inline function apply_regionally!(regional_func!, args...; kwargs...)
+# The `::F` and `Vararg{Any, N}` annotations make the compiler specialize on arguments that are only passed on.
+@inline function apply_regionally!(regional_func!::F, args::Vararg{Any, N}; kwargs...) where {F, N}
     if isregional(args) || isregional(values(kwargs))
         return multi_region_apply!(regional_func!, args...; kwargs...)
     else
@@ -98,15 +99,23 @@ struct RegionSelector{R} end
 @inline regional_function(regional_func!, selector) = regional_func!
 @inline regional_function(regional_func!::MultiRegionObject, selector) = selector(regional_func!)
 
-@inline function apply_in_regions!(regional_func!, ::Val{r}, ::Val{N}, args, kwargs) where {r, N}
-    r > N && return nothing
-    selector = RegionSelector{r}()
+@inline function apply_in_region!(regional_func!::F, selector, args, kwargs) where F
     regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
-    return apply_in_regions!(regional_func!, Val(r + 1), Val(N), args, kwargs)
+    return nothing
+end
+
+# Generated rather than recursive in Val{r + 1}: inference widens a self-call whose type signature grows, which
+# turned each region step into a dynamic dispatch.
+@generated function apply_in_regions!(regional_func!, ::Val{N}, args, kwargs) where N
+    calls = [:(apply_in_region!(regional_func!, RegionSelector{$r}(), args, kwargs)) for r in 1:N]
+    return quote
+        $(calls...)
+        return nothing
+    end
 end
 
 # Any iterable of regions (e.g. a custom `regions` sequence) keeps its own identifiers and order.
-@inline function apply_in_each_region!(regional_func!, R, args, kwargs)
+@inline function apply_in_each_region!(regional_func!::F, R, args, kwargs) where F
     for r in R
         selector = Base.Fix2(getregion, r)
         regional_function(regional_func!, selector)(map(selector, args)...; map(selector, kwargs)...)
@@ -114,11 +123,11 @@ end
     return nothing
 end
 
-@inline apply_in_regions!(regional_func!, R, args, kwargs) = apply_in_each_region!(regional_func!, R, args, kwargs)
+@inline apply_in_regions!(regional_func!::F, R, args, kwargs) where F = apply_in_each_region!(regional_func!, R, args, kwargs)
 
-@inline function apply_in_regions!(regional_func!, R::AbstractUnitRange{<:Integer}, args, kwargs)
+@inline function apply_in_regions!(regional_func!::F, R::AbstractUnitRange{<:Integer}, args, kwargs) where F
     if first(R) == 1
-        apply_in_regions!(regional_func!, Val(1), Val(length(R)), args, kwargs)
+        apply_in_regions!(regional_func!, Val(length(R)), args, kwargs)
     else
         apply_in_each_region!(regional_func!, R, args, kwargs)
     end
@@ -130,10 +139,7 @@ end
 @inline static_regions(a) = regions(a)
 @inline static_regions(mo::MultiRegionObject{<:NTuple{N, Any}}) where N = Val(N)
 
-@inline apply_in_regions!(regional_func!, ::Val{N}, args, kwargs) where N =
-    apply_in_regions!(regional_func!, Val(1), Val(N), args, kwargs)
-
-@inline function multi_region_apply!(regional_func!, args...; kwargs...)
+@inline function multi_region_apply!(regional_func!::F, args::Vararg{Any, N}; kwargs...) where {F, N}
     regional_argument = first_regional(args)
     regional_argument = isnothing(regional_argument) ? first_regional(Tuple(values(kwargs))) : regional_argument
     apply_in_regions!(regional_func!, static_regions(regional_argument), args, values(kwargs))
@@ -143,7 +149,7 @@ end
 # For `MultiRegionObject` calls (think kernels with different sizes for different regions)
 # we also `getregion` for the function. Since the function itself is multiregional we do not
 # need to check if the call is single region or not.
-@inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
+@inline function apply_regionally!(regional_func!::MultiRegionObject, args::Vararg{Any, N}; kwargs...) where N
     apply_in_regions!(regional_func!, static_regions(regional_func!), args, values(kwargs))
     return nothing
 end
