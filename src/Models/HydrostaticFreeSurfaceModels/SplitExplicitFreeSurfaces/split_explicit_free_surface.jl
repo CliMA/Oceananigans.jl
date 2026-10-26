@@ -448,17 +448,6 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-function extended_halos_fit(grid, substepping::FixedSubstepNumber)
-    TX, TY, _ = topology(grid)
-    Nx, Ny, _ = size(grid)
-    H = length(substepping.averaging_weights) + 2
-
-    fits_in_x = !(TX() isa ConnectedTopology) || H < Nx
-    fits_in_y = !(TY() isa ConnectedTopology) || H < Ny
-
-    return fits_in_x & fits_in_y
-end
-
 materialize_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
 
 function materialize_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)

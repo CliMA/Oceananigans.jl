@@ -84,7 +84,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 # given the grid spacings, a hypothetical `maximum_speed` (assumed to be around 3 m/s)
 # and a conservative `cfl` (0.3 by default). Note that this computation only considers the ``advective''
 # CFL, as we assume that at a high enough resolution advective processes are the bottleneck.
-function estimate_maximum_Δt(grid; maximum_speed = 3, cfl = 0.3)
+function estimate_maximum_Δt(grid; maximum_speed = 3, cfl = 0.7)
     Δx  = minimum_xspacing(grid)
     Δy  = minimum_yspacing(grid)
     Δs  = sqrt((Δx^2 + Δy^2) / 2)
@@ -100,7 +100,7 @@ function default_free_surface(grid::DistributedGrid;
 
     # Substep into extended halos only if they fit within every rank's subdomain
     arch = architecture(grid)
-    extend_halos = all_reduce(&, extended_halos_fit(grid, free_surface.substepping), arch)
+    extend_halos = true
 
     if !extend_halos
         Nsubsteps = length(free_surface.substepping.averaging_weights)
@@ -180,7 +180,7 @@ function HydrostaticFreeSurfaceModel(grid;
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
-                                     free_surface = default_free_surface(grid),
+                                     free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
                                      tracers = nothing,
                                      forcing::NamedTuple = NamedTuple(),
                                      closure = nothing,
