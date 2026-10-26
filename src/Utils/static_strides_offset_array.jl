@@ -1,4 +1,4 @@
-using OffsetArrays: OffsetArrays, AbstractOffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray, OffsetArray
 
 struct StaticStridesOffsetArray{T, N, S, O, A <: AbstractArray{T, N}} <: AbstractOffsetArray{T, N}
     parent :: A
@@ -7,13 +7,15 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return an array that wraps `parent` with `offsets`, whose sizes and offsets are type parameters, so that the size and
-offsets of the array are compile-time constants.
+Return an array that wraps `parent` with offset `indices`, whose sizes and offsets are type parameters, so that the
+size and offsets of the array are compile-time constants. The `indices` take any form accepted by `OffsetArray`, which
+also throws an `OverflowError` if they overflow the axes of `parent`.
 """
-function StaticStridesOffsetArray(parent::AbstractArray{T, N}, offsets::Vararg{Integer, N}) where {T, N}
-    # OffsetArrays does not validate the offsets stored by AbstractOffsetArray subtypes
-    map(OffsetArrays.overflow_check, axes(parent), offsets)
-    return StaticStridesOffsetArray{T, N, size(parent), Int.(offsets), typeof(parent)}(parent)
+StaticStridesOffsetArray(parent::AbstractArray, indices...) = StaticStridesOffsetArray(OffsetArray(parent, indices...))
+
+function StaticStridesOffsetArray(a::OffsetArray{T, N}) where {T, N}
+    p = parent(a)
+    return StaticStridesOffsetArray{T, N, size(p), OffsetArrays.offsets(a), typeof(p)}(p)
 end
 
 const SSOA = StaticStridesOffsetArray

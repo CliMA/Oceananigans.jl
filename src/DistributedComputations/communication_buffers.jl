@@ -245,7 +245,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-fills `buffers.send` from OffsetArray `c` preparing for message passing.
+fills `buffers.send` from the offset array `c` preparing for message passing.
 """
 function fill_send_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
@@ -319,7 +319,7 @@ fill_send_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid, ::B
 """
 $(TYPEDSIGNATURES)
 
-fills OffsetArray `c` from `buffers.recv` after message passing occurred.
+fills the offset array `c` from `buffers.recv` after message passing occurred.
 """
 function recv_from_buffers!(c::AbstractOffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)

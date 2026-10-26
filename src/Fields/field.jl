@@ -121,7 +121,7 @@ location in `(x, y, z)` respectively.
 Keyword arguments
 =================
 
-- `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
+- `data :: StaticStridesOffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
 - `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).
@@ -241,11 +241,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Return an `OffsetArray` of `parent(data)`.
+Return a `StaticStridesOffsetArray` of `parent(data)`.
 
 If `indices` is not (:, :, :), a `view` of `parent(data)` with `indices`.
 
-If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
+If `indices === (:, :, :)`, return a `StaticStridesOffsetArray` of `parent(data)`.
 """
 function offset_windowed_data(data, data_indices, loc, grid, view_indices)
     halo = halo_size(grid)
@@ -331,12 +331,12 @@ function Base.view(f::Field, i, j, k)
     @apply_regionally begin
         view_indices = map(convert_colon_indices, view_indices, f.indices)
 
-        # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
-        #     -> the first retains a reference to the original f.data (an OffsetArray)
+        # Choice: offset array of view of offset array, or offset array of view?
+        #     -> the first retains a reference to the original f.data (a StaticStridesOffsetArray)
         #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
         #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
         #
-        # OffsetArray around a view of parent with appropriate indices:
+        # StaticStridesOffsetArray around a view of parent with appropriate indices:
         windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
 
         boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)

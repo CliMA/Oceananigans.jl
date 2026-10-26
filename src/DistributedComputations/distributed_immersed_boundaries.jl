@@ -81,7 +81,7 @@ end
 """
     function resize_immersed_boundary!(ib, grid)
 
-If the immersed condition is an `OffsetArray`, resize it to match
+If the immersed condition is an `AbstractOffsetArray`, resize it to match
 the total size of `grid`
 """
 resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
