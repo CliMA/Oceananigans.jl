@@ -10,8 +10,8 @@ abstract type AbstractRadiationScheme{FT} end
                       use_boundary_velocity = false,
                       target_transport = nothing)
 
-Orlanski (1976) radiation condition with locally-diagnosed phase speed
-and adaptive nudging (Marchesiello et al. 2001):
+[Orlanski (1976)](@cite Orlanksi1976) radiation condition with locally-diagnosed phase speed
+and adaptive nudging ([Marchesiello et al., 2001](@cite marchesiello.ea2001)):
 
     ∂φ/∂t + cₙ ⋅ ∂φ/∂n = - (φ - φᵉˣᵗ) / τ
 
