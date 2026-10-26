@@ -5,8 +5,6 @@
 # A well-mixed convective layer of depth h that does not entrain at its base has w★³ = W(h) = h (Jᵇ + Jʳ T(h)) - 2 Jʳ ∫₀ʰ T,
 # with fluxes positive upward: Jᵇ the total surface buoyancy flux, Jʳ ≤ 0 its radiative part and Jʳ T(h) the radiation at the base
 
-function transmitted_fraction_derivative end
-
 # Buoyancy production `W(h)` over a convective layer of depth `h`, and its derivative `W′(h)`
 @inline convective_buoyancy_production(i, j, grid, ::Nothing, h, Jᵇ, Jʳ) = h * Jᵇ
 

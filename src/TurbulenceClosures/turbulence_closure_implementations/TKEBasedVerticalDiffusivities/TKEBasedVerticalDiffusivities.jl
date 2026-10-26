@@ -17,13 +17,14 @@ using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, Seawater
                                          TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy,
                                          ∂z_b, top_buoyancy_flux
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
+using Oceananigans.Forcings: surface_radiative_buoyancy_flux, transmitted_fraction, transmitted_fraction_derivative,
+                             transmitted_thickness
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
                               ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,
-                                       VerticallyImplicitTimeDiscretization, surface_radiative_buoyancy_flux,
-                                       transmitted_fraction, transmitted_thickness
+                                       VerticallyImplicitTimeDiscretization
 using Oceananigans.Utils: Utils, launch!, prettysummary, named_tuple, f32_safe_cbrt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!

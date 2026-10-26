@@ -5,15 +5,14 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_s
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: model_forcing, penetrative_radiation
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
-                                       closure_required_tracers, initialize_closure_fields!, penetrative_radiation,
-                                       with_penetrative_radiation
+                                       closure_required_tracers, initialize_closure_fields!, with_penetrative_radiation
 using Oceananigans.Utils: tupleit
 
 import Oceananigans

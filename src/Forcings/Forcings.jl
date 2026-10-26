@@ -21,5 +21,6 @@ include("forcing.jl")
 include("model_forcing.jl")
 include("compute_forcing.jl")
 include("tidal_forcing.jl")
+include("penetrative_radiation.jl")
 
 end # module
