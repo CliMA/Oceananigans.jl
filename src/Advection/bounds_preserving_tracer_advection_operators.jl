@@ -151,7 +151,7 @@ end
     div_y = bounded_tracer_flux_divergence_y(i, j, k, grid, advection, 1, U.v, c)
     div_z = bounded_tracer_flux_divergence_z(i, j, k, grid, advection, 1, U.w, c)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
+    return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (div_x + div_y + div_z)
 end
 
 # Support for Flat directions
