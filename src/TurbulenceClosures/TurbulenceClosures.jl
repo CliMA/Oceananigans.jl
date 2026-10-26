@@ -151,6 +151,18 @@ function buoyancy_force end # to be defined by models that want to use Turbulenc
 function buoyancy_tracers end # to be defined by models that want to use TurbulenceClosures
 
 #####
+##### Interface for radiation absorbed below the surface
+#####
+
+"""
+    with_penetrative_radiation(closure, radiation)
+
+Return `closure` with `radiation` handed to every closure in it that adjusts for radiation absorbed below the surface.
+"""
+with_penetrative_radiation(closure, radiation) = closure
+with_penetrative_radiation(closures::Tuple, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
+
+#####
 ##### Fallback: flux = 0
 #####
 

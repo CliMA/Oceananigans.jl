@@ -1,7 +1,7 @@
 using Oceananigans.Fields: Field
 using Oceananigans.Units: minute
 
-struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
+struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE, R} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
     maximum_tracer_diffusivity :: FT
@@ -11,6 +11,7 @@ struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivit
     minimum_convective_buoyancy_flux :: FT
     negative_tke_damping_time_scale :: FT
     tke_time_step :: DT
+    penetrative_radiation :: R
 end
 
 function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
@@ -21,18 +22,35 @@ function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                                       minimum_tke::FT,
                                       minimum_convective_buoyancy_flux::FT,
                                       negative_tke_damping_time_scale::FT,
-                                      tke_time_step::DT) where {TD, CL, FT, DT, TKE}
+                                      tke_time_step::DT,
+                                      penetrative_radiation::R) where {TD, CL, FT, DT, TKE, R}
 
-    return CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE}(mixing_length,
-                                                         turbulent_kinetic_energy_equation,
-                                                         maximum_tracer_diffusivity,
-                                                         maximum_tke_diffusivity,
-                                                         maximum_viscosity,
-                                                         minimum_tke,
-                                                         minimum_convective_buoyancy_flux,
-                                                         negative_tke_damping_time_scale,
-                                                         tke_time_step)
+    return CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE, R}(mixing_length,
+                                                            turbulent_kinetic_energy_equation,
+                                                            maximum_tracer_diffusivity,
+                                                            maximum_tke_diffusivity,
+                                                            maximum_viscosity,
+                                                            minimum_tke,
+                                                            minimum_convective_buoyancy_flux,
+                                                            negative_tke_damping_time_scale,
+                                                            tke_time_step,
+                                                            penetrative_radiation)
 end
+
+function with_penetrative_radiation(closure::CATKEVerticalDiffusivity{TD}, radiation) where TD
+    return CATKEVerticalDiffusivity{TD}(closure.mixing_length,
+                                        closure.turbulent_kinetic_energy_equation,
+                                        closure.maximum_tracer_diffusivity,
+                                        closure.maximum_tke_diffusivity,
+                                        closure.maximum_viscosity,
+                                        closure.minimum_tke,
+                                        closure.minimum_convective_buoyancy_flux,
+                                        closure.negative_tke_damping_time_scale,
+                                        closure.tke_time_step,
+                                        radiation)
+end
+
+Adapt.adapt_structure(to, closure::CATKEVerticalDiffusivity) = with_penetrative_radiation(closure, adapt(to, closure.penetrative_radiation))
 
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
     CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
@@ -40,6 +58,8 @@ CATKEVerticalDiffusivity(FT::DataType; kw...) =
 const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
 const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
 const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
+
+with_penetrative_radiation(closures::CATKEVDArray, radiation) = map(closure -> with_penetrative_radiation(closure, radiation), closures)
 
 """
     CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -56,7 +76,8 @@ const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
 
 Return the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
-Turbulent Kinetic Energy (TKE).
+Turbulent Kinetic Energy (TKE). The convective scales account for the radiation absorbed below
+the surface that the model `forcing` applies.
 
 !!! note "CATKE vertical diffusivity"
     `CATKEVerticalDiffusivity` is a new turbulence closure diffusivity. The default
@@ -141,7 +162,8 @@ function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTi
                                         convert(FT, minimum_tke),
                                         convert(FT, minimum_convective_buoyancy_flux),
                                         convert(FT, negative_tke_damping_time_scale),
-                                        tke_time_step)
+                                        tke_time_step,
+                                        nothing)
 end
 
 Base.@constprop :aggressive function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
@@ -178,6 +200,7 @@ struct CATKEClosureFields{K, L, J, U, KC, LC}
     κe :: K
     Le :: L
     Jᵇ :: J
+    Jʳ :: J
     previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
@@ -189,6 +212,7 @@ Adapt.adapt_structure(to, catke_closure_fields::CATKEClosureFields) =
                            adapt(to, catke_closure_fields.κe),
                            adapt(to, catke_closure_fields.Le),
                            adapt(to, catke_closure_fields.Jᵇ),
+                           adapt(to, catke_closure_fields.Jʳ),
                            adapt(to, catke_closure_fields.previous_velocities),
                            adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
                            adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
@@ -213,6 +237,7 @@ Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_na
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
+    Jʳ = Field{Center, Center, Nothing}(grid)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -231,7 +256,7 @@ Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_na
         name === :e ? Le : ZeroField()
     end
 
-    return CATKEClosureFields(κu, κc, κe, Le, Jᵇ,
+    return CATKEClosureFields(κu, κc, κe, Le, Jᵇ, Jʳ,
                                   previous_velocities,
                                   _tupled_tracer_diffusivities,
                                   _tupled_implicit_linear_coefficients)
@@ -241,8 +266,7 @@ end
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 function reset!(closure_fields, ::FlavorOfCATKE)
-    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.Jᵇ,
-              closure_fields.previous_velocities...)
+    fields = (closure_fields.κu, closure_fields.κc, closure_fields.κe, closure_fields.Jᵇ, closure_fields.Jʳ, closure_fields.previous_velocities...)
 
     for field in fields
         fill!(field, 0)
@@ -272,7 +296,7 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+            closure_fields, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     return nothing
 end
@@ -291,24 +315,32 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; 
     return nothing
 end
 
-@kernel function compute_average_surface_buoyancy_flux!(Jᵇ, grid, closure, velocities, tracers,
-                                                        buoyancy, top_tracer_bcs, clock, Δt)
+# Jᵇ is the total surface buoyancy flux, radiation included, and Jʳ its radiative part, both averaged over the convective time scale.
+@kernel function compute_average_surface_buoyancy_flux!(closure_fields, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
     i, j = @index(Global, NTuple)
     k = grid.Nz
 
-    closure = getclosure(i, j, closure)
+    closure_ij = getclosure(i, j, closure)
+    radiation = closure_ij.penetrative_radiation
 
     model_fields = merge(velocities, tracers)
-    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, model_fields)
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, Jᵇ)
+    Jʳ★ = surface_radiative_buoyancy_flux(i, j, grid, radiation, buoyancy, model_fields)
+    Jᵇ★ = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, model_fields) + Jʳ★
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, closure_fields)
 
-    Jᵇᵋ = closure.minimum_convective_buoyancy_flux
+    Jᵇ = closure_fields.Jᵇ
+    Jʳ = closure_fields.Jʳ
+    Jᵇᵋ = closure_ij.minimum_convective_buoyancy_flux
     Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
-    Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ, Jᵇ★) # selects fastest (dominant) time-scale
+    Jʳᵢⱼ = @inbounds Jʳ[i, j, 1]
+    Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ - Jʳᵢⱼ, Jᵇ★ - Jʳ★) # selects fastest (dominant) time-scale
     t★ = f32_safe_cbrt(ℓᴰ^2 / Jᵇ⁺)
     ϵ = Δt / t★
 
-    @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
+    @inbounds begin
+        Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
+        Jʳ[i, j, 1] = (Jʳᵢⱼ + ϵ * Jʳ★) / (1 + ϵ)
+    end
 end
 
 @kernel function compute_CATKE_closure_fields!(closure_fields, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
@@ -316,13 +348,12 @@ end
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
-    Jᵇ = closure_fields.Jᵇ
 
     # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
     # is recomputed in time_step_turbulent_kinetic_energy.
-    κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
-    κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
-    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
+    κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, closure_fields)
+    κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, closure_fields)
+    κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, closure_fields)
 
     κu★ = mask_diffusivity(i, j, k, grid, κu★)
     κc★ = mask_diffusivity(i, j, k, grid, κc★)
@@ -335,9 +366,9 @@ end
     end
 end
 
-@inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     κu = ℓu * w★
     κu_max = closure.maximum_viscosity
     κu★ = min(κu, κu_max)
@@ -345,9 +376,9 @@ end
     return FT(κu★)
 end
 
-@inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     κc = ℓc * w★
     κc_max = closure.maximum_tracer_diffusivity
     κc★ = min(κc, κc_max)
@@ -355,9 +386,9 @@ end
     return FT(κc★)
 end
 
-@inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
-    ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     κe = ℓe * w★
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
@@ -387,6 +418,7 @@ function Base.show(io::IO, clo::CATKEVD)
               "├── negative_tke_time_scale: ", prettysummary(clo.negative_tke_damping_time_scale), '\n',
               "├── minimum_convective_buoyancy_flux: ", prettysummary(clo.minimum_convective_buoyancy_flux), '\n',
               "├── tke_time_step: ", prettysummary(clo.tke_time_step), '\n',
+              "├── penetrative_radiation: ", prettysummary(clo.penetrative_radiation), '\n',
               "├── mixing_length: ", prettysummary(clo.mixing_length), '\n',
               "│   ├── Cˢ:   ", prettysummary(clo.mixing_length.Cˢ), '\n',
               "│   ├── Cᵇ:   ", prettysummary(clo.mixing_length.Cᵇ), '\n',
@@ -426,6 +458,7 @@ end
 function prognostic_state(cf::CATKEClosureFields)
     return (previous_velocities = prognostic_state(cf.previous_velocities),
             Jᵇ = prognostic_state(cf.Jᵇ),
+            Jʳ = prognostic_state(cf.Jʳ),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
             κe = prognostic_state(cf.κe))
@@ -434,6 +467,7 @@ end
 function restore_prognostic_state!(restored::CATKEClosureFields, from)
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
+    restore_prognostic_state!(restored.Jʳ, from.Jʳ)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κe, from.κe)

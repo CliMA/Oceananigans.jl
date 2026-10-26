@@ -121,13 +121,15 @@ end
 @inline squared_tkeᶜᶜᶜ(i, j, k, grid, closure, e) = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, e)^2
 
 @inline function convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
+                                            velocities, tracers, buoyancy, closure_fields)
 
     u = velocities.u
     v = velocities.v
 
+    radiation = closure.penetrative_radiation
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
+    Jᵇ       = @inbounds closure_fields.Jᵇ[i, j, 1]
+    Jʳ       = @inbounds closure_fields.Jʳ[i, j, 1]
     w★       = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     w★³      = ℑzᵃᵃᶠ(i, j, k, grid, three_halves_tkeᶜᶜᶜ, closure, tracers.e)
     S²       = shearᶜᶜᶠ(i, j, k, grid, u, v)
@@ -135,8 +137,10 @@ end
     N²_above = ∂z_b(i, j, k+1, grid, buoyancy, tracers)
 
     # "Convective length"
-    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Jᵇ + Jᵇᵋ)
+    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling, w★³ = W(h)
+    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
+    Jᵉ = effective_buoyancy_flux(i, j, grid, radiation, h, Jᵇ, Jʳ)
+    ℓᶜ = Cᶜ * h
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Model for shear-convection interaction
@@ -147,13 +151,13 @@ end
 
     # Model for shear-convection interaction
     d = depthᶜᶜᶠ(i, j, k, grid)
-    Riᶠ = d * w★ * S² / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    Riᶠ = d * w★ * S² / (Jᵉ + Jᵇᵋ) # Riᶠ = Flux Ri number
     ϵˢᵖ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
     ℓᶜ = clip(ϵˢᵖ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
+    ℓᵉ = Cᵉ * Jᵉ / (w★ * N² + Jᵇᵋ)
 
     #=
     w★² = ℑzᵃᵃᶠ(i, j, k, grid, squared_tkeᶜᶜᶜ, closure, tracers.e)
@@ -173,13 +177,15 @@ end
 end
 
 @inline function convective_length_scaleᶜᶜᶜ(i, j, k, grid, closure, Cᶜ::Number, Cᵉ::Number, Cˢᵖ::Number,
-                                            velocities, tracers, buoyancy, surface_buoyancy_flux)
+                                            velocities, tracers, buoyancy, closure_fields)
 
     u = velocities.u
     v = velocities.v
 
+    radiation = closure.penetrative_radiation
     Jᵇᵋ      = closure.minimum_convective_buoyancy_flux
-    Jᵇ       = @inbounds surface_buoyancy_flux[i, j, 1]
+    Jᵇ       = @inbounds closure_fields.Jᵇ[i, j, 1]
+    Jʳ       = @inbounds closure_fields.Jʳ[i, j, 1]
     w★       = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)
     w★³      = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^3
     S²       = shearᶜᶜᶜ(i, j, k, grid, u, v)
@@ -187,8 +193,10 @@ end
     N²_above = ℑbzᵃᵃᶜ(i, j, k+1, grid, ∂z_b, buoyancy, tracers)
 
     # "Convective length"
-    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling
-    ℓᶜ = Cᶜ * w★³ / (Jᵇ + Jᵇᵋ)
+    # ℓᶜ ∼ boundary layer depth according to Deardorff scaling, w★³ = W(h)
+    h  = convective_layer_depth(i, j, grid, radiation, w★³, Jᵇ, Jʳ, Jᵇᵋ)
+    Jᵉ = effective_buoyancy_flux(i, j, grid, radiation, h, Jᵇ, Jʳ)
+    ℓᶜ = Cᶜ * h
     ℓᶜ = ifelse(isnan(ℓᶜ), zero(grid), ℓᶜ)
 
     # Figure out which mixing length applies
@@ -201,13 +209,13 @@ end
 
     # Model for shear-convection interaction
     d = depthᶜᶜᶜ(i, j, k, grid)
-    Riᶠ = d * S² * w★ / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
+    Riᶠ = d * S² * w★ / (Jᵉ + Jᵇᵋ) # Riᶠ = Flux Ri number
     ϵˢᵖ = 1 - Cˢᵖ * Riᶠ            # ϵ = Sheared convection factor
     ℓᶜ = clip(ϵˢᵖ * ℓᶜ)            # ensure non-negativity
 
     # "Entrainment length"
     # Ensures that w′b′ ~ Jᵇ at entrainment depth
-    ℓᵉ = Cᵉ * Jᵇ / (w★ * N² + Jᵇᵋ)
+    ℓᵉ = Cᵉ * Jᵉ / (w★ * N² + Jᵇᵋ)
 
     # w★² = turbulent_velocityᶜᶜᶜ(i, j, k, grid, closure, tracers.e)^2
     # Riᶠ = w★² / sqrt(N²) / (Jᵇ + Jᵇᵋ) # Riᶠ = Flux Ri number
@@ -284,11 +292,11 @@ Combine the geometric length `ℓ★` with the convective length `ℓʰ`, weight
 @inline convective_floor_length(ℓ★, ℓʰ, f) =
     ifelse(ℓʰ > zero(ℓʰ), max(ℓʰ, f * ℓ★), max(ℓ★, ℓʰ))
 
-@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     Cᶜ  = closure.mixing_length.Cᶜu
     Cᵉ  = closure.mixing_length.Cᵉu
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, closure_fields)
 
     Cᵘⁿ = closure.mixing_length.Cᵘⁿu
     Cˡᵒ = closure.mixing_length.Cˡᵒu
@@ -309,11 +317,11 @@ Combine the geometric length `ℓ★` with the convective length `ℓʰ`, weight
     return min(H, ℓu)
 end
 
-@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     Cᶜ  = closure.mixing_length.Cᶜc
     Cᵉ  = closure.mixing_length.Cᵉc
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, closure_fields)
 
     Cᵘⁿ = closure.mixing_length.Cᵘⁿc
     Cˡᵒ = closure.mixing_length.Cˡᵒc
@@ -333,11 +341,11 @@ end
     return min(H, ℓc)
 end
 
-@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
+@inline function TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
     Cᶜ  = closure.mixing_length.Cᶜe
     Cᵉ  = closure.mixing_length.Cᵉe
     Cˢᵖ = closure.mixing_length.Cˢᵖ
-    ℓʰ  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, surface_buoyancy_flux)
+    ℓʰ  = convective_length_scaleᶜᶜᶠ(i, j, k, grid, closure, Cᶜ, Cᵉ, Cˢᵖ, velocities, tracers, buoyancy, closure_fields)
 
     Cᵘⁿ = closure.mixing_length.Cᵘⁿe
     Cˡᵒ = closure.mixing_length.Cˡᵒe
