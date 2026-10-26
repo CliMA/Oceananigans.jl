@@ -2759,7 +2759,7 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
         ds_h = NCDataset(filepaths[(kind, "with_halos")])
 
         @test haskey(ds_h, "displacement")
-        @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
+        @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_2=1, time=Nt + 1)
 
         if kind == "mixed_"
             @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
@@ -2774,7 +2774,7 @@ function test_netcdf_hydrostatic_free_surface_output(arch; immersed=false, verti
         ds_n = NCDataset(filepaths[(kind, "no_halos")])
 
         @test haskey(ds_n, "displacement")
-        @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
+        @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_2=1, time=Nt + 1)
 
         if kind == "mixed_"
             @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
@@ -2829,7 +2829,7 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
         ds_h = NCDataset(filepaths[(kind, "with_halos")])
 
         @test haskey(ds_h, "displacement")
-        @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
+        @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_2=1, time=Nt + 1)
 
         if kind == "mixed_"
             @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
@@ -2844,7 +2844,7 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
         ds_n = NCDataset(filepaths[(kind, "no_halos")])
 
         @test haskey(ds_n, "displacement")
-        @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
+        @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_2=1, time=Nt + 1)
 
         if kind == "mixed_"
             @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
@@ -2858,6 +2858,132 @@ function test_netcdf_nonhydrostatic_free_surface_output(arch; immersed=false, ve
     end
 
     rm(dir; recursive=true)
+
+    return nothing
+end
+
+# Regression tests for https://github.com/CliMA/Oceananigans.jl/issues/5717:
+# writing "windowed" fields (fields whose `indices` pin an axis to a sub-range, such as
+# the free-surface displacement or a user `view`) to NetCDF. A windowed axis shares a
+# location with full-extent fields but covers only part of that axis, so it needs its own
+# NetCDF dimension whenever its coordinate values differ from the canonical full-extent one.
+function test_netcdf_windowed_field_output(arch)
+    Nx, Ny, Nz = 6, 6, 4
+    Hx, Hy, Hz = 2, 2, 2
+
+    grid = RectilinearGrid(arch;
+                           topology = (Bounded, Bounded, Bounded),
+                           size = (Nx, Ny, Nz),
+                           halo = (Hx, Hy, Hz),
+                           x = (-1, 1),
+                           y = (-1, 1),
+                           z = (-100, 0))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :T)
+    set!(model, T = (x, y, z) -> 3z)
+
+    displacement = model.free_surface.displacement
+    T = model.tracers.T
+
+    # A center field windowed to the top center, and a face field windowed to an interior face.
+    T_top = view(T, :, :, Nz:Nz)
+    w_mid = view(ZFaceField(grid), :, :, 2:2)
+
+    Arch = typeof(arch)
+
+    #####
+    ##### A single windowed field alongside the full field at the same location
+    #####
+
+    fp_coexist = "test_windowed_coexist_$Arch.nc"
+    isfile(fp_coexist) && rm(fp_coexist)
+
+    writer = NetCDFWriter(model, (; T, T_top, w_mid);
+                          filename = fp_coexist,
+                          schedule = IterationInterval(1),
+                          array_type = Array{Float64},
+                          include_grid_metrics = false,
+                          overwrite_files = true)
+
+    # The second write reuses the windowed dimensions; at the same time it overwrites the first snapshot
+    Oceananigans.write_output!(writer, model)
+    Oceananigans.write_output!(writer, model)
+
+    ds = NCDataset(fp_coexist)
+
+    # The full tracer keeps the canonical `z_aac`; the windowed tracer gets a distinct dim.
+    @test dimsize(ds[:T])     == (x_caa=Nx, y_aca=Ny, z_aac=Nz,   time=1)
+    @test dimsize(ds[:T_top]) == (x_caa=Nx, y_aca=Ny, z_aac_2=1,  time=1)
+    @test dimsize(ds[:w_mid]) == (x_caa=Nx, y_aca=Ny, z_aaf_2=1,  time=1)
+
+    @test haskey(ds, "z_aac")
+    @test haskey(ds, "z_aac_2")
+    @test haskey(ds, "z_aaf_2")
+
+    # The windowed dimension holds the right single coordinate value...
+    z_centers = znodes(grid, Center())
+    z_faces   = znodes(grid, Face())
+    @test collect(ds["z_aac_2"]) ≈ [z_centers[Nz]]
+    @test collect(ds["z_aaf_2"]) ≈ [z_faces[2]]
+
+    # ...and inherits the descriptive attributes of the base coordinate it derives from.
+    @test ds["z_aac_2"].attrib["units"] == ds["z_aac"].attrib["units"]
+    @test ds["z_aac_2"].attrib["long_name"] == ds["z_aac"].attrib["long_name"]
+
+    # Windowed data round-trips correctly.
+    @test Array(ds["T_top"][:, :, 1, 1]) ≈ Array(interior(T))[:, :, Nz]
+
+    close(ds)
+    rm(fp_coexist)
+
+    #####
+    ##### Free-surface displacement under a non-conventional output name
+    #####
+
+    fp_eta = "test_windowed_eta_$Arch.nc"
+    isfile(fp_eta) && rm(fp_eta)
+
+    # Named "η" rather than "displacement": the windowed-field handling is name-agnostic,
+    # so it writes with its own windowed z-dimension instead of colliding with `z_aaf`
+    # (issue #5717 test 1, which failed when the output was not named "displacement").
+    eta_writer = NetCDFWriter(model, Dict("η" => displacement);
+                              filename = fp_eta,
+                              schedule = IterationInterval(1),
+                              array_type = Array{Float64},
+                              include_grid_metrics = false,
+                              overwrite_files = true)
+
+    Oceananigans.write_output!(eta_writer, model)
+
+    ds = NCDataset(fp_eta)
+    @test haskey(ds, "η")
+    @test dimsize(ds["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_2=1, time=1)
+    close(ds)
+    rm(fp_eta)
+
+    #####
+    ##### Windowed displacement combined with writer `indices` (issue #5717 test 4)
+    #####
+
+    fp_sliced = "test_windowed_sliced_$Arch.nc"
+    isfile(fp_sliced) && rm(fp_sliced)
+
+    i_range, j_range = 2:4, 3:5
+    sliced_writer = NetCDFWriter(model, Dict("η" => displacement);
+                                 filename = fp_sliced,
+                                 indices = (i_range, j_range, :),
+                                 schedule = IterationInterval(1),
+                                 array_type = Array{Float64},
+                                 include_grid_metrics = false,
+                                 overwrite_files = true)
+
+    Oceananigans.write_output!(sliced_writer, model)
+
+    ds = NCDataset(fp_sliced)
+    @test haskey(ds, "η")
+    @test dimsize(ds["η"]) == (x_caa=length(i_range), y_aca=length(j_range), z_aaf_2=1, time=1)
+    close(ds)
+    rm(fp_sliced)
 
     return nothing
 end
@@ -3957,6 +4083,10 @@ end
                 test_netcdf_hydrostatic_free_surface_output(arch; immersed, vertically_stretched)
                 test_netcdf_nonhydrostatic_free_surface_output(arch; immersed, vertically_stretched)
             end
+        end
+
+        @testset "Windowed field output [$A]" begin
+            test_netcdf_windowed_field_output(arch)
         end
 
         @testset "Buoyancy force [$A]" begin
