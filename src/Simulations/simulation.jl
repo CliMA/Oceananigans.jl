@@ -56,10 +56,10 @@ Base.show(io::IO, ad::AutomaticDifferentiation) =
               ", mincut=", ad.mincut,
               ", checkpointing=", ad.checkpointing, ")")
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL, AD}
+mutable struct Simulation{ML, DT, SI, ST, DI, OW, CB, FT, BL, AD}
     model :: ML
     Δt :: DT
-    stop_iteration :: FT
+    stop_iteration :: SI
     stop_time :: ST
     wall_time_limit :: FT
     diagnostics :: DI
