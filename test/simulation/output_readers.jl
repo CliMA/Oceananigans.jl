@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Units: Time
-using Oceananigans.Fields: indices, interpolate!
+using Oceananigans.Fields: indices, interpolate, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
                                   extract_field_time_series, has_field_time_series,
                                   update_field_time_series!, time_indices
@@ -855,6 +855,21 @@ function test_precomputed_time_interpolator(arch)
     return nothing
 end
 
+# `Float32` data with `Float64` times: an exact hit and an interpolated read have one type
+function test_type_stable_time_interpolation()
+    grid = RectilinearGrid(Float32; size = (2, 2, 2), extent = (1, 1, 1))
+    fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 1.0])
+    set!(fts[1], 1)
+    set!(fts[2], 3)
+
+    for t in (0.0, 0.5)
+        @test @inferred(getindex(fts, 1, 1, 1, Time(t))) == 1 + 2t
+        @test @inferred(interpolate((0.5, 0.5, 0.5), Time(t), fts)) == 1 + 2t
+    end
+
+    return nothing
+end
+
 netcdf_reader_log = (:warn, "Reading boundary conditions from NetCDF files is not supported for FieldTimeSeries. " *
                             "Using default FieldBoundaryConditions for `grid` and `location`.")
 
@@ -1028,6 +1043,10 @@ end
 
     @testset "Time Interpolation" begin
         test_time_interpolation()
+    end
+
+    @testset "Type-stable time interpolation" begin
+        test_type_stable_time_interpolation()
     end
 
     for arch in archs

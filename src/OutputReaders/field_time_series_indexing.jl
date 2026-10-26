@@ -280,8 +280,9 @@ end
 
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂.
-    return ifelse(n₁ == n₂, ψ₁, ψ̃)
+    # Don't interpolate if n₁ == n₂. Both branches take the interpolated value's type: with `Float32` data
+    # and `Float64` times, `ψ₁` alone would make the read a `Union{Float32, Float64}`.
+    return ifelse(n₁ == n₂, oftype(ψ̃, ψ₁), ψ̃)
 end
 
 #####
@@ -378,8 +379,8 @@ end
     ψ₂ = _interpolate(data, ix, iy, iz, m₂)
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂
-    return ifelse(n₁ == n₂, ψ₁, ψ̃)
+    # Don't interpolate if n₁ == n₂, with both branches of the interpolated value's type (see above)
+    return ifelse(n₁ == n₂, oftype(ψ̃, ψ₁), ψ̃)
 end
 
 function Fields.interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
