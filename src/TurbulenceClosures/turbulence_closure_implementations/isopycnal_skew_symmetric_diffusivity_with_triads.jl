@@ -20,12 +20,7 @@ const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
 
 """
-    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
-                                           κ_skew = 0,
-                                           κ_symmetric = 0,
-                                           isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                           slope_limiter = FluxTapering(1e-2),
-                                           required_halo_size::Int = 1)
+$(MethodSignatures(; defaults = true))
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for

@@ -57,7 +57,7 @@ end
 #####
 
 """
-    inside_immersed_boundary(buffer, shift, dir, side)
+$(MethodSignatures(; defaults = true))
 
 Check if the stencil required for reconstruction contains immersed nodes
 

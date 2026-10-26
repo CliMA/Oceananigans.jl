@@ -140,15 +140,7 @@ const YNonRegularLLG = LLGSpacing{<:Any, <:Any, <:Any, <:AbstractArray, <:Abstra
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
 """
-    LatitudeLongitudeGrid([architecture = CPU(), FT = Oceananigans.defaults.FloatType];
-                          size,
-                          longitude,
-                          latitude,
-                          z = nothing,
-                          radius = Oceananigans.defaults.planet_radius,
-                          topology = nothing,
-                          precompute_metrics = true,
-                          halo = nothing)
+$(MethodSignatures(; defaults = true))
 
 Creates a `LatitudeLongitudeGrid` with coordinates `(λ, φ, z)` denoting longitude, latitude,
 and vertical coordinate respectively.

@@ -24,18 +24,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     Union{ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}, ImmersedConformalCubedSphereGrid{FT, TX, TY, TZ, CZ}}
 
 """
-    ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
-                             panel_size,
-                             z,
-                             horizontal_direction_halo = 3,
-                             z_halo = horizontal_direction_halo,
-                             horizontal_topology = Connected,
-                             z_topology = Bounded,
-                             radius = Oceananigans.defaults.planet_radius,
-                             non_uniform_conformal_mapping = false,
-                             spacing = GeometricSpacing(),
-                             provided_conformal_mapping = nothing,
-                             partition = CubedSpherePartition(; R = 1))
+$(MethodSignatures(; defaults = true))
 
 Return a `ConformalCubedSphereGrid` that comprises of six [`ConformalCubedSpherePanelGrid`](@ref)s; we refer to each
 of these grids as a "panel". Each panel corresponds to a face of the cube.
@@ -374,12 +363,7 @@ function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfS
 end
 
 """
-    ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
-                             Nz,
-                             z,
-                             panel_halo = (4, 4, 4),
-                             panel_topology = (Connected, Connected, Bounded),
-                             radius = Oceananigans.defaults.planet_radius)
+$(MethodSignatures(; defaults = true))
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """

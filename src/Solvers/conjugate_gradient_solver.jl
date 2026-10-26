@@ -40,14 +40,7 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 @inline no_gauge_enforcement!(x, r) = nothing
 
 """
-    ConjugateGradientSolver(linear_operation;
-                            template_field,
-                            maxiter = prod(size(template_field)),
-                            reltol = sqrt(eps(template_field.grid)),
-                            abstol = 0,
-                            preconditioner = nothing,
-                            enforce_gauge_condition! = no_gauge_enforcement!,
-                            residual_norm = norm)
+$(MethodSignatures(; defaults = true))
 
 Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
 using a iterative conjugate gradient method with optional preconditioning.

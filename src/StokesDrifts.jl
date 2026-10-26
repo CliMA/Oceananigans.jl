@@ -10,6 +10,7 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
+using DocStringExtensions: MethodSignatures
 using Adapt: Adapt, adapt
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid, node, znode, Face, Center
@@ -64,7 +65,7 @@ end
 @inline zerofunction(args...) = 0
 
 """
-    UniformStokesDrift(; ∂z_uˢ=zerofunction, ∂z_vˢ=zerofunction, ∂t_uˢ=zerofunction, ∂t_vˢ=zerofunction, parameters=nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct a set of functions for a Stokes drift velocity field
 corresponding to a horizontally-uniform surface gravity wave field, with optional `parameters`.
@@ -218,9 +219,7 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction,
-                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction,
-                  ∂x_wˢ=zerofunction, ∂y_wˢ=zerofunction, ∂t_wˢ=zerofunction, parameters=nothing)
+$(MethodSignatures(; defaults = true))
 
 Construct a set of functions of space and time for a Stokes drift velocity field
 corresponding to a surface gravity wave field with an envelope that (potentially) varies

@@ -38,8 +38,7 @@ function Base.show(io::IO, closure::AMD{TD}) where TD
 end
 
 """
-    AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
-                                  C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
+$(MethodSignatures(; defaults = true))
 
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.

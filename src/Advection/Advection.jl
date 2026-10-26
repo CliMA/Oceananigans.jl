@@ -21,7 +21,7 @@ export
 
 using Adapt: Adapt
 using Base: Callable
-using DocStringExtensions: TYPEDSIGNATURES
+using DocStringExtensions: MethodSignatures, TYPEDSIGNATURES
 using MuladdMacro: @muladd
 using OffsetArrays: OffsetArray
 

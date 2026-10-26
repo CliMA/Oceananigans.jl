@@ -43,12 +43,7 @@ Base.show(io::IO, ibc::IBC) =
               "└── top: ", summary(ibc.top))
 
 """
-    ImmersedBoundaryCondition(; west=nothing,
-                               east=nothing,
-                               south=nothing,
-                               north=nothing,
-                               bottom=nothing,
-                               top=nothing)
+$(MethodSignatures(; defaults = true))
 
 Return an `ImmersedBoundaryCondition` with conditions on individual cell
 `interfaces ∈ (west, east, south, north, bottom, top)` between the fluid

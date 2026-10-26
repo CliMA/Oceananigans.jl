@@ -31,9 +31,7 @@ has_active_cells_map(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.interior_active
 has_active_z_columns(ibg::ImmersedBoundaryGrid) = !isnothing(ibg.active_z_columns)
 
 """
-    ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
-                         active_cells_map=false,
-                         active_z_columns=active_cells_map)
+$(MethodSignatures(; defaults = true))
 
 Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or
 `active_z_columns` are `true`, the grid will populate `interior_active_cells` and `active_z_columns`

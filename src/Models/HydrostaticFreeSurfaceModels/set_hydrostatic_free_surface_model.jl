@@ -88,7 +88,7 @@ intrinsic_coordinate_grid(grid) = false
 intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 
 """
-    set_velocities!(model, u, v; intrinsic_velocities=false)
+$(MethodSignatures(; defaults = true))
 
 Set the velocities of `model` from `u` and `v`.
 

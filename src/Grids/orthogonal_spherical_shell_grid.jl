@@ -355,13 +355,7 @@ function new_metric(FT, arch, (LX, LY), topo, (Nx, Ny), (Hx, Hy))
 end
 
 """
-    OrthogonalSphericalShellGrid(arch = CPU(), FT = Oceananigans.defaults.FloatType;
-                                 size,
-                                 z,
-                                 radius = Oceananigans.defaults.planet_radius,
-                                 conformal_mapping = nothing,
-                                 halo = (3, 3, 3),
-                                 topology = (Bounded, Bounded, Bounded))
+$(MethodSignatures(; defaults = true))
 
 Return an OrthogonalSphericalShellGrid with empty horizontal metrics.
 """

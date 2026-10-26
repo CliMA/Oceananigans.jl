@@ -59,21 +59,7 @@ struct FivePointHorizontalFilter end
 @inline filter_horizontally(i, j, k, grid, ::FivePointHorizontalFilter, ϕ) = ℑxyᶜᶜᵃ(i, j, k, grid, ℑxyᶠᶠᵃ, ϕ)
 
 """
-    RiBasedVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
-                               FT = Float64;]
-                               Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
-                               horizontal_Ri_filter = nothing,
-                               minimum_entrainment_buoyancy_gradient = 1e-10,
-                               maximum_diffusivity = Inf,
-                               maximum_viscosity = Inf,
-                               ν₀  = 0.7,
-                               κ₀  = 0.5,
-                               κᶜᵃ = 1.7,
-                               Cᵉⁿ = 0.1,
-                               Cᵃᵛ = 0.6,
-                               Ri₀ = 0.1,
-                               Riᵟ = 0.4,
-                               warning = true)
+$(MethodSignatures(; defaults = true))
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
