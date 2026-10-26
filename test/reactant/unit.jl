@@ -474,4 +474,3 @@ end
     @jit raise = true refresh!(interpolated, clock, Reactant.ConcreteRNumber(5.0))
     @test all(Array(interior(interpolated)) .≈ 2)
 end
-
