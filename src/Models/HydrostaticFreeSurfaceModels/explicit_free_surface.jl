@@ -1,7 +1,7 @@
 using Adapt: Adapt
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶠ, ∂yᵣᶜᶠᶠ
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -41,7 +41,7 @@ end
 ##### Tendency fields
 #####
 
-function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     η = free_surface_displacement_field(velocities, free_surface, grid)
@@ -54,10 +54,10 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶠ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 #####
 ##### Time stepping
@@ -157,15 +157,14 @@ end
     return - δh_U
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
-    @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, Δt) = @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
 
 # Compute free surface tendency
 function compute_explicit_free_surface_tendency!(grid, model)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
+    args = tuple(model.transport_velocities,
                  model.free_surface,
                  model.tracers,
                  model.auxiliary_fields,

@@ -62,9 +62,9 @@ function materialize_condition(condition::Function, parameters, discrete_form, f
 end
 
 # Convenience constructors for boundary condition passing classification types
-BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
-BoundaryCondition(::Type{NormalFlow}, args...; kwargs...)       = BoundaryCondition(NormalFlow(nothing), args...; kwargs...)
-BoundaryCondition(::Type{Value}, args...; kwargs...)            = BoundaryCondition(Value(nothing),      args...; kwargs...)
+BoundaryCondition(Classification::Type, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition(::Type{NormalFlow}, args...; kwargs...)   = BoundaryCondition(NormalFlow(nothing), args...; kwargs...)
+BoundaryCondition(::Type{Value}, args...; kwargs...)        = BoundaryCondition(Value(nothing),      args...; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
@@ -86,11 +86,12 @@ const NFBC = BoundaryCondition{<:NormalFlow}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const MBC  = BoundaryCondition{<:Mixed}
-const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
+const ZFBC = BoundaryCondition{<:Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
 const UZBC = BoundaryCondition{<:Zipper{UPivot}}
+const TZBC = BoundaryCondition{<:Zipper{TPivot}}
 const FZBC = BoundaryCondition{<:Zipper{FPivot}}
 
 const NoFluxBoundaryCondition = ZFBC
@@ -102,17 +103,39 @@ const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:Distribute
             ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow(), nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
+            TPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{TPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
-FluxBoundaryCondition(val; kwargs...)                         = BoundaryCondition(Flux(), val; kwargs...)
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
 NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
+            TPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{TPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+"""
+    FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(), kwargs...)
+
+Return a `Flux` `BoundaryCondition` with `flux`.
+
+With an [`IMEXFluxTimeDiscretization`](@ref), the part of the flux linear in the boundary-cell value
+is integrated by the vertical tridiagonal solver. This is supported only on `top` and `bottom` boundaries.
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) apply to both `flux` and the implicit coefficient.
+"""
+function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
+                               parameters = nothing, discrete_form = false, field_dependencies = ())
+
+    return materialize_flux_boundary_condition(flux, time_discretization;
+                                               parameters, discrete_form, field_dependencies)
+end
+
+function materialize_flux_boundary_condition(flux, ::ExplicitTimeDiscretization; parameters, discrete_form, field_dependencies)
+    condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
+    return BoundaryCondition(Flux(), condition)
+end
 
 #####
 ##### Support for MixedBoundaryCondition (aka "Robin" boundary condition)
@@ -198,7 +221,7 @@ validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
 
 # Validate the north boundary condition on a tripolar (folded) grid.
 # TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
-# y-topology. The pivot is redundantly encoded in both the topology (e.g. RightCenterFolded
+# y-topology. The pivot is redundantly encoded in both the topology (e.g. CenterFolded
 # ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a
 # BC classification. Right now a user who supplies the wrong pivot passes validation.
 validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.FoldedTopology, side) = nothing
@@ -226,3 +249,5 @@ validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+
+Oceananigans.prognostic_state(::BoundaryCondition) = nothing

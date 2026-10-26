@@ -33,7 +33,7 @@ The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
@@ -47,14 +47,32 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 """
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     return nothing
 end
 
-# Update η in the grid
-@kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
+"""
+$(TYPEDSIGNATURES)
+
+Store the free surface displacement `η` in `grid.z.ηⁿ` and recompute the grid
+stretching factors `σ` at all staggered locations from it.
+"""
+function update_zstar_scaling!(grid, η)
+    arch = architecture(grid)
+    parameters = surface_kernel_parameters(grid)
+    launch!(arch, grid, parameters, _update_grid_free_surface!, grid, η)
+    # the face scalings read `ηⁿ` in neighbouring columns, so they are computed in a second pass
+    launch!(arch, grid, parameters, _update_grid_scaling!, grid)
+    return nothing
+end
+
+@kernel function _update_grid_free_surface!(grid, η)
     i, j = @index(Global, NTuple)
-    @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
+    @inbounds grid.z.ηⁿ[i, j, 1] = η[i, j, grid.Nz+1]
+end
+
+@kernel function _update_grid_scaling!(grid)
+    i, j = @index(Global, NTuple)
     update_grid_scaling!(grid.z, i, j, grid)
 end
 
@@ -80,6 +98,11 @@ end
         z_coordinate.σᶠᶜⁿ[i, j, 1] = σᶠᶜ
         z_coordinate.σᶜᶠⁿ[i, j, 1] = σᶜᶠ
         z_coordinate.σᶠᶠⁿ[i, j, 1] = σᶠᶠ
+
+        z_coordinate.σ⁻¹ᶜᶜⁿ[i, j, 1] = 1 / σᶜᶜ
+        z_coordinate.σ⁻¹ᶠᶜⁿ[i, j, 1] = 1 / σᶠᶜ
+        z_coordinate.σ⁻¹ᶜᶠⁿ[i, j, 1] = 1 / σᶜᶠ
+        z_coordinate.σ⁻¹ᶠᶠⁿ[i, j, 1] = 1 / σᶠᶠ
     end
 end
 
@@ -187,7 +210,7 @@ free surface height (we assume that `∂t_σ = 0`).
 reconcile_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
 function reconcile_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_zstar_scaling!(grid, model.free_surface.displacement)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
 end
@@ -217,5 +240,9 @@ function restore_prognostic_state!(::ZStarCoordinate, grid, from)
     restore_prognostic_state!(z.σᶜᶠⁿ, from.σᶜᶠⁿ)
     restore_prognostic_state!(z.σᶠᶠⁿ, from.σᶠᶠⁿ)
     restore_prognostic_state!(z.σᶜᶜ⁻, from.σᶜᶜ⁻)
+    parent(z.σ⁻¹ᶜᶜⁿ) .= 1 ./ parent(z.σᶜᶜⁿ)
+    parent(z.σ⁻¹ᶠᶜⁿ) .= 1 ./ parent(z.σᶠᶜⁿ)
+    parent(z.σ⁻¹ᶜᶠⁿ) .= 1 ./ parent(z.σᶜᶠⁿ)
+    parent(z.σ⁻¹ᶠᶠⁿ) .= 1 ./ parent(z.σᶠᶠⁿ)
     return ZStarCoordinate()
 end

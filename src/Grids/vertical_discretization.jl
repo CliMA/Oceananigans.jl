@@ -28,6 +28,15 @@ struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
     Δᵃᵃᶠ :: E
     "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
+    "Reciprocal of the face-centered grid spacing"
+    Δ⁻¹ᵃᵃᶠ :: E
+    "Reciprocal of the cell-centered grid spacing"
+    Δ⁻¹ᵃᵃᶜ :: F
+end
+
+function StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), 1 ./ on_architecture(CPU(), Δ)), (Δᵃᵃᶠ, Δᵃᵃᶜ))
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
 # Summaries
@@ -55,6 +64,10 @@ struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractV
     Δᵃᵃᶠ :: E
     "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
+    "Reciprocal of the face-centered grid spacing"
+    Δ⁻¹ᵃᵃᶠ :: E
+    "Reciprocal of the cell-centered grid spacing"
+    Δ⁻¹ᵃᵃᶜ :: F
     "Surface elevation at the current time step"
     ηⁿ :: H
     "(Center, Center) scaling factor at the current time step"
@@ -65,6 +78,14 @@ struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractV
     σᶜᶠⁿ :: CF
     "(Face, Face) scaling factor at the current time step"
     σᶠᶠⁿ :: FF
+    "Reciprocal of the (Center, Center) scaling factor at the current time step"
+    σ⁻¹ᶜᶜⁿ :: CC
+    "Reciprocal of the (Face, Center) scaling factor at the current time step"
+    σ⁻¹ᶠᶜⁿ :: FC
+    "Reciprocal of the (Center, Face) scaling factor at the current time step"
+    σ⁻¹ᶜᶠⁿ :: CF
+    "Reciprocal of the (Face, Face) scaling factor at the current time step"
+    σ⁻¹ᶠᶠⁿ :: FF
     "(Center, Center) scaling factor at the previous time step"
     σᶜᶜ⁻ :: CC
     "Time derivative of the cell-centered scaling factor"
@@ -81,6 +102,8 @@ const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, Reg
 const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
+has_static_discretization(grid) = false
+has_static_discretization(grid::AbstractStaticGrid) = true
 
 """
 $(TYPEDSIGNATURES)
@@ -93,7 +116,7 @@ Examples of `MutableVerticalDiscretization`s are the free-surface following coor
 coordinates).
 """
 MutableVerticalDiscretization(r_faces) =
-    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
+    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:15)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -112,7 +135,7 @@ end
 ##### Coordinate generation for grid constructors
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
+generate_coordinate(FT, ::Tuple{<:Any, <:Any, Type{Periodic}}, size, halo, ::MutableVerticalDiscretization, coordinate_name, dim::Int, arch) =
     throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
@@ -136,6 +159,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     r_faces = coordinate.cᵃᵃᶠ
 
     LR, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
+    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, 1 ./ on_architecture(CPU(), Δ)), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
@@ -147,12 +171,18 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
+    σ⁻¹ᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σ⁻¹ᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    σ⁻¹ᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    σ⁻¹ᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+
     # Fill all the scalings with one for now (i.e. z == r)
-    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
+    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ)
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ,
+                                             ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -164,24 +194,34 @@ Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                                  Adapt.adapt(to, coord.cᵃᵃᶜ),
                                  Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                                 Adapt.adapt(to, coord.Δᵃᵃᶜ))
+                                 Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                                 Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                                 Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ))
 
 Architectures.on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                                  on_architecture(arch, coord.cᵃᵃᶜ),
                                  on_architecture(arch, coord.Δᵃᵃᶠ),
-                                 on_architecture(arch, coord.Δᵃᵃᶜ))
+                                 on_architecture(arch, coord.Δᵃᵃᶜ),
+                                 on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                                 on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                                   Adapt.adapt(to, coord.cᵃᵃᶜ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶠ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                                  Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                                  Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
                                   Adapt.adapt(to, coord.ηⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜⁿ),
                                   Adapt.adapt(to, coord.σᶠᶜⁿ),
                                   Adapt.adapt(to, coord.σᶜᶠⁿ),
                                   Adapt.adapt(to, coord.σᶠᶠⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶜᶜⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶠᶜⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶜᶠⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶠᶠⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜ⁻),
                                   Adapt.adapt(to, coord.∂t_σ))
 
@@ -190,11 +230,17 @@ Architectures.on_architecture(arch, coord::MutableVerticalDiscretization) =
                                   on_architecture(arch, coord.cᵃᵃᶜ),
                                   on_architecture(arch, coord.Δᵃᵃᶠ),
                                   on_architecture(arch, coord.Δᵃᵃᶜ),
+                                  on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                                  on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
                                   on_architecture(arch, coord.ηⁿ),
                                   on_architecture(arch, coord.σᶜᶜⁿ),
                                   on_architecture(arch, coord.σᶠᶜⁿ),
                                   on_architecture(arch, coord.σᶜᶠⁿ),
                                   on_architecture(arch, coord.σᶠᶠⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶜᶜⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶠᶜⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶜᶠⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶠᶠⁿ),
                                   on_architecture(arch, coord.σᶜᶜ⁻),
                                   on_architecture(arch, coord.∂t_σ))
 

@@ -90,7 +90,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
 
     # Syncronized communication does not mean anything in this case so we set it to nothing
     return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
-                                             mesh, nothing, nothing, Ref(0), devices)
+                                             mesh, nothing, Threads.Atomic{UInt64}(0), devices)
 end
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.TracedRNumber}) = Reactant.unwrapped_eltype(T)
@@ -106,7 +106,8 @@ _to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))
 
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
     return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ),
+        _to_reactant(s.Δ⁻¹ᵃᵃᶠ), _to_reactant(s.Δ⁻¹ᵃᵃᶜ))
 end
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
@@ -131,9 +132,12 @@ function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::Latit
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.z,
-                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
+                      old_grid.Δxᶜᶜᵃ, old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ,
                       old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
+                      old_grid.Azᶜᶜᵃ, old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ,
+                      old_grid.Δx⁻¹ᶜᶜᵃ, old_grid.Δx⁻¹ᶠᶜᵃ, old_grid.Δx⁻¹ᶜᶠᵃ, old_grid.Δx⁻¹ᶠᶠᵃ,
+                      old_grid.Δy⁻¹ᶠᶜᵃ, old_grid.Δy⁻¹ᶜᶠᵃ,
+                      old_grid.Az⁻¹ᶜᶜᵃ, old_grid.Az⁻¹ᶠᶜᵃ, old_grid.Az⁻¹ᶜᶠᵃ, old_grid.Az⁻¹ᶠᶠᵃ)
 
     sharding = Sharding.DimsSharding(new_arch.connectivity, (1, 2), (:x, :y))
     new_properties = Tuple(Reactant.to_rarray(p; sharding) for p in old_properties)

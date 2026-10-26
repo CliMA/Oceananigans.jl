@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, Field, ReducedField
+using Oceananigans.Fields: location, Field, ReducedField, instantiated_location
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
@@ -33,8 +33,10 @@ mask_immersed_field_xy!(::ConstantField, args...; kw...) = nothing
 mask_immersed_field_xy!(::Number, args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 
+# Pass the location as instances rather than types: types passed as values are only inferred as
+# `DataType` unless the callee happens to be inlined, which makes the kernel launch type-unstable.
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
+    mask_immersed_field!(field, field.grid, instantiated_location(field), value)
 
 function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -77,7 +79,7 @@ end
 end
 
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k) =
-    mask_immersed_field_xy!(field, field.grid, location(field), value, k)
+    mask_immersed_field_xy!(field, field.grid, instantiated_location(field), value, k)
 
 function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); k)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -108,7 +110,9 @@ Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k)
+    iᵣ, jᵣ, _ = interior_indices(field)
+    kp = KernelParameters(iᵣ, jᵣ)
+    return launch!(arch, grid, kp, _mask_immersed_field_xy!, field, loc, grid, value, k)
 end
 
 @kernel function _mask_immersed_field_xy!(field, (ℓx, ℓy, ℓz), grid, value, k)

@@ -9,6 +9,9 @@ abstract type AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
 
 grid(g::AbstractGrid) = g
 
+# Grids carry no field metadata, so CPU kernels take them unchanged (see `Architectures.convert_to_device`).
+@inline Adapt.adapt(::CPU, grid::AbstractGrid) = grid
+
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
 
@@ -96,8 +99,8 @@ Base.eltype(::Type{<:AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
+    # Check that the grids are of the same type, ignoring type parameters
+    grid2 isa unparameterized_type(typeof(grid1)) || return false
 
     topology(grid1) !== topology(grid2) && return false
 
@@ -120,4 +123,4 @@ halo_size(grid, d) = halo_size(grid)[d]
 
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
+grid_name(grid::AbstractGrid) = nameof(typeof(grid))

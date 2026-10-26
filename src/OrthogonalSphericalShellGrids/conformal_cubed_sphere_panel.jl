@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
+using Oceananigans.Grids: Bounded, Connected, offset_data, validate_topology, xnodes, ynodes, static_column_depthᶜᶜᵃ
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
@@ -21,6 +21,21 @@ struct CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}
         ξᶜᵃᵃ::Cξ,
         ηᵃᶜᵃ::Cη
     ) where {Rotation, Fξ, Fη, Cξ, Cη} = new{Rotation, Fξ, Fη, Cξ, Cη}(rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the `(ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)` coordinates of a panel with `Nξ × Nη` cells whose
+non-uniform `spacing` is optimized for isotropy.
+"""
+function non_uniform_conformal_mapping_coordinates(FT, Nξ, Nη, spacing)
+    ξᶠᵃᵃ, ηᵃᶠᵃ, _, _, _ = optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing)
+
+    return (map(FT, ξᶠᵃᵃ),
+            map(FT, ηᵃᶠᵃ),
+            [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ],
+            [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη])
 end
 
 function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
@@ -66,12 +81,12 @@ end
 
 function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                        panel, Nz, z,
-                                       topology = (FullyConnected, FullyConnected, Bounded),
+                                       topology = (Connected, Connected, Bounded),
                                        radius = Oceananigans.defaults.planet_radius,
                                        halo = (4, 4, 4),
                                        rotation = nothing)
 
-    TX, TY, TZ = topology
+    TX, TY, TZ = topology = validate_topology(topology)
     Hx, Hy, Hz = halo
 
     ## Read everything from the file except the z-coordinates.
@@ -215,7 +230,7 @@ Keyword arguments
     3. a single-argument function that takes an index and returns cell interface location.
 
 - `topology`: A 3-tuple `(TX, TY, TZ)` specifying the topology of the domain. `TX`, `TY`, and `TZ` specify whether the
-              `x`-, `y`-, and `z` directions are `Periodic`, `Bounded`, `Flat` or `FullyConnected`. The topology `Flat`
+              `x`-, `y`-, and `z` directions are `Periodic`, `Bounded`, `Flat` or `Connected`. The topology `Flat`
               indicates that a model does not vary in those directions so that derivatives and interpolation are zero.
               The default is `topology = (Bounded, Bounded, Bounded)`.
 
@@ -283,7 +298,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
     radius = FT(radius)
-    TX, TY, TZ = topology
+    TX, TY, TZ = topology = validate_topology(topology)
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
@@ -296,19 +311,14 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = if !isnothing(provided_conformal_mapping)
+    ξη_coordinates = if !isnothing(provided_conformal_mapping)
         (on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ),
          on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ),
          on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ),
          on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ))
     else
         if non_uniform_conformal_mapping
-            _ξᶠᵃᵃ, _ηᵃᶠᵃ, _, _, _ =
-                optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing)
-            (map(FT, _ξᶠᵃᵃ),
-             map(FT, _ηᵃᶠᵃ),
-             [FT(0.5 * (_ξᶠᵃᵃ[i] + _ξᶠᵃᵃ[i+1])) for i in 1:Nξ],
-             [FT(0.5 * (_ηᵃᶠᵃ[j] + _ηᵃᶠᵃ[j+1])) for j in 1:Nη])
+            non_uniform_conformal_mapping_coordinates(FT, Nξ, Nη, spacing)
         else
             (xnodes(ξη_grid, Face()),
              ynodes(ξη_grid, Face()),
@@ -316,6 +326,10 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
              ynodes(ξη_grid, Center()))
         end
     end
+
+    # Collected so that a uniform and a non-uniform mapping share one concrete
+    # `CubedSphereConformalMapping` type; these are never indexed inside a kernel.
+    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = map(coordinate -> collect(FT, coordinate), ξη_coordinates)
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
     zc = ξη_grid.z

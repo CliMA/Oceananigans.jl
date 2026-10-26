@@ -1,7 +1,7 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection!
 using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
@@ -62,12 +62,17 @@ compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid, args.
 #####
 
 # Disambiguation
-compute_free_surface_tendency!(::SingleColumnGrid, model, ::ExplicitFreeSurface)      = nothing
-compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSurface) = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::ExplicitFreeSurface, Δt)      = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSurface, Δt) = nothing
 
 # Fast state update and halo filling
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
+
+    mask_immersed_field!(model.tracers)
+    update_model_field_time_series!(model, model.clock)
+    compute_forcing!(model.forcing)
+    update_boundary_conditions!(fields(model), model)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -85,7 +90,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock)
+    update_advection!(model.advection, model)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing

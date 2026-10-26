@@ -1,21 +1,14 @@
 using Oceananigans.Operators
-using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location
+using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location, north_fold_index
 
-using Oceananigans.Grids: AbstractUnderlyingGrid,
-                          Bounded,
-                          LeftConnected,
-                          Periodic,
-                          RightConnected,
-                          RightCenterFolded,
-                          RightFaceFolded,
-                          MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, Closed, FaceFolded, Periodic, Sides, MutableVerticalDiscretization
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
                            column_depthᶠᶜᵃ,
                            column_depthᶠᶠᵃ
 
-import Oceananigans.Operators: σⁿ, σ⁻, ∂t_σ
+import Oceananigans.Operators: σⁿ, σ⁻, σ⁻¹ⁿ, ∂t_σ
 
 const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
@@ -55,79 +48,31 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 @inline column_depthTᶠᶜᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶠᶜᵃ(i, j, k, grid, η)
 @inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η)
 
-const AMGXB = MutableGridOfSomeKind{<:Any, Bounded}
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
-const AMGXR = MutableGridOfSomeKind{<:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}}
-const AMGXL = MutableGridOfSomeKind{<:Any, LeftConnected}
+const AMGXB = MutableGridOfSomeKind{<:Any, <:Sides{Closed}}
 
-const AMGYB = MutableGridOfSomeKind{<:Any, <:Any, Bounded}
 const AMGYP = MutableGridOfSomeKind{<:Any, <:Any, Periodic}
-const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}}
-const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
+const AMGYS = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, R}} where {L, R}
+const AMGYF = MutableGridOfSomeKind{<:Any, <:Any, Sides{L, FaceFolded}} where L
 
 # Enforce Periodic conditions for column depth
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η)
-    Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
-    hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
-    ηᶠᶜᵃ = @inbounds (η[grid.Nx, j, k] + η[1, j, k]) / 2
-    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, ηᶠᶜᵃ), Hᶠᶜᵃ)
-end
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, grid.Nx, i - 1), j, k] + η[i, j, k]) / 2)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse(j == 1, grid.Ny, j - 1), k] + η[i, j, k]) / 2)
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η)
-    Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
-    hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
-    ηᶜᶠᵃ = @inbounds (η[i, grid.Ny, k] + η[i, 1, k]) / 2
-    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, ηᶜᶠᵃ), Hᶜᶠᵃ)
-end
+# Enforce boundary conditions on a left wall
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) = mutable_column_depth(static_column_depthᶠᶜᵃ(i, j, grid), @inbounds (η[ifelse(i == 1, i, i - 1), j, k] + η[i, j, k]) / 2)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AMGYS{L}, η) where L = mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η[i, j, k]) / 2)
 
-# Enforce boundary conditions for Bounded topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η)
-    Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
-    hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
-    η₁ = @inbounds η[i, j, k]
-    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
-end
-
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η)
-    Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
-    hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
-    η₁ = @inbounds η[i, j, k]
-    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, η₁), Hᶜᶠᵃ)
-end
-
-# Enforce boundary conditions for RightConnected/RightFolded topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXR, η)
-    Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
-    hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
-    η₁ = @inbounds η[1, j, k]
-    return ifelse(i == 1, mutable_column_depth(hᶠᶜᵃ, η₁), Hᶠᶜᵃ)
-end
-
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYR, η)
-    Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
-    hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
-    η₁ = @inbounds η[i, j, k]
-    return ifelse(j == 1, mutable_column_depth(hᶜᶠᵃ, η₁), Hᶜᶠᵃ)
-end
-
-# Enforce boundary conditions for LeftConnected topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXL, η)
-    Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
-    hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
-    ηₑ = @inbounds η[grid.Nx, j, k]
-    return ifelse(i == grid.Nx + 1, mutable_column_depth(hᶠᶜᵃ, ηₑ), Hᶠᶜᵃ)
-end
-
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η)
-    Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
-    hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
-    ηₑ = @inbounds η[i, grid.Ny, k]
-    return ifelse(j == grid.Ny + 1, mutable_column_depth(hᶜᶠᵃ, ηₑ), Hᶜᶠᵃ)
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYF{L}, η) where L
+    fold = j == grid.Ny + 1
+    η⁺ = @inbounds η[ifelse(fold, north_fold_index(i, grid), i), ifelse(fold, grid.Ny, j), k]
+    return mutable_column_depth(static_column_depthᶜᶠᵃ(i, j, grid), @inbounds (η[i, ifelse((L === Closed) & (j == 1), j, j - 1), k] + η⁺) / 2)
 end
 
 # Fallbacks
 @inline σⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline σ⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σ⁻¹ⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻¹ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
 @inline ∂t_σ(i, j, k, ibg::IBG) = ∂t_σ(i, j, k, ibg.underlying_grid)
 
@@ -140,17 +85,24 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     zspacing = Symbol(:Δz, LX, LY, LZ)
     rspacing = Symbol(:Δr, LX, LY, LZ)
 
+    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
+
     ℓx = superscript_location(LX)
     ℓy = superscript_location(LY)
     ℓz = superscript_location(LZ)
 
     @eval begin
-        using Oceananigans.Operators: $rspacing
-        import Oceananigans.Operators: $zspacing
+        using Oceananigans.Operators: $rspacing, $rcp_rspacing
+        import Oceananigans.Operators: $zspacing, $rcp_zspacing
 
         @inline $zspacing(i, j, k, grid::IMRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::IMOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+
+        @inline $rcp_zspacing(i, j, k, grid::IMRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::IMOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
 
@@ -162,12 +114,12 @@ end
 
 import Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶜᶠᶜ, ∂xᶠᶠᶜ
 import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶜᶜ, ∂yᶠᶠᶜ
-import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ
-import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ
+import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ, ∂x_zᶜᶠᶠ
+import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ, ∂y_zᶠᶜᶠ
 
-using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶠᶜ
-using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶠᶜ
+using Oceananigans.Operators: Δx⁻¹ᶜᶜᶜ, Δx⁻¹ᶜᶜᶠ, Δx⁻¹ᶜᶠᶜ, Δx⁻¹ᶜᶠᶠ, Δx⁻¹ᶠᶜᶜ, Δx⁻¹ᶠᶜᶠ, Δx⁻¹ᶠᶠᶜ
+using Oceananigans.Operators: Δy⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶠ, Δy⁻¹ᶜᶠᶜ, Δy⁻¹ᶜᶠᶠ, Δy⁻¹ᶠᶜᶜ, Δy⁻¹ᶠᶜᶠ, Δy⁻¹ᶠᶠᶜ
+using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ, δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ, δyᶠᶠᶜ
 using Oceananigans.Operators: ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
 using Oceananigans.Operators: ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 
@@ -210,6 +162,7 @@ const F = Face
 @inline ∂x_zᶜᶠᶜ(i, j, k, grid::AMG) = δxᶜᶠᶜ(i, j, k, grid, znode, F(), F(), C()) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
 @inline ∂x_zᶠᶠᶜ(i, j, k, grid::AMG) = δxᶠᶠᶜ(i, j, k, grid, znode, C(), F(), C()) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
 @inline ∂x_zᶜᶜᶠ(i, j, k, grid::AMG) = δxᶜᶜᶠ(i, j, k, grid, znode, F(), C(), F()) * Δx⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline ∂x_zᶜᶠᶠ(i, j, k, grid::AMG) = δxᶜᶠᶠ(i, j, k, grid, znode, F(), F(), F()) * Δx⁻¹ᶜᶠᶠ(i, j, k, grid)
 
 # y-direction slopes at different staggerings
 @inline ∂y_zᶜᶠᶜ(i, j, k, grid::AMG) = δyᶜᶠᶜ(i, j, k, grid, znode, C(), C(), C()) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
@@ -218,6 +171,7 @@ const F = Face
 @inline ∂y_zᶠᶜᶜ(i, j, k, grid::AMG) = δyᶠᶜᶜ(i, j, k, grid, znode, F(), F(), C()) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline ∂y_zᶠᶠᶜ(i, j, k, grid::AMG) = δyᶠᶠᶜ(i, j, k, grid, znode, F(), C(), C()) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
 @inline ∂y_zᶜᶜᶠ(i, j, k, grid::AMG) = δyᶜᶜᶠ(i, j, k, grid, znode, C(), F(), F()) * Δy⁻¹ᶜᶜᶠ(i, j, k, grid)
+@inline ∂y_zᶠᶜᶠ(i, j, k, grid::AMG) = δyᶠᶜᶠ(i, j, k, grid, znode, F(), F(), F()) * Δy⁻¹ᶠᶜᶠ(i, j, k, grid)
 
 #####
 ##### Disambiguation for Number arguments (derivative of a constant is zero)

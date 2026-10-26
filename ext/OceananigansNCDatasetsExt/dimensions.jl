@@ -31,7 +31,7 @@ Arguments:
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64, grid_index=nothing)
+Base.@nospecializeinfer function create_field_dimensions!(ds, @nospecialize(fd::AbstractField), dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64, grid_index=nothing)
     # `field_dimensions` returns a 3-tuple with `""` in slots where the field has a
     # Nothing location or the grid axis is Flat. The "effective" dim names are what
     # actually go into the variable's NetCDF signature.
@@ -53,7 +53,7 @@ end
 # field's NetCDF dim names with the field's `nodes(fd)` 1D arrays and pass them through
 # `create_spatial_dimensions!`, which creates missing coord vars or validates existing
 # ones against the field's nodes (catching mismatched dim sizes early as ArgumentError).
-function create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name_generator;
+Base.@nospecializeinfer function create_field_coord_variables!(ds, @nospecialize(fd), @nospecialize(grid), spatial_dim_names, dim_name_generator;
                                         with_halos, dimension_type, grid_index)
     dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)

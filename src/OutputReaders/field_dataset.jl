@@ -1,3 +1,5 @@
+using OrderedCollections: OrderedDict
+
 using Oceananigans.Fields: Fields, instantiated_location, indices, set!
 
 struct FieldDataset{F, B, M, P, KW}
@@ -16,8 +18,8 @@ end
                  metadata_paths = ["metadata"],
                  reader_kw = NamedTuple())
 
-Return a `Dict`ionary containing a `FieldTimeSeries` for each field in the JLD2 file located
-at `filepath`.
+Return a `FieldDataset` containing a `FieldTimeSeries` for each field in the JLD2 file located
+at `filepath`, in the order the fields are stored in the file.
 
 !!! note "Saved halo requirement"
     The model output in `filepath` **must** have been saved with halos.
@@ -49,7 +51,7 @@ function FieldDataset(filepath;
   field_names = keys(file["timeseries"])
   filter!(k -> k != "t", field_names)  # Time is not a field.
 
-  ds = Dict{String, FieldTimeSeries}(
+  ds = OrderedDict{String, FieldTimeSeries}(
       name => FieldTimeSeries(filepath, name; architecture, backend, grid, reader_kw)
       for name in field_names
   )
@@ -171,7 +173,7 @@ function FieldDataset(grid, times, fields::NTuple{N, Symbol};
                         boundary_conditions=bcs)
     end
 
-    ds = Dict{String, FieldTimeSeries}(
+    ds = OrderedDict{String, FieldTimeSeries}(
         name => fts
         for (name, fts) in zip(field_names, ftss)
     )

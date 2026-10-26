@@ -2,7 +2,7 @@
 ##### Output dimensions and coordinates
 #####
 
-function effective_reduced_dimensions(field)
+Base.@nospecializeinfer function effective_reduced_dimensions(@nospecialize(field))
     location_reduced_dimensions = reduced_dimensions(field)
     topology_reduced_dimensions = findall(==(Flat), topology(field))
     return Tuple(unique((location_reduced_dimensions..., topology_reduced_dimensions...)))
@@ -16,7 +16,7 @@ end
 drop_reduced_dimensions(output::WindowedTimeAverage{<:AbstractField}, values) =
     drop_reduced_dimensions(output.operand, values)
 
-function squeeze_reduced_dimensions(field::AbstractField, data; array_type=identity)
+Base.@nospecializeinfer function squeeze_reduced_dimensions(@nospecialize(field::AbstractField), @nospecialize(data); array_type=identity)
     data = array_type(data)
     reduced_dimensions = effective_reduced_dimensions(field)
     selectors = ntuple(dimension -> dimension in reduced_dimensions ? 1 : Colon(), 3)
@@ -72,8 +72,8 @@ suffix_grid_entry(entry::NamedTuple, grid_index) =
     (array=entry.array, dims=Tuple(add_grid_suffix(name, grid_index) for name in entry.dims))
 
 suffix_grid_keys(dims, grid_index) =
-    Dict(add_grid_suffix(key, grid_index) => suffix_grid_entry(value, grid_index)
-         for (key, value) in dims)
+    OrderedDict{String, Any}(add_grid_suffix(key, grid_index) => suffix_grid_entry(value, grid_index)
+                             for (key, value) in dims)
 
 function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator; grid_index=nothing)
     z = vertical_coordinate_name(coordinate)
@@ -339,8 +339,8 @@ function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, 
     zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
 
-    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
-                zᵃᵃᶜ_name => zᵃᵃᶜ_data)
+    return OrderedDict{String, Any}(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
+                                   zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
 #####
@@ -359,7 +359,7 @@ function gather_dimensions(outputs, grid::OneDimensionalHorizontalCoordinateGrid
     x = string(ξname(grid))
     y = string(ηname(grid))
 
-    dims = Dict()
+    dims = OrderedDict{String, Any}()
 
     if TX != Flat
         for ℓx in (f, c)
@@ -429,7 +429,7 @@ function gather_dimensions(outputs, grid::OrthogonalSphericalShellGrid, indices,
     # OSSG horizontal axes cannot be flat.
     (TX == Flat || TY == Flat) && error("Flat horizontal topology is not supported on OrthogonalSphericalShellGrid output.")
 
-    dims = Dict()
+    dims = OrderedDict{String, Any}()
 
     # 2D auxiliary coordinate variables — one λ and one φ per Arakawa-C stagger location.
     for (lx, ly) in ((c, c), (f, c), (c, f), (f, f))
@@ -464,7 +464,7 @@ gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::OneDimensionalHorizontalCoordinateGrid, dim_name_generator; grid_index=nothing)
+Base.@nospecializeinfer function field_dimensions(@nospecialize(fd::AbstractField), @nospecialize(grid::OneDimensionalHorizontalCoordinateGrid), dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
     x = string(ξname(grid))
@@ -478,7 +478,7 @@ function field_dimensions(fd::AbstractField, grid::OneDimensionalHorizontalCoord
     return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (x_dim_name, y_dim_name, z_dim_name))
 end
 
-function field_dimensions(fd::AbstractField, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
+Base.@nospecializeinfer function field_dimensions(@nospecialize(fd::AbstractField), @nospecialize(grid::OrthogonalSphericalShellGrid), dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
 
     # On OSSG, field dimensions are the bare horizontal index dimensions (i_*, j_*)

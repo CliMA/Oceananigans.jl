@@ -148,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+Base.@constprop :aggressive function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -172,9 +172,9 @@ end
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w)
 
         # So-called buoyancy modification term:
-        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, velocities.w, tracers) / Δᶠzᶜᶜᶜ(ijk...)
+        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, velocities.w, tracers) * Δᶠz⁻¹ᶜᶜᶜ(ijk...)
 
-        δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
+        δ² = 3 / (Δᶠx⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠy⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠz⁻¹ᶜᶜᶜ(ijk...)^2)
 
         νˢᵍˢ = - closure_coefficient(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
@@ -196,11 +196,25 @@ end
         κˢᵍˢ = zero(FT)
     else
         ϑ =  norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(ijk..., closure, velocities.u, velocities.v, velocities.w, tracer)
-        δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
+        δ² = 3 / (Δᶠx⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠy⁻¹ᶜᶜᶜ(ijk...)^2 + Δᶠz⁻¹ᶜᶜᶜ(ijk...)^2)
         κˢᵍˢ = - closure_coefficient(i, j, k, grid, Cκ) * δ² * ϑ / σ
     end
 
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
+end
+
+@inline function compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                                            ::Val{tracer_index}, ::Val{N}) where {tracer_index, N}
+    tracer_index > N && return nothing
+
+    @inbounds κₑ = κₑs[tracer_index]
+    @inbounds tracer = tracers[tracer_index]
+    launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
+            κₑ, grid, closure, tracer, Val(tracer_index), velocities)
+
+    compute_AMD_diffusivities!(κₑs, tracers, arch, grid, parameters, closure, velocities,
+                               Val(tracer_index + 1), Val(N))
+    return nothing
 end
 
 function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
@@ -213,15 +227,11 @@ function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDiss
     launch!(arch, grid, parameters, _compute_AMD_viscosity!,
             closure_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
-    for (tracer_index, κₑ) in enumerate(closure_fields.κₑ)
-        @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
-                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
-    end
+    compute_AMD_diffusivities!(closure_fields.κₑ, tracers, arch, grid, parameters, closure, velocities,
+                               Val(1), Val(length(closure_fields.κₑ)))
 
     return nothing
 end
-
 
 #####
 ##### Filter width at various locations
@@ -232,11 +242,18 @@ end
 @inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᶜ(i, j, k, grid)
 @inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᶜᶜᶜ(i, j, k, grid)
 
+@inline Δᶠx⁻¹ᶜᶜᶜ(i, j, k, grid) = Δx⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+@inline Δᶠy⁻¹ᶜᶜᶜ(i, j, k, grid) = Δy⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+@inline Δᶠz⁻¹ᶜᶜᶜ(i, j, k, grid) = Δz⁻¹ᶜᶜᶜ(i, j, k, grid) / 2
+
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
-    Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
-    Δᶜᶜᶜ = Symbol(:Δᶠ, ξ, :ᶜᶜᶜ)
+    Δ_loc   = Symbol(:Δᶠ, ξ, :_, loc)
+    Δᶜᶜᶜ    = Symbol(:Δᶠ, ξ, :ᶜᶜᶜ)
+    Δ⁻¹_loc = Symbol(:Δᶠ, ξ, :⁻¹_, loc)
+    Δ⁻¹ᶜᶜᶜ  = Symbol(:Δᶠ, ξ, :⁻¹ᶜᶜᶜ)
     @eval begin
-        const $Δ_loc = $Δᶜᶜᶜ
+        const $Δ_loc   = $Δᶜᶜᶜ
+        const $Δ⁻¹_loc = $Δ⁻¹ᶜᶜᶜ
     end
 end
 
@@ -361,16 +378,19 @@ end
 ##### build_closure_fields
 #####
 
-function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
+Base.@constprop :aggressive function build_closure_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
-    default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
+    default_κₑ_bcs = named_tuple(c -> default_diffusivity_bcs, tracer_names)
     κₑ_bcs = :κₑ ∈ keys(user_bcs) ? merge(default_κₑ_bcs, user_bcs.κₑ) : default_κₑ_bcs
 
     bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
 
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
-    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
+    κₑ = named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs.κₑ[c])
+    end
 
     return (; νₑ, κₑ)
 end

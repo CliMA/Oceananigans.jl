@@ -1,5 +1,5 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: update_advection_timestep!
+using Oceananigans.Advection: update_advection!
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
@@ -7,8 +7,9 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.Forcings: compute_forcing!
+using Oceananigans.Grids: surface_kernel_parameters
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
+using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.TimeSteppers: compute_tendencies!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
@@ -54,7 +55,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock)
+    update_advection!(model.advection, model)
     update_biogeochemical_state!(model.biogeochemistry, model)
     compute_tendencies!(model, callbacks)
 
@@ -62,7 +63,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
 end
 
 function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface_kernel_parameters(model.grid),
-                                                          κ_parameters = :xyz)
+                                                          κ_parameters = Val(:xyz))
 
     grid = model.grid
     closure = model.closure
@@ -82,5 +83,5 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt::Number) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

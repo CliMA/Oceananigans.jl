@@ -65,7 +65,7 @@ function tracer_outflow_simulation(; arch = CPU(),
     simulation.output_writers[:snaps] = JLD2Writer(model, outputs,
                                                    schedule = TimeInterval(stop_time / 80),
                                                    filename = base_simulation_name,
-                                                   overwrite_existing = true,
+                                                   overwrite_files = true,
                                                    with_halos = true)
     return simulation
 end

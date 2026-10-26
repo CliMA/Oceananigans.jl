@@ -1,4 +1,7 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.Architectures: CPU, GPU, architecture, convert_to_device
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoKernelFBC, regularize_field_boundary_conditions,
+    tupled_fill_halo_regions!, needs_halo_fill_args
+using Oceananigans.Utils: foreach_element
 using LinearAlgebra: LinearAlgebra
 
 const FieldTuple = Tuple{Field, Vararg{Field}}
@@ -59,28 +62,79 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 """
 $(TYPEDSIGNATURES)
 
-Fill halo regions for all `fields`. The algorithm:
-
-  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-     duplicate entries to avoid "repeated" halo filling.
-
-  2. Filters fields into three categories:
-     i. ReducedFields with non-trivial boundary conditions;
-     ii. Fields with non-trivial indices and boundary conditions;
-     iii. Fields spanning the whole grid with non-trivial boundary conditions.
-
-  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-
-  4. In every direction, the halo regions in each of the remaining `Field` tuple
-     are filled simultaneously.
+Fill the halo regions of all `fields`. Fields that share a grid, location and halo-filling kernels,
+and whose boundary conditions do not read `args`, are filled together with one kernel launch per side.
+The remaining fields are filled one by one.
 """
-@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args...; kwargs...) = fill_halo_regions!(values(fields), args...; kwargs...)
+@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args::Vararg{Any, N}; kwargs...) where N =
+    fill_halo_regions!(values(fields), args...; kwargs...)
 
 @inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
-@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args...; kwargs...)
-    fill_halo_regions!(first(fields), args...; kwargs...)
-    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
+@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args::Vararg{Any, N}; kwargs...) where N
+    groups = halo_fill_groups(select_fields(tupled_fillable, fields))
+    individual_fields = select_fields(!tupled_fillable, fields)
+    foreach_element(fill_halo_group!, groups, args...; kwargs...)
+    foreach_element(fill_halo_regions!, individual_fields, args...; kwargs...)
+    return nothing
+end
+
+#####
+##### Tupled halo filling
+#####
+
+const CenterOrFace = Union{Center, Face}
+const SerialGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:Union{CPU, GPU}}
+const TupledFillField = Field{<:CenterOrFace, <:CenterOrFace, <:CenterOrFace, <:Any, <:SerialGrid, <:Tuple{Colon, Colon, Colon}, <:OffsetArray}
+
+# Whether the halos of `field` may be filled together with those of other fields
+@inline tupled_fillable(field) = false
+@inline tupled_fillable(field::TupledFillField) = tupled_fillable(field.boundary_conditions)
+@inline tupled_fillable(bcs::FieldBoundaryConditions) = !needs_halo_fill_args(bcs)
+@inline tupled_fillable(::NoKernelFBC) = false
+
+# Whether two fields launch the same halo-filling kernels
+@inline shares_halo_fill(a, b) = false
+
+@inline shares_halo_fill(a::Field{LX, LY, LZ, <:Any, G}, b::Field{LX, LY, LZ, <:Any, G}) where {LX, LY, LZ, G} =
+    typeof(a.boundary_conditions.kernels) === typeof(b.boundary_conditions.kernels)
+
+# Type-stable `filter` for tuples, whose `predicate` depends only on the types of the elements
+@inline select_fields(predicate, ::Tuple{}) = ()
+
+@inline function select_fields(predicate::P, fields::Tuple) where P
+    head = first(fields)
+    selected = select_fields(predicate, Base.tail(fields))
+    return predicate(head) ? (head, selected...) : selected
+end
+
+@inline halo_fill_groups(::Tuple{}) = ()
+
+@inline function halo_fill_groups(fields::Tuple)
+    head = first(fields)
+    group = select_fields(field -> shares_halo_fill(head, field), fields)
+    others = select_fields(field -> !shares_halo_fill(head, field), fields)
+    return (group, halo_fill_groups(others)...)
+end
+
+@inline fill_halo_group!(group::Tuple{Any}, args::Vararg{Any, N}; kwargs...) where N =
+    fill_halo_regions!(first(group), args...; kwargs...)
+
+function fill_halo_group!(group::Tuple, args::Vararg{Any, N}; kwargs...) where N
+    field = first(group)
+    grid = field.grid
+
+    all(f -> f.grid === grid, group) || return foreach_element(fill_halo_regions!, group, args...; kwargs...)
+
+    data = map(f -> f.data, group)
+    bcs = map(f -> f.boundary_conditions.ordered_bcs, group)
+
+    GC.@preserve group begin
+        device_data, device_bcs, device_grid = convert_to_device(architecture(grid), (data, bcs, grid))
+        tupled_fill_halo_regions!(device_data, field.boundary_conditions.kernels, device_bcs,
+                                  instantiated_location(field), device_grid; kwargs...)
+    end
+
     return nothing
 end
 
@@ -91,7 +145,7 @@ end
 # TODO: This code belongs in the Models module
 
 "Returns true if the first three elements of `names` are `(:u, :v, :w)`."
-has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
+@inline has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
 
 # Tuples of length 0-2 cannot contain velocity fields
 has_velocities(::Tuple{}) = false
@@ -100,7 +154,7 @@ has_velocities(::Tuple{X, Y}) where {X, Y} = false
 
 tracernames(::Nothing) = ()
 tracernames(name::Symbol) = tuple(name)
-tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
+@inline tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
 tracernames(::NamedTuple{names}) where names = tracernames(names)
 
 #####
@@ -168,10 +222,14 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Boundary conditions `user_bcs`
 may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, grid, user_bcs)
-    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center(), Center(), Center())) for name in tracer_names)
+Base.@constprop :aggressive function TracerFields(tracer_names, grid, user_bcs)
+    default_bcs = named_tuple(name -> FieldBoundaryConditions(grid, (Center(), Center(), Center())), tracer_names)
     bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
-    return NamedTuple(c => CenterField(grid, boundary_conditions=bcs[c]) for c in tracer_names)
+
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs[c])
+    end
 end
 
 """
@@ -181,8 +239,12 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
 for each field.
 """
-TracerFields(tracer_names, grid; kwargs...) =
-    NamedTuple(c => c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid) for c in tracer_names)
+Base.@constprop :aggressive function TracerFields(tracer_names, grid; kwargs...)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        c ∈ keys(kwargs) ? kwargs[c] : CenterField(grid)
+    end
+end
 
 # 'Nothing', or empty tracer fields
 TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
@@ -224,7 +286,9 @@ function TracerFields(proposed_tracers::NamedTuple, grid, bcs)
     validate_field_tuple_grid("tracers", proposed_tracers, grid)
 
     tracer_names = propertynames(proposed_tracers)
-    tracer_fields = Tuple(CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data) for c in tracer_names)
 
-    return NamedTuple{tracer_names}(tracer_fields)
+    return named_tuple(tracer_names) do c
+        Base.@constprop :aggressive
+        CenterField(grid, boundary_conditions=bcs[c], data=proposed_tracers[c].data)
+    end
 end

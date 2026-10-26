@@ -7,7 +7,7 @@
 ##### Grid reconstruction
 #####
 
-netcdf_string(obj) = typeof(obj).name.wrapper |> string
+netcdf_string(obj) = string(nameof(typeof(obj)))
 # OSSG variants are type aliases of OrthogonalSphericalShellGrid; record the alias name
 # so reconstruction dispatches on the right constructor (which accepts a different
 # kwarg set than the base OSSG constructor).
@@ -120,7 +120,7 @@ reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsup
 function reconstruct_immersed_boundary(ds, prefix)
     grid_reconstruction_metadata = ds.group["$(prefix)grid_reconstruction_metadata"].attrib
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
-    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)), prefix)
+    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(last(split(immersed_boundary_type, '.')))), prefix)
     return immersed_boundary
 end
 
@@ -129,12 +129,12 @@ function reconstruct_grid(ds; grid_index=1, architecture=nothing)
     prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
     prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""
 
-    # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> Dict
-    if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
-        underlying_grid_reconstruction_args["architecture"] = architecture
+    # Read back the grid reconstruction metadata. The positional arguments are splatted into the
+    # grid constructor, so they are kept in the order they were written, which `Dict` would not preserve.
+    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    if !isnothing(architecture)
+        underlying_grid_reconstruction_args[:architecture] = architecture
     end
-    underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["$(prefix)underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
     grid_reconstruction_metadata          = ds.group["$(prefix)grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
@@ -201,7 +201,7 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(ds.attrib, "output_includes_halos")
@@ -325,19 +325,19 @@ end
 
 # Rebuild the `conformal_mapping` from its serialized attributes (see
 # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
-# argument is the y-topology type — for `Tripolar`, that's the fold flavor
-# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# argument is the y-topology type — for `Tripolar`, its north side is the fold flavor
+# (`CenterFolded`/`FaceFolded`) which lives as a type-parameter on
 # the struct rather than a runtime field.
 reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:Sides{<:Any, R}}) where R
     return Tripolar(
         attrib["north_poles_latitude"],
         attrib["first_pole_longitude"],
         attrib["southernmost_latitude"],
-        TY,
+        R,
     )
 end
 

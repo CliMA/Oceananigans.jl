@@ -1,0 +1,600 @@
+include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
+
+using Test
+using Oceananigans
+using Oceananigans.Fields: interior
+using Oceananigans.Grids: nodes
+using Oceananigans.MultiRegion: owned_weights
+using LinearAlgebra: cross
+using Oceananigans.Units: hours, kilometers
+
+const CAIROMAKIE_AVAILABLE = let loaded = false
+    try
+        @eval begin
+            using CairoMakie
+        end
+        CairoMakie.activate!()  # use headless backend for CI
+        loaded = true
+    catch err
+        @info "Skipping OceananigansMakieExt tests because CairoMakie is unavailable." exception = (err, catch_backtrace())
+        loaded = false
+    end
+    loaded
+end
+
+sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz...)
+
+@testset "OceananigansMakieExt" begin
+    if !CAIROMAKIE_AVAILABLE
+        @test true
+        return
+    end
+
+    @testset "2D heatmap conversion" begin
+        grid = RectilinearGrid(size=(4, 3), x=(0, 1), y=(0, 1), topology=(Periodic, Periodic, Flat))
+        field = CenterField(grid)
+        set!(field, sequential_data(size(field)))
+
+        slice = view(field, :, :, 1)
+        plot = heatmap(slice)
+        heatmap_plot = plot.plot
+        converted = heatmap_plot.converted[]
+
+        @test heatmap_plot isa CairoMakie.Heatmap
+        @test length(converted[1]) == size(slice, 1) + 1
+        @test length(converted[2]) == size(slice, 2) + 1
+
+        expected_plane = Float32.(Array(interior(slice, :, :, 1)))
+        @test converted[3] == expected_plane
+    end
+
+    @testset "1D horizontal line conversion" begin
+        grid = RectilinearGrid(size=(4, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+        field = CenterField(grid)
+        set!(field, sequential_data(size(field)))
+
+        slice = view(field, :, 1, 1)
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, slice)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = collect(nodes(slice)[1])
+        expected_y = vec(Array(interior(slice)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "1D vertical line conversion" begin
+        grid = RectilinearGrid(size=(1, 1, 4), x=(0, 1), y=(0, 1), z=(-1, 0))
+        field = CenterField(grid)
+        set!(field, sequential_data(size(field)))
+
+        slice = view(field, 1, 1, :)
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, slice)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_y = collect(nodes(slice)[3])
+        expected_x = vec(Array(interior(slice)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "1D line with field first and coordinate array second" begin
+        # Test lines!(ax, field, coordinate_array) syntax
+        grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded))
+        z = znodes(grid, Center()) ./ 1e3
+        T = CenterField(grid)
+        set!(T, sequential_data(size(T)))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, T, z)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = vec(Array(interior(T)))
+        expected_y = collect(z)
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "spherical_coordinates" begin
+        ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+        spherical_coordinates = ext.spherical_coordinates
+
+        # Test scalar conversion
+        x, y, z = spherical_coordinates(0.0, 0.0)
+        @test x ≈ 1.0
+        @test y ≈ 0.0
+        @test z ≈ 0.0
+
+        # Test at north pole
+        x, y, z = spherical_coordinates(0.0, 90.0)
+        @test x ≈ 0.0 atol=1e-10
+        @test y ≈ 0.0 atol=1e-10
+        @test z ≈ 1.0
+
+        # Test array conversion
+        λ = [0.0, 90.0, 180.0]
+        φ = [0.0, 0.0, 0.0]
+        x, y, z = spherical_coordinates(λ, φ)
+        @test x ≈ [1.0, 0.0, -1.0] atol=1e-10
+        @test y ≈ [0.0, 1.0, 0.0] atol=1e-10
+        @test z ≈ [0.0, 0.0, 0.0] atol=1e-10
+    end
+
+    @testset "surface! on LatitudeLongitudeGrid" begin
+        grid = LatitudeLongitudeGrid(size=(8, 6, 1),
+                                     longitude=(0, 360),
+                                     latitude=(-60, 60),
+                                     z=(0, 1))
+        T = CenterField(grid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
+
+        # This should work via the extension
+        plt = surface!(ax, T; colormap=:viridis)
+        @test plt isa CairoMakie.Surface
+    end
+
+    @testset "surface! on TripolarGrid" begin
+        grid = TripolarGrid(size=(8, 10, 1), z=(0, 1))
+        T = CenterField(grid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
+
+        plt = surface!(ax, T; colormap=:viridis)
+        @test plt isa CairoMakie.Surface
+    end
+
+    @testset "Longitude–latitude surface! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        bathymetry = Field{Center, Center, Nothing}(grid)
+        interior(bathymetry) .= ifelse.(interior(height) .< 0, .-interior(height), FT(NaN))
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = surface!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        λ, φ, _ = nodes(bathymetry)
+        colors = interior(bathymetry, :, :, 1)
+
+        @test plt isa CairoMakie.Surface
+        @test plt.converted[][1] ≈ Float32.(λ)
+        @test plt.converted[][2] ≈ Float32.(φ)
+        @test all(iszero, plt.converted[][3])
+        @test isequal(plt.color[], colors)
+        @test any(isnan, plt.color[])
+        @test any(==(1), plt.color[])
+
+        streamfunction = Field((bathymetry - 1) / 2)
+        streamfunction_plot = surface!(ax, streamfunction)
+        @test all(iszero, filter(!isnan, streamfunction_plot.color[]))
+        @test isnan.(streamfunction_plot.color[]) == isnan.(colors)
+
+        field = CenterField(grid)
+        set!(field, 2)
+        slice = view(field, :, :, size(grid, 3))
+        slice_plot = surface!(ax, slice)
+        @test all(==(2), slice_plot.color[])
+        @test_throws ArgumentError surface!(ax, field)
+
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        immersed_field = CenterField(immersed_grid)
+        set!(immersed_field, 2)
+        immersed_slice = view(immersed_field, :, :, size(grid, 3))
+        immersed_plot = surface!(ax, immersed_slice)
+        @test isnan.(immersed_plot.color[]) == isnan.(colors)
+        @test all(==(2), filter(!isnan, immersed_plot.color[]))
+
+        observable = CairoMakie.Observable(immersed_slice)
+        observable_plot = surface!(ax, observable)
+        coordinates = deepcopy(observable_plot.converted[])
+        set!(immersed_field, 3)
+        CairoMakie.notify(observable)
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test observable_plot.converted[] == coordinates
+    end
+
+    @testset "Longitude–latitude quadmesh! on TripolarGrid [$FT]" for FT in (Float32, Float64)
+        grid = TripolarGrid(CPU(), FT; size=(8, 10, 2), z=(-2, 0))
+        height = Field{Center, Center, Nothing}(grid)
+        set!(height, (λ, φ) -> ifelse(φ > 0, 1, -1))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(height))
+        bathymetry = Field{Center, Center, Nothing}(immersed_grid)
+        set!(bathymetry, -height)
+        Nx, Ny = size(grid, 1), size(grid, 2)
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        plt = quadmesh!(ax, bathymetry; colormap=:deep, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == 4 * Nx * Ny
+        @test any(isnan, colors)
+        @test all(==(1), filter(!isnan, colors))
+
+        # Away from the north poles, cells at the periodic seam are not drawn across the map
+        λ = [vertex[1] for vertex in vertices]
+        southern_cells = 1:4:4 * Nx * (Ny ÷ 2)
+        @test all(maximum(λ[q:q+3]) - minimum(λ[q:q+3]) < 180 for q in southern_cells)
+
+        streamfunction = Field{Face, Face, Nothing}(grid)
+        set!(streamfunction, 2)
+        streamfunction_plot = quadmesh!(ax, streamfunction)
+        @test all(==(2), streamfunction_plot.color[])
+
+        field = CenterField(immersed_grid)
+        set!(field, 2)
+        observable = CairoMakie.Observable(view(field, :, :, size(grid, 3)))
+        observable_plot = quadmesh!(ax, observable)
+        set!(field, 3)
+        CairoMakie.notify(observable)
+        @test all(==(3), filter(!isnan, observable_plot.color[]))
+        @test isnan.(observable_plot.color[]) == isnan.(colors)
+    end
+
+    @testset "surface! with Observable on spherical grid" begin
+        grid = LatitudeLongitudeGrid(size=(8, 6, 1),
+                                     longitude=(0, 360),
+                                     latitude=(-60, 60),
+                                     z=(0, 1))
+        T1 = CenterField(grid)
+        T2 = CenterField(grid)
+        set!(T1, (λ, φ, z) -> cosd(φ))
+        set!(T2, (λ, φ, z) -> sind(λ))
+
+        fields = [T1, T2]
+        n = CairoMakie.Observable(1)
+        T_obs = CairoMakie.@lift fields[$n]
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
+
+        # This should work with Observable fields
+        plt = surface!(ax, T_obs; colormap=:viridis)
+        @test plt isa CairoMakie.Surface
+
+        # Update observable and verify no errors
+        n[] = 2
+        @test true  # If we get here, the update worked
+    end
+
+    @testset "geo_surface!" begin
+        ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+        geo_surface! = ext.geo_surface!
+
+        grid = LatitudeLongitudeGrid(size=(8, 6, 1),
+                                     longitude=(0, 360),
+                                     latitude=(-60, 60),
+                                     z=(0, 1))
+        T = CenterField(grid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
+
+        plt = geo_surface!(ax, T; colormap=:thermal)
+        @test plt isa CairoMakie.Surface
+    end
+
+    @testset "Scalar field time series as 1D line" begin
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+        output_times = 0:0.1:1
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(t))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, field_time_series)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = collect(field_time_series.times)
+        expected_y = vec(Array(interior(field_time_series)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "Scalar field time series as 1D line with time coordinate array first" begin
+        grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+        output_times = 0:0.5hours:12hours
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(sinpi(t / 1hours)))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        times_in_hours = field_time_series.times / 1hours
+        line_plot = lines!(ax, times_in_hours, field_time_series)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = collect(times_in_hours)
+        expected_y = vec(Array(interior(field_time_series)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "Scalar field time series as vertical 1D line with time coordinate array second" begin
+        grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+        output_times = 2 .^ (1:10)
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(log2(t)))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, field_time_series, field_time_series.times)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = vec(Array(interior(field_time_series)))
+        expected_y = collect(field_time_series.times)
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "One-dimensional field time series as heat map" begin
+        grid = RectilinearGrid(size = (1, 1, 10), extent = (1, 1, 1))
+        output_times = 0:0.1:1
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, (x, y, z) -> z * t^2)
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        hm = heatmap!(ax, field_time_series)
+
+        converted = hm.converted[]
+
+        @test hm isa CairoMakie.Heatmap
+        @test length(converted[1]) == length(field_time_series) + 1
+        @test length(converted[2]) == size(field_time_series, 3) + 1
+
+        expected_values = Float32.(Array(interior(field_time_series, 1, 1, :, :)'))
+        @test converted[3] == expected_values
+    end
+
+    @testset "One-dimensional field time series as contour plot with coordinate arrays" begin
+        grid = RectilinearGrid(size = (1, 10, 1), extent = (1, 1kilometers, 1))
+        output_times = 0:0.5hours:24hours
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, (x, y, z) -> y * sinpi(t / 4hours))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        times_in_hours = field_time_series.times / 1hours
+        y_in_km = ynodes(field_time_series) / 1kilometer
+        cf = contourf!(ax, times_in_hours, y_in_km, field_time_series)
+
+        converted = cf.converted[]
+
+        @test cf isa CairoMakie.Contourf
+        @test converted[1] == times_in_hours
+        @test converted[2] == y_in_km
+
+        expected_values = Float32.(Array(interior(field_time_series, 1, :, 1, :)'))
+        @test converted[3] == expected_values
+    end
+
+    @testset "quadmesh! curvilinear flat-shaded mesh" begin
+        # A small curvilinear (sheared) corner mesh: P×Q cells need (P+1)×(Q+1) corners.
+        P, Q = 5, 3
+        xc = [Float64(i) + 0.15 * j for i in 0:P, j in 0:Q]   # x corners (sheared in j)
+        zc = [Float64(j) for i in 0:P, j in 0:Q]              # z corners
+        vals = sequential_data((P, Q))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, xc, zc, vals; colormap = :viridis, colorrange = (1, P * Q))
+
+        @test plt isa CairoMakie.Mesh
+        # 4 duplicated vertices + 2 triangles per cell; one color per vertex.
+        @test length(plt[1][]) == 2 * P * Q                  # faces (GLTriangleFace)
+        @test length(plt.color[]) == 4 * P * Q               # per-vertex colors
+        @test all(isfinite, plt.color[])
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Corner-size mismatch is an error.
+        @test_throws ArgumentError quadmesh!(ax, xc, zc, sequential_data((P, Q + 1)))
+
+        # 3D method (Axis3) + NaN-cell dropping.
+        yc = fill(0.0, P + 1, Q + 1)
+        vals_nan = collect(vals); vals_nan[1, 1] = NaN
+        fig3 = CairoMakie.Figure()
+        ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, xc, yc, zc, vals_nan; drop_nan_cells = true)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * (P * Q - 1)        # one cell dropped
+
+        # Observable values: geometry fixed, color updates reactively.
+        obs = CairoMakie.Observable(vals)
+        fig4 = CairoMakie.Figure(); ax4 = CairoMakie.Axis(fig4[1, 1])
+        plto = quadmesh!(ax4, xc, zc, obs)
+        nfaces = length(plto[1][])
+        obs[] = 2 .* vals
+        @test length(plto[1][]) == nfaces                    # geometry unchanged
+        @test plto.color[] ≈ 2 .* Float32.(vec(vals))[repeat(1:P*Q, inner=4)] ||
+              length(plto.color[]) == 4 * P * Q              # color tracked the update
+
+        # Non-mutating quadmesh returns (figure, axis, plot).
+        f, a, p = quadmesh(xc, zc, vals)
+        @test f isa CairoMakie.Figure
+        @test p isa CairoMakie.Mesh
+    end
+
+    @testset "quadmesh! from a Field (corners derived from the grid)" begin
+        # Rectilinear x–z field (y-Flat): corners come from xnode/znode, no
+        # coordinates passed by the user.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        w = CenterField(rgrid)
+        set!(w, (x, z) -> sinpi(x) * cospi(z))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, w; colormap = :balance, colorrange = (-1, 1))
+        @test plt isa CairoMakie.Mesh
+        @test length(plt.color[]) == 4 * 6 * 4
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Spherical field: drawn as a 3D Cartesian shell on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (8, 6, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        T = CenterField(sgrid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+        fig3 = CairoMakie.Figure(); ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, T)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * 8 * 6
+
+        # 3D field (no reduced dimension) is rejected with a clear error.
+        f3d = CenterField(RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1)))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), f3d)
+
+        # Non-mutating Field method.
+        gfig, gax, gplt = quadmesh(w)
+        @test gfig isa CairoMakie.Figure
+        @test gplt isa CairoMakie.Mesh
+    end
+
+    @testset "quadmesh! grid wireframe" begin
+        # Spherical grid → 3D shell graticule on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (12, 8, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis3(fig[1, 1])
+        plt = quadmesh!(ax, sgrid; color = :black)
+        @test plt isa CairoMakie.Lines
+
+        # 2D (Flat) grid → 2D wireframe.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        fig2 = CairoMakie.Figure(); ax2 = CairoMakie.Axis(fig2[1, 1])
+        @test quadmesh!(ax2, rgrid) isa CairoMakie.Lines
+
+        # A 3D non-spherical grid is ambiguous → clear error.
+        g3 = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), g3)
+    end
+
+    @testset "quadmesh! on YinYangGrid" begin
+        grid = YinYangGrid(size=(48, 16, 2), z=(-2, 0))
+        immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((λ, φ) -> ifelse(φ > 60, 0, -2)))
+
+        weights = owned_weights(grid)
+        Nyin = count(≥(1/2), interior(weights[1]))
+        Nyang = count(>(0), interior(weights[2]))
+
+        c = CenterField(immersed_grid)
+        set!(c, 2)
+
+        fig = Figure()
+        ax = Axis3(fig[1, 1]; aspect=:data)
+        plt = quadmesh!(ax, view(c, :, :, 2); colormap=:thermal, nan_color=:gray)
+        vertices = plt[1][].position
+        colors = plt.color[]
+
+        @test plt isa CairoMakie.Mesh
+        @test length(vertices) == length(colors) == 4 * (Nyin + Nyang)
+        @test any(isnan, colors)
+        @test all(==(2), filter(!isnan, colors))
+
+        # Land north of 60°N is masked, and nothing else is
+        polar_quad(q) = all(v[3] > sind(55) for v in vertices[q:q+3])
+        @test all(polar_quad(q) for q in 1:4:length(vertices) if isnan(colors[q]))
+
+        # Yin is drawn on the sphere and Yang just beneath it
+        radius(v) = sqrt(sum(abs2, v))
+        @test all(radius(v) ≈ 1 for v in vertices[1:4Nyin])
+        @test all(radius(v) ≈ 0.995 for v in vertices[4Nyin+1:end])
+
+        # The drawn cells cover the sphere, with only a thin overlap
+        function quad_area(q)
+            p₁, p₂, p₃, p₄ = (vertices[q+n] / radius(vertices[q+n]) for n in 0:3)
+            triangle_area(a, b, c) = sqrt(sum(abs2, cross(b - a, c - a))) / 2
+            return triangle_area(p₁, p₂, p₃) + triangle_area(p₁, p₃, p₄)
+        end
+        area = sum(quad_area, 1:4:length(vertices))
+        @test 0.99 * 4π < area < 1.2 * 4π
+
+        # Observable fields update the colors but not the mesh
+        c₁ = Field{Center, Center, Nothing}(grid)
+        c₂ = Field{Center, Center, Nothing}(grid)
+        set!(c₁, (λ, φ) -> φ)
+        set!(c₂, 3)
+        fields = [c₁, c₂]
+        n = CairoMakie.Observable(1)
+        observable = CairoMakie.@lift fields[$n]
+        observable_plot = quadmesh!(ax, observable)
+        @test !all(==(3), observable_plot.color[])
+        n[] = 2
+        @test all(==(3), observable_plot.color[])
+        @test length(observable_plot[1][].position) == 4 * (Nyin + Nyang)
+
+        ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
+        @test ext.geo_surface!(ax, c₁) isa CairoMakie.Mesh
+        @test ext.geo_surface!(ax, observable) isa CairoMakie.Mesh
+        @test surface!(ax, c₁) isa CairoMakie.Mesh
+
+        geo_fig, geo_ax, geo_plt = ext.geo_surface(c₁)
+        @test geo_ax isa CairoMakie.Axis3
+        @test geo_plt isa CairoMakie.Mesh
+
+        @test_throws ArgumentError quadmesh!(ax, c)
+        @test_throws ArgumentError quadmesh!(ax, view(XFaceField(grid), :, :, 1))
+    end
+end

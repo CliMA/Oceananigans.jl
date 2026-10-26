@@ -1,5 +1,5 @@
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
-using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
@@ -26,23 +26,15 @@ function compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
             U̅, V̅, grid, u, v)
-
     return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Correct baroclinic velocities so that they are consistent with the barotropic flow from
-split-explicit substepping.
+Project the baroclinic velocities onto the barotropic transport produced by the substepping,
 
-The correction ensures that the depth-integrated baroclinic velocity matches the
-filtered barotropic velocity from the split-explicit scheme:
-
-    u = u + (U̅ - ∫udz) / H
-
-where `U̅` is the filtered barotropic transport from substepping and
-`∫udz` is the depth-integral of the baroclinic velocity.
+    u = u + (U - ∫u dz) / H
 """
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
@@ -50,18 +42,11 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
 
-    # Preparing velocities for the barotropic correction
     mask_immersed_field!(u)
     mask_immersed_field!(v)
 
-    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
-    # so we use the filtered velocities as "work arrays" to store the vertical integrals
-    # of the instantaneous velocities `u` and `v`.
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
-
-    # add in "good" barotropic mode
-    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, grid)
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!, u, v, U, V, U̅, V̅, grid)
 
     return nothing
 end
@@ -125,7 +110,10 @@ from continuity and halo regions are filled.
 """
 function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
-    u, v, w = model.velocities
+    # `transport_velocities` holds the pre-step velocities and is also the destination; the kernel adds a
+    # depth-uniform correction, so source and destination may alias.
+    u = model.transport_velocities.u
+    v = model.transport_velocities.v
     ũ, ṽ, w̃ = model.transport_velocities
     Ũ = free_surface.filtered_state.Ũ
     Ṽ = free_surface.filtered_state.Ṽ
