@@ -70,6 +70,43 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     return ifelse(cycling, cycled_indices, uncycled_indices)
 end
 
+# `t + Dates.Year(n)` builds the new date with the `DateTime(y, m, d, ...)` constructor, whose argument
+# validation formats error messages into strings: GPU kernels cannot allocate strings, so it fails to
+# compile on a GPU (InvalidIRError). This shifts `t` by whole years on its millisecond count instead and,
+# like `t + Dates.Year(n)`, clamps 29 February to the 28th of a non-leap year.
+@inline function add_years(t::Dates.DateTime, n)
+    y, m, d = Dates.yearmonthday(t)
+    y′ = y + n
+    days_in_month = ifelse(m == 2, 28 + Dates.isleapyear(y′), 30 + ((m + (m ≥ 8)) & 1))
+    milliseconds_per_day = 86_400_000
+    milliseconds_of_day = mod(Dates.value(t), milliseconds_per_day)
+    days = Dates.totaldays(y′, m, min(d, days_in_month))
+    return Dates.DateTime(Dates.UTM(days * milliseconds_per_day + milliseconds_of_day))
+end
+
+@inline add_years(t, n) = t + Dates.Year(n)
+
+# Calendar years have no fixed length, so fold `t` into the first period by whole years.
+@inline function interpolating_time_indices(ti::Cyclical{<:Dates.Year}, times, t)
+    Nt = length(times)
+    t¹ = first(times)
+    tᴺ = last(times)
+
+    P = Dates.value(ti.period)
+    cycles = fld(Dates.year(t) - Dates.year(t¹), P)
+    folded_t = add_years(t, -cycles * P)
+    folded_t = ifelse(folded_t < t¹, add_years(folded_t, P), folded_t)
+
+    ñ, n₁, n₂ = find_time_index(times, folded_t)
+
+    cycling = folded_t > tᴺ # we are _between_ tᴺ and t¹ + T
+    θ = time_difference_seconds(folded_t, tᴺ) / time_difference_seconds(add_years(t¹, P), tᴺ)
+    cycled_indices   = (θ, Nt, 1)
+    uncycled_indices = (ñ, n₁, n₂)
+
+    return ifelse(cycling, cycled_indices, uncycled_indices)
+end
+
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(::Clamp, times, t)
     ñ, n₁, n₂ = find_time_index(times, t)
