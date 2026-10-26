@@ -7,7 +7,8 @@ using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
+                                       bottom_height_checkpoint_state, validate_checkpoint_bottom_height
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, materialize_tracers, timestepper_name
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
@@ -462,16 +463,23 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             free_surface = prognostic_state(model.free_surface),
             coriolis = prognostic_state(model.coriolis),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
+            bottom_height = bottom_height_checkpoint_state(model.grid))
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+    # Checkpoints written before the bottom height was saved skip this check
+    if hasproperty(from, :bottom_height)
+        validate_checkpoint_bottom_height(restored.grid, from.bottom_height)
+    end
+
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.free_surface, from.free_surface)
-    restore_prognostic_state!(restored.coriolis, from.coriolis)
+    # Older checkpoints were saved before Coriolis state was added, so skip it if it is missing
+    hasproperty(from, :coriolis) && restore_prognostic_state!(restored.coriolis, from.coriolis)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
