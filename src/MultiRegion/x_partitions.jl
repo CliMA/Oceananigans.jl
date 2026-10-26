@@ -32,10 +32,10 @@ end
 function partition_topology(p::XPartition, grid)
     TX, TY, TZ = topology(grid)
 
-    return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
-                                    RightConnected : i == length(p) ?
-                                    LeftConnected :
-                                    FullyConnected), TY, TZ) for i in 1:length(p))
+    return Tuple(((TX == Periodic ? Sides{Connected, Connected} : i == 1 ?
+                                    Sides{Closed, Connected} : i == length(p) ?
+                                    Sides{Connected, Closed} :
+                                    Sides{Connected, Connected}), TY, TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualXPartition) =

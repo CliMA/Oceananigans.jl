@@ -1,10 +1,36 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
 
 #####
 ##### JLD2Writer tests
 #####
+
+function test_jld2_constant_field_output(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model; Δt=1, stop_iteration=1, verbose=false)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    dir = mktempdir()
+    filepath = joinpath(dir, "test_constants.jld2")
+    simulation.output_writers[:constants] = JLD2Writer(model, outputs;
+                                                       dir,
+                                                       schedule = TimeInterval(1),
+                                                       filename = "test_constants.jld2",
+                                                       overwrite_files = true)
+    run!(simulation)
+
+    jldopen(filepath) do file
+        @test file["timeseries/z/0"] == 0
+        @test file["timeseries/o/0"] == 1
+        @test file["timeseries/c/0"] == 10
+    end
+
+    rm(dir; recursive=true)
+
+    return nothing
+end
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
@@ -581,5 +607,7 @@ for arch in archs
         run!(simulation)
         ηt = FieldTimeSeries(filename, "η")
         @test size(parent(ηt[1])) == (4, 4, 1)
+
+        test_jld2_constant_field_output(arch)
     end
 end
