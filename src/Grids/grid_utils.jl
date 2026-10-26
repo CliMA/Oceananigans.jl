@@ -41,12 +41,12 @@ end
 end
 
 # The right side owns the face at N+1
-const FaceExtendedTopology = Sides{<:Any, <:Union{Closed, FaceFolded, FaceFoldConnected}}
-const SerialFoldedTopology = Sides{Closed, <:Union{CenterFolded, FaceFolded}}
-const SlabFoldedTopology = Sides{Connected, <:Union{CenterFolded, FaceFolded}}
-const PencilFoldedTopology = Sides{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
+const FaceExtendedTopology = TwoSided{<:Any, <:Union{Closed, FaceFolded, FaceFoldConnected}}
+const SerialFoldedTopology = TwoSided{Closed, <:Union{CenterFolded, FaceFolded}}
+const SlabFoldedTopology = TwoSided{Connected, <:Union{CenterFolded, FaceFolded}}
+const PencilFoldedTopology = TwoSided{Connected, <:Union{CenterFoldConnected, FaceFoldConnected}}
 const DistributedFoldedTopology = Union{SlabFoldedTopology, PencilFoldedTopology}
-const FoldedTopology = Sides{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
+const FoldedTopology = TwoSided{<:Any, <:Union{CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected}}
 
 # Sides whose halo comes from another rank
 const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnected}
@@ -56,9 +56,9 @@ const CommunicatingSide = Union{Connected, CenterFoldConnected, FaceFoldConnecte
 @inline connected_range(::Nothing, topo, N, H) = 1:N
 
 @inline connected_range(topo, N, H)                                =    1:N
-@inline connected_range(::Type{Sides{Connected, Connected}}, N, H)  = -H+2:N+H-1
-@inline connected_range(::Type{Sides{Closed, Connected}}, N, H)    =    1:N+H-1
-@inline connected_range(::Type{Sides{Connected, Closed}},  N, H)   = -H+2:N
+@inline connected_range(::Type{TwoSided{Connected, Connected}}, N, H)  = -H+2:N+H-1
+@inline connected_range(::Type{TwoSided{Closed, Connected}}, N, H)    =    1:N+H-1
+@inline connected_range(::Type{TwoSided{Connected, Closed}},  N, H)   = -H+2:N
 @inline connected_range(::Type{<:DistributedFoldedTopology}, N, H) = -H+2:N+H-1
 
 const AT = AbstractTopology
@@ -391,7 +391,7 @@ domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 
 Utils.prettysummary(T::Type{<:Union{Periodic, Flat}}) = string(nameof(T))
 Utils.prettysummary(::Type{Bounded}) = "Bounded"
-Utils.prettysummary(::Type{Sides{L, R}}) where {L, R} = L === R ? string(nameof(L)) : string("Sides{", nameof(L), ", ", nameof(R), "}")
+Utils.prettysummary(::Type{TwoSided{L, R}}) where {L, R} = L === R ? string(nameof(L)) : string("TwoSided{", nameof(L), ", ", nameof(R), "}")
 
 function domain_summary(topo, name, (left, right))
     interval = topo isa FaceExtendedTopology ? "]" : ")"
@@ -546,7 +546,7 @@ function Utils.periphery_offset(loc, grid::AbstractGrid, ::Val{side}) where side
 end
 
 # Other cases are already covered by the fallback in Oceananigans.Utils
-Utils.periphery_offset(::Face, ::Union{Bounded, Sides{Closed, Connected}}, N::Int) = ifelse(N > 1, 1, 0)
+Utils.periphery_offset(::Face, ::Union{Bounded, TwoSided{Closed, Connected}}, N::Int) = ifelse(N > 1, 1, 0)
 
 #####
 ##### Kernel parameters that extend into the halos

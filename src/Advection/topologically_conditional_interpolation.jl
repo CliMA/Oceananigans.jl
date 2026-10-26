@@ -10,12 +10,12 @@
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractGrid, Bounded, Closed, Sides, topology, architecture
+using Oceananigans.Grids: AbstractGrid, Bounded, Closed, TwoSided, topology, architecture
 
 const AG = AbstractGrid
 
 # topologies bounded at least on one side
-const BT = Union{Sides{Closed}, Sides{<:Any, Closed}}
+const BT = Union{TwoSided{Closed}, TwoSided{<:Any, Closed}}
 
 # Bounded underlying Grids
 const AGX   = AG{<:Any, <:BT}
@@ -50,18 +50,18 @@ for dir in (:x, :y, :z)
                                      (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv)))
 
         # Topologies bounded on the left (only test the left side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{Sides{Closed, R}}, N, adv) where R = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{Sides{Closed, R}}, N, adv) where R = i >= $required_halo_size(adv)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{TwoSided{Closed, R}}, N, adv) where R = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::Type{TwoSided{Closed, R}}, N, adv) where R = i >= $required_halo_size(adv)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{Sides{Closed, R}}, N, adv, bias) where R = ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{Sides{Closed, R}}, N, adv, bias) where R = ifelse(bias == LeftBias, i >= $required_halo_size(adv),     i >= $required_halo_size(adv) - 1)
+        @inline $outside_biased_haloᶠ(i, ::Type{TwoSided{Closed, R}}, N, adv, bias) where R = ifelse(bias == LeftBias, i >= $required_halo_size(adv) + 1, i >= $required_halo_size(adv))
+        @inline $outside_biased_haloᶜ(i, ::Type{TwoSided{Closed, R}}, N, adv, bias) where R = ifelse(bias == LeftBias, i >= $required_halo_size(adv),     i >= $required_halo_size(adv) - 1)
 
         # Topologies bounded on the right (only test the right side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{Sides{L, Closed}}, N, adv) where L = (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{Sides{L, Closed}}, N, adv) where L = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶠ(i, ::Type{TwoSided{L, Closed}}, N, adv) where L = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{TwoSided{L, Closed}}, N, adv) where L = (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{Sides{L, Closed}}, N, adv, bias) where L = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_biased_haloᶜ(i, ::Type{Sides{L, Closed}}, N, adv, bias) where L = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_biased_haloᶠ(i, ::Type{TwoSided{L, Closed}}, N, adv, bias) where L = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_biased_haloᶜ(i, ::Type{TwoSided{L, Closed}}, N, adv, bias) where L = ifelse(bias == LeftBias, i <= N + 2 - $required_halo_size(adv), i <= N + 1 - $required_halo_size(adv))
     end
 end
 
