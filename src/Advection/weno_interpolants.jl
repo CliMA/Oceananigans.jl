@@ -383,10 +383,10 @@ end
 # 1 + r², fused
 @inline zweno_ratio_term(r) = muladd(r, r, 1)
 
-@inline zweno_regularization(scheme, τ) = ϵ
+@inline zweno_regularization(scheme, τ) = oftype(τ, ϵ)
 
 for FT in (Float32, BFloat16)
-    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(ϵ, τ * $(inv(FT(2)^62)))
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(oftype(τ, ϵ), τ * $(inv(FT(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]

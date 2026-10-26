@@ -11,13 +11,10 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, FullyConnected,
-    RightCenterFolded, RightFaceFolded,
-    LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+using Oceananigans.Grids: topology, Bounded, Connected, FaceFolded, FaceFoldConnected, Sides,
     SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
 using Oceananigans.DistributedComputations: insert_connected_topology
-using Oceananigans.Utils: Utils
+using Oceananigans.Utils: Utils, StaticStridesOffsetArray
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 import Oceananigans.DistributedComputations: inject_halo_communication_boundary_conditions
@@ -128,7 +125,7 @@ function distribute_tripolar_grid(arch::Distributed, global_grid)
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LX = workers[1] == 1 ? Periodic : FullyConnected
+    LX = workers[1] == 1 ? Periodic : Sides{Connected, Connected}
 
     global_fold_topology = topology(global_grid, 2)
 
@@ -202,14 +199,14 @@ end
 function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
 
     metric = getproperty(global_grid, metric_name)
-    offsets = metric.offsets
+    offsets = OffsetArrays.offsets(metric)
     partitioned_metric = metric[irange, jrange]
 
-    if partitioned_metric isa OffsetArray
-        partitioned_metric = partitioned_metric.parent
+    if partitioned_metric isa AbstractOffsetArray
+        partitioned_metric = parent(partitioned_metric)
     end
 
-    return OffsetArray(partitioned_metric, offsets...)
+    return StaticStridesOffsetArray(partitioned_metric, offsets...)
 end
 
 #####
@@ -417,7 +414,7 @@ end
 ##### Extend worksize for distributed FPivot grids (matches RFTRG worksize for serial FPivot)
 #####
 
-const DistributedFPivotTopology = Union{LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected}
+const DistributedFPivotTopology = Sides{Connected, <:Union{FaceFolded, FaceFoldConnected}}
 const DRFTRG = Union{MPITripolarGrid{<:Any, <:Any, <:DistributedFPivotTopology},
                      ImmersedBoundaryGrid{<:Any, <:Any, <:DistributedFPivotTopology, <:Any, <:MPITripolarGrid}}
 

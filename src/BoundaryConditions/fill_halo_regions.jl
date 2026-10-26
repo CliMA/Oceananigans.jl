@@ -1,4 +1,4 @@
-using OffsetArrays: OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 using Oceananigans.Grids: architecture, total_size
 
 #####
@@ -14,17 +14,17 @@ $(TYPEDSIGNATURES)
 Do nothing: data `c` whose boundary conditions are `nothing` has no halos to fill. Some fields
 carry `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 """
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
+fill_halo_regions!(c::AbstractOffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
+function fill_halo_regions!(c::AbstractOffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args...; kwargs...)
     return nothing
 end
 
 "Fill only the bottom and top halo regions of a field's data."
-function fill_bottom_and_top_halo!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
+function fill_bottom_and_top_halo!(c::AbstractOffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
     fill_halo_event!(c, kernels!.bottom_and_top, bcs.bottom_and_top, loc, grid, args...; kwargs...)
     return nothing
@@ -46,11 +46,38 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 # Work done on `c` before the filling kernel is launched
 @inline prepare_halo_fill!(bc, c, grid, loc) = nothing
 
+#####
+##### Trailing arguments of the fill kernels
+#####
+
+# Whether `bc` reads the trailing `args` of `fill_halo_regions!` (usually `clock` and `model_fields`)
+@inline needs_halo_fill_args(bc) = true
+@inline needs_halo_fill_args(::Union{Nothing, Missing}) = false
+@inline needs_halo_fill_args(::Union{PBC, FBC}) = false
+
+# `FieldTimeSeries` and `Field` conditions are `AbstractArray`s whose `getbc` may read the clock
+const ArgumentFreeCondition = Union{Nothing, Number, DenseArray}
+const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{Nothing}}
+
+@inline needs_halo_fill_args(::BoundaryCondition{<:ArgumentFreeClassification, <:ArgumentFreeCondition}) = false
+@inline needs_halo_fill_args(::BoundaryCondition{<:Mixed, <:MixedCondition{<:ArgumentFreeCondition, <:ArgumentFreeCondition}}) = false
+
+@inline needs_halo_fill_args(bcs::Tuple{Any}) = needs_halo_fill_args(bcs[1])
+@inline needs_halo_fill_args(bcs::Tuple{Any, Any}) = needs_halo_fill_args(bcs[1]) | needs_halo_fill_args(bcs[2])
+
+@inline needs_halo_fill_args(bcs::FieldBoundaryConditions) =
+    needs_halo_fill_args(bcs.west)   | needs_halo_fill_args(bcs.east)  |
+    needs_halo_fill_args(bcs.south)  | needs_halo_fill_args(bcs.north) |
+    needs_halo_fill_args(bcs.bottom) | needs_halo_fill_args(bcs.top)
+
+# Converting `args` for the device can cost more than filling the halos
+@inline halo_fill_args(bcs, args) = needs_halo_fill_args(bcs) ? args : ()
+
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
         prepare_halo_fill!(bcs[2], c, grid, loc)
-        kernel!(c, bcs[1], bcs[2], loc, grid, args)
+        kernel!(c, bcs[1], bcs[2], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -58,7 +85,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
-        kernel!(c, bcs[1], loc, grid, args)
+        kernel!(c, bcs[1], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -66,7 +93,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bc, fill_normal_flow_bcs)
         prepare_halo_fill!(bc, c, grid, loc)
-        kernel!(c, bc, loc, grid, args)
+        kernel!(c, bc, loc, grid, halo_fill_args(bc, args))
     end
     return nothing
 end
@@ -166,17 +193,17 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 
 # For non-periodic (bounded) BCs with colon indices, use `size(grid, loc)` so that
 # Face fields on Bounded axes get N+1 (include_right_boundaries).
-@inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...)
+@inline function fill_halo_size(::AbstractOffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...)
     bc, loc, grid = args
     _, Ny, Nz = size(grid, loc)
     return (Ny, Nz)
 end
-@inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...)
+@inline function fill_halo_size(::AbstractOffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...)
     bc, loc, grid = args
     Nx, _, Nz = size(grid, loc)
     return (Nx, Nz)
 end
-@inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...)
+@inline function fill_halo_size(::AbstractOffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...)
     bc, loc, grid = args
     Nx, Ny, _ = size(grid, loc)
     return (Nx, Ny)
@@ -193,7 +220,7 @@ end
 # one or more of the elements of `idx` is not Colon in the two direction perpendicular
 # to the halo region and `bc` is not `PeriodicBoundaryCondition`. The data size is
 # `total_size(grid, loc, idx)`, which is known at compile time when `idx` is.
-@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid; include_right_boundaries=true)
+@inline function fill_halo_size(c::AbstractOffsetArray, ::WEB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_y_halo = whole_halo(idx[2], loc[2])
         whole_z_halo = whole_halo(idx[3], loc[3])
@@ -208,7 +235,7 @@ end
     return (Sy, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid; include_right_boundaries=true)
+@inline function fill_halo_size(c::AbstractOffsetArray, ::SNB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_z_halo = whole_halo(idx[3], loc[3])
@@ -223,7 +250,7 @@ end
     return (Sx, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid; include_right_boundaries=true)
+@inline function fill_halo_size(c::AbstractOffsetArray, ::TBB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_y_halo = whole_halo(idx[2], loc[2])
@@ -240,13 +267,13 @@ end
 
 # Remember that Periodic BCs also fill halo points! The array size is `total_size(grid, loc, idx)`,
 # which is known at compile time when the indices are `Colon`s.
-@inline fill_halo_size(c::OffsetArray, side::WEB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
-@inline fill_halo_size(c::OffsetArray, side::SNB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
-@inline fill_halo_size(c::OffsetArray, side::TBB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::WEB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::SNB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::TBB, idx, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
 
-@inline fill_halo_size(c::OffsetArray, side::WEB, idx::Tuple{<:Any, <:Colon, <:Colon}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
-@inline fill_halo_size(c::OffsetArray, side::SNB, idx::Tuple{<:Colon, <:Any, <:Colon}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
-@inline fill_halo_size(c::OffsetArray, side::TBB, idx::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::WEB, idx::Tuple{<:Any, <:Colon, <:Colon}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::SNB, idx::Tuple{<:Colon, <:Any, <:Colon}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
+@inline fill_halo_size(c::AbstractOffsetArray, side::TBB, idx::Tuple{<:Colon, <:Colon, <:Any}, ::PBC, loc, grid) = periodic_halo_size(side, idx, loc, grid)
 
 @inline function periodic_halo_size(::WEB, idx, loc, grid)
     _, Cy, Cz = total_size(grid, loc, idx)

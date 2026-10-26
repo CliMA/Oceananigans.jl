@@ -21,6 +21,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
+using OffsetArrays: OffsetArrays
 using Oceananigans.Utils
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 

@@ -1,7 +1,7 @@
 using JLD2: JLD2, jldopen
 using Glob: Glob, glob
 using GPUArraysCore: @allowscalar
-using OffsetArrays: OffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 using Statistics: mean
 
 using Oceananigans.DistributedComputations: reconstruct_global_topology
@@ -333,13 +333,12 @@ function assemble_global_2d_array(all_ranks, field_accessor)
 
     # The arrays in OrthogonalSphericalShellGrid have extra halo padding
     # We need to preserve the offset structure
-    sample_offsets = sample_array.offsets
+    sample_offsets = OffsetArrays.offsets(sample_array)
     Hx = -sample_offsets[1] - 1  # Infer halo from offset
     Hy = -sample_offsets[2] - 1
 
     # Allocate global array with same offset structure
-    global_array = OffsetArray(zeros(FT, Nx_global + 2Hx + 4, Ny_global + 2Hy + 4),
-                               -Hx-2:Nx_global+Hx+1, -Hy-2:Ny_global+Hy+1)
+    global_array = StaticStridesOffsetArray(zeros(FT, Nx_global + 2Hx + 4, Ny_global + 2Hy + 4), -Hx - 3, -Hy - 3)
 
     # Fill in data from each rank
     for j in 1:Ry, i in 1:Rx

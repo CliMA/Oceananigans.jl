@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ
 using Oceananigans: defaults
 using Oceananigans.Utils: prettysummary
 
@@ -38,8 +38,10 @@ We can then assume that the flow composes of mean (`U⃗`) and perturbation (`u�
 and considering the `x`-component of velocity, we can rewrite the equation as
 
 ```math
-∂ₜu₁ = -u₁ ∂₁u - u₂ ∂₂u₁ - u₃ ∂₃u₁ + F₁
+\begin{align}
+∂ₜu₁ &= -u₁ ∂₁u - u₂ ∂₂u₁ - u₃ ∂₃u₁ + F₁
       ≈ -U₁ ∂₁u₁' - U₂ ∂₂u₁' - U₃ ∂₃u₁' + F
+\end{align}
 ```
 
 Simplify by assuming that `U⃗ = U x̂`, and then take a numerical step to find `u₁`.

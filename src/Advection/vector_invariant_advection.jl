@@ -375,7 +375,7 @@ end
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Face(), Center(), Center()), scheme.vertical_advection_scheme, U.w, U.u)
 
-    return (Φᵟ + 𝒜ᶻ) * V⁻¹ᶠᶜᶜ(i, j, k, grid)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
@@ -383,7 +383,7 @@ end
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Center(), Face(), Center()), scheme.vertical_advection_scheme, U.w, U.v)
 
-    return (Φᵟ + 𝒜ᶻ) * V⁻¹ᶜᶠᶜ(i, j, k, grid)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 #####

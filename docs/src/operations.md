@@ -9,7 +9,7 @@ and saved to disk while a simulation runs, and also for post-processing.
 
 We start by constructing a `CenterField` on a simple grid,
 
-```jldoctest operations
+```jldoctest operations; filter = r"max=[0-9\.e-]+, min=-[0-9\.e-]+, mean=[0-9\.e-]+"
 using Oceananigans
 
 grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
@@ -27,7 +27,7 @@ set!(c, periodic_but_decaying)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 10×1×10 OffsetArray(::Array{Float64, 3}, -2:7, 1:1, -2:7) with eltype Float64 with indices -2:7×1:1×-2:7
+└── data: 10×1×10 StaticStridesOffsetArray(::Array{Float64, 3}, -2:7, 1:1, -2:7) with eltype Float64 with indices -2:7×1:1×-2:7
     └── max=0.428882, min=-0.428882, mean=1.04083e-17
 ```
 
@@ -124,7 +124,7 @@ Like `Field`s, `AbstractOperations` are evaluated by indexing,
 nothing
 
 # output
-c[1, 1, 1] = 0.02135277459201165
+c[1, 1, 1] = 0.021352774592011643
 quadratic[1, 1, 1] = 1.0431614901668005
 ```
 
@@ -240,11 +240,11 @@ set!(c, 1)
 
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (1, 1, 11), (0, 0, -3), Array{Float64, 3}}, size: (1, 1, 5)
 ├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
-└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
+└── data: 1×1×11 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
 ```
 
@@ -286,7 +286,7 @@ Field(∫∫dxdy(c) / ∫dV(c))
 │   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 ├── operand: BinaryOperation at (⋅, ⋅, Center)
 ├── status: time=0.0
-└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
+└── data: 1×1×11 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=0.001, min=0.001, mean=0.001
 ```
 
@@ -297,11 +297,11 @@ The one-dimensional operators also take `cumulative=true`, which returns the run
 
 # output
 60×10×6 Field{Center, Center, Face} on LatitudeLongitudeGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (60, 10, 6)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (66, 16, 12), (-3, -3, -3), Array{Float64, 3}}, size: (60, 10, 6)
 ├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
 ├── status: time=0.0
-└── data: 66×16×12 OffsetArray(::Array{Float64, 3}, -2:63, -2:13, -2:9) with eltype Float64 with indices -2:63×-2:13×-2:9
+└── data: 66×16×12 StaticStridesOffsetArray(::Array{Float64, 3}, -2:63, -2:13, -2:9) with eltype Float64 with indices -2:63×-2:13×-2:9
     └── max=1000.0, min=0.0, mean=500.0
 ```
 
@@ -319,11 +319,11 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # integrate o
 
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── data: Oceananigans.Utils.StaticStridesOffsetArray{Float64, 3, (1, 1, 11), (0, 0, -3), Array{Float64, 3}}, size: (1, 1, 5)
 ├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
 ├── status: time=0.0
-└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
+└── data: 1×1×11 StaticStridesOffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=1.27516e14, min=1.27516e14, mean=1.27516e14
 ```
 

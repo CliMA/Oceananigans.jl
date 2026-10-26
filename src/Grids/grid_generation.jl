@@ -77,15 +77,15 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
+    Δᶜ = StaticStridesOffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = StaticStridesOffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    OF = OffsetArray(trimmed_F, -H)
-    OC = OffsetArray(        C, -H)
+    OF = StaticStridesOffsetArray(trimmed_F, -H)
+    OC = StaticStridesOffsetArray(        C, -H)
 
     # Convert to appropriate array type for arch
-    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
-    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
+    OF = StaticStridesOffsetArray(on_architecture(arch, parent(OF)), OffsetArrays.offsets(OF)...)
+    OC = StaticStridesOffsetArray(on_architecture(arch, parent(OC)), OffsetArrays.offsets(OC)...)
 
     if coordinate_name == :z
         return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
@@ -95,7 +95,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 end
 
 # Special case for tripolar grids.
-# For RightCenterFolded, we want to generate coordinates that start and end at center locations,
+# For a `CenterFolded` right side, we want to generate coordinates that start and end at center locations,
 # but the default `generate_coordinate` assumes that the interval is located on faces,
 # so we must extend the interval by half a cell on both sides:
 # Example with N = 4
@@ -106,12 +106,26 @@ end
 #                       │                               │
 # extended interval:    f₁                              f₂
 extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
+function extend_node_interval(::Sides{Closed, CenterFolded}, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+`total` faces spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` are `range(c₁, c₂, length = N + 1)`.
+"""
+function regular_faces(FT, c₁, c₂, N, H, total)
+    interior = range(FT(c₁), FT(c₂), length = N + 1)
+    faces = StepRangeLen{FT}(interior.ref, interior.step, max(total, interior.offset + H), interior.offset + H)
+    return faces[1:total]
+end
+
+# The `total` cell centers between the regular faces `F`
+regular_centers(F, total) = StepRangeLen{eltype(F)}(F.ref + F.step / 2, F.step, total, F.offset)
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
@@ -130,23 +144,17 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     # Convert to get the correct type also when using single precision
     Δᶠ = Δᶜ = Δ = L / N
 
-    F₋ = c₁ - H * Δ
-    F₊ = F₋ + total_extent(topo, H, Δ, L)
-
-    C₋ = F₋ + Δ / 2
-    C₊ = C₋ + L + Δ * (2H - 1)
-
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = regular_faces(FT, c₁, c₂, N, H, TF)
+    C = regular_centers(F, TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    F = StaticStridesOffsetArray(F, -H)
+    C = StaticStridesOffsetArray(C, -H)
 
     if coordinate_name == :z
         return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))

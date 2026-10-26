@@ -27,12 +27,7 @@ using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_archite
 using Oceananigans.Fields: AbstractField, interior, dot!
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Solvers: ZeroMeanGaugeCondition
-using Oceananigans.Grids:
-    architecture,
-    halo_size,
-    interior_indices,
-    left_halo_indices, right_halo_indices,
-    underlying_left_halo_indices, underlying_right_halo_indices
+using Oceananigans.Grids: architecture, halo_size, interior_indices, FaceExtendedTopology
 
 #####
 ##### Viewing halos
@@ -40,6 +35,13 @@ using Oceananigans.Grids:
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+left_halo_indices(loc, topo, N, H) = 1-H:0
+left_halo_indices(::Nothing, topo, N, H) = 1:0
+
+right_halo_indices(loc, topo, N, H) = N+1:N+H
+right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
+right_halo_indices(::Nothing, topo, N, H) = 1:0
 
 west_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
     include_corners ? view(f.data, left_halo_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx, f.grid.Hx), :, :) :
@@ -588,6 +590,33 @@ end
         @test minimum_xspacing(osg) == minimum_xspacing(gosg)
         @test minimum_yspacing(osg) == minimum_yspacing(gosg)
         @test minimum_zspacing(osg) == minimum_zspacing(gosg)
+    end
+
+    @testset "on_architecture(::ImmersedBoundaryGrid) on distributed grids" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        # Middle ranks of `Partition(1, 4)`, and every rank of a y-periodic grid, are `FullyConnected` in y
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+
+        underlying_grids = (RectilinearGrid(arch, size=(8, 16, 4), x=(0, 1), y=(0, 1), z=(-1, 0)),
+                            TripolarGrid(arch, size=(8, 16, 4), z=(-1, 0)))
+
+        bottoms = (GridFittedBottom((x, y) -> -1/2), PartialCellBottom((x, y) -> -1/2))
+
+        for underlying_grid in underlying_grids, bottom in bottoms
+            grid = ImmersedBoundaryGrid(underlying_grid, bottom; active_cells_map=true)
+
+            for new_arch in (CPU(), cpu_architecture(arch))
+                cpu_grid = on_architecture(new_arch, grid)
+                cpu_bottom_height = bottom_height_interior(cpu_grid.immersed_boundary.bottom_height)
+                bottom_height = bottom_height_interior(grid.immersed_boundary.bottom_height)
+
+                @test child_architecture(architecture(cpu_grid)) == CPU()
+                @test nameof(typeof(cpu_grid.immersed_boundary)) == nameof(typeof(bottom))
+                @test on_architecture(CPU(), cpu_bottom_height) == on_architecture(CPU(), bottom_height)
+                @test on_architecture(CPU(), cpu_grid.interior_active_cells) == on_architecture(CPU(), grid.interior_active_cells)
+            end
+        end
     end
 
     @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin

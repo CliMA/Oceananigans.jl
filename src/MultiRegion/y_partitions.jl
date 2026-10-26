@@ -33,12 +33,12 @@ function partition_topology(p::YPartition, grid)
     TX, TY, TZ = topology(grid)
 
     return Tuple((TX, (TY == Periodic ?
-                       FullyConnected :
+                       Sides{Connected, Connected} :
                        i == 1 ?
-                       RightConnected :
+                       Sides{Closed, Connected} :
                        i == length(p) ?
-                       LeftConnected :
-                       FullyConnected), TZ) for i in 1:length(p))
+                       Sides{Connected, Closed} :
+                       Sides{Connected, Connected}), TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualYPartition) =
@@ -53,14 +53,14 @@ partition(a::Field, p::EqualYPartition, args...) = partition(a.data, p, args...)
 
 function partition(a::AbstractArray, ::EqualYPartition, local_size, region, arch)
     idxs = default_indices(length(size(a)))
-    offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
-    return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
+    offsets = (OffsetArrays.offsets(a)[1], Tuple(0 for i in 1:length(idxs)-1)...)
+    return on_architecture(arch, StaticStridesOffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
-function partition(a::OffsetArray, ::EqualYPartition, local_size, region, arch)
+function partition(a::AbstractOffsetArray, ::EqualYPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
-    offsets = (0, a.offsets[2], Tuple(0 for i in 1:length(idxs)-2)...)
-    return on_architecture(arch, OffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))
+    offsets = (0, OffsetArrays.offsets(a)[2], Tuple(0 for i in 1:length(idxs)-2)...)
+    return on_architecture(arch, StaticStridesOffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))
 end
 
 ####

@@ -55,7 +55,7 @@ end
 ##### MultiaryOperation construction
 #####
 
-indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
+indices(Π::MultiaryOperation) = intersect_indices(location(Π), Π.args...)
 
 function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     args = map(validate_operand, args)

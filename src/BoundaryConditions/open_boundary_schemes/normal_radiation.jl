@@ -10,8 +10,8 @@ abstract type AbstractRadiationScheme{FT} end
                       use_boundary_velocity = false,
                       target_transport = nothing)
 
-Orlanski (1976) radiation condition with locally-diagnosed phase speed
-and adaptive nudging (Marchesiello et al. 2001):
+[Orlanski (1976)](@cite Orlanksi1976) radiation condition with locally-diagnosed phase speed
+and adaptive nudging ([Marchesiello et al., 2001](@cite marchesiello.ea2001)):
 
     ∂φ/∂t + cₙ ⋅ ∂φ/∂n = - (φ - φᵉˣᵗ) / τ
 
@@ -132,7 +132,7 @@ function materialize_radiation_storage(radiation::AbstractRadiationScheme, grid,
     return radiation_storage(radiation, buffers)
 end
 
-radiation_buffer(arch, FT, ranges...) = OffsetArray(zeros(arch, FT, map(length, ranges)...), map(r -> first(r) - 1, ranges)...)
+radiation_buffer(arch, FT, ranges...) = StaticStridesOffsetArray(zeros(arch, FT, map(length, ranges)...), map(r -> first(r) - 1, ranges)...)
 
 radiation_buffers(radiation::AbstractRadiationScheme, arch, FT, tangential_ranges) = ntuple(_ -> radiation_buffer(arch, FT, tangential_ranges...), 3) # φᵇ, φ₁, φ₁ˡ
 radiation_buffers(radiation::AbstractRadiationScheme) = (radiation.φᵇ, radiation.φ₁, radiation.φ₁ˡ)
@@ -215,7 +215,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
@@ -247,7 +247,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δx⁻¹ᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, j, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
@@ -279,7 +279,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
@@ -311,7 +311,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δy⁻¹ᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹  = radiation_update(radiation, i, k, clock, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
@@ -343,7 +343,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δz⁻¹ᶜᶜᶠ(i, j, kᵇ, grid)
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
@@ -375,7 +375,7 @@ end
         φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
         φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
         Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
+        Cᵃ  = abs(Uᵃ) * Δt * Δz⁻¹ᶜᶜᶠ(i, j, kᵇ + 1, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹  = normal_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)

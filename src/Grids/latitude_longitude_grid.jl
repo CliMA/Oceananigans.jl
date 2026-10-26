@@ -35,6 +35,16 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     Azᶠᶜᵃ :: DXFC
     Azᶜᶠᵃ :: DXCF
     Azᶠᶠᵃ :: DXFF
+    Δx⁻¹ᶜᶜᵃ :: DXCC
+    Δx⁻¹ᶠᶜᵃ :: DXFC
+    Δx⁻¹ᶜᶠᵃ :: DXCF
+    Δx⁻¹ᶠᶠᵃ :: DXFF
+    Δy⁻¹ᶠᶜᵃ :: DYFC
+    Δy⁻¹ᶜᶠᵃ :: DYCF
+    Az⁻¹ᶜᶜᵃ :: DXCC
+    Az⁻¹ᶠᶜᵃ :: DXFC
+    Az⁻¹ᶜᶠᵃ :: DXCF
+    Az⁻¹ᶠᶠᵃ :: DXFF
     # Spherical radius
     radius :: FT
 end
@@ -54,6 +64,11 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
                                                Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
                                                Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
+                                               Δx⁻¹ᶜᶜᵃ :: DXCC, Δx⁻¹ᶠᶜᵃ :: DXFC,
+                                               Δx⁻¹ᶜᶠᵃ :: DXCF, Δx⁻¹ᶠᶠᵃ :: DXFF,
+                                               Δy⁻¹ᶠᶜᵃ :: DYFC, Δy⁻¹ᶜᶠᵃ :: DYCF,
+                                               Az⁻¹ᶜᶜᵃ :: DXCC, Az⁻¹ᶠᶜᵃ :: DXFC,
+                                               Az⁻¹ᶜᶠᵃ :: DXCF, Az⁻¹ᶠᶠᵃ :: DXFF,
                                                radius :: FT) where {SZ, Arch, FT, TX, TY, TZ, Z,
                                                                     DXF, DXC, XF, XC,
                                                                     DYF, DYC, YF, YC,
@@ -72,7 +87,27 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                           Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
                                                           Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                           Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+                                                          Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                          Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
+                                                          Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
+                                                          Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ, radius)
+end
+
+function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
+                                               Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                               Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                               Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) where {TX, TY, TZ, SZ}
+
+    metrics = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+
+    # metrics computed on the fly are `nothing`, and so are their reciprocals
+    reciprocal_metrics = map(m -> isnothing(m) ? nothing : on_architecture(architecture, reciprocal(on_architecture(CPU(), m))), metrics)
+
+    return LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture, Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz,
+                                                 Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                 Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                                 metrics..., reciprocal_metrics..., radius)
 end
 
 const LLG = LatitudeLongitudeGrid
@@ -318,7 +353,7 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    nTX, nTY, nTZ = map(nameof, topology(grid))
+    nTX, nTY, nTZ = map(prettysummary, topology(grid))
 
     return string(size_summary(grid),
                   " LatitudeLongitudeGrid{$FT, $nTX, $nTY, $nTZ} on ", summary(architecture(grid)),
@@ -468,6 +503,16 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                                       Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                                       Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                                       Adapt.adapt(to, grid.Azᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δx⁻¹ᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δy⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δy⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Az⁻¹ᶠᶠᵃ),
                                                       Adapt.adapt(to, grid.radius))
 end
 
@@ -518,8 +563,8 @@ end
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
-    i′ = i + grid.Δλᶜᵃᵃ.offsets[1]
-    j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    i′ = i + OffsetArrays.offsets(grid.Δλᶜᵃᵃ)[1]
+    j′ = j + OffsetArrays.offsets(grid.φᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δxᶠᶜ[i′, j′] = Δxᶠᶜᵃ(i′, j′, 1, grid)
@@ -537,7 +582,7 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    j′ = j + OffsetArrays.offsets(grid.φᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δxᶠᶜ[j′] = Δxᶠᶜᵃ(1, j′, 1, grid)
@@ -559,7 +604,7 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.Δφᵃᶜᵃ.offsets[1] + 1
+    j′ = j + OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1] + 1
 
     @inbounds begin
         Δyᶜᶠ[j′] = Δyᶜᶠᵃ(1, j′, 1, grid)
@@ -576,21 +621,21 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     arch = grid.architecture
 
     if grid isa XRegularLLG
-        offsets     = grid.φᵃᶜᵃ.offsets[1]
+        offsets     = OffsetArrays.offsets(grid.φᵃᶜᵃ)[1]
         metric_size = length(grid.φᵃᶜᵃ)
     else
-        offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
+        offsets     = (OffsetArrays.offsets(grid.Δλᶜᵃᵃ)[1], OffsetArrays.offsets(grid.φᵃᶜᵃ)[1])
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶜ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶠ = StaticStridesOffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
@@ -598,8 +643,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     else
         parentC = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶠᶜ    = StaticStridesOffsetArray(parentC, OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1])
+        Δyᶜᶠ    = StaticStridesOffsetArray(parentF, OffsetArrays.offsets(grid.Δφᵃᶜᵃ)[1])
     end
 
     return Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δyᶠᶜ, Δyᶜᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ

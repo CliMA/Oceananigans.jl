@@ -19,72 +19,72 @@ const ETD = ExplicitTimeDiscretization
 
 @inline function advective_momentum_flux_Uu(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, u)
 
-    ũ  = symmetric_interpolate_xᶜᶜᶜ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    uᴿ =    biased_interpolate_xᶜᶜᶜ(i, j, k, grid, scheme, bias(ũ), u)
+    ũ  = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    uᴿ = biased_interpolate_xᶜᶜᶜ(i, j, k, grid, scheme, bias(ũ), u)
 
     return ũ * uᴿ
 end
 
 @inline function advective_momentum_flux_Vu(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, u)
 
-    ṽ  = symmetric_interpolate_xᶠᶠᶜ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    uᴿ =    biased_interpolate_yᶠᶠᶜ(i, j, k, grid, scheme, bias(ṽ), u)
+    ṽ  = ℑxᶠᵃᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    uᴿ = biased_interpolate_yᶠᶠᶜ(i, j, k, grid, scheme, bias(ṽ), u)
 
     return ṽ * uᴿ
 end
 
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, u)
 
-    w̃  = symmetric_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    uᴿ =    biased_interpolate_zᶠᶜᶠ(i, j, k, grid, scheme, bias(w̃), u)
+    w̃  = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    uᴿ = biased_interpolate_zᶠᶜᶠ(i, j, k, grid, scheme, bias(w̃), u)
 
     return w̃ * uᴿ
 end
 
 @inline function advective_momentum_flux_Uv(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, v)
 
-    ũ  = symmetric_interpolate_yᶠᶠᶜ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    vᴿ =    biased_interpolate_xᶠᶠᶜ(i, j, k, grid, scheme, bias(ũ), v)
+    ũ  = ℑyᵃᶠᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    vᴿ = biased_interpolate_xᶠᶠᶜ(i, j, k, grid, scheme, bias(ũ), v)
 
     return ũ * vᴿ
 end
 
 @inline function advective_momentum_flux_Vv(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, v)
 
-    ṽ  = symmetric_interpolate_yᶜᶜᶜ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    vᴿ =    biased_interpolate_yᶜᶜᶜ(i, j, k, grid, scheme, bias(ṽ), v)
+    ṽ  = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    vᴿ = biased_interpolate_yᶜᶜᶜ(i, j, k, grid, scheme, bias(ṽ), v)
 
     return ṽ * vᴿ
 end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, v)
 
-    w̃  = symmetric_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    vᴿ =    biased_interpolate_zᶜᶠᶠ(i, j, k, grid, scheme, bias(w̃), v)
+    w̃  = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    vᴿ = biased_interpolate_zᶜᶠᶠ(i, j, k, grid, scheme, bias(w̃), v)
 
     return w̃ * vᴿ
 end
 
 @inline function advective_momentum_flux_Uw(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, w)
 
-    ũ  = symmetric_interpolate_zᶠᶜᶠ(i, j, k, grid, scheme, Ax_qᶠᶜᶜ, U)
-    wᴿ =    biased_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, bias(ũ), w)
+    ũ  = ℑzᵃᵃᶠ(i, j, k, grid, Ax_qᶠᶜᶜ, U)
+    wᴿ = biased_interpolate_xᶠᶜᶠ(i, j, k, grid, scheme, bias(ũ), w)
 
     return ũ * wᴿ
 end
 
 @inline function advective_momentum_flux_Vw(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, w)
 
-    ṽ  = symmetric_interpolate_zᶜᶠᶠ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
-    wᴿ =    biased_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, bias(ṽ), w)
+    ṽ  = ℑzᵃᵃᶠ(i, j, k, grid, Ay_qᶜᶠᶜ, V)
+    wᴿ = biased_interpolate_yᶜᶠᶠ(i, j, k, grid, scheme, bias(ṽ), w)
 
     return ṽ * wᴿ
 end
 
 @inline function advective_momentum_flux_Ww(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, w)
 
-    w̃  = symmetric_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, Az_qᶜᶜᶠ, W)
-    wᴿ =    biased_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, bias(w̃), w)
+    w̃  = ℑzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+    wᴿ = biased_interpolate_zᶜᶜᶜ(i, j, k, grid, scheme, bias(w̃), w)
 
     return w̃ * wᴿ
 end

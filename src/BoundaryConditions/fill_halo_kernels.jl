@@ -9,7 +9,7 @@ Return a new `FieldBoundaryConditions` object with the preconfigured kernels and
 ordered boundary conditions.
 """
 Base.@constprop :aggressive function construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
-                                                                           data::OffsetArray,
+                                                                           data::AbstractOffsetArray,
                                                                            grid::AbstractGrid,
                                                                            loc, indices)
 
@@ -30,7 +30,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 @inline select_bc(bcs::Tuple{<:BoundaryCondition, <:Nothing}) = @inbounds bcs[1]
 @inline select_bc(bcs::BoundaryCondition) = bcs
 
-@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::AbstractGrid, loc, indices)
+@inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::AbstractOffsetArray, grid::AbstractGrid, loc, indices)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
     reduced_dims = reduced_dimensions(loc)
     names = map(side_name, sides)

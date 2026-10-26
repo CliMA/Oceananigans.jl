@@ -153,7 +153,7 @@ Grids.on_architecture(arch, masks::YinYangMasks) = YinYangMasks(on_architecture(
 function YinYangMasks(arch, FT, (λᶠ, φᶠ), (Hx, Hy))
     λʳ, φʳ = deg2rad.(Float64.(λᶠ)), deg2rad.(Float64.(φᶠ))
     Nx, Ny = length(λᶠ) - 1, length(φᶠ) - 1
-    cell_weights = OffsetArray(zeros(FT, Nx + 2Hx, Ny + 2Hy, 1), -Hx, -Hy, 0)
+    cell_weights = OffsetArrays.OffsetArray(zeros(FT, Nx + 2Hx, Ny + 2Hy, 1), -Hx, -Hy, 0)
     for j in 1:Ny, i in 1:Nx
         cell_weights[i, j, 1] = owned_cell_fraction(λʳ[i], λʳ[i+1], φʳ[j], φʳ[j+1])
     end

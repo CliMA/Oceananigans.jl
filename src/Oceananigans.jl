@@ -11,12 +11,11 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RightConnected, LeftConnected, FullyConnected,
-    RightFaceFolded, RightCenterFolded,
+    CenterFolded, FaceFolded,
     slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
-    LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
+    TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalConicGrid, ConformalConic,
+    geographic_to_conformal_conic, conformal_conic_to_geographic, conformal_conic_scale_factor, conformal_conic_rotation_angle,
     MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
@@ -51,6 +50,7 @@ export
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
     interior, set!, compute!, regrid!, interpolate!, RegriddedOperation,
+    at_minimum, at_maximum,
 
     # Forcing functions
     Forcing, Relaxation, InflowOutflowRate, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,

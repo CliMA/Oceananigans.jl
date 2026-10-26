@@ -116,7 +116,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -131,7 +131,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 
@@ -158,7 +158,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
@@ -176,7 +176,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         for name in propertynames(constant_rllg)
             p = getproperty(constant_rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa StaticStridesOffsetArray{FT, <:Any, <:Any, <:Any, <:Array})
             end
         end
 

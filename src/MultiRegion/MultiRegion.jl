@@ -9,7 +9,7 @@ using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
-using OffsetArrays: OffsetArray
+using OffsetArrays: OffsetArrays, AbstractOffsetArray
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: AbstractArchitecture, AbstractSerialArchitecture, CPU, GPU, architecture
@@ -17,11 +17,11 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, S
     fill_halo_regions!
 using Oceananigans.DistributedComputations: DistributedComputations
 using Oceananigans.Fields: Field, location
-using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Face, Flat,
-    FullyConnected, LeftConnected, OrthogonalSphericalShellGrid, Periodic, RightConnected, on_architecture
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Closed, Connected, Face, Flat,
+    OrthogonalSphericalShellGrid, Periodic, Sides, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, Utils,
-    @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions
+using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, StaticStridesOffsetArray, Utils,
+    @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary
 
 abstract type AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch, SZ} <: AbstractGrid{FT, TX, TY, TZ, Arch, SZ} end
 

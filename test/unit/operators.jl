@@ -90,7 +90,7 @@ function test_function_differentiation(T=Float64)
     end
 
     stretched_f = [0, 1, 3, 6]
-    stretched_c = OffsetArray([-0.5, 0.5, 2, 4.5, 7.5], -1)
+    stretched_c = StaticStridesOffsetArray([-0.5, 0.5, 2, 4.5, 7.5], -1)
 
     dc(i) = stretched_f[i+1] - stretched_f[i]
     df(i) = stretched_c[i] - stretched_c[i-1]
@@ -255,12 +255,12 @@ end
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz
 
-        A3 = OffsetArray(zeros(Tx, Ty, Tz), 1-Hx:Nx+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+        A3 = StaticStridesOffsetArray(zeros(Tx, Ty, Tz), -Hx, -Hy, -Hz)
         @. @views A3[1:Nx, 1:Ny, 1:Nz] = rand()
         fill_halo_regions!(A3, bcs, (:, :, :), (Center(), Center(), Center()), grid)
 
         # A yz-slice with Nx==1.
-        A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
+        A2yz = StaticStridesOffsetArray(zeros(1+2Hx, Ty, Tz), -Hx, -Hy, -Hz)
         grid_yz = RectilinearGrid(CPU(), size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
@@ -269,7 +269,7 @@ end
         A2yz[:, :, Nz+1] .= A2yz[:, :, Nz]
 
         # An xz-slice with Ny==1.
-        A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
+        A2xz = StaticStridesOffsetArray(zeros(Tx, 1+2Hy, Tz), -Hx, -Hy, -Hz)
         grid_xz = RectilinearGrid(CPU(), size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
@@ -310,10 +310,10 @@ end
     end
 
     @testset "Topology-aware operators on tripolar grids" begin
-        for (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+        for (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
             grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
             Nx, Ny, _ = size(grid)
-            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
+            northernmost_row = fold_topology === FaceFolded ? Ny + 1 : Ny
 
             U = Field{Face, Center, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U))
             V = Field{Center, Face, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))

@@ -5,13 +5,14 @@ export constant_with_arch
 using Reactant
 using Reactant: TracedRArray
 using OffsetArrays
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Utils: unparameterized_type
-using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, FaceExtendedTopology
+using Oceananigans.Grids: Center, Face, Periodic, Sides, Bounded, Closed, Connected, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
 
@@ -102,7 +103,7 @@ function reactant_offset_data(underlying_data::Union{ConcreteRArray, TracedRArra
         axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return StaticStridesOffsetArray(underlying_data, map(r -> first(r) - 1, (ii..., extra_ii...))...)
 end
 
 end # module
