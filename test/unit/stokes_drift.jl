@@ -153,4 +153,48 @@ end
             @test Oceananigans.StokesDrifts.compute_stokes_drift!(StokesDrift(), grid) === nothing
         end
     end
+
+    @testset "Time stepping NonhydrostaticModel with FieldStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch; size=(4, 4, 8), halo=(3, 3, 3),
+                                   x=(0, 4), y=(0, 4), z=(-1, 0),
+                                   topology=(Periodic, Periodic, Bounded))
+
+            stokes_drift = FieldStokesDrift(grid)
+            model = NonhydrostaticModel(grid; stokes_drift)
+
+            # A reference FieldStokesDrift whose wˢ is computed directly with compute_stokes_drift!
+            reference = FieldStokesDrift(grid)
+
+            # Change uˢ, vˢ between time steps, as a coupled wave model would; update_state!
+            # must recompute wˢ from continuity after every time step.
+            for U in (0.1, -0.2)
+                uˢ(x, y, z) = U * cos(2π * x / 4) * exp(z)
+                vˢ(x, y, z) = U * sin(2π * y / 4) * exp(z)
+                set!(stokes_drift.uˢ, uˢ)
+                set!(stokes_drift.vˢ, vˢ)
+                set!(reference.uˢ, uˢ)
+                set!(reference.vˢ, vˢ)
+                Oceananigans.StokesDrifts.compute_stokes_drift!(reference, grid)
+
+                time_step!(model, 1e-3)
+
+                @test maximum(abs, interior(stokes_drift.wˢ)) > 1e-6
+                @test Array(interior(stokes_drift.wˢ)) ≈ Array(interior(reference.wˢ))
+            end
+
+            # A uniform ∂t_uˢ with uˢ = vˢ = 0 accelerates a fluid at rest uniformly
+            model = NonhydrostaticModel(grid; stokes_drift=FieldStokesDrift(grid))
+            a, Δt = 0.13, 1e-2
+            set!(model.stokes_drift.∂t_uˢ, a)
+
+            for _ in 1:3
+                time_step!(model, Δt)
+            end
+
+            @test all(Array(interior(model.velocities.u)) .≈ a * 3Δt)
+            @test maximum(abs, interior(model.velocities.v)) < 1e-12
+            @test maximum(abs, interior(model.stokes_drift.∂t_wˢ)) < 1e-12
+        end
+    end
 end
