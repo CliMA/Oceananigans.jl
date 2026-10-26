@@ -448,3 +448,19 @@ end
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
+
+# Host data with missing values (a NetCDF read) reaches ReactantState as a float array with NaN, plain, viewed or
+# reshaped, and reshaped host data keeps its shape
+@testset "on_architecture of host data with missing values and reshaped host data" begin
+    data = Union{Missing, Float32}[1, missing, 1, 2]
+    for (host, expected) in ((data, Float32[1, NaN, 1, 2]),
+                             (view(data, 1:3), Float32[1, NaN, 1]),
+                             (reshape(data, 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(data, 1:4), 2, 2), Float32[1 1; NaN 2]),
+                             (reshape(view(Float32[1, 2, 3, 4], 1:4), 1, 4), Float32[1 2 3 4]))
+        device = on_architecture(ReactantState(), host)
+        @test device isa Reactant.AbstractConcreteArray{Float32}
+        @test size(device) == size(host)
+        @test isequal(Array(device), expected)
+    end
+end
