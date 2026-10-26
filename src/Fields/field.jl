@@ -121,7 +121,7 @@ location in `(x, y, z)` respectively.
 Keyword arguments
 =================
 
-- `data :: StaticStridesOffsetArray`: An offset array with the fields data. If nothing is provided the
+- `data :: AbstractOffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
 - `boundary_conditions`: If nothing is provided, then field is created using the default
   boundary conditions via [`FieldBoundaryConditions`](@ref).

@@ -53,8 +53,8 @@ func(i, j, k, grid, clock, model_fields)
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
 and `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.closure_fields`, each of which is a `StaticStridesOffsetArray` (or a `NamedTuple`
-of `StaticStridesOffsetArray`s depending on the turbulence closure) of field data.
+and the fields in `model.closure_fields`, each of which is an `AbstractOffsetArray` (or a `NamedTuple`
+of `AbstractOffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
 

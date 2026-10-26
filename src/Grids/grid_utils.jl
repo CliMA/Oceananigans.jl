@@ -1,10 +1,15 @@
 using Base.Ryu: writeshortest
-using OffsetArrays: IdOffsetRange
+using OffsetArrays: IdOffsetRange, AbstractOffsetArray
 using Oceananigans.Utils: Utils, prettysummary
 
 reciprocal_metric(Δ::Number) = 1 / Δ
-# broadcasting over the array itself would return an `OffsetArray`
-reciprocal_metric(Δ::StaticStridesOffsetArray) = StaticStridesOffsetArray(1 ./ parent(Δ), OffsetArrays.offsets(Δ)...)
+
+# broadcasting over `Δ` returns an `OffsetArray`, so the reciprocal is written into the parent of a copy of `Δ`
+function reciprocal_metric(Δ::AbstractOffsetArray)
+    Δ⁻¹ = copy(Δ)
+    parent(Δ⁻¹) .= 1 ./ parent(Δ)
+    return Δ⁻¹
+end
 
 """
 $(TYPEDSIGNATURES)
