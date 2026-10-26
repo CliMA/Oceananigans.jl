@@ -118,14 +118,26 @@ $(TYPEDSIGNATURES)
 
 `total` faces spaced by `(c₂ - c₁) / N`, of which faces `H + 1` to `H + N + 1` are `range(c₁, c₂, length = N + 1)`.
 """
-function regular_faces(FT, c₁, c₂, N, H, total)
-    interior = range(FT(c₁), FT(c₂), length = N + 1)
+regular_faces(FT, c₁, c₂, N, H, total) = regular_faces(range(FT(c₁), FT(c₂), length = N + 1), FT, c₁, c₂, N, H, total)
+
+function regular_faces(interior::StepRangeLen, FT, c₁, c₂, N, H, total)
     faces = StepRangeLen{FT}(interior.ref, interior.step, max(total, interior.offset + H), interior.offset + H)
     return faces[1:total]
 end
 
+# Types without extended precision, such as `BFloat16`, get a `LinRange` from `range`, which has no reference to extend
+function regular_faces(interior, FT, c₁, c₂, N, H, total)
+    Δ = (c₂ - c₁) / N
+    return LinRange(FT(c₁ - H * Δ), FT(c₁ + (total - H - 1) * Δ), total)
+end
+
 # The `total` cell centers between the regular faces `F`
-regular_centers(F, total) = StepRangeLen{eltype(F)}(F.ref + F.step / 2, F.step, total, F.offset)
+regular_centers(F::StepRangeLen, total) = StepRangeLen{eltype(F)}(F.ref + F.step / 2, F.step, total, F.offset)
+
+function regular_centers(F, total)
+    Δ = step(F)
+    return LinRange(F[1] + Δ / 2, F[1] + Δ / 2 + (total - 1) * Δ, total)
+end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)

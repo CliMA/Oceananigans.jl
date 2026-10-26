@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 include(joinpath(@__DIR__, "..", "setup", "data_dependencies.jl"))
 
+using Oceananigans: fully_supported_float_types
 using Oceananigans.Grids: total_extent, with_halo, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
@@ -941,6 +942,27 @@ end
 
             @test z.faces[end] - z.faces[1] ≥ 100
             @test all(diff(z.faces) .> 0)
+        end
+    end
+
+    @testset "Regular coordinates in every float type" begin
+        for FT in fully_supported_float_types
+            # Faces and centers that every type represents to within its precision, halos included
+            same(a, b) = all(isapprox.(a, b; rtol = 4 * eps(FT), atol = 4 * eps(FT)))
+            bounded = (Bounded, Bounded, Bounded)
+
+            rectilinear_grid = RectilinearGrid(CPU(), FT, size = (6, 4, 3), halo = (3, 2, 2), topology = bounded,
+                                               x = (0, 3), y = (-1, 1), z = (-3, 0))
+
+            @test same(Array(parent(rectilinear_grid.xᶠᵃᵃ)), range(-3//2, step = 1//2, length = 6 + 2 * 3 + 1))
+            @test same(Array(parent(rectilinear_grid.xᶜᵃᵃ)), range(-5//4, step = 1//2, length = 6 + 2 * 3))
+            @test same(Array(parent(rectilinear_grid.yᵃᶠᵃ)), range(-2, step = 1//2, length = 4 + 2 * 2 + 1))
+
+            latitude_longitude_grid = LatitudeLongitudeGrid(CPU(), FT, size = (6, 4, 3), halo = (3, 2, 2), topology = bounded,
+                                                            longitude = (0, 60), latitude = (-20, 20), z = (-3, 0))
+
+            @test same(Array(parent(latitude_longitude_grid.λᶠᵃᵃ)), range(-30, step = 10, length = 6 + 2 * 3 + 1))
+            @test same(Array(parent(latitude_longitude_grid.φᵃᶠᵃ)), range(-40, step = 10, length = 4 + 2 * 2 + 1))
         end
     end
 
