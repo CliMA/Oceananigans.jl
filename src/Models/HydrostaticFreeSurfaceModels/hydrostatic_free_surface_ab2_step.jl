@@ -1,5 +1,5 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!
-using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
+using Oceananigans.Operators: σ⁻, σⁿ, σ⁻¹ⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
 
 import Oceananigans.TimeSteppers: ab2_step!
@@ -28,7 +28,7 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum flux boundary conditions (3D tendencies are computed in `update_state!`)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
+4. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
 5. Advance grid scaling (for z-star coordinates)
 6. Advance velocities using AB2
 7. Correct barotropic mode
@@ -57,9 +57,10 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     # Computing tracer tendencies
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
+    @apply_regionally compute_tracer_tendencies!(model)
+    execute_tracer_tendency_callbacks!(model, callbacks)
 
+    @apply_regionally begin
         # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
@@ -81,8 +82,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
 2. Enforce targeted open boundary transports on the predictor velocity
 3. Solve implicit free surface equation
 4. Correct velocities for the updated barotropic pressure gradient
-5. Advance grid scaling (for z-star coordinates)
-6. Advance tracers using AB2
+5. Compute tracer tendencies and execute the `TracerTendencyCallsite` callbacks
+6. Advance grid scaling (for z-star coordinates)
+7. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
@@ -117,7 +119,10 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
+    end
+    execute_tracer_tendency_callbacks!(model, callbacks)
 
+    @apply_regionally begin
         # Advance grid (z-star scaling)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
@@ -267,11 +272,11 @@ end
     α = 3*one(FT)/2 + χ
     β = 1*one(FT)/2 + χ
 
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σ⁻¹ᶜᶜⁿ = σ⁻¹ⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻   =   σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
         ∂t_σθ = α * Gⁿ[i, j, k] - β * G⁻[i, j, k]
-        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) / σᶜᶜⁿ
+        θ[i, j, k] = (σᶜᶜ⁻ * θ[i, j, k] + Δt * ∂t_σθ) * σ⁻¹ᶜᶜⁿ
     end
 end

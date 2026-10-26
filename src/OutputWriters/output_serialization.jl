@@ -20,23 +20,32 @@ const serialized_output_values = Dict{Symbol, Any}(
     :Face => Face,
     :Flat => Flat,
     :Periodic => Periodic,
+    :Sides => Sides,
     :Bounded => Bounded,
-    :FullyConnected => FullyConnected,
-    :LeftConnected => LeftConnected,
-    :RightConnected => RightConnected,
-    :RightFaceFolded => RightFaceFolded,
-    :RightCenterFolded => RightCenterFolded,
-    :LeftConnectedRightCenterFolded => LeftConnectedRightCenterFolded,
-    :LeftConnectedRightFaceFolded => LeftConnectedRightFaceFolded,
-    :LeftConnectedRightCenterConnected => LeftConnectedRightCenterConnected,
-    :LeftConnectedRightFaceConnected => LeftConnectedRightFaceConnected,
+    :Closed => Closed,
+    :Connected => Connected,
+    :CenterFolded => CenterFolded,
+    :FaceFolded => FaceFolded,
+    :CenterFoldConnected => CenterFoldConnected,
+    :FaceFoldConnected => FaceFoldConnected,
+    # Names of these topologies in older output files
+    :FullyConnected => Sides{Connected, Connected},
+    :LeftConnected => Sides{Connected, Closed},
+    :RightConnected => Sides{Closed, Connected},
+    :RightFaceFolded => Sides{Closed, FaceFolded},
+    :RightCenterFolded => Sides{Closed, CenterFolded},
+    :LeftConnectedRightCenterFolded => Sides{Connected, CenterFolded},
+    :LeftConnectedRightFaceFolded => Sides{Connected, FaceFolded},
+    :LeftConnectedRightCenterConnected => Sides{Connected, CenterFoldConnected},
+    :LeftConnectedRightFaceConnected => Sides{Connected, FaceFoldConnected},
     :RectilinearGrid => RectilinearGrid,
     :LatitudeLongitudeGrid => LatitudeLongitudeGrid,
     :OrthogonalSphericalShellGrid => OrthogonalSphericalShellGrid,
     :TripolarGrid => TripolarGrid,
     :RotatedLatitudeLongitudeGrid => RotatedLatitudeLongitudeGrid,
     :ConformalCubedSpherePanelGrid => ConformalCubedSpherePanelGrid,
-    :LambertConformalConicGrid => LambertConformalConicGrid,
+    :ConformalConicGrid => ConformalConicGrid,
+    :LambertConformalConicGrid => ConformalConicGrid,
     :MutableVerticalDiscretization => MutableVerticalDiscretization,
     :GridFittedBoundary => GridFittedBoundary,
     :GridFittedBottom => GridFittedBottom,
@@ -46,7 +55,8 @@ const serialized_output_values = Dict{Symbol, Any}(
     :Tripolar => Tripolar,
     :LatitudeLongitudeRotation => LatitudeLongitudeRotation,
     :CubedSphereConformalMapping => CubedSphereConformalMapping,
-    :LambertConformalConic => LambertConformalConic,
+    :ConformalConic => ConformalConic,
+    :LambertConformalConic => ConformalConic,
     :ColumnEnsembleSize => ColumnEnsembleSize,
     :Colon => Colon,
     :Tuple => Tuple,
@@ -142,6 +152,8 @@ function materialize_parameterized_output_type(expression)
         return Tuple{parameters...}
     elseif base_type === ColumnEnsembleSize
         return ColumnEnsembleSize{parameters...}
+    elseif base_type === Sides
+        return Sides{parameters...}
     end
 
     throw(ArgumentError("Unsupported serialized parametric type: $base_type"))

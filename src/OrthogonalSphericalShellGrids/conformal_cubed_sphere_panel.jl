@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
-using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
+using Oceananigans.Grids: Bounded, Connected, offset_data, validate_topology, xnodes, ynodes, static_column_depthᶜᶜᵃ
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping, optimized_non_uniform_conformal_cubed_sphere_coordinates
@@ -81,12 +81,12 @@ end
 
 function ConformalCubedSpherePanelGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                        panel, Nz, z,
-                                       topology = (FullyConnected, FullyConnected, Bounded),
+                                       topology = (Connected, Connected, Bounded),
                                        radius = Oceananigans.defaults.planet_radius,
                                        halo = (4, 4, 4),
                                        rotation = nothing)
 
-    TX, TY, TZ = topology
+    TX, TY, TZ = topology = validate_topology(topology)
     Hx, Hy, Hz = halo
 
     ## Read everything from the file except the z-coordinates.
@@ -230,7 +230,7 @@ Keyword arguments
     3. a single-argument function that takes an index and returns cell interface location.
 
 - `topology`: A 3-tuple `(TX, TY, TZ)` specifying the topology of the domain. `TX`, `TY`, and `TZ` specify whether the
-              `x`-, `y`-, and `z` directions are `Periodic`, `Bounded`, `Flat` or `FullyConnected`. The topology `Flat`
+              `x`-, `y`-, and `z` directions are `Periodic`, `Bounded`, `Flat` or `Connected`. The topology `Flat`
               indicates that a model does not vary in those directions so that derivatives and interpolation are zero.
               The default is `topology = (Bounded, Bounded, Bounded)`.
 
@@ -298,7 +298,7 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                                        spacing = GeometricSpacing(),
                                        provided_conformal_mapping = nothing)
     radius = FT(radius)
-    TX, TY, TZ = topology
+    TX, TY, TZ = topology = validate_topology(topology)
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 

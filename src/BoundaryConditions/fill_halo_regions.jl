@@ -23,6 +23,13 @@ function fill_halo_regions!(c::AbstractOffsetArray, boundary_conditions, indices
     return nothing
 end
 
+"Fill only the bottom and top halo regions of a field's data."
+function fill_bottom_and_top_halo!(c::AbstractOffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
+    fill_halo_event!(c, kernels!.bottom_and_top, bcs.bottom_and_top, loc, grid, args...; kwargs...)
+    return nothing
+end
+
 @inline fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
 
 @inline function fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
@@ -39,11 +46,38 @@ const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 # Work done on `c` before the filling kernel is launched
 @inline prepare_halo_fill!(bc, c, grid, loc) = nothing
 
+#####
+##### Trailing arguments of the fill kernels
+#####
+
+# Whether `bc` reads the trailing `args` of `fill_halo_regions!` (usually `clock` and `model_fields`)
+@inline needs_halo_fill_args(bc) = true
+@inline needs_halo_fill_args(::Union{Nothing, Missing}) = false
+@inline needs_halo_fill_args(::Union{PBC, FBC}) = false
+
+# `FieldTimeSeries` and `Field` conditions are `AbstractArray`s whose `getbc` may read the clock
+const ArgumentFreeCondition = Union{Nothing, Number, DenseArray}
+const ArgumentFreeClassification = Union{Value{Nothing}, Gradient, NormalFlow{Nothing}}
+
+@inline needs_halo_fill_args(::BoundaryCondition{<:ArgumentFreeClassification, <:ArgumentFreeCondition}) = false
+@inline needs_halo_fill_args(::BoundaryCondition{<:Mixed, <:MixedCondition{<:ArgumentFreeCondition, <:ArgumentFreeCondition}}) = false
+
+@inline needs_halo_fill_args(bcs::Tuple{Any}) = needs_halo_fill_args(bcs[1])
+@inline needs_halo_fill_args(bcs::Tuple{Any, Any}) = needs_halo_fill_args(bcs[1]) | needs_halo_fill_args(bcs[2])
+
+@inline needs_halo_fill_args(bcs::FieldBoundaryConditions) =
+    needs_halo_fill_args(bcs.west)   | needs_halo_fill_args(bcs.east)  |
+    needs_halo_fill_args(bcs.south)  | needs_halo_fill_args(bcs.north) |
+    needs_halo_fill_args(bcs.bottom) | needs_halo_fill_args(bcs.top)
+
+# Converting `args` for the device can cost more than filling the halos
+@inline halo_fill_args(bcs, args) = needs_halo_fill_args(bcs) ? args : ()
+
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs) | fills_halo(bcs[2], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
         prepare_halo_fill!(bcs[2], c, grid, loc)
-        kernel!(c, bcs[1], bcs[2], loc, grid, args)
+        kernel!(c, bcs[1], bcs[2], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -51,7 +85,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bcs[1], fill_normal_flow_bcs)
         prepare_halo_fill!(bcs[1], c, grid, loc)
-        kernel!(c, bcs[1], loc, grid, args)
+        kernel!(c, bcs[1], loc, grid, halo_fill_args(bcs, args))
     end
     return nothing
 end
@@ -59,7 +93,7 @@ end
 @inline function fill_halo_event!(c, kernel!, bc, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
     if fills_halo(bc, fill_normal_flow_bcs)
         prepare_halo_fill!(bc, c, grid, loc)
-        kernel!(c, bc, loc, grid, args)
+        kernel!(c, bc, loc, grid, halo_fill_args(bc, args))
     end
     return nothing
 end

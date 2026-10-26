@@ -43,6 +43,7 @@ Distributed.addprocs(2)
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "yin_yang_grid.jl",
         "polar_vortex_crystal.jl",
         "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
@@ -143,6 +144,7 @@ example_pages = [
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
     "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md",
     "Global wind-driven gyres"              => "literated/global_wind_driven_gyres.md",
+    "Barotropic jet and Double Drake on a Yin-Yang grid" => "literated/yin_yang_grid.md",
     "Single column parameter estimation"    => "literated/single_column_parameter_estimation.md",
 ]
 
@@ -269,8 +271,9 @@ DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursiv
 
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansMakieExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansMakieExt) : Oceananigans.OceananigansMakieExt
 
-for m in [Oceananigans, OceananigansNCDatasetsExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansMakieExt]
     if !isnothing(m)
         push!(modules, m)
     end

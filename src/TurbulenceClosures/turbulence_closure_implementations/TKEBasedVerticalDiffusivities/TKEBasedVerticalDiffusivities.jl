@@ -18,7 +18,7 @@ using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, Seawater
                                          ∂z_b, top_buoyancy_flux
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
-using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
                               ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 using Oceananigans.TurbulenceClosures: getclosure, AbstractScalarDiffusivity, VerticalFormulation,

@@ -9,7 +9,7 @@ using Oceananigans.Utils: StaticStridesOffsetArray
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic, RightConnected
+using Oceananigans.Grids: Bounded, Periodic
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::AbstractOffsetArray) = StaticStridesOffsetArray(Array(parent(a)), OffsetArrays.offsets(a)...)

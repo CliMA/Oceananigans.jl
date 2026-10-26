@@ -310,10 +310,10 @@ end
     end
 
     @testset "Topology-aware operators on tripolar grids" begin
-        for (fold_topology, pivot) in ((RightCenterFolded, UPivot), (RightCenterFolded, TPivot), (RightFaceFolded, FPivot))
+        for (fold_topology, pivot) in ((CenterFolded, UPivot), (CenterFolded, TPivot), (FaceFolded, FPivot))
             grid = TripolarGrid(CPU(); size = (16, 10, 1), z = (-1, 0), fold_topology, pivot)
             Nx, Ny, _ = size(grid)
-            northernmost_row = fold_topology === RightFaceFolded ? Ny + 1 : Ny
+            northernmost_row = fold_topology === FaceFolded ? Ny + 1 : Ny
 
             U = Field{Face, Center, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :U))
             V = Field{Center, Face, Nothing}(grid; boundary_conditions = regularize_field_boundary_conditions(FieldBoundaryConditions(), grid, :V))
