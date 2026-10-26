@@ -1,13 +1,17 @@
-using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Utils: unparameterized_type
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
+    AbstractGridFittedBottom,
     GridFittedBottom,
     PartialCellBottom,
     GridFittedBoundary,
     bottom_height_interior,
+    compute_mask,
     has_active_cells_map,
     has_active_z_columns,
     active_cells_maps
+
+using Oceananigans.Grids: LeftConnectedOnlyTopology
 
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
@@ -48,12 +52,14 @@ function reconstruct_global_immersed_boundary(ib::GridFittedBoundary, arch, grid
     return GridFittedBoundary(global_mask)
 end
 
-# The active cells maps are rebuilt because their partition depends on the halo.
 function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
-    active_cells_map    = has_active_cells_map(grid)
-    active_z_columns    = has_active_z_columns(grid)
-    new_underlying_grid = with_halo(new_halo, grid.underlying_grid)
-    return ImmersedBoundaryGrid(new_underlying_grid, grid.immersed_boundary; active_cells_map, active_z_columns)
+    active_cells_map      = has_active_cells_map(grid)
+    active_z_columns      = has_active_z_columns(grid)
+    immersed_boundary     = grid.immersed_boundary
+    underlying_grid       = grid.underlying_grid
+    new_underlying_grid   = with_halo(new_halo, underlying_grid)
+    new_immersed_boundary = resize_immersed_boundary(immersed_boundary, new_underlying_grid)
+    return ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary; active_cells_map, active_z_columns)
 end
 
 function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distributed, local_size)
@@ -67,13 +73,59 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     nx, ny, _ = local_size
     bottom_interior = bottom_height_interior(ib.bottom_height)
     local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
-    ImmersedBoundaryConstructor = getnamewrapper(ib)
-    local_ib = ImmersedBoundaryConstructor(local_bottom_height)
+    local_ib = unparameterized_type(typeof(ib))(local_bottom_height)
 
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
 
-# In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
+"""
+    function resize_immersed_boundary!(ib, grid)
+
+If the immersed condition is an `OffsetArray`, resize it to match
+the total size of `grid`
+"""
+resize_immersed_boundary(ib::AbstractGridFittedBottom, grid) = ib
+resize_immersed_boundary(ib::GridFittedBoundary, grid) = ib
+
+function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
+
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
+
+    # Check that the size of a bottom field are
+    # consistent with the size of the grid
+    if any(size(ib.mask) .!= mask_size)
+        @warn "Resizing the mask to match the grids' halos"
+        mask = compute_mask(grid, ib)
+        return GridFittedBoundary(mask)
+    end
+
+    return ib
+end
+
+function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, grid)
+
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    bottom_height_size = (Nx, Ny, 1) .+ 2 .* (Hx, Hy, 0)
+
+    # Check that the size of the bottom height is consistent with the grid's halos
+    if any(size(ib.bottom_height) .!= bottom_height_size)
+        @warn "Resizing the bottom height to match the grid's halos"
+        bottom_field = Field{Center, Center, Nothing}(grid)
+        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny, :]
+        set!(bottom_field, cpu_bottom)
+        fill_halo_regions!(bottom_field)
+        return unparameterized_type(typeof(ib))(bottom_field.data)
+    end
+
+    return ib
+end
+
+# In case of an asynchronous `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
 #
 # If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional
 # kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
@@ -91,7 +143,7 @@ function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <
     Hx, Hy, _  = halo_size(grid)
 
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty <: LeftConnectedOnlyTopology ? Ny - Hy : Ny - 2Hy)
 
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy

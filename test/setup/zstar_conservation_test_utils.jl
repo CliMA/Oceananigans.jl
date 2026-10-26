@@ -64,7 +64,7 @@ function info_message(grid, free_surface, timestepper)
     msg1 = "$(summary(architecture(grid))) "
     msg2 = grid_type(grid)
     msg3 = " with $(timestepper)"
-    msg4 = " using a " * string(getnamewrapper(free_surface))
+    msg4 = " using a " * string(nameof(typeof(free_surface)))
     return msg1 * msg2 * msg3 * msg4
 end
 

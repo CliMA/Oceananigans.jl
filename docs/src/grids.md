@@ -1006,7 +1006,7 @@ make_distributed_arch = """
 
 using Oceananigans
 using Oceananigans.DistributedComputations
-using MPI; MPI.Init()
+using MPI; MPI.Init(threadlevel=:multiple)
 architecture = Distributed()
 @onrank 0 @show architecture
 @onrank 1 @show architecture
@@ -1041,7 +1041,7 @@ make_distributed_grid = """
 
 using Oceananigans
 using Oceananigans.DistributedComputations
-using MPI; MPI.Init()
+using MPI; MPI.Init(threadlevel=:multiple)
 
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
@@ -1105,7 +1105,7 @@ make_y_partition = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 partition = Partition(y=Equal())
 
@@ -1148,7 +1148,7 @@ make_xy_partition = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 partition = Partition(x=Equal(), y=2)
 
@@ -1176,7 +1176,7 @@ partitioned_grid_example = """
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal, barrier
 using MPI
-MPI.Init()
+MPI.Init(threadlevel=:multiple)
 
 # Total number of ranks
 Nr = MPI.Comm_size(MPI.COMM_WORLD)

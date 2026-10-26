@@ -24,6 +24,8 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
+using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Units: Time
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
