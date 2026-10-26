@@ -200,6 +200,57 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
     end
 end
 
+@testset "z★ keeps a uniform tracer uniform through open boundaries [$(summary(arch))]" for arch in archs
+    # A zero-net, along-boundary-varying barotropic inflow through two open boundaries moves the free surface,
+    # so c ≡ 1 stays uniform only if the filtered transport Ũ, Ṽ that sets w̃ also set η, including at the
+    # boundary faces.
+    Nb, Na, Nz, H = 16, 8, 4, 1000
+
+    @inline normal_flow(n, p) = p.a * sin(2π * (n - 1/2) / p.Nb + p.ϕ)
+    @inline vᵉˣᵗ(i, k, grid, clock, fields, p) = normal_flow(i, p)
+    @inline uᵉˣᵗ(j, k, grid, clock, fields, p) = normal_flow(j, p)
+    @inline Vᵉˣᵗ(i, k, grid, clock, fields, p) = (p.H * normal_flow(i, p), zero(grid))
+    @inline Uᵉˣᵗ(j, k, grid, clock, fields, p) = (p.H * normal_flow(j, p), zero(grid))
+
+    left  = (a = 0.1, Nb = Nb, H = H, ϕ = 0.0)
+    right = (a = 0.1, Nb = Nb, H = H, ϕ = π / 2)
+
+    flow_bc(f, p)      = NormalFlowBoundaryCondition(f, discrete_form = true, parameters = p)
+    transport_bc(F, p) = GravityWaveRadiationBoundaryCondition(F, discrete_form = true, parameters = p)
+    one_bc = ValueBoundaryCondition(1)
+
+    north_south = (size = (Nb, Na, Nz), topology = (Periodic, Bounded, Bounded),
+                   boundary_conditions = (v = FieldBoundaryConditions(south = flow_bc(vᵉˣᵗ, left), north = flow_bc(vᵉˣᵗ, right)),
+                                          V = FieldBoundaryConditions(south = transport_bc(Vᵉˣᵗ, left), north = transport_bc(Vᵉˣᵗ, right)),
+                                          c = FieldBoundaryConditions(south = one_bc, north = one_bc)))
+
+    west_east = (size = (Na, Nb, Nz), topology = (Bounded, Periodic, Bounded),
+                 boundary_conditions = (u = FieldBoundaryConditions(west = flow_bc(uᵉˣᵗ, left), east = flow_bc(uᵉˣᵗ, right)),
+                                        U = FieldBoundaryConditions(west = transport_bc(Uᵉˣᵗ, left), east = transport_bc(Uᵉˣᵗ, right)),
+                                        c = FieldBoundaryConditions(west = one_bc, east = one_bc)))
+
+    @testset "$name" for (name, setup) in (("north-south", north_south), ("west-east", west_east))
+        z = MutableVerticalDiscretization(range(-H, 0, length = Nz + 1))
+        grid = RectilinearGrid(arch; setup.size, halo = (4, 4, 4), x = (0, 50e3), y = (0, 50e3), z, setup.topology)
+
+        model = HydrostaticFreeSurfaceModel(grid; free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                            vertical_coordinate = ZStarCoordinate(), timestepper = :SplitRungeKutta3,
+                                            setup.boundary_conditions, tracers = :c, buoyancy = nothing,
+                                            momentum_advection = nothing, tracer_advection = Centered())
+        set!(model, c = 1)
+
+        for _ in 1:50
+            time_step!(model, 20)
+        end
+
+        η = Array(interior(model.free_surface.displacement))
+        c = Array(interior(model.tracers.c))
+
+        @test maximum(abs, η) > 1e-3
+        @test maximum(abs, c .- 1) < 1e-12
+    end
+end
+
 @testset "Time-dependent barotropic boundary conditions see the correct substep time [$(summary(arch))]" for arch in archs
     # A frozen substep clock would report the same time on every evaluation; `GravityWaveRadiation`
     # is documented to apply at every barotropic substep, so a time-dependent exterior value must

@@ -40,7 +40,7 @@ end
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
 # variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+@kernel function _split_explicit_barotropic_velocity!(grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -57,14 +57,10 @@ end
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-
-        # Averaging the transport
-        Ũ[i, j, 1] += transport_weight * U[i, j, 1]
-        Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
     end
 end
 
-@kernel function _split_explicit_free_surface!(averaging_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+@kernel function _split_explicit_free_surface!(averaging_weight, transport_weight, grid, filled_halos, Δτ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -83,8 +79,34 @@ end
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
         U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
         V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+
+        # Averaging the transport that advanced η, so that the filtered transport is consistent with η̅
+        Ũ[i, j, 1] += transport_weight * U★(i, j, 1, grid, timestepper, U)
+        Ṽ[i, j, 1] += transport_weight * U★(i, j, 1, grid, timestepper, V)
     end
+
+    TX, TY, _ = topology(grid)
+    accumulate_east_boundary_transport!(TX(), i, j, grid, transport_weight, Ũ, timestepper, U)
+    accumulate_north_boundary_transport!(TY(), i, j, grid, transport_weight, Ṽ, timestepper, V)
 end
+
+# The face at N+1 lies outside the kernel range, but on a closed right side it carries the open-boundary transport
+@inline function accumulate_east_boundary_transport!(::Sides{<:Any, Closed}, i, j, grid, transport_weight, Ũ, timestepper, U)
+    if i == grid.Nx
+        @inbounds Ũ[i+1, j, 1] += transport_weight * U★(i+1, j, 1, grid, timestepper, U)
+    end
+    return nothing
+end
+
+@inline function accumulate_north_boundary_transport!(::Sides{<:Any, Closed}, i, j, grid, transport_weight, Ṽ, timestepper, V)
+    if j == grid.Ny
+        @inbounds Ṽ[i, j+1, 1] += transport_weight * U★(i, j+1, 1, grid, timestepper, V)
+    end
+    return nothing
+end
+
+@inline accumulate_east_boundary_transport!(topology, args...)  = nothing
+@inline accumulate_north_boundary_transport!(topology, args...) = nothing
 
 # Change name
 const FNS = FixedSubstepNumber
@@ -123,8 +145,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, workspec, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, workspec, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     barotropic_model_fields = (; U, V, η)
 
@@ -150,19 +172,19 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             only_local_halos = substep == 1 || (substep - 1) % exchange_interval != 0
 
             maybe_distributed_fill_halo_regions!(arch, η_halo_args[1:end-1]..., substep_clock, η_halo_args[end]; only_local_halos)
-            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
+            @apply_regionally apply_barotropic_kernel!(velocity_kernel!, (), converted_U_args)
 
             maybe_distributed_fill_halo_regions!(arch, U_halo_args[1:end-1]..., substep_clock, U_halo_args[end]; only_local_halos)
             maybe_distributed_fill_halo_regions!(arch, V_halo_args[1:end-1]..., substep_clock, V_halo_args[end]; only_local_halos)
             pin_barotropic_faces!(face_pins)
-            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
+            @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, (averaging_weight, transport_weight), converted_η_args)
         end
     end
 
     return nothing
 end
 
-@inline apply_barotropic_kernel!(kernel, weight, args) = kernel(weight, args...)
+@inline apply_barotropic_kernel!(kernel, weights, args) = kernel(weights..., args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F::Fη, clock, weights, transport_weights, ::Val{Nsubsteps}) where {Fη, Nsubsteps}
     arch = architecture(grid)
@@ -185,8 +207,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
 
     exchange_interval = halo_exchange_interval(free_surface, grid, Nsubsteps)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, timestepper)
+    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, Ũ, Ṽ, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -202,8 +224,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
                 fill_halo_regions!((U, V, η))
             end
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(converted_U_args...)
+            free_surface_kernel!(averaging_weight, transport_weight, converted_η_args...)
         end
     end
 

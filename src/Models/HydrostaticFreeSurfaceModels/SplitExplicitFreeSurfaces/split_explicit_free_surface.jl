@@ -257,6 +257,19 @@ end
 
 const ConnectedTopology = Union{Sides{Connected}, Sides{<:Any, Connected}}
 
+# Ũ and Ṽ accumulate the boundary-face transport that advanced η, so their halo fill must not overwrite it
+filtered_transport_boundary_conditions(bcs) = bcs
+
+filtered_transport_boundary_conditions(bcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(filtered_transport_boundary_condition(bcs.west),
+                            filtered_transport_boundary_condition(bcs.east),
+                            filtered_transport_boundary_condition(bcs.south),
+                            filtered_transport_boundary_condition(bcs.north),
+                            bcs.bottom, bcs.top, bcs.immersed)
+
+filtered_transport_boundary_condition(bc) = bc
+filtered_transport_boundary_condition(::BoundaryCondition{<:NormalFlow}) = nothing
+
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}
     TX, TY, _   = topology(grid)
@@ -285,8 +298,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
     U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
     V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
-    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
-    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
+    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = filtered_transport_boundary_conditions(bcs.U))
+    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = filtered_transport_boundary_conditions(bcs.V))
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
