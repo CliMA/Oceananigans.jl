@@ -48,7 +48,7 @@ function compute_pressure_solution(grid)
 end
 
 function test_conjugate_gradient_basic_functionality(grid, preconditioner)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Unit testing ConjugateGradientPoissonSolver with $preconditioner_name..."
 
     # Test the preconditioner constructor
@@ -64,7 +64,7 @@ function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preco
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-underlying_grid.Lz / 2))
     arch = architecture(grid)
     preconditioner = make_preconditioner(underlying_grid, grid)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
 
     reltol = abstol = eps(eltype(grid))
@@ -118,7 +118,7 @@ function test_conjugate_gradient_default_constructor(arch)
 end
 
 function test_conjugate_gradient_with_nonhydrostatic_model(grid, preconditioner)
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CG solver integration with NonhydrostaticModel using $preconditioner_name..."
     seed!(198)  # For reproducible results
 
@@ -176,7 +176,7 @@ end
 
 function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_condition(underlying_grid, preconditioner)
     # See https://github.com/CliMA/Oceananigans.jl/issues/4603
-    preconditioner_name = typeof(preconditioner).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
     @info "  Testing CGSolver with ImmersedBoundaryGrid with a flux boundary condition using $preconditioner_name..."
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))
@@ -192,8 +192,8 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
 end
 
 function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, preconditioner, immersed_bottom)
-    preconditioner_name = typeof(preconditioner).name.wrapper
-    immersed_bottom_name = typeof(immersed_bottom).name.wrapper
+    preconditioner_name = nameof(typeof(preconditioner))
+    immersed_bottom_name = nameof(typeof(immersed_bottom))
     underlying_grid_name = underlying_grid isa XYZRegularRG ? "regular grid" : "stretched grid"
     @info "  Testing ConjugateGradientPoissonSolver + $preconditioner_name, on $underlying_grid_name with $immersed_bottom_name"
     seed!(198)  # For reproducible results
@@ -290,7 +290,7 @@ function test_divergence_free_solution(arch, float_type, topos)
             grid = make_random_immersed_grid(RectilinearGrid(arch, float_type, topology=topo; size_and_extent_from_topo(N, topo)...))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
             @test @allowscalar interior(∇²ϕ) ≈ interior(R)
-            @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
+            @test isapprox(sum(Float64, Array(interior(ϕ))) / conditional_length(ϕ), 0, atol=eps(eltype(grid)))
         end
     end
 end
@@ -303,7 +303,7 @@ function test_divergence_free_solution_on_rectangular_grids(arch, topos)
             grid = make_random_immersed_grid(RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1)))
             ϕ, ∇²ϕ, R = compute_pressure_solution(grid)
             @test @allowscalar interior(∇²ϕ) ≈ interior(R)
-            @test isapprox(mean(ϕ), 0, atol=eps(eltype(grid)))
+            @test isapprox(sum(Float64, Array(interior(ϕ))) / conditional_length(ϕ), 0, atol=eps(eltype(grid)))
         end
     end
 end
@@ -414,8 +414,7 @@ end
             vin = VolumeInverseNorm(grid)
             computed = vin(r)
 
-            # Check r is restored after in-place scaling
-            @test Array(interior(r)) ≈ r_before
+            @test Array(interior(r)) == r_before
 
             # Check norm value against manual computation
             expected = 0.0

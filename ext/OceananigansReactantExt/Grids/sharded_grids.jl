@@ -64,7 +64,10 @@ function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Shardin
     Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
     Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
 
-    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    Δ⁻¹ᵃᵃᶠ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶠ; sharding)
+    Δ⁻¹ᵃᵃᶜ = Reactant.to_rarray(z.Δ⁻¹ᵃᵃᶜ; sharding)
+
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
 function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
@@ -139,6 +142,17 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Azᶜᶠᵃ = Reactant.to_rarray(grid.Azᶜᶠᵃ; sharding=xzmetric_sharding)
     Azᶠᶠᵃ = Reactant.to_rarray(grid.Azᶠᶠᵃ; sharding=xzmetric_sharding)
 
+    Δx⁻¹ᶜᶜᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶜᶜᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶠᶜᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶜᶠᵃ; sharding=xzmetric_sharding)
+    Δx⁻¹ᶠᶠᵃ = Reactant.to_rarray(grid.Δx⁻¹ᶠᶠᵃ; sharding=xzmetric_sharding)
+    Δy⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Δy⁻¹ᶠᶜᵃ; sharding=ysharding)
+    Δy⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Δy⁻¹ᶜᶠᵃ; sharding=ysharding)
+    Az⁻¹ᶜᶜᵃ = Reactant.to_rarray(grid.Az⁻¹ᶜᶜᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶠᶜᵃ = Reactant.to_rarray(grid.Az⁻¹ᶠᶜᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶜᶠᵃ = Reactant.to_rarray(grid.Az⁻¹ᶜᶠᵃ; sharding=xzmetric_sharding)
+    Az⁻¹ᶠᶠᵃ = Reactant.to_rarray(grid.Az⁻¹ᶠᶠᵃ; sharding=xzmetric_sharding)
+
     if !precompute_metrics
         throw(ArgumentError("On-the-fly metric computation is not supported on sharded architectures."))
     end
@@ -153,6 +167,9 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                              Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                             Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
+                                             Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
+                                             Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ,
                                              grid.radius)
 end
 
@@ -183,6 +200,11 @@ function RectilinearGrid(arch::ShardedDistributed,
     xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
     ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicated
 
+    Δx⁻¹ᶠᵃᵃ = Reactant.to_rarray(1 ./ Δxᶠᵃᵃ, sharding=replicated)
+    Δx⁻¹ᶜᵃᵃ = Reactant.to_rarray(1 ./ Δxᶜᵃᵃ, sharding=replicated)
+    Δy⁻¹ᵃᶠᵃ = Reactant.to_rarray(1 ./ Δyᵃᶠᵃ, sharding=replicated)
+    Δy⁻¹ᵃᶜᵃ = Reactant.to_rarray(1 ./ Δyᵃᶜᵃ, sharding=replicated)
+
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=replicated)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=replicated)
     Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=replicated)
@@ -201,7 +223,7 @@ function RectilinearGrid(arch::ShardedDistributed,
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                       z)
+                                       z, Δx⁻¹ᶠᵃᵃ, Δx⁻¹ᶜᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δy⁻¹ᵃᶜᵃ)
 end
 
 # This mostly exists for future where we will assemble data from multiple workers
@@ -226,7 +248,7 @@ function TripolarGrid(arch::ShardedDistributed,
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
     replicate = Sharding.Replicated(arch.connectivity)
 
-    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
+    grid = OrthogonalSphericalShellGrid{Periodic, Sides{Closed, Connected}, Bounded}(arch,
         global_size...,
         halo...,
         convert(FT, global_grid.Lz),
@@ -251,6 +273,18 @@ function TripolarGrid(arch::ShardedDistributed,
         Reactant.to_rarray(global_grid.Azᶠᶜᵃ; sharding),
         Reactant.to_rarray(global_grid.Azᶜᶠᵃ; sharding),
         Reactant.to_rarray(global_grid.Azᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δx⁻¹ᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Δy⁻¹ᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶜᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶠᶜᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶜᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.Az⁻¹ᶠᶠᵃ; sharding),
         convert(FT, global_grid.radius),
         global_grid.conformal_mapping)
 

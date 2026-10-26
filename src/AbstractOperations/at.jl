@@ -80,22 +80,19 @@ $(TYPEDSIGNATURES)
 
 Utility to compute the intersection of `operands' indices.
 """
-function intersect_indices(loc, operands...)
-    idx1 = compute_operand_intersection(Colon(), loc[1], operands...; dim=1)
-    idx2 = compute_operand_intersection(Colon(), loc[2], operands...; dim=2)
-    idx3 = compute_operand_intersection(Colon(), loc[3], operands...; dim=3)
-    return (idx1, idx2, idx3)
-end
+intersect_indices(loc, operands...) = compute_operand_intersection((:, :, :), loc, operands...)
 
-# Fallback for `KernelFunctionOperation`s with no argument
-compute_operand_intersection(::Colon, to_loc; kw...) = Colon()
+compute_operand_intersection(to_idx, to_loc) = to_idx
 
-compute_operand_intersection(to_idx, to_loc, op; dim) =
-    compute_index_intersection(to_idx, indices(op)[dim],
-                               to_loc, location(op, dim))
+# Fields adapted for a kernel drop their indices
+@inline operand_indices(op) = something(indices(op), default_indices(3))
 
-"""Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
-function compute_operand_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
-    new_to_idx = compute_index_intersection(to_idx, indices(op1)[dim], to_loc, location(op1, dim))
-    return compute_operand_intersection(new_to_idx, to_loc, op2, more_ops...; dim)
+"""
+$(TYPEDSIGNATURES)
+
+Compute the index intersection of all three dimensions at once, recursively over the operands.
+"""
+function compute_operand_intersection(to_idx, to_loc, op, more_ops...)
+    new_to_idx = map(compute_index_intersection, to_idx, operand_indices(op), to_loc, location(op))
+    return compute_operand_intersection(new_to_idx, to_loc, more_ops...)
 end

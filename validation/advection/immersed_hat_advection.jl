@@ -6,7 +6,7 @@
 #
 
 using Oceananigans
-using Oceananigans.Advection: div_Uc, GhostCells
+using Oceananigans.Advection: div_Uc
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: interior, ZeroField
 using Oceananigans.ImmersedBoundaries: immersed_cell
@@ -95,9 +95,7 @@ function run_hat_advection(FT = Float64; Nx = 128, Nz = 64, courant = 0.2, Nstep
     weno(boundary_scheme) = WENO(FT; order, weight_computation = NormalDivision, boundary_scheme)
 
     schemes = ["Centered(order=2)"          => weno(Centered(FT; order = 2)),
-               "UpwindBiased(order=1)"      => weno(UpwindBiased(FT; order = 1)),
-               "GhostCells()"               => weno(GhostCells(FT)),
-               "GhostCells(monotone=false)" => weno(GhostCells(FT; monotone = false))]
+               "UpwindBiased(order=1)"      => weno(UpwindBiased(FT; order = 1))]
 
     println(rpad("scheme", 28), rpad("min", 12), rpad("max", 12), rpad("variance lost", 16), "mass drift")
     for (name, scheme) in schemes

@@ -1,7 +1,7 @@
 module ImmersedBoundaries
 
 export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ShavedCellBottom,
-       ImmersedBoundaryCondition, bottom_height_field
+       ImmersedBoundaryCondition, bottom_height_field, materialize_immersed_boundary
 
 using Printf: @sprintf
 

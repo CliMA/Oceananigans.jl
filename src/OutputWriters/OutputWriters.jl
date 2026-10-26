@@ -18,11 +18,9 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
-                          RectilinearGrid, StaticVerticalDiscretization, AbstractVerticalCoordinate,
-                          ColumnEnsembleSize, Periodic, Bounded, FullyConnected,
-                          LeftConnected, RightConnected, RightFaceFolded, RightCenterFolded,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+                          RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
+                          ColumnEnsembleSize, Periodic, Sides, Bounded, Closed, Connected,
+                          CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected,
                           grid, topology, halo_size, xspacings, yspacings, rspacings,
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
                           ξname, ηname, validate_index, peripheral_node, inactive_node,
@@ -35,10 +33,10 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary,
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid,
                                                    TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                    ConformalCubedSpherePanelGrid,
-                                                   LambertConformalConicGrid,
+                                                   ConformalConicGrid,
                                                    Tripolar, LatitudeLongitudeRotation,
                                                    CubedSphereConformalMapping,
-                                                   LambertConformalConic
+                                                   ConformalConic
 using Oceananigans.Solvers: iteration
 using Oceananigans.Utils: Utils, TimeInterval, IterationInterval, WallTimeInterval, instantiate,
                           pretty_filesize

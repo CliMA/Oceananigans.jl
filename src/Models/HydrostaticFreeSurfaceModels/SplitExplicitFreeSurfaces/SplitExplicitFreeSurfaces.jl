@@ -7,23 +7,22 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel, @localmem, @synchronize, StaticSize
 
 using Oceananigans.Architectures: convert_to_device, architecture, device
-using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally
+using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, add_time_interval
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δxᶜᶠᵃ, Δyᶠᶜᵃ
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
-                          LeftConnected, RightConnected, FullyConnected,
-                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Sides
+using Oceananigans.DistributedComputations: DistributedGrid, all_reduce, @root
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
                                        column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
                                                         update_vertical_velocities!
+using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Units: Time
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,

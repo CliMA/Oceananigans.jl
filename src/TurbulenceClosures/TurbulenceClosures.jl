@@ -57,6 +57,7 @@ using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
     V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
     Δx_qᶜᶜᶜ, Δx_qᶜᶠᶜ, Δx_qᶜᶠᶠ, Δx_qᶠᶜᶜ, Δxᶜᶜᶜ, Δy_qᶜᶜᶜ, Δy_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δy_qᶠᶜᶠ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
+    Δx⁻¹ᶜᶜᶜ, Δy⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶜ,
     δxᶜᵃᵃ, δxᶜᶜᶜ, δxᶜᶠᶜ, δxᶠᵃᵃ, δxᶠᶜᶜ, δxᶠᶠᶜ, δyᵃᶜᵃ, δyᵃᶠᵃ, δyᶜᶜᶜ, δyᶜᶠᶜ, δyᶠᶜᶜ, δzᵃᵃᶜ, δzᵃᵃᶠ,
     ζ₃ᶠᶠᶜ,
     ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
@@ -67,7 +68,7 @@ using Oceananigans.Operators: Operators,
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers, named_tuple
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
-using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid, bottom_height
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
@@ -189,7 +190,7 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_bottom(i, j, ibg::AGFBIBG) = bottom_height(i, j, ibg)
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
