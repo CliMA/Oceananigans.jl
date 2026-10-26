@@ -194,7 +194,10 @@ function test_jld2_compression(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; tracers=:c)
 
-    compressors = ("none" => false, "deflate" => true, "zstd" => ZstdFilter())
+    compressors = ("none" => false,
+                   "deflate" => true,
+                   "zstd" => ZstdFilter(),
+                   "shuffle-zstd" => [Shuffle(), ZstdFilter(1)])
     file_sizes = Dict{String, Int}()
 
     mktempdir() do dir
@@ -218,13 +221,12 @@ function test_jld2_compression(arch)
         end
 
         c_uncompressed = FieldTimeSeries(joinpath(dir, "compression_test_none.jld2"), "c")
-        c_deflate = FieldTimeSeries(joinpath(dir, "compression_test_deflate.jld2"), "c")
-        c_zstd = FieldTimeSeries(joinpath(dir, "compression_test_zstd.jld2"), "c")
 
-        @test parent(c_deflate) == parent(c_uncompressed)
-        @test parent(c_zstd) == parent(c_uncompressed)
-        @test file_sizes["deflate"] < file_sizes["none"]
-        @test file_sizes["zstd"] < file_sizes["none"]
+        for label in ("deflate", "zstd", "shuffle-zstd")
+            c_compressed = FieldTimeSeries(joinpath(dir, "compression_test_$label.jld2"), "c")
+            @test parent(c_compressed) == parent(c_uncompressed)
+            @test file_sizes[label] < file_sizes["none"]
+        end
     end
     return nothing
 end
@@ -238,7 +240,7 @@ function test_jld2_compress_keyword_precedence(arch)
                                      schedule = IterationInterval(1),
                                      kwargs...)
 
-    @test writer().jld2_kw[:compress] == ZstdFilter()
+    @test writer().jld2_kw[:compress] == [Shuffle(), ZstdFilter(1)]
     @test writer(compress=false).jld2_kw[:compress] == false
     @test writer(compress=true).jld2_kw[:compress] == true
     @test writer(jld2_kw=Dict{Symbol, Any}(:compress => true)).jld2_kw[:compress] == true
