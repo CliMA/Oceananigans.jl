@@ -6,7 +6,7 @@ using Oceananigans.Utils: launch!
 
 using Adapt
 
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @kernel, @index, get_backend
 
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: communication_buffers
@@ -395,6 +395,13 @@ recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::BottomAnd
 ##### Individual _fill_send_buffers and _recv_from_buffer kernels
 #####
 
+@kernel function _copy_from_buffer!(c, recv)
+    I = @index(Global, Cartesian)
+    @inbounds c[I] = recv[I]
+end
+
+copy_from_buffer!(c, recv) = _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
+
 for dir in (:west, :east, :south, :north, :southwest, :southeast, :northwest, :northeast)
     _fill_send_buffer! = Symbol(:_fill_, dir, :_send_buffer!)
     _recv_from_buffer! = Symbol(:_recv_from_, dir, :_buffer!)
@@ -411,10 +418,10 @@ end
 _fill_south_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Hy:2Hy,  :)
 _fill_north_send_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, :, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           :,     :) .= buff.recv
- _recv_from_east_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, :,     :) .= buff.recv
-_recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           :,     :), buff.recv)
+ _recv_from_east_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, :,     :), buff.recv)
+_recv_from_south_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, :,     1:Hy,           :), buff.recv)
+_recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, :,     1+Ny+Hy:Ny+2Hy, :), buff.recv)
 
 #####
 ##### 2D Parallelizations (explicitly send all corners)
@@ -425,20 +432,20 @@ _recv_from_north_buffer!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) = view(c, :,     1
 _fill_south_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Hy:2Hy,  :)
 _fill_north_send_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
- _recv_from_west_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Hy:Ny+Hy,     :) .= buff.recv
- _recv_from_east_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :) .= buff.recv
-_recv_from_south_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1:Hy,           :) .= buff.recv
-_recv_from_north_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+ _recv_from_west_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1+Hy:Ny+Hy,     :), buff.recv)
+ _recv_from_east_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:Ny+Hy,     :), buff.recv)
+_recv_from_south_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Hx:Nx+Hx,     1:Hy,           :), buff.recv)
+_recv_from_north_buffer!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Hx:Nx+Hx,     1+Ny+Hy:Ny+2Hy, :), buff.recv)
 
 _fill_southwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Hy:2Hy,   :)
 _fill_southeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:2Hy,   :)
 _fill_northwest_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Hx:2Hx,   1+Ny:Ny+Hy, :)
 _fill_northeast_send_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = buff.send .= view(c, 1+Nx:Nx+Hx, 1+Ny:Ny+Hy, :)
 
-_recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1:Hy,           :) .= buff.recv
-_recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :) .= buff.recv
-_recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
+_recv_from_southwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1:Hy,           :), buff.recv)
+_recv_from_southeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1:Hy,           :), buff.recv)
+_recv_from_northwest_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :), buff.recv)
+_recv_from_northeast_buffer!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) = copy_from_buffer!(view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :), buff.recv)
 
 # Pass throughs to communication state
 wait_for_messages!(buff::CommunicationBuffers) = wait_for_messages!(buff.state)

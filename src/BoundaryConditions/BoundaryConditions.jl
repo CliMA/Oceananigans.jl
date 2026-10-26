@@ -6,7 +6,7 @@ export
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
-    implicit_flux_coefficient,
+    implicit_flux_coefficient, explicit_flux,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
     GravityWaveRadiation, NormalRadiation, ObliqueRadiation, TracerReservoir, SurfaceWaveRadiation, GravityWaveRadiationBoundaryCondition, SurfaceWaveRadiationBoundaryCondition,
@@ -29,7 +29,7 @@ using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_arch
 using Oceananigans.Grids: Grids, AbstractGrid, Center, CenterFolded, CenterFoldConnected, Closed, Connected, Face, FaceFolded,
                           FaceFoldConnected, Flat, LatitudeLongitudeGrid, Open, TwoSided,
                           connected_range, halo_size, node, λnode, φnode, λnodes, φnodes, topology
-using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Ax, Ay, Az, V⁻¹, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization, launch!, named_tuple
 
 # All possible fill_halo! kernels
@@ -42,6 +42,7 @@ struct South end
 struct North end
 struct Bottom end
 struct Top end
+struct ImmersedFacet end
 
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
@@ -60,6 +61,7 @@ include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
+include("tupled_fill_halo_regions.jl")
 
 include("compute_flux_bcs.jl")
 
