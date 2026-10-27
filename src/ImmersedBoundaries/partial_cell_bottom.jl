@@ -1,25 +1,34 @@
 using Oceananigans.Fields: Field, fill_halo_regions!, set!
 using Oceananigans.Grids: Grids, AbstractStaticGrid, constructor_arguments
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, KernelParameters
 
 import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ,
-                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
+                               Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ,
+                               Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, Δr⁻¹ᶜᶠᶜ, Δr⁻¹ᶜᶠᶠ, Δr⁻¹ᶠᶜᶜ, Δr⁻¹ᶠᶜᶠ, Δr⁻¹ᶠᶠᶜ, Δr⁻¹ᶠᶠᶠ,
+                               Δz⁻¹ᶜᶜᶜ, Δz⁻¹ᶜᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶠᶠ, Δz⁻¹ᶠᶜᶜ, Δz⁻¹ᶠᶜᶠ, Δz⁻¹ᶠᶠᶜ, Δz⁻¹ᶠᶠᶠ
 
 #####
 ##### PartialCellVerticalBoundaries
 #####
 
-struct PartialCellVerticalBoundaries{H, T, E, SB, ST, D} <: AbstractGridFittedBottom{H}
+struct PartialCellVerticalBoundaries{H, T, E, SB, ST, D, RB, RT} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     minimum_fractional_cell_height :: E
     fractional_bottom_index :: SB
     fractional_top_index :: ST
     face_column_depths :: D
+    # reciprocal spacings of the bottom (top) cell and of the face above (below) it, one per column, or `nothing` without a bottom (top)
+    Δr⁻¹ᶜᶜᶜᵇ :: RB
+    Δr⁻¹ᶜᶜᶠᵇ :: RB
+    Δr⁻¹ᶜᶜᶜᵗ :: RT
+    Δr⁻¹ᶜᶜᶠᵗ :: RT
 end
 
-PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height) =
-    PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height, nothing, nothing, nothing)
+function PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height)
+    return PartialCellVerticalBoundaries(bottom_height, top_height, minimum_fractional_cell_height,
+                                         nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+end
 
 # A missing top is materialized as a `ConstantField` at the top of the domain, without a `fractional_top_index`
 const PartialCellBottom{H, E} = PartialCellVerticalBoundaries{H, <:Union{Nothing, ConstantField}, E, <:Any, Nothing}
@@ -161,12 +170,47 @@ function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
     @apply_regionally compute_top_cell!(grid, compute_ib, fractional_top_index, top)
 
     materialized_ib = PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height,
-                                                    index_data(fractional_bottom_index), index_data(fractional_top_index), nothing)
+                                                    index_data(fractional_bottom_index), index_data(fractional_top_index),
+                                                    nothing, nothing, nothing, nothing, nothing)
 
     face_column_depths = materialize_face_column_depths(grid, materialized_ib)
 
+    Δr⁻¹ᶜᶜᶜᵇ = reciprocal_spacing_field(grid, bottom)
+    Δr⁻¹ᶜᶜᶠᵇ = reciprocal_spacing_field(grid, bottom)
+    Δr⁻¹ᶜᶜᶜᵗ = reciprocal_spacing_field(grid, top)
+    Δr⁻¹ᶜᶜᶠᵗ = reciprocal_spacing_field(grid, top)
+
+    TX, TY, TZ = topology(grid)
+    ibg = ImmersedBoundaryGrid{TX, TY, TZ}(grid, materialized_ib, nothing, nothing)
+
+    @apply_regionally compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜᵇ, Δr⁻¹ᶜᶜᶠᵇ, ibg, materialized_ib.fractional_bottom_index, 1)
+    @apply_regionally compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜᵗ, Δr⁻¹ᶜᶜᶠᵗ, ibg, materialized_ib.fractional_top_index, 0)
+
     return PartialCellVerticalBoundaries(height_data(bottom), height_data(top), minimum_fractional_cell_height,
-                                         index_data(fractional_bottom_index), index_data(fractional_top_index), face_column_depths)
+                                         index_data(fractional_bottom_index), index_data(fractional_top_index), face_column_depths,
+                                         index_data(Δr⁻¹ᶜᶜᶜᵇ), index_data(Δr⁻¹ᶜᶜᶠᵇ), index_data(Δr⁻¹ᶜᶜᶜᵗ), index_data(Δr⁻¹ᶜᶜᶠᵗ))
+end
+
+reciprocal_spacing_field(grid, height) = Field{Center, Center, Nothing}(grid)
+reciprocal_spacing_field(grid, ::ConstantField) = nothing
+
+# Reciprocal spacings of the cell ⌊s⌋ and of the face ⌊s⌋ + face_offset, which is the face of that cell toward the interior
+function compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, ibg, s, face_offset)
+    grid = ibg.underlying_grid
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
+    return launch!(architecture(grid), grid, parameters, _compute_partial_cell_reciprocal_spacings!, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, ibg, s, face_offset)
+end
+
+compute_partial_cell_reciprocal_spacings!(::Nothing, ::Nothing, ibg, s, face_offset) = nothing
+
+@kernel function _compute_partial_cell_reciprocal_spacings!(Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ, ibg, s, face_offset)
+    i, j = @index(Global, NTuple)
+    k = @inbounds unsafe_trunc(Int, s[i, j, 1])
+
+    @inbounds Δr⁻¹ᶜᶜᶜ[i, j, 1] = 1 / Δrᶜᶜᶜ(i, j, k, ibg)
+    @inbounds Δr⁻¹ᶜᶜᶠ[i, j, 1] = 1 / Δrᶜᶜᶠ(i, j, k + face_offset, ibg)
 end
 
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::PartialCellVerticalBoundaries)
@@ -260,7 +304,11 @@ Adapt.adapt_structure(to, ib::PartialCellVerticalBoundaries) =
                                   ib.minimum_fractional_cell_height,
                                   adapt(to, ib.fractional_bottom_index),
                                   adapt(to, ib.fractional_top_index),
-                                  adapt(to, ib.face_column_depths))
+                                  adapt(to, ib.face_column_depths),
+                                  adapt(to, ib.Δr⁻¹ᶜᶜᶜᵇ),
+                                  adapt(to, ib.Δr⁻¹ᶜᶜᶠᵇ),
+                                  adapt(to, ib.Δr⁻¹ᶜᶜᶜᵗ),
+                                  adapt(to, ib.Δr⁻¹ᶜᶜᶠᵗ))
 
 Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
     PartialCellVerticalBoundaries(on_architecture(to, ib.bottom_height),
@@ -268,7 +316,11 @@ Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
                                   on_architecture(to, ib.minimum_fractional_cell_height),
                                   on_architecture(to, ib.fractional_bottom_index),
                                   on_architecture(to, ib.fractional_top_index),
-                                  on_architecture(to, ib.face_column_depths))
+                                  on_architecture(to, ib.face_column_depths),
+                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶜᵇ),
+                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵇ),
+                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶜᵗ),
+                                  on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵗ))
 
 # kᵇ = ⌊sᵇ⌋: `unsafe_trunc` is a single conversion, while mixed `Int`-`Float` comparisons of `sᵇ` are exact but several times longer
 @inline bottom_cell(i, j, ib::PartialCellVerticalBoundaries) = @inbounds unsafe_trunc(Int, ib.fractional_bottom_index[i, j, 1])
@@ -387,6 +439,57 @@ VSPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractStaticGrid
 @inline Δzᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶜᶠᶠ(i, j, k, ibg)
 @inline Δzᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δrᶠᶠᶠ(i, j, k, ibg)
+
+# The stored reciprocal at k = ⌊s⌋, or Δr⁻¹ elsewhere and without a stored reciprocal
+@inline function partial_cell_reciprocal_spacing(i, j, k, s, partial_Δr⁻¹, Δr⁻¹)
+    at_the_partial_cell = k == unsafe_trunc(Int, @inbounds(s[i, j, 1]))
+    return ifelse(at_the_partial_cell, @inbounds(partial_Δr⁻¹[i, j, 1]), Δr⁻¹)
+end
+
+@inline partial_cell_reciprocal_spacing(i, j, k, s, ::Nothing, Δr⁻¹) = Δr⁻¹
+
+# Where a cell is both the bottom and the top cell, both stored reciprocals hold the same value
+@inline function Δr⁻¹ᶜᶜᶜ(i, j, k, ibg::PCBIBG)
+    ib = ibg.immersed_boundary
+    full_Δr⁻¹   = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    bottom_Δr⁻¹ = partial_cell_reciprocal_spacing(i, j, k, ib.fractional_bottom_index, ib.Δr⁻¹ᶜᶜᶜᵇ, full_Δr⁻¹)
+    return partial_cell_reciprocal_spacing(i, j, k, ib.fractional_top_index, ib.Δr⁻¹ᶜᶜᶜᵗ, bottom_Δr⁻¹)
+end
+
+# The bottom reciprocal is stored at the face above the bottom cell, kᵇ + 1
+@inline function Δr⁻¹ᶜᶜᶠ(i, j, k, ibg::PCBIBG)
+    ib = ibg.immersed_boundary
+    full_Δr⁻¹   = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg.underlying_grid)
+    bottom_Δr⁻¹ = partial_cell_reciprocal_spacing(i, j, k-1, ib.fractional_bottom_index, ib.Δr⁻¹ᶜᶜᶠᵇ, full_Δr⁻¹)
+    return partial_cell_reciprocal_spacing(i, j, k, ib.fractional_top_index, ib.Δr⁻¹ᶜᶜᶠᵗ, bottom_Δr⁻¹)
+end
+
+# The reciprocal of the smallest spacing is the largest reciprocal
+@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶜ(i, j, k, ibg))
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶜ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶜ(i, j, k, ibg))
+
+@inline Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i-1, j, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))
+@inline Δr⁻¹ᶜᶠᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶜᶜᶠ(i, j-1, k, ibg), Δr⁻¹ᶜᶜᶠ(i, j, k, ibg))
+@inline Δr⁻¹ᶠᶠᶠ(i, j, k, ibg::PCBIBG) = max(Δr⁻¹ᶠᶜᶠ(i, j-1, k, ibg), Δr⁻¹ᶠᶜᶠ(i, j, k, ibg))
+
+@inline Δr⁻¹ᶠᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶜᶠ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δr⁻¹ᶜᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+
+@inline Δr⁻¹ᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δr⁻¹ᶜᶠᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δr⁻¹ᶠᶜᶜ(i, j, k, ibg)
+@inline Δr⁻¹ᶠᶠᶜ(i, j, k, ibg::XYFlatPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+
+@inline Δz⁻¹ᶜᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶜᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶜᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶜᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶠᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶜᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶠᶜ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶠᶜ(i, j, k, ibg)
+@inline Δz⁻¹ᶜᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶜᶠᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶜᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶜᶠ(i, j, k, ibg)
+@inline Δz⁻¹ᶠᶠᶠ(i, j, k, ibg::VSPCBIBG) = Δr⁻¹ᶠᶠᶠ(i, j, k, ibg)
 
 function Grids.constructor_arguments(grid::PCBIBG)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
