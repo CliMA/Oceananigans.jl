@@ -1,5 +1,5 @@
 """
-    SplitRungeKuttaTimeStepper{B, TG, PF, TI, FC} <: AbstractTimeStepper
+    SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low-storage, n-th order split Runge-Kutta time-stepping scheme.
 
@@ -10,15 +10,13 @@ Fields
 - `Gⁿ`: Tendency fields at the current substep.
 - `Ψ⁻`: Prognostic fields cached at the beginning of the time step (before substeps).
 - `implicit_solver`: Solver for implicit time stepping of diffusion (or `nothing`).
-- `flux_correction`: Scratch fields of the flux-corrected transport of tracers (or `nothing`).
 """
-struct SplitRungeKuttaTimeStepper{B, TG, PF, TI, FC} <: AbstractTimeStepper
+struct SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
     Nstages :: Int
     β  :: B
     Gⁿ :: TG
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
-    flux_correction :: FC
 end
 
 """
@@ -27,8 +25,7 @@ end
                                coefficients = (3, 2, 1),
                                Gⁿ::TG = map(similar, prognostic_fields),
                                Ψ⁻::PF = map(similar, prognostic_fields),
-                               flux_correction::FC = nothing,
-                               kwargs...) where {TI, TG, PF, FC}
+                               kwargs...) where {TI, TG, PF}
 
 Return an ``n``th-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
 
@@ -66,12 +63,11 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     coefficients = (3, 2, 1),
                                     Gⁿ::TG = map(similar, prognostic_fields),
                                     Ψ⁻::PF = map(similar, prognostic_fields),
-                                    flux_correction::FC = nothing,
-                                    kwargs...) where {TI, TG, PF, FC}
+                                    kwargs...) where {TI, TG, PF}
 
     Nstages = length(coefficients)
     B = typeof(coefficients)
-    return SplitRungeKuttaTimeStepper{B, TG, PF, TI, FC}(Nstages, coefficients, Gⁿ, Ψ⁻, implicit_solver, flux_correction)
+    return SplitRungeKuttaTimeStepper{B, TG, PF, TI}(Nstages, coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
 
 """
@@ -117,8 +113,7 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
     if isnothing(coefficients) # coefficients takes the priority
         coefficients = tuple(collect(stages:-1:1)...)
     end
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing, Nothing}(length(coefficients), coefficients,
-                                                                                               nothing, nothing, nothing, nothing)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(length(coefficients), coefficients, nothing, nothing, nothing)
 end
 
 """

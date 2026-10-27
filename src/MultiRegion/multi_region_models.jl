@@ -176,12 +176,10 @@ Advection.WENO(mrg::MultiRegionGrid, args...; kwargs...) = construct_regionally(
 
 # The bounds-preserving limiter of a WENO scheme on a multi-region grid is a multi-region field
 @inline Utils.getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.buffer_scheme, r),
-                     _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+    WENO{N, FT, WCT}(_getregion(weno.bounds, r), _getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 @inline Utils._getregion(weno::WENO{N, FT, WCT}, r) where {N, FT, WCT} =
-    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.buffer_scheme, r),
-                     getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
+    WENO{N, FT, WCT}(getregion(weno.bounds, r), getregion(weno.advecting_velocity_scheme, r), weno.time_discretization)
 
 function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     Δt = construct_regionally(cell_advection_timescale, grid, velocities)

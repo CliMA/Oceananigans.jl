@@ -129,12 +129,6 @@ end
     return θᵢ * (ĉ - cᵢ) + cᵢ
 end
 
-@inline without_bounds_preservation(scheme) = scheme
-
-@inline function without_bounds_preservation(scheme::WENO{N, FT, WCT}) where {N, FT, WCT}
-    return WENO{N, FT, WCT}(nothing, scheme.buffer_scheme, scheme.advecting_velocity_scheme, scheme.time_discretization)
-end
-
 #####
 ##### Flux divergence
 #####
