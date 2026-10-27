@@ -438,7 +438,7 @@ function test_field_time_series_array_boundary_conditions(arch)
 end
 
 function test_field_time_series_function_boundary_conditions(arch)
-    grid = RectilinearGrid(arch; topology=(Bounded, Periodic, Bounded), size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RectilinearGrid(arch; topology=(Open, Periodic, Bounded), size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
 
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
