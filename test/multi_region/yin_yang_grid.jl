@@ -49,7 +49,7 @@ all_nodes = [(i, j) for j in 1-Hy:Ny+Hy for i in 1-Hx:Nx+Hx]
     δ = grid.connectivity.overlap
 
     @test eltype(grid) == FT
-    @test topology(grid) == (Sides{Connected, Connected}, Sides{Connected, Connected}, Bounded)
+    @test topology(grid) == (TwoSided{Connected, Connected}, TwoSided{Connected, Connected}, Bounded)
     @test δ == 3 # ⌈(2H + s) / 4⌉ for halo H = 3 and stencil width s = 4
     @test size(grid) == (48 + 2δ, 16 + 2δ, 2)
     @test typeof(grid[1]) == typeof(grid[2]) <: RotatedLatitudeLongitudeGrid
