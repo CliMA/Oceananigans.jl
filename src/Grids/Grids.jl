@@ -87,6 +87,9 @@ The topology of a side is `Closed`, `Open`, `Connected`, `CenterFolded`, `FaceFo
 """
 struct TwoSided{L, R} <: AbstractTopology end
 
+# TODO: remove once ConservativeRegridding imports `TwoSided`
+const Sides = TwoSided
+
 """
     Closed
 
