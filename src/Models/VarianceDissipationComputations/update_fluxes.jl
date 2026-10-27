@@ -1,7 +1,6 @@
 using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, tracer_advecting_velocities, FluxCorrectedWENO,
-                                                       compute_antidiffusive_limiters!, rejected_antidiffusion
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, tracer_advecting_velocities
 
 advecting_velocities(model, tracer_name) = model.velocities
 
@@ -73,7 +72,6 @@ function cache_fluxes!(dissipation, model, tracer_name)
 
     if !isnothing(advection)
         launch!(architecture(grid), grid, params, _accumulate_advective_fluxes!, Fⁿ, Uⁿ, grid, advection, U, c, weight, keep)
-        limit_advective_fluxes!(Fⁿ, params, timestepper, advection, model, tracer_name, U)
     end
 
     ####
@@ -90,34 +88,3 @@ function cache_fluxes!(dissipation, model, tracer_name)
     return nothing
 end
 
-# the fluxes the substep takes through the faces where its flux correction limits Fᴴ, recomputed from the same stage state and tendency
-limit_advective_fluxes!(Fⁿ, params, timestepper, advection, model, tracer_name, U) = nothing
-
-function limit_advective_fluxes!(Fⁿ, params, timestepper::SplitRungeKuttaTimeStepper, advection::FluxCorrectedWENO, model, tracer_name, U)
-    flux_correction = timestepper.flux_correction
-    isnothing(flux_correction) && return nothing
-
-    grid = model.grid
-    Gⁿ = timestepper.Gⁿ[tracer_name]
-    Ψ⁻ = timestepper.Ψ⁻[tracer_name]
-    η = isnothing(model.free_surface) ? nothing : model.free_surface.displacement
-    compute_antidiffusive_limiters!(flux_correction, Gⁿ, model.tracers[tracer_name], Ψ⁻, η, grid, model.clock.last_stage_Δt, advection, U)
-
-    (; Aˣ, Aʸ, Aᶻ, R⁺, R⁻) = flux_correction
-    launch!(architecture(grid), grid, params, _subtract_rejected_fluxes!, Fⁿ, grid, R⁺, R⁻, Aˣ, Aʸ, Aᶻ)
-
-    return nothing
-end
-
-# neighbours along flat directions collapse onto the cell, where the antidiffusive fluxes vanish
-@kernel function _subtract_rejected_fluxes!(Fⁿ, grid, R⁺, R⁻, Aˣ, Aʸ, Aᶻ)
-    i, j, k = @index(Global, NTuple)
-    TX, TY, TZ = topology(grid)
-    sx, sy, sz = TX !== Flat, TY !== Flat, TZ !== Flat
-
-    @inbounds begin
-        Fⁿ.x[i, j, k] -= rejected_antidiffusion(Aˣ[i, j, k], R⁺, R⁻, (i - sx, j, k), (i, j, k))
-        Fⁿ.y[i, j, k] -= rejected_antidiffusion(Aʸ[i, j, k], R⁺, R⁻, (i, j - sy, k), (i, j, k))
-        Fⁿ.z[i, j, k] -= rejected_antidiffusion(Aᶻ[i, j, k], R⁺, R⁻, (i, j, k - sz), (i, j, k))
-    end
-end

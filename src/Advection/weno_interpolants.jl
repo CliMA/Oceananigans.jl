@@ -521,7 +521,7 @@ end
 @inline stretched_interpolate(scheme::WENO, bias, S, C) = biased_interpolate(scheme, bias, S, C)
 
 # the reconstruction with the optimal weights, which is the upwind-biased reconstruction of the same order
-@inline linear_interpolate(::WENO{N, FT}, bias, S) where {N, FT} = biased_interpolate(UpwindBiased{N, FT}(nothing, nothing, nothing), bias, S)
+@inline linear_interpolate(::WENO{N, FT}, bias, S) where {N, FT} = biased_interpolate(UpwindBiased{N, FT}(nothing, nothing), bias, S)
 
 # Interpolation functions
 @inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}

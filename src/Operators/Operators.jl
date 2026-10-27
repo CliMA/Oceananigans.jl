@@ -61,7 +61,6 @@ using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
     Center, Face, flip_location
 using DocStringExtensions: TYPEDSIGNATURES
-using Oceananigans.Utils: newton_div, BackendOptimizedDivision
 
 #####
 ##### Convenient aliases
