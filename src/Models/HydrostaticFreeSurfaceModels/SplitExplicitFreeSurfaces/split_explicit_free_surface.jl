@@ -120,10 +120,10 @@ Keyword Arguments
 
 - `gravitational_acceleration`: the gravitational acceleration (default: `Oceananigans.defaults.gravitational_acceleration`)
 
-- `substeps`: The number of substeps that divide the range `(t, t + 2Δt)`, where `Δt` is the baroclinic
-              timestep. Note that some averaging functions do not require substepping until `2Δt`.
-              The number of substeps is reduced automatically to the last index of `averaging_kernel`
-              for which `averaging_kernel > 0`.
+- `substeps`: The number of barotropic substeps taken per baroclinic timestep `Δt`; all of them are used.
+              The substeps are spaced evenly over `(t, t + τ★ Δt)`, where `τ★` is the fractional time at
+              which `averaging_kernel` reaches zero, excluding the substep at `τ★` itself. The substep size
+              is then rescaled so that the averaging weights are centered on `t + Δt`.
 
 - `cfl`: If set then the number of `substeps` are computed based on the advective timescale imposed from
          the barotropic gravity-wave speed that corresponds to depth `grid.Lz`. If `fixed_Δt` is provided,
@@ -150,13 +150,15 @@ Keyword Arguments
                   (`LocalHaloFilling`) — `extend_halos = false` is not required for open boundaries.
 
 - `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
-                      `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
-                      with the baroclinic time step `t + Δt` located at `τ = 1`. The `averaging_kernel`
-                      function should be centered at `τ = 1`, that is, ``∑ (aₘ m / M) = 1``, where the
-                      the summation occurs for ``m = 1, ..., M_*``. Here, ``m = 0`` and ``m = M`` correspond
-                      to the two consecutive baroclinic timesteps between which the barotropic timestepping
-                      occurs and ``M_*`` corresponds to the last barotropic time step for which the
-                      `averaging_kernel > 0`. By default, the averaging kernel described by
+                      `η` within the barotropic advancement. `τ` is the fractional time, with the baroclinic
+                      timesteps `t` and `t + Δt` located at `τ = 0` and `τ = 1`. The substepping ends at
+                      the last fractional time `τ★`: for the built-in kernels it is known (`τ★ ≈ 1.441` for
+                      the default kernel, `1.5` for `cosine_averaging_kernel` and `2` for
+                      `constant_averaging_kernel`); for other kernels it is the root of `averaging_kernel`
+                      found by searching from `τ = 2`, and `τ★ = 2` if no root is found. A kernel that
+                      never reaches zero, or whose root is not the right one, can be passed together with
+                      its `τ★` as `Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces.AveragingKernel(kernel, τ★)`.
+                      By default, the averaging kernel described by
                       [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
