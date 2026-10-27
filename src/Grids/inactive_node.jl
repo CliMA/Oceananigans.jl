@@ -17,7 +17,7 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side > grid.$dim))
         end
-    else # Sides{Closed, Connected}
+    else # LeftClosedTopology
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
@@ -35,15 +35,18 @@ $(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
-`inactive_cell`s include the halo cells beyond the `Closed` sides of `Bounded`, `Sides{Closed, Connected}` and `Sides{Connected, Closed}`
-directions, and cells within an immersed boundary.
+`inactive_cell`s include the halo cells beyond the `Closed` sides of `Bounded`, `Sides{Connected, Closed}`, and
+`Sides{Closed, R}` directions (where `R` is `Connected` or a folded side), and cells within an immersed boundary.
 Cells that are staggered with respect to tracer cells and which lie _on_ the boundary are considered active.
 """
 @inline inactive_cell(i, j, k, grid) = false
 @inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
+# Closed on the left, open on the right (connected or folded)
+const LeftClosedTopology = Sides{Closed, <:Union{CommunicatingSide, CenterFolded, FaceFolded}}
+
 # Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
-Topos = (:Bounded, :(Sides{Connected, Closed}), :(Sides{Closed, Connected}))
+Topos = (:Bounded, :(Sides{Connected, Closed}), :LeftClosedTopology)
 
 for PrimaryTopo in Topos
 
