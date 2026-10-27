@@ -117,7 +117,8 @@ for bias in (:symmetric, :biased)
                     if $outside_buffer($index, topology(grid, $d), grid.$N, scheme)
                         return ψ̂
                     else
-                        return $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...)
+                        # BFloat16 WENO reconstructions are Float32, the lowest-order buffer schemes BFloat16
+                        return convert(typeof(ψ̂), $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                     end
                 end
             else
