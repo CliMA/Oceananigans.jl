@@ -8,7 +8,7 @@ paths:
 
 # Style Rules
 
-These rules are **ALWAYS** in effect. Apply them in every file, every scope — no exceptions.
+These apply to every file under the paths above.
 
 ## Variable Naming
 
