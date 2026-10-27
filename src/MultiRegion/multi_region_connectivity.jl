@@ -1,13 +1,13 @@
 using Oceananigans.Grids: topology
 
 """
-    struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+    struct RegionalConnectivity{S, FS} <: AbstractConnectivity
 
 The connectivity among various regions in a multi-region partition.
 
 $(TYPEDFIELDS)
 """
-struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
+struct RegionalConnectivity{S, FS} <: AbstractConnectivity
     "the current region rank"
          rank :: Int
     "the region from which boundary condition comes from"
@@ -18,9 +18,8 @@ struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <
     from_side :: FS
 end
 
-function Connectivity(devices, partition::Union{XPartition, YPartition}, global_grid::AbstractGrid)
-    arch = architecture(global_grid)
-    regions = MultiRegionObject(arch, Tuple(1:length(devices)), devices)
+function Connectivity(partition::Union{XPartition, YPartition}, global_grid::AbstractGrid)
+    regions = MultiRegionObject(Tuple(1:length(partition)))
     @apply_regionally connectivity = find_regional_connectivities(regions, partition, global_grid)
     return connectivity
 end
@@ -69,7 +68,7 @@ function find_south_connectivity(region, p::YPartition, global_grid)
     topo = topology(global_grid)
 
     if region == 1
-        connectivity = topo[1] <: Periodic ? RegionalConnectivity(region, length(p), South(), North()) : nothing
+        connectivity = topo[2] <: Periodic ? RegionalConnectivity(region, length(p), South(), North()) : nothing
     else
         connectivity = RegionalConnectivity(region, region - 1, South(), North())
     end
@@ -81,7 +80,7 @@ function find_north_connectivity(region, p::YPartition, global_grid)
     topo = topology(global_grid)
 
     if region == length(p)
-        connectivity = topo[1] <: Periodic ? RegionalConnectivity(region, 1, North(), South()) : nothing
+        connectivity = topo[2] <: Periodic ? RegionalConnectivity(region, 1, North(), South()) : nothing
     else
         connectivity = RegionalConnectivity(region, region + 1, North(), South())
     end

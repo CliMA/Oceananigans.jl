@@ -4,28 +4,23 @@ deconcretize(z::StaticVerticalDiscretization) =
         deconcretize(z.cᵃᵃᶠ),
         deconcretize(z.cᵃᵃᶜ),
         deconcretize(z.Δᵃᵃᶠ),
-        deconcretize(z.Δᵃᵃᶜ)
+        deconcretize(z.Δᵃᵃᶜ),
+        deconcretize(z.Δ⁻¹ᵃᵃᶠ),
+        deconcretize(z.Δ⁻¹ᵃᵃᶜ)
     )
 
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
-
-function materialize_immersed_boundary(grid::ReactantGrid, ib::GridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
-    new_ib = GridFittedBottom(bottom_field)
-    return new_ib
-end
-
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
-                                                       gfb.immersed_condition)
+                                                       gfb.immersed_condition,
+                                                       deconcretize(gfb.bottom_cell_index))
 
 const CPUUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:CPU}
 const CPUImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} =
     ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:CPU}
 
 function constant_with_arch(cpu_grid::AbstractUnderlyingGrid, arch)
-    GridType = typeof(cpu_grid).name.wrapper
+    GridType = unparameterized_type(typeof(cpu_grid))
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)

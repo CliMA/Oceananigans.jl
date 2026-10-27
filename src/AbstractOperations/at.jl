@@ -1,4 +1,4 @@
-using Oceananigans
+using Oceananigans: Oceananigans
 using Oceananigans.Fields: default_indices, compute_index_intersection
 
 """
@@ -22,6 +22,20 @@ function insert_location!(ex::Expr, location)
     return nothing
 end
 
+# Transform expressions like :((LX, LY, LZ)) into :((LX(), LY(), LZ()))
+# when LX, LY, LZ are Face, Center, or Nothing. Leave eveything else unchanged.
+function instantiate_location_expression(exp::Expr)
+    new_exp = deepcopy(exp)
+    for (i, arg) in enumerate(new_exp.args)
+        new_exp.args[i] = instantiate_location_expression(arg)
+    end
+    return new_exp
+end
+
+instantiate_location_expression(arg) = arg == :Center  ? :(Center()) :
+                                       arg == :Face    ? :(Face()  ) :
+                                       arg == :Nothing ? :(nothing ) : arg
+
 "Fallback for when `insert_location` is called on objects other than expressions."
 insert_location!(anything, location) = nothing
 
@@ -32,7 +46,9 @@ insert_location!(anything, location) = nothing
 interpolate_operation(L, x) = x
 
 function interpolate_operation(L, x::AbstractField)
-    L == location(x) && return x # Don't interpolate unnecessarily
+    if L == instantiated_location(x) || L == location(x)
+        return x # Don't interpolate unnecessarily
+    end
     return interpolate_identity(L, x)
 end
 
@@ -43,6 +59,7 @@ Modify the `abstract_operation` so that it returns values at
 `location`, where `location` is a 3-tuple of `Face`s and `Center`s.
 """
 macro at(location, abstract_operation)
+    location = instantiate_location_expression(location)
     insert_location!(abstract_operation, location)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations
@@ -59,28 +76,23 @@ indices(::Function) = default_indices(3)
 indices(::Number)   = default_indices(3)
 
 """
-    intersect_indices(loc, operands...)
+$(TYPEDSIGNATURES)
 
 Utility to compute the intersection of `operands' indices.
 """
-function intersect_indices(loc, operands...)
+intersect_indices(loc, operands...) = compute_operand_intersection((:, :, :), loc, operands...)
 
-    idx1 = compute_operand_intersection(Colon(), loc[1], operands...; dim=1)
-    idx2 = compute_operand_intersection(Colon(), loc[2], operands...; dim=2)
-    idx3 = compute_operand_intersection(Colon(), loc[3], operands...; dim=3)
+compute_operand_intersection(to_idx, to_loc) = to_idx
 
-    return (idx1, idx2, idx3)
-end
+# Fields adapted for a kernel drop their indices
+@inline operand_indices(op) = something(indices(op), default_indices(3))
 
-# Fallback for `KernelFunctionOperation`s with no argument
-compute_operand_intersection(::Colon, to_loc; kw...) = Colon()
+"""
+$(TYPEDSIGNATURES)
 
-compute_operand_intersection(to_idx, to_loc, op; dim) =
-    compute_index_intersection(to_idx, indices(op)[dim],
-                               to_loc, location(op, dim))
-
-"""Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
-function compute_operand_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
-    new_to_idx = compute_index_intersection(to_idx, indices(op1)[dim], to_loc, location(op1, dim))
-    return compute_operand_intersection(new_to_idx, to_loc, op2, more_ops...; dim)
+Compute the index intersection of all three dimensions at once, recursively over the operands.
+"""
+function compute_operand_intersection(to_idx, to_loc, op, more_ops...)
+    new_to_idx = map(compute_index_intersection, to_idx, operand_indices(op), to_loc, location(op))
+    return compute_operand_intersection(new_to_idx, to_loc, more_ops...)
 end

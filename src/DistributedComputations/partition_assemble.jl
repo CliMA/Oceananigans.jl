@@ -9,14 +9,14 @@ all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communica
 all_reduce!(op, val, arch) = val
 
 # MPI Barrier
-barrier!(arch) = nothing
-barrier!(arch::Distributed) = MPI.Barrier(arch.communicator)
+barrier(arch) = nothing
+barrier(arch::Distributed) = barrier(arch.communicator)
 
 """
-    concatenate_local_sizes(local_size, arch::Distributed)
+$(TYPEDSIGNATURES)
 
-Return a 3-Tuple containing a vector of `size(grid, dim)` for each rank in
-all 3 directions.
+Return a 3-Tuple of vectors, where each vector contains the value of
+`local_size[d]` for every rank in dimension `d` of `arch`.
 """
 concatenate_local_sizes(local_size, arch::Distributed) =
     Tuple(concatenate_local_sizes(local_size, arch, d) for d in 1:length(local_size))
@@ -40,7 +40,7 @@ function concatenate_local_sizes(n::Number, arch::Distributed, dim)
 end
 
 """
-    partition_coordinate(coordinate, n, arch, dim)
+$(TYPEDSIGNATURES)
 
 Return the local component of the global `coordinate`, which has
 local length `n` and is distributed on `arch`itecture
@@ -60,28 +60,30 @@ function partition_coordinate(c::AbstractVector, n, arch, dim)
     return c[start_idx:end_idx]
 end
 
+"""
+    PartitionedInterval(interval, N, offset)
+
+The part of a regular coordinate that starts `offset` cells into the whole coordinate, which spans `interval` with `N`
+cells.
+"""
+struct PartitionedInterval{C}
+    interval :: C
+    N :: Int
+    offset :: Int
+end
+
 function partition_coordinate(c::Tuple, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
-    N  = sum(nl)
-    R  = arch.ranks[dim]
-    Δl = (c[2] - c[1]) / N
-
-    l = Tuple{Float64, Float64}[(c[1], c[1] + Δl * nl[1])]
-    for i in 2:R
-        lp = l[i-1][2]
-        push!(l, (lp, lp + Δl * nl[i]))
-    end
-
-    return l[arch.local_index[dim]]
+    r  = arch.local_index[dim]
+    return PartitionedInterval(c, sum(nl), sum(nl[1:r-1]))
 end
 
 """
-    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm)
+$(TYPEDSIGNATURES)
 
-Builds a linear global coordinate vector given a local coordinate vector `c_local`
-a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
-and `arch`itecture. Since we use a global reduction, only ranks at positions
-1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
+Builds a linear global coordinate vector along dimension `dim` given a local coordinate
+vector `c_local`, the local sizes `n`, and the architecture `arch`. Since we use a global
+reduction, only ranks at position 1 in the other two directions fill the 1D array.
 """
 function assemble_coordinate(c_local::AbstractVector, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
@@ -124,7 +126,7 @@ end
 # TODO: make partition and construct_global_array work for 3D distribution.
 
 """
-    partition(A, b)
+$(TYPEDSIGNATURES)
 
 Partition the globally-sized `A` into local arrays with the same size as `b`.
 """
@@ -134,7 +136,7 @@ partition(f::Function, arch, n) = f
 partition(A::AbstractArray, arch::AbstractSerialArchitecture, local_size) = A
 
 """
-    partition(A, arch, local_size)
+$(TYPEDSIGNATURES)
 
 Partition the globally-sized `A` into local arrays with `local_size` on `arch`itecture.
 """
@@ -180,10 +182,10 @@ function partition(A::AbstractArray, arch::Distributed, local_size)
 end
 
 """
-    construct_global_array(c_local, arch, (nx, ny, nz))
+$(TYPEDSIGNATURES)
 
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
-Usefull for boundary arrays, forcings and initial conditions.
+Useful for boundary arrays, forcings, and initial conditions.
 """
 construct_global_array(c_local::AbstractArray, arch, n) = c_local
 construct_global_array(c_local::Function, arch,  N)     = c_local

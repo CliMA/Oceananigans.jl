@@ -53,7 +53,7 @@ func(i, j, k, grid, clock, model_fields)
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
 and `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
+and the fields in `model.closure_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
 of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
@@ -85,7 +85,7 @@ Note that because forcing locations are regularized within the
 
 ```jldoctest forcing
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
+model = NonhydrostaticModel(grid; forcing=(v=v_forcing,))
 
 model.forcing.v
 
@@ -168,7 +168,7 @@ end
 @inline field_time_series_forcing_func(i, j, k, grid, clock, fields, a::FlavorOfFTS) = @inbounds a[i, j, k, Time(clock.time)]
 
 """
-    Forcing(array::AbstractArray)
+$(TYPEDSIGNATURES)
 
 Return a `Forcing` by `array`, which can be added to the tendency of a model field.
 
@@ -177,11 +177,10 @@ Forcing is computed by calling `array[i, j, k]`, so `array` must be 3D with `siz
 Forcing(array::AbstractArray) = Forcing(array_forcing_func; discrete_form=true, parameters=array)
 
 """
-    Forcing(array::FlavorOfFTS)
+$(TYPEDSIGNATURES)
 
 Return a `Forcing` by a `FieldTimeSeries`, which can be added to the tendency of a model field.
 
 Forcing is computed by calling `fts[i, j, k, Time(clock.time)]`, so the `FieldTimeSeries` must have the spatial dimensions of the `grid`.
 """
 Forcing(fts::FlavorOfFTS) = Forcing(field_time_series_forcing_func; discrete_form=true, parameters=fts)
-

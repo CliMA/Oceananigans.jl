@@ -1,4 +1,3 @@
-using Random
 using Oceananigans.Utils: instantiate
 using Oceananigans.Grids: Face, Center
 
@@ -47,7 +46,7 @@ identify_an_identity(number) = Symbol(:identity, torus(number, 1, number_of_iden
 identity_counter = 0
 
 """
-    interpolation_operator(from, to)
+$(TYPEDSIGNATURES)
 
 Returns the function to interpolate a field `from = (XA, YZ, ZA)`, `to = (XB, YB, ZB)`,
 where the `XA`s and `XB`s are `Face()` or `Center()` instances.
@@ -69,7 +68,7 @@ function interpolation_operator(from, to)
 end
 
 """
-    interpolation_operator(::Nothing, to)
+$(TYPEDSIGNATURES)
 
 Return the `identity` interpolator function. This is needed to obtain the interpolation
 operator for fields that have no intrinsic location, like numbers or functions.
@@ -89,16 +88,20 @@ function assumed_field_location(name)
     name === :ρv && return (Center(), Face(), Center())
     name === :w  && return (Center(), Center(), Face())
     name === :ρw && return (Center(), Center(), Face())
+    name === :U  && return (Face(), Center(), nothing)
+    name === :V  && return (Center(), Face(), nothing)
+    name === :η  && return (Center(), Center(), Face())
     return (Center(), Center(), Center())
 end
 
 """
-    index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
+$(TYPEDSIGNATURES)
 
-Returns a tuple of indices and interpolation functions to the location `X, Y, Z`
+Return a tuple of indices and interpolation functions to the location `X, Y, Z`
 for each name in `dependencies`.
 
-The indices correspond to the position of each dependency within `model_field_names`.
+The indices correspond to the position of each dependency within `model_field_names`,
+and are wrapped in `Val` so that indexing a heterogeneous `model_fields` with them is type-stable.
 
 The interpolation functions interpolate the dependent field to `X, Y, Z`.
 """
@@ -113,7 +116,7 @@ function index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
 
     !any(isnothing.(indices)) || error("$dependencies are required to be model fields but only $model_field_names are present")
 
-    return indices, interps
+    return map(Val, indices), interps
 end
 
 # Adds an interpolate function which takes i, j, k, grid, from, and, to as an argument

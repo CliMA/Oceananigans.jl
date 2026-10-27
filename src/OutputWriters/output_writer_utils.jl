@@ -1,8 +1,7 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
+using Oceananigans.DistributedComputations: DistributedComputations, Distributed, DistributedGrid, Partition
+using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
@@ -12,11 +11,36 @@ using Oceananigans.OutputReaders: auto_extension
 ##### Output writer utilities
 #####
 
+"""
+$(TYPEDSIGNATURES)
+
+Return the time a writer should stamp its next output with, given the model `clock` and the
+writer's `schedule`. Falls back to `clock.time`; a schedule whose nominal output time differs
+from when it actually fires (such as `FilteredTimeInterval`) overrides this instead of leaving each
+writer to work out and apply that correction on its own.
+"""
+output_time(clock, schedule) = clock.time
+
+"""
+$(TYPEDSIGNATURES)
+
+Return whether an output written on `schedule` exists at the start of a simulation (iteration 0).
+Most schedules have one (a `TimeInterval`, for instance, treats iteration 0 as its own first
+output); a schedule whose output only exists once it has accumulated some data, like
+`FilteredTimeInterval`, overrides this to `false`, and `write_output!` then skips the initial write.
+"""
+has_initial_output(schedule) = true
+
+# Names of the requested outputs; unordered dictionaries have no fixed iteration order, so their keys are sorted
+output_names(outputs) = keys(outputs)
+output_names(outputs::AbstractDict) = sort!(collect(keys(outputs)); by = string)
+output_names(outputs::OrderedDict) = keys(outputs)
+
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
-initialize!(::NoFileSplitting, model) = nothing
+Oceananigans.initialize!(::NoFileSplitting, model) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
@@ -31,6 +55,13 @@ the `size_limit`.
 
 The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
+
+The `size_limit` applies to the on-disk size of the file, which includes
+the metadata the output writer stores in every part file upon initialization.
+Compression typically shrinks the output data much more than the metadata,
+so choose a `size_limit` comfortably larger than the metadata overhead:
+otherwise every part file exceeds the limit and contains a single output,
+and the total output size can end up much larger than without splitting.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
 (fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
@@ -52,21 +83,41 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     return nothing
 end
 
+validate_file_splitting(schedule, args...) = nothing
+
 """
-    ext(ow)
+$(TYPEDSIGNATURES)
 
 Return the file extension for the output writer or output
 writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
-ext(ow::AbstractOutputWriter) = ext(typeof(fw))
+ext(ow::AbstractOutputWriter) = ext(typeof(ow))
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the filepath for the given `part` number. Handles both base paths
+(without `_partN` suffix) and paths that already contain a `_partN` suffix.
+"""
+function filepath_for_part(filepath, part)
+    extension = splitext(filepath)[2] # e.g., ".jld2" or ".nc"
+    esc_ext = replace(extension, "." => "\\.")
+    # Strip any existing _partN suffix to get the base path
+    base = replace(filepath, Regex("_part\\d+" * esc_ext * "\$") => extension)
+    if part > 1
+        return replace(base, Regex(esc_ext * "\$") => "_part$(part)" * extension)
+    else
+        return base
+    end
+end
 
 # TODO: add example to docstring below
 
 """
-    saveproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
-Save data in `obj` to `file[address]` in a "languate-agnostic" way,
+Save data in `obj` to `file[address]` in a "language-agnostic" way,
 thus primarily consisting of arrays and numbers, absent Julia-specific types
 or other data that can _only_ be interpreted by Julia.
 """
@@ -95,19 +146,21 @@ end
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
-        bc = getproperty(bcs, boundary)
-        file[address * "/$boundary/type"] = bc_str(bc)
+        if !(boundary == :kernels || boundary == :ordered_bcs) # Skip kernels and ordered_bcs.
+            bc = getproperty(bcs, boundary)
+            file[address * "/$boundary/type"] = bc_str(bc)
 
-        if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
-            file[address * "/$boundary/condition"] = missing
-        else
-            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            if bc === nothing || bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
+                file[address * "/$boundary/condition"] = missing
+            else
+                file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
+            end
         end
     end
 end
 
 """
-    serializeproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
 Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
 `CuArray` to `Array` so data can be loaded on any architecture,
@@ -133,14 +186,21 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
+function remove_function_bcs(fbcs::FieldBoundaryConditions)
+    west     = has_reference(Function, fbcs.west)     ? missing : fbcs.west
+    east     = has_reference(Function, fbcs.east)     ? missing : fbcs.east
+    south    = has_reference(Function, fbcs.south)    ? missing : fbcs.south
+    north    = has_reference(Function, fbcs.north)    ? missing : fbcs.north
+    bottom   = has_reference(Function, fbcs.bottom)   ? missing : fbcs.bottom
+    top      = has_reference(Function, fbcs.top)      ? missing : fbcs.top
+    immersed = has_reference(Function, fbcs.immersed) ? missing : fbcs.immersed
+    new_fbcs = FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    return new_fbcs
+end
+
 function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
-    # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
-    # rather than punting with `missing` instead.
-    if has_reference(Function, fbcs)
-        file[address] = missing
-    else
-        file[address] = on_architecture(CPU(), fbcs)
-    end
+    new_fbcs = remove_function_bcs(fbcs)
+    file[address] = on_architecture(CPU(), new_fbcs)
 end
 
 function serializeproperty!(file, address, f::Field)
@@ -183,8 +243,15 @@ has_reference(::Type{T}, ::NTuple{N, <:T}) where {N, T} = true
 has_reference(T::Type{Function}, f::Field) =
     has_reference(T, f.data) || has_reference(T, f.boundary_conditions)
 
+# Short circuit on boundary conditions.
+has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
+    has_reference(T, bcs.west) || has_reference(T, bcs.east) ||
+    has_reference(T, bcs.south) || has_reference(T, bcs.north) ||
+    has_reference(T, bcs.bottom) || has_reference(T, bcs.top) ||
+    has_reference(T, bcs.immersed)
+
 """
-    has_reference(has_type, obj)
+$(TYPEDSIGNATURES)
 
 Check (or attempt to check) if `obj` contains, somewhere among its
 subfields and subfields of fields, a reference to an object of type
@@ -225,4 +292,3 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
-

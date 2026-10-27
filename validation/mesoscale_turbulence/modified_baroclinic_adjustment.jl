@@ -52,11 +52,11 @@ closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid=grid,
-    coriolis=coriolis,
-    buoyancy=BuoyancyTracer(),
-    closure=closures,
-    tracers=(:b, :c),
+model = HydrostaticFreeSurfaceModel(grid;
+                                    coriolis = coriolis,
+                                    buoyancy = BuoyancyTracer(),
+                                    closure = closures,
+                                    tracers = (:b, :c),
     momentum_advection=WENO5(),
     tracer_advection=WENO5(),
     free_surface=ImplicitFreeSurface())
@@ -128,7 +128,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
                                                 schedule=TimeInterval(save_fields_interval),
                                                 filename=filename * "_fields",
-                                                overwrite_existing=true)
+                                                overwrite_files=true)
 
 @info "Running the simulation..."
 

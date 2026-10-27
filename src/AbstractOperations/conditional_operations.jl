@@ -1,9 +1,7 @@
-using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
-using Oceananigans.Grids: architecture
+using Oceananigans.Fields: OneField
 using Base: @propagate_inbounds
 
-import Base: minimum, maximum, sum, all, any, prod
-import Oceananigans.Architectures: on_architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
@@ -19,11 +17,19 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
-        T = eltype(operand)
+        T = conditional_eltype(func, eltype(operand), condition, mask)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
     end
 end
+
+# The type of the values: `func`'s of the operand's elements, or the mask where the condition doesn't hold
+@inline conditional_eltype(::Nothing, T, condition, mask) = T
+@inline conditional_eltype(::Nothing, T, ::Nothing, mask) = T
+@inline conditional_eltype(func, T, ::Nothing, mask) = concrete_or(Base.promote_op(func, T), T)
+@inline conditional_eltype(func, T, condition, mask) = promote_type(conditional_eltype(func, T, nothing, mask), typeof(mask))
+
+@inline concrete_or(T, fallback) = isconcretetype(T) ? T : fallback
 
 # Some special cases
 const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
@@ -115,7 +121,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -126,7 +132,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
@@ -159,6 +165,8 @@ end
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
 @inline condition_operand(func, op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::typeof(identity), op::ConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::Nothing, op::ConditionalOperation, ::Nothing, mask) = op
 @inline condition_operand(op::ConditionalOperation, ::Nothing, mask) = op
 
 @inline condition_operand(func, op::ConditionalOperation, condition, mask) = error("not supported")
@@ -170,6 +178,7 @@ end
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
+
 
 @inline materialize_condition!(c::ConditionalOperation) = set!(c.operand, c)
 
@@ -197,7 +206,9 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
+@inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)
@@ -209,7 +220,7 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
-on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(on_architecture(to, c.operand),
                                      on_architecture(to, c.func),
                                      on_architecture(to, c.grid),

@@ -6,10 +6,11 @@ struct LillyCoefficient{FT}
 end
 
 """
-    LillyCoefficient([FT=Float64;] smagorinsky=0.16, reduction_factor=1)
+    LillyCoefficient([FT=Oceananigans.defaults.FloatType;] smagorinsky=0.16, reduction_factor=1)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient according to closure
-proposed by [Lilly62](@citet), and [Lilly66](@citet), which has an eddy viscosity of the form
+proposed by [Lilly (1962)](@cite Lilly62), and [Lilly (1966)](@cite Lilly66), which has an
+eddy viscosity of the form
 
 ```
 νₑ = (Cˢ * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
@@ -27,19 +28,21 @@ Arguments
 Keyword arguments
 =================
 
-* `smagorinsky`: Smagorinsky coefficient `Cˢ`. Default value is 0.16 as obtained by Lilly (1966).
+* `smagorinsky`: Smagorinsky coefficient `Cˢ`. Default value is 0.16 as obtained by
+                 [Lilly (1966)](@cite Lilly66).
 
-* `reduction_factor`: Buoyancy term multipler `Cb` based on Lilly (1962) (`reduction_factor = 0`
-        turns it off, `reduction_factor ≠ 0` turns it on.
-        Typically, and according to the original work by Lilly (1962), `Cb = 1 / Pr`.)
+* `reduction_factor`: Buoyancy term multiplier `Cb` based on [Lilly (1962)](@cite Lilly62)
+                      (`reduction_factor = 0` turns it off, `reduction_factor ≠ 0` turns it on.
+                      Typically, and according to the original work by [Lilly (1962)](@cite Lilly62),
+                      `Cb = 1 / Pr`.)
 
 References
 ==========
 
-Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
+Lilly, D. K. (1962). On the numerical simulation of buoyant convection. Tellus
 
-Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments."
-    NCAR Manuscript No. 281, 0, (1966)
+Lilly, D. K. (1966). The representation of small-scale turbulence in numerical simulation experiments.
+    NCAR Manuscript No. 281, 0.
 """
 LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction_factor=1) =
     LillyCoefficient(convert(FT, smagorinsky), convert(FT, reduction_factor))
@@ -47,7 +50,7 @@ LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
 
 """
-    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
+    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 [Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
@@ -113,7 +116,7 @@ end
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 """
-    stability(N², Σ², Cb)
+$(TYPEDSIGNATURES)
 
 Return the stability function
 
@@ -130,7 +133,7 @@ when ``N^2 > 0``, and 1 otherwise.
 end
 
 @inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagorinskyLilly,
-                                                diffusivity_fields, Σ², buoyancy, tracers)
+                                                closure_fields, Σ², buoyancy, tracers)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     c₀ = closure_coefficient(i, j, k, grid, closure.coefficient.smagorinsky)
     cᵇ = closure.coefficient.reduction_factor
@@ -142,5 +145,3 @@ Base.summary(dc::LillyCoefficient) = string("LillyCoefficient(smagorinsky = $(dc
 Base.show(io::IO, dc::LillyCoefficient) = print(io, "LillyCoefficient with\n",
                                                     "├── Smagorinsky coefficient = ", dc.smagorinsky, "\n",
                                                     "└── reduction_factor = ", dc.reduction_factor)
-
-

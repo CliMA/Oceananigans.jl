@@ -11,7 +11,9 @@ grid = RectilinearGrid(size = (Nx, Ny),
                        topology = (Periodic, Periodic, Flat))
 
 clock = Clock{Float64}(time=0)
-model = NonhydrostaticModel(; grid, clock, advection=WENO(order=9))
+model = NonhydrostaticModel(grid;
+                            clock,
+                            advection = WENO(order=9))
 
 ui(x, y) = randn()
 set!(model, u=ui, v=ui)
@@ -43,9 +45,8 @@ outputs = merge(model.velocities, (; e))
 ow = JLD2Writer(model, outputs;
                 filename = "float_point_test_$(Nx)_$FT.jld2",
                 schedule = TimeInterval(0.1),
-                overwrite_existing = true)
+                overwrite_files = true)
 
 simulation.output_writers[:jld2] = ow
 
 run!(simulation)
-

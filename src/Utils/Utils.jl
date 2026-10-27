@@ -1,17 +1,24 @@
 module Utils
 
-export configure_kernel, launch!, KernelParameters
+export configure_kernel, launch!, KernelParameters, kernel_time_step
 export prettytime, pretty_filesize
-export tupleit, parenttuple, datatuple, datatuples
-export validate_intervals, time_to_run
+export tupleit, parenttuple, datatuple, datatuples, named_tuple
 export ordered_dict_show
 export instantiate
 export with_tracers
+export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
-export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
-export apply_regionally!, construct_regionally, @apply_regionally, @regional, MultiRegionObject
-export isregional, getregion, _getregion, getdevice, switch_device!, sync_device!, sync_all_devices!
-export newton_div
+export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations, PrecedingIterations, TimeOffset
+export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+export isregional, getregion, _getregion, regions, sync_device!
+export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
+export f32_safe_cbrt
+export TabulatedFunction
+export interpolator, _interpolate
+export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Misc. small utils
@@ -20,26 +27,35 @@ export newton_div
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-getnamewrapper(type) = typeof(type).name.wrapper
+# Return the type `T` stripped of its type parameters, e.g. `RectilinearGrid`
+# for `RectilinearGrid{Float64, Periodic, Periodic, Bounded, ...}`. Relies on
+# `T` being bound to its name in the module that defines it, as every `struct`
+# definition does.
+unparameterized_type(T::Type) = getglobal(parentmodule(T), nameof(T))
+
+function get_active_cells_map end
 
 #####
 ##### Include utils
 #####
 
+include("time_discretizations.jl")
 include("prettysummary.jl")
 include("kernel_launching.jl")
 include("prettytime.jl")
 include("pretty_filesize.jl")
 include("tuple_utils.jl")
-include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
+include("times_and_datetimes.jl")
 include("schedules.jl")
 include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
-include("coordinate_transformations.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("f32_safe_cbrt.jl")
+include("interpolation.jl")
+include("tabulated_function.jl")
 
 end # module

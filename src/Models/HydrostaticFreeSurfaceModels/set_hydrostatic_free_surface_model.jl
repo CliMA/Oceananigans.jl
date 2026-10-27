@@ -1,15 +1,16 @@
-using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
-using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: set!
 
 """
-    set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+    set!(model::HydrostaticFreeSurfaceModel;
+         u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+         reconcile_state=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
-(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.η`,
+(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.displacement`,
 and the `data` may be an array, a function with arguments `(x, y, z)`, or any data type
 for which a `set!(ϕ::AbstractField, data)` function exists.
 
@@ -19,7 +20,7 @@ Example
 ```jldoctest
 using Oceananigans
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid, tracers=:T)
+model = HydrostaticFreeSurfaceModel(grid; tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -40,13 +41,14 @@ model.velocities.u
 16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
 @inline function set!(model::HydrostaticFreeSurfaceModel;
                       u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                      reconcile_state=true,
                       kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
@@ -58,15 +60,19 @@ model.velocities.u
             ϕ = getproperty(model.tracers, fldname)
         elseif fldname ∈ propertynames(model.free_surface)
             ϕ = getproperty(model.free_surface, fldname)
+        elseif fldname === :η
+            # The free surface displacement is accessed via `model.free_surface.displacement`
+            # but the public interface uses `η` as the canonical name.
+            ϕ = model.free_surface.displacement
         else
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
 
-        @apply_regionally set!(ϕ, value)
+        @apply_regionally set!(ϕ, value, model.clock, fields(model))
     end
 
-    # initialize!(model)
-    initialization_update_state!(model; compute_tendencies=false)
+    reconcile_state && reconcile_state!(model)
+    update_state!(model)
 
     return nothing
 end
@@ -74,8 +80,12 @@ end
 
 const IntrinsicCoordinateGrid = Union{
     OrthogonalSphericalShellGrid,
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, OrthogonalSphericalShellGrid},
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid},
 }
+
+# Whether extrinsic velocities are rotated into the grid's basis by `set_from_extrinsic_velocities!`
+intrinsic_coordinate_grid(grid) = false
+intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 
 """
     set_velocities!(model, u, v; intrinsic_velocities=false)
@@ -90,9 +100,12 @@ This abstraction is necessary for `OrthogonalSphericalShellGrid` and derivatives
 where the extrinsic and intrinsic coordinate systems differ.
 """
 function set_velocities!(model, u, v; intrinsic_velocities=false)
-    if intrinsic_velocities || !(model.grid isa IntrinsicCoordinateGrid)
-        u isa ZeroField || set!(model.velocities.u, u)
-        v isa ZeroField || set!(model.velocities.v, v)
+    # Leave the velocities untouched when neither is given, as for `set!(model; T)`
+    u isa ZeroField && v isa ZeroField && return nothing
+
+    if intrinsic_velocities || !intrinsic_coordinate_grid(model.grid)
+        u isa ZeroField || @apply_regionally set!(model.velocities.u, u, model.clock, fields(model))
+        v isa ZeroField || @apply_regionally set!(model.velocities.v, v, model.clock, fields(model))
     else
         set_from_extrinsic_velocities!(model.velocities, model.grid, u, v)
     end
@@ -102,8 +115,8 @@ end
 function set_from_extrinsic_velocities!(velocities, grid, u, v)
     grid = grid
     arch = grid.architecture
-    uᶜᶜᶜ = CenterField(grid) 
-    vᶜᶜᶜ = CenterField(grid) 
+    uᶜᶜᶜ = CenterField(grid)
+    vᶜᶜᶜ = CenterField(grid)
     u isa ZeroField || set!(uᶜᶜᶜ, u)
     v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)

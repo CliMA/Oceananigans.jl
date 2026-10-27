@@ -29,7 +29,7 @@ viscAh=300.
 viscAz=2.e-4
 
 grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
-                       size = (Ny, Nz), 
+                       size = (Ny, Nz),
                        y = (-Ly/2, Ly/2),
                        z = ([0 cumsum(reverse(dz))']'.-Lz),
                        halo = (3, 3))
@@ -52,7 +52,7 @@ cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = 0e3,
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                     closure = triad_closure, #, h_visc, v_visc),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c))
@@ -98,7 +98,7 @@ function progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -107,7 +107,7 @@ add_callback!(simulation, progress, IterationInterval(10))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename * "_fields",
-                                                      overwrite_existing = true)
+                                                      overwrite_files = true)
 
 @info "Running the simulation..."
 
@@ -175,4 +175,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

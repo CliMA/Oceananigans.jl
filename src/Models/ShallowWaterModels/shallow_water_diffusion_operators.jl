@@ -1,5 +1,4 @@
 using Oceananigans.Operators
-using Oceananigans.Architectures: device
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
 using Oceananigans.TurbulenceClosures:
@@ -12,8 +11,8 @@ using Oceananigans.TurbulenceClosures:
                         ∂ⱼ_τ₂ⱼ
 
 import Oceananigans.TurbulenceClosures:
-                        build_diffusivity_fields,
-                        compute_diffusivities!,
+                        build_closure_fields,
+                        compute_closure_fields!,
                         viscosity,
                         with_tracers,
                         νᶜᶜᶜ
@@ -25,8 +24,7 @@ struct ShallowWaterScalarDiffusivity{V, X, N} <: AbstractScalarDiffusivity{Expli
 end
 
 """
-    ShallowWaterScalarDiffusivity([FT::DataType=Float64;]
-                                  ν=0, ξ=0, discrete_form=false)
+$(TYPEDSIGNATURES)
 
 Return a scalar diffusivity for the shallow water model.
 
@@ -63,7 +61,7 @@ on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarDiffusivity, model)
+function compute_closure_fields!(closure_fields, closure::ShallowWaterScalarDiffusivity, model)
 
     arch  = model.architecture
     grid  = model.grid
@@ -73,12 +71,12 @@ function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarD
 
     launch!(arch, grid, :xyz,
             _calculate_shallow_water_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, clock, model_fields)
+            closure_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing
 end
 
-build_diffusivity_fields(grid, clock, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
+build_closure_fields(grid, clock, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
 
 #####
 ##### Diffusion flux divergence operators

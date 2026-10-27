@@ -3,43 +3,102 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStar, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Utils
-using Oceananigans.Utils: launch!
-using Oceananigans.Grids: AbstractGrid
-
-using DocStringExtensions
+using Oceananigans.Architectures: architecture
+using Oceananigans.Fields: ZFaceField
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, SplitRungeKuttaName, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils: Utils, launch!, foreach_name, @apply_regionally
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
-import Oceananigans.TimeSteppers: step_lagrangian_particles!
-import Oceananigans.Architectures: on_architecture
+import Oceananigans.Architectures: Architectures, on_architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
+import Oceananigans.Simulations: timestepper
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
-using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+# The only grid type that can support an FFT implicit free-surface solver
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-struct ZStar end
+struct ZStarCoordinate end
+
+Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
+Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
 
 #####
+##### Utilities to compute the vertically integrated ``barotropic'' velocities
+#####
+
+# If U and V are prognostic (for example in `SplitExplicitFreeSurface`), we use them
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, 1]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, 1]
+
+# convenience for when we do not have prognostic `U` and `V`
+@inline barotropic_U(i, j, k, grid, u) = barotropic_U(i, j, k, grid, nothing, u)
+@inline barotropic_V(i, j, k, grid, v) = barotropic_V(i, j, k, grid, nothing, v)
+
+# If either U or V are not available, we compute them
+@inline function barotropic_U(i, j, k′, grid, ::Nothing, u)
+    U = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+    end
+    return U
+end
+
+@inline function barotropic_V(i, j, k′, grid, ::Nothing, v)
+    V = zero(grid)
+    for k in 1:size(grid, 3)
+        @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
+    end
+    return V
+end
+
+#####
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+function free_surface_displacement_field(velocities, free_surface, grid; boundary_conditions = nothing)
+    Nz = size(grid, 3)
+    indices = (:, :, Nz + 1)
+    if isnothing(boundary_conditions)
+        return ZFaceField(grid; indices)
+    else
+        bcs = boundary_conditions
+        @apply_regionally windowed = windowed_bc(bcs, Nz)
+        return ZFaceField(grid; indices, boundary_conditions = windowed)
+    end
+end
+
+windowed_bc(bcs, Nz) = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
-# free surface initialization functions
-initialize_free_surface!(free_surface, grid, velocities) = nothing
+# Fallback
+reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
+
+# Transport velocity computation
+function compute_transport_velocities! end
+
+# Hook for free surfaces that restrict the boundary conditions the user may pass
+validate_free_surface_boundary_conditions(free_surface, boundary_conditions, grid) = nothing
+
 
 include("compute_w_from_continuity.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # No free surface
 include("nothing_free_surface.jl")
@@ -47,21 +106,17 @@ include("nothing_free_surface.jl")
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
-# Implicit free-surface solver functionality
-include("implicit_free_surface_utils.jl")
-include("compute_vertically_integrated_variables.jl")
-include("fft_based_implicit_free_surface_solver.jl")
-include("pcg_implicit_free_surface_solver.jl")
-include("matrix_implicit_free_surface_solver.jl")
-include("implicit_free_surface.jl")
-include("hydrostatic_free_surface_field_tuples.jl")
-
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 using .SplitExplicitFreeSurfaces
 
-# ZStar implementation
-include("z_star_vertical_spacing.jl")
+# Implicit free-surface solver functionality
+include("fft_based_implicit_free_surface_solver.jl")
+include("pcg_implicit_free_surface_solver.jl")
+include("implicit_free_surface.jl")
+
+# ZStarCoordinate implementation
+include("z_star_coordinate.jl")
 
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
@@ -75,7 +130,7 @@ include("set_hydrostatic_free_surface_model.jl")
 cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
 
 """
-    fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
@@ -87,7 +142,7 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 
 velocity_names(user_velocities) = (:u, :v, :w)
 
-constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
+Base.@constprop :aggressive constructor_field_names(user_velocities, user_tracers, user_free_surface, auxiliary_fields, biogeochemistry, grid) =
     tuple(velocity_names(user_velocities)...,
           tracernames(user_tracers)...,
           free_surface_names(user_free_surface, user_velocities, grid)...,
@@ -95,7 +150,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
@@ -109,9 +164,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 @inline free_surface_names(free_surface, velocities, grid) = tuple(:η)
 @inline free_surface_names(free_surface::SplitExplicitFreeSurface, velocities, grid) = (:η, :U, :V)
 
-@inline free_surface_fields(free_surface) = (; η=free_surface.η)
+@inline free_surface_fields(free_surface) = (; η=free_surface.displacement)
 @inline free_surface_fields(::Nothing) = NamedTuple()
-@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.η,
+@inline free_surface_fields(free_surface::SplitExplicitFreeSurface) = (η = free_surface.displacement,
                                                                        U = free_surface.barotropic_velocities.U,
                                                                        V = free_surface.barotropic_velocities.V)
 
@@ -124,19 +179,23 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
           tracers,
           free_surface_fields(free_surface))
 
-displacement(free_surface) = free_surface.η
+displacement(free_surface) = free_surface.displacement
 displacement(::Nothing) = nothing
 
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
-step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
+TimeSteppers.update_lagrangian_particle_state!(model::HydrostaticFreeSurfaceModel) = update_lagrangian_particle_state!(model.particles, model)
 
+include("boundary_targeted_transport.jl")
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
+include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
+include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
-include("hydrostatic_free_surface_rk3_step.jl")
+include("hydrostatic_free_surface_rk_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")

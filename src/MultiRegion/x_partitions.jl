@@ -1,5 +1,4 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
-using Oceananigans.BoundaryConditions: MCBC, PBC
 
 const EqualXPartition = XPartition{<:Number}
 
@@ -26,17 +25,17 @@ function partition_extent(p::XPartition, grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    x = divide_direction(x, p)
-    return Tuple((x = x[i], y = y, z = z) for i in 1:length(p))
+    divided_x = divide_direction(x, p)
+    return Tuple((x = xi, y = y, z = z) for xi in divided_x)
 end
 
 function partition_topology(p::XPartition, grid)
     TX, TY, TZ = topology(grid)
 
-    return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
-                                    RightConnected : i == length(p) ?
-                                    LeftConnected :
-                                    FullyConnected), TY, TZ) for i in 1:length(p))
+    return Tuple(((TX == Periodic ? Sides{Connected, Connected} : i == 1 ?
+                                    Sides{Closed, Connected} : i == length(p) ?
+                                    Sides{Connected, Closed} :
+                                    Sides{Connected, Connected}), TY, TZ) for i in 1:length(p))
 end
 
 divide_direction(x::Tuple, p::EqualXPartition) =
@@ -80,7 +79,6 @@ function reconstruct_size(mrg, p::XPartition)
 end
 
 function reconstruct_extent(mrg, p::XPartition)
-    switch_device!(mrg.devices[1])
     y = cpu_face_constructor_y(mrg.region_grids.regional_objects[1])
     z = cpu_face_constructor_z(mrg.region_grids.regional_objects[1])
 
@@ -89,8 +87,7 @@ function reconstruct_extent(mrg, p::XPartition)
              cpu_face_constructor_x(mrg.region_grids.regional_objects[length(p)])[end])
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regional_objects[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
-            switch_device!(mrg.devices[idx])
+        for grid in mrg.region_grids.regional_objects[2:end]
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end
@@ -98,8 +95,8 @@ function reconstruct_extent(mrg, p::XPartition)
     return (; x, y, z)
 end
 
-const FunctionMRO    = MultiRegionObject{<:Tuple{Vararg{T}}} where T<:Function
-const ArrayMRO{T, N} = MultiRegionObject{<:Tuple{Vararg{A}}} where A<:AbstractArray{T, N} where {T, N}
+const FunctionMRO    = MultiRegionObject{<:Tuple{T, Vararg{T}}} where T<:Function
+const ArrayMRO{T, N} = MultiRegionObject{<:Tuple{A, Vararg{A}}} where A<:AbstractArray{T, N} where {T, N}
 
 reconstruct_global_array(ma::FunctionMRO, args...) = ma.regional_objects[1]
 

@@ -1,4 +1,5 @@
-import Oceananigans.Grids: znode, AbstractMutableGrid
+using Oceananigans.Grids: Grids, AbstractMutableGrid, MutableVerticalDiscretization,
+    rnode
 
 #####
 ##### MutableVerticalDiscretization-specific vertical spacing functions
@@ -14,6 +15,13 @@ const AMG = AbstractMutableGrid
 @inline σⁿ(i, j, k, grid::AMG, ::F, ::C, ℓz) = @inbounds grid.z.σᶠᶜⁿ[i, j, 1]
 @inline σⁿ(i, j, k, grid::AMG, ::C, ::F, ℓz) = @inbounds grid.z.σᶜᶠⁿ[i, j, 1]
 @inline σⁿ(i, j, k, grid::AMG, ::F, ::F, ℓz) = @inbounds grid.z.σᶠᶠⁿ[i, j, 1]
+
+@inline σ⁻¹ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
+
+@inline σ⁻¹ⁿ(i, j, k, grid::AMG, ::C, ::C, ℓz) = @inbounds grid.z.σ⁻¹ᶜᶜⁿ[i, j, 1]
+@inline σ⁻¹ⁿ(i, j, k, grid::AMG, ::F, ::C, ℓz) = @inbounds grid.z.σ⁻¹ᶠᶜⁿ[i, j, 1]
+@inline σ⁻¹ⁿ(i, j, k, grid::AMG, ::C, ::F, ℓz) = @inbounds grid.z.σ⁻¹ᶜᶠⁿ[i, j, 1]
+@inline σ⁻¹ⁿ(i, j, k, grid::AMG, ::F, ::F, ℓz) = @inbounds grid.z.σ⁻¹ᶠᶠⁿ[i, j, 1]
 
 # σ⁻ is needed only at centers
 @inline σ⁻(i, j, k, grid::AMG, ::C, ::C, ℓz) = @inbounds grid.z.σᶜᶜ⁻[i, j, 1]
@@ -35,6 +43,9 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     zspacing = Symbol(:Δz, LX, LY, LZ)
     rspacing = Symbol(:Δr, LX, LY, LZ)
 
+    rcp_zspacing = Symbol(:Δz⁻¹, LX, LY, LZ)
+    rcp_rspacing = Symbol(:Δr⁻¹, LX, LY, LZ)
+
     ℓx = superscript_location(LX)
     ℓy = superscript_location(LY)
     ℓz = superscript_location(LZ)
@@ -43,12 +54,16 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
         @inline $zspacing(i, j, k, grid::MRG)  = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::MLLG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
         @inline $zspacing(i, j, k, grid::MOSG) = $rspacing(i, j, k, grid) * σⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+
+        @inline $rcp_zspacing(i, j, k, grid::MRG)  = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::MLLG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
+        @inline $rcp_zspacing(i, j, k, grid::MOSG) = $rcp_rspacing(i, j, k, grid) * σ⁻¹ⁿ(i, j, k, grid, $ℓx(), $ℓy(), $ℓz())
     end
 end
 
 # znode for an AbstractMutableGrid grid is the reference node (`rnode`) scaled by the derivative with respect to the reference (σⁿ)
 # added to the surface value of `z` (which we here call ηⁿ)
-@inline znode(i, j, k, grid::AMG, ::C, ::C, ℓz) = rnode(i, j, k, grid, C(), C(), ℓz) * σⁿ(i, j, k, grid, C(), C(), ℓz) + @inbounds grid.z.ηⁿ[i, j, 1]
-@inline znode(i, j, k, grid::AMG, ::F, ::C, ℓz) = rnode(i, j, k, grid, F(), C(), ℓz) * σⁿ(i, j, k, grid, F(), C(), ℓz) +  ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline znode(i, j, k, grid::AMG, ::C, ::F, ℓz) = rnode(i, j, k, grid, C(), F(), ℓz) * σⁿ(i, j, k, grid, C(), F(), ℓz) +  ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
-@inline znode(i, j, k, grid::AMG, ::F, ::F, ℓz) = rnode(i, j, k, grid, F(), F(), ℓz) * σⁿ(i, j, k, grid, F(), F(), ℓz) + ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::C, ::C, ℓz) = rnode(i, j, k, grid, C(), C(), ℓz) * σⁿ(i, j, k, grid, C(), C(), ℓz) + @inbounds grid.z.ηⁿ[i, j, 1]
+@inline Grids.znode(i, j, k, grid::AMG, ::F, ::C, ℓz) = rnode(i, j, k, grid, F(), C(), ℓz) * σⁿ(i, j, k, grid, F(), C(), ℓz) +  ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::C, ::F, ℓz) = rnode(i, j, k, grid, C(), F(), ℓz) * σⁿ(i, j, k, grid, C(), F(), ℓz) +  ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline Grids.znode(i, j, k, grid::AMG, ::F, ::F, ℓz) = rnode(i, j, k, grid, F(), F(), ℓz) * σⁿ(i, j, k, grid, F(), F(), ℓz) + ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)

@@ -1,25 +1,22 @@
-import Oceananigans.Grids: prettysummary
+using OrderedCollections: OrderedDict
 
-shortsummary(x, args...) = string(typeof(x).name.wrapper)
+shortsummary(x, args...) = string(nameof(typeof(x)))
 prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    mt = ft.name.mt
-    name = mt.name
+    name = string(Base.nameof(f))
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
-    sname = string(name)
-    isself = isdefined(ft.name.module, name) && ft == typeof(getfield(ft.name.module, name))
-    ns = (isself || '#' in sname) ? sname : string("(::", ft, ")")
     if showmethods
-        return string(ns, " (", "generic function", " with $n $m)")
+        return string(name, " (", "generic function", " with $n $m)")
     else
-        return string(ns)
+        return string(name)
     end
 end
 
 prettysummary(x::Int, args...) = string(x)
+prettysummary(x::Nothing, args...) = string(x)
 
 # This is very important
 function prettysummary(nt::NamedTuple, args...)
@@ -43,10 +40,13 @@ function prettysummary(nt::NamedTuple, args...)
     return string(str, ")")
 end
 
-function prettykeys(t)
-    names = collect(keys(t))
+# Unordered dictionaries have no fixed iteration order, so their keys are listed sorted
+prettykeys(t) = prettykeys(collect(keys(t)))
+prettykeys(t::AbstractDict) = prettykeys(sort!(collect(keys(t)); by = string))
+prettykeys(t::OrderedDict) = prettykeys(collect(keys(t)))
+
+function prettykeys(names::AbstractVector)
     length(names) == 0 && return "()"
     length(names) == 1 && return string(first(names))
     return string("(", (string(n, ", ") for n in names[1:end-1])..., last(names), ")")
 end
-

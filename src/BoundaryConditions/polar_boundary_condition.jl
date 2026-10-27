@@ -8,7 +8,7 @@ end
 Adapt.adapt_structure(to, pv::PolarValue) = PolarValue(Adapt.adapt(to, pv.data), nothing)
 
 const PolarValueBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
-const PolarOpenBoundaryCondition{V}  = BoundaryCondition{<:Open,  <:PolarValue}
+const PolarNormalFlowBoundaryCondition{V}  = BoundaryCondition{<:NormalFlow, <:PolarValue}
 
 function PolarValueBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)
@@ -17,18 +17,18 @@ function PolarValueBoundaryCondition(grid, side, LZ)
     return ValueBoundaryCondition(PolarValue(data, side))
 end
 
-function PolarOpenBoundaryCondition(grid, side, LZ)
+function PolarNormalFlowBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)
     loc  = (Nothing, Nothing, LZ)
     data = new_data(FT, grid, loc)
-    return OpenBoundaryCondition(PolarValue(data, side))
+    return NormalFlowBoundaryCondition(PolarValue(data, side))
 end
 
-const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarOpenBoundaryCondition}
+const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarNormalFlowBoundaryCondition}
 
 maybe_polar_boundary_condition(grid, side, ::Nothing, ℓz::LZ) where LZ = nothing
 maybe_polar_boundary_condition(grid, side, ::Center,  ℓz::LZ) where LZ = PolarValueBoundaryCondition(grid, side, LZ)
-maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarOpenBoundaryCondition(grid, side, LZ)
+maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarNormalFlowBoundaryCondition(grid, side, LZ)
 
 # Just a column
 @inline getbc(pv::PolarValue, i, k, args...) = @inbounds pv.data[1, 1, k]
@@ -50,39 +50,11 @@ function update_pole_value!(bc::PolarValue, c, grid, loc)
     Nz = size(c, 3)
     Oz = c.offsets[3]
     params = KernelParameters(1:1, 1:1, 1+Oz:Nz+Oz)
-    launch!(architecture(grid), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
+    launch!(architecture(bc.data), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
     return nothing
 end
 
-function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos=false, kwargs...)
-    update_pole_value!(bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-end
-
-function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos=false, kwargs...)
-    update_pole_value!(bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
-end
-
-function fill_south_and_north_halo!(c, south_bc::PolarBoundaryCondition, north_bc, size, offset, loc, arch, grid, args...; only_local_halos=false, kwargs...)
-    update_pole_value!(south_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
-end
-
-function fill_south_and_north_halo!(c, south_bc, north_bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos=false, kwargs...)
-    update_pole_value!(north_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
-end
-
-function fill_south_and_north_halo!(c, south_bc::PolarBoundaryCondition, north_bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos=false, kwargs...)
-    update_pole_value!(south_bc.condition, c, grid, loc)
-    update_pole_value!(north_bc.condition, c, grid, loc)
-    return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
-end
-
-
+# The pole value is refreshed before every fill, also when normal-flow halos are skipped
+@inline fills_halo(::PolarValueBoundaryCondition, fill_normal_flow_bcs) = true
+@inline fills_halo(::PolarNormalFlowBoundaryCondition, fill_normal_flow_bcs) = true
+@inline prepare_halo_fill!(bc::PolarBoundaryCondition, c, grid, loc) = update_pole_value!(bc.condition, c, grid, loc)

@@ -120,7 +120,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    model = NonhydrostaticModel(; grid, buoyancy,
+    model = NonhydrostaticModel(grid;
+                                buoyancy,
                                 tracers = (:T, :S),
                                 closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
                                 boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
@@ -130,11 +131,15 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
 
     # Add a bit of surface-concentrated noise to the initial condition
-    ε(σ, z) = σ * randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
+    # Capture the extents as plain numbers so that the initial-condition functions stay isbits
+    # (kernel arguments cannot reference `model`).
+    Lx, Lz = grid.Lx, grid.Lz
+
+    ε(σ, z) = σ * randn() * z/Lz * (1 + z/Lz)
 
     # We add a sinusoidal initial condition to u to encourage instability.
-    T₀(x, y, z) = 2Θ_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z))
-    u₀(x, y, z) = 2U_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
+    T₀(x, y, z) = 2Θ_wall * (1/2 + z/Lz) * (1 + ε(5e-1, z))
+    u₀(x, y, z) = 2U_wall * (1/2 + z/Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
@@ -186,12 +191,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
+   :kappaT => model -> Array(model.closure_fields[n_amd].κₑ.T.data.parent),
+       :nu => model -> Array(model.closure_fields[n_amd].νₑ.data.parent))
 
     field_writer = JLD2Writer(model, fields, dir=base_dir, filename=prefix * "_fields.jld2",
                               init=init_save_parameters_and_bcs, schedule=TimeInterval(10),
-                              overwrite_existing=true, verbose=true)
+                              overwrite_files=true, verbose=true)
 
     #####
     ##### Set up profile output writer
@@ -201,8 +206,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     Vavg = Field(Average(model.velocities.v,               dims=(1, 2)))
     Wavg = Field(Average(model.velocities.w,               dims=(1, 2)))
     Tavg = Field(Average(model.tracers.T,                  dims=(1, 2)))
-    νavg = Field(Average(model.diffusivity_fields[n_amd].νₑ,   dims=(1, 2)))
-    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.T, dims=(1, 2)))
+    νavg = Field(Average(model.closure_fields[n_amd].νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.closure_fields[n_amd].κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
@@ -214,7 +219,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     profile_writer = JLD2Writer(model, profiles, dir=base_dir, filename=prefix * "_profiles.jld2",
                                 init=init_save_parameters_and_bcs, schedule=TimeInterval(1),
-                                overwrite_existing=true, verbose=true)
+                                overwrite_files=true, verbose=true)
 
     #####
     ##### Set up statistic output writer
@@ -231,7 +236,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     statistics_writer = JLD2Writer(model, statistics, dir=base_dir, filename=prefix * "_statistics.jld2",
                                    init=init_save_parameters_and_bcs, schedule=TimeInterval(1/2),
-                                   overwrite_existing=true, verbose=true)
+                                   overwrite_files=true, verbose=true)
 
     #####
     ##### Time stepping
@@ -246,7 +251,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     cfl(t) = min(0.01t, 0.1)
 
     function print_progress(simulation)
-        model = simulation.model
         clock = model.clock
 
         wizard.cfl = cfl(model.clock.time)
@@ -259,8 +263,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         CFL = simulation.Δt / cell_advection_timescale(model)
 
         Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.z.Δᵃᵃᶜ)
-        νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
+        νmax = maximum(model.closure_fields[n_amd].νₑ.data.parent)
+        κmax = maximum(model.closure_fields[n_amd].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 
@@ -275,7 +279,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
 
-    push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+    simulation.output_writers[:fields] = field_writer
+    simulation.output_writers[:profiles] = profile_writer
+    simulation.output_writers[:statistics] = statistics_writer
 
     run!(simulation)
 

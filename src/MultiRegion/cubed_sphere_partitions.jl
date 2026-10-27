@@ -1,7 +1,5 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
-using DocStringExtensions
-
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
     Rx :: M
@@ -85,7 +83,7 @@ end
 #####
 
 # A cubed sphere panel grid is an OSSG grid that is fully connected in xy
-const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected}
+const SpherePanelGrid = OrthogonalSphericalShellGrid{<:Any, Sides{Connected, Connected}, Sides{Connected, Connected}}
 
 for vel in (:u, :v), dir in (:east, :west, :north, :south)
     @eval $(Symbol(:replace_, dir, :_, vel, :_halos!))(u, buff, N, H, conn; signed=true) = nothing

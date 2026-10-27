@@ -1,57 +1,134 @@
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
+using Oceananigans.Grids: surface_kernel_parameters, volume_kernel_parameters
+
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
     i, j  = @index(Global, NTuple)
 
-    @inbounds U̅[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] 
-    @inbounds V̅[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] 
+    @inbounds U̅[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V̅[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
     for k in 2:grid.Nz
-        @inbounds U̅[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k] 
-        @inbounds V̅[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k] 
+        @inbounds U̅[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V̅[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 end
 
-# Note: this function is also used during initialization
+"""
+$(TYPEDSIGNATURES)
+
+Compute the depth-integrated (barotropic) velocities from baroclinic velocity fields.
+
+The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
+This function is used both during split-explicit correction and initialization.
+"""
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    active_cells_map = get_active_column_map(grid) # may be nothing
-
-    launch!(architecture(grid), grid, :xy,
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
-            U̅, V̅, grid, u, v; active_cells_map)
-
+            U̅, V̅, grid, u, v)
     return nothing
 end
 
-# Correcting `u` and `v` with the barotropic mode computed in `free_surface`
+"""
+$(TYPEDSIGNATURES)
+
+Project the baroclinic velocities onto the barotropic transport produced by the substepping,
+
+    u = u + (U - ∫u dz) / H
+"""
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
-    η     = free_surface.η
     U, V  = free_surface.barotropic_velocities
-    U̅, V̅  = state.U, state.V
+    U̅, V̅  = state.U̅, state.V̅
     arch  = architecture(grid)
 
-    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
-    # so we use the filtered velocities as "work arrays" to store the vertical integrals
-    # of the instantaneous velocities `u` and `v`.
-    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    mask_immersed_field!(u)
+    mask_immersed_field!(v)
 
-    # add in "good" barotropic mode
-    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, grid)
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!, u, v, U, V, U̅, V̅, grid)
 
     return nothing
 end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
     i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | immersed_inactive_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | immersed_inactive_node(i, j, k, grid, Center(), Face(), Center())
+
+    δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
+    δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
+
+    u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
+    v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
+
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
+end
+
+@kernel function _compute_split_explicit_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    i, j, k = @index(Global, NTuple)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | immersed_inactive_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | immersed_inactive_node(i, j, k, grid, Face(), Center(), Center())
+
+    δuᵢ = @inbounds Ũ[i, j, 1] - U̅[i, j, 1]
+    δvⱼ = @inbounds Ṽ[i, j, 1] - V̅[i, j, 1]
+
+    u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
+    v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
 
     @inbounds begin
-        Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
+        ũ⁺ = u[i, j, k] + u_correction
+        ṽ⁺ = v[i, j, k] + v_correction
 
-        u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
-        v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ⁺)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ⁺)
     end
 end
 
+"""
+$(TYPEDSIGNATURES)
 
+Compute transport velocities used for tracer advection with split-explicit free surface.
+
+Transport velocities differ from prognostic velocities by including the barotropic correction:
+
+    u = u + (Ũ - ∫udz) / H
+
+where `Ũ` is the time-filtered barotropic transport from split-explicit substepping.
+This ensures that tracers are advected with a velocity field consistent with the filtered
+free surface evolution.
+
+After computing horizontal transport velocities, vertical transport velocity `w̃` is computed
+from continuity and halo regions are filled.
+"""
+function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+    grid = model.grid
+    # `transport_velocities` holds the pre-step velocities and is also the destination; the kernel adds a
+    # depth-uniform correction, so source and destination may alias.
+    u = model.transport_velocities.u
+    v = model.transport_velocities.v
+    ũ, ṽ, w̃ = model.transport_velocities
+    Ũ = free_surface.filtered_state.Ũ
+    Ṽ = free_surface.filtered_state.Ṽ
+    U̅ = free_surface.filtered_state.U̅
+    V̅ = free_surface.filtered_state.V̅
+
+    synchronize_communication!(Ũ)
+    synchronize_communication!(Ṽ)
+
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    launch!(architecture(grid), grid, volume_kernel_parameters(grid),
+            _compute_split_explicit_transport_velocities!,
+            ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+
+    return nothing
+end

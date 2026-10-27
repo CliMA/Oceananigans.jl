@@ -1,5 +1,5 @@
 """
-    immersed_cell(i, j, k, grid)
+$(TYPEDSIGNATURES)
 
 Return true if a `cell` is "completely" immersed, and thus
 is not part of the prognostic state.
@@ -11,7 +11,7 @@ is not part of the prognostic state.
     immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
 
 """
-    inactive_cell(i, j, k, grid::ImmersedBoundaryGrid)
+$(TYPEDSIGNATURES)
 
 Return `true` if the tracer cell at `i, j, k` either (i) lies outside the `Bounded` domain
 or (ii) lies within the immersed region of `ImmersedBoundaryGrid`.

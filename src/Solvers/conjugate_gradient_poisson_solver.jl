@@ -1,10 +1,31 @@
-using Oceananigans.Operators
+using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
+    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
+using Oceananigans.Fields: Field, condition_operand, conditional_length
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Statistics: mean
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Grids: Center
+using Oceananigans.Architectures: device
+using KernelAbstractions: @localmem, @synchronize, StaticSize
 
-using KernelAbstractions: @kernel, @index
+#####
+##### Volume-inverse-weighted residual norm
+#####
+##### The V∇² residuals scale with cell volume, so convergence is measured with ||V⁻¹r||
+##### instead of ||r|| to make the criterion independent of cell volume.
+#####
 
-import Oceananigans.Architectures: architecture
+struct VolumeInverseNorm{G}
+    grid :: G
+end
+
+@inline volume_inverse_weighted(i, j, k, grid, r) = @inbounds r[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+
+function (vin::VolumeInverseNorm)(r)
+    V⁻¹r = KernelFunctionOperation{Center, Center, Center}(volume_inverse_weighted, vin.grid, r)
+    return norm(V⁻¹r)
+end
+
+Base.summary(::VolumeInverseNorm) = "VolumeInverseNorm"
 
 struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
@@ -12,7 +33,7 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
+Architectures.architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
@@ -30,34 +51,365 @@ function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
               "    └── iteration: ", prettysummary(ips.conjugate_gradient_solver.iteration))
 end
 
-@kernel function laplacian!(∇²ϕ, grid, ϕ)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+@inline function V∇²ᶜᶜᶜ(i, j, k, grid, c)
+    return δxᶜᶜᶜ(i, j, k, grid, Ax_∂xᶠᶜᶜ, c) +
+           δyᶜᶜᶜ(i, j, k, grid, Ay_∂yᶜᶠᶜ, c) +
+           δzᶜᶜᶜ(i, j, k, grid, Az_∂zᶜᶜᶠ, c)
 end
 
-function compute_laplacian!(∇²ϕ, ϕ)
+@kernel function _symmetric_laplacian_operator!(∇²ϕ, grid, ϕ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ∇²ϕ[i, j, k] = V∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+end
+
+function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
     return nothing
 end
 
-@kernel function subtract_and_mask!(a, grid, b)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
+#####
+##### Zero-mean gauge condition
+#####
+
+struct ZeroMeanGaugeCondition{S, P, V, N}
+    solution_sum :: S
+    residual_sum :: S
+    laplacian_partial_sums :: P
+    residual_partial_sums :: P
+    laplacian_sums :: V
+    residual_sums :: V
+    number_of_active_cells :: N
 end
 
-function enforce_zero_mean_gauge!(x, r)
-    grid = r.grid
+"""
+$(TYPEDSIGNATURES)
+
+Return a gauge condition for the `ConjugateGradientPoissonSolver` on `grid`, which
+subtracts the mean over the active cells of `grid` from the solution and from the residual
+after every iteration.
+
+The fused iteration of the `ConjugateGradientPoissonSolver` accumulates the sums it needs
+in the kernels that write `q = A p` and update `x` and `r`. Every thread sums one segment of a column,
+every workgroup adds its threads' sums into `laplacian_partial_sums` (`p ⋅ q`, `Σp`, `Σq`)
+or `residual_partial_sums` (`Σx`, `Σr`, `r ⋅ r`, `‖V⁻¹r‖²`), and one workgroup reduces those
+into `laplacian_sums` and `residual_sums`.
+"""
+function ZeroMeanGaugeCondition(grid)
+    solution_sum = Field{Nothing, Nothing, Nothing}(grid)
+    residual_sum = Field{Nothing, Nothing, Nothing}(grid)
+
+    workgroups = column_workgroups(grid)
+    laplacian_partial_sums = zeros(grid, workgroups, 3)
+    residual_partial_sums = zeros(grid, workgroups, 4)
+    laplacian_sums = zeros(grid, 1, 3)
+    residual_sums = zeros(grid, 1, 4)
+
+    # The normalization of `mean(c)` for a field `c` at cell centers
+    c = CenterField(grid)
+    number_of_active_cells = conditional_length(condition_operand(identity, c, nothing, 0))
+
+    return ZeroMeanGaugeCondition(solution_sum, residual_sum,
+                                  laplacian_partial_sums, residual_partial_sums,
+                                  laplacian_sums, residual_sums,
+                                  number_of_active_cells)
+end
+
+function (gauge::ZeroMeanGaugeCondition)(x, r)
+    grid = x.grid
     arch = architecture(grid)
 
-    mean_x = mean(x)
-    mean_r = mean(r)
+    Σx = sum!(gauge.solution_sum, x)
+    Σr = sum!(gauge.residual_sum, r)
 
-    launch!(arch, grid, :xyz, subtract_and_mask!, x, grid, mean_x)
-    launch!(arch, grid, :xyz, subtract_and_mask!, r, grid, mean_r)
+    launch!(arch, grid, :xyz, _subtract_means_and_mask!, x, r, grid, Σx, Σr, gauge.number_of_active_cells)
+
+    return nothing
+end
+
+@kernel function _subtract_means_and_mask!(x, r, grid, Σx, Σr, number_of_active_cells)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+
+    @inbounds begin
+        x̄ = Σx[1, 1, 1] / number_of_active_cells
+        r̄ = Σr[1, 1, 1] / number_of_active_cells
+        x[i, j, k] = (x[i, j, k] - x̄) * active
+        r[i, j, k] = (r[i, j, k] - r̄) * active
+    end
+end
+
+#####
+##### Fused iteration: the Laplacian kernel accumulates p ⋅ q, Σp and Σq while it writes q, and
+##### the update kernel applies the gauge and the mask while it writes x and r, accumulating
+##### Σx, Σr, r ⋅ r and ‖V⁻¹r‖². One thread sums one segment of a column.
+#####
+
+const FusedPoissonSolver = ConjugateGradientSolver{<:Any, <:Any, typeof(compute_symmetric_laplacian!), <:Any, <:Any, <:Any, <:Any,
+                                                   <:ZeroMeanGaugeCondition, <:VolumeInverseNorm, <:Any}
+
+const reduction_workgroup_size = 256
+
+# Enough column segments for the fused kernels to launch about 2^20 threads
+@inline column_segments(grid) = clamp(cld(2^20, size(grid, 1) * size(grid, 2)), 1, cld(size(grid, 3), 16))
+
+@inline column_workgroups(grid) = cld(size(grid, 1) * size(grid, 2) * column_segments(grid), reduction_workgroup_size)
+
+# The fused kernels launch over the column segments in one dimension, so consecutive threads read consecutive i.
+# The launch is padded to whole workgroups, and the padding threads get an empty k-range.
+function launch_columns!(arch, grid, kernel!, args...)
+    workgroup = StaticSize((reduction_workgroup_size,))
+    worksize = StaticSize((column_workgroups(grid) * reduction_workgroup_size,))
+    kernel!(device(arch), workgroup, worksize)(args...)
+    return nothing
+end
+
+@inline function column_indices(n, grid)
+    Nx, Ny, Nz = size(grid)
+    S = column_segments(grid)
+    L = cld(Nz, S)
+    s = (n - 1) ÷ (Nx * Ny) + 1
+    return (n - 1) % Nx + 1, (n - 1) ÷ Nx % Ny + 1, (s - 1) * L + 1:ifelse(n <= Nx * Ny * S, min(s * L, Nz), 0)
+end
+
+# Thread m adds the m-th sum of the workgroup's threads into partial_sums[g, m]
+@inline function add_workgroup_sums!(partial_sums, workgroup_sums, g, m)
+    if m <= size(partial_sums, 2)
+        Σ = zero(eltype(partial_sums))
+        for t in 1:reduction_workgroup_size
+            @inbounds Σ += workgroup_sums[t, m]
+        end
+        @inbounds partial_sums[g, m] = Σ
+    end
+    return nothing
+end
+
+@kernel function _initialize_residual!(partial_sums, r, grid, x, b, q)
+    n = @index(Global, Linear)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 4)
+    FT = eltype(partial_sums)
+    Σx = Σr = rᵀr = n² = zero(FT)
+
+    for k in ks
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            rᵢ = b[i, j, k] - q[i, j, k]
+            r[i, j, k] = rᵢ
+            V⁻¹rᵢ = rᵢ * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+            Σx   += x[i, j, k] * active
+            Σr   += rᵢ * active
+            rᵀr  += rᵢ * rᵢ * active
+            n²   += V⁻¹rᵢ * V⁻¹rᵢ * active
+        end
+    end
+
+    @inbounds begin
+        workgroup_sums[t, 1] = Σx
+        workgroup_sums[t, 2] = Σr
+        workgroup_sums[t, 3] = rᵀr
+        workgroup_sums[t, 4] = n²
+    end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+@kernel function _symmetric_laplacian_with_sums!(partial_sums, q, grid, p)
+    n = @index(Global, Linear)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 3)
+    FT = eltype(partial_sums)
+    pᵀq = Σp = Σq = zero(FT)
+
+    for k in ks
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            pᵢ = p[i, j, k]
+            qᵢ = V∇²ᶜᶜᶜ(i, j, k, grid, p)
+            q[i, j, k] = qᵢ
+            pᵀq += pᵢ * qᵢ * active
+            Σp  += pᵢ * active
+            Σq  += qᵢ * active
+        end
+    end
+
+    @inbounds begin
+        workgroup_sums[t, 1] = pᵀq
+        workgroup_sums[t, 2] = Σp
+        workgroup_sums[t, 3] = Σq
+    end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+@kernel function _update_search_direction!(p, z, ρ, ρⁱ⁻¹, iteration)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        β = ρ[1] / ρⁱ⁻¹[1]
+        zᵢ = z[i, j, k]
+        p[i, j, k] = ifelse(iteration == 0, zᵢ, zᵢ + β * p[i, j, k])
+    end
+end
+
+@kernel function _update_solution_and_residual!(partial_sums, x, r, grid, p, q, ρ, ρⁱ⁻¹, laplacian_sums, residual_sums, number_of_active_cells)
+    n = @index(Global, Linear)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 4)
+    FT = eltype(partial_sums)
+    Σx = Σr = rᵀr = n² = zero(FT)
+
+    @inbounds begin
+        a = ρ[1] / laplacian_sums[1]
+        x̄ = (residual_sums[1] + a * laplacian_sums[2]) / number_of_active_cells
+        r̄ = (residual_sums[2] - a * laplacian_sums[3]) / number_of_active_cells
+
+        # Without a preconditioner ρ lives in the residual sums, which this kernel's reduction overwrites
+        n == 1 && (ρⁱ⁻¹[1] = ρ[1])
+    end
+
+    for k in ks
+        @inbounds begin
+            active = !inactive_cell(i, j, k, grid)
+            xᵢ = (x[i, j, k] + a * p[i, j, k] - x̄) * active
+            rᵢ = (r[i, j, k] - a * q[i, j, k] - r̄) * active
+            x[i, j, k] = xᵢ
+            r[i, j, k] = rᵢ
+            V⁻¹rᵢ = rᵢ * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+            Σx  += xᵢ
+            Σr  += rᵢ
+            rᵀr += rᵢ * rᵢ
+            n²  += V⁻¹rᵢ * V⁻¹rᵢ
+        end
+    end
+
+    @inbounds begin
+        workgroup_sums[t, 1] = Σx
+        workgroup_sums[t, 2] = Σr
+        workgroup_sums[t, 3] = rᵀr
+        workgroup_sums[t, 4] = n²
+    end
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+@kernel function _column_dot!(partial_sums, grid, a, b)
+    n = @index(Global, Linear)
+    t = @index(Local, Linear)
+    g = @index(Group, Linear)
+    i, j, ks = column_indices(n, grid)
+    workgroup_sums = @localmem eltype(partial_sums) (reduction_workgroup_size, 1)
+    aᵀb = zero(eltype(partial_sums))
+
+    for k in ks
+        @inbounds aᵀb += a[i, j, k] * b[i, j, k] * !inactive_cell(i, j, k, grid)
+    end
+
+    @inbounds workgroup_sums[t, 1] = aᵀb
+
+    @synchronize
+    add_workgroup_sums!(partial_sums, workgroup_sums, g, t)
+end
+
+# One workgroup adds the workgroups' sums in a fixed order, so the result is deterministic
+@kernel function _reduce_partial_sums!(sums, partial_sums)
+    t = @index(Local, Linear)
+    workgroup_sums = @localmem eltype(sums) (reduction_workgroup_size, 4)
+
+    for m in 1:size(partial_sums, 2)
+        Σ = zero(eltype(sums))
+        for g in t:reduction_workgroup_size:size(partial_sums, 1)
+            @inbounds Σ += partial_sums[g, m]
+        end
+        @inbounds workgroup_sums[t, m] = Σ
+    end
+
+    @synchronize
+    add_workgroup_sums!(sums, workgroup_sums, 1, t)
+end
+
+function reduce_partial_sums!(sums, partial_sums, arch)
+    workgroup = StaticSize((reduction_workgroup_size,))
+    _reduce_partial_sums!(device(arch), workgroup, workgroup)(sums, partial_sums)
+    return sums
+end
+
+function initialize_solution!(q, x, b, solver::FusedPoissonSolver)
+    r = solver.residual
+    grid = r.grid
+    arch = architecture(grid)
+    gauge = solver.enforce_gauge_condition!
+    partial_sums = gauge.residual_partial_sums
+
+    compute_symmetric_laplacian!(q, x)
+    launch_columns!(arch, grid, _initialize_residual!, partial_sums, r, grid, x, b, q)
+    reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
+
+    return nothing
+end
+
+function iterate!(x, solver::FusedPoissonSolver, b)
+    r = solver.residual
+    p = solver.search_direction
+    q = solver.linear_operator_product
+    grid = r.grid
+    arch = architecture(grid)
+    gauge = solver.enforce_gauge_condition!
+
+    # Preconditioned:   z = P * r, ρ = z ⋅ r
+    # Unpreconditioned: z = r, so ρ = r ⋅ r is already in the residual sums
+    z = precondition!(solver.preconditioner_product, solver.preconditioner, r)
+    if z === r
+        ρ = view(gauge.residual_sums, 3:3)
+    else
+        partial_sums = view(gauge.laplacian_partial_sums, :, 1:1)
+        launch_columns!(arch, grid, _column_dot!, partial_sums, grid, z, r)
+        ρ = reduce_partial_sums!(solver.ρ, partial_sums, arch)
+    end
+
+    launch!(arch, grid, :xyz, _update_search_direction!, p, z, ρ, solver.ρⁱ⁻¹, solver.iteration)
+    fill_halo_regions!(p)
+
+    partial_sums = gauge.laplacian_partial_sums
+    launch_columns!(arch, grid, _symmetric_laplacian_with_sums!, partial_sums, q, grid, p)
+    reduce_partial_sums!(gauge.laplacian_sums, partial_sums, arch)
+
+    partial_sums = gauge.residual_partial_sums
+    launch_columns!(arch, grid, _update_solution_and_residual!,
+                    partial_sums, x, r, grid, p, q, ρ, solver.ρⁱ⁻¹, gauge.laplacian_sums, gauge.residual_sums, gauge.number_of_active_cells)
+    reduce_partial_sums!(gauge.residual_sums, partial_sums, arch)
+
+    solver.iteration += 1
+
+    return nothing
+end
+
+function iterating(solver::FusedPoissonSolver, tolerance)
+    solver.iteration >= solver.maxiter && return false
+    n² = @allowscalar solver.enforce_gauge_condition!.residual_sums[4]
+    return sqrt(n²) > tolerance
+end
+
+@kernel function cell_volume!(V, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds V[i, j, k] = Vᶜᶜᶜ(i, j, k, grid)
+end
+
+function minimum_cell_volume(grid)
+    V = CenterField(grid)
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, cell_volume!, V, grid)
+    return minimum(V)
 end
 
 struct DefaultPreconditioner end
@@ -67,23 +419,29 @@ struct DefaultPreconditioner end
                                    preconditioner = DefaultPreconditioner(),
                                    reltol = sqrt(eps(grid)),
                                    abstol = sqrt(eps(grid)),
-                                   enforce_gauge_condition! = enforce_zero_mean_gauge!,
+                                   enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
                                    kw...)
 
 Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
 pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
 keyword arguments are passed to `ConjugateGradientSolver`.
-The Poisson solver has a zero mean gauge condition enforced with `enforce_gauge_condition! = enforce_zero_mean_gauge!`, which pins the pressure field to have a mean of zero.
+
+Convergence is measured using a volume-inverse-weighted residual norm, `||V⁻¹r||₂`, which
+normalizes out the cell volume scaling introduced by the symmetric volume-weighted Laplacian
+operator `V∇²`. This makes convergence behavior independent of cell volume.
+
+The Poisson solver has a zero mean gauge condition enforced with
+`enforce_gauge_condition! = ZeroMeanGaugeCondition(grid)`,
+which pins the pressure field to have a mean of zero.
 This is because the pressure field is defined only up to an arbitrary constant, and the zero mean gauge condition
 is a common choice to remove this degree of freedom.
-
 """
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
-                                        enforce_gauge_condition! = enforce_zero_mean_gauge!,
+                                        enforce_gauge_condition! = ZeroMeanGaugeCondition(grid),
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
@@ -96,12 +454,15 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
+    volume_inverse_norm = VolumeInverseNorm(grid)
+
+    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
                                                         enforce_gauge_condition!,
+                                                        residual_norm = volume_inverse_norm,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
@@ -111,30 +472,30 @@ end
 ##### A preconditioner based on the FFT solver
 #####
 
-@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs)
+@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 @kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
     i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
 end
 
 function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs)
+    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs, grid)
     return nothing
 end
 
@@ -149,7 +510,7 @@ end
 
 const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
 
-function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
+@inline function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
     solve!(p, preconditioner, preconditioner.storage)
     return p
@@ -159,6 +520,45 @@ end
 ##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
 #####
 
+"""
+    DiagonallyDominantPreconditioner()
+
+Construct a pointwise (Jacobi-like) approximate-inverse preconditioner for the
+`ConjugateGradientPoissonSolver`, following the "diagonally dominant" approximation of
+Marshall et al. (1997, §4.2). It approximates `M ≈ (V∇²)⁻¹` with a single sparse sweep that
+keeps all seven points of the stencil but never solves a coupled system, so it is cheap and
+applies uniformly to any topology and grid aspect ratio.
+
+The symmetric volume-weighted Laplacian `V∇²` has, at cell `(i, j, k)`, the seven-point stencil
+with off-diagonal coefficients (geometric face-area × inverse spacing, no `V⁻¹` factor)
+
+```math
+A_x^\\pm = A_x^{fcc}\\,\\Delta x^{-1}, \\quad
+A_y^\\pm = A_y^{cfc}\\,\\Delta y^{-1}, \\quad
+A_z^\\pm = A_z^{ccf}\\,\\Delta z^{-1},
+```
+
+and diagonal `Ac = -(Ax⁻ + Ax⁺ + Ay⁻ + Ay⁺ + Az⁻ + Az⁺)`. Rather than inverting this stencil,
+the preconditioner applies the truncated Neumann series `M = D⁻¹ - D⁻¹ O D⁻¹` of the splitting
+`V∇² = D + O` into its diagonal and off-diagonal parts,
+
+```math
+p_{ijk} = \\frac{1}{|A^c_{ijk}|}
+          \\left( r_{ijk} + \\sum_{\\text{nb}} \\frac{A^{\\text{nb}}_{ijk}}{|A^c_{\\text{nb}}|}\\, r_{\\text{nb}} \\right),
+```
+
+where the sum runs over the six face neighbors `nb`. Because the face coupling `Aⁿᵇ` is shared by
+the two cells it connects, the resulting `M` is symmetric (`M_nb,c = Aⁿᵇ / (|Ac| |Ac_nb|) = M_c,nb`)
+and positive definite, as the conjugate gradient iteration requires; an asymmetric approximate
+inverse causes the residual to stagnate on stretched or partial-cell grids where `Ac` varies
+between neighboring cells.
+
+For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref),
+which inverts the vertical sub-system exactly, is also another viable option.
+
+However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner`
+or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
+"""
 struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
@@ -172,27 +572,127 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid)
+@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid)
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid)
+@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid)
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid)
+@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid)
 
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
 
+# Truncated Neumann series M = D⁻¹ - D⁻¹ O D⁻¹: the off-diagonal weight Aⁿᵇ / (|Ac| |Ac_nb|) is
+# symmetric in the two cells sharing the face, which CG requires; the previous harmonic-mean
+# form 2Aⁿᵇ / (Ac + Ac_nb) is asymmetric wherever Ac varies (stretched or partial-cell grids)
+# and makes the iteration stagnate there.
 @inline heuristic_residual(i, j, k, grid, r) =
-    @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
-                                                         2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
-                                                         2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k] -
-                                                         2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k] -
-                                                         2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
-                                                         2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
+    @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - Ax⁻(i, j, k, grid) / Ac(i-1, j, k, grid) * r[i-1, j, k] -
+                                                         Ax⁺(i, j, k, grid) / Ac(i+1, j, k, grid) * r[i+1, j, k] -
+                                                         Ay⁻(i, j, k, grid) / Ac(i, j-1, k, grid) * r[i, j-1, k] -
+                                                         Ay⁺(i, j, k, grid) / Ac(i, j+1, k, grid) * r[i, j+1, k] -
+                                                         Az⁻(i, j, k, grid) / Ac(i, j, k-1, grid) * r[i, j, k-1] -
+                                                         Az⁺(i, j, k, grid) / Ac(i, j, k+1, grid) * r[i, j, k+1])
 
 @kernel function _diagonally_dominant_precondition!(p, grid, r)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
+end
+
+#####
+##### The "ColumnwiseTridiagonalPreconditioner" (Marshall et al. 1997, §4)
+#####
+##### Block-diagonal preconditioner M = Lz⁻¹: for each horizontal column (i, j) the vertical
+##### sub-system of V∇² is solved exactly while horizontal couplings are discarded.
+#####
+
+struct ColumnwiseTridiagonalPreconditioner{S}
+    batched_tridiagonal_solver :: S
+end
+
+Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
+
+struct ColumnwiseTridiagonalLowerDiagonal end
+struct ColumnwiseTridiagonalDiagonal end
+struct ColumnwiseTridiagonalUpperDiagonal end
+
+@inline function columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+    az⁺ = ifelse(inactive_cell(i, j, k+1, grid), zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+    return ifelse(inactive_cell(i, j, k, grid), zero(grid), az⁺)
+end
+
+@inline function columnwise_tridiagonal_diagonal(i, j, k, grid)
+    inactive_self  = inactive_cell(i, j, k,   grid)
+    inactive_below = inactive_cell(i, j, k-1, grid)
+    inactive_above = inactive_cell(i, j, k+1, grid)
+
+    az⁻ = ifelse(inactive_below, zero(grid), Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid))
+    az⁺ = ifelse(inactive_above, zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+
+    # Multiplicative regularization breaks the singular Neumann–Neumann null space by
+    # shifting every diagonal by ε, large enough to lift the Thomas pivot above its
+    # guard threshold yet small enough to leave the preconditioner approximation intact.
+    ε = convert(eltype(grid), 1//100)
+
+    # A vertically-isolated active cell (both neighbors inactive) has az⁻ = az⁺ = 0, so its
+    # regularized diagonal collapses to zero and the Thomas pivot vanishes; act as the
+    # identity there (b = 1) since there is no vertical sub-system to invert.
+    isolated = inactive_below & inactive_above
+
+    return ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
+end
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalLowerDiagonal, p, ::ZDirection, args...) = columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalUpperDiagonal, p, ::ZDirection, args...) = columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalDiagonal, p, ::ZDirection,      args...) = columnwise_tridiagonal_diagonal(i, j, k, grid)
+
+"""
+    ColumnwiseTridiagonalPreconditioner(grid)
+
+Construct a block-diagonal preconditioner for the `ConjugateGradientPoissonSolver` that, for
+each horizontal column `(i, j)`, exactly solves the vertical tridiagonal sub-system of the
+symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings (Marshall et
+al. 1997, §4).
+
+For each horizontal column `(i, j)` the preconditioning system solved is
+
+```math
+L_z \\, p = r ,
+```
+
+where `Lz` is the vertical (`k`-direction) part of `V∇²`, i.e. the tridiagonal operator
+
+```math
+(L_z p)_k = A_z^- \\, p_{k-1} - (A_z^- + A_z^+) \\, p_k + A_z^+ \\, p_{k+1} ,
+```
+
+with `Az⁻ = Azᶜᶜᶠ(i, j, k) / Δzᶜᶜᶠ(i, j, k)` and `Az⁺ = Azᶜᶜᶠ(i, j, k+1) / Δzᶜᶜᶠ(i, j, k+1)`.
+The preconditioner is therefore `M = Lz⁻¹`, applied as one batched Thomas sweep per column.
+
+This preconditioner is more well-suited for hydrostatic problems (`(Δz/Δx)²Nz² ≪ 1`) as it allows
+convergence in ~4--5x fewer iterations. For isotropic grids (`Δz/Δx ≈ 1`) the conditioning is worse
+than no preconditioner.
+
+In general, using the FFT preconditioner is recommended as it requires much fewer iterations than the
+`ColumnwiseTridiagonalPreconditioner` or the [`DiagonallyDominantPreconditioner`](@ref DiagonallyDominantPreconditioner)
+in most scenarios.
+
+The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
+`ConjugateGradientPoissonSolver` that uses it.
+"""
+function ColumnwiseTridiagonalPreconditioner(grid::AbstractGrid)
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal = ColumnwiseTridiagonalLowerDiagonal(),
+                                            diagonal = ColumnwiseTridiagonalDiagonal(),
+                                            upper_diagonal = ColumnwiseTridiagonalUpperDiagonal(),
+                                            tridiagonal_direction = ZDirection())
+
+    return ColumnwiseTridiagonalPreconditioner(solver)
+end
+
+@inline function precondition!(p, preconditioner::ColumnwiseTridiagonalPreconditioner, r, args...)
+    fill_halo_regions!(r)
+    solve!(p, preconditioner.batched_tridiagonal_solver, r)
+    return p
 end

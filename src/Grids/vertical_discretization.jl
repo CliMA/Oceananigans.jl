@@ -17,16 +17,26 @@ Represent a static one-dimensional vertical coordinate.
 Fields
 ======
 
-- `cᶜ::C`: Cell-centered coordinate.
-- `cᶠ::D`: Face-centered coordinate.
-- `Δᶜ::E`: Cell-centered grid spacing.
-- `Δᶠ::F`: Face-centered grid spacing.
+$(FIELDS)
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
+    "Face-centered coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
+    "Reciprocal of the face-centered grid spacing"
+    Δ⁻¹ᵃᵃᶠ :: E
+    "Reciprocal of the cell-centered grid spacing"
+    Δ⁻¹ᵃᵃᶜ :: F
+end
+
+function StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(architecture(Δ), 1 ./ on_architecture(CPU(), Δ)), (Δᵃᵃᶠ, Δᵃᵃᶜ))
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, Δ⁻¹ᵃᵃᶠ, Δ⁻¹ᵃᵃᶜ)
 end
 
 # Summaries
@@ -35,18 +45,50 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-struct MutableVerticalDiscretization{C, D, E, F, H, U, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+"""
+    struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+
+Represent a mutable vertical coordinate that can evolve in time.
+
+Fields
+======
+
+$(FIELDS)
+"""
+struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+    "Face-centered reference coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered reference coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
-      ηⁿ :: H
-      Gⁿ :: U # Storage space used in different ways by different timestepping schemes.
+    "Reciprocal of the face-centered grid spacing"
+    Δ⁻¹ᵃᵃᶠ :: E
+    "Reciprocal of the cell-centered grid spacing"
+    Δ⁻¹ᵃᵃᶜ :: F
+    "Surface elevation at the current time step"
+    ηⁿ :: H
+    "(Center, Center) scaling factor at the current time step"
     σᶜᶜⁿ :: CC
+    "(Face, Center) scaling at the current time step"
     σᶠᶜⁿ :: FC
+    "(Center, Face) scaling at the current time step"
     σᶜᶠⁿ :: CF
+    "(Face, Face) scaling factor at the current time step"
     σᶠᶠⁿ :: FF
+    "Reciprocal of the (Center, Center) scaling factor at the current time step"
+    σ⁻¹ᶜᶜⁿ :: CC
+    "Reciprocal of the (Face, Center) scaling factor at the current time step"
+    σ⁻¹ᶠᶜⁿ :: FC
+    "Reciprocal of the (Center, Face) scaling factor at the current time step"
+    σ⁻¹ᶜᶠⁿ :: CF
+    "Reciprocal of the (Face, Face) scaling factor at the current time step"
+    σ⁻¹ᶠᶠⁿ :: FF
+    "(Center, Center) scaling factor at the previous time step"
     σᶜᶜ⁻ :: CC
+    "Time derivative of the cell-centered scaling factor"
     ∂t_σ :: CC
 end
 
@@ -60,16 +102,21 @@ const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, Reg
 const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
+has_static_discretization(grid) = false
+has_static_discretization(grid::AbstractStaticGrid) = true
 
 """
-    MutableVerticalDiscretization(r_faces)
+$(TYPEDSIGNATURES)
 
-Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates,
-or sigma coordinates.
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
+a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
+defines a vertical coordinate that can evolve in time following certain rules.
+Examples of `MutableVerticalDiscretization`s are the free-surface following coordinates
+(also known as "zee-star") or the terrain following coordinates (also known as "sigma"
+coordinates).
 """
-MutableVerticalDiscretization(r) = MutableVerticalDiscretization(r, r, (nothing for i in 1:10)...)
+MutableVerticalDiscretization(r_faces) =
+    MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:15)...)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) =
     @sprintf("regularly spaced with mutable Δr=%s", prettysummary(z.Δᵃᵃᶜ))
@@ -88,7 +135,7 @@ end
 ##### Coordinate generation for grid constructors
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
+generate_coordinate(FT, ::Tuple{<:Any, <:Any, Type{Periodic}}, size, halo, ::MutableVerticalDiscretization, coordinate_name, dim::Int, arch) =
     throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
@@ -112,6 +159,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     r_faces = coordinate.cᵃᵃᶠ
 
     LR, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
+    Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ = map(Δ -> on_architecture(arch, 1 ./ on_architecture(CPU(), Δ)), (Δrᵃᵃᶠ, Δrᵃᵃᶜ))
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
@@ -121,15 +169,20 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    Gⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...) 
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
+    σ⁻¹ᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σ⁻¹ᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    σ⁻¹ᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    σ⁻¹ᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+
     # Fill all the scalings with one for now (i.e. z == r)
-    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
+    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ)
         fill!(σ, 1)
     end
 
-    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, Gⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return LR, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, Δr⁻¹ᵃᵃᶠ, Δr⁻¹ᵃᵃᶜ,
+                                             ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σ⁻¹ᶜᶜⁿ, σ⁻¹ᶠᶜⁿ, σ⁻¹ᶜᶠⁿ, σ⁻¹ᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end
 
 
@@ -141,39 +194,53 @@ Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                                  Adapt.adapt(to, coord.cᵃᵃᶜ),
                                  Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                                 Adapt.adapt(to, coord.Δᵃᵃᶜ))
+                                 Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                                 Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                                 Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ))
 
-on_architecture(arch, coord::StaticVerticalDiscretization) =
+Architectures.on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                                  on_architecture(arch, coord.cᵃᵃᶜ),
                                  on_architecture(arch, coord.Δᵃᵃᶠ),
-                                 on_architecture(arch, coord.Δᵃᵃᶜ))
+                                 on_architecture(arch, coord.Δᵃᵃᶜ),
+                                 on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                                 on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                                   Adapt.adapt(to, coord.cᵃᵃᶜ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶠ),
                                   Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                                  Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶠ),
+                                  Adapt.adapt(to, coord.Δ⁻¹ᵃᵃᶜ),
                                   Adapt.adapt(to, coord.ηⁿ),
-                                  Adapt.adapt(to, coord.Gⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜⁿ),
                                   Adapt.adapt(to, coord.σᶠᶜⁿ),
                                   Adapt.adapt(to, coord.σᶜᶠⁿ),
                                   Adapt.adapt(to, coord.σᶠᶠⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶜᶜⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶠᶜⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶜᶠⁿ),
+                                  Adapt.adapt(to, coord.σ⁻¹ᶠᶠⁿ),
                                   Adapt.adapt(to, coord.σᶜᶜ⁻),
                                   Adapt.adapt(to, coord.∂t_σ))
 
-on_architecture(arch, coord::MutableVerticalDiscretization) =
+Architectures.on_architecture(arch, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                                   on_architecture(arch, coord.cᵃᵃᶜ),
                                   on_architecture(arch, coord.Δᵃᵃᶠ),
                                   on_architecture(arch, coord.Δᵃᵃᶜ),
+                                  on_architecture(arch, coord.Δ⁻¹ᵃᵃᶠ),
+                                  on_architecture(arch, coord.Δ⁻¹ᵃᵃᶜ),
                                   on_architecture(arch, coord.ηⁿ),
-                                  on_architecture(arch, coord.Gⁿ),
                                   on_architecture(arch, coord.σᶜᶜⁿ),
                                   on_architecture(arch, coord.σᶠᶜⁿ),
                                   on_architecture(arch, coord.σᶜᶠⁿ),
                                   on_architecture(arch, coord.σᶠᶠⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶜᶜⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶠᶜⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶜᶠⁿ),
+                                  on_architecture(arch, coord.σ⁻¹ᶠᶠⁿ),
                                   on_architecture(arch, coord.σᶜᶜ⁻),
                                   on_architecture(arch, coord.∂t_σ))
 
@@ -198,20 +265,94 @@ end
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::F; with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓz::C; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
-@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+@inline rnodes(grid::AUG, ℓz::F; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
+@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+
+ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
+@inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
+@inline rnodes(grid::ZFlatAUG, ℓz::C; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)
 
 # TODO: extend in the Operators module
+"""
+    znodes(grid, ℓx, ℓy, ℓz, with_halos=false)
+
+Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
+
+```jldoctest znodes
+julia> using Oceananigans
+
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
+                                            topology=(Periodic, Periodic, Bounded));
+
+julia> z = znodes(horz_periodic_grid, Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center())
+-0.8333333333333334:0.3333333333333333:-0.16666666666666666
+
+julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
+5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), :) with eltype Float64 with indices 0:4:
+ -1.1666666666666667
+ -0.8333333333333334
+ -0.5
+ -0.16666666666666666
+  0.16666666666666666
+```
+"""
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 
-function rspacings end
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
 function zspacings end
 
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> rspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δr (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings end
+
+# The 3-argument implementations of zspacings and rspacings are defined in
+# src/AbstractOperations/grid_metrics.jl, where KernelFunctionOperation is available.
 @inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 

@@ -1,11 +1,23 @@
 using KernelAbstractions: @kernel, @index
-using Statistics
+using Oceananigans.Grids: interior_indices
+using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField, Field, ReducedField
+using Oceananigans.Fields: location, Field, ReducedField, instantiated_location
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+# Recurse on Tuple and NamedTuples
+mask_immersed_field!(nt::NamedTuple) = mask_immersed_field!(values(nt))
+
+function mask_immersed_field!(t::Tuple)
+    mask_immersed_field!(first(t))
+    mask_immersed_field!(Base.tail(t))
+    return nothing
+end
+
+mask_immersed_field!(::Tuple{}) = nothing
 
 # No masking for constant fields, numbers or nothing
 mask_immersed_field!(::OneField, args...; kw...) = nothing
@@ -21,8 +33,10 @@ mask_immersed_field_xy!(::ConstantField, args...; kw...) = nothing
 mask_immersed_field_xy!(::Number, args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 
+# Pass the location as instances rather than types: types passed as values are only inferred as
+# `DataType` unless the callee happens to be inlined, which makes the kernel launch type-unstable.
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
+    mask_immersed_field!(field, field.grid, instantiated_location(field), value)
 
 function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -46,14 +60,15 @@ end
 mask_immersed_field!(field, grid, loc, value) = nothing
 
 """
-    mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
+$(TYPEDSIGNATURES)
 
 masks `field` defined on `grid` with a value `val` at locations where `peripheral_node` evaluates to `true`
 """
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+    kp = KernelParameters(interior_indices(field)...)
+    launch!(arch, grid, kp, _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
 
@@ -64,7 +79,7 @@ end
 end
 
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k) =
-    mask_immersed_field_xy!(field, field.grid, location(field), value, k)
+    mask_immersed_field_xy!(field, field.grid, instantiated_location(field), value, k)
 
 function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); k)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -88,14 +103,16 @@ end
 mask_immersed_field_xy!(field, grid, loc, value, k) = nothing
 
 """
-    mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k)
+$(TYPEDSIGNATURES)
 
 Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_peripheral_node` returns `true`.
 """
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k)
+    iᵣ, jᵣ, _ = interior_indices(field)
+    kp = KernelParameters(iᵣ, jᵣ)
+    return launch!(arch, grid, kp, _mask_immersed_field_xy!, field, loc, grid, value, k)
 end
 
 @kernel function _mask_immersed_field_xy!(field, (ℓx, ℓy, ℓz), grid, value, k)

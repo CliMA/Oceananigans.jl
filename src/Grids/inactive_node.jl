@@ -2,7 +2,7 @@
 const c = Center()
 const f = Face()
 
-using ReactantCore
+using ReactantCore: ReactantCore
 
 function build_condition(Topo, side, dim, array::Bool)
     if Topo == :Bounded
@@ -11,13 +11,13 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side < 1) | ($side > grid.$dim))
         end
-    elseif Topo == :LeftConnected
+    elseif Topo == :(Sides{Connected, Closed})
         if array
             return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side > grid.$dim))
         end
-    else # RightConnected
+    else # Sides{Closed, Connected}
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
@@ -31,25 +31,19 @@ end
 #####
 
 """
-    inactive_cell(i, j, k, grid)
+$(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
-`inactive_cell`s include halo cells in `Bounded` directions, right halo cells in
-`LeftConnected` directions, left halo cells in `RightConnected` directions, and cells
-within an immersed boundary. Cells that are staggered with respect to tracer cells and
-which lie _on_ the boundary are considered active.
+`inactive_cell`s include the halo cells beyond the `Closed` sides of `Bounded`, `Sides{Closed, Connected}` and `Sides{Connected, Closed}`
+directions, and cells within an immersed boundary.
+Cells that are staggered with respect to tracer cells and which lie _on_ the boundary are considered active.
 """
 @inline inactive_cell(i, j, k, grid) = false
 @inline active_cell(i, j, k, grid) = !inactive_cell(i, j, k, grid)
 
-# We use metaprogramming to handle all the permutations between
-# Bounded, LeftConnected, and RightConnected topologies.
-# Note that LeftConnected is equivalent to "RightBounded" and
-# RightConnected is equivalent to "LeftBounded".
-# So LeftConnected and RightConnected are "half Bounded" topologies.
-
-Topos = (:Bounded, :LeftConnected, :RightConnected)
+# Metaprogramming over the permutations of directions bounded on both sides, on the right, and on the left
+Topos = (:Bounded, :(Sides{Connected, Closed}), :(Sides{Closed, Connected}))
 
 for PrimaryTopo in Topos
 
@@ -112,7 +106,7 @@ for PrimaryTopo in Topos
 end
 
 """
-    inactive_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` is "inactive" and thus not directly
 associated with an "active" cell.
@@ -136,15 +130,18 @@ region of the grid.
 
 @inline inactive_node(i, j, k, grid, ::Face, ::Face, ::Face) = inactive_node(i, j, k, grid, c, f, f) & inactive_node(i-1, j, k, grid, c, f, f)
 
+# Fallback for non-immersed grids, ImmersedBoundaries extends this for `ImmersedBoundaryGrid`.
+@inline immersed_inactive_node(i, j, k, grid, LX, LY, LZ) = false
+
 """
-    active_node(args...)
+$(TYPEDSIGNATURES)
 
 The opposite of inactive_node(args...).
 """
 @inline active_node(args...) = !inactive_node(args...)
 
 """
-    peripheral_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)`, is _either_ inactive or
 lies on the boundary between inactive and active cells in a `Bounded` direction.
@@ -161,15 +158,18 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 
 @inline peripheral_node(i, j, k, grid, ::Face, ::Face, ::Face) = peripheral_node(i, j, k, grid, c, f, f) | peripheral_node(i-1, j, k, grid, c, f, f)
 
+# Fallback for non-immersed grids, ImmersedBoundaries extends this for `ImmersedBoundaryGrid`.
+@inline immersed_peripheral_node(i, j, k, grid, LX, LY, LZ) = false
+
 """
-    boundary_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` lies on a boundary.
 """
 @inline boundary_node(i, j, k, grid, LX, LY, LZ) = peripheral_node(i, j, k, grid, LX, LY, LZ) & !inactive_node(i, j, k, grid, LX, LY, LZ)
 
 """
-    bottommost_active_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
 """

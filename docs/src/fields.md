@@ -76,7 +76,7 @@ of the primary mesh. The nodes of the primary mesh are
 znodes(grid, Center(), with_halos=true)
 
 # output
-6-element OffsetArray(::Vector{Float64}, 0:5) with eltype Float64 with indices 0:5:
+6-element view(OffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
  -0.05
   0.05
   0.2
@@ -119,7 +119,7 @@ c = Field{Center, Center, Center}(grid)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -143,7 +143,7 @@ u = Field{Face, Center, Center}(grid)
 4×5×4 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -191,10 +191,10 @@ Let's visualize the situation:
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(fontsize=20))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                       size = (4, 4, 4),
+                       size = (4, 5, 4),
                        halo = (1, 1, 1),
                        x = (0, 1),
                        y = (0, 1),
@@ -245,7 +245,7 @@ set!(c, 42)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=42.0, min=42.0, mean=42.0
 ```
@@ -303,11 +303,10 @@ fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
 # output
-
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=1.75, min=0.25, mean=1.0
 ```
@@ -342,7 +341,7 @@ set!(one_d_c, still_pretty_fun)
 7×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 7×1×1 RectilinearGrid{Float64, Periodic, Flat, Flat} on CPU with 3×0×0 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 └── data: 13×1×1 OffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
     └── max=19.5, min=1.5, mean=10.5
 ```
@@ -453,7 +452,7 @@ c[:, :, 1]
 
 The way the halo regions are filled depends on `c.boundary_conditions`:
 
-```julia
+```jldoctest fields
 c.boundary_conditions
 
 # output
@@ -462,9 +461,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── east: PeriodicBoundaryCondition
 ├── south: PeriodicBoundaryCondition
 ├── north: PeriodicBoundaryCondition
-├── bottom: FluxBoundaryCondition: Nothing
-├── top: FluxBoundaryCondition: Nothing
-└── immersed: FluxBoundaryCondition: Nothing
+├── bottom: FluxBoundaryCondition: nothing
+├── top: FluxBoundaryCondition: nothing
+└── immersed: Nothing
 ```
 
 Specifically for `c` above, `x` and `y` are `Periodic` while `z` has been assigned
@@ -519,3 +518,82 @@ nothing
 (parent(c))[1:2, 2, 2] = [1.75, 0.25]
 c.data[1:2, 1, 1] = [0.25, 0.75]
 ```
+
+## Reduced-dimension fields with `indices`
+
+By default, `Field`s span the full extent of the grid: their `indices` are `(:, :, :)`.
+But sometimes we want a field that lives on only a _slice_ of the grid -- for example,
+a two-dimensional horizontal field representing the surface vorticity, or a one-dimensional
+field along a single column.
+This is achieved by passing the `indices` keyword argument to the `Field` constructor.
+
+For example, to create a two-dimensional ``x``-``y`` field at the top of the domain
+(corresponding to the last `Center` index, `k = grid.Nz`):
+
+```jldoctest fields
+surface_c = Field{Center, Center, Center}(grid, indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Notice that the resulting field is `4×5×1` instead of `4×5×4` -- it occupies
+only a single index in the vertical.
+Also notice the `indices: (:, :, 4:4)` line in the output: the integer index
+`grid.Nz = 4` has been converted to the range `4:4`.
+
+We can `set!` reduced fields the same way as full fields:
+
+```jldoctest fields
+set!(surface_c, (x, y, z) -> x + y)
+
+surface_c[1:4, 1:5, grid.Nz]
+
+# output
+4×5 Matrix{Float64}:
+ 0.225  0.425  0.625  0.825  1.025
+ 0.475  0.675  0.875  1.075  1.275
+ 0.725  0.925  1.125  1.325  1.525
+ 0.975  1.175  1.375  1.575  1.775
+```
+
+### Reduced fields from operations
+
+The `indices` keyword is particularly useful in combination with field operations.
+For example, suppose we want to compute and store the vertical vorticity
+``∂v / ∂x - ∂u / ∂y`` only at the surface:
+
+```jldoctest fields
+u = XFaceField(grid)
+v = YFaceField(grid)
+
+set!(u, (x, y, z) -> x * y^2) # set u to something non-trivial
+set!(v, (x, y, z) -> x^2 * y) # set v to something non-trivial
+
+ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.05, min=-0.0375, mean=0.0025
+```
+
+Note that `ωₛ` is already computed, that is, [`compute!`](@ref) has been called upon
+construction, the expression `∂x(v) - ∂y(u)` has been evaluated and the result is
+stored _only_ at the surface slice.
+
+This is useful both to save memory (only one vertical level is allocated)
+and for output: reduced fields can be passed directly to an [`OutputWriter`](@ref output_writers)
+so that only the desired slice is saved to disk.

@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.Grids: RightConnected
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 using Oceananigans.OrthogonalSphericalShellGrids: rotate_coordinates
 using Oceananigans.Units
@@ -23,14 +22,14 @@ g2 = RotatedLatitudeLongitudeGrid(; size, latitude, longitude, z, topology, nort
 
 momentum_advection = VectorInvariant()
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
-m1 = HydrostaticFreeSurfaceModel(grid=g1; closure, momentum_advection)
-m2 = HydrostaticFreeSurfaceModel(grid=g2; closure, momentum_advection)
+m1 = HydrostaticFreeSurfaceModel(g1; closure, momentum_advection)
+m2 = HydrostaticFreeSurfaceModel(g2; closure, momentum_advection)
 
 Random.seed!(123)
 ϵᵢ(λ, φ, z) = 1e-6 * randn()
 set!(m1, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
 
-set!(m2, η = interior(m1.free_surface.η),
+set!(m2, η = interior(m1.free_surface.displacement),
          u = interior(m1.velocities.u),
          v = interior(m1.velocities.v))
 
@@ -48,19 +47,19 @@ for name in keys(models)
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
 
     u, v, w = model.velocities
-    η = model.free_surface.η
+    η = model.free_surface.displacement
     s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
     simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
                                                     schedule = IterationInterval(6),
                                                     filename = "splash_$name",
-                                                    overwrite_existing = true)
+                                                    overwrite_files = true)
 
     @info "Run simulation..."
     run!(simulation)
 end
 
-@show interior(m1.free_surface.η) == interior(m2.free_surface.η)
+@show interior(m1.free_surface.displacement) == interior(m2.free_surface.displacement)
 @show interior(m1.velocities.u)   == interior(m2.velocities.u)
 @show interior(m1.velocities.v)   == interior(m2.velocities.v)
 
@@ -129,4 +128,3 @@ frames = 1:length(times)
 record(fig, "splash.mp4", frames, framerate = 12) do nn
     n[] = nn
 end
-
