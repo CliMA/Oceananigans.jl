@@ -20,11 +20,11 @@ struct VelocityUpwinding{A} <: AbstractUpwindingTreatment
     cross_scheme    :: A # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
 end
 
-# `cross_scheme` is used only for `_symmetric_interpolate`s (i.e., only where we do not allow upwinding of the tangetial term)
+# `cross_scheme` is used only for `symmetric_interpolate`s (i.e., only where we do not allow upwinding of the tangetial term)
 # Therefore, for `@show` purposes it is better to convert an upwind scheme to it's centered counterpart
 # when it is passed as `cross_scheme`
 @inline extract_centered_scheme(scheme)       = scheme
-@inline extract_centered_scheme(scheme::AUAS) = scheme.advecting_velocity_scheme
+extract_centered_scheme(::AUAS{N, FT}) where {N, FT} = Centered(FT; order = max(2, 2N - 2))
 
 """
     OnlySelfUpwinding(; cross_scheme = Centered(),

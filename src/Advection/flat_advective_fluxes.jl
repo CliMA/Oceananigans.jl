@@ -23,28 +23,27 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
         @inline advective_tracer_flux_x(i, j, k, grid::XFG, ::$SchemeType, ::ETD, U, c) = zero(grid)
         @inline advective_tracer_flux_y(i, j, k, grid::YFG, ::$SchemeType, ::ETD, U, c) = zero(grid)
         @inline advective_tracer_flux_z(i, j, k, grid::ZFG, ::$SchemeType, ::ETD, U, c) = zero(grid)
+
+        @inline advective_flux_difference(i, j, k, grid::XFG, ::Val{1}, ℓ, ::$SchemeType, U, ψ) = zero(grid)
+        @inline advective_flux_difference(i, j, k, grid::YFG, ::Val{2}, ℓ, ::$SchemeType, V, ψ) = zero(grid)
+        @inline advective_flux_difference(i, j, k, grid::ZFG, ::Val{3}, ℓ, ::$SchemeType, W, ψ) = zero(grid)
     end
 end
 
-FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
-
 # Flat interpolations...
-for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
-    alt_symm_interp   = Symbol(:_symmetric_interpolate_, dir)
-    alt_biased_interp = Symbol(:_biased_interpolate_, dir)
-    @eval begin
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::HOADV, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $alt_symm_interp(i, j, k, grid::$GridType, ::LOADV, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
+for SchemeType in (:CenteredScheme, :UpwindScheme), (ξ, FlatGrid) in zip((:x, :y, :z), (:XFG, :YFG, :ZFG)),
+    ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
 
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::HOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
-        @inline $alt_biased_interp(i, j, k, grid::$GridType, ::LOADV, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+    symmetric_interpolation = Symbol(:symmetric_interpolate_, ξ, ℓx, ℓy, ℓz)
+    biased_interpolation    = Symbol(:biased_interpolate_, ξ, ℓx, ℓy, ℓz)
+
+    @eval begin
+        @inline $symmetric_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline $symmetric_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, ψ::Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline $symmetric_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, ψ::Callable, ::AS, args...) = @inbounds ψ(i, j, k, grid, args...)
+
+        @inline $biased_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline $biased_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+        @inline $biased_interpolation(i, j, k, grid::$FlatGrid, ::$SchemeType, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
     end
 end

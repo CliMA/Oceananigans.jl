@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Advection: biased_coefficients, weno_reconstruction, coeff_p, smoothness_coefficients, C★,
-                              materialize_advection, biased_interpolate_xᶠᵃᵃ, LeftBias
+                              materialize_advection, biased_interpolate_xᶠᶜᶜ, LeftBias
 
 function stretched_reconstruction_error(order, stretched, Nx)
     stretching(ξ) = ξ + 7 * sin(π * ξ) / 20π
@@ -11,7 +11,7 @@ function stretched_reconstruction_error(order, stretched, Nx)
     xᶠ = xnodes(grid, Face())
     c = CenterField(grid)
     set!(c, reshape([(primitive(xᶠ[i+1]) - primitive(xᶠ[i])) / (xᶠ[i+1] - xᶠ[i]) for i in 1:Nx], Nx, 1, 1))
-    return maximum(abs(biased_interpolate_xᶠᵃᵃ(i, 1, 1, grid, scheme, LeftBias, c) - sin(2π * xᶠ[i])) for i in order+1:Nx-order+1)
+    return maximum(abs(biased_interpolate_xᶠᶜᶜ(i, 1, 1, grid, scheme, LeftBias, c) - sin(2π * xᶠ[i])) for i in order+1:Nx-order+1)
 end
 
 @testset "Stretched WENO" begin

@@ -26,7 +26,7 @@ import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_lagrangian_particle_state!
 
 # The only grid type that can support an FFT implicit free-surface solver
-const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Any, <:Any, <:Any, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -196,6 +196,7 @@ include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("deferred_barotropic_acceleration.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
+include("tracer_flux_correction.jl")
 include("hydrostatic_free_surface_rk_step.jl")
 include("hydrostatic_free_surface_ssp_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")

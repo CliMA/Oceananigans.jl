@@ -452,6 +452,9 @@ end
         @test required_halo_size_y(closure) == 1
         @test required_halo_size_z(closure) == 1
 
+        # The time discretization and formulation type parameters of a `ScalarDiffusivity`
+        discretization_and_formulation(::ScalarDiffusivity{TD, F}) where {TD, F} = (TD, F)
+
         @testset "ScalarDiffusivity architecture conversion preserves halo size" begin
             time_discretization = VerticallyImplicitTimeDiscretization()
             diffusivity_formulation = VerticalFormulation()
@@ -469,7 +472,7 @@ end
                     @test required_halo_size_z(converted) == 3
                     @test converted.ν == closure.ν
                     @test converted.κ == closure.κ
-                    @test typeof(converted).parameters[1:2] == typeof(closure).parameters[1:2]
+                    @test discretization_and_formulation(converted) == discretization_and_formulation(closure)
                 end
             end
         end
@@ -700,11 +703,13 @@ end
             clock = Clock(time=0.0)
             Δt = 1
 
+            # The trailing arguments are advection, w, density, the top, bottom and immersed boundary
+            # conditions, and the field being stepped; none of them contribute here.
             coefficient(marker, k) =
                 get_coefficient(1, 1, k, grid, marker, nothing, ZDirection(),
                                 closure, nothing, nothing, LX(), Center(), LZ(),
                                 Δt, clock, NamedTuple(),
-                                nothing, nothing, nothing, nothing, nothing, nothing)
+                                nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
             # Assembling the rows on the host reads grid metrics one level at a time, which on a
             # stretched GPU grid are device arrays. `runtests.jl` happens to wrap the whole suite in

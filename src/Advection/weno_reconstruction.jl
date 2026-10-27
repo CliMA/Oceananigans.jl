@@ -71,7 +71,7 @@ julia> WENO()
 WENO{3, Float64, Nothing}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
 │   └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=4)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To build a 9th-order scheme (often a good choice for a stable
@@ -84,7 +84,7 @@ WENO{5, Float64, Nothing}(order=9)
 │   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
 │       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
 │           └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To build a 9th-order scheme with `minimum_buffer_upwind_order=5`,
@@ -96,7 +96,7 @@ WENO{5, Float64, Nothing}(order=9)
 ├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
 │   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
 │       └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 ```jldoctest weno
@@ -106,7 +106,7 @@ WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 │   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
 │       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
 │           └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=8)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
@@ -115,7 +115,7 @@ julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
 │   └── buffer_scheme: Centered(order=2)
-└── advecting_velocity_scheme: Centered(order=4)
+└── advecting_velocity_scheme: Centered(order=2)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
@@ -137,7 +137,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
         return UpwindBiased(FT; order=1)
     else
-        advecting_velocity_scheme = Centered(FT; order=order-1)
+        advecting_velocity_scheme = Centered(FT; order=2)
 
         if buffer_scheme isa DecreasingOrderAdvectionScheme
             if order ≤ minimum_buffer_upwind_order

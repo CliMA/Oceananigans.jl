@@ -118,8 +118,8 @@ end
 function test_partial_cell_bottom_cell_detection(FT, arch)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 8), extent=(1, 1, 1))
 
-    # Create a bottom at z = -0.5 with minimum fractional cell height
-    bottom_height = -0.5
+    # Create a bottom inside the fifth cell with minimum fractional cell height
+    bottom_height = -0.47
     ϵ = 0.2
     ib = PartialCellBottom(bottom_height; minimum_fractional_cell_height=ϵ)
     ibg = ImmersedBoundaryGrid(underlying_grid, ib)
@@ -127,9 +127,8 @@ function test_partial_cell_bottom_cell_detection(FT, arch)
     # Test immersed cell detection
     @allowscalar begin
         for i in 1:4, j in 1:4, k in 1:8
-            # The partial cell criterion is different - need to check grid spacing
             immersed = _immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
-            @test immersed isa Bool
+            @test immersed == (k ≤ 4)
         end
     end
 
@@ -378,7 +377,7 @@ function test_immersed_boundary_grid_show(FT, arch, boundary_type)
 
     # The array type in the bottom height summary depends on the architecture
     ib_shown = sprint(show, ib)
-    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 OffsetArray("))
+    @test startswith(ib_shown, string(ib_summary, "\n", bottom_height_prefix, "10×10×1 StaticStridesOffsetArray("))
     @test endswith(ib_shown, string("with eltype $FT with indices -2:7×-2:7×1:1", ib_suffix))
 
     return nothing

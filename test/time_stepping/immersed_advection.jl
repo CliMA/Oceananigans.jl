@@ -1,19 +1,34 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!, peripheral_node
 using Oceananigans.Advection:
-        _symmetric_interpolate_xᶠᵃᵃ,
-        _symmetric_interpolate_xᶜᵃᵃ,
-        _symmetric_interpolate_yᵃᶠᵃ,
-        _symmetric_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_xᶜᵃᵃ,
-        _biased_interpolate_xᶠᵃᵃ,
-        _biased_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_yᵃᶠᵃ,
+        symmetric_interpolate_xᶠᶜᶜ,
+        symmetric_interpolate_xᶜᶜᶜ,
+        symmetric_interpolate_xᶜᶠᶜ,
+        symmetric_interpolate_yᶠᶜᶜ,
+        symmetric_interpolate_yᶜᶜᶜ,
+        biased_interpolate_xᶠᶜᶜ,
+        biased_interpolate_xᶜᶜᶜ,
+        biased_interpolate_xᶜᶠᶜ,
+        biased_interpolate_yᶜᶠᶜ,
+        biased_interpolate_yᶠᶜᶜ,
+        biased_interpolate_yᶜᶜᶜ,
         FluxFormAdvection,
         LeftBias,
         RightBias,
-        materialize_advection
+        materialize_advection,
+        div_𝐯u,
+        div_𝐯v,
+        div_𝐯w,
+        div_Uc,
+        _advective_tracer_flux_x,
+        _advective_tracer_flux_y,
+        _advective_tracer_flux_z
+
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.TimeSteppers: compute_tendencies!
+using Oceananigans.Operators: Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ, V⁻¹ᶜᶜᶜ, δxᶜᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ
+using Oceananigans.Grids: inactive_cell, peripheral_node
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -31,12 +46,12 @@ function run_tracer_interpolation_test(c, ibg, scheme)
     scheme = materialize_advection(scheme, ibg)
     for j in 6:19, i in 6:19
         if typeof(scheme) <: Centered
-            @test @allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶠᶜᶜ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶠᶜ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶠᶜ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
         end
     end
 end
@@ -80,24 +95,164 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
 
     for i in 7:19, j in 7:19
         if typeof(scheme) <: Centered
-            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
-            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  symmetric_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶜᶜ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶠᶜᶜ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
 
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar biased_interpolate_xᶜᶠᶜ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar biased_interpolate_yᶜᶜᶜ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
         end
     end
 
     return nothing
+end
+
+staircase(ξ) = (5 + sum(tanh(40 * (ξ - n / 6)) for n in 1:5)) / 20
+
+function run_kinetic_energy_conservation_test(arch, Bottom)
+    grid = RectilinearGrid(arch, size=(16, 16, 32), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, Bottom((x, y) -> staircase(x) + staircase(y)))
+
+    pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
+    model = NonhydrostaticModel(ibg; advection=Centered(), pressure_solver)
+
+    u, v, w = model.velocities
+    set!(model, u = rand(size(u)...) .- 1/2, v = rand(size(v)...) .- 1/2, w = rand(size(w)...) .- 1/2)
+    compute_tendencies!(model, [])
+    G = model.timestepper.Gⁿ
+
+    Vu = KernelFunctionOperation{Face, Center, Center}(Vᶠᶜᶜ, ibg)
+    Vv = KernelFunctionOperation{Center, Face, Center}(Vᶜᶠᶜ, ibg)
+    Vw = KernelFunctionOperation{Center, Center, Face}(Vᶜᶜᶠ, ibg)
+
+    production = sum(Vu * u * G.u) + sum(Vv * v * G.v) + sum(Vw * w * G.w)
+    magnitude  = sum(abs, Vu * u * G.u) + sum(abs, Vv * v * G.v) + sum(abs, Vw * w * G.w)
+
+    @test abs(production) < 1e-12 * magnitude
+
+    return nothing
+end
+
+function run_uniform_momentum_preservation_test(arch, Bottom, scheme)
+    grid = RectilinearGrid(arch, size=(16, 16, 32), halo=(6, 6, 6), x=(0, 1), y=(0, 1), z=(0, 1), topology=(Bounded, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, Bottom((x, y) -> staircase(x) + staircase(y)))
+
+    pressure_solver = ConjugateGradientPoissonSolver(ibg; reltol=1e-14, abstol=0, maxiter=1000)
+    model = NonhydrostaticModel(ibg; advection=scheme, pressure_solver)
+
+    u, v, w = model.velocities
+    set!(model, u = rand(size(u)...) .- 1/2, v = rand(size(v)...) .- 1/2, w = rand(size(w)...) .- 1/2)
+
+    uniform = XFaceField(ibg)
+    parent(uniform) .= 1
+
+    advection = model.advection.momentum
+    Gu = KernelFunctionOperation{Face, Center, Center}(div_𝐯u, ibg, advection, model.velocities, uniform)
+    Gv = KernelFunctionOperation{Center, Face, Center}(div_𝐯v, ibg, advection, model.velocities, uniform)
+    Gw = KernelFunctionOperation{Center, Center, Face}(div_𝐯w, ibg, advection, model.velocities, uniform)
+
+    active(ℓx, ℓy, ℓz) = (i, j, k, grid, G) -> !peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    scale = maximum(abs, u) / minimum_xspacing(ibg)
+
+    @test maximum(abs, Gu; condition=active(Face(), Center(), Center())) < 1e-10 * scale
+    @test maximum(abs, Gv; condition=active(Center(), Face(), Center())) < 1e-10 * scale
+    @test maximum(abs, Gw; condition=active(Center(), Center(), Face())) < 1e-10 * scale
+
+    return nothing
+end
+
+function run_uniform_through_flow_test(arch, scheme)
+    grid = RectilinearGrid(arch, size=(16, 16), halo=(5, 5), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+
+    through_flow = NormalFlowBoundaryCondition(1)
+    u_bcs = FieldBoundaryConditions(grid, (Face(), Center(), Center()); west=through_flow, east=through_flow)
+    u = XFaceField(grid, boundary_conditions=u_bcs)
+    set!(u, 1)
+    fill_halo_regions!(u)
+
+    velocities = (; u, v=YFaceField(grid), w=ZFaceField(grid))
+    Gu = KernelFunctionOperation{Face, Center, Center}(div_𝐯u, grid, materialize_advection(scheme, grid), velocities, u)
+    interior_face(i, j, k, grid, G) = !peripheral_node(i, j, k, grid, Face(), Center(), Center())
+
+    @test maximum(abs, Gu; condition=interior_face) < 1e-12
+
+    return nothing
+end
+
+function run_staircase_convection_test(arch)
+    grid = RectilinearGrid(arch, size=(16, 128), halo=(4, 4), x=(0, 1), z=(0, 1), topology=(Bounded, Flat, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, PartialCellBottom(x -> 2staircase(x)))
+
+    model = NonhydrostaticModel(ibg; advection=WENO(), tracers=:b, buoyancy=BuoyancyTracer(),
+                                pressure_solver=ConjugateGradientPoissonSolver(ibg))
+
+    set!(model, b = (x, z) -> - exp(-((x - 1/2)^2 + (z - 0.55)^2) / (2 * 0.05^2)))
+
+    simulation = Simulation(model; Δt=1e-3, stop_time=1, verbose=false)
+    conjure_time_step_wizard!(simulation, cfl=0.7)
+    run!(simulation)
+
+    @test maximum(abs, model.velocities.u) < 1
+
+    return nothing
+end
+
+function left_of_thin_wall_tendency(arch, scheme, right_velocity)
+    grid = RectilinearGrid(arch, size=(17, 8), x=(0, 17), z=(0, 8), halo=(6, 6), topology=(Bounded, Flat, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, z) -> 8 < x < 9))
+
+    u = XFaceField(ibg)
+    set!(u, (x, z) -> x < 8 ? -1 : x > 9 ? right_velocity : 0)
+    velocities = (u, YFaceField(ibg), ZFaceField(ibg))
+
+    advection = materialize_advection(scheme, ibg)
+    G = Field(KernelFunctionOperation{Face, Center, Center}(div_𝐯u, ibg, advection, velocities, u))
+
+    return Array(interior(G, 1:8, 1, :))
+end
+
+@inline face_flux_divergence(i, j, k, grid, advection, U, c) =
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, U.u, c) +
+                             δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
+                             δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c))
+
+@inline active_cell_difference(i, j, k, grid, advection, U, c) =
+    ifelse(inactive_cell(i, j, k, grid), zero(grid), div_Uc(i, j, k, grid, advection, U, c) - face_flux_divergence(i, j, k, grid, advection, U, c))
+
+@inline no_wall_flow(i, j, k, grid, ψ, ℓ) = ifelse(peripheral_node(i, j, k, grid, ℓ...), zero(grid), @inbounds ψ[i, j, k])
+
+# the largest difference between div_Uc and the divergence of the face fluxes over the active cells, relative to the latter,
+# from random fields without flow through the walls
+function cell_and_face_tracer_divergence(arch, scheme)
+    grid = RectilinearGrid(arch, size=(12, 12, 12), extent=(1, 1, 1), halo=(6, 6, 6), topology=(Periodic, Bounded, Bounded))
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -0.6 + 0.25 * sin(2π * x) * cos(π * y)))
+
+    Random.seed!(1234)
+    u, v, w, c = XFaceField(ibg), YFaceField(ibg), ZFaceField(ibg), CenterField(ibg)
+    for ψ in (u, v, w, c)
+        set!(ψ, rand(size(ψ)...) .- 0.3)
+        fill_halo_regions!(ψ)
+    end
+
+    u = compute!(Field(KernelFunctionOperation{Face, Center, Center}(no_wall_flow, ibg, u, (Face(), Center(), Center()))))
+    v = compute!(Field(KernelFunctionOperation{Center, Face, Center}(no_wall_flow, ibg, v, (Center(), Face(), Center()))))
+    w = compute!(Field(KernelFunctionOperation{Center, Center, Face}(no_wall_flow, ibg, w, (Center(), Center(), Face()))))
+    foreach(fill_halo_regions!, (u, v, w))
+
+    advection  = materialize_advection(scheme, ibg)
+    U          = (; u, v, w)
+    difference = compute!(Field(KernelFunctionOperation{Center, Center, Center}(active_cell_difference, ibg, advection, U, c)))
+    divergence = compute!(Field(KernelFunctionOperation{Center, Center, Center}(face_flux_divergence, ibg, advection, U, c)))
+
+    return maximum(abs, difference) / maximum(abs, divergence)
 end
 
 for arch in archs
@@ -170,6 +325,41 @@ for arch in archs
             @testset "$(summary(scheme)) [$(summary(arch))]" begin
                 run_momentum_interpolation_test(u, v, ibg, scheme)
             end
+        end
+    end
+
+    @testset "Immersed momentum advection conserves kinetic energy" begin
+        @testset "$Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom)
+            run_kinetic_energy_conservation_test(arch, Bottom)
+        end
+    end
+
+    @testset "Immersed momentum advection preserves a uniform field" begin
+        @testset "$(summary(scheme)), $Bottom [$(summary(arch))]" for Bottom in (GridFittedBottom, PartialCellBottom),
+                                                                      scheme in (Centered(), UpwindBiased(), WENO(), WENO(order=9))
+            run_uniform_momentum_preservation_test(arch, Bottom, scheme)
+        end
+    end
+
+    @testset "Uniform through-flow stays uniform [$(summary(arch))]" begin
+        @testset "$(summary(scheme))" for scheme in (Centered(), UpwindBiased(), WENO(), WENO(order=9))
+            run_uniform_through_flow_test(arch, scheme)
+        end
+    end
+
+    @testset "Convection over an immersed staircase stays bounded [$(summary(arch))]" begin
+        run_staircase_convection_test(arch)
+    end
+
+    @testset "Momentum advection does not reach across a one-cell immersed wall" begin
+        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (UpwindBiased(order=5), WENO(), WENO(order=9))
+            @test left_of_thin_wall_tendency(arch, scheme, 0) == left_of_thin_wall_tendency(arch, scheme, 1)
+        end
+    end
+
+    @testset "Tracer flux divergence of the cell stencils equals that of the face fluxes" begin
+        @testset "$(summary(scheme)) [$(summary(arch))]" for scheme in (Centered(order=4), UpwindBiased(order=5), WENO(order=5), WENO(order=7), WENO(order=9))
+            @test cell_and_face_tracer_divergence(arch, scheme) < 1e-12
         end
     end
 end

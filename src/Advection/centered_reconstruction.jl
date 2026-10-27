@@ -43,22 +43,15 @@ Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
 const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
-@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
+@inline biased_interpolate(i, j, k, grid, dir, ℓ, scheme::ACAS, bias, args...) = symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme, args...)
+@inline biased_interpolate(scheme::ACAS, bias, S) = symmetric_interpolate(scheme, S)
 
-# uniform centered reconstruction
+# uniform centered reconstruction from the `2N` values `S` of `load_stencil`
 for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval begin
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
+    @eval @inline symmetric_interpolate(::Centered{$buffer, $FT}, S) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric))
+end
 
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::Centered{$buffer, $FT}, ψ::Callable, args...) = @inbounds @muladd $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))
-    end
+@inline function symmetric_interpolate(i, j, k, grid, dir, ℓ, scheme::Centered{N}, ψ, args...) where N
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    return symmetric_interpolate(scheme, S)
 end

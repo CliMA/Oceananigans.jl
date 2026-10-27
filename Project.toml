@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.114.0"
+version = "0.116.1"
 authors = ["Climate Modeling Alliance and contributors"]
 
 [deps]
@@ -61,6 +61,9 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase",
 OceananigansNCCLExt = ["NCCL", "CUDA"]
 OceananigansZarrExt = "Zarr"
 
+[sources]
+OffsetArrays = {url = "https://github.com/simone-silvestri/OffsetArrays.jl", rev = "073659e14abc98add86f0362ec33412ee60abcd6"}
+
 [compat]
 AbstractFFTs = "1.5"
 Adapt = "4.1.1"
@@ -73,7 +76,7 @@ Crayons = "4"
 CubedSphere = "0.3.4"
 Dates = "1.9"
 Distances = "0.10"
-DocStringExtensions = "0.8, 0.9"
+DocStringExtensions = "0.8, 0.9, 0.10"
 Enzyme = "0.13.78"
 FFTW = "1"
 GPUArraysCore = "0.2"
@@ -90,8 +93,8 @@ Makie = "0.24"
 Metal = "1.10"
 MuladdMacro = "0.2"
 NCDatasets = "0.12.10, 0.13.1, 0.14"
-OffsetArrays = "1.4"
-OrderedCollections = "1.1"
+OffsetArrays = "1.18"
+OrderedCollections = "1.1, 2"
 Printf = "1.9"
 Reactant = "0.2.278"
 ReactantCore = "^0.1.0"
@@ -101,6 +104,6 @@ SparseArrays = "1.9"
 StaticArrays = "1"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
-Zarr = "0.10"
+Zarr = "0.10, 0.11"
 julia = "1.10"
 oneAPI = "2.4.0"

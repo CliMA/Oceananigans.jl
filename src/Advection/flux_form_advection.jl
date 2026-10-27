@@ -54,6 +54,10 @@ Architectures.on_architecture(arch, scheme::FluxFormAdvection{N, FT, TD}) where 
                                  on_architecture(arch, scheme.y),
                                  on_architecture(arch, scheme.z))
 
+@inline advective_flux_difference(i, j, k, grid, dir::Val{1}, ℓ, scheme::FluxFormAdvection, U, ψ) = advective_flux_difference(i, j, k, grid, dir, ℓ, scheme.x, U, ψ)
+@inline advective_flux_difference(i, j, k, grid, dir::Val{2}, ℓ, scheme::FluxFormAdvection, V, ψ) = advective_flux_difference(i, j, k, grid, dir, ℓ, scheme.y, V, ψ)
+@inline advective_flux_difference(i, j, k, grid, dir::Val{3}, ℓ, scheme::FluxFormAdvection, W, ψ) = advective_flux_difference(i, j, k, grid, dir, ℓ, scheme.z, W, ψ)
+                                 
 @inline _advective_tracer_flux_x(i, j, k, grid, scheme::FluxFormAdvection, U, c) = _advective_tracer_flux_x(i, j, k, grid, scheme.x, U, c)
 @inline _advective_tracer_flux_y(i, j, k, grid, scheme::FluxFormAdvection, V, c) = _advective_tracer_flux_y(i, j, k, grid, scheme.y, V, c)
 @inline _advective_tracer_flux_z(i, j, k, grid, scheme::FluxFormAdvection, W, c) = _advective_tracer_flux_z(i, j, k, grid, scheme.z, W, c)

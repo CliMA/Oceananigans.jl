@@ -5,7 +5,7 @@ export VarianceDissipation, flatten_dissipation_fields
 using KernelAbstractions: @kernel, @index
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: Oceananigans, UpdateStateCallsite
+using Oceananigans: Oceananigans, UpdateStateCallsite, TracerTendencyCallsite
 using Oceananigans.Advection
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
@@ -13,18 +13,19 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Fields: VelocityFields
-using Oceananigans.Grids: architecture, AbstractGrid
+using Oceananigans.Grids: architecture, AbstractGrid, peripheral_node
 using Oceananigans.Operators
 using Oceananigans.TimeSteppers: MultiStageTimeStepper,
+                                 QuasiAdamsBashforth2TimeStepper,
+                                 RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper,
                                  SSPRungeKuttaTimeStepper,
                                  ssp_quadrature_weights,
-                                 QuasiAdamsBashforth2TimeStepper,
-                                 RungeKutta3TimeStepper,
-                                 SplitRungeKuttaTimeStepper
+                                 time_discretization
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
                                        _diffusive_flux_z
+using OffsetArrays: OffsetArrays
 using Oceananigans.Utils
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 
@@ -47,9 +48,7 @@ function c_grid_vector(grid)
 end
 
 """
-    VarianceDissipation(tracer_name, grid;
-                        Uⁿ⁻¹ = VelocityFields(grid),
-                        Uⁿ   = VelocityFields(grid))
+    VarianceDissipation(tracer_name, grid)
 
 Construct a `VarianceDissipation` object for a tracer called `tracer_name` that lives on `grid`.
 This function computes the variance dissipation diagnostics for the specified tracer in the model.
@@ -59,6 +58,10 @@ dissipation associated to closures.
 This diagnostic is especially useful for models that use a dissipative advection scheme
 like [`WENO`](@ref) or [`UpwindBiased`](@ref).
 
+Add it to a simulation with `add_callback!(simulation, dissipation, schedule)`. This registers two callbacks:
+one caches the fluxes and the transport with which the stages compute the tracer tendency, the other assembles
+the dissipation once the tracer is updated at the end of the step.
+
 Arguments
 =========
 
@@ -67,19 +70,11 @@ Arguments
                  used to identify the tracer in the model's state.
 - `grid`: The grid on which the tracer is defined.
 
-Keyword Arguments
-=================
-
-- `Uⁿ⁻¹`: The velocity field at the previous time step. Default: `VelocityFields(grid)`.
-- `Uⁿ`: The velocity field at the current time step. Default: `VelocityFields(grid)`.
-
 !!! compat "Time stepper compatibility"
-    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
-    and a [`SplitRungeKuttaTimeStepper`](@ref).
+    At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref),
+    a [`SplitRungeKuttaTimeStepper`](@ref) and an [`SSPRungeKuttaTimeStepper`](@ref).
 """
-function VarianceDissipation(tracer_name, grid;
-                             Uⁿ⁻¹ = VelocityFields(grid),
-                             Uⁿ   = VelocityFields(grid))
+function VarianceDissipation(tracer_name, grid)
 
     P    = c_grid_vector(grid)
     K    = c_grid_vector(grid)
@@ -87,42 +82,35 @@ function VarianceDissipation(tracer_name, grid;
     Vⁿ⁻¹ = c_grid_vector(grid)
     Fⁿ   = c_grid_vector(grid)
     Fⁿ⁻¹ = c_grid_vector(grid)
+    κᶻ   = ZFaceField(grid)
     cⁿ⁻¹ = CenterField(grid)
-    cᵐ⁻¹ = CenterField(grid)
+    Uⁿ⁻¹ = VelocityFields(grid)
+    Uⁿ   = VelocityFields(grid)
 
-    # stretching of the horizontal face areas at the end of the previous stage
-    σᵐ⁻¹ = (x = Field{Face,   Center, Nothing}(grid),
-            y = Field{Center, Face,   Nothing}(grid))
-
-    for σ in σᵐ⁻¹
-        fill!(parent(σ), 1)
-    end
-
-    previous_state   = (; cⁿ⁻¹, cᵐ⁻¹, Uⁿ⁻¹, Uⁿ, σᵐ⁻¹)
+    previous_state   = (; cⁿ⁻¹, Uⁿ⁻¹, Uⁿ)
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
-    diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹)
+    diffusive_fluxes = (; Vⁿ, Vⁿ⁻¹, κᶻ)
 
     return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, tracer_name)
 end
 
-function (ϵ::VarianceDissipation)(model)
+final_stage(::QuasiAdamsBashforth2TimeStepper) = 1
+final_stage(timestepper::MultiStageTimeStepper) = timestepper.Nstages
 
-    # Check if the timestepper is supported
-    if model.timestepper isa RungeKutta3TimeStepper
-        throw(ArgumentError("VarianceDissipation  using a RungeKutta3TimeStepper is not supported."))
+function (ϵ::VarianceDissipation)(model, ::TracerTendencyCallsite)
+    if model.clock.stage == 1
+        parent(ϵ.previous_state.cⁿ⁻¹) .= parent(model.tracers[ϵ.tracer_name])
     end
 
-    # Check if the model has a velocity field
-    if !hasproperty(model, :velocities)
-        throw(ArgumentError("Model must have a velocity field."))
-    end
+    cache_fluxes!(ϵ, model, ϵ.tracer_name)
 
-    # Check if the model has tracers
-    if !hasproperty(model.tracers, ϵ.tracer_name)
-        throw(ArgumentError("Model must have a tracer called $(ϵ.tracer_name)."))
-    end
+    return nothing
+end
 
-    update_variance_budget!(ϵ, model, transport_timing(model))
+function (ϵ::VarianceDissipation)(model, ::UpdateStateCallsite)
+    if model.clock.stage == final_stage(model.timestepper)
+        compute_dissipation!(ϵ, model, ϵ.tracer_name)
+    end
 
     return nothing
 end
@@ -139,24 +127,37 @@ include("diffusive_dissipation.jl")
 include("compute_dissipation.jl")
 include("flatten_dissipation_fields.jl")
 
-import Oceananigans.Simulations: Callback, validate_schedule
+using Oceananigans.Simulations: GenericName, generic_callback_name
 
-# Specific `Callback` for `VarianceDissipation` computations.
-# A VarianceDissipation object requires a `ConsecutiveIteration` schedule to make sure
-# that the computed fluxes are correctly used in the next time step.
-# Also, the `VarianceDissipation` object needs to be called on `UpdateStateStepCallsite` to be correct.
-function Callback(func::VarianceDissipation, schedule=IterationInterval(1);
-                  parameters = nothing,
-                  callsite = UpdateStateCallsite())
+import Oceananigans.Simulations: Callback, add_callback!, validate_schedule
 
-    if !(callsite isa UpdateStateCallsite)
-        @warn "VarianceDissipation callback must be called on UpdateStateCallsite. Changing `callsite` to `UpdateStateCallsite()`."
-        callsite = UpdateStateCallsite()
+function Callback(::VarianceDissipation, schedule=IterationInterval(1); kwargs...)
+    throw(ArgumentError("add a VarianceDissipation to a simulation with `add_callback!(simulation, dissipation, schedule)`."))
+end
+
+# Each callback receives its callsite as parameter, which selects the method of `VarianceDissipation` it calls
+function add_callback!(simulation, dissipation::VarianceDissipation, schedule=IterationInterval(1); name=GenericName())
+    model = simulation.model
+
+    if model.timestepper isa RungeKutta3TimeStepper
+        throw(ArgumentError("VarianceDissipation using a RungeKutta3TimeStepper is not supported."))
     end
 
-    schedule = validate_schedule(func, schedule)
+    if !hasproperty(model, :velocities)
+        throw(ArgumentError("Model must have a velocity field."))
+    end
 
-    return Callback(func, schedule, callsite, parameters)
+    if !hasproperty(model.tracers, dissipation.tracer_name)
+        throw(ArgumentError("Model must have a tracer called $(dissipation.tracer_name)."))
+    end
+
+    name = generic_callback_name(name, keys(simulation.callbacks))
+    schedule = validate_schedule(dissipation, schedule)
+
+    simulation.callbacks[Symbol(name, :_fluxes)] = Callback(dissipation, schedule, TracerTendencyCallsite(), TracerTendencyCallsite())
+    simulation.callbacks[name] = Callback(dissipation, schedule, UpdateStateCallsite(), UpdateStateCallsite())
+
+    return nothing
 end
 
 validate_schedule(::VarianceDissipation, schedule) = throw(ArgumentError("the provided schedule $schedule is not supported for VarianceDissipation computations. \n" *

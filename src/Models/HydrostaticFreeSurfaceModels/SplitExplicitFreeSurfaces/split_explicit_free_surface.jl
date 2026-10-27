@@ -1,5 +1,5 @@
 using Oceananigans: Oceananigans
-using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected
+using Oceananigans.Grids: Grids, Flat
 using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo, connected_range
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
@@ -101,7 +101,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
 - `kernel_parameters`: Kernel parameters for subcycling kernel launching. This is `Val(:xy)` when the substeps span
-  the interior, and a `KernelParameters` struct with the execution ranges when they extend into the halos.
+  the interior. When they extend into the halos, it is `surface_kernel_parameters(grid)` for `ExtendedHalos`, and a `KernelParameters` struct with the
+  execution ranges for `LocalHaloFilling`.
 
 - `substepping`: Either `FixedSubstepNumber` or `FixedTimeStepSize`, controlling the barotropic substepping
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
@@ -139,8 +140,9 @@ Keyword Arguments
               then the number of substeps will be computed on the fly from the baroclinic time step to
               maintain a constant cfl.
 
-- `extend_halos`: If `true` (default), extend the halos in `Connected` directions and substep into them,
-                  avoiding communication at each substep. If `false`, halos are not extended and
+- `extend_halos`: If `true` (default), extend the halos in `Connected` directions, up to the smallest local
+                  grid size, and substep into them, communicating only when the substeps outnumber the
+                  halo cells. If `false`, halos are not extended and
                   `fill_halo_regions!` is called after each individual update of `U` and `η`, including
                   communication (`CompleteHaloFilling`). Note that when the barotropic velocities
                   have prescribed normal-flow boundary conditions (e.g. `GravityWaveRadiation`), the per-substep
@@ -206,8 +208,15 @@ end
 # A free surface where halos are explicitly filled at each substep
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling}}
 
-@inline fill_only_local_halos(::SplitExplicitFreeSurface{LocalHaloFilling})    = true
-@inline fill_only_local_halos(::SplitExplicitFreeSurface{CompleteHaloFilling}) = false
+# Substeps between two halo exchanges: a halo of H cells in a Connected direction holds (H - 2) ÷ stages substeps
+@inline halo_exchange_interval(::SplitExplicitFreeSurface{CompleteHaloFilling}, grid, Nsubsteps; stages = 1) = 1
+
+function halo_exchange_interval(free_surface, grid, Nsubsteps; stages = 1)
+    TX, TY, _ = topology(grid)
+    Hx, Hy, _ = halo_size(grid)
+    interval = min(TX() isa ConnectedTopology ? (Hx - 2) ÷ stages : Nsubsteps, TY() isa ConnectedTopology ? (Hy - 2) ÷ stages : Nsubsteps)
+    return max(1, interval)
+end
 
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
@@ -256,9 +265,7 @@ Base.@constprop :aggressive function hydrostatic_tendency_fields(velocities, fre
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected,
-                                LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                                LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+const ConnectedTopology = Union{Sides{Connected}, Sides{<:Any, Connected}}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, bcs) where {extend_halos}
@@ -300,7 +307,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     kernel_parameters = if strategy isa CompleteHaloFilling
         Val(:xy)
     else
-        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
+        materialize_kernel_parameters(TX, TY, maybe_extended_grid, substepping, strategy)
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, bcs)
@@ -403,23 +410,24 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stage
     old_halos = halo_size(grid)
     step_halo = stages * length(substepping.averaging_weights) + 2
 
-    Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]
+    # Every rank shares the same halo, so it is capped at the smallest local size
+    Nx = all_reduce(min, size(grid, 1), architecture(grid))
+    Ny = all_reduce(min, size(grid, 2), architecture(grid))
+
+    Hx = TX() isa ConnectedTopology ? min(max(step_halo, old_halos[1]), Nx) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? min(max(step_halo, old_halos[2]), Ny) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
-    # Warn if extended halos are larger than or equal to interior grid size
-    # This can cause out-of-bounds memory access in distributed computations
-    Nx, Ny, _ = size(grid)
-    if Hx >= Nx && TX() isa ConnectedTopology
-        @warn "SplitExplicitFreeSurface: Extended halo size Hx=$Hx >= local grid size Nx=$Nx. " *
-              "This may cause incorrect results in distributed computations. " *
-              "Consider using a larger grid or fewer substeps."
-    end
-    if Hy >= Ny && TY() isa ConnectedTopology
-        @warn "SplitExplicitFreeSurface: Extended halo size Hy=$Hy >= local grid size Ny=$Ny. " *
-              "This may cause incorrect results in distributed computations. " *
-              "Consider using a larger grid or fewer substeps."
+    x_capped = TX() isa ConnectedTopology && Hx < Nsubsteps + 2
+    y_capped = TY() isa ConnectedTopology && Hy < Nsubsteps + 2
+
+    if x_capped || y_capped
+        exchange_interval = min(TX() isa ConnectedTopology ? Hx - 2 : Nsubsteps,
+                                TY() isa ConnectedTopology ? Hy - 2 : Nsubsteps)
+        Nexchanges = cld(Nsubsteps, exchange_interval) - 1
+        @root @info "SplitExplicitFreeSurface: the extended halos $((Hx, Hy)) are capped by the smallest local grid size $((Nx, Ny)), " *
+                    "so the $Nsubsteps barotropic substeps fill the halos $Nexchanges more time(s) per time step." maxlog=1
     end
 
     if new_halos == old_halos
@@ -429,16 +437,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber; stage
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = Val(:xy)
+materialize_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize, strategy) = Val(:xy)
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
+function materialize_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber, strategy)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(connected_range, (TX, TY), (Nx, Ny), (Hx, Hy))
+    kernel_parameters = materialized_kernel_parameters(strategy, grid, kernel_sizes)
 
-    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : KernelParameters(kernel_sizes...)
+    return kernel_sizes == (1:Nx, 1:Ny) ? Val(:xy) : kernel_parameters
 end
+
+materialized_kernel_parameters(::ExtendedHalos,    grid, kernel_sizes) = surface_kernel_parameters(grid)
+materialized_kernel_parameters(::LocalHaloFilling, grid, kernel_sizes) = KernelParameters(kernel_sizes...)
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =

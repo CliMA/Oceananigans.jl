@@ -75,8 +75,10 @@ ssp_substep!(model::HydrostaticFreeSurfaceModel, Δt, a, b, callbacks) =
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
+    @apply_regionally compute_tracer_tendencies!(model)
+    execute_tracer_tendency_callbacks!(model, callbacks)
+
     @apply_regionally begin
-        compute_tracer_tendencies!(model)
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δt)
 
         # Reconciled at every stage: deferring it to the final stage breaks tracer constancy.

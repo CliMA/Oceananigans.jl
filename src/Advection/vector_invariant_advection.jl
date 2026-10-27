@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Operators: δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
@@ -321,18 +321,16 @@ end
                                                                     bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
-for bias in (:_biased, :_symmetric)
-    for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
-        interp_func = Symbol(bias, :_interpolate_, dir1)
-        multidim_interp = Symbol(:_multi_dimensional_reconstruction_, dir2)
+for bias in (:biased, :symmetric), (ξ, η) in ((:x, :y), (:y, :x)), ℓx in (:ᶜ, :ᶠ), ℓy in (:ᶜ, :ᶠ), ℓz in (:ᶜ, :ᶠ)
+    interp_func = Symbol(bias, :_interpolate_, ξ, ℓx, ℓy, ℓz)
+    multidim_interp = Symbol(:multi_dimensional_reconstruction_, η)
 
-        @eval begin
-            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
-                        $interp_func(i, j, k, grid, interp_scheme, args...)
+    @eval begin
+        @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
+                    $interp_func(i, j, k, grid, interp_scheme, args...)
 
-            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
-                        $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
-        end
+        @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
+                    $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
     end
 end
 
@@ -368,20 +366,24 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
+# The vertical volume flux through the faces of a horizontal velocity cell
+@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Face, Center, Center}, scheme, W) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+@inline transport(i, j, k, grid, ::Val{3}, ::Tuple{Center, Face, Center}, scheme, W) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, W)
+
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Face(), Center(), Center()), scheme.vertical_advection_scheme, U.w, U.u)
 
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    𝒜ᶻ = advective_flux_difference(i, j, k, grid, Val(3), (Center(), Face(), Center()), scheme.vertical_advection_scheme, U.w, U.v)
 
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 #####
@@ -415,7 +417,7 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ζᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = biased_interpolate_yᶠᶜᶜ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return - v̂ * ζᴿ
 end
@@ -425,7 +427,7 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = biased_interpolate_xᶜᶠᶜ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + û * ζᴿ
 end
@@ -440,12 +442,12 @@ end
 
 @inline function upwinded_vorticityᶠᶜᶜ(i, j, k, grid, scheme, u, v)
     v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    return _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(v̂), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+    return biased_interpolate_yᶠᶜᶜ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(v̂), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
 end
 
 @inline function upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
     û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    return _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(û), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
+    return biased_interpolate_xᶜᶠᶜ(i, j, k, grid, scheme, scheme.vorticity_scheme.scheme, bias(û), ζ₃ᶠᶠᶜ, scheme.vorticity_stencil, u, v)
 end
 
 @inline Δx_v_ζᶜᶠᶜ(i, j, k, grid, scheme, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, v) * upwinded_vorticityᶜᶠᶜ(i, j, k, grid, scheme, u, v)
@@ -487,12 +489,7 @@ const AS = AbstractSmoothnessStencil
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
 for b in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
-
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)
+        @inline symmetric_interpolate(i, j, k, grid, dir, ℓ, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate(i, j, k, grid, dir, ℓ, s, f, args...)
+        @inline biased_interpolate(i, j, k, grid, dir, ℓ, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate(i, j, k, grid, dir, ℓ, s, bias, f, args...)
     end
 end

@@ -26,12 +26,12 @@ calculation in the `VectorInvariant` advection formulation.
 
 Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
 ```
 
 For scalar reconstructions
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
+biased_interpolate_xᶠᶜᶜ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
 ```
 the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
@@ -160,7 +160,8 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 
             where ``dᵢ`` is computed from the function `coeff_p`
             """
-            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, δ, coefficients = nothing) = @inbounds sum(coeff_p(scheme, Val($stencil), coefficients) .* δ)
+            @inline biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, δ, coefficients = nothing) =
+                @inbounds @muladd $(Expr(:call, :+, (:(coeff_p(scheme, Val($stencil), coefficients)[$i] * δ[$i]) for i in 1:buffer-1)...))
         end
     end
 end
@@ -377,29 +378,26 @@ stencil_differences(buffer, stencil) = Expr(:tuple, (:(δ[$i]) for i in (buffer 
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ) multiplied by σ², which cancels when the weights are normalized
-@inline function metaprogrammed_zweno_alpha_loop(buffer, σ = 1)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ★))ᵖ), with the regularization ϵ★ = zweno_regularization(scheme, τ)
+@inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1)), coefficients) * (σ^2 + (newton_div(WCT, σ * τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1)), coefficients) * zweno_ratio_term(newton_div(WCT, τ, β[$stencil] + ϵ★)))
     end
 
     return quote
-        σ = $σ
+        ϵ★ = zweno_regularization(scheme, τ)
         ($(elem...),)
     end
 end
 
-# σ keeps σ τ / (βᵣ + ϵ) ≤ 2⁶⁰ in formats with 8 exponent bits (Float32, BFloat16), so its square cannot overflow.
-# σ² may underflow to zero, which is harmless: it is then negligible beside the ≥ 2²⁰ term of the smoothest stencil.
-# A threshold product may overflow to Inf when every β is large, which is also harmless: the comparison then
-# fails, and a large minimum(β) already bounds the ratio.
-@inline function metaprogrammed_zweno_rescaling(FT)
-    return quote
-        dmin = minimum(β) + ϵ
-        ifelse(τ > $(FT(2)^110) * dmin, $(inv(FT(2)^100)),
-        ifelse(τ > $(FT(2)^60)  * dmin, $(inv(FT(2)^50)), $(one(FT))))
-    end
+# 1 + r², fused
+@inline zweno_ratio_term(r) = muladd(r, r, 1)
+
+@inline zweno_regularization(scheme, τ) = oftype(τ, ϵ)
+
+for FT in (Float32, BFloat16)
+    @eval @inline zweno_regularization(::WENO{N, $FT}, τ) where N = max(oftype(τ, ϵ), τ * $(inv(FT(2)^62)))
 end
 
 for buffer in advection_buffers[2:end]
@@ -408,19 +406,29 @@ for buffer in advection_buffers[2:end]
         @inline        beta_loop(scheme::WENO{$buffer, FT}, δ, coefficients = nothing)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ, coefficients = nothing) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
-
-    for FT in (Float32, BFloat16)
-        @eval @inline zweno_alpha_loop(scheme::WENO{$buffer, $FT, WCT}, β, τ, coefficients = nothing) where WCT =
-            @inbounds $(metaprogrammed_zweno_alpha_loop(buffer, metaprogrammed_zweno_rescaling(FT)))
-    end
 end
 
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
 @inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+@inline global_smoothness_indicator(::Val{4}, β) = @inbounds @muladd abs(β[1] +  3β[2] -   3β[3] -    β[4])
+@inline global_smoothness_indicator(::Val{5}, β) = @inbounds @muladd abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+@inline global_smoothness_indicator(::Val{6}, β) = @inbounds @muladd abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+
+# 1 / ∑α. Ordinary division by default: the approximate reciprocal slows the Float64 tracer kernels on CUDA.
+@inline function weight_normalization(scheme, α)
+    Σα = sum(α)
+    return one(Σα) / Σα
+end
+
+# In Float32 and BFloat16, the division method of the weight computation is faster. ∑α ≲ 2¹²⁴
+# (see `zweno_regularization`), so its approximate reciprocal cannot flush to zero.
+for FT in (Float32, BFloat16)
+    @eval @inline function weight_normalization(::WENO{N, $FT, WCT}, α) where {N, WCT}
+        Σα = sum(α)
+        return newton_div(WCT, one(Σα), Σα)
+    end
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -429,124 +437,29 @@ Biased weno weights ω used to weight the WENO reconstruction of the different s
 We use here a Z-WENO formulation where
 
 ```math
-    α = C★ ⋅ (1 + τ² / (β + ϵ)²)
+    α = C★ ⋅ (1 + τ² / (β + ϵ★)²)
 ```
 
 where
 - ``C★`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
 - ``β`` is the smoothness indicator calculated by the `smoothness_indicator` function
 - ``τ`` is a global smoothness indicator, function of the ``β`` values, calculated by the `global_smoothness_indicator` function
-- ``ϵ`` is a regularization constant, typically equal to 1e-8
+- ``ϵ★`` is the regularization computed by `zweno_regularization`: the constant ``ϵ = 10⁻⁸``, which grows with
+  ``τ`` beside large jumps in Float32 and BFloat16 so that ``α`` cannot overflow
 
-The ``α`` values are normalized before returning
+The ``α`` values are returned unnormalized: [`weno_reconstruction`](@ref) divides by their sum.
 """
-@inline function biased_weno_weights(δ, grid, scheme::WENO{N, FT}, coefficients = nothing, args...) where {N, FT}
+@inline function biased_weno_weights(δ, scheme::WENO{N, FT}, coefficients = nothing) where {N, FT}
     β = beta_loop(scheme, δ, coefficients)
     τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ, coefficients)
-    Σα⁻¹ =  1 / sum(α)
-    return α .* Σα⁻¹
-end
-
-@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, coefficients, bias, dir, ::VelocityStencil, u, v) where {N, FT}
-    i, j, k = ijk
-
-    uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
-    vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
-    βᵤ = beta_loop(scheme, weno_differences(scheme, uₛ), coefficients)
-    βᵥ = beta_loop(scheme, weno_differences(scheme, vₛ), coefficients)
-    β  = beta_sum(scheme, βᵤ, βᵥ)
-
-    τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ, coefficients)
-    Σα⁻¹ =  1 / sum(α)
-    return α .* Σα⁻¹
-end
-
-"""
-    load_weno_stencil(buffer, dir, func::Bool = false)
-
-Stencils for WENO reconstruction calculations
-
-The first argument is the `buffer`, not the `order`!
-- `order = 2 * buffer - 1` for WENO reconstruction
-
-Examples
-========
-
-```jldoctest
-julia> using Oceananigans.Advection: load_weno_stencil
-
-julia> load_weno_stencil(3, :x)
-:((ψ[i + -3, j, k], ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k], ψ[i + 2, j, k]))
-
-julia> load_weno_stencil(2, :x)
-:((ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]))
-```
-"""
-@inline function load_weno_stencil(buffer, dir, func::Bool = false)
-    N = buffer * 2 - 1
-    stencil = Vector(undef, N+1)
-
-    for (idx, c) in enumerate(-buffer:buffer-1)
-        if func
-            stencil[idx] =  dir == :x ?
-                            :(ψ(i + $c, j, k, grid, args...)) :
-                            dir == :y ?
-                            :(ψ(i, j + $c, k, grid, args...)) :
-                            :(ψ(i, j, k + $c, grid, args...))
-        else
-            stencil[idx] =  dir == :x ?
-                            :(ψ[i + $c, j, k]) :
-                            dir == :y ?
-                            :(ψ[i, j + $c, k]) :
-                            :(ψ[i, j, k + $c])
-        end
-    end
-
-    return :($(stencil...),)
+    return zweno_alpha_loop(scheme, β, τ, coefficients)
 end
 
 # The right-biased stencil is the mirror of the left-biased one, so both use the left-biased coefficients
-for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
-    stencil = Symbol(:weno_stencil_, dir)
-    @eval begin
-        @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(2, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3]), (S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{3}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(3, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{4}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(4, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7]), (S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(5, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9]), (S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(6, dir, f))
-            return @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5], S[6], S[7], S[8], S[9], S[10], S[11]), (S[12], S[11], S[10], S[9], S[8], S[7], S[6], S[5], S[4], S[3], S[2]))
-        end
-    end
-end
+@inline weno_stencil(::WENO{N}, bias, S) where N = @inbounds ifelse(bias == LeftBias, ntuple(n -> S[n], Val(2N - 1)), ntuple(n -> S[2N + 1 - n], Val(2N - 1)))
 
 @inline weno_anchor(::WENO{N}, S) where N = @inbounds S[N]
 @inline weno_differences(::WENO{N}, S) where N = @inbounds ntuple(i -> S[i+1] - S[i], Val(2N - 2))
-
-# Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
-# Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{1}, u) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{2}, u) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{1}, v) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{2}, v) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -555,93 +468,104 @@ end
         elem[stencil] = :(ω[$stencil] * biased_p(scheme, Val($(stencil-1)), $(stencil_differences(buffer, stencil-1)), coefficients))
     end
 
-    return Expr(:call, :+, :ψ₀, elem...)
+    return :(ψ₀ + $(Expr(:call, :+, elem...)) * weight_normalization(scheme, ω))
 end
 
 """
 $(TYPEDSIGNATURES)
 
 Reconstruction of a WENO scheme of order `buffer * 2 - 1` from the anchor value `ψ₀` and the `2buffer - 2`
-first differences `δ` of the bias-ordered stencil, weighted by the WENO weights `ω`.
+first differences `δ` of the bias-ordered stencil, weighted by the unnormalized WENO weights `ω`.
 
 The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_weno_reconstruction` function which, for
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ψ₀ + ω[1] * biased_p(scheme, Val(0), (δ[4], δ[5], δ[6])) +
-         ω[2] * biased_p(scheme, Val(1), (δ[3], δ[4], δ[5])) +
-         ω[3] * biased_p(scheme, Val(2), (δ[2], δ[3], δ[4])) +
-         ω[4] * biased_p(scheme, Val(3), (δ[1], δ[2], δ[3]))
+ψ̂ = ψ₀ + (ω[1] * biased_p(scheme, Val(0), (δ[4], δ[5], δ[6])) +
+          ω[2] * biased_p(scheme, Val(1), (δ[3], δ[4], δ[5])) +
+          ω[3] * biased_p(scheme, Val(2), (δ[2], δ[3], δ[4])) +
+          ω[4] * biased_p(scheme, Val(3), (δ[1], δ[2], δ[3]))) / (ω[1] + ω[2] + ω[3] + ω[4])
 ```
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
 @inline weno_reconstruction(scheme, ψ₀, δ, args...) = ψ₀ # Fallback only for documentation purposes
 
-# Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
+# Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ) / ∑ᵣwᵣ
 for buffer in advection_buffers[2:end]
     @eval @inline weno_reconstruction(scheme::WENO{$buffer}, ψ₀, δ, ω, coefficients = nothing) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 @inline weno_coefficients(::Nothing, args...) = nothing
 
-# Interpolation functions: the Center reconstruction at i is the Face reconstruction at i + 1, with the
-# coefficients of the Center at i
-for (dir, val) in ((:x, 1), (:y, 2), (:z, 3)), (location, interp, shifted) in ((:faces, (:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ)[val], false),
-                                                                            (:centers, (:xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ)[val], true))
-    interpolate_func = Symbol(:biased_interpolate_, interp)
-    stencil          = Symbol(:weno_stencil_, dir)
-    index            = (:i, :j, :k)[val]
-    i′, j′, k′       = ntuple(d -> shifted && d == val ? :($((:i, :j, :k)[d]) + 1) : (:i, :j, :k)[d], 3)
+@inline coefficient_direction(::Val{1}) = Val(:x)
+@inline coefficient_direction(::Val{2}) = Val(:y)
+@inline coefficient_direction(::Val{3}) = Val(:z)
 
-    @eval begin
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, args...) where {N, FT}
+@inline coefficient_location(::Face)   = Val(:faces)
+@inline coefficient_location(::Center) = Val(:centers)
 
-            C  = weno_coefficients(scheme.coefficients, Val($(QuoteNode(dir))), Val($(QuoteNode(location))), $index, bias)
-            S  = $stencil($i′, $j′, $k′, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, C, bias, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω, C)
-        end
+# The stretched coefficients of the point `(i, j, k)` located at `ℓ` and reconstructed along `dir`, `nothing` on uniform directions
+@inline stretched_coefficients(i, j, k, dir::Val{d}, ℓ, scheme::WENO, bias) where d =
+    weno_coefficients(scheme.coefficients, coefficient_direction(dir), coefficient_location(ℓ[d]), (i, j, k)[d], bias)
 
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+# Reconstruction from the `2N` values `S` of `load_stencil`, with the stretched coefficients `C`
+@inline function biased_interpolate(scheme::WENO{N, FT}, bias, S, C = nothing) where {N, FT}
+    S  = weno_stencil(scheme, bias, S)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    ω  = biased_weno_weights(δ, scheme, C)
+    return weno_reconstruction(scheme, ψ₀, δ, ω, C)
+end
 
-            C  = weno_coefficients(scheme.coefficients, Val($(QuoteNode(dir))), Val($(QuoteNode(location))), $index, bias)
-            S  = $stencil($i′, $j′, $k′, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(δ, grid, scheme, C, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω, C)
-        end
+@inline stretched_interpolate(scheme::WENO, bias, S, C) = biased_interpolate(scheme, bias, S, C)
 
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
+# the reconstruction with the optimal weights, which is the upwind-biased reconstruction of the same order
+@inline linear_interpolate(::WENO{N, FT}, bias, S) where {N, FT} = biased_interpolate(UpwindBiased{N, FT}(nothing, nothing, nothing), bias, S)
 
-            C  = weno_coefficients(scheme.coefficients, Val($(QuoteNode(dir))), Val($(QuoteNode(location))), $index, bias)
-            S  = $stencil($i′, $j′, $k′, grid, scheme, bias, ψ, u, v, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            ω  = biased_weno_weights(($i′, $j′, $k′), grid, scheme, C, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, ψ₀, δ, ω, C)
-        end
+# Interpolation functions
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT}
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    C = stretched_coefficients(i, j, k, dir, ℓ, scheme, bias)
+    return biased_interpolate(scheme, bias, S, C)
+end
 
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, VI::FunctionStencil, args...) where {N, FT}
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+    S = load_stencil(i, j, k, grid, dir, ℓ, Val(N), ψ, args...)
+    C = stretched_coefficients(i, j, k, dir, ℓ, scheme, bias)
+    return biased_interpolate(scheme, bias, S, C)
+end
 
-            C  = weno_coefficients(scheme.coefficients, Val($(QuoteNode(dir))), Val($(QuoteNode(location))), $index, bias)
-            S  = $stencil($i′, $j′, $k′, grid, scheme, bias, ψ, args...)
-            ψ₀ = weno_anchor(scheme, S)
-            δ  = weno_differences(scheme, S)
-            Sₛ = $stencil($i′, $j′, $k′, grid, scheme, bias, VI.func, args...)
-            ω  = biased_weno_weights(weno_differences(scheme, Sₛ), grid, scheme, C, bias, VI, args...)
-            return weno_reconstruction(scheme, ψ₀, δ, ω, C)
-        end
-    end
+# The smoothness stencils continue past walls with the agreement factors of the reconstructed stencil
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
+    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, u, v, args...)
+    Sᵤ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑyᵃᶠᵃ, u)
+    Sᵥ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, ℑxᶠᵃᵃ, v)
+    C  = stretched_coefficients(i, j, k, dir, ℓ, scheme, bias)
+    S  = weno_stencil(scheme, bias, S)
+    Sᵤ = weno_stencil(scheme, bias, Sᵤ)
+    Sᵥ = weno_stencil(scheme, bias, Sᵥ)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    δᵤ = weno_differences(scheme, Sᵤ)
+    δᵥ = weno_differences(scheme, Sᵥ)
+    βᵤ = beta_loop(scheme, δᵤ, C)
+    βᵥ = beta_loop(scheme, δᵥ, C)
+    β  = beta_sum(scheme, βᵤ, βᵥ)
+    τ  = global_smoothness_indicator(Val(N), β)
+    ω  = zweno_alpha_loop(scheme, β, τ, C)
+    return weno_reconstruction(scheme, ψ₀, δ, ω, C)
+end
+
+@inline function biased_interpolate(i, j, k, grid, dir, ℓ, scheme::WENO{N, FT}, bias, ψ, VI::FunctionStencil, args...) where {N, FT}
+    S,  G = load_stencil(i, j, k, grid, dir, ℓ, Val(N), nothing, ψ, args...)
+    Sₛ, _ = load_stencil(i, j, k, grid, dir, ℓ, Val(N), G, VI.func, args...)
+    C  = stretched_coefficients(i, j, k, dir, ℓ, scheme, bias)
+    S  = weno_stencil(scheme, bias, S)
+    Sₛ = weno_stencil(scheme, bias, Sₛ)
+    ψ₀ = weno_anchor(scheme, S)
+    δ  = weno_differences(scheme, S)
+    δₛ = weno_differences(scheme, Sₛ)
+    ω  = biased_weno_weights(δₛ, scheme, C)
+    return weno_reconstruction(scheme, ψ₀, δ, ω, C)
 end

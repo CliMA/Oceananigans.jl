@@ -57,9 +57,9 @@ using Oceananigans.ImmersedBoundaries: conditional_length
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, hack_cosd
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: StaticStridesOffsetArray, prettysummary
 
-import Oceananigans.Utils: launch!, getnamewrapper
+import Oceananigans.Utils: launch!
 Logging.global_logger(OceananigansLogger())
 
 # Legacy tests index GPU arrays with scalars; the process-wide default is the only setting

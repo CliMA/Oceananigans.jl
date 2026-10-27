@@ -42,7 +42,7 @@ model.velocities.u
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-└── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
+└── data: 22×22×22 StaticStridesOffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
@@ -80,8 +80,12 @@ end
 
 const IntrinsicCoordinateGrid = Union{
     OrthogonalSphericalShellGrid,
-    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, OrthogonalSphericalShellGrid},
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid},
 }
+
+# Whether extrinsic velocities are rotated into the grid's basis by `set_from_extrinsic_velocities!`
+intrinsic_coordinate_grid(grid) = false
+intrinsic_coordinate_grid(::IntrinsicCoordinateGrid) = true
 
 """
     set_velocities!(model, u, v; intrinsic_velocities=false)
@@ -96,9 +100,12 @@ This abstraction is necessary for `OrthogonalSphericalShellGrid` and derivatives
 where the extrinsic and intrinsic coordinate systems differ.
 """
 function set_velocities!(model, u, v; intrinsic_velocities=false)
-    if intrinsic_velocities || !(model.grid isa IntrinsicCoordinateGrid)
-        u isa ZeroField || set!(model.velocities.u, u, model.clock, fields(model))
-        v isa ZeroField || set!(model.velocities.v, v, model.clock, fields(model))
+    # Leave the velocities untouched when neither is given, as for `set!(model; T)`
+    u isa ZeroField && v isa ZeroField && return nothing
+
+    if intrinsic_velocities || !intrinsic_coordinate_grid(model.grid)
+        u isa ZeroField || @apply_regionally set!(model.velocities.u, u, model.clock, fields(model))
+        v isa ZeroField || @apply_regionally set!(model.velocities.v, v, model.clock, fields(model))
     else
         set_from_extrinsic_velocities!(model.velocities, model.grid, u, v)
     end

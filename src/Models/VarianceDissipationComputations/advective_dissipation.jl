@@ -25,19 +25,12 @@
     end
 end
 
-#####
-##### Fluxes and transports, area-weighted, on the grid the stage computed its tendencies on.
-##### The vertical face area does not stretch; the horizontal ones are taken back to the stretching `σᵐ⁻¹`.
-#####
-
-@kernel function _accumulate_advective_fluxes!(F, U★, grid, advection, U, tracer, σᵐ⁻¹, weight, keep)
+# Fluxes and transports on the grid with which the stage computes its tracer tendency
+@kernel function _accumulate_advective_fluxes!(F, U★, grid, advection, U, tracer, weight, keep)
     i, j, k = @index(Global, NTuple)
 
-    rˣ = @inbounds σᵐ⁻¹.x[i, j, 1] / σⁿ(i, j, k, grid, f, c, c)
-    rʸ = @inbounds σᵐ⁻¹.y[i, j, 1] / σⁿ(i, j, k, grid, c, f, c)
-
-    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * rˣ
-    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * rʸ
+    fx = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer)
+    fy = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer)
     fz = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer)
 
     @inbounds begin
@@ -45,8 +38,8 @@ end
         F.y[i, j, k] = keep * F.y[i, j, k] + weight * fy
         F.z[i, j, k] = keep * F.z[i, j, k] + weight * fz
 
-        U★.u[i, j, k] = keep * U★.u[i, j, k] + weight * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid) * rˣ
-        U★.v[i, j, k] = keep * U★.v[i, j, k] + weight * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid) * rʸ
+        U★.u[i, j, k] = keep * U★.u[i, j, k] + weight * U.u[i, j, k] * Axᶠᶜᶜ(i, j, k, grid)
+        U★.v[i, j, k] = keep * U★.v[i, j, k] + weight * U.v[i, j, k] * Ayᶜᶠᶜ(i, j, k, grid)
         U★.w[i, j, k] = keep * U★.w[i, j, k] + weight * U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid)
     end
 end

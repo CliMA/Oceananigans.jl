@@ -1,6 +1,6 @@
 using Oceananigans
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
-using Oceananigans.Grids: RightFaceFolded, topology
+using Oceananigans.Grids: Sides, Closed, topology
 using GLMakie
 
 """
@@ -109,7 +109,7 @@ function plot_metric(grid, metric_symbol; prefix = "")
     # location-referenced pivot point indices
     c_pivot_i = v_pivot_i = grid.Nx ÷ 2 + 0.5
     u_pivot_i = grid.Nx ÷ 2 + 1
-    c_pivot_j = u_pivot_j = (topology(grid, 2) == RightCenterFolded) ? grid.Ny : grid.Ny + 0.5
+    c_pivot_j = u_pivot_j = (topology(grid, 2) == Sides{Closed, CenterFolded}) ? grid.Ny : grid.Ny + 0.5
     v_pivot_j = c_pivot_j + 0.5
     loc = celllocation(metric_symbol)
     pivot_i, pivot_j = if loc == (Center, Center, Center)
@@ -168,7 +168,7 @@ axopt = (
 xlabelopt = (rotation = π / 2, tellheight = false, fontsize = 24)
 ylabelopt = (tellwidth = false, fontsize = 24)
 
-fold_topologies = (RightCenterFolded, RightFaceFolded)
+fold_topologies = (CenterFolded, FaceFolded)
 Nxs = (Nx, Nx + 2)
 metrics = (
     :λᶜᶜᵃ, :φᶜᶜᵃ, :Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ,

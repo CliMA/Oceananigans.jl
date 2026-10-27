@@ -24,17 +24,18 @@ using Base: Callable
 using DocStringExtensions: TYPEDSIGNATURES
 using MuladdMacro: @muladd
 using OffsetArrays: OffsetArray
+using Oceananigans.Utils: StaticStridesOffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
-using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat,
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, horizontally_extended_interior_kernel_parameters,
                           required_halo_size_x, required_halo_size_y, required_halo_size_z,
                           XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
                               Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
                               Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ,
-                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+                              δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 
 abstract type AbstractAdvectionScheme{B, FT, TD} end
 abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
@@ -77,7 +78,7 @@ include("flux_form_advection.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 
-include("topologically_conditional_interpolation.jl")
+include("interpolation_stencils.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
