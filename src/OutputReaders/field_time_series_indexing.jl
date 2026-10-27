@@ -280,8 +280,7 @@ end
 
     ψ̃ = ψ₂ * ñ + ψ₁ * (1 - ñ)
 
-    # Don't interpolate if n₁ == n₂. Both branches take the interpolated value's type: with `Float32` data
-    # and `Float64` times, `ψ₁` alone would make the read a `Union{Float32, Float64}`.
+    # Don't interpolate if n₁ == n₂. Both branches take the interpolated value's type.
     return ifelse(n₁ == n₂, oftype(ψ̃, ψ₁), ψ̃)
 end
 
