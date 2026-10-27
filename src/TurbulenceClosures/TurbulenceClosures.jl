@@ -10,6 +10,7 @@ export
     HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
+    EnergyBudgetBackscatter,
     SmagorinskyLilly,
     DynamicSmagorinsky,
     LillyCoefficient,
@@ -253,6 +254,7 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity_with_triads.jl")
 include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
+include("turbulence_closure_implementations/energy_budget_backscatter.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
