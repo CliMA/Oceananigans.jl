@@ -220,8 +220,8 @@ function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
 
     @apply_regionally compute_numerical_heights!(bottom, top, grid, compute_ib)
 
-    bottom_cell_index = Field{Center, Center, Nothing}(grid, index_type(grid))
-    top_cell_index    = top_index_field(grid, top, index_type(grid))
+    bottom_cell_index = index_field(grid, bottom, index_type(grid))
+    top_cell_index    = index_field(grid, top,    index_type(grid))
 
     @apply_regionally compute_cell_indices!(grid, compute_ib, bottom_cell_index, top_cell_index, bottom, top)
 
@@ -233,8 +233,8 @@ function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
 end
 
 # Without a top, kernels take the top of the domain and need no `top_cell_index`
-top_index_field(grid, top, FT) = Field{Center, Center, Nothing}(grid, FT)
-top_index_field(grid, ::Nothing, FT) = nothing
+index_field(grid, top, FT) = Field{Center, Center, Nothing}(grid, FT)
+index_field(grid, ::Nothing, FT) = nothing
 
 stored_data(field) = field.data
 stored_data(::Nothing) = nothing
