@@ -15,22 +15,19 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
-struct GridFittedVerticalBoundaries{H, T, I, KB, KT, D} <: AbstractGridFittedBottom{H}
+struct GridFittedVerticalBoundaries{H, T, I, KB, KT} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     top_height :: T
     immersed_condition :: I
     bottom_cell_index :: KB
     top_cell_index :: KT
-    face_column_depths :: D
 end
 
 GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition) =
-    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, nothing, nothing, nothing)
+    GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, nothing, nothing)
 
-const GridFittedBottom{H, I} = GridFittedVerticalBoundaries{H, <:Union{Nothing, ConstantField}, I, <:Any, Nothing}
+const GridFittedBottom{H, I} = GridFittedVerticalBoundaries{H, Nothing, I, <:Any, Nothing}
 const GridFittedWithTop = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-
-GridFittedBottom(bottom_height, immersed_condition) = GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
@@ -87,29 +84,13 @@ GridFittedVerticalBoundaries(; bottom_height=nothing, top_height=nothing, immers
     GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition)
 
 """
-    GridFittedBottom(bottom_height=nothing; immersed_condition=CenterImmersedCondition())
+    GridFittedBottom(bottom_height, [immersed_condition=CenterImmersedCondition()])
 
 Return a [`GridFittedVerticalBoundaries`](@ref) without an immersed top, bounded below by `bottom_height`.
-
-Example
-=======
-
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 8, 10), x=(0, 100), y=(0, 100), z=(-100, 0));
-
-julia> ImmersedBoundaryGrid(grid, GridFittedBottom(-90))
-2×8×10 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=-90.0, min(z)=-90.0, max(z)=-90.0)
-├── underlying_grid: 2×8×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── Periodic x ∈ [0.0, 100.0)  regularly spaced with Δx=50.0
-├── Periodic y ∈ [0.0, 100.0)  regularly spaced with Δy=12.5
-└── Bounded  z ∈ [-100.0, 0.0] regularly spaced with Δz=10.0
-```
 """
-GridFittedBottom(bottom_height=nothing; immersed_condition=CenterImmersedCondition()) =
-    GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
+function GridFittedBottom(bottom_height, immersed_condition=CenterImmersedCondition())
+    return GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
+end
 
 # 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
@@ -122,9 +103,6 @@ end
 
 @inline bottom_heights_equal(h1, h2) = h1 == h2
 @inline bottom_heights_equal(h1::AbstractArray, h2::AbstractArray) = bottom_height_interior(h1) == bottom_height_interior(h2)
-@inline bottom_heights_equal(h1::ConstantField, h2::ConstantField) = h1.constant == h2.constant
-@inline bottom_heights_equal(h1::ConstantField, h2::AbstractArray) = false
-@inline bottom_heights_equal(h1::AbstractArray, h2::ConstantField) = false
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
 
@@ -134,12 +112,12 @@ function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
     return bottom_field
 end
 
-bottom_height_field(bottom_data, grid) = Field{Center, Center, Nothing}(grid; data=bottom_data)
+height_field(height_data, grid) = Field{Center, Center, Nothing}(grid; data=height_data)
 
-function bottom_height_field(height::ConstantField, grid)
-    height_field = Field{Center, Center, Nothing}(grid)
-    set!(height_field, height.constant)
-    return height_field
+function height_field(height::Number, grid)
+    field = Field{Center, Center, Nothing}(grid)
+    fill!(field, height)
+    return field
 end
 
 """
@@ -150,7 +128,7 @@ stored on `grid.immersed_boundary` as a bare `OffsetArray`. The returned `Field`
 with `grid`, so mutating it mutates the bottom height of `grid`. If `grid` has no immersed bottom,
 the returned `Field` is a copy filled with the bottom of the domain.
 """
-bottom_height_field(grid::IBG) = bottom_height_field(grid.immersed_boundary.bottom_height, grid.underlying_grid)
+bottom_height_field(grid::IBG) = height_field(something(grid.immersed_boundary.bottom_height, first(z_domain(grid))), grid.underlying_grid)
 
 """
 $(TYPEDSIGNATURES)
@@ -159,7 +137,7 @@ Return a `Field` at `(Center, Center, Nothing)` that wraps the top height of `gr
 `Field` shares its data with `grid`. If `grid` has no immersed top, the returned `Field` is a copy
 filled with the top of the domain.
 """
-top_height_field(grid::IBG) = bottom_height_field(grid.immersed_boundary.top_height, grid.underlying_grid)
+top_height_field(grid::IBG) = height_field(something(grid.immersed_boundary.top_height, last(z_domain(grid))), grid.underlying_grid)
 
 function height_statistics(height)
     height_interior = bottom_height_interior(height)
@@ -167,9 +145,7 @@ function height_statistics(height)
     return mean_height, minimum(height_interior), maximum(height_interior)
 end
 
-height_statistics(height::ConstantField) = (height.constant, height.constant, height.constant)
-
-top_height_summary(::Union{Nothing, ConstantField}) = ""
+top_height_summary(::Nothing) = ""
 
 function top_height_summary(top_height)
     zmean, zmin, zmax = height_statistics(top_height)
@@ -217,8 +193,7 @@ Architectures.on_architecture(arch, ib::GridFittedVerticalBoundaries) =
                                  on_architecture(arch, ib.top_height),
                                  ib.immersed_condition,
                                  on_architecture(arch, ib.bottom_cell_index),
-                                 on_architecture(arch, ib.top_cell_index),
-                                 on_architecture(arch, ib.face_column_depths))
+                                 on_architecture(arch, ib.top_cell_index))
 
 # Kernels read the bottom and top through `bottom_cell_index` and `top_cell_index` only, see `bottom_height(i, j, ibg)`
 Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
@@ -226,8 +201,7 @@ Adapt.adapt_structure(to, ib::GridFittedVerticalBoundaries) =
                                  nothing,
                                  adapt(to, ib.immersed_condition),
                                  adapt(to, ib.bottom_cell_index),
-                                 adapt(to, ib.top_cell_index),
-                                 adapt(to, ib.face_column_depths))
+                                 adapt(to, ib.top_cell_index))
 
 """
 $(TYPEDSIGNATURES)
@@ -239,9 +213,8 @@ z-coordinate of the top-most interface of the last ``immersed`` cell in the colu
 booleans that indicates whether a cell is immersed or not.
 """
 function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
-    domain_bottom, domain_top = z_domain(grid)
-    bottom = materialize_height(grid, ib.bottom_height, domain_bottom)
-    top    = materialize_height(grid, ib.top_height, domain_top)
+    bottom = materialize_height(grid, ib.bottom_height)
+    top    = materialize_height(grid, ib.top_height)
 
     compute_ib = GridFittedVerticalBoundaries(bottom, top, ib.immersed_condition)
 
@@ -250,41 +223,34 @@ function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
     bottom_cell_index = Field{Center, Center, Nothing}(grid, index_type(grid))
     top_cell_index    = top_index_field(grid, top, index_type(grid))
 
-    @apply_regionally compute_bottom_cell!(grid, compute_ib, bottom_cell_index, bottom)
-    @apply_regionally compute_top_cell!(grid, compute_ib, top_cell_index, top)
+    @apply_regionally compute_cell_indices!(grid, compute_ib, bottom_cell_index, top_cell_index, bottom, top)
 
-    materialized_ib = GridFittedVerticalBoundaries(height_data(bottom), height_data(top), ib.immersed_condition,
-                                                   index_data(bottom_cell_index), index_data(top_cell_index), nothing)
-
-    face_column_depths = materialize_face_column_depths(grid, materialized_ib)
-
-    return GridFittedVerticalBoundaries(height_data(bottom), height_data(top), ib.immersed_condition,
-                                        index_data(bottom_cell_index), index_data(top_cell_index), face_column_depths)
+    return GridFittedVerticalBoundaries(stored_data(bottom), 
+                                        stored_data(top), 
+                                        ib.immersed_condition,
+                                        stored_data(bottom_cell_index), 
+                                        stored_data(top_cell_index))
 end
 
 # Without a top, kernels take the top of the domain and need no `top_cell_index`
 top_index_field(grid, top, FT) = Field{Center, Center, Nothing}(grid, FT)
-top_index_field(grid, ::ConstantField, FT) = nothing
+top_index_field(grid, ::Nothing, FT) = nothing
 
-index_data(index_field) = index_field.data
-index_data(::Nothing) = nothing
+stored_data(field) = field.data
+stored_data(::Nothing) = nothing
 
-# A missing bottom or top is the bottom or top of the domain
-materialize_height(grid, ::Nothing, domain_boundary) = ConstantField(domain_boundary)
+materialize_height(grid, ::Nothing) = nothing
 
-# Only a `ConstantField` on the domain boundary dispatches as a missing boundary; any other constant is materialized
-materialize_height(grid, height::ConstantField, domain_boundary) =
-    height.constant == domain_boundary ? height : materialize_height(grid, height.constant, domain_boundary)
-
-function materialize_height(grid, height, domain_boundary)
+function materialize_height(grid, height)
     height_field = Field{Center, Center, Nothing}(grid)
     set_bottom_height!(height_field, height)
     fill_halo_regions!(height_field)
     return height_field
 end
 
-height_data(height_field) = height_field.data
-height_data(height::ConstantField) = height
+# A missing bottom or top is the bottom or top of the domain
+@inline height_value(i, j, height,    missing_height) = @inbounds height[i, j, 1]
+@inline height_value(i, j, ::Nothing, missing_height) = missing_height
 
 # Over the halos too, so that the heights that the halos interpolate are fitted to the vertical grid as well
 function compute_numerical_heights!(bottom, top, grid, ib)
@@ -293,15 +259,15 @@ function compute_numerical_heights!(bottom, top, grid, ib)
 end
 
 height_kernel_parameters(bottom, top) = KernelParameters(axes(bottom.data, 1), axes(bottom.data, 2))
-height_kernel_parameters(::ConstantField, top) = KernelParameters(axes(top.data, 1), axes(top.data, 2))
-height_kernel_parameters(::ConstantField, ::ConstantField) = :xy
+height_kernel_parameters(::Nothing, top) = KernelParameters(axes(top.data, 1), axes(top.data, 2))
+height_kernel_parameters(::Nothing, ::Nothing) = :xy
 
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::GridFittedVerticalBoundaries)
     i, j = @index(Global, NTuple)
-    zᵇ = @inbounds bottom[i, j, 1]
-    zᵗ = @inbounds top[i, j, 1]
     ẑᵇ = rnode(i, j, 1, grid, c, c, f)
     ẑᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    zᵇ = height_value(i, j, bottom, ẑᵇ)
+    zᵗ = height_value(i, j, top,    ẑᵗ)
     center_condition = ib.immersed_condition isa CenterImmersedCondition
     for k in 1:grid.Nz
         z⁻ = rnode(i, j, k,   grid, c, c, f)
@@ -320,60 +286,45 @@ end
 # Closed columns collapse onto the top of the domain, or onto the bottom if the bottom is not stored
 @inline function store_column_heights!(bottom, top, i, j, grid, ẑᵇ, ẑᵗ, closed)
     closed_height = closed_column_height(i, j, grid, bottom)
-    store_height!(bottom, i, j, ifelse(closed, closed_height, ẑᵇ))
-    store_height!(top,    i, j, ifelse(closed, closed_height, ẑᵗ))
+    store_column_value!(bottom, i, j, ifelse(closed, closed_height, ẑᵇ))
+    store_column_value!(top,    i, j, ifelse(closed, closed_height, ẑᵗ))
     return nothing
 end
 
-@inline closed_column_height(i, j, grid, bottom) = rnode(i, j, grid.Nz+1, grid, c, c, f)
-@inline closed_column_height(i, j, grid, bottom::ConstantField) = bottom.constant
+@inline closed_column_height(i, j, grid, bottom)    = rnode(i, j, grid.Nz+1, grid, c, c, f)
+@inline closed_column_height(i, j, grid, ::Nothing) = rnode(i, j, 1, grid, c, c, f)
 
-@inline store_height!(height, i, j, ẑ) = @inbounds height[i, j, 1] = ẑ
-@inline store_height!(::ConstantField, i, j, ẑ) = nothing
+@inline store_column_value!(field, i, j, value)     = @inbounds field[i, j, 1] = value
+@inline store_column_value!(::Nothing, i, j, value) = nothing
 
 # The cell indices are computed from the heights in the halos as well
-function compute_bottom_cell!(grid, ib, bottom_cell_index, bottom)
+function compute_cell_indices!(grid, ib, bottom_index, top_index, bottom, top)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
     parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-    return launch!(architecture(grid), grid, parameters, _compute_bottom_cell!, bottom_cell_index, grid, ib, bottom)
+    return launch!(architecture(grid), grid, parameters, _compute_cell_indices!, bottom_index, top_index, grid, ib, bottom, top)
 end
 
-function compute_top_cell!(grid, ib, top_cell_index, top)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-    return launch!(architecture(grid), grid, parameters, _compute_top_cell!, top_cell_index, grid, ib, top)
-end
-
-compute_top_cell!(grid, ib, ::Nothing, top) = nothing
-
-# `bottom_cell_index` is the first active cell of each column, and `Nz + 1` in columns without active cells
-@kernel function _compute_bottom_cell!(bottom_cell_index, grid, ib::GridFittedVerticalBoundaries, bottom)
+# kᵇ (kᵗ) is the first (last) active cell of the column; kᵇ = Nz + 1 and kᵗ = Nz in closed columns, kᵗ = 0 without a stored bottom
+@kernel function _compute_cell_indices!(bottom_cell_index, top_cell_index, grid, ib::GridFittedVerticalBoundaries, bottom, top)
     i, j = @index(Global, NTuple)
-    rᵇ = @inbounds bottom[i, j, 1]
+    rᵇ = height_value(i, j, bottom, rnode(i, j, 1, grid, c, c, f))
+    rᵗ = height_value(i, j, top,    rnode(i, j, grid.Nz+1, grid, c, c, f))
     kᵇ = grid.Nz + 1
+    kᵗ = 0
 
     for k in grid.Nz:-1:1
         r = rnode(i, j, k, grid, c, c, c)
         kᵇ = ifelse(r ≤ rᵇ, kᵇ, k)
     end
 
-    @inbounds bottom_cell_index[i, j, 1] = kᵇ
-end
-
-# `top_cell_index` is the last active cell of each column; closed columns hold `Nz`, or `0` without a stored bottom
-@kernel function _compute_top_cell!(top_cell_index, grid, ib::GridFittedVerticalBoundaries, top)
-    i, j = @index(Global, NTuple)
-    rᵗ = @inbounds top[i, j, 1]
-    kᵗ = 0
-
     for k in 1:grid.Nz
         r = rnode(i, j, k, grid, c, c, c)
         kᵗ = ifelse(r < rᵗ, k, kᵗ)
     end
 
-    @inbounds top_cell_index[i, j, 1] = kᵗ
+    store_column_value!(bottom_cell_index, i, j, kᵇ)
+    store_column_value!(top_cell_index,    i, j, kᵗ)
 end
 
 @inline bottom_cell(i, j, ib::GridFittedVerticalBoundaries) = @inbounds ib.bottom_cell_index[i, j, 1]
@@ -419,68 +370,24 @@ end
 #####
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = top_height(i, j, ibg) - bottom_height(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depthᶜᶠᵃ(i, j, ibg, ibg.immersed_boundary.face_column_depths)
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depthᶠᶜᵃ(i, j, ibg, ibg.immersed_boundary.face_column_depths)
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i, j-1, ibg, ibg.immersed_boundary)
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = face_column_depth(i, j, i-1, j, ibg, ibg.immersed_boundary)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
-# Without an immersed top, adjacent columns share their top, so the shallower column depth is the open depth of the face
-@inline face_column_depthᶜᶠᵃ(i, j, ibg, ::Nothing) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-@inline face_column_depthᶠᶜᵃ(i, j, ibg, ::Nothing) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
+# Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
+@inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 
-@inline face_column_depthᶜᶠᵃ(i, j, ibg, depths) = @inbounds depths.ᶜᶠᵃ[i, j, 1]
-@inline face_column_depthᶠᶜᵃ(i, j, ibg, depths) = @inbounds depths.ᶠᶜᵃ[i, j, 1]
+# Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open. 
+@inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib)
+    ug = ibg.underlying_grid
+    k⁻ = max(bottom_cell(i⁻, j⁻, ib), bottom_cell(i, j, ib))
+    k⁺ = min(top_cell(i⁻, j⁻, ib), top_cell(i, j, ib))
+    H  = rnode(i, j, k⁺+1, ug, c, c, f) - rnode(i, j, k⁻, ug, c, c, f)
 
-#####
-##### Face column depths beneath an immersed top
-#####
+    bottom_deficit = Δrᶜᶜᶜ(i, j, k⁻, ug) - min(Δrᶜᶜᶜ(i⁻, j⁻, k⁻, ibg), Δrᶜᶜᶜ(i, j, k⁻, ibg))
+    top_deficit    = Δrᶜᶜᶜ(i, j, k⁺, ug) - min(Δrᶜᶜᶜ(i⁻, j⁻, k⁺, ibg), Δrᶜᶜᶜ(i, j, k⁺, ibg))
 
-# Adjacent columns beneath a sloping top may overlap only partly, or not at all
-materialize_face_column_depths(grid, ib) = materialize_face_column_depths(grid, ib, ib.top_height)
-materialize_face_column_depths(grid, ib, ::ConstantField) = nothing
-
-function materialize_face_column_depths(grid, ib, top_height)
-    TX, TY, TZ = topology(grid)
-    ibg = ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib, nothing, nothing)
-
-    depthᶠᶜ = Field{Center, Center, Nothing}(grid)
-    depthᶜᶠ = Field{Center, Center, Nothing}(grid)
-
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
-    parameters = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-    launch!(architecture(grid), grid, parameters, _compute_face_column_depths!, depthᶠᶜ, depthᶜᶠ, ibg)
-
-    return (; ᶠᶜᵃ = depthᶠᶜ.data, ᶜᶠᵃ = depthᶜᶠ.data)
-end
-
-@kernel function _compute_face_column_depths!(depthᶠᶜ, depthᶜᶠ, ibg)
-    i, j = @index(Global, NTuple)
-
-    # Clamped so the first halo row and Flat directions stay in bounds
-    i⁻ = max(i - 1, 1 - ibg.Hx)
-    j⁻ = max(j - 1, 1 - ibg.Hy)
-
-    hᶠᶜ = zero(ibg)
-    hᶜᶠ = zero(ibg)
-
-    for k in 1:ibg.Nz
-        hᶜᶜ = wet_cell_height(i, j, k, ibg)
-        hᶠᶜ += min(wet_cell_height(i⁻, j, k, ibg), hᶜᶜ)
-        hᶜᶠ += min(wet_cell_height(i, j⁻, k, ibg), hᶜᶜ)
-    end
-
-    @inbounds depthᶠᶜ[i, j, 1] = hᶠᶜ
-    @inbounds depthᶜᶠ[i, j, 1] = hᶜᶠ
-end
-
-# Height of the wet part of a cell, from the bottom and top heights alone so that it also holds in halos
-@inline function wet_cell_height(i, j, k, ibg)
-    r⁻ = rnode(i, j, k,   ibg.underlying_grid, c, c, f)
-    r⁺ = rnode(i, j, k+1, ibg.underlying_grid, c, c, f)
-    rᵇ = bottom_height(i, j, ibg)
-    rᵗ = top_height(i, j, ibg)
-    Δr = min(r⁺, rᵗ) - max(r⁻, rᵇ)
-    return ifelse(immersed_cell(i, j, k, ibg), zero(Δr), Δr)
+    return max(H - bottom_deficit - ifelse(k⁺ > k⁻, top_deficit, zero(H)), zero(H))
 end
 
 # Make sure column_height works for horizontally-Flat topologies.

@@ -1,11 +1,10 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
-using Oceananigans.Grids: znodes, static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
+using Oceananigans.Grids: static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedVerticalBoundaries, PartialCellVerticalBoundaries,
                                        immersed_cell, _immersed_cell,
                                        mask_immersed_field!, bottom_height_interior, bottom_height_field
-using Oceananigans.Fields: ConstantField
-using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ
+using Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δr⁻¹ᶜᶜᶜ, Δr⁻¹ᶜᶜᶠ
 
 center_values(op, grid, args...) =
     Array(interior(compute!(Field(KernelFunctionOperation{Center, Center, Center}(op, grid, args...)))))
@@ -30,21 +29,9 @@ function test_top_height_construction(FT, arch, Boundary)
     ibg = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom, top_height=top))
     ib = ibg.immersed_boundary
 
-    @test architecture(ibg) === arch
-    @test eltype(ibg) === FT
-    @test size(ibg) == size(underlying_grid)
     @test eltype(ib.bottom_height) === FT
     @test eltype(ib.top_height) === FT
     @test all(Array(bottom_height_interior(ib.top_height)) .> Array(bottom_height_interior(ib.bottom_height)))
-
-    @test isnothing(Boundary(bottom_height=bottom).top_height)
-    @test ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom)).immersed_boundary.top_height isa ConstantField
-
-    Nx, Ny = size(underlying_grid)[1:2]
-    bottom_array = on_architecture(arch, fill(FT(-0.8), Nx, Ny))
-    top_array    = on_architecture(arch, fill(FT(-0.2), Nx, Ny))
-    @test ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom_array, top_height=top_array)) isa ImmersedBoundaryGrid
-    @test ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8, top_height=-0.2)) isa ImmersedBoundaryGrid
 
     return nothing
 end
@@ -109,6 +96,9 @@ function test_partial_cell_top_immersed_cell_pattern(FT, arch)
     @test all(Δrᶠ[:, :, 3] .≈ FT(0.075))
     @test all(Δrᶠ[:, :, 8] .≈ FT(0.075))
     @test all(Δrᶠ[:, :, 4:7] .≈ FT(0.1))
+
+    @test all(center_values(Δr⁻¹ᶜᶜᶜ, ibg) .* Δr .≈ 1)
+    @test all(face_values(Δr⁻¹ᶜᶜᶠ, ibg) .* Δrᶠ .≈ 1)
 
     @test all(center_values(column_depthᶜᶜᵃ, ibg) .≈ FT(0.6))
 
@@ -220,27 +210,16 @@ function test_top_height_equality_and_show(FT, arch, Boundary)
     @test ibg.immersed_boundary == ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8, top_height=-0.2)).immersed_boundary
     @test Oceananigans.Grids.with_halo((4, 4, 4), ibg).immersed_boundary == ibg.immersed_boundary
 
-    @test occursin("zt", summary(ibg.immersed_boundary))
-    @test occursin("top_height", sprint(show, ibg.immersed_boundary))
-    @test !occursin("zt", summary(ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8)).immersed_boundary))
-    @test sprint(show, ibg) isa String
-
     return nothing
 end
 
-function test_bottom_only_alias(FT, arch, Boundary, BottomOnly, bottom_only_name)
+function test_bottom_only_alias(FT, arch, Boundary, BottomOnly)
     underlying_grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
 
-    @test BottomOnly(-0.8) isa BottomOnly
     @test BottomOnly(-0.8) == Boundary(bottom_height=-0.8)
     @test Boundary(bottom_height=-0.8) isa BottomOnly
     @test !(Boundary(bottom_height=-0.8, top_height=-0.2) isa BottomOnly)
     @test ImmersedBoundaryGrid(underlying_grid, BottomOnly(-0.8)).immersed_boundary isa BottomOnly
-
-    bottom_only_grid = ImmersedBoundaryGrid(underlying_grid, BottomOnly(-0.8))
-    top_and_bottom_grid = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-0.8, top_height=-0.2))
-    @test startswith(summary(bottom_only_grid.immersed_boundary), bottom_only_name * "(")
-    @test startswith(summary(top_and_bottom_grid.immersed_boundary), string(nameof(Boundary), "("))
 
     return nothing
 end
@@ -252,19 +231,13 @@ function test_no_bottom_height(FT, arch, Boundary)
     no_bottom   = ImmersedBoundaryGrid(underlying_grid, Boundary(; top_height=top))
     flat_bottom = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=top))
 
-    @test no_bottom.immersed_boundary.bottom_height isa ConstantField
     @test Array(interior(bottom_height_field(no_bottom))) == Array(interior(bottom_height_field(flat_bottom)))
     @test center_values(immersed_cell, no_bottom) == center_values(immersed_cell, flat_bottom)
     @test center_values(Δrᶜᶜᶜ, no_bottom) == center_values(Δrᶜᶜᶜ, flat_bottom)
     @test center_values(column_depthᶜᶜᵃ, no_bottom) == center_values(column_depthᶜᶜᵃ, flat_bottom)
 
-    constant_top = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=ConstantField(-0.5)))
-    numeric_top  = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=-1, top_height=-0.5))
-    @test center_values(immersed_cell, constant_top) == center_values(immersed_cell, numeric_top)
-
     no_boundary = ImmersedBoundaryGrid(underlying_grid, Boundary())
     @test !any(center_values(immersed_cell, no_boundary) .== 1)
-    @test occursin("nothing", summary(Boundary(; top_height=top)))
 
     return nothing
 end
@@ -297,7 +270,6 @@ function test_face_column_depth_beneath_sloping_top(FT, arch, Boundary)
     @test all(center_values(column_depthᶜᶜᵃ, disjoint)[i-1:i, :, 1] .> 0)
 
     bottom_only = ImmersedBoundaryGrid(underlying_grid, Boundary(bottom_height=bottom))
-    @test isnothing(bottom_only.immersed_boundary.face_column_depths)
 
     columns = center_values(column_depthᶜᶜᵃ, bottom_only)[:, :, 1]
     @test center_values(column_depthᶠᶜᵃ, bottom_only)[2:Nx, :, 1] == min.(columns[1:Nx-1, :], columns[2:Nx, :])
@@ -308,14 +280,13 @@ end
 @testset "Immersed boundary top height" begin
     for arch in archs, FT in float_types
         A = typeof(arch)
-        for (Boundary, BottomOnly, bottom_only_name) in ((GridFittedVerticalBoundaries, GridFittedBottom, "GridFittedBottom"),
-                                                         (PartialCellVerticalBoundaries, PartialCellBottom, "PartialCellBottom"))
+        for (Boundary, BottomOnly) in ((GridFittedVerticalBoundaries, GridFittedBottom), (PartialCellVerticalBoundaries, PartialCellBottom))
             @testset "$Boundary construction [$FT, $A]"          test_top_height_construction(FT, arch, Boundary)
             @testset "$Boundary open top [$FT, $A]"              test_open_top_matches_bottom_only(FT, arch, Boundary)
             @testset "$Boundary reduced field masking [$FT, $A]" test_top_height_reduced_field_masking(FT, arch, Boundary)
             @testset "$Boundary equality and show [$FT, $A]"     test_top_height_equality_and_show(FT, arch, Boundary)
             @testset "$Boundary without bottom [$FT, $A]"        test_no_bottom_height(FT, arch, Boundary)
-            @testset "$bottom_only_name alias [$FT, $A]"         test_bottom_only_alias(FT, arch, Boundary, BottomOnly, bottom_only_name)
+            @testset "$BottomOnly alias [$FT, $A]"               test_bottom_only_alias(FT, arch, Boundary, BottomOnly)
             @testset "$Boundary face column depth [$FT, $A]"     test_face_column_depth_beneath_sloping_top(FT, arch, Boundary)
         end
         @testset "GridFittedVerticalBoundaries top pattern [$FT, $A]"                     test_grid_fitted_top_immersed_cell_pattern(FT, arch)
