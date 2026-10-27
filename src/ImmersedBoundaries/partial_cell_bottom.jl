@@ -187,14 +187,14 @@ end
     i, j = @index(Global, NTuple)
 
     domain_bottom = rnode(i, j, 1, grid, c, c, f)
-    domain_top    = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    domain_top    = rnode(i, j, size(grid, 3)+1, grid, c, c, f)
     ẑᵇ = clamp(height_value(i, j, bottom, domain_bottom), domain_bottom, domain_top)
     ẑᵗ = clamp(height_value(i, j, top, domain_top), domain_bottom, domain_top)
 
     ϵ  = ib.minimum_fractional_cell_height
     Δzᵇ = zero(grid)
 
-    for k in 1:grid.Nz
+    for k in 1:size(grid, 3)
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
@@ -221,13 +221,13 @@ end
 @kernel function _compute_cell_indices!(fractional_bottom_index, fractional_top_index, grid, ib::PartialCellVerticalBoundaries, bottom, top)
     i, j = @index(Global, NTuple)
     rᵇ = height_value(i, j, bottom, rnode(i, j, 1, grid, c, c, f))
-    rᵗ = height_value(i, j, top,    rnode(i, j, grid.Nz+1, grid, c, c, f))
+    rᵗ = height_value(i, j, top,    rnode(i, j, size(grid, 3)+1, grid, c, c, f))
     ϵ  = ib.minimum_fractional_cell_height
 
-    kᵇ = grid.Nz + 1
+    kᵇ = size(grid, 3) + 1
     φᵇ = one(rᵇ)
 
-    for k in grid.Nz:-1:1
+    for k in size(grid, 3):-1:1
         r⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δr = Δrᶜᶜᶜ(i, j, k, grid)
         immersed_cell = r⁺ - Δr * ϵ < rᵇ
@@ -240,7 +240,7 @@ end
     kᵗ = 0
     φᵗ = one(rᵗ)
 
-    for k in 1:grid.Nz
+    for k in 1:size(grid, 3)
         r⁻ = rnode(i, j, k, grid, c, c, f)
         Δr = Δrᶜᶜᶜ(i, j, k, grid)
         # `r⁻ ≥ rᵗ` keeps φ > 0 for ϵ = 0, so that ⌊sᵗ⌋ = kᵗ
@@ -283,8 +283,8 @@ Architectures.on_architecture(to, ib::PartialCellVerticalBoundaries) =
                                   on_architecture(to, ib.Δr⁻¹ᶜᶜᶠᵗ))
 
 # kᵇ = ⌊sᵇ⌋: `unsafe_trunc` is a single conversion, while mixed `Int`-`Float` comparisons of `sᵇ` are exact but several times longer
-@inline bottom_cell(i, j, ib::PartialCellVerticalBoundaries) = @inbounds unsafe_trunc(Int, ib.fractional_bottom_index[i, j, 1])
-@inline top_cell(i, j, ib::PartialCellVerticalBoundaries) = @inbounds unsafe_trunc(Int, ib.fractional_top_index[i, j, 1])
+@inline bottom_cell(i, j, grid, ib::PartialCellVerticalBoundaries) = @inbounds unsafe_trunc(Int, ib.fractional_bottom_index[i, j, 1])
+@inline    top_cell(i, j, grid, ib::PartialCellVerticalBoundaries) = unsafe_trunc(Int, height_value(i, j, ib.fractional_top_index, size(grid, 3)))
 
 # Measured from the face below kᵇ, so that full bottom cells and columns without active cells are exact
 @inline function bottom_height(i, j, ibg::PCBIBG)
@@ -302,7 +302,7 @@ end
 
 @inline face_column_depth(i, j, i⁻, j⁻, ibg, ::PartialCellBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 
-@inline _immersed_cell(i, j, k, underlying_grid, ib::PartialCellWithTop) = (k < bottom_cell(i, j, ib)) | (k > top_cell(i, j, ib))
+@inline _immersed_cell(i, j, k, underlying_grid, ib::PartialCellWithTop) = (k < bottom_cell(i, j, underlying_grid, ib)) | (k > top_cell(i, j, underlying_grid, ib))
 
 # The open fractions φᵇ and φᵗ of cell k hold only where `at_the_bottom` and `at_the_top`
 # Only active cells are partial, so that immersed cells next to closed columns keep full spacings

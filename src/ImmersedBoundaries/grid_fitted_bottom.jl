@@ -265,11 +265,11 @@ height_kernel_parameters(::Nothing, ::Nothing) = :xy
 @kernel function _compute_numerical_heights!(bottom, top, grid, ib::GridFittedVerticalBoundaries)
     i, j = @index(Global, NTuple)
     ẑᵇ = rnode(i, j, 1, grid, c, c, f)
-    ẑᵗ = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    ẑᵗ = rnode(i, j, size(grid, 3)+1, grid, c, c, f)
     zᵇ = height_value(i, j, bottom, ẑᵇ)
     zᵗ = height_value(i, j, top,    ẑᵗ)
     center_condition = ib.immersed_condition isa CenterImmersedCondition
-    for k in 1:grid.Nz
+    for k in 1:size(grid, 3)
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
@@ -291,7 +291,7 @@ end
     return nothing
 end
 
-@inline closed_column_height(i, j, grid, bottom)    = rnode(i, j, grid.Nz+1, grid, c, c, f)
+@inline closed_column_height(i, j, grid, bottom)    = rnode(i, j, size(grid, 3)+1, grid, c, c, f)
 @inline closed_column_height(i, j, grid, ::Nothing) = rnode(i, j, 1, grid, c, c, f)
 
 @inline store_column_value!(field, i, j, value)     = @inbounds field[i, j, 1] = value
@@ -309,16 +309,16 @@ end
 @kernel function _compute_cell_indices!(bottom_cell_index, top_cell_index, grid, ib::GridFittedVerticalBoundaries, bottom, top)
     i, j = @index(Global, NTuple)
     rᵇ = height_value(i, j, bottom, rnode(i, j, 1, grid, c, c, f))
-    rᵗ = height_value(i, j, top,    rnode(i, j, grid.Nz+1, grid, c, c, f))
-    kᵇ = grid.Nz + 1
+    rᵗ = height_value(i, j, top,    rnode(i, j, size(grid, 3)+1, grid, c, c, f))
+    kᵇ = size(grid, 3) + 1
     kᵗ = 0
 
-    for k in grid.Nz:-1:1
+    for k in size(grid, 3):-1:1
         r = rnode(i, j, k, grid, c, c, c)
         kᵇ = ifelse(r ≤ rᵇ, kᵇ, k)
     end
 
-    for k in 1:grid.Nz
+    for k in 1:size(grid, 3)
         r = rnode(i, j, k, grid, c, c, c)
         kᵗ = ifelse(r < rᵗ, k, kᵗ)
     end
@@ -327,33 +327,24 @@ end
     store_column_value!(top_cell_index,    i, j, kᵗ)
 end
 
-@inline bottom_cell(i, j, ib::GridFittedVerticalBoundaries) = @inbounds ib.bottom_cell_index[i, j, 1]
-@inline top_cell(i, j, ib::GridFittedVerticalBoundaries) = @inbounds ib.top_cell_index[i, j, 1]
+@inline bottom_cell(i, j, grid, ib::GridFittedVerticalBoundaries) = height_value(i, j, ib.bottom_cell_index, 1)
+@inline    top_cell(i, j, grid, ib::GridFittedVerticalBoundaries) = height_value(i, j, ib.top_cell_index, size(grid, 3))
 
-@inline bottom_height(i, j, ibg::GFBIBG) = rnode(i, j, 1, ibg, c, c, f)
+@inline function bottom_height(i, j, ibg::GFBIBG)
+    kᵇ = bottom_cell(i, j, ibg.underlying_grid, ibg.immersed_boundary)
+    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
+end
 
 # AbstractGridFittedBottomImmersedBoundaryGrid
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-const GFBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedWithTop}
-
-const GridFittedWithBottom = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, <:AbstractArray, <:Any}
-const GFBBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedWithBottom}
-
-@inline function bottom_height(i, j, ibg::GFBBIBG)
-    kᵇ = bottom_cell(i, j, ibg.immersed_boundary)
-    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
-end
-
-@inline top_height(i, j, ibg::AGFBIBG) = rnode(i, j, ibg.Nz+1, ibg, c, c, f)
-
-@inline function top_height(i, j, ibg::GFBTIBG)
-    kᵗ = top_cell(i, j, ibg.immersed_boundary)
+@inline function top_height(i, j, ibg::AGFBIBG)
+    kᵗ = top_cell(i, j, ibg.underlying_grid, ibg.immersed_boundary)
     return rnode(i, j, kᵗ+1, ibg.underlying_grid, c, c, f)
 end
 
-@inline _immersed_cell(i, j, k, underlying_grid, ib::AbstractGridFittedBottom) = k < bottom_cell(i, j, ib)
-@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedWithTop) = (k < bottom_cell(i, j, ib)) | (k > top_cell(i, j, ib))
+@inline _immersed_cell(i, j, k, underlying_grid, ib::AbstractGridFittedBottom) = k < bottom_cell(i, j, underlying_grid, ib)
+@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedWithTop) = (k < bottom_cell(i, j, underlying_grid, ib)) | (k > top_cell(i, j, underlying_grid, ib))
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
@@ -365,28 +356,10 @@ end
 end
 
 @inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedWithTop)
-    kᵇ = bottom_cell(i, j, ib)
-    kᵗ = top_cell(i, j, ib)
+    kᵇ = bottom_cell(i, j, underlying_grid, ib)
+    kᵗ = top_cell(i, j, underlying_grid, ib)
     return (k .< kᵇ) .| (k .> kᵗ)
 end
-
-# No immersed bottom (bottom_cell_index === nothing): more specific than `GridFittedWithTop`
-const GridFittedTop = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, Nothing, <:AbstractArray}
-
-@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedTop) = k > top_cell(i, j, ib)
-
-@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedTop)
-    kᵗ = top_cell(i, j, ib)
-    return k .> kᵗ
-end
-
-# No immersed bottom and no immersed top (both cell indices and both heights === nothing):
-# more specific than the generic `AbstractGridFittedBottom` and `GridFittedBottom` fallbacks,
-# which would otherwise index into `nothing`
-const GridFittedNone = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, Nothing, Nothing}
-
-@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedNone) = false
-@inline _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedNone) = falses(size(k))
 
 #####
 ##### Static column depth
@@ -403,8 +376,8 @@ const GridFittedNone = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, Nothing
 # Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open. 
 @inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib)
     ug = ibg.underlying_grid
-    k⁻ = max(bottom_cell(i⁻, j⁻, ib), bottom_cell(i, j, ib))
-    k⁺ = min(top_cell(i⁻, j⁻, ib), top_cell(i, j, ib))
+    k⁻ = max(bottom_cell(i⁻, j⁻, ug, ib), bottom_cell(i, j, ug, ib))
+    k⁺ = min(   top_cell(i⁻, j⁻, ug, ib),    top_cell(i, j, ug, ib))
     H  = rnode(i, j, k⁺+1, ug, c, c, f) - rnode(i, j, k⁻, ug, c, c, f)
 
     bottom_deficit = Δrᶜᶜᶜ(i, j, k⁻, ug) - min(Δrᶜᶜᶜ(i⁻, j⁻, k⁻, ibg), Δrᶜᶜᶜ(i, j, k⁻, ibg))
