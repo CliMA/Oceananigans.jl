@@ -8,6 +8,7 @@ export
     run!,
     Callback,
     add_callback!,
+    add_conservation_fixer!,
     TimeDerivativeCallback,
     iteration
 

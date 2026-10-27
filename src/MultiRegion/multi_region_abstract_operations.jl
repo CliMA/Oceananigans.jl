@@ -1,4 +1,5 @@
-using Oceananigans.AbstractOperations: UnaryOperation, BinaryOperation, MultiaryOperation, Derivative, KernelFunctionOperation, ConditionalOperation
+using Oceananigans.AbstractOperations: UnaryOperation, BinaryOperation, MultiaryOperation, Derivative, KernelFunctionOperation, ConditionalOperation,
+                                       intersect_indices
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionUnaryOperation{LX, LY, LZ, O, A, I}          = UnaryOperation{LX, LY, LZ, O, A, I, <:MultiRegionGrids} where {LX, LY, LZ, O, A, I}
@@ -19,6 +20,10 @@ Base.size(f::MultiRegionAbstractOperation) = size(getregion(f.grid, 1))
 
 @inline Utils.isregional(f::MultiRegionAbstractOperation) = true
 @inline Utils.regions(f::MultiRegionAbstractOperation) = regions(f.grid)
+
+# The operands' indices are `MultiRegionObject`s, so intersect them region by region
+Fields.indices(β::MultiRegionBinaryOperation) = construct_regionally(intersect_indices, location(β), β.a, β.b)
+Fields.indices(Π::MultiRegionMultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
 for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :ConditionalOperation]
     @eval begin

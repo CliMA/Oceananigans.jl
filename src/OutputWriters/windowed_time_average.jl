@@ -203,7 +203,7 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
     if fetch_operand
         output = fetch_output(operand, model)
         result = similar(output)
-        result .= output
+        set_average!(result, output)
     else
         result = similar(operand)
         result .= operand
@@ -253,8 +253,12 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     T_current = period_to_number(clock.time - wta.window_start_time)
     T_previous = period_to_number(wta.previous_collection_time - wta.window_start_time)
 
+    FT = eltype(wta.result)
+    previous_weight = convert(FT, T_previous / T_current)
+    integrand_weight = convert(FT, Δt / T_current)
+
     # Accumulate right Riemann sum
-    @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
+    accumulate_average!(wta.result, integrand, previous_weight, integrand_weight)
 
     # Save time of integrand collection
     wta.previous_collection_time = clock.time
@@ -262,13 +266,18 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     return nothing
 end
 
+set_average!(result, value) = result .= value
+
+accumulate_average!(result, integrand, previous_weight, integrand_weight) =
+    @. result = result * previous_weight + integrand * integrand_weight
+
 function advance_time_average!(wta::WindowedTimeAverage, model)
 
     unscheduled = model.clock.iteration == 0 || outside_window(wta.schedule, model.clock)
     if !(unscheduled)
         if !(wta.schedule.collecting)
             # Zero out result to begin new accumulation window
-            wta.result .= 0
+            set_average!(wta.result, 0)
 
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true
@@ -300,7 +309,7 @@ function advance_time_average!(wta::SpecifiedWindowedTimeAverage, model)
     if !(unscheduled)
         if !(wta.schedule.collecting)
             # Zero out result to begin new accumulation window
-            wta.result .= 0
+            set_average!(wta.result, 0)
 
             # Begin collecting window-averaged increments
             wta.schedule.collecting = true

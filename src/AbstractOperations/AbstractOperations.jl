@@ -6,6 +6,7 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation, InterpolatedOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 export RegriddedOperation
+export at_minimum, at_maximum
 
 using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
@@ -74,6 +75,7 @@ include("interpolated_operation.jl")
 include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")
+include("at_extremum.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
 

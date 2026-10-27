@@ -137,9 +137,13 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Baker, L. E. (2026). [Online and offline Lagrangian filtering with PDEs: Theoretical framework and implementation in OceananigansLagrangianFilter.jl](https://doi.org/10.22541/essoar.15010660/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15010660/v1](https://doi.org/10.22541/essoar.15010660/v1)
+
+1. Parfenyev, V. and Vergeles, S. (2026). [Wave-driven geostrophic vortices in rotating turbulence](https://doi.org/10.48550/arXiv.2610.15863), _arXiv preprint_, arXiv:2610.15863. DOI: [10.48550/arXiv.2610.15863](https://doi.org/10.48550/arXiv.2610.15863)
+
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. E. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/os-22-3055-2026), _Ocean Science_, **22**, 3055–3078. DOI: [10.5194/os-22-3055-2026](https://doi.org/10.5194/os-22-3055-2026)
 
-1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Flierl, G. R., and Ferrari, R. (2026). [A generative AI framework for inferring consistent ocean statistics at depth using sea surface data](https://doi.org/10.1175/JPO-D-25-0093.1), _Journal of Physical Oceanography_. DOI: [10.1175/JPO-D-25-0093.1](https://doi.org/10.1175/JPO-D-25-0093.1)
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Flierl, G. R., and Ferrari, R. (2026). [A generative AI framework for inferring consistent ocean statistics at depth using sea surface data](https://doi.org/10.1175/JPO-D-25-0093.1), _Journal of Physical Oceanography_, **56(11)**, 2643–2658. DOI: [10.1175/JPO-D-25-0093.1](https://doi.org/10.1175/JPO-D-25-0093.1)
 
 1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin–Helmholtz braids at high Reynolds number](https://doi.org/10.1017/jfm.2026.12012), _Journal of Fluid Mechanics_, **1043**, R2. DOI: [10.1017/jfm.2026.12012](https://doi.org/10.1017/jfm.2026.12012)
 
@@ -219,7 +223,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Huang, J., Chamecki, M., Li, Q., and Chen, B. (2025). [The role of longitudinal alignment between surface and bottom forcing on the full-column turbulence mixing in the coastal ocean](https://doi.org/10.1016/j.ocemod.2025.102637), _Ocean Modelling_, **199**, 102637. DOI: [10.1016/j.ocemod.2025.102637](https://doi.org/10.1016/j.ocemod.2025.102637)
 
-1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
+1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, **55(9)**, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
 
 1. Rogers, M. and Rypina, I. I. (2025). [Dynamics of inertial particles in flows with stochasticity](https://doi.org/10.1175/JPO-D-24-0117.1), _Journal of Physical Oceanography_, **55(7)**, 831–846. DOI: [10.1175/JPO-D-24-0117.1](https://doi.org/10.1175/JPO-D-24-0117.1)
 
