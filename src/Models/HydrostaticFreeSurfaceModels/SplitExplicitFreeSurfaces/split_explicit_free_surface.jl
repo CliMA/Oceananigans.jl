@@ -345,7 +345,7 @@ end
 @inline companion_at_gravity_wave_side(::Nothing, side, companion) = nothing
 @inline companion_at_gravity_wave_side(bcs, side, companion) = gravity_wave_boundary_condition(getproperty(bcs, side)) ? companion : nothing
 
-""" An internal function that stores the averaging kernel 
+""" An internal function that stores the averaging kernel
 and the last fractional time stepped in the subcycling """
 struct AveragingKernel{F, FT}
     kernel :: F
@@ -356,7 +356,7 @@ end
 
 regularize_averaging_kernel(FT, a::AveragingKernel) = AveragingKernel(a.kernel, convert(FT, a.last_τ))
 
-function regularize_averaging_kernel(FT, f::Function) 
+function regularize_averaging_kernel(FT, f::Function)
     last_τ = last_fractional_time(f)
     return AveragingKernel(f, convert(FT, last_τ))
 end
@@ -381,7 +381,7 @@ end
 @inline last_fractional_time(::typeof(constant_averaging_kernel))                   = 2.0
 
 # Otherwise we need to calculate the last fractional time by solving for the root between 0 and 2
-@inline function last_fractional_time(averaging_kernel::Function) 
+@inline function last_fractional_time(averaging_kernel::Function)
     try
         a = Roots.find_zero(averaging_kernel, 2.0)
     catch
