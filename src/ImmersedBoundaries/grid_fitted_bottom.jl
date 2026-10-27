@@ -27,10 +27,7 @@ end
 GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition) =
     GridFittedVerticalBoundaries(bottom_height, top_height, immersed_condition, nothing, nothing, nothing)
 
-# A missing top is materialized as a `ConstantField` at the top of the domain, without a `top_cell_index`
 const GridFittedBottom{H, I} = GridFittedVerticalBoundaries{H, <:Union{Nothing, ConstantField}, I, <:Any, Nothing}
-
-# Dispatches on `top_cell_index` because kernels see no heights, see `Adapt.adapt_structure`
 const GridFittedWithTop = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
 GridFittedBottom(bottom_height, immersed_condition) = GridFittedVerticalBoundaries(bottom_height, nothing, immersed_condition)
