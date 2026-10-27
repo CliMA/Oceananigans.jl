@@ -330,15 +330,20 @@ end
 @inline bottom_cell(i, j, ib::GridFittedVerticalBoundaries) = @inbounds ib.bottom_cell_index[i, j, 1]
 @inline top_cell(i, j, ib::GridFittedVerticalBoundaries) = @inbounds ib.top_cell_index[i, j, 1]
 
-@inline function bottom_height(i, j, ibg::GFBIBG)
-    kᵇ = bottom_cell(i, j, ibg.immersed_boundary)
-    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
-end
+@inline bottom_height(i, j, ibg::GFBIBG) = rnode(i, j, 1, ibg, c, c, f)
 
 # AbstractGridFittedBottomImmersedBoundaryGrid
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 const GFBTIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedWithTop}
+
+const GridFittedWithBottom = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, <:AbstractArray, <:Any}
+const GFBBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedWithBottom}
+
+@inline function bottom_height(i, j, ibg::GFBBIBG)
+    kᵇ = bottom_cell(i, j, ibg.immersed_boundary)
+    return rnode(i, j, kᵇ, ibg.underlying_grid, c, c, f)
+end
 
 @inline top_height(i, j, ibg::AGFBIBG) = rnode(i, j, ibg.Nz+1, ibg, c, c, f)
 
@@ -364,6 +369,24 @@ end
     kᵗ = top_cell(i, j, ib)
     return (k .< kᵇ) .| (k .> kᵗ)
 end
+
+# No immersed bottom (bottom_cell_index === nothing): more specific than `GridFittedWithTop`
+const GridFittedTop = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, Nothing, <:AbstractArray}
+
+@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedTop) = k > top_cell(i, j, ib)
+
+@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedTop)
+    kᵗ = top_cell(i, j, ib)
+    return k .> kᵗ
+end
+
+# No immersed bottom and no immersed top (both cell indices and both heights === nothing):
+# more specific than the generic `AbstractGridFittedBottom` and `GridFittedBottom` fallbacks,
+# which would otherwise index into `nothing`
+const GridFittedNone = GridFittedVerticalBoundaries{<:Any, <:Any, <:Any, Nothing, Nothing}
+
+@inline _immersed_cell(i, j, k, underlying_grid, ib::GridFittedNone) = false
+@inline _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedNone) = falses(size(k))
 
 #####
 ##### Static column depth

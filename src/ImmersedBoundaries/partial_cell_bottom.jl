@@ -137,7 +137,7 @@ function materialize_immersed_boundary(grid, ib::PartialCellVerticalBoundaries)
     @apply_regionally compute_numerical_heights!(bottom, top, grid, compute_ib)
 
     fractional_bottom_index = Field{Center, Center, Nothing}(grid)
-    fractional_top_index    = top_index_field(grid, top, eltype(grid))
+    fractional_top_index    = index_field(grid, top, eltype(grid))
 
     @apply_regionally compute_cell_indices!(grid, compute_ib, fractional_bottom_index, fractional_top_index, bottom, top)
 
