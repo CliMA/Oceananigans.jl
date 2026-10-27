@@ -1,7 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize, get_active_cells_map
-using Oceananigans.Grids: halo_size, topology, architecture, CommunicatingSide, Sides
+using Oceananigans.Grids: halo_size, topology, architecture, CommunicatingSide, TwoSided
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
@@ -36,8 +36,8 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     # the part of the domain that does not depend on the halo cells if the direction is partitioned.
     local_x = Rx == 1
     local_y = Ry == 1
-    one_sided_x = (Tx <: Sides{<:CommunicatingSide}) != (Tx <: Sides{<:Any, <:CommunicatingSide})
-    one_sided_y = (Ty <: Sides{<:CommunicatingSide}) != (Ty <: Sides{<:Any, <:CommunicatingSide})
+    one_sided_x = (Tx <: TwoSided{<:CommunicatingSide}) != (Tx <: TwoSided{<:Any, <:CommunicatingSide})
+    one_sided_y = (Ty <: TwoSided{<:CommunicatingSide}) != (Ty <: TwoSided{<:Any, <:CommunicatingSide})
 
     # Sizes
     Sx = if local_x
@@ -57,8 +57,8 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     end
 
     # Offsets
-    Ox = Rx == 1 || !(Tx <: Sides{<:CommunicatingSide}) ? 0 : Hx
-    Oy = Ry == 1 || !(Ty <: Sides{<:CommunicatingSide}) ? 0 : Hy
+    Ox = Rx == 1 || !(Tx <: TwoSided{<:CommunicatingSide}) ? 0 : Hx
+    Oy = Ry == 1 || !(Ty <: TwoSided{<:CommunicatingSide}) ? 0 : Hy
 
     sizes = (Sx, Sy, Wz)
     offsets = (Ox, Oy, 0)
