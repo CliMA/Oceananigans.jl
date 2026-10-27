@@ -52,7 +52,7 @@ using Oceananigans.TimeSteppers: TimeSteppers,
                                  AbstractTimeDiscretization,
                                  ExplicitTimeDiscretization,
                                  VerticallyImplicitTimeDiscretization
-using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, znode
+using Oceananigans.Grids: AbstractGrid, BoundaryTopology, Center, Face, znode
 using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,
     V⁻¹ᶜᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ,
@@ -72,7 +72,7 @@ using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundar
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:BoundaryTopology}
 
 #####
 ##### Abstract types

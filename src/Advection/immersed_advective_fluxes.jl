@@ -1,5 +1,6 @@
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Grids: Open
 
 const IBG = ImmersedBoundaryGrid
 
@@ -139,6 +140,29 @@ for side in (:ᶜ, :ᶠ)
             @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side)...))
             @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side)...))
             @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side)...))
+        end
+    end
+
+    # The halos beyond an Open side are active, so order reduction there comes from the topology
+    for (ξ, d) in ((:x, 1), (:y, 2), (:z, 3))
+        open_topology = :(Union{TwoSided{Open}, TwoSided{<:Any, Open}})
+        open_grid = d == 1 ? :(IBG{<:Any, <:$open_topology}) :
+                    d == 2 ? :(IBG{<:Any, <:Any, <:$open_topology}) :
+                             :(IBG{<:Any, <:Any, <:Any, <:$open_topology})
+
+        N = (:Nx, :Ny, :Nz)[d]
+        index = (:i, :j, :k)[d]
+
+        for bias in (:symmetric, :biased)
+            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, side)
+            outside_halo  = Symbol(:outside_, bias, :_halo_, ξ, side)
+            shift = bias == :symmetric ? :none : :interior
+
+            for buffer in advection_buffers
+                inactive_cells = inside_immersed_boundary(buffer, shift, ξ, side)
+                @eval @inline $near_boundary(i, j, k, ibg::$open_grid, scheme::AbstractAdvectionScheme{$buffer}) =
+                    (|)($(inactive_cells...)) | !$outside_halo($index, topology(ibg, $d), ibg.$N, scheme)
+            end
         end
     end
 end
