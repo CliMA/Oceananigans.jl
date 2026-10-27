@@ -4,8 +4,8 @@ using MPI
 MPI.Initialized() || MPI.Init(threadlevel=:multiple)
 
 using Oceananigans.DistributedComputations: child_architecture, cpu_architecture, partition, reconstruct_global_grid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, immersed_peripheral_node
-using Oceananigans.BoundaryConditions: NormalRadiation, GravityWaveRadiationBoundaryCondition
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, immersed_peripheral_node
+using Oceananigans.BoundaryConditions: NormalRadiation, ObliqueRadiation, GravityWaveRadiationBoundaryCondition
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: LocalHaloFilling, CompleteHaloFilling
 
 # # Distributed SplitExplicitFreeSurface boundary handling
@@ -238,6 +238,64 @@ end
         ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
 
         @testset "rotating open boundaries [$timestepper, $(typeof(arch.partition))]" begin
+            @test all(isapprox.(up, us))
+            @test all(isapprox.(vp, vs))
+            @test all(isapprox.(ηp, ηs))
+        end
+    end
+end
+
+# # Oblique radiation across rank seams
+#
+# `ObliqueRadiation` keeps the previous boundary and first-interior values, including at the tangential halo
+# points that lie across a rank seam. A sloping bottom makes the normal velocity depth dependent, so the
+# barotropic correction does not overwrite those values and a stale seam entry reaches the interior.
+
+sloping_bottom(x, y) = -0.8 + 0.15 * sin(2π * x / 0.3) * cos(2π * y / 0.3)
+
+ηₒ(x, y, z) = 0.01 * exp(-((x - 0.4)^2 + (y - 0.1)^2) / 0.02)
+vₒ(x, y, z) = -0.05 + 0.02 * sin(2π * x / 0.5)
+
+function build_oblique_open(grid; timestepper)
+    scheme = ObliqueRadiation(inflow_timescale = 10.0, outflow_timescale = 30.0)
+    v_bcs = FieldBoundaryConditions(south = NormalFlowBoundaryCondition(0; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps=6),
+                                        coriolis = FPlane(f = 1),
+                                        boundary_conditions = (; v = v_bcs),
+                                        buoyancy = nothing,
+                                        tracers = ())
+    set!(model, η = ηₒ, v = vₒ)
+
+    for _ in 1:10
+        time_step!(model, 2e-3)
+    end
+
+    return model
+end
+
+@testset "Distributed oblique radiation over an immersed bottom" begin
+    for arch in archs, timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        cpu_arch = cpu_architecture(arch)
+
+        underlying = RectilinearGrid(arch, size=(32, 32, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
+                                     halo=(4, 4, 4), topology=(Bounded, Bounded, Bounded))
+        grid = ImmersedBoundaryGrid(underlying, PartialCellBottom(sloping_bottom))
+        global_grid = ImmersedBoundaryGrid(reconstruct_global_grid(underlying), PartialCellBottom(sloping_bottom))
+
+        mp = build_oblique_open(grid; timestepper)
+        ms = build_oblique_open(global_grid; timestepper)
+
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
+
+        us = partition(interior(on_architecture(CPU(), ms.velocities.u)), cpu_arch, size(up))
+        vs = partition(interior(on_architecture(CPU(), ms.velocities.v)), cpu_arch, size(vp))
+        ηs = partition(interior(on_architecture(CPU(), ms.free_surface.displacement)), cpu_arch, size(ηp))
+
+        @testset "oblique radiation [$timestepper, $(typeof(arch.partition))]" begin
             @test all(isapprox.(up, us))
             @test all(isapprox.(vp, vs))
             @test all(isapprox.(ηp, ηs))
