@@ -2,7 +2,7 @@ using Oceananigans.Grids: Grids, constructor_arguments, rnode
 using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
 using Oceananigans.Utils: KernelParameters
-using OffsetArrays: AbstractOffsetArray, OffsetArray
+using OffsetArrays: AbstractOffsetArray
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)

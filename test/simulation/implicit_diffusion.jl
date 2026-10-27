@@ -70,17 +70,10 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     set!(model.auxiliary_fields.c⁻, c₀)
     set!(model.auxiliary_fields.d⁻, d₀)
 
-    Uⁿ⁻¹ = Oceananigans.Fields.VelocityFields(grid)
-    Uⁿ   = Oceananigans.Fields.VelocityFields(grid)
-
     sim = Simulation(model; Δt=0.01, stop_time=1, verbose=false)
 
-    ϵc = VarianceDissipation(:c, grid; Uⁿ⁻¹, Uⁿ)
-    ϵd = VarianceDissipation(:d, grid; Uⁿ⁻¹, Uⁿ)
-
-    # Check that the advecting velocities are the same field
-    @test ϵc.previous_state.Uⁿ   === ϵd.previous_state.Uⁿ
-    @test ϵc.previous_state.Uⁿ⁻¹ === ϵd.previous_state.Uⁿ⁻¹
+    ϵc = VarianceDissipation(:c, grid)
+    ϵd = VarianceDissipation(:d, grid)
 
     fc = flatten_dissipation_fields(ϵc)
     fd = flatten_dissipation_fields(ϵd)
@@ -132,6 +125,66 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     end
 
     rm(dir; recursive=true)
+end
+
+# Σ(A + K) against the change of Σ V c² over one time step, relative to Σ(|A| + |K|)
+function relative_budget_residual(model, Δt; Nsteps=5)
+    grid = model.grid
+    simulation = Simulation(model; Δt, stop_iteration=Nsteps, verbose=false)
+    ϵ = VarianceDissipation(:c, grid)
+    add_callback!(simulation, ϵ)
+
+    V = KernelFunctionOperation{Center, Center, Center}(Vᶜᶜᶜ, grid)
+    variance = Field(V * model.tracers.c^2)
+    productions = (ϵ.advective_production..., ϵ.diffusive_production...)
+
+    residual = 0.0
+    for _ in 1:Nsteps
+        before = sum(compute!(variance))
+        time_step!(simulation)
+        after = sum(compute!(variance))
+        total = sum(sum(Array(interior(P))) for P in productions)
+        scale = sum(sum(abs, Array(interior(P))) for P in productions)
+        residual = max(residual, abs(total - (after - before) / Δt) / scale)
+    end
+
+    return residual
+end
+
+function zstar_lock_exchange(arch, timestepper, free_surface)
+    z = MutableVerticalDiscretization((-1000, 0))
+    grid = RectilinearGrid(arch; size=(16, 8), x=(0, 16e3), z, topology=(Bounded, Flat, Bounded), halo=(4, 4))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface, tracers=(:b, :c), buoyancy=BuoyancyTracer(),
+                                        momentum_advection=WENO(), tracer_advection=WENO(order=7))
+    set!(model, u=(x, z) -> 0.1 * sin(π * x / 16e3),
+                b=(x, z) -> 0.01 * tanh((x - 8e3) / 2e3),
+                c=(x, z) -> exp(-(x - 6e3)^2 / 2e3^2 - (z + 500)^2 / 200^2))
+    return model
+end
+
+function implicitly_diffused_tracer(arch, timestepper)
+    grid = RectilinearGrid(arch; size=(16, 8), x=(0, 1), z=(-1, 0), topology=(Periodic, Flat, Bounded), halo=(4, 4))
+    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); κ=1e-2)
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, closure, tracers=:c, buoyancy=nothing,
+                                        velocities=PrescribedVelocityFields(u=1), tracer_advection=WENO(order=7))
+    set!(model, c=(x, z) -> exp(-(x - 0.5)^2 / 0.01 - (z + 0.5)^2 / 0.01))
+    return model
+end
+
+@testset "Closed variance budget" begin
+    for arch in archs
+        @testset "Z-star, SplitRungeKutta3 and split-explicit free surface [$(typeof(arch))]" begin
+            model = zstar_lock_exchange(arch, :SplitRungeKutta3, SplitExplicitFreeSurface(substeps=20))
+            @test relative_budget_residual(model, 60) < 1e-6
+        end
+        @testset "Z-star, QuasiAdamsBashforth2 and explicit free surface [$(typeof(arch))]" begin
+            model = zstar_lock_exchange(arch, :QuasiAdamsBashforth2, ExplicitFreeSurface())
+            @test relative_budget_residual(model, 4) < 1e-6
+        end
+        @testset "Vertically implicit diffusion and $timestepper [$(typeof(arch))]" for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+            @test relative_budget_residual(implicitly_diffused_tracer(arch, timestepper), 2e-3) < 1e-6
+        end
+    end
 end
 
 @testset "Implicit Diffusion Diagnostic" begin

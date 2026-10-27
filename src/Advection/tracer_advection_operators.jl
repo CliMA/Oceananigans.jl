@@ -53,16 +53,25 @@ end
 # the flux implicitly
 @inline explicit_velocity_scale(i, j, k, grid, ℓ, scheme, td, U) = one(grid)
 
+# the reconstructions at the two faces along `dir` of the cell at `ℓ`, from one window of their 2N + 1 values
+@inline function face_values(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{N}, ũ⁻, ũ⁺, ψ) where N
+    (S⁻, _, _), (S⁺, _, _) = load_stencil(i, j, k, grid, dir, node_location(dir, ℓ), Val(N), Val(2N + 1), ψ)
+    return biased_interpolate(scheme, bias(ũ⁻), S⁻), biased_interpolate(scheme, bias(ũ⁺), S⁺)
+end
+
+@inline function face_values(i, j, k, grid, dir, ℓ::Tuple{Center, Center, Center}, scheme::AbstractAdvectionScheme{N}, ũ⁻, ũ⁺, ψ) where N
+    stencil⁻, stencil⁺ = load_stencil(i, j, k, grid, dir, node_location(dir, ℓ), Val(N), Val(2N + 1), CubicContinuation(), ψ)
+    return wall_interpolate(scheme, bias(ũ⁻), stencil⁻), wall_interpolate(scheme, bias(ũ⁺), stencil⁺)
+end
+
 # The difference of the advective fluxes of `ψ` through the two faces along `dir` of its cell at `ℓ`, centered along `dir`
 @inline function advective_flux_difference(i, j, k, grid, dir, ℓ, scheme::Union{CenteredScheme{N}, UpwindScheme{N}}, U, ψ) where N
     ℓᶠ = node_location(dir, ℓ)
-    S⁻, S⁺ = load_stencil(i, j, k, grid, dir, ℓᶠ, Val(N), Val(2N + 1), ψ)
 
     i⁺, j⁺, k⁺ = stencil_node(i, j, k, dir, 1)
     ũ⁻ = upwind_velocity(i,  j,  k,  grid, dir, ℓ, scheme, U)
     ũ⁺ = upwind_velocity(i⁺, j⁺, k⁺, grid, dir, ℓ, scheme, U)
-    ψ⁻ = biased_interpolate(scheme, bias(ũ⁻), S⁻)
-    ψ⁺ = biased_interpolate(scheme, bias(ũ⁺), S⁺)
+    ψ⁻, ψ⁺ = face_values(i, j, k, grid, dir, ℓ, scheme, ũ⁻, ũ⁺, ψ)
 
     td = TimeSteppers.time_discretization(scheme)
     s⁻ = explicit_velocity_scale(i,  j,  k,  grid, ℓᶠ, scheme, td, U)

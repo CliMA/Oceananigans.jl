@@ -28,6 +28,6 @@ const ETD = ExplicitTimeDiscretization
 ##### Advective tracer flux operators
 #####
 
-@inline advective_tracer_flux_x(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, c) = @inbounds Ax_qᶠᶜᶜ(i, j, k, grid, U) * symmetric_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_y(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, c) = @inbounds Ay_qᶜᶠᶜ(i, j, k, grid, V) * symmetric_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_z(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, c) = @inbounds Az_qᶜᶜᶠ(i, j, k, grid, W) * symmetric_interpolate_zᶜᶜᶠ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_x(i, j, k, grid, scheme::CenteredScheme, ::ETD, U, c) = @inbounds Ax_qᶠᶜᶜ(i, j, k, grid, U) * tracer_interpolate(i, j, k, grid, Val(1), (Face(), Center(), Center()), scheme, nothing, c)
+@inline advective_tracer_flux_y(i, j, k, grid, scheme::CenteredScheme, ::ETD, V, c) = @inbounds Ay_qᶜᶠᶜ(i, j, k, grid, V) * tracer_interpolate(i, j, k, grid, Val(2), (Center(), Face(), Center()), scheme, nothing, c)
+@inline advective_tracer_flux_z(i, j, k, grid, scheme::CenteredScheme, ::ETD, W, c) = @inbounds Az_qᶜᶜᶠ(i, j, k, grid, W) * tracer_interpolate(i, j, k, grid, Val(3), (Center(), Center(), Face()), scheme, nothing, c)

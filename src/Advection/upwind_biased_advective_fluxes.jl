@@ -96,7 +96,7 @@ end
 @inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, ::ETD, U, c)
 
     @inbounds ũ = U[i, j, k]
-    cᴿ = biased_interpolate_xᶠᶜᶜ(i, j, k, grid, scheme, bias(ũ), c)
+    cᴿ = tracer_interpolate(i, j, k, grid, Val(1), (Face(), Center(), Center()), scheme, bias(ũ), c)
 
     return Axᶠᶜᶜ(i, j, k, grid) * ũ * cᴿ
 end
@@ -104,7 +104,7 @@ end
 @inline function advective_tracer_flux_y(i, j, k, grid, scheme::UpwindScheme, ::ETD, V, c)
 
     @inbounds ṽ = V[i, j, k]
-    cᴿ = biased_interpolate_yᶜᶠᶜ(i, j, k, grid, scheme, bias(ṽ), c)
+    cᴿ = tracer_interpolate(i, j, k, grid, Val(2), (Center(), Face(), Center()), scheme, bias(ṽ), c)
 
     return Ayᶜᶠᶜ(i, j, k, grid) * ṽ * cᴿ
 end
@@ -112,7 +112,7 @@ end
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme::UpwindScheme, ::ETD, W, c)
 
     @inbounds w̃ = W[i, j, k]
-    cᴿ = biased_interpolate_zᶜᶜᶠ(i, j, k, grid, scheme, bias(w̃), c)
+    cᴿ = tracer_interpolate(i, j, k, grid, Val(3), (Center(), Center(), Face()), scheme, bias(w̃), c)
 
     return Azᶜᶜᶠ(i, j, k, grid) * w̃ * cᴿ
 end

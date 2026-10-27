@@ -88,6 +88,28 @@ end
 
 @inline continued_value((c₁, σ, κ), g) = @muladd c₁ - g * (σ + (g + 1) * (κ / 2))
 
+# Tracers continue past walls with the cubic through the nodes next to the wall, c₁ - g δ¹ + g (g + 1) δ² / 2 - g (g + 1) (g + 2) δ³ / 6
+# at the g-th node past it, with δ¹, δ², δ³ the forward differences inward, lowered when fewer than four nodes lie between the walls
+struct CubicContinuation end
+
+@inline wall_agreements(G::CubicContinuation, args...) = (G, G)
+
+@inline function wall_continuation(c::NTuple{5}, available, ::CubicContinuation)
+    δ¹ = ifelse(available ≥ 2, c[2] - c[1], zero(c[1]))
+    δ² = ifelse(available ≥ 3, c[3] - 2c[2] + c[1], zero(c[1]))
+    δ³ = ifelse(available ≥ 4, c[4] - 3c[3] + 3c[2] - c[1], zero(c[1]))
+    return c[1], δ¹, δ², δ³
+end
+
+# Third and Fourth order schemes continue the quadratic
+@inline function wall_continuation(c::NTuple{3}, available, ::CubicContinuation)
+    δ¹ = ifelse(available ≥ 2, c[2] - c[1], zero(c[1]))
+    δ² = ifelse(available ≥ 3, c[3] - 2c[2] + c[1], zero(c[1]))
+    return c[1], δ¹, δ², zero(c[1])
+end
+
+@inline continued_value((c₁, δ¹, δ², δ³)::NTuple{4}, g) = @muladd c₁ - g * δ¹ + g * (g + 1) * δ² / 2 - g * (g + 1) * (g + 2) * δ³ / 6
+
 # The `M` values of `ψ` along `dir` about `(i, j, k)`, the walls `nᴸ` (last node without data in 1:N) and `nᴿ` (first in M-N+1:M), and the nodes `cᴸ` and `cᴿ` inward from each wall
 @inline function load_raw_stencil(i, j, k, grid, dir::Val{d}, ℓ, ::Val{N}, ::Val{M}, ψ, args...) where {d, N, M}
     ℓⁿ = node_location(dir, ℓ)
@@ -175,10 +197,17 @@ continued exactly, and next to a front (`G₁ = G₂ = 0`) the ghosts are consta
     return S
 end
 
-# The stencils of the point `(i, j, k)` and of the next point along `dir` from one window of their `M = 2N + 1` values, with one agreement per wall
-@inline function load_stencil(i, j, k, grid, dir, ℓ, ::Val{N}, ::Val{M}, ψ, args...) where {N, M}
+# a stencil with fewer than five nodes past a wall has no curvature factor
+@inline face_agreement((G₁, G₂), available) = (G₁, ifelse(available ≥ 5, G₂, zero(G₂)))
+@inline face_agreement(G::CubicContinuation, available) = G
+
+# The stencils of the point `(i, j, k)` and of the next point along `dir` with their walls, from one window of their `M = 2N + 1`
+# values, continued with one agreement per wall or with `G = CubicContinuation()`
+@inline load_stencil(i, j, k, grid, dir, ℓ, ::Val{N}, ::Val{M}, ψ, args...) where {N, M} = load_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(M), nothing, ψ, args...)
+
+@inline function load_stencil(i, j, k, grid, dir, ℓ, ::Val{N}, ::Val{M}, G::Union{Nothing, CubicContinuation}, ψ, args...) where {N, M}
     W, nᴸ, nᴿ, cᴸ, cᴿ = load_raw_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(M), ψ, args...)
-    Gᴸ, Gᴿ = wall_agreements(nothing, cᴸ, cᴿ, nᴿ - Int32(1) - nᴸ)
+    Gᴸ, Gᴿ = wall_agreements(G, cᴸ, cᴿ, nᴿ - Int32(1) - nᴸ)
 
     # the point (i, j, k) reconstructs from the first 2N values, the next point from the last 2N
     W⁻ = ntuple(n -> W[n],     Val(2N))
@@ -186,13 +215,42 @@ end
     nᴿ⁻ = min(nᴿ, Int32(M))
     nᴸ⁺, nᴿ⁺ = max(nᴸ - Int32(1), Int32(0)), nᴿ - Int32(1)
 
-    # a stencil with fewer than five nodes past a wall has no curvature factor
-    face_agreement((G₁, G₂), available) = (G₁, ifelse(available ≥ 5, G₂, zero(G₂)))
     G⁻ = (face_agreement(Gᴸ, nᴿ⁻ - Int32(1) - nᴸ), Gᴿ)
     G⁺ = (Gᴸ, face_agreement(Gᴿ, nᴿ⁺ - Int32(1) - nᴸ⁺))
 
     S⁻, _ = fill_stencil_ghosts(W⁻, nᴸ, nᴿ⁻, cᴸ, cᴿ, G⁻, Val(N))
     S⁺, _ = fill_stencil_ghosts(W⁺, nᴸ⁺, nᴿ⁺, cᴸ, cᴿ, G⁺, Val(N))
 
-    return S⁻, S⁺
+    return (S⁻, nᴸ, nᴿ⁻), (S⁺, nᴸ⁺, nᴿ⁺)
+end
+
+#####
+##### Tracers next to walls
+#####
+
+@inline linear_interpolate(scheme, bias, S) = biased_interpolate(scheme, bias, S)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the tracer value at a face from its stencil `S`, continued past the walls `nᴸ` and `nᴿ` with the cubic continuation of
+`load_stencil`. The first face from a wall takes the centered value of its two nodes. A face whose upwind stencil (its
+`2N - 1` upwind nodes for `bias`, all `2N` nodes for centered schemes) reaches past a wall takes the linear reconstruction of
+`scheme`, which for `WENO` is the upwind-biased reconstruction of the same order. Every other face takes the reconstruction of
+`scheme`.
+"""
+@inline function wall_interpolate(scheme::AbstractAdvectionScheme{N}, bias, (S, nᴸ, nᴿ)) where N
+    first_face = (N > 1) & ((nᴸ == Int32(N - 1)) | (nᴿ == Int32(N + 2)))
+    past_left  = (nᴸ ≥ Int32(1)) | (nᴿ ≤ Int32(2N - 1))
+    past_right = (nᴸ ≥ Int32(2)) | (nᴿ ≤ Int32(2N))
+    past_wall  = ifelse(bias == LeftBias, past_left, ifelse(bias == RightBias, past_right, past_left | past_right))
+    ψˡ = linear_interpolate(scheme, bias, S)
+    ψ̂  = biased_interpolate(scheme, bias, S)
+    return ifelse(first_face, (S[N] + S[N + 1]) / 2, ifelse(past_wall, ψˡ, ψ̂))
+end
+
+@inline function tracer_interpolate(i, j, k, grid, dir, ℓ, scheme::AbstractAdvectionScheme{N}, bias, c) where N
+    S, nᴸ, nᴿ, cᴸ, cᴿ = load_raw_stencil(i, j, k, grid, dir, ℓ, Val(N), Val(2N), c)
+    S, _ = fill_stencil_ghosts(S, nᴸ, nᴿ, cᴸ, cᴿ, CubicContinuation(), Val(N))
+    return wall_interpolate(scheme, bias, (S, nᴸ, nᴿ))
 end

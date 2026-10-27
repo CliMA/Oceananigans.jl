@@ -1,8 +1,16 @@
 using Oceananigans: fields
 using Oceananigans.Grids: topology, Flat
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, tracer_advecting_velocities, FluxCorrectedWENO,
+                                                       compute_antidiffusive_limiters!, rejected_antidiffusion
 
-# Store advective and diffusive fluxes for dissipation computation
+advecting_velocities(model, tracer_name) = model.velocities
+
+function advecting_velocities(model::HydrostaticFreeSurfaceModel, tracer_name)
+    forcing = model.forcing[tracer_name]
+    return tracer_advecting_velocities(model.transport_velocities, model.biogeochemistry, model.closure, model.closure_fields, forcing, Val(tracer_name))
+end
+
+# Store the transport and the advective and diffusive fluxes with which the tracer tendency is computed
 function cache_fluxes!(dissipation, model, tracer_name)
     grid = model.grid
     sz   = size(model.tracers[1].data)
@@ -12,13 +20,12 @@ function cache_fluxes!(dissipation, model, tracer_name)
 
     Uⁿ   = dissipation.previous_state.Uⁿ
     Uⁿ⁻¹ = dissipation.previous_state.Uⁿ⁻¹
-    U    = model isa HydrostaticFreeSurfaceModel ? model.transport_velocities : model.velocities
+    U    = advecting_velocities(model, tracer_name)
     timestepper = model.timestepper
-    stage = model.clock.stage
 
-    update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
+    update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, U)
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
-    cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
+    cache_fluxes!(dissipation, model, tracer_name, U, Val(tracer_id))
 
     return nothing
 end
@@ -32,27 +39,24 @@ function flux_parameters(grid)
     return KernelParameters(Fx, Fy, Fz)
 end
 
-function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
+function cache_fluxes!(dissipation, model, tracer_name::Symbol, U, tracer_id)
 
-    # Grab tracer properties
-    c    = model.tracers[tracer_name]
-    cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
+    c = model.tracers[tracer_name]
 
     grid = model.grid
-    U = model.velocities
     params = flux_parameters(grid)
-    stage  = model.clock.stage
     timestepper = model.timestepper
 
     ####
-    #### Update the advective fluxes and compute gradient squared
+    #### Update the advective fluxes
     ####
 
     Fⁿ   = dissipation.advective_fluxes.Fⁿ
     Fⁿ⁻¹ = dissipation.advective_fluxes.Fⁿ⁻¹
     advection = getadvection(model.advection, tracer_name)
 
-    cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, stage, advection, U, c)
+    cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, timestepper, advection, U, c)
+    limit_advective_fluxes!(Fⁿ, params, timestepper, advection, model, tracer_name, U)
 
     ####
     #### Update the diffusive fluxes
@@ -60,6 +64,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     Vⁿ   = dissipation.diffusive_fluxes.Vⁿ
     Vⁿ⁻¹ = dissipation.diffusive_fluxes.Vⁿ⁻¹
+    κᶻ   = dissipation.diffusive_fluxes.κᶻ
 
     D = model.closure_fields
     B = model.buoyancy
@@ -67,43 +72,60 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     clo  = model.closure
     model_fields = fields(model)
 
-    cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, timestepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-
-    if timestepper isa QuasiAdamsBashforth2TimeStepper
-        parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa SplitRungeKuttaTimeStepper) && (stage == timestepper.Nstages)
-        parent(cⁿ⁻¹) .= parent(c)
-    end
+    cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, κᶻ, grid, params, timestepper, clo, D, B, c, tracer_id, clk, model_fields)
 
     return nothing
 end
 
-cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) =
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, advection, U, c) =
     launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
 
-function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, advection, U, c)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, advection, U, c)
+cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::SplitRungeKuttaTimeStepper, advection, U, c) =
+    launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, advection, U, c)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, κᶻ, grid, params, ::QuasiAdamsBashforth2TimeStepper, clo, D, B, c, tracer_id, clk, model_fields) =
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, κᶻ, grid, clo, D, B, c, tracer_id, clk, model_fields)
+
+cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, κᶻ, grid, params, ::SplitRungeKuttaTimeStepper, clo, D, B, c, tracer_id, clk, model_fields) =
+    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, κᶻ, grid, clo, D, B, c, tracer_id, clk, model_fields)
+
+# the fluxes the substep takes through the faces where its flux correction limits Fᴴ, recomputed from the same stage state and tendency
+limit_advective_fluxes!(Fⁿ, params, timestepper, advection, model, tracer_name, U) = nothing
+
+function limit_advective_fluxes!(Fⁿ, params, timestepper::SplitRungeKuttaTimeStepper, advection::FluxCorrectedWENO, model, tracer_name, U)
+    flux_correction = timestepper.flux_correction
+    isnothing(flux_correction) && return nothing
+
+    grid = model.grid
+    Gⁿ = timestepper.Gⁿ[tracer_name]
+    Ψ⁻ = timestepper.Ψ⁻[tracer_name]
+    η = isnothing(model.free_surface) ? nothing : model.free_surface.displacement
+    compute_antidiffusive_limiters!(flux_correction, Gⁿ, model.tracers[tracer_name], Ψ⁻, η, grid, model.clock.last_stage_Δt, advection, U)
+
+    (; Aˣ, Aʸ, Aᶻ, R⁺, R⁻) = flux_correction
+    launch!(architecture(grid), grid, params, _subtract_rejected_fluxes!, Fⁿ, grid, R⁺, R⁻, Aˣ, Aʸ, Aᶻ)
+
+    return nothing
+end
+
+# neighbours along flat directions collapse onto the cell, where the antidiffusive fluxes vanish
+@kernel function _subtract_rejected_fluxes!(Fⁿ, grid, R⁺, R⁻, Aˣ, Aʸ, Aᶻ)
+    i, j, k = @index(Global, NTuple)
+    TX, TY, TZ = topology(grid)
+    sx, sy, sz = TX !== Flat, TY !== Flat, TZ !== Flat
+
+    @inbounds begin
+        Fⁿ.x[i, j, k] -= rejected_antidiffusion(Aˣ[i, j, k], R⁺, R⁻, (i - sx, j, k), (i, j, k))
+        Fⁿ.y[i, j, k] -= rejected_antidiffusion(Aʸ[i, j, k], R⁺, R⁻, (i, j - sy, k), (i, j, k))
+        Fⁿ.z[i, j, k] -= rejected_antidiffusion(Aᶻ[i, j, k], R⁺, R⁻, (i, j, k - sz), (i, j, k))
     end
 end
 
-cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
-    launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
-
-function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, clo, D, B, c, tracer_id, clk, model_fields)
-    end
-end
-
-update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
+update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
-function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, U)
-    if stage == ts.Nstages-1
-        launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
-    end
-end
+update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::SplitRungeKuttaTimeStepper, U) =
+    launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
 
 @kernel function _update_transport!(Uⁿ, Uⁿ⁻¹, grid, U)
     i, j, k = @index(Global, NTuple)
