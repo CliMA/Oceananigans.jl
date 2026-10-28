@@ -3,6 +3,8 @@ using Oceananigans.Grids: halo_size
 
 using Adapt
 
+using KernelAbstractions: @kernel, @index, get_backend
+
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: communication_buffers
 
@@ -105,9 +107,16 @@ function fill_send_buffers!(c::OffsetArray, sides::Tuple)
     return nothing
 end
 
+@kernel function _copy_from_buffer!(c, recv)
+    I = @index(Global, Cartesian)
+    @inbounds c[I] = recv[I]
+end
+
+copy_from_buffer!(c, recv) = _copy_from_buffer!(get_backend(recv))(c, recv; ndrange = size(c))
+
 function recv_from_buffers!(c::OffsetArray, sides::Tuple)
     for side in sides, buffer in side.recv
-        view(parent(c), buffer.irange, buffer.jrange, :) .= buffer.data
+        copy_from_buffer!(view(parent(c), buffer.irange, buffer.jrange, :), buffer.data)
     end
     return nothing
 end

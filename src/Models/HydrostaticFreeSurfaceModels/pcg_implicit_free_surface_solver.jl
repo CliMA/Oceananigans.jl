@@ -96,9 +96,8 @@ end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
-    solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = architecture(solver)
-    grid = solver.grid
+    grid = rhs.grid
+    arch = architecture(grid)
     launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end
@@ -190,19 +189,19 @@ Add  `- H⁻¹ ∇H ⋅ ∇ηⁿ` to the right-hand-side.
     poisson_solver = preconditioner.fft_poisson_solver
     arch = architecture(poisson_solver)
     grid = preconditioner.three_dimensional_grid
-    Az = grid.Δxᶜᵃᵃ * grid.Δyᵃᶜᵃ # assume horizontal regularity
-    Lz = grid.Lz
+    Az⁻¹ = grid.Δx⁻¹ᶜᵃᵃ * grid.Δy⁻¹ᵃᶜᵃ # assume horizontal regularity
+    Lz   = grid.Lz
 
     launch!(arch, grid, :xy,
             fft_preconditioner_right_hand_side!,
-            poisson_solver.storage, r, grid, Az, Lz)
+            poisson_solver.storage, r, grid, Az⁻¹, Lz)
 
     return solve!(P_r, preconditioner, poisson_solver.storage, g, Δt)
 end
 
-@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az, Lz)
+@kernel function fft_preconditioner_right_hand_side!(fft_rhs, pcg_rhs, grid, Az⁻¹, Lz)
     i, j = @index(Global, NTuple)
-    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] / (Lz * Az)
+    @inbounds fft_rhs[i, j, 1] = pcg_rhs[i, j, grid.Nz+1] * Az⁻¹ / Lz
 end
 
 # TODO: make it so adding this term:

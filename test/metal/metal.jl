@@ -121,6 +121,15 @@ end
     @test minimum(add_2_kfo) == 3
 end
 
+@testset "MetalGPU: set! from a Float64 array" begin
+    arch = GPU(Metal.MetalBackend())
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    c = CenterField(grid)
+    a = rand(Float64, 4, 4, 4)
+    set!(c, a)
+    @test Array(interior(c)) == Float32.(a)
+end
+
 @testset "MetalGPU: TimeStepWizard" begin
     arch = GPU(Metal.MetalBackend())
 

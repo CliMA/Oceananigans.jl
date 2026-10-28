@@ -148,9 +148,7 @@ for arch in archs
                 for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
                                                (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
-                    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-                        @root @info "Testing solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) and a $(typeof(grid.z).name.wrapper) on $(timestepper)"
-
+                    @testset "Solid body rotation with $(ranks(arch)) ranks on $(nameof(typeof(grid))) and a $(nameof(typeof(grid.z))) on $(timestepper)" for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
                         # We deepcopy the grid to ensure it is not modified in the case of a MutableVerticalDiscretization
                         test_global_grid = deepcopy(global_grid)
                         test_grid = deepcopy(grid)
@@ -219,5 +217,37 @@ for arch in archs
                 @test all(isapprox(ηp, ηs; atol, rtol))
             end
         end
+    end
+end
+
+# A bounded tracer with a sharp front, advected across the rank edges by a uniform flow
+function bounded_tracer_advection_test(grid)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+                                        tracer_advection = WENO(order = 5, bounds = (0, 1)))
+
+    set!(model, u = 0.1, v = 0.1, c = (x, y, z) -> ifelse(abs(x - 5e4) < 2e4 && abs(y - 5e4) < 2e4, 1, 0))
+
+    for _ in 1:10
+        time_step!(model, 600)
+    end
+
+    return model
+end
+
+@testset "Distributed bounds-preserving tracer advection" begin
+    for arch in archs
+        (arch.partition.x isa Fractional || arch.partition.y isa Fractional) && continue
+
+        bounded_grid(arch) = RectilinearGrid(arch, size = (32, 32, 4), x = (0, 1e5), y = (0, 1e5), z = (-100, 0),
+                                             halo = (4, 4, 4), topology = (Periodic, Periodic, Bounded))
+
+        ms = bounded_tracer_advection_test(bounded_grid(child_architecture(arch)))
+        mp = bounded_tracer_advection_test(bounded_grid(arch))
+
+        cpu_arch = cpu_architecture(arch)
+        p = interior(on_architecture(cpu_arch, mp.tracers.c))
+        s = partition(interior(on_architecture(CPU(), ms.tracers.c)), cpu_arch, size(p))
+        @test all(isapprox(p, s; atol = eps(eltype(p)), rtol = sqrt(eps(eltype(p)))))
     end
 end
