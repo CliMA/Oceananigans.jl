@@ -332,7 +332,7 @@ reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:Sides{<:Any, R}}) where R
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:TwoSided{<:Any, R}}) where R
     return Tripolar(
         attrib["north_poles_latitude"],
         attrib["first_pole_longitude"],

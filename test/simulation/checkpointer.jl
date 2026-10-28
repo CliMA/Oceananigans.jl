@@ -2047,7 +2047,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     Δt = 0.5
 
     function make_simulation(stop_iteration)
-        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        grid = RectilinearGrid(arch, topology=(Open, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         reservoir = ValueBoundaryCondition(1, scheme=Oceananigans.BoundaryConditions.TracerReservoir(inflow_length_scale=1))

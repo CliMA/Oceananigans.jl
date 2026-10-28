@@ -13,7 +13,7 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, SurfaceWaveRadiationBoundaryCondition, gravity_wave_boundary_condition
 using Oceananigans.Fields: Field, instantiated_location
-using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Sides
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, Connected, Open, TwoSided
 using Oceananigans.DistributedComputations: DistributedGrid, all_reduce, @root
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
                                        column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,

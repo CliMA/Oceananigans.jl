@@ -76,7 +76,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+        topo isa BoundaryTopology && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc, architecture(grid), side)

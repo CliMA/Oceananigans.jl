@@ -183,7 +183,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # The Latitudinal direction is _special_:
     # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a
     # serial grid because `LatitudeLongitudeGrid` should be always `Bounded`, but it is not true for a
-    # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `Sides{Closed, Connected}` topology)
+    # partitioned `DistributedGrid` with Ry > 1 (one rank will hold a `TwoSided{Closed, Connected}` topology)
     # An extra point is to precompute the Y-direction metrics in case of only one halo, hence
     # we disregard the topology when constructing the metrics and add a halo point!
     # Furthermore, the `LatitudeLongitudeGrid` requires an extra halo on it's latitudinal coordinate to allow calculating
@@ -362,9 +362,9 @@ in `T` direction (`R`) and the local rank index `r`.
 """
 insert_connected_topology(T, R, r) = T
 
-insert_connected_topology(::Type{Sides{L, R}}, ranks, rank) where {L, R} = Sides{ifelse(rank == 1, L, Connected), ifelse(rank == ranks, R, Connected)}
+insert_connected_topology(::Type{TwoSided{L, R}}, ranks, rank) where {L, R} = TwoSided{ifelse(rank == 1, L, Connected), ifelse(rank == ranks, R, Connected)}
 
-insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, Sides{Connected, Connected})
+insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, TwoSided{Connected, Connected})
 
 # Fold-aware topology insertion for distributed tripolar grids.
 # These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
@@ -373,10 +373,10 @@ insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, Sid
 local_fold_topology(::Type{CenterFolded}, Rx, rx) = Rx == 1 ? CenterFolded : CenterFoldConnected
 local_fold_topology(::Type{FaceFolded},   Rx, rx) = Rx == 1 ? FaceFolded   : FaceFoldConnected
 
-function insert_connected_topology(::Type{Sides{L, R}}, Ry, ry, Rx, rx) where {L, R <: Union{CenterFolded, FaceFolded}}
+function insert_connected_topology(::Type{TwoSided{L, R}}, Ry, ry, Rx, rx) where {L, R <: Union{CenterFolded, FaceFolded}}
     left  = ry == 1  ? L : Connected
     right = ry == Ry ? local_fold_topology(R, Rx, rx) : Connected
-    return Sides{left, right}
+    return TwoSided{left, right}
 end
 
 """
@@ -385,8 +385,8 @@ $(TYPEDSIGNATURES)
 Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
 
-If all ranks are connected on both sides, the global topology is `Periodic`;
-otherwise it is bounded on both sides.
+If all ranks are connected on both sides, the global topology is `Periodic`; otherwise each global side is
+`Open` if the outer side of the first or last rank is `Open`, and `Closed` otherwise.
 
 This version uses MPI communication to gather topology information from all ranks.
 """
@@ -396,16 +396,20 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     end
 
     topologies = zeros(Int, R)
-    if T == Sides{Connected, Connected} && r1 == 1 && r2 == 1
-        topologies[r] = 1
+    open_sides = zeros(Int, 2)
+    if r1 == 1 && r2 == 1
+        topologies[r] = T == TwoSided{Connected, Connected}
+        open_sides[1] = (r == 1) & (T <: TwoSided{Open})
+        open_sides[2] = (r == R) & (T <: TwoSided{<:Any, Open})
     end
 
     topologies = all_reduce(+, topologies, arch)
+    open_sides = all_reduce(+, open_sides, arch)
 
     if sum(topologies) == R
         return Periodic
     else
-        return Bounded
+        return TwoSided{open_sides[1] == 1 ? Open : Closed, open_sides[2] == 1 ? Open : Closed}
     end
 end
 
@@ -415,14 +419,18 @@ $(TYPEDSIGNATURES)
 Reconstruct global topology from a collection of local topologies without MPI.
 
 If `R == 1`, returns the single topology. Otherwise, if all local topologies
-are connected on both sides, returns `Periodic`; otherwise returns a topology bounded on both sides.
+are connected on both sides, returns `Periodic`; otherwise each global side is `Open` if the outer side
+of the first or last local topology is `Open`, and `Closed` otherwise.
 
 This is an offline version that works with pre-collected topology information
 (e.g., from JLD2 files), in contrast to the MPI-based version above.
 """
 function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
     R == 1 && return first(local_topologies)
-    return all(==(Sides{Connected, Connected}), local_topologies) ? Periodic : Bounded
+    all(==(TwoSided{Connected, Connected}), local_topologies) && return Periodic
+    left  = first(local_topologies) <: TwoSided{Open} ? Open : Closed
+    right = last(local_topologies) <: TwoSided{<:Any, Open} ? Open : Closed
+    return TwoSided{left, right}
 end
 
 function with_number_type(FT, local_grid::DistributedRectilinearGrid)

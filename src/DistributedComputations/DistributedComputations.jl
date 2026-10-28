@@ -16,7 +16,7 @@ using Oceananigans.Utils
 using Oceananigans.Utils: StaticStridesOffsetArray
 using Oceananigans.Grids
 using OffsetArrays: AbstractOffsetArray
-using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Grids: BoundaryTopology, XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
