@@ -448,3 +448,17 @@ end
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
+
+# A field set from another one on a different grid is interpolated on the CPU, with the source's halos
+# filled: the cells next to a boundary read them
+@testset "set! between ReactantState fields on different grids" begin
+    function coarse_to_fine(arch)
+        coarse = CenterField(RectilinearGrid(arch; size = (2, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        fine = CenterField(RectilinearGrid(arch; size = (4, 1, 1), x = (0, 1), y = (0, 1), z = (0, 1)))
+        set!(coarse, (x, y, z) -> x)
+        set!(fine, coarse)
+        return Array(interior(fine))
+    end
+
+    @test coarse_to_fine(ReactantState()) ≈ coarse_to_fine(CPU())
+end
