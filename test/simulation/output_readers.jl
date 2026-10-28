@@ -1,6 +1,7 @@
 include(joinpath(@__DIR__, "..", "setup", "dependencies_for_runtests.jl"))
 
 using Oceananigans.Units: Time
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: indices, interpolate, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath, cpu_interpolating_time_indices,
                                   extract_field_time_series, has_field_time_series,
@@ -861,10 +862,11 @@ function test_type_stable_time_interpolation()
     fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 1.0])
     set!(fts[1], 1)
     set!(fts[2], 3)
+    fill_halo_regions!(fts)
 
     for t in (0.0, 0.5)
         @test @inferred(getindex(fts, 1, 1, 1, Time(t))) == 1 + 2t
-        @test @inferred(interpolate((0.5, 0.5, 0.5), Time(t), fts)) == 1 + 2t
+        @test @inferred(interpolate((0.25, 0.25, 0.25), Time(t), fts, (Center(), Center(), Center()), grid)) == 1 + 2t
     end
 
     return nothing
