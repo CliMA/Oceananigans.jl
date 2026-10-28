@@ -19,7 +19,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: Fields, Field, AbstractField, location, reduced_dimensions, set!, instantiated_location
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, LatitudeLongitudeGrid,
                           RectilinearGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
-                          ColumnEnsembleSize, Periodic, Sides, Bounded, Closed, Connected,
+                          ColumnEnsembleSize, Periodic, TwoSided, Bounded, Closed, Open, Connected,
                           CenterFolded, FaceFolded, CenterFoldConnected, FaceFoldConnected,
                           grid, topology, halo_size, xspacings, yspacings, rspacings,
                           λspacings, φspacings, λnodes, φnodes, ξnodes, ηnodes,
