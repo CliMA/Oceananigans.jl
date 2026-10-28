@@ -235,10 +235,11 @@ remainder_step!(sim, step::RemainderStep) = time_step!(sim, step.Δt; euler = tr
 """
     run!(sim::ReactantSimulation)
 
-`initialize!(sim)`, a first step (forward Euler for an Adams-Bashforth stepper, as eagerly),
-the remaining whole steps through [`time_step_for!`](@ref), one remainder step when the
+`initialize!(sim)`, the whole steps through [`time_step_for!`](@ref), one remainder step when the
 simulation was given a `stop_time` that `Δt` does not divide, and then `finalize!(callback, sim)`
-on every callback.
+on every callback. An Adams-Bashforth model takes its first step before the loop, as a forward-Euler
+step as eagerly; for every other stepper the first step is a loop iteration exactly, so all of them
+run in the loop and the program holds the step body once.
 
 `finalize!(callback, sim)` forwards to `finalize!(callback.func, sim)`, a no-op unless the
 callback's function type specializes it. It runs once, after the traced loop, on the final
@@ -251,6 +252,20 @@ bound. It counts steps from the state the simulation was constructed in: a run c
 iteration `n` steps `stop_iteration` more times.
 """
 function run!(sim::ReactantSimulation)
+    isfinite(sim.stop_iteration) || throw(ArgumentError(
+        "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
+
+    N = Int(sim.stop_iteration)
+
+    initialize!(sim)
+    time_step_for!(sim, N)
+    remainder_step!(sim, sim.stop_time)
+    foreach(callback -> finalize!(callback, sim), values(sim.callbacks))
+
+    return nothing
+end
+
+function run!(sim::Simulation{<:ReactantModel{<:QuasiAdamsBashforth2TimeStepper}})
     isfinite(sim.stop_iteration) || throw(ArgumentError(
         "run! on a ReactantState model needs `stop_iteration` or `stop_time`: they bound the compiled loop."))
 

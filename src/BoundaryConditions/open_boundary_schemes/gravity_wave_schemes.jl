@@ -50,7 +50,7 @@ GravityWaveRadiation()
 # output
 GravityWaveRadiation{Float64}
 ├── gravitational_acceleration: 9.80665
-└── target_transport: Nothing
+└── target_transport: nothing
 ```
 """
 struct GravityWaveRadiation{FT, TF}
@@ -313,7 +313,7 @@ end
     @inbounds begin
         η₁ = η[1, j, k]
         H  = column_depthᶜᶜᵃ(1, j, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt * Δx⁻¹ᶠᶜᶜ(1, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, η[0, j, k]) # zero-gradient initialization
         η[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
@@ -333,7 +333,7 @@ end
     @inbounds begin
         η₁ = η[i-1, j, k]
         H  = column_depthᶜᶜᵃ(i-1, j, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
         η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
@@ -352,7 +352,7 @@ end
     @inbounds begin
         η₁ = η[i, 1, k]
         H  = column_depthᶜᶜᵃ(i, 1, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt * Δy⁻¹ᶜᶠᶜ(i, 1, k, grid)
         ηᵇ = ifelse(first_call, η₁, η[i, 0, k]) # zero-gradient initialization
         η[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
     end
@@ -372,7 +372,7 @@ end
     @inbounds begin
         η₁ = η[i, j-1, k]
         H  = column_depthᶜᶜᵃ(i, j-1, kᴺ⁺¹, grid, η)
-        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
         η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end

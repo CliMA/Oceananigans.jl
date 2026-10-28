@@ -1,4 +1,4 @@
-using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Utils: unparameterized_type
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
@@ -9,8 +9,9 @@ using Oceananigans.ImmersedBoundaries:
     compute_mask,
     has_active_cells_map,
     has_active_z_columns,
-    serially_build_active_cells_map,
-    compute_mask
+    active_cells_maps
+
+using Oceananigans.Grids: CommunicatingSide, TwoSided
 
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
@@ -72,8 +73,7 @@ function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distribute
     nx, ny, _ = local_size
     bottom_interior = bottom_height_interior(ib.bottom_height)
     local_bottom_height = partition(bottom_interior, arch, (nx, ny, 1))
-    ImmersedBoundaryConstructor = getnamewrapper(ib)
-    local_ib = ImmersedBoundaryConstructor(local_bottom_height)
+    local_ib = unparameterized_type(typeof(ib))(local_bottom_height)
 
     return ImmersedBoundaryGrid(local_ug, local_ib; active_cells_map, active_z_columns)
 end
@@ -99,7 +99,7 @@ function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
     if any(size(ib.mask) .!= mask_size)
         @warn "Resizing the mask to match the grids' halos"
         mask = compute_mask(grid, ib)
-        return getnamewrapper(ib)(mask)
+        return GridFittedBoundary(mask)
     end
 
     return ib
@@ -119,65 +119,50 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
         cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny, :]
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
-        return getnamewrapper(ib)(bottom_field.data)
+        return unparameterized_type(typeof(ib))(bottom_field.data)
     end
 
     return ib
 end
 
-# In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
+# In case of an asynchronous `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
 #
 # If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional
 # kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
 # a west one spanning 1:Hx, 1:Ny, 1:Nz and an east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz.
 # For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map.
 # For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
-# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
+# The south and north maps span only the x-range of the `halo_independent` region, so that the five maps are disjoint.
+# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing these 5 elements and their union.
 # Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
-function build_active_cells_map(grid::DistributedGrid, ib)
-
+function build_active_cells_map(grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:AsynchronousDistributed}, ib)
     arch = architecture(grid)
-
-    # If we using a synchronized architecture, nothing
-    # changes with serial execution.
-    if !(arch isa AsynchronousDistributed)
-        return serially_build_active_cells_map(grid, ib; parameters=:xyz)
-    end
-
     Rx, Ry, _  = arch.ranks
     Tx, Ty, _  = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
 
-    west_boundary  = (1:Hx,       1:Ny, 1:Nz)
-    east_boundary  = (Nx-Hx+1:Nx, 1:Ny, 1:Nz)
-    south_boundary = (1:Nx, 1:Hy,       1:Nz)
-    north_boundary = (1:Nx, Ny-Hy+1:Ny, 1:Nz)
+    one_sided_x = (Tx <: TwoSided{<:CommunicatingSide}) != (Tx <: TwoSided{<:Any, <:CommunicatingSide})
+    one_sided_y = (Ty <: TwoSided{<:CommunicatingSide}) != (Ty <: TwoSided{<:Any, <:CommunicatingSide})
 
-    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    nx = Rx == 1 ? Nx : (one_sided_x ? Nx - Hx : Nx - 2Hx)
+    ny = Ry == 1 ? Ny : (one_sided_y ? Ny - Hy : Ny - 2Hy)
 
-    west_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(west_boundary...))
-    east_halo_dependent_cells  = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(east_boundary...))
-    south_halo_dependent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(south_boundary...))
-    north_halo_dependent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters(north_boundary...))
+    ox = Rx == 1 || !(Tx <: TwoSided{<:CommunicatingSide}) ? 0 : Hx
+    oy = Ry == 1 || !(Ty <: TwoSided{<:CommunicatingSide}) ? 0 : Hy
 
-    west_halo_dependent_cells  = ifelse(include_west,  west_halo_dependent_cells,  nothing)
-    east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)
-    south_halo_dependent_cells = ifelse(include_south, south_halo_dependent_cells, nothing)
-    north_halo_dependent_cells = ifelse(include_north, north_halo_dependent_cells, nothing)
+    regions = ((ox+1:ox+nx, oy+1:oy+ny, 1:Nz),
+               (1:ox,       1:Ny,       1:Nz),
+               (ox+nx+1:Nx, 1:Ny,       1:Nz),
+               (ox+1:ox+nx, 1:oy,       1:Nz),
+               (ox+1:ox+nx, oy+ny+1:Ny, 1:Nz))
 
-    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+    interior, halo_independent_cells, halo_dependent_cells... = active_cells_maps(grid, ib, regions)
 
-    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    west_halo_dependent_cells, east_halo_dependent_cells, south_halo_dependent_cells, north_halo_dependent_cells = map(cells -> isempty(cells) ? nothing : cells, halo_dependent_cells)
 
-    halo_independent_cells = serially_build_active_cells_map(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
-
-    return (; halo_independent_cells,
+    return (; interior,
+              halo_independent_cells,
               west_halo_dependent_cells,
               east_halo_dependent_cells,
               south_halo_dependent_cells,

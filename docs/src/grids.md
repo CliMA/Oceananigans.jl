@@ -71,6 +71,21 @@ xnodes(grid, Face())
 0.0:4.0:60.0
 ```
 
+`Bounded` closes a direction with walls on both sides. Each side of a direction can also be given separately as a pair of
+side topologies: `Closed` for a wall and `Open` for a side where the domain continues into an exterior, whose state is
+set by an open boundary condition (see [Boundary conditions](@ref model_step_bcs)).
+For example, a channel closed on the west and open on the east is
+
+```jldoctest grids
+channel = RectilinearGrid(topology = ((Closed, Open), Periodic, Bounded), size = (16, 8, 4), extent = (64, 32, 8))
+
+# output
+16×8×4 RectilinearGrid{Float64, TwoSided{Closed, Open}, Periodic, Bounded} on CPU with 3×3×3 halo
+├── TwoSided{Closed, Open} x ∈ [0.0, 64.0] regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)               regularly spaced with Δy=4.0
+└── Bounded  z ∈ [-8.0, 0.0]               regularly spaced with Δz=2.0
+```
+
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
@@ -131,18 +146,19 @@ The shape of the physical domain determines what grid type should be used:
 1. [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid) can be fashioned into lines, rectangles and boxes.
 2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
+4. [`YinYangGrid`](@ref) covers the whole thin spherical shell, poles included, with two overlapping latitude-longitude panels.
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
     for recipes that implement useful `OrthogonalSphericalShellGrid`s, including the [`TripolarGrid`](@ref) [Murray1996](@citep),
     [`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid),
-    [`LambertConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid), and
+    [`ConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalConicGrid), and
     [`ConformalCubedSpherePanelGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalCubedSpherePanelGrid).
 
-A [`LambertConformalConicGrid`](@ref) is a regional `OrthogonalSphericalShellGrid` generated from
-projected `x/y` coordinates in meters. It stores longitude and latitude at every staggered horizontal
+A [`ConformalConicGrid`](@ref) is a regional `OrthogonalSphericalShellGrid` generated from
+projected `x/y` coordinates in meters, using the Lambert conformal conic projection. It stores longitude and latitude at every staggered horizontal
 location, together with spherical-shell metrics and cell areas, so that models use the same curvilinear-grid machinery as other `OrthogonalSphericalShellGrid`s.
-The horizontal topology is `Bounded` by default and Lambert Conformal Conic grids are not intended for
+The horizontal topology is `Bounded` by default and conformal conic grids are not intended for
 global domains.
 The projection is conformal rather than equal-area, and longitude is singular at the cone apex or pole,
 so regional domains should normally avoid placing the apex on a grid point.
@@ -150,17 +166,17 @@ so regional domains should normally avoid placing the apex on a grid point.
 For example, a midlatitude regional grid can be constructed from a geographic center,
 projected spacing, and two standard parallels,
 
-```jldoctest lcc_grid
+```jldoctest conformal_conic_grid
 using Oceananigans
 
-grid = LambertConformalConicGrid(size = (8, 6, 1),
-                                 center = (-105, 40),
-                                 spacing = 20e3,
-                                 standard_parallels = (30, 60),
-                                 z = (-100, 0))
+grid = ConformalConicGrid(size = (8, 6, 1),
+                          center = (-105, 40),
+                          spacing = 20e3,
+                          standard_parallels = (30, 60),
+                          z = (-100, 0))
 
 # output
-8×6×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+8×6×1 ConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 1.48547 degrees variably spaced with min(Δλ)=0.185194, max(Δλ)=0.185537
 ├── latitude:  Bounded  extent 1.11223 degrees variably spaced with min(Δφ)=0.185194, max(Δφ)=0.185537
@@ -223,6 +239,38 @@ is `Bounded` by default, because `longitude = (0, 60)`.
 !!! note "LatitudeLongitudeGrid topologies"
     It's still possible to use `topology = (Periodic, Bounded, Bounded)` even if `longitude` doesn't span 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
+
+### Covering the whole sphere: `YinYangGrid`
+
+A `LatitudeLongitudeGrid` cannot include the poles, where its meridians converge. The [`YinYangGrid`](@ref)
+of [KageyamaSato2004](@citet) covers the whole sphere with two identical panels, Yin and Yang. Each panel is a
+[`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid)
+that spans 270° of longitude and 90° of latitude around its own equator, where the grid is nearly uniform.
+Yang is Yin rotated so that its equator passes through the geographic poles. The panels overlap at their edges,
+and each one fills its halos by interpolating from the interior of the other.
+
+The `size` gives the cells in the 270° × 90° core of each panel, so it must be `(3Nφ, Nφ, Nz)`:
+
+```jldoctest yinyang_grid
+using Oceananigans
+
+grid = YinYangGrid(size=(48, 16, 4), z=(-1000, 0))
+
+# output
+54×22×4 YinYangGrid{Float64, Connected, Connected, Bounded} on CPU with 3×3×3 halo
+├── core: 48×16 cells per panel spanning 270° × 90° with Δλ′ = Δφ′ = 5.625°
+├── overlap: 3 cells (16.875°) beyond the core on every side, 4×4 interpolation stencils
+├── panels: λ′ ∈ [-151.875, 151.875], φ′ ∈ [-61.875, 61.875]
+├── Yin (region 1):  panel frame = geographic frame
+├── Yang (region 2): (x, y, z) ↦ (-x, z, y), panel (λ′, φ′) = (0, 0) at (λ, φ) = (180, 0)
+└── z: Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=250.0
+```
+
+A `YinYangGrid` is a two-region `MultiRegionGrid`: `grid[1]` is Yin and `grid[2]` is Yang. Each panel stores
+horizontal velocities in its own basis, but `set!` takes geographic velocity components and rotates them
+into each panel's basis. Reductions over both horizontal dimensions, such as `sum`, `maximum` and [`Integral`](@ref),
+count every point of the sphere once. The [Barotropic jet and Double Drake on a Yin-Yang grid](@ref) example
+runs two simulations on a `YinYangGrid`.
 
 ### Bathymetry, topography, and other irregularities
 
@@ -388,8 +436,8 @@ big_halo_grid = RectilinearGrid(topology = (Periodic, Periodic, Flat),
 
 # output
 32×16×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
-├── Periodic x ∈ [-6.90805e-17, 6.28319) regularly spaced with Δx=0.19635
-├── Periodic y ∈ [-1.07194e-16, 3.14159) regularly spaced with Δy=0.19635
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 3.14159) regularly spaced with Δy=0.19635
 └── Flat z
 ```
 
@@ -1070,7 +1118,7 @@ Now we're getting somewhere. Let's note a few things:
   of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
-  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  topology `(Connected, Periodic, Bounded)`. That means that each local grid, which represents
   half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
   and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
 

@@ -6,7 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
-export interpolate
+export interpolate, interpolate!
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
@@ -16,7 +16,7 @@ using StaticArrays: StaticArray
 using Oceananigans: Oceananigans, instantiated_location, location
 using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid, Periodic,
+using Oceananigans.Grids: Grids, AbstractGrid, BoundaryTopology, Center, Face, LatitudeLongitudeGrid, Periodic,
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
 using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator, named_tuple

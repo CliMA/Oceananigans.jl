@@ -1,6 +1,5 @@
-using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δyᵃᶜᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᶜᶜᶜ, Δx⁻¹ᶠᵃᵃ, Δy⁻¹ᵃᶠᵃ, Δz⁻¹ᵃᵃᶠ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
-using Statistics: mean
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -98,9 +97,9 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
 
     tridiagonal_dim = dimension(tridiagonal_dir)
 
-    if topology(grid, tridiagonal_dim) != Bounded
+    if !(topology(grid, tridiagonal_dim) <: BoundaryTopology)
         msg = "`FourierTridiagonalPoissonSolver` can only be used \
-                when the stretched direction's topology is `Bounded`."
+                when the stretched direction is bounded by `Closed` or `Open` sides."
         throw(ArgumentError(msg))
     end
 
@@ -137,7 +136,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
                                         tridiagonal_direction = tridiagonal_dir)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in (T1, T2)
+    buffer_needed = arch isa GPU && any(T -> T <: BoundaryTopology, (T1, T2))
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
@@ -174,11 +173,11 @@ const ZFormulation = Union{HomogeneousZFormulation, InhomogeneousZFormulation}
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[1, j, k]  = -1 / Δxᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
-        D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
+        D[1, j, k]  = -Δx⁻¹ᶠᵃᵃ( 2, j, k, grid) - Δxᶜᵃᵃ( 1, j, k, grid) * (λy[j] + λz[k])
+        D[Nx, j, k] = -Δx⁻¹ᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
 
         for i in 2:Nx-1
-            D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
+            D[i, j, k] = - (Δx⁻¹ᶠᵃᵃ(i+1, j, k, grid) + Δx⁻¹ᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
         end
     end
 end
@@ -189,11 +188,11 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[i, 1, k]  = -1 / Δyᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
-        D[i, Ny, k] = -1 / Δyᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
+        D[i, 1, k]  = -Δy⁻¹ᵃᶠᵃ(i,  2, k, grid) - Δyᵃᶜᵃ(i,  1, k, grid) * (λx[i] + λz[k])
+        D[i, Ny, k] = -Δy⁻¹ᵃᶠᵃ(i, Ny, k, grid) - Δyᵃᶜᵃ(i, Ny, k, grid) * (λx[i] + λz[k])
 
         for j in 2:Ny-1
-            D[i, j, k] = - (1 / Δyᵃᶠᵃ(i, j+1, k, grid) + 1 / Δyᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
+            D[i, j, k] = - (Δy⁻¹ᵃᶠᵃ(i, j+1, k, grid) + Δy⁻¹ᵃᶠᵃ(i, j, k, grid)) - Δyᵃᶜᵃ(i, j, k, grid) * (λx[i] + λz[k])
         end
     end
 end
@@ -204,18 +203,18 @@ end
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
     @inbounds begin
-        D[i, j, 1]  = -1 / Δzᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
-        D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
+        D[i, j, 1]  = -Δz⁻¹ᵃᵃᶠ(i, j,  2, grid) - Δzᵃᵃᶜ(i, j,  1, grid) * (λx[i] + λy[j])
+        D[i, j, Nz] = -Δz⁻¹ᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 
         for k in 2:Nz-1
-            D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
+            D[i, j, k] = - (Δz⁻¹ᵃᵃᶠ(i, j, k+1, grid) + Δz⁻¹ᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
         end
     end
 end
 
-Δξᶠ(i, grid, ::XDirection) = Δxᶠᵃᵃ(i, 1, 1, grid)
-Δξᶠ(j, grid, ::YDirection) = Δyᵃᶠᵃ(1, j, 1, grid)
-Δξᶠ(k, grid, ::ZDirection) = Δzᵃᵃᶠ(1, 1, k, grid)
+Δξ⁻¹ᶠ(i, grid, ::XDirection) = Δx⁻¹ᶠᵃᵃ(i, 1, 1, grid)
+Δξ⁻¹ᶠ(j, grid, ::YDirection) = Δy⁻¹ᵃᶠᵃ(1, j, 1, grid)
+Δξ⁻¹ᶠ(k, grid, ::ZDirection) = Δz⁻¹ᵃᵃᶠ(1, 1, k, grid)
 
 function compute_lower_diagonal!(lower_diagonal, tridiagonal_formulation, grid)
     N = length(lower_diagonal)
@@ -227,7 +226,7 @@ end
 @kernel function _compute_lower_diagonal!(lower_diagonal, formulation, grid)
     q = @index(Global)
     dir = tridiagonal_direction(formulation)
-    @inbounds lower_diagonal[q] = 1 / Δξᶠ(q+1, grid, dir)
+    @inbounds lower_diagonal[q] = Δξ⁻¹ᶠ(q+1, grid, dir)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
@@ -240,16 +239,17 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ = solver.storage
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
-    # Apply backward transforms in order
-    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
-
-    # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
     # of the solution), so we need to pick a constant. We choose the constant to be zero
-    # so that the solution has zero-mean.
+    # so that the solution has zero-mean. The zero-wavenumber column holds the horizontal
+    # mean at every level, so its mean along the tridiagonal direction is the volume mean.
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
-        ϕ .= ϕ .- mean(ϕ)
+        dim = dimension(solver.batched_tridiagonal_solver.tridiagonal_direction)
+        zero_mode = view(ϕ, ntuple(d -> d == dim ? Colon() : 1, 3)...)
+        zero_mode .-= sum(zero_mode, dims=1) ./ length(zero_mode)
     end
+
+    apply_transforms!(solver.transforms.backward, ϕ, solver.buffer)
 
     arch = architecture(solver)
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))

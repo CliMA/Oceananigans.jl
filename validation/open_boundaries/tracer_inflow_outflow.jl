@@ -22,7 +22,7 @@ function tracer_outflow_simulation(; arch = CPU(),
                                      scheme = NormalRadiation(inflow_timescale = 0,
                                                         outflow_timescale = Inf))
 
-    grid = RectilinearGrid(arch; topology = (Bounded, Flat, Flat), size = Nx, x = (0, Lx))
+    grid = RectilinearGrid(arch; topology = (Open, Flat, Flat), size = Nx, x = (0, Lx))
 
     blob(x, t) = exp(-((x - U * t - blob_centre) / blob_width)^2)
     cp(x, t) = blob(x, t) + 1
