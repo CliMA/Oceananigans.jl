@@ -271,8 +271,9 @@ DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursiv
 
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
+OceananigansMakieExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansMakieExt) : Oceananigans.OceananigansMakieExt
 
-for m in [Oceananigans, OceananigansNCDatasetsExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt, OceananigansMakieExt]
     if !isnothing(m)
         push!(modules, m)
     end

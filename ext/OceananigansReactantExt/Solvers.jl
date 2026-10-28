@@ -2,7 +2,7 @@ module Solvers
 
 using Reactant
 using Oceananigans.Architectures: ReactantState
-using Oceananigans.Grids: Bounded, Periodic, Flat
+using Oceananigans.Grids: BoundaryTopology, Periodic, Flat
 using Oceananigans.Solvers: permute_index, unpermute_index
 
 import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform,
@@ -17,13 +17,13 @@ const ReactantAbstractFFTsExt = Base.get_extension(Reactant, :ReactantAbstractFF
 ##### as on the GPU (see `FFTBasedDCTArchitecture`)
 #####
 
-function plan_forward_transform(A::AnyReactantArray, ::Union{Bounded, Periodic}, dims, planner_flag=nothing)
+function plan_forward_transform(A::AnyReactantArray, ::Union{BoundaryTopology, Periodic}, dims, planner_flag=nothing)
     length(dims) == 0 && return nothing
     T = eltype(A)
     return ReactantAbstractFFTsExt.ReactantFFTInPlacePlan{T}(dims)
 end
 
-function plan_backward_transform(A::AnyReactantArray, ::Union{Bounded, Periodic}, dims, planner_flag=nothing)
+function plan_backward_transform(A::AnyReactantArray, ::Union{BoundaryTopology, Periodic}, dims, planner_flag=nothing)
     length(dims) == 0 && return nothing
     T = eltype(A)
     return ReactantAbstractFFTsExt.ReactantIFFTInPlacePlan{T}(dims)

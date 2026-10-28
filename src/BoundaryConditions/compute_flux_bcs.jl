@@ -46,7 +46,7 @@ Apply flux boundary conditions to a field `c` by adding the associated flux dive
 the source term `Gc` at the top and bottom.
 """
 compute_z_bcs!(Gc::AbstractArray, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, args...) =
-    launch!(arch, grid, :xy, _compute_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, Tuple(args))
+    launch!(arch, grid, :xy, _compute_z_bcs!, Gc, instantiated_location(Gc), grid, c, bottom_bc, top_bc, Tuple(args))
 
 """
 $(TYPEDSIGNATURES)
@@ -75,10 +75,10 @@ $(TYPEDSIGNATURES)
 
 Apply a top and/or bottom boundary condition to variable `c`.
 """
-@kernel function _compute_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args)
+@kernel function _compute_z_bcs!(Gc, loc, grid, c, bottom_bc, top_bc, args)
     i, j = @index(Global, NTuple)
-    compute_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
-       compute_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
+    compute_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, c, args...)
+       compute_z_top_bc!(Gc, loc, top_bc,    i, j, grid, c, args...)
 end
 
 # Shortcuts for zero flux or non-flux boundary conditions
@@ -112,19 +112,21 @@ The same logic holds for south and bottom boundary conditions in `y`, and `z`, r
 """
 @inline function compute_x_west_bc!(Gc, loc, west_flux::BC{<:Flux}, j, k, grid, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[1, j, k] += getbc(west_flux, j, k, grid, args...) * Ax(1, j, k, grid, flip(LX), LY, LZ) / volume(1, j, k, grid, LX, LY, LZ)
+    @inbounds Gc[1, j, k] += getbc(west_flux, j, k, grid, args...) * Ax(1, j, k, grid, flip(LX), LY, LZ) * V⁻¹(1, j, k, grid, LX, LY, LZ)
     return nothing
 end
 
 @inline function compute_y_south_bc!(Gc, loc, south_flux::BC{<:Flux}, i, k, grid, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[i, 1, k] += getbc(south_flux, i, k, grid, args...) * Ay(i, 1, k, grid, LX, flip(LY), LZ) / volume(i, 1, k, grid, LX, LY, LZ)
+    @inbounds Gc[i, 1, k] += getbc(south_flux, i, k, grid, args...) * Ay(i, 1, k, grid, LX, flip(LY), LZ) * V⁻¹(i, 1, k, grid, LX, LY, LZ)
     return nothing
 end
 
-@inline function compute_z_bottom_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
+# The bottom and top fluxes may carry an implicit part; only their explicit part enters the tendency.
+@inline function compute_z_bottom_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, c, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) * Az(i, j, 1, grid, LX, LY, flip(LZ)) / volume(i, j, 1, grid, LX, LY, LZ)
+    J = explicit_flux(bottom_flux, Bottom(), i, j, 1, grid, c, args...)
+    @inbounds Gc[i, j, 1] += J * Az(i, j, 1, grid, LX, LY, flip(LZ)) * V⁻¹(i, j, 1, grid, LX, LY, LZ)
     return nothing
 end
 
@@ -145,18 +147,19 @@ The same logic holds for north and top boundary conditions in `y`, and `z`, resp
 """
 @inline function compute_x_east_bc!(Gc, loc, east_flux::BC{<:Flux}, j, k, grid, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[grid.Nx, j, k] -= getbc(east_flux, j, k, grid, args...) * Ax(grid.Nx+1, j, k, grid, flip(LX), LY, LZ) / volume(grid.Nx, j, k, grid, LX, LY, LZ)
+    @inbounds Gc[grid.Nx, j, k] -= getbc(east_flux, j, k, grid, args...) * Ax(grid.Nx+1, j, k, grid, flip(LX), LY, LZ) * V⁻¹(grid.Nx, j, k, grid, LX, LY, LZ)
     return nothing
 end
 
 @inline function compute_y_north_bc!(Gc, loc, north_flux::BC{<:Flux}, i, k, grid, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[i, grid.Ny, k] -= getbc(north_flux, i, k, grid, args...) * Ay(i, grid.Ny+1, k, grid, LX, flip(LY), LZ) / volume(i, grid.Ny, k, grid, LX, LY, LZ)
+    @inbounds Gc[i, grid.Ny, k] -= getbc(north_flux, i, k, grid, args...) * Ay(i, grid.Ny+1, k, grid, LX, flip(LY), LZ) * V⁻¹(i, grid.Ny, k, grid, LX, LY, LZ)
     return nothing
 end
 
-@inline function compute_z_top_bc!(Gc, loc, top_flux::BC{<:Flux}, i, j, grid, args...)
+@inline function compute_z_top_bc!(Gc, loc, top_flux::BC{<:Flux}, i, j, grid, c, args...)
     LX, LY, LZ = loc
-    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) * Az(i, j, grid.Nz+1, grid, LX, LY, flip(LZ)) / volume(i, j, grid.Nz, grid, LX, LY, LZ)
+    J = explicit_flux(top_flux, Top(), i, j, grid.Nz, grid, c, args...)
+    @inbounds Gc[i, j, grid.Nz] -= J * Az(i, j, grid.Nz+1, grid, LX, LY, flip(LZ)) * V⁻¹(i, j, grid.Nz, grid, LX, LY, LZ)
     return nothing
 end
