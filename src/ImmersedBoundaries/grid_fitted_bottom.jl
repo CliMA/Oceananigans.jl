@@ -225,10 +225,10 @@ function materialize_immersed_boundary(grid, ib::GridFittedVerticalBoundaries)
 
     @apply_regionally compute_cell_indices!(grid, compute_ib, bottom_cell_index, top_cell_index, bottom, top)
 
-    return GridFittedVerticalBoundaries(stored_data(bottom), 
-                                        stored_data(top), 
+    return GridFittedVerticalBoundaries(stored_data(bottom),
+                                        stored_data(top),
                                         ib.immersed_condition,
-                                        stored_data(bottom_cell_index), 
+                                        stored_data(bottom_cell_index),
                                         stored_data(top_cell_index))
 end
 
@@ -373,7 +373,7 @@ end
 # Without a top, adjacent columns share their top, so the shallower column depth is the open depth of the face
 @inline face_column_depth(i, j, i⁻, j⁻, ibg, ::GridFittedBottom) = min(static_column_depthᶜᶜᵃ(i⁻, j⁻, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 
-# Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open. 
+# Beneath a top only the overlap of columns (i⁻, j⁻) and (i, j) is open.
 @inline function face_column_depth(i, j, i⁻, j⁻, ibg, ib)
     ug = ibg.underlying_grid
     k⁻ = max(bottom_cell(i⁻, j⁻, ug, ib), bottom_cell(i, j, ug, ib))
