@@ -6,7 +6,7 @@
 # Usage: ARCH=GPU julia --project baroclinic_channel.jl   (needs CUDA on GPU, plus CairoMakie and FFTW)
 #
 # Environment variables: TRUTH_KM (default 3.2), COARSE_KM (20), BIHARMONIC_DAYS (0.1), STOP_YEARS (4),
-# GM_DIFFUSIVITY (500 m² s⁻¹).
+# GM_DIFFUSIVITY (500 m² s⁻¹), WENO (false: WENO=true swaps the energy-conserving momentum advection for WENO).
 
 using Oceananigans
 using Oceananigans.Units
@@ -29,6 +29,7 @@ coarse_Δ = parse(Float64, get(ENV, "COARSE_KM", "20")) * kilometers
 τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.1")) * day   # biharmonic damping time at the grid scale Δ / π
 stop_time = parse(Float64, get(ENV, "STOP_YEARS", "4")) * 365days
 κᴳᴹ = parse(Float64, get(ENV, "GM_DIFFUSIVITY", "500"))
+weno = parse(Bool, get(ENV, "WENO", "false"))
 
 Lx = Ly = 800kilometers
 H = 2000
@@ -82,7 +83,7 @@ function run_channel(Δ; backscatter=false, gm=false)
     backscatter && (closure = (closure..., EnergyBudgetBackscatter()))
 
     model = HydrostaticFreeSurfaceModel(grid; closure, forcing,
-                                        momentum_advection = VectorInvariant(vorticity_scheme=EnergyConserving()),
+                                        momentum_advection = weno ? WENOVectorInvariant(order=5) : VectorInvariant(vorticity_scheme=EnergyConserving()),
                                         tracer_advection = WENO(order=5),
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = BetaPlane(; f₀, β),
@@ -176,4 +177,4 @@ for (n, ((label, _...), result)) in enumerate(zip(cases, results))
     heatmap!(ζ_axis, result.ζ, colormap=:balance, colorrange=(-ζmax, ζmax))
 end
 
-save(@sprintf("baroclinic_channel_%gday.png", τ₄ / day), fig)
+save(@sprintf("baroclinic_channel_%gday", τ₄ / day) * (weno ? "_weno" : "") * ".png", fig)
