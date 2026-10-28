@@ -1,15 +1,18 @@
 # Flat-bottomed baroclinic channel: the three-dimensional counterpart of forced_two_dimensional_turbulence.jl.
 # A zonal-mean restoring toward a sloping two-layer stratification is released by baroclinic eddies at the
-# deformation radius (≈ 15 km). A fine run (truth) is compared to coarse runs with and without EnergyBudgetBackscatter.
+# deformation radius (≈ 15 km). A fine run (truth) is compared to coarse runs with and without EnergyBudgetBackscatter
+# and Gent-McWilliams, whose potential energy release feeds the backscatter's sub-grid energy.
 #
 # Usage: ARCH=GPU julia --project baroclinic_channel.jl   (needs CUDA on GPU, plus CairoMakie and FFTW)
 #
-# Environment variables: TRUTH_KM (default 3.2), COARSE_KM (20), BIHARMONIC_DAYS (0.1), STOP_YEARS (4).
+# Environment variables: TRUTH_KM (default 3.2), COARSE_KM (20), BIHARMONIC_DAYS (0.1), STOP_YEARS (4),
+# GM_DIFFUSIVITY (500 m² s⁻¹).
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: EnergyConserving
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, AdvectiveFormulation
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑyᵃᶠᵃ, Δzᶠᶜᶜ, Δzᶜᶠᶜ
 using CairoMakie
 using FFTW
@@ -25,6 +28,7 @@ truth_Δ = parse(Float64, get(ENV, "TRUTH_KM", "3.2")) * kilometers
 coarse_Δ = parse(Float64, get(ENV, "COARSE_KM", "20")) * kilometers
 τ₄ = parse(Float64, get(ENV, "BIHARMONIC_DAYS", "0.1")) * day   # biharmonic damping time at the grid scale Δ / π
 stop_time = parse(Float64, get(ENV, "STOP_YEARS", "4")) * 365days
+κᴳᴹ = parse(Float64, get(ENV, "GM_DIFFUSIVITY", "500"))
 
 Lx = Ly = 800kilometers
 H = 2000
@@ -57,7 +61,7 @@ end
 
 @inline upper_layer_v(i, j, k, grid, v, b, interface_buoyancy) = @inbounds v[i, j, k] * (ℑyᵃᶠᵃ(i, j, k, grid, b) > interface_buoyancy)
 
-function run_channel(Δ; backscatter=false)
+function run_channel(Δ; backscatter=false, gm=false)
     Nx = Ny = round(Int, Lx / Δ)
     z = vcat(range(-H, -1000, length=5)[1:end-1], range(-1000, 0, length=21))
     grid = RectilinearGrid(arch; size=(Nx, Ny, length(z) - 1), halo=(4, 4, 4),
@@ -73,8 +77,9 @@ function run_channel(Δ; backscatter=false)
 
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν = (Δ / π)^4 / τ₄)
     convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1)
-    closure = backscatter ? (biharmonic_viscosity, EnergyBudgetBackscatter(), convective_adjustment) :
-                            (biharmonic_viscosity, convective_adjustment)
+    closure = (biharmonic_viscosity, convective_adjustment)
+    gm && (closure = (closure..., IsopycnalSkewSymmetricDiffusivity(κ_skew=κᴳᴹ, skew_flux_formulation=AdvectiveFormulation())))
+    backscatter && (closure = (closure..., EnergyBudgetBackscatter()))
 
     model = HydrostaticFreeSurfaceModel(grid; closure, forcing,
                                         momentum_advection = VectorInvariant(vorticity_scheme=EnergyConserving()),
@@ -93,7 +98,9 @@ function run_channel(Δ; backscatter=false)
 
     u, v, w = model.velocities
     b = model.tracers.b
-    V₁ = Field(Integral(KernelFunctionOperation{Center, Face, Center}(upper_layer_v, grid, v, b, Δb / 2), dims=3))
+    # The overturning of GM runs includes the eddy-induced velocity
+    transport_velocity = gm ? v + model.closure_fields[3].v : v
+    V₁ = Field(Integral(KernelFunctionOperation{Center, Face, Center}(upper_layer_v, grid, transport_velocity, b, Δb / 2), dims=3))
 
     times, energies, surface_velocities, overturnings = Float64[], Float64[], [], []
 
@@ -112,8 +119,8 @@ function run_channel(Δ; backscatter=false)
         return nothing
     end
 
-    progress(sim) = @info @sprintf("Δ = %g km%s: %s, surface EKE = %.2e m² s⁻², wall time: %s", Δ / kilometers,
-                                   backscatter ? " with backscatter" : "", prettytime(sim), energies[end],
+    progress(sim) = @info @sprintf("Δ = %g km%s%s: %s, surface EKE = %.2e m² s⁻², wall time: %s", Δ / kilometers,
+                                   gm ? " GM" : "", backscatter ? " backscatter" : "", prettytime(sim), energies[end],
                                    prettytime(sim.run_wall_time))
 
     add_callback!(simulation, record, TimeInterval(5days))
@@ -134,23 +141,25 @@ function isotropic_spectrum(velocities)
     return [sum(E[K .== n]) for n in 1:N÷2]
 end
 
-cases = [(@sprintf("%g km (truth)", truth_Δ / kilometers),        truth_Δ,  false),
-         (@sprintf("%g km", coarse_Δ / kilometers),                coarse_Δ, false),
-         (@sprintf("%g km backscatter", coarse_Δ / kilometers),    coarse_Δ, true)]
+cases = [(@sprintf("%g km (truth)", truth_Δ / kilometers),          truth_Δ,  false, false),
+         (@sprintf("%g km", coarse_Δ / kilometers),                  coarse_Δ, false, false),
+         (@sprintf("%g km backscatter", coarse_Δ / kilometers),      coarse_Δ, true,  false),
+         (@sprintf("%g km GM", coarse_Δ / kilometers),               coarse_Δ, false, true),
+         (@sprintf("%g km GM backscatter", coarse_Δ / kilometers),   coarse_Δ, true,  true)]
 
-results = [run_channel(Δ; backscatter) for (_, Δ, backscatter) in cases]
+results = [run_channel(Δ; backscatter, gm) for (_, Δ, backscatter, gm) in cases]
 
 #####
 ##### Figure
 #####
 
-fig = Figure(size=(1200, 1100))
-energy_axis = Axis(fig[1, 1:2], xlabel="t (days)", ylabel="surface EKE (m² s⁻²)")
-spectrum_axis = Axis(fig[1, 3], xscale=log10, yscale=log10, xlabel="K (cycles per domain)", ylabel="E(K)",
+fig = Figure(size=(2000, 1100))
+energy_axis = Axis(fig[1, 1:3], xlabel="t (days)", ylabel="surface EKE (m² s⁻²)")
+spectrum_axis = Axis(fig[1, 4:5], xscale=log10, yscale=log10, xlabel="K (cycles per domain)", ylabel="E(K)",
                      title="Second-half mean, surface")
-overturning_axis = Axis(fig[2, 1:3], xlabel="y (km)", ylabel="Ψ (m² s⁻¹)", title="Second-half mean overturning")
+overturning_axis = Axis(fig[2, 1:5], xlabel="y (km)", ylabel="Ψ (m² s⁻¹)", title="Second-half mean overturning")
 
-for ((label, _, _), result) in zip(cases, results)
+for ((label, _...), result) in zip(cases, results)
     lines!(energy_axis, result.times ./ day, result.energies; label)
     lines!(spectrum_axis, isotropic_spectrum(result.surface_velocities); label)
     lines!(overturning_axis, result.y ./ kilometers, result.Ψ; label)
@@ -162,7 +171,7 @@ end
 axislegend(energy_axis, position=:lt)
 
 ζmax = maximum(abs, interior(first(results).ζ))
-for (n, ((label, _, _), result)) in enumerate(zip(cases, results))
+for (n, ((label, _...), result)) in enumerate(zip(cases, results))
     ζ_axis = Axis(fig[3, n], title="surface ζ, $label", aspect=1)
     heatmap!(ζ_axis, result.ζ, colormap=:balance, colorrange=(-ζmax, ζmax))
 end
