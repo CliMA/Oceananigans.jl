@@ -230,6 +230,16 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test minimum_zspacing(grid) ≈ minimum(zspacings(grid))
     end
 
+    @testset "KernelFunctionOperation as a kernel argument on LatitudeLongitudeGrid" begin
+        grid = LatitudeLongitudeGrid(arch; size=(4, 4, 2), longitude=(0, 1), latitude=(0, 1), z=(-1, 0))
+        c = CenterField(grid)
+        out = CenterField(grid)
+        set!(c, 1)
+
+        @jit compute_doubled!(out, c)
+        @test all(Array(interior(out)) .== 2)
+    end
+
     @testset "Field reductions on LatitudeLongitudeGrid" begin
         grid = LatitudeLongitudeGrid(arch;
                                      size = (10, 10, 10),
