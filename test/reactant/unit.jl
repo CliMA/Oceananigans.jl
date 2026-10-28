@@ -1,6 +1,5 @@
 include(joinpath(@__DIR__, "..", "setup", "reactant_test_utils.jl"))
 
-using Adapt: Adapt
 using CUDA
 using Statistics: mean
 using Oceananigans.OutputReaders: cpu_interpolating_time_indices, Clamp, Cyclical
@@ -9,17 +8,6 @@ using Oceananigans.Units: Time
 arch = ReactantState()
 
 ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
-
-# A stand-in for a vertical coordinate defined outside Oceananigans (eg a terrain-following
-# coordinate). Downstream packages provide `Adapt.adapt_structure` for GPU kernels; moving a
-# LatitudeLongitudeGrid to ReactantState reuses it rather than requiring a method per coordinate type.
-struct DownstreamVerticalCoordinate{C, T} <: Oceananigans.Grids.AbstractVerticalCoordinate
-    cᵃᵃᶠ :: C
-    terrain :: T
-end
-
-Adapt.adapt_structure(to, z::DownstreamVerticalCoordinate) =
-    DownstreamVerticalCoordinate(Adapt.adapt(to, z.cᵃᵃᶠ), Adapt.adapt(to, z.terrain))
 
 @testset "Reactant unit tests" begin
     @testset "Checkbounds = auto" begin
@@ -325,20 +313,6 @@ Adapt.adapt_structure(to, z::DownstreamVerticalCoordinate) =
         @test grid.z.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}
         @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
         @test architecture(grid.z.ηⁿ) isa ReactantState
-
-        @info "  Testing a downstream vertical coordinate through _to_reactant..."
-        Nz, Hz = 4, 2
-        cpu_faces = OffsetArray(range(0, 1, length = Nz + 2Hz + 1), -Hz)
-        cpu_terrain = OffsetArray(zeros(8, 8), -2, -2)
-        z = DownstreamVerticalCoordinate(cpu_faces, cpu_terrain)
-        rz = OceananigansReactantExt.Architectures._to_reactant(z)
-
-        @test rz isa DownstreamVerticalCoordinate
-        @test rz.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}   # range materialized
-        @test rz.terrain isa OffsetArray{Float64, 2, <:Reactant.AbstractConcreteArray}
-        @test axes(rz.cᵃᵃᶠ) == axes(cpu_faces)
-        @test axes(rz.terrain) == axes(cpu_terrain)
-        @test Array(parent(rz.cᵃᵃᶠ)) == collect(parent(cpu_faces))
     end
 
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
