@@ -18,7 +18,7 @@ using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, S
 using Oceananigans.DistributedComputations: DistributedComputations, insert_connected_topology
 using Oceananigans.Fields: Field, location
 using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, BoundarySide, Bounded, Center, Connected, Face,
-    Flat, OrthogonalSphericalShellGrid, Periodic, Sides, on_architecture
+    Flat, OrthogonalSphericalShellGrid, Periodic, TwoSided, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, Utils,
     @apply_regionally, apply_regionally!, construct_regionally, isregional, getregion, _getregion, regions, prettysummary

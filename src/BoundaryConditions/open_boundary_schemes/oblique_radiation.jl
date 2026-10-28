@@ -8,8 +8,8 @@
                        use_boundary_velocity = false,
                        target_transport = nothing)
 
-Raymond & Kuo (1984) two-dimensional radiation condition with adaptive nudging
-(Marchesiello et al. 2001):
+[Raymond & Kuo (1984)](@cite raymond.kuo1984) two-dimensional radiation condition with adaptive nudging
+([Marchesiello et al., 2001](@cite marchesiello.ea2001)):
 
     ∂φ/∂t + cₙ ∂φ/∂n + cₜ ∂φ/∂t̂ = - (φ - φᵉˣᵗ) / τ
 

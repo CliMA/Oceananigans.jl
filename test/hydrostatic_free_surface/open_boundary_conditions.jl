@@ -287,8 +287,8 @@ end
 ##### Test 5: Substepping halo strategy selection
 #####
 # The split-explicit solver must pick the per-substep fill path automatically when the
-# barotropic velocities have prescribed normal-flow boundaries, and the complete-fill
-# path when extend_halos = false.
+# grid has an `Open` side or the barotropic velocities have a non-zero normal flow, and the
+# complete-fill path when extend_halos = false.
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
     SplitExplicitFreeSurfaces, ExtendedHalos, LocalHaloFilling, CompleteHaloFilling
@@ -310,9 +310,15 @@ function test_substep_halo_filling_strategy()
         boundary_conditions = (u = zero_normal_flow(:east), U = U_bcs),
         buoyancy = nothing, tracers = ())
 
+    open_without_flow = HydrostaticFreeSurfaceModel(open_grid;
+        free_surface = SplitExplicitFreeSurface(open_grid; substeps = 4),
+        boundary_conditions = (u = zero_normal_flow(:east), U = zero_normal_flow(:east)),
+        buoyancy = nothing, tracers = ())
+
     return walls().free_surface                      isa SplitExplicitFreeSurface{ExtendedHalos} &&
            walls(extend_halos = false).free_surface  isa SplitExplicitFreeSurface{CompleteHaloFilling} &&
-           open.free_surface                         isa SplitExplicitFreeSurface{LocalHaloFilling}
+           open.free_surface                         isa SplitExplicitFreeSurface{LocalHaloFilling} &&
+           open_without_flow.free_surface            isa SplitExplicitFreeSurface{LocalHaloFilling}
 end
 
 #####

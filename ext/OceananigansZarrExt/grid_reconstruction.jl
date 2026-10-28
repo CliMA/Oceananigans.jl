@@ -268,7 +268,7 @@ function reconstruct_zarr_ossg_grid(root_group, args, kwargs, grid_suffix)
     Hx, Hy, Hz = map(Int, kwargs[:halo])
     topo       = kwargs[:topology]
     radius     = FT(kwargs[:radius])
-    TX, TY, TZ = topo = validate_topology(topo)
+    TX, TY, TZ = validate_topology(topo)
     topo_instances = (TX(), TY(), TZ())
 
     file_has_halos = haskey(root_group.attrs, "output_includes_halos")
@@ -400,7 +400,7 @@ reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:Sides{<:Any, R}}) where R
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, ::Type{<:TwoSided{<:Any, R}}) where R
     return Tripolar(
         attrib[:north_poles_latitude],
         attrib[:first_pole_longitude],
