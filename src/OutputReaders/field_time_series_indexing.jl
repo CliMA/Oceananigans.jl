@@ -442,6 +442,8 @@ update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
+    # A window holding every snapshot never moves, so the time need not be read (it may be traced)
+    fts.backend.start == 1 && length(fts.backend) == length(fts.times) && return nothing
     t = time_index.time
     indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
     n₁ = indices.first_index
