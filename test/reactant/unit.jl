@@ -298,6 +298,23 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test Array(interior(u)) == repeat(column, outer=(4, 4, 1))
     end
 
+    @testset "LatitudeLongitudeGrid with a non-static vertical coordinate" begin
+        # `on_architecture(::ReactantState, ::LatitudeLongitudeGrid)` rebuilds the grid field by
+        # field. Vertical coordinates other than `StaticVerticalDiscretization` used to hit a
+        # MethodError there.
+        @info "  Testing LatitudeLongitudeGrid with MutableVerticalDiscretization..."
+        grid = LatitudeLongitudeGrid(arch; size = (4, 4, 4),
+                                     longitude = [0, 1, 2, 3, 4],
+                                     latitude = [0, 1, 2, 3, 4],
+                                     z = MutableVerticalDiscretization((0, 1)))
+
+        @test architecture(grid) isa ReactantState
+        @test grid.z isa MutableVerticalDiscretization
+        @test grid.z.cᵃᵃᶠ isa OffsetArray{Float64, 1, <:Reactant.AbstractConcreteArray}
+        @test architecture(grid.z.σᶜᶜⁿ) isa ReactantState
+        @test architecture(grid.z.ηⁿ) isa ReactantState
+    end
+
     @testset "Computed fields on a grid with an array-valued vertical coordinate" begin
         Nz = 4
         z = collect(range(-1, 0, length = Nz + 1))
