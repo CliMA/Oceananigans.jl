@@ -1,5 +1,6 @@
 module Architectures
 
+using Adapt: Adapt
 using Reactant
 using Oceananigans
 using Oceananigans.DistributedComputations: Distributed
@@ -98,16 +99,10 @@ Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Re
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
 
-# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray
-_to_reactant(a::Number) = a
-_to_reactant(::Nothing) = nothing
-_to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
-_to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
-
-function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
-    return Oceananigans.Grids.StaticVerticalDiscretization(
-        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
-end
+# Materialize CPU data into ConcreteRArrays, ranges included (StepRangeLen with TwicePrecision internals
+# among them). `Adapt.adapt` recurses through any struct with an `adapt_structure` method, so every
+# vertical coordinate, including those defined by downstream packages, is rebuilt with its arrays moved.
+_to_reactant(x) = Adapt.adapt(Reactant.ConcreteRArrayAdaptor(materialize_ranges = true), x)
 
 # Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
 # then transfer the materialized arrays to Reactant. This avoids Float64 leakage from
