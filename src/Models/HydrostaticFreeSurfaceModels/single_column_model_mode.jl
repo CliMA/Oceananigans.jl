@@ -56,6 +56,7 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleCol
 
 compute_w_from_continuity!(velocities, ::SingleColumnGrid, args...; kwargs...) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid, args...; kwargs...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields{<:DiagnosticVerticalVelocity}, ::SingleColumnGrid, args...; kwargs...) = nothing
 
 #####
 ##### Time-step optimizations

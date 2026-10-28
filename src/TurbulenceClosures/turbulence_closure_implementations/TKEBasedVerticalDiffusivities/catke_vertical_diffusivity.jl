@@ -266,8 +266,8 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     # Update previous velocities and surface buoyancy flux
     u, v, w = model.velocities
     u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
+    store_previous_velocity!(u⁻, u)
+    store_previous_velocity!(v⁻, v)
 
 
     launch!(arch, grid, :xy,

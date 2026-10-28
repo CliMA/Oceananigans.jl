@@ -283,8 +283,8 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, �
     # Update previous velocities
     u, v, w = model.velocities
     u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
+    store_previous_velocity!(u⁻, u)
+    store_previous_velocity!(v⁻, v)
 
     return nothing
 end
