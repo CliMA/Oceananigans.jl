@@ -53,7 +53,7 @@ struct ObliqueRadiation{FT, S, TF} <: AbstractRadiationScheme{FT}
     outflow_timescale :: FT
     inflow_timescale  :: FT
     use_boundary_velocity :: Bool
-    φᵇ :: S
+    φ⁻ :: S
     φ₁ :: S
     target_transport :: TF # prescribed net transport through the boundary, or nothing
 end
@@ -74,7 +74,7 @@ Adapt.adapt_structure(to, r::ObliqueRadiation) =
     ObliqueRadiation(adapt(to, r.outflow_timescale),
                      adapt(to, r.inflow_timescale),
                      r.use_boundary_velocity,
-                     adapt(to, r.φᵇ),
+                     adapt(to, r.φ⁻),
                      adapt(to, r.φ₁),
                      adapt(to, r.target_transport))
 
@@ -116,7 +116,7 @@ end
 
 # The tangential derivatives are those of the boundary and interior values at the base of the stage
 @inline function radiation_update(radiation::ObliqueRadiation, ::Union{West, East, South, North}, i, j, φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, outflow, Cᵃ)
-    δᵇ₋, δᵇ₊ = tangential_differences(radiation.φᵇ, i, j)
+    δᵇ₋, δᵇ₊ = tangential_differences(radiation.φ⁻, i, j)
     δ₁₋, δ₁₊ = tangential_differences(radiation.φ₁, i, j)
     return oblique_radiation_update(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, δᵇ₋, δᵇ₊, δ₁₋, δ₁₊, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 end

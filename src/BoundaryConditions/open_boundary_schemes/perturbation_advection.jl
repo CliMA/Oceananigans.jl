@@ -6,7 +6,7 @@ struct PerturbationAdvection{FT, D, TF, S} <: AbstractRadiationScheme{FT}
     gravity_wave_speed :: FT
     density :: D
     target_transport :: TF
-    φᵇ :: S
+    φ⁻ :: S
 end
 
 """
@@ -127,7 +127,7 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density),
                           adapt(to, pe.target_transport),
-                          adapt(to, pe.φᵇ))
+                          adapt(to, pe.φ⁻))
 
 radiation_storage(pe::PerturbationAdvection, buffer) =
     PerturbationAdvection(pe.inflow_timescale, pe.outflow_timescale, pe.gravity_wave_speed, pe.density, pe.target_transport, buffer())
@@ -185,7 +185,7 @@ _eval_tt(f, grid) = f(grid)
     pa = bc.classification.scheme
     ρ = pa.density
 
-    ψᵇ = to_intensive(ρ, @inbounds(pa.φᵇ[i, j]), kᵇ)
+    ψᵇ = to_intensive(ρ, @inbounds(pa.φ⁻[i, j]), kᵇ)
     ψ₁ = to_intensive(ρ, @inbounds(ψ[i₁, j₁, k₁]), kᵇ)
     ψ̄  = getbc(bc, i, j, grid, clock, model_fields)
 
