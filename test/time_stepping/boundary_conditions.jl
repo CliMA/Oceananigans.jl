@@ -164,7 +164,7 @@ velocity_forcing(::Val{3}, forcing) = (; w = forcing)
 
 function test_perturbation_advection_open_boundary_conditions(arch, FT)
     for orientation in 1:3
-        topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
+        topology = tuple(map(n -> ifelse(n == orientation, Open, Flat), 1:3)...)
 
         grid = RectilinearGrid(arch, FT; topology, size = (4, ), x = (0, 4), y = (0, 4), z = (0, 4), halo = (1, ))
 
@@ -198,9 +198,8 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
 end
 
 # Unit-cube grid for the targeted-transport tests.
-targeted_flux_grid(arch, FT; N = 4) =
-    RectilinearGrid(arch, FT; size = (N, N, N), x = (0, 1), y = (0, 1), z = (-one(FT), zero(FT)),
-                    topology = (Bounded, Bounded, Bounded))
+targeted_flux_grid(arch, FT; N = 4, topology = (Open, Bounded, Bounded)) =
+    RectilinearGrid(arch, FT; size = (N, N, N), x = (0, 1), y = (0, 1), z = (-one(FT), zero(FT)), topology)
 
 # Targeted-transport tests run for NonhydrostaticModel only: there the correction is
 # applied before the pressure solve, which holds ∮u·dA exactly. For
@@ -294,7 +293,7 @@ function test_zero_inflow_open_boundary_conserves_mass(arch, FT; N = 4)
     # Exercises: ZIOBC init, open_boundary_transport ZIOBC,
     #            IOBC dispatch in pool correction
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+                           topology=((Closed, Open), Bounded, Bounded))
     u_bcs = FieldBoundaryConditions(
         west = NormalFlowBoundaryCondition(nothing),
         east = NormalFlowBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
@@ -318,7 +317,7 @@ function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 
     # east = pool PerturbationAdvection OBC that adjusts to balance the fixed inflow
     # Exercises: FIOBC init (lines 71–76), IOBC dispatch in pool correction (line 227)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+                           topology=(Open, Bounded, Bounded))
     u_bcs = FieldBoundaryConditions(
         west = NormalFlowBoundaryCondition(1),
         east = NormalFlowBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
@@ -342,7 +341,7 @@ function test_targeted_south_transport_achieved(arch, FT, ModelType, Scheme; N =
     # Exercises: apply_targeted_left_boundary_correction! for south,
     #            targeted boundary skipped in pool step for south,
     #            pool correction applied to north OBC
-    grid = targeted_flux_grid(arch, FT; N)
+    grid = targeted_flux_grid(arch, FT; N, topology = (Bounded, Open, Bounded))
     Q_target = FT(0.5)
     v_bcs = FieldBoundaryConditions(
         south = NormalFlowBoundaryCondition(FT(1); scheme = Scheme(; inflow_timescale=1e-1, target_transport=Q_target)),
@@ -385,7 +384,7 @@ end
 function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     # Tracer (Center-located) radiation now lives on `Value` (with a `scheme`), so it is
     # filled through the standard value/gradient halo path rather than the open-velocity path.
-    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+    grid = RectilinearGrid(arch, FT; topology = (Open, Flat, Bounded),
                            size = (4, 4), x = (0, 4), z = (0, 4))
 
     Nx, Nz, Hx, Hz = grid.Nx, grid.Nz, grid.Hx, grid.Hz
@@ -434,9 +433,12 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     scheme = PerturbationAdvection(inflow_timescale = Inf, outflow_timescale = Inf)
     c_bcs = FieldBoundaryConditions(bottom = ValueBoundaryCondition(c̄; scheme),
                                     top    = ValueBoundaryCondition(c̄; scheme))
+    w_bcs = FieldBoundaryConditions(bottom = NormalFlowBoundaryCondition(0),
+                                    top    = NormalFlowBoundaryCondition(0))
 
-    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
-                                        boundary_conditions = (; c = c_bcs))
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Open),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+    model = NonhydrostaticModel(grid; tracers = :c, boundary_conditions = (c = c_bcs, w = w_bcs))
 
     set!(model, c = c₀)
     parent(model.tracers.c) .= c₀
@@ -453,7 +455,7 @@ function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrosta
     # which historically suppressed tracer open boundaries entirely (see #5646). Because tracer
     # radiation now lives on `Value` — ungated by `fill_normal_flow_bcs` — it fires during the regular
     # halo fill. This exercises that previously-broken path.
-    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+    grid = RectilinearGrid(arch, FT; topology = (Open, Flat, Bounded),
                            size = (4, 4), x = (0, 4), z = (0, 4))
 
     Nx, Hx, Hz = grid.Nx, grid.Hx, grid.Hz
@@ -494,20 +496,20 @@ function test_perturbation_advection_tracer_left_boundary_fills_halo(arch, FT)
     # interior cell (1) prognostic. On east/north/top the Face-velocity boundary index (N+1)
     # coincides with the Center halo index, which masked a west/south/bottom bug that wrote the
     # first interior cell instead of the halo. Pin the three left boundaries explicitly.
-    grid = RectilinearGrid(arch, FT; size = (4, 4, 4), extent = (1, 1, 1),
-                           topology = (Bounded, Bounded, Bounded), halo = (3, 3, 3))
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+    Hx = Hy = Hz = 3
 
     c̄ = convert(FT, -1)          # inflow relaxes the boundary halo to this
     sentinel = convert(FT, 999)   # marks the first interior cell as prognostic
     scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+    open_left = (Open, Closed)
 
-    # (boundary, boundary-normal velocity, parent index of the boundary halo node)
-    cases = ((:west,   :u, (Hx,     Hy + 1, Hz + 1)),
-             (:south,  :v, (Hx + 1, Hy,     Hz + 1)),
-             (:bottom, :w, (Hx + 1, Hy + 1, Hz)))
+    # (boundary, boundary-normal velocity, parent index of the boundary halo node, topology)
+    cases = ((:west,   :u, (Hx,     Hy + 1, Hz + 1), (open_left, Bounded, Bounded)),
+             (:south,  :v, (Hx + 1, Hy,     Hz + 1), (Bounded, open_left, Bounded)),
+             (:bottom, :w, (Hx + 1, Hy + 1, Hz),     (Bounded, Bounded, open_left)))
 
-    for (side, vel, halo_index) in cases
+    for (side, vel, halo_index, topology) in cases
+        grid = RectilinearGrid(arch, FT; size = (4, 4, 4), extent = (1, 1, 1), topology, halo = (Hx, Hy, Hz))
         c_bcs   = FieldBoundaryConditions(; NamedTuple{(side,)}((ValueBoundaryCondition(c̄; scheme),))...)
         vel_bcs = FieldBoundaryConditions(; NamedTuple{(side,)}((NormalFlowBoundaryCondition(1),))...)
         model = NonhydrostaticModel(grid; tracers = :c,
@@ -529,7 +531,7 @@ function test_perturbation_advection_tracer_radiation_formula(arch, FT)
     #   ψ_new = (ψᴮ + Ũ ψᴬ + ψ̄ τ̃) / (1 + τ̃ + Ũ),  Ũ = U Δt / Δx,  τ̃ = Δt / τ
     # with non-trivial ψᴮ ≠ ψᴬ, finite τ̃, and 0 < Ũ < 1 — a regime the uniform-interior
     # checks above never reach.
-    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+    grid = RectilinearGrid(arch, FT; topology = (Open, Flat, Bounded),
                            size = (4, 4), x = (0, 4), z = (0, 4))
 
     U = 1
@@ -593,7 +595,7 @@ end
 
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+                           topology=(Open, Bounded, Bounded))
 
     model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
     uᵢ(x, y, z) = 1 + 1e-2 * rand()

@@ -25,7 +25,7 @@ experiments = ("west → east"           => (west = Q, east = Q,       south = n
                "targets don't balance" => (west = Q, east = 2Q,      south = nothing, north = nothing))
 
 grid = RectilinearGrid(CPU(); size = (Nx, Ny, 1), x = (0, Lx), y = (0, Ly), z = (-H, 0),
-                       topology = (Bounded, Bounded, Bounded))
+                       topology = (Open, Open, Bounded))
 
 flather(target) = GravityWaveRadiationBoundaryCondition((0, 0); target_transport = target)
 baroclinic()    = NormalFlowBoundaryCondition(0; scheme = NormalRadiation(; inflow_timescale = Inf, outflow_timescale = Inf))
