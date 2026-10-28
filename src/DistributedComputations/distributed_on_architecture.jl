@@ -32,7 +32,7 @@ function on_architecture(new_arch::Distributed, old_grid::LatitudeLongitudeGrid)
                                              old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
-                                             old_grid.radius)
+                                             old_grid.radius, poles(old_grid))
 end
 
 function on_architecture(new_arch::Distributed, old_grid::RectilinearGrid)

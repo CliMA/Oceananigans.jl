@@ -2,7 +2,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
-using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
+using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology, poles
 
 import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
 import Oceananigans.Architectures: child_architecture
@@ -170,7 +170,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δx⁻¹ᶜᶜᵃ, Δx⁻¹ᶠᶜᵃ, Δx⁻¹ᶜᶠᵃ, Δx⁻¹ᶠᶠᵃ,
                                              Δy⁻¹ᶠᶜᵃ, Δy⁻¹ᶜᶠᵃ,
                                              Az⁻¹ᶜᶜᵃ, Az⁻¹ᶠᶜᵃ, Az⁻¹ᶜᶠᵃ, Az⁻¹ᶠᶠᵃ,
-                                             grid.radius)
+                                             grid.radius, poles(grid))
 end
 
 function RectilinearGrid(arch::ShardedDistributed,

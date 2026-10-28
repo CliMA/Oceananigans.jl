@@ -448,3 +448,22 @@ end
     δρᵢ  = CenterField(grid_ad)
     @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end
+
+@testset "Fields allocated inside a compiled function on a lat-lon grid" begin
+    # `c = λ`, so a polar halo (the zonal mean) differs from a zero-gradient one
+    doubled(c) = parent(compute!(Field(2c)))
+
+    for latitude in ((30, 40), (0, 90), (-90, 0), (-90, 90))
+        kw = (; size=(8, 8, 4), longitude=(0, 360), latitude, z=(0, 1000))
+        cpu_grid = LatitudeLongitudeGrid(CPU(); kw...)
+        grid = LatitudeLongitudeGrid(ReactantState(); kw...)
+        @test Oceananigans.Grids.poles(grid) == Oceananigans.Grids.poles(cpu_grid) ==
+              (south = latitude[1] == -90, north = latitude[2] == 90)
+
+        cpu_c = CenterField(cpu_grid)
+        c = CenterField(grid)
+        set!(cpu_c, (λ, φ, z) -> λ)
+        set!(c, (λ, φ, z) -> λ)
+        @test Array(@jit doubled(c)) ≈ Array(doubled(cpu_c))
+    end
+end
