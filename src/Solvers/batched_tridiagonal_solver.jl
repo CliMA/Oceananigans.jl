@@ -222,30 +222,111 @@ end
     solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
 end
 
+# The `ZDirection` sweep. The operations on values are those of the textbook loop
+#
+#     ϕ[1] = f[1] / β;  for k = 2:Nz:  t[k] = c[k-1] / β;  β = b[k] - a[k-1] t[k];  ϕ[k] = (f[k] - a[k-1] ϕ[k-1]) / β
+#     for k = Nz-1:-1:1:  ϕ[k] -= t[k+1] ϕ[k+1]
+#
+# (with the masked products and the `β ≈ 0` fallback), in the same order and in the same types. What differs is where
+# a value comes from, because on a GPU every thread walks a column and waits on each load in turn:
+#
+# - `ϕ[k-1]` in the forward sweep and `ϕ[k+1]` in the back-substitution are the values just stored, converted to the
+#   element type of `ϕ` as the store converts them, instead of a load that follows the store;
+# - the back-substitution takes four levels at a time: the eight loads of `t` and `ϕ` first, then the four dependent
+#   updates, then the four stores;
+# - a right-hand side that is a three-dimensional array is loaded one level ahead (`right_hand_side_ahead`).
+#
+# This relies on the scratch `t` sharing no memory with `ϕ` or with the right-hand side (it is the solver's own
+# array), and on a right-hand side array being `ϕ` itself or an array the sweep does not write: then entry `k + 1`
+# is untouched while row `k` is written.
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
+    FT = eltype(ϕ)
+    TT = eltype(t)
+    ahead = right_hand_side_ahead(f)
+    ε = 10 * eps(float_eltype(ϕ))
+
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
         f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, j, 1] = f₁ / β
+        ϕᵏ⁻¹ = convert(FT, f₁ / β)
+        ϕ[i, j, 1] = ϕᵏ⁻¹
+
+        fᵏ = ahead ? get_coefficient(i, j, min(2, Nz), grid, f, p, tridiagonal_direction, args...) : f₁
 
         for k = 2:Nz
+            # the right-hand side of the next row (of this one again at k = Nz, unused)
+            fᵏ⁺¹ = ahead ? get_coefficient(i, j, ifelse(k < Nz, k+1, k), grid, f, p, tridiagonal_direction, args...) : fᵏ
+
             cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
             bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
             aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - masked_multiply(aᵏ⁻¹, t[i, j, k])
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            tᵏ = convert(TT, cᵏ⁻¹ / β)
+            t[i, j, k] = tᵏ
+            β = bᵏ - masked_multiply(aᵏ⁻¹, tᵏ)
+            fᵏ = ahead ? fᵏ : get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
-            # the algorithm is unstable and we elide the forward pass update of `ϕ`.
-            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
-            definitely_diagonally_dominant && (ϕ[i, j, k] = ϕ★)
+            # the algorithm is unstable and we elide the forward pass update of `ϕ`
+            # (`ϕ[k]` is then neither stored nor, unless needed, loaded).
+            definitely_diagonally_dominant = abs(β) > ε
+            ϕ★ = (fᵏ - masked_multiply(aᵏ⁻¹, ϕᵏ⁻¹)) / β
+            if definitely_diagonally_dominant
+                ϕᵏ = convert(FT, ϕ★)
+                ϕ[i, j, k] = ϕᵏ
+            else
+                ϕᵏ = ϕ[i, j, k]
+            end
+
+            ϕᵏ⁻¹ = ϕᵏ
+            fᵏ = fᵏ⁺¹
         end
 
-        for k = Nz-1:-1:1
-            ϕ[i, j, k] -= masked_multiply(t[i, j, k+1], ϕ[i, j, k+1])
-        end
+        back_substitute_z!(ϕ, t, i, j, Nz, ϕᵏ⁻¹)
     end
+
+    return nothing
+end
+
+@inline right_hand_side_ahead(f::AbstractArray{<:Any, 3}) = true
+@inline right_hand_side_ahead(f) = false
+
+# ϕ[k] -= t[k+1] ϕ[k+1] for k = Nz-1, …, 1, with `ϕᴺ` the value of `ϕ[i, j, Nz]`.
+@inline function back_substitute_z!(ϕ, t, i, j, Nz, ϕᴺ)
+    FT = eltype(ϕ)
+    ϕᵏ⁺¹ = ϕᴺ
+    k = Nz - 1
+
+    @inbounds while k ≥ 4
+        t₁ = t[i, j, k+1]
+        t₂ = t[i, j, k]
+        t₃ = t[i, j, k-1]
+        t₄ = t[i, j, k-2]
+        ϕ₁ = ϕ[i, j, k]
+        ϕ₂ = ϕ[i, j, k-1]
+        ϕ₃ = ϕ[i, j, k-2]
+        ϕ₄ = ϕ[i, j, k-3]
+
+        ϕ₁ = convert(FT, ϕ₁ - masked_multiply(t₁, ϕᵏ⁺¹))
+        ϕ₂ = convert(FT, ϕ₂ - masked_multiply(t₂, ϕ₁))
+        ϕ₃ = convert(FT, ϕ₃ - masked_multiply(t₃, ϕ₂))
+        ϕ₄ = convert(FT, ϕ₄ - masked_multiply(t₄, ϕ₃))
+
+        ϕ[i, j, k]   = ϕ₁
+        ϕ[i, j, k-1] = ϕ₂
+        ϕ[i, j, k-2] = ϕ₃
+        ϕ[i, j, k-3] = ϕ₄
+
+        ϕᵏ⁺¹ = ϕ₄
+        k -= 4
+    end
+
+    @inbounds while k ≥ 1
+        ϕᵏ = convert(FT, ϕ[i, j, k] - masked_multiply(t[i, j, k+1], ϕᵏ⁺¹))
+        ϕ[i, j, k] = ϕᵏ
+        ϕᵏ⁺¹ = ϕᵏ
+        k -= 1
+    end
+
+    return nothing
 end
